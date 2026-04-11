@@ -1,0 +1,62 @@
+{% extends "caterer/layout.html" %}
+
+{% block title %}Reports - Caterer Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/reports.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Business Reports</h1>
+    <p>Analyze your business growth and performance metrics.</p>
+</div>
+
+{% set total_bookings = bookings|length %}
+{% set confirmed_bookings = bookings|selectattr('status', 'equalto', 'confirmed')|list|length +
+bookings|selectattr('status', 'equalto', 'completed')|list|length %}
+{% set popularity_score = ((confirmed_bookings / total_bookings) * 100)|round|int if total_bookings > 0 else 0 %}
+
+<div class="reports-stats-grid">
+    <div class="report-stat-card">
+        <h3 class="report-stat-label">Conversion / Popularity Score</h3>
+        <div class="report-stat-value">{{ popularity_score }}%</div>
+        <div class="report-stat-hint">Based on confirmed vs total requests</div>
+    </div>
+
+    <div class="report-stat-card">
+        <h3 class="report-stat-label">Total Bookings</h3>
+        <div class="report-stat-value">{{ total_bookings }}</div>
+        <div class="report-stat-hint success">Over lifetime of account</div>
+    </div>
+</div>
+
+<div class="revenue-chart-container">
+    <h3 class="revenue-chart-title"><i class="fas fa-chart-line"></i> Revenue Over Time</h3>
+
+    <!-- Chart Container -->
+    <div class="chart-canvas-wrapper">
+        <canvas id="revenueChart"></canvas>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', path='/js/caterer/reports.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const bookingsData = [
+            {% for b in bookings %}
+                {% if b.status != 'cancelled' and b.status != 'rejected' %}
+    {
+        date: '{{ b.created_at.strftime("%Y-%m") }}',
+            revenue: { { b.total_amount or b.total_price or 0.0 } }
+    },
+    {% endif %}
+    {% endfor %}
+        ];
+    initRevenueChart(bookingsData);
+    });
+</script>
+{% endblock %}

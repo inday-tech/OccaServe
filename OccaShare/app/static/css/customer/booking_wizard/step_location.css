@@ -1,0 +1,111 @@
+/* Location Step Styles */
+.form-main {
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+}
+
+.details-layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 4rem;
+    align-items: flex-start;
+}
+
+.form-label {
+    display: block;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #475569;
+    margin-bottom: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.form-input {
+    width: 100%;
+    padding: 1rem 1.25rem;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 0.85rem;
+    font-size: 1rem;
+    color: #1e293b;
+    background: #f8fafc;
+    transition: all 0.2s ease;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #10b981;
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.08);
+}
+
+.field-note {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-top: 0.5rem;
+    font-weight: 500;
+}
+
+/* Actions */
+.wizard-actions-single {
+    display: flex;
+    gap: 1.25rem;
+    margin-top: 3rem;
+}
+
+.btn-back-soft {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 1.15rem;
+    border-radius: 1rem;
+    background: #f1f5f9;
+    color: #475569;
+    font-weight: 700;
+    border: 1.5px solid #e2e8f0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    font-size: 0.95rem;
+}
+
+.btn-back-soft:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+    transform: translateX(-4px);
+}
+
+.btn-continue {
+    flex: 2;
+    background: var(--primary-color);
+    color: #fff;
+    border: none;
+    padding: 1.25rem;
+    border-radius: 1rem;
+    font-size: 1.1rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    box-shadow: 0 10px 25px rgba(240, 90, 67, 0.2);
+}
+
+.btn-continue:hover {
+    background: var(--primary-hover);
+    transform: translateY(-3px);
+    box-shadow: 0 15px 30px rgba(16, 185, 129, 0.25);
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+    .details-layout {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+}

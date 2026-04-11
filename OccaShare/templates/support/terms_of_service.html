@@ -1,0 +1,115 @@
+{% extends "landing_base.html" %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/support/terms_of_service.css') }}">
+{% endblock %}
+
+
+{% block title %}Terms of Service - OccaServe{% endblock %}
+
+{% block content %}
+
+<div class="page-hero-premium">
+    <div class="container">
+        <h1>Terms of Service</h1>
+        <p>Last updated: February 2026. Please read these terms carefully before using the OccaServe platform.</p>
+    </div>
+</div>
+
+<section class="section">
+    <div class="container">
+        <div class="legal-wrapper">
+
+            <!-- Intro -->
+            <div class="legal-alert-box warning">
+                <p class="legal-alert-text"><strong>Important:</strong> By
+                    accessing or using OccaServe, you agree to be bound by these Terms of Service. If you do not agree
+                    to all terms, please do not use our platform.</p>
+            </div>
+
+            {% set sections = [
+            ("1. Acceptance of Terms", [
+            ("Agreement", 'These Terms of Service ("Terms") constitute a legally binding agreement between you and
+            OccaServe. By creating an account or using any part of our platform, you agree to be bound by these
+            Terms.'),
+            ("Eligibility", "You must be at least 18 years old and capable of entering into a legally binding contract
+            under Philippine law to use OccaServe. By using our platform, you represent that you meet these
+            requirements."),
+            ]),
+            ("2. Platform Description", [
+            ("Marketplace Role", 'OccaServe is a technology platform that connects customers seeking catering services
+            with independent catering professionals ("Caterers"). OccaServe is not a catering company itself.'),
+            ("No Employment Relationship", "Caterers listed on OccaServe are independent contractors, not employees,
+            agents, or partners of OccaServe."),
+            ]),
+            ("3. User Accounts", [
+            ("Registration", "You must provide accurate, current, and complete information when creating an account. You
+            are responsible for maintaining the security of your account credentials."),
+            ("Account Integrity", "You may not create accounts for others without permission, impersonate any person or
+            entity, or use another user's account."),
+            ("Account Termination", "OccaServe reserves the right to suspend or terminate accounts that violate these
+            Terms, engage in fraudulent activity, or harm the platform or its users."),
+            ]),
+            ("4. Booking & Payments", [
+            ("Booking Agreement", "When a booking is confirmed, a contract is formed between the customer and the
+            caterer. OccaServe facilitates but is not a party to this contract."),
+            ("Payment Processing", "All payments are processed by PayMongo. By making a payment, you agree to PayMongo's
+            terms of service. OccaServe collects payment on behalf of caterers and remits funds after service
+            completion."),
+            ("Cancellations & Refunds", "Cancellation and refund terms are set by individual caterers and displayed on
+            their profiles. OccaServe will mediate good-faith disputes between parties."),
+            ("Platform Fee", "OccaServe charges caterers a service fee on completed bookings. This fee is deducted from
+            the caterer's payout and is disclosed during caterer onboarding."),
+            ]),
+            ("5. Caterer Obligations", [
+            ("Accuracy", "Caterers must ensure that all information in their profile—including menus, pricing,
+            availability, and service areas—is accurate and up to date."),
+            ("Service Quality", "Caterers agree to deliver the agreed-upon services professionally, on time, and to the
+            standard described in their booking agreement."),
+            ("Compliance", "Caterers are responsible for complying with all applicable Philippine laws, including food
+            safety regulations, business permits, and tax obligations."),
+            ]),
+            ("6. Prohibited Conduct", [
+            ("Forbidden Activities", "Users may not: (a) conduct transactions outside the platform to circumvent fees;
+            (b) post false reviews; (c) harass or threaten other users; (d) upload malicious code; (e) violate any
+            applicable law through use of OccaServe."),
+            ]),
+            ("7. Limitation of Liability", [
+            ("Platform Liability", "OccaServe is not liable for the quality, safety, or legality of catering services
+            provided by Caterers. Our liability to you shall not exceed the amount of fees paid to OccaServe in the 3
+            months prior to the claim."),
+            ("Service Availability", "OccaServe does not guarantee uninterrupted access to the platform and is not
+            liable for downtime, data loss, or technical failures."),
+            ]),
+            ("8. Governing Law", [
+            ("Jurisdiction", "These Terms shall be governed by the laws of the Republic of the Philippines. Any disputes
+            shall be subject to the exclusive jurisdiction of the courts of Metro Manila."),
+            ("Contact", "For questions about these Terms, contact us at legal@occaserve.com."),
+            ]),
+            ] %}
+
+            {% for section_title, items in sections %}
+            <div class="legal-section">
+                <h2 class="legal-section-title">{{ section_title }}</h2>
+                {% for sub_title, sub_text in items %}
+                <div class="legal-subsection">
+                    <h4 class="legal-subsection-title">{{ sub_title }}</h4>
+                    <p class="legal-text">{{ sub_text }}</p>
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+
+            <div class="legal-footer-box">
+                <p class="legal-footer-text">Have questions about our Terms of Service?</p>
+                <div class="legal-footer-buttons">
+                    <a href="/contact" class="btn-primary">Contact Us</a>
+                    <a href="/support/privacy-policy" class="btn-legal-outline">Privacy Policy</a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+{% endblock %}

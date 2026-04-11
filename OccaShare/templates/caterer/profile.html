@@ -1,0 +1,402 @@
+{% extends "landing_base.html" %}
+
+{% block title %}{{ caterer.business_name }} - OccaServe{% endblock %}
+
+{% block head %}
+<!-- Tailwind CSS CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    primary: '#f97316',
+                    secondary: '#334155',
+                },
+                borderRadius: {
+                    'xl': '1rem',
+                    '2xl': '1.5rem',
+                }
+            }
+        }
+    }
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css' rel='stylesheet' />
+<style type="text/tailwindcss">
+    @layer components {
+        .btn-primary {
+            @apply bg-[#f97316] text-white px-6 py-2.5 rounded-xl font-bold transition-all hover:bg-orange-600 hover:shadow-lg active:scale-95 flex items-center justify-center gap-2;
+        }
+        .btn-outline {
+            @apply border border-slate-200 text-slate-500 px-6 py-2.5 rounded-xl font-bold transition-all hover:bg-slate-50 flex items-center justify-center gap-2;
+        }
+        .card-premium {
+            @apply bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-300;
+        }
+    }
+    body { font-family: 'Poppins', sans-serif; @apply bg-[#fdfdfd] text-slate-700; }
+    
+    /* FullCalendar Customization */
+    .fc { --fc-border-color: #f1f5f9; --fc-button-bg-color: #f97316; --fc-button-border-color: #f97316; }
+    .fc .fc-toolbar-title { font-size: 1rem !important; font-weight: 700; color: #1e293b; }
+    .fc .fc-button-primary:not(:disabled).fc-button-active, .fc .fc-button-primary:not(:disabled):active { background-color: #ea580c; border-color: #ea580c; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 py-8 mt-24">
+    {# ======= HEADER SECTION ======= #}
+    <div class="flex flex-col items-center text-center mb-10 animate-in fade-in slide-in-from-top-4 duration-700">
+        <div class="flex items-center gap-2 mb-2">
+            <h1 class="text-4xl font-extrabold text-[#000000] tracking-tight">{{ caterer.business_name or
+                'Thatatlicious' }}</h1>
+            <span
+                class="bg-[#f97316] text-white text-[10px] font-extrabold px-3 py-1 rounded-full flex items-center gap-1 uppercase tracking-tight">
+                <i class="fas fa-check-circle"></i> VERIFIED
+            </span>
+        </div>
+
+        <div class="flex items-center gap-4 text-xs text-orange-500 font-semibold mb-3">
+            <span class="flex items-center gap-1.5"><i class="fas fa-map-marker-alt"></i> {{ caterer.city or 'Magdalena'
+                }}</span>
+            <span class="flex items-center gap-1.5"><i class="fas fa-users"></i> {{ caterer.min_pax or 50 }}-{{
+                caterer.max_pax or 100 }} pax</span>
+            <span class="flex items-center gap-1.5"><i class="fas fa-star"></i> New Partnership</span>
+        </div>
+
+        <p class="text-slate-500 text-sm italic mb-8 max-w-2xl leading-relaxed">
+            {{ caterer.description if caterer.description else 'Exquisite culinary experiences tailored for your special
+            occasions.' }}
+        </p>
+
+        <div class="flex flex-wrap justify-center gap-2 font-bold">
+            {% set tags = ['PREMIUM SERVICES', 'REVIEWS', 'SETTINGS', 'CORPORATE', 'PRIVATE PARTY', 'ANNIVERSARY',
+            'DEBUT/BIRTHDAY'] %}
+            {% for tag in tags %}
+            <span
+                class="px-5 py-2 rounded-full border border-slate-200 text-[11px] text-slate-500 bg-white uppercase tracking-wide hover:border-orange-200 hover:text-orange-500 transition-all cursor-default">
+                {{ tag }}
+            </span>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {# ======= LEFT CONTENT COLUMN ======= #}
+        <div class="lg:col-span-8 space-y-6">
+
+            {# --- About Section --- #}
+            <section id="about" class="card-premium p-8">
+                <div class="flex items-center gap-2 mb-8">
+                    <i class="fas fa-utensils text-orange-500 text-base"></i>
+                    <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider">About the Caterer</h2>
+                </div>
+                <div class="grid grid-cols-4 gap-4">
+                    <div
+                        class="bg-slate-50/50 p-6 rounded-2xl text-center border border-slate-100 transition-all hover:bg-white hover:shadow-sm">
+                        <div class="text-orange-500 mb-2"><i class="far fa-clock text-xl"></i></div>
+                        <div class="text-2xl font-extrabold text-slate-800">{{ caterer.years_of_operation or 5 }}+</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Years</div>
+                    </div>
+                    <div
+                        class="bg-slate-50/50 p-6 rounded-2xl text-center border border-slate-100 transition-all hover:bg-white hover:shadow-sm">
+                        <div class="text-orange-500 mb-2"><i class="fas fa-users-cog text-xl"></i></div>
+                        <div class="text-2xl font-extrabold text-slate-800">500+</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Events</div>
+                    </div>
+                    <div
+                        class="bg-slate-50/50 p-6 rounded-2xl text-center border border-slate-100 transition-all hover:bg-white hover:shadow-sm">
+                        <div class="text-orange-500 mb-2"><i class="far fa-star text-xl"></i></div>
+                        <div class="text-2xl font-extrabold text-slate-800">{{ "%.1f"|format(caterer.rating or 5.0) }}
+                        </div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Rating</div>
+                    </div>
+                    <div
+                        class="bg-slate-50/50 p-6 rounded-2xl text-center border border-slate-100 transition-all hover:bg-white hover:shadow-sm">
+                        <div class="text-orange-500 mb-2"><i class="fas fa-utensils text-xl"></i></div>
+                        <div class="text-2xl font-extrabold text-slate-800">50+</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Menus</div>
+                    </div>
+                </div>
+            </section>
+
+            {# --- Culinary Offerings --- #}
+            <section id="menu" class="card-premium p-8">
+                <div class="flex items-center gap-2 mb-1">
+                    <i class="fas fa-concierge-bell text-orange-500 text-base"></i>
+                    <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Culinary Offerings</h2>
+                </div>
+                <p class="text-sm text-slate-500 mb-8">A collection of our signature dishes and curated culinary
+                    delights.</p>
+
+                <h4 class="text-base font-bold text-slate-800 mb-6">Our Specializations</h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    {% for item in caterer.menu_items[:2] %}
+                    <div
+                        class="border border-slate-100 rounded-2xl overflow-hidden flex flex-col group transition-all hover:shadow-md">
+                        <div class="relative h-56 overflow-hidden bg-slate-50">
+                            {% if item.image_url %}
+                            <img src="{{ item.image_url }}"
+                                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                            {% else %}
+                            <div class="w-full h-full flex items-center justify-center text-slate-200"><i
+                                    class="fas fa-concierge-bell text-5xl"></i></div>
+                            {% endif %}
+                            <span
+                                class="absolute top-4 left-4 bg-green-500 text-white text-[10px] font-bold px-3 py-1 rounded-sm shadow-sm">NEW</span>
+                        </div>
+                        <div class="p-6 bg-white">
+                            <h5 class="text-base font-bold text-slate-800 mb-2">{{ item.name }}</h5>
+                            <div class="text-[#f97316] font-extrabold text-lg">₱{{ "{:,.0f}".format(item.price) if
+                                item.price
+                                else '1,500' }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            {# --- Packages Section --- #}
+            <section id="packages" class="card-premium p-8">
+                <div class="flex items-center gap-2 mb-1">
+                    <i class="fas fa-gift text-orange-500 text-base"></i>
+                    <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Catering Packages</h2>
+                </div>
+                <p class="text-sm text-slate-500 mb-8">Choose a package that fits your event</p>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {% for pkg in packages[:3] %}
+                    <div
+                        class="border border-slate-100 rounded-2xl overflow-hidden flex flex-col group transition-all hover:shadow-md">
+                        <div class="relative h-40 overflow-hidden bg-slate-50">
+                            {% if pkg.image_url %}
+                            <img src="{{ pkg.image_url }}"
+                                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                            {% else %}
+                            <img src="https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=400"
+                                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                            {% endif %}
+                            <span
+                                class="absolute top-3 left-3 bg-[#f97316] text-white text-[9px] font-bold px-2 py-1 rounded-sm uppercase tracking-widest shadow-sm">FEATURED</span>
+                        </div>
+                        <div class="p-5 bg-white flex-1 flex flex-col">
+                            <h5
+                                class="text-xs font-extrabold text-slate-800 uppercase mb-4 leading-tight tracking-tight">
+                                {{ pkg.name }}</h5>
+                            <ul class="space-y-2 mb-6 flex-1">
+                                <li class="flex items-center gap-2 text-[11px] text-slate-500 font-semibold"><i
+                                        class="fas fa-users text-orange-400"></i> {{ pkg.min_guests or 50 }}-{{
+                                    pkg.max_guests or '100' }} Guests</li>
+                                <li class="flex items-center gap-2 text-[11px] text-slate-500 font-semibold"><i
+                                        class="far fa-clock text-orange-400"></i> {{ pkg.service_duration or 4 }} Hours
+                                </li>
+                                <li class="flex items-center gap-2 text-[11px] text-slate-500 font-semibold"><i
+                                        class="fas fa-utensils text-orange-400"></i> Full Service Catering</li>
+                            </ul>
+                            <button onclick="showPkgModal('pkg-modal-{{ pkg.id }}')"
+                                class="w-full py-2.5 bg-slate-50 hover:bg-orange-50 border border-slate-100 hover:border-orange-200 rounded-xl text-xs font-bold text-slate-600 hover:text-orange-600 transition-all flex items-center justify-center gap-2">
+                                Details <i class="fas fa-arrow-right text-[10px]"></i>
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            {# --- Gallery Section --- #}
+            <section id="gallery" class="card-premium p-8">
+                <div class="flex items-center gap-2 mb-8">
+                    <i class="fas fa-camera text-orange-500 text-base"></i>
+                    <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Gallery</h2>
+                </div>
+                <div class="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                    {% for i in range(1, 7) %}
+                    <div
+                        class="aspect-square rounded-xl overflow-hidden bg-slate-100 border border-slate-50 transition-transform hover:scale-105 cursor-pointer">
+                        {% if gallery_items[i-1] %}
+                        <img src="{{ gallery_items[i-1].media_url }}" class="w-full h-full object-cover">
+                        {% else %}
+                        <img src="https://via.placeholder.com/150"
+                            class="w-full h-full object-cover grayscale opacity-50">
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            {# --- Availability Section --- #}
+            <section id="availability" class="card-premium p-8">
+                <div class="flex items-center gap-2 mb-8">
+                    <i class="far fa-calendar-alt text-orange-500 text-base"></i>
+                    <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Availability</h2>
+                </div>
+                <div id="availabilityCalendar" data-caterer-id="{{ caterer.id }}" class="text-xs"></div>
+            </section>
+
+            {# --- Policies Section --- #}
+            <section id="policies" class="card-premium p-8">
+                <div class="flex items-center gap-2 mb-1">
+                    <i class="fas fa-file-alt text-orange-500 text-base"></i>
+                    <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Policies & Terms</h2>
+                </div>
+                <p class="text-sm text-slate-500 mb-8">Enforcing transparent policies for a worry-free event
+                    planning.</p>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 flex flex-col gap-3">
+                        <div class="text-orange-500 flex items-center gap-2"><i
+                                class="far fa-calendar-check text-lg"></i> <span
+                                class="text-xs font-bold text-slate-800 uppercase tracking-tight">Booking</span></div>
+                        <p class="text-[11px] text-slate-500 leading-relaxed font-semibold">Advance booking required.
+                            Minimum 14 days lead time preferred.</p>
+                    </div>
+                    <div class="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 flex flex-col gap-3">
+                        <div class="text-orange-500 flex items-center gap-2"><i class="far fa-credit-card text-lg"></i>
+                            <span class="text-xs font-bold text-slate-800 uppercase tracking-tight">Payment</span></div>
+                        <p class="text-[11px] text-slate-500 leading-relaxed font-semibold">50% reservation fee per
+                            booking. Full payment 7 days before event.</p>
+                    </div>
+                    <div class="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 flex flex-col gap-3">
+                        <div class="text-orange-500 flex items-center gap-2"><i class="far fa-clock text-lg"></i>
+                            <span class="text-xs font-bold text-slate-800 uppercase tracking-tight">Cancellation</span>
+                        </div>
+                        <p class="text-[11px] text-slate-500 leading-relaxed font-semibold">Cancellations within 7 days
+                            incur a 20% service fee.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        {# ======= RIGHT SIDEBAR ======= #}
+        <aside class="lg:col-span-4 lg:sticky lg:top-8 h-fit space-y-4">
+            <div class="card-premium p-8 border border-slate-200">
+                <div class="mb-8">
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Starting Price
+                    </div>
+                    <div class="text-3xl font-extrabold text-[#f97316]">₱{{ "{:,.0f}".format(caterer.starting_price or
+                        15000)
+                        }}</div>
+                </div>
+
+                <div class="space-y-5 mb-10">
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-orange-500 text-xs">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-800 uppercase tracking-tight">Rapid Response
+                            </div>
+                            <div class="text-[11px] text-slate-500 font-semibold tracking-tight">Typically replies
+                                within 1
+                                hour</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-orange-500 text-xs">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-800 uppercase tracking-tight">Verified</div>
+                            <div class="text-[11px] text-slate-500 font-semibold tracking-tight">Identity & Business
+                                Checked</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-orange-500 text-xs">
+                            <i class="far fa-star"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-800 uppercase tracking-tight">Top Rated</div>
+                            <div class="text-[11px] text-slate-500 font-semibold tracking-tight">5.0 Star Experience
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-3 mb-8">
+                    <button onclick="openAuthModal('login')" class="btn-primary w-full py-3.5 text-sm">Book
+                        Now</button>
+                    <button
+                        class="btn-outline w-full py-3.5 text-sm flex items-center justify-center gap-2 transition-all hover:border-orange-200 hover:text-orange-500"><i
+                            class="far fa-comment-dots text-xs"></i> Send Inquiry</button>
+                </div>
+
+                <div
+                    class="pt-6 border-t border-slate-50 flex justify-center gap-6 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    <span class="cursor-pointer hover:text-[#f97316] transition-colors flex items-center gap-2"><i
+                            class="far fa-heart text-[10px]"></i> Save</span>
+                    <span class="cursor-pointer hover:text-[#f97316] transition-colors flex items-center gap-2"><i
+                            class="fas fa-share-alt text-[10px]"></i> Share</span>
+                </div>
+            </div>
+        </aside>
+    </div>
+</div>
+
+{# ======= MODAL SECTION ======= #}
+{% for pkg in packages %}
+<div id="pkg-modal-{{ pkg.id }}" class="fixed inset-0 z-[1000] hidden items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closePkgModal('pkg-modal-{{ pkg.id }}')">
+    </div>
+    <div
+        class="relative bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+        <button class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 z-10 p-2"
+            onclick="closePkgModal('pkg-modal-{{ pkg.id }}')">
+            <i class="fas fa-times text-lg"></i>
+        </button>
+        <div class="p-10">
+            <h2 class="text-2xl font-extrabold text-[#000000] mb-6 tracking-tight">{{ pkg.name }}</h2>
+            <div class="space-y-6 text-sm text-slate-600 leading-relaxed">
+                <p>{{ pkg.description if pkg.description else 'Premium catering packages designed for exceptional event
+                    experiences. Includes full service, staffing, and curated menu options tailore to your preferences.'
+                    }}</p>
+                <div class="grid grid-cols-2 gap-6 pt-2 border-t border-slate-50">
+                    <div class="flex items-center gap-3 font-semibold text-slate-700"><i
+                            class="fas fa-users text-orange-500 text-lg"></i> {{ pkg.min_guests
+                        or '50' }}-{{ pkg.max_guests or '100' }} guests</div>
+                    <div class="flex items-center gap-3 font-semibold text-slate-700"><i
+                            class="far fa-clock text-orange-500 text-lg"></i> {{
+                        pkg.service_duration or '4' }}h service</div>
+                </div>
+            </div>
+            <button onclick="openAuthModal('login')" class="btn-primary w-full mt-10 py-4 text-base">Book This
+                Package</button>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% endblock %}
+
+{% block scripts %}
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js'></script>
+<script>
+    function showPkgModal(id) {
+        var m = document.getElementById(id);
+        if (m) { m.classList.remove('hidden'); m.classList.add('flex'); document.body.style.overflow = 'hidden'; }
+    }
+    function closePkgModal(id) {
+        var m = document.getElementById(id);
+        if (m) { m.classList.add('hidden'); m.classList.remove('flex'); document.body.style.overflow = ''; }
+    }
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { document.querySelectorAll('[id^="pkg-modal-"]').forEach(modal => closePkgModal(modal.id)); } });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const calendarEl = document.getElementById('availabilityCalendar');
+        if (calendarEl) {
+            const catererId = calendarEl.dataset.catererId;
+            const calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: { left: 'prev,next today', center: 'title', right: '' },
+                events: `/caterer/api/events?caterer_id=${catererId}`,
+                height: 'auto',
+                dayMaxEvents: true
+            });
+            calendar.render();
+        }
+    });
+</script>
+{% endblock %}

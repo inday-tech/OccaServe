@@ -1,0 +1,219 @@
+{% extends "customer/layout.html" %}
+
+{% block title %}My Bookings - OccaServe Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/bookings.css') }}?v=1.1">
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1>My Bookings</h1>
+        <p>Manage your catering reservations.</p>
+    </div>
+    <a href="/customer/marketplace" class="btn-primary"
+        style="padding: 0.6rem 1.25rem; border-radius: 12px; font-weight: 700; display: flex; align-items: center; gap: 0.6rem; text-decoration: none; font-size: 0.9rem;">
+        <i class="fas fa-plus"></i> New Booking
+    </a>
+</div>
+
+<div class="c-card-premium">
+    <div
+        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+        <h3 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--secondary-color);">All Bookings</h3>
+        <div class="search-box-pro" style="width: 300px;">
+            <i class="fas fa-search"></i>
+            <input type="text" id="bookingSearchInput" class="search-input-pro"
+                placeholder="Search events or caterers..." onkeyup="filterBookings()">
+        </div>
+    </div>
+
+
+    {% if bookings %}
+    <div class="premium-table-wrapper">
+        <table class="premium-table" id="bookingsPremiumTable">
+            <thead>
+                <tr>
+                    <th style="width: 25%;">Event & ID</th>
+                    <th style="width: 20%;">Caterer & Package</th>
+                    <th style="width: 15%;">Date & Time</th>
+                    <th style="width: 10%;">Guests</th>
+                    <th style="width: 15%;">Amount</th>
+                    <th style="width: 15%;">Status</th>
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for booking in bookings %}
+                <tr class="premium-row booking-row-item"
+                    data-search="{{ (booking.event_name or '')|lower }} {{ (booking.caterer.business_name or '')|lower }} BK-{{ "
+                    %03d" | format(booking.id) }}">
+                    <td class="premium-cell">
+                        <div style="font-weight: 700; color: var(--secondary-color); font-size: 1rem;">{{
+                            booking.event_name or 'N/A' }}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-light); font-weight: 600;">BK-{{ "%03d" |
+                            format(booking.id) }}</div>
+                    </td>
+                    <td class="premium-cell">
+                        <div style="font-weight: 700; color: var(--secondary-color); font-size: 0.95rem;">{{
+                            booking.caterer.business_name if booking.caterer else 'Unknown' }}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-light);">{{ booking.package.name if
+                            booking.package else 'Custom Menu' }}</div>
+                    </td>
+                    <td class="premium-cell">
+                        <div style="font-weight: 600; color: var(--secondary-color); font-size: 0.9rem;">{{
+                            booking.event_date.strftime('%b %d, %Y') }}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-light);"><i class="far fa-clock"
+                                style="margin-right: 3px;"></i> {{ booking.event_time.strftime('%I:%M %p') if
+                            booking.event_time else 'TBD' }}</div>
+                    </td>
+                    <td class="premium-cell">
+                        <span style="font-weight: 600; color: var(--secondary-color);">{{ booking.guest_count }}</span>
+                    </td>
+                    <td class="premium-cell">
+                        <div style="font-weight: 800; color: var(--secondary-color); font-size: 1.05rem;">₱{{
+                            "{:,.0f}".format(booking.total_amount) if booking.total_amount else '0' }}</div>
+                    </td>
+                    <td class="premium-cell">
+                        {% set status_class = {
+                        'confirmed': 'p-badge-confirmed',
+                        'completed': 'p-badge-confirmed',
+                        'pending': 'p-badge-pending',
+                        'awaiting_payment': 'p-badge-pending',
+                        'awaiting_caterer': 'p-badge-pending',
+                        'cancelled': 'p-badge-cancelled',
+                        'draft': 'p-badge-draft'
+                        }.get(booking.status, 'p-badge-pending') %}
+                        {% set status_label = {
+                        'pending_quotation': 'Reviewing',
+                        'awaiting_caterer': 'Pending Caterer',
+                        'awaiting_payment': 'Payment Due',
+                        'draft': 'Draft'
+                        }.get(booking.status, booking.status|capitalize) %}
+                        <span class="p-badge {{ status_class }}">{{ status_label }}</span>
+                    </td>
+                    <td class="premium-cell" style="text-align: right;">
+                        <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                            {% if booking.status == 'draft' %}
+                            <a href="/bookings/continue/{{ booking.id }}" class="btn-pagination"
+                                style="background: var(--primary-color); color: white; border: none; text-decoration: none;">Resume</a>
+                            {% else %}
+                            <a href="/customer/bookings/manage/{{ booking.id }}" class="btn-pagination"
+                                style="text-decoration: none;" title="Manage Booking"><i class="fas fa-cog"></i>
+                                Manage</a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination-container-p">
+        <div class="pagination-info">
+            Showing <span id="startRange">0</span> to <span id="endRange">0</span> of <span id="totalEntries">0</span>
+            bookings
+        </div>
+        <div class="pagination-buttons">
+            <button id="prevPage" class="btn-pagination"><i class="fas fa-chevron-left"></i> Previous</button>
+            <div id="pageNumbers" class="pagination-buttons">
+                <!-- Dynamic Page Numbers -->
+            </div>
+            <button id="nextPage" class="btn-pagination">Next <i class="fas fa-chevron-right"></i></button>
+        </div>
+    </div>
+
+    {% else %}
+    <div class="empty-state" style="text-align: center; padding: 5rem 2rem;">
+        <div
+            style="width: 80px; height: 80px; background: #f8fafc; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; color: #cbd5e1; font-size: 2rem;">
+            <i class="fas fa-calendar-times"></i>
+        </div>
+        <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--secondary-color); margin-bottom: 0.5rem;">No
+            bookings yet</h2>
+        <p style="color: var(--text-muted); max-width: 400px; margin: 0 auto 2rem;">
+            Your upcoming events will appear here once you start booking. Explore our caterers to get started!
+        </p>
+        <a href="/customer/marketplace" class="btn-primary" style="text-decoration: none;">Browse Caterers</a>
+    </div>
+    {% endif %}
+</div>
+
+{% block extra_js %}
+<script>
+    const ROWS_PER_PAGE = 5;
+    let currentPage = 1;
+    let filteredRows = [];
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const rows = Array.from(document.querySelectorAll('.booking-row-item'));
+        filteredRows = rows;
+        updatePagination();
+    });
+
+    function updatePagination() {
+        const totalPages = Math.ceil(filteredRows.length / ROWS_PER_PAGE) || 1;
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        const startIdx = (currentPage - 1) * ROWS_PER_PAGE;
+        const endIdx = startIdx + ROWS_PER_PAGE;
+
+        // Hide all original rows first
+        document.querySelectorAll('.booking-row-item').forEach(r => r.style.display = 'none');
+
+        // Show scoped rows from filtered list
+        filteredRows.slice(startIdx, endIdx).forEach(r => {
+            r.style.display = 'table-row';
+        });
+
+        // Update Info
+        document.getElementById('startRange').innerText = filteredRows.length === 0 ? 0 : startIdx + 1;
+        document.getElementById('endRange').innerText = Math.min(endIdx, filteredRows.length);
+        document.getElementById('totalEntries').innerText = filteredRows.length;
+
+        // Render Buttons
+        renderPaginationButtons(totalPages);
+    }
+
+    function renderPaginationButtons(totalPages) {
+        const container = document.getElementById('pageNumbers');
+        const prevBtn = document.getElementById('prevPage');
+        const nextBtn = document.getElementById('nextPage');
+
+        container.innerHTML = '';
+        prevBtn.disabled = currentPage === 1;
+        nextBtn.disabled = currentPage === totalPages || filteredRows.length === 0;
+
+        prevBtn.onclick = () => { currentPage--; updatePagination(); };
+        nextBtn.onclick = () => { currentPage++; updatePagination(); };
+
+        if (filteredRows.length === 0) return;
+
+        for (let i = 1; i <= totalPages; i++) {
+            const btn = document.createElement('button');
+            btn.className = `page-num-btn ${i === currentPage ? 'active' : ''}`;
+            btn.innerText = i;
+            btn.onclick = () => { currentPage = i; updatePagination(); };
+            container.appendChild(btn);
+        }
+    }
+
+    function filterBookings() {
+        const searchTerm = document.getElementById('bookingSearchInput').value.toLowerCase();
+        const allRows = Array.from(document.querySelectorAll('.booking-row-item'));
+
+        filteredRows = allRows.filter(row => {
+            const data = row.getAttribute('data-search');
+            return data.includes(searchTerm);
+        });
+
+        currentPage = 1;
+        updatePagination();
+    }
+</script>
+{% endblock %}
+{% endblock %}

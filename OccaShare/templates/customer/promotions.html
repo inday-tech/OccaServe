@@ -1,0 +1,164 @@
+{% extends "customer/layout.html" %}
+
+{% block title %}Special Offers - OccaServe{% endblock %}
+
+{% block extra_css %}
+<style>
+    .promotions-hero {
+        background: linear-gradient(135deg, #fdf4ff 0%, #fae8ff 100%);
+        border-radius: 2.5rem;
+        padding: 5rem 3rem;
+        text-align: center;
+        margin-bottom: 3rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .promotions-hero h1 {
+        font-family: 'Playfair Display', serif;
+        font-size: 3.5rem;
+        color: #701a75;
+        margin-bottom: 1rem;
+    }
+
+    .promotions-hero p {
+        color: #a21caf;
+        font-size: 1.25rem;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .promo-card {
+        background: var(--white);
+        border-radius: 2rem;
+        overflow: hidden;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        border: 1px solid var(--border-color);
+        transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .promo-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.12);
+    }
+
+    .promo-banner {
+        background: linear-gradient(135deg, #701a75 0%, #a21caf 100%);
+        padding: 3rem 2rem;
+        color: white;
+        position: relative;
+        text-align: center;
+    }
+
+    .discount-badge {
+        position: absolute;
+        top: 1.5rem;
+        right: 1.5rem;
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(8px);
+        padding: 0.6rem 1.25rem;
+        border-radius: 2rem;
+        font-size: 0.9rem;
+        font-weight: 800;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .promo-body {
+        padding: 2.5rem 2rem;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .promo-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 1.6rem;
+        margin-bottom: 0.5rem;
+        color: var(--secondary-color);
+    }
+
+    .promo-expiry {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 0.9rem;
+        color: #a21caf;
+        font-weight: 600;
+        margin-top: auto;
+        margin-bottom: 1.5rem;
+    }
+
+    .btn-get-offer {
+        display: block;
+        text-align: center;
+        padding: 1.25rem;
+        background: #fdf4ff;
+        color: #701a75;
+        border-radius: 1.25rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.3s;
+    }
+
+    .promo-card:hover .btn-get-offer {
+        background: #701a75;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="promotions-hero">
+    <h1>View Offers</h1>
+    <p>Exclusive deals and discounts from our partner caterers.</p>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 2.5rem;">
+    {% if promotions %}
+    {% for promo in promotions %}
+    <div class="promo-card">
+        <div class="promo-banner">
+            <div class="discount-badge">
+                {{ promo.discount_value|int }}{{ '%' if promo.discount_type == 'percentage' else ' OFF' }}
+            </div>
+            <h3 class="promo-title" style="color: white; margin-top: 1rem;">{{ promo.title }}</h3>
+            <p style="opacity: 0.9; font-size: 0.95rem;">by {{ promo.caterer.business_name }}</p>
+        </div>
+        <div class="promo-body">
+            <p style="color: var(--text-light); line-height: 1.7; margin-bottom: 2rem;">
+                {{ promo.description or 'Special discount available for a limited time. Book now to secure this offer
+                for your next event.' }}
+            </p>
+
+            <div class="promo-expiry">
+                <i class="far fa-clock"></i>
+                <span>Expires: {{ promo.end_date.strftime('%B %d, %Y') }}</span>
+            </div>
+
+            <a href="/caterers/{{ promo.caterer_id }}" class="btn-get-offer">
+                Claim Offer <i class="fas fa-arrow-right" style="margin-left: 0.5rem; font-size: 0.8rem;"></i>
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="empty-state"
+        style="grid-column: 1/-1; text-align: center; padding: 6rem 2rem; background: white; border-radius: 2rem; border: 2px dashed var(--border-color);">
+        <div
+            style="width: 120px; height: 120px; background: #faf5ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+            <i class="fas fa-percent" style="font-size: 3rem; color: #d8b4fe;"></i>
+        </div>
+        <h2>No Active Promotions</h2>
+        <p
+            style="color: var(--text-light); max-width: 450px; margin: 1.5rem auto; font-size: 1.1rem; line-height: 1.6;">
+            Check back soon! Our caterers frequently post exclusive deals and seasonal discounts for our members.
+        </p>
+        <a href="/customer/marketplace" class="btn-primary"
+            style="padding: 1.25rem 3rem; border-radius: 1.25rem; display: inline-block; margin-top: 1rem;">Back to
+            Marketplace</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

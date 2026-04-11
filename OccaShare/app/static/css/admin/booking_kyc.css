@@ -1,0 +1,294 @@
+/* Admin Booking KYC Review Styles */
+
+.kyc-review-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 2rem;
+}
+
+@media (max-width: 1024px) {
+    .kyc-review-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.kyc-review-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 1.5rem;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+}
+
+.kyc-card-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.kyc-card-header-flex h3 {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--secondary-color);
+    margin: 0;
+}
+
+.kyc-type-badge {
+    background: #f1f5f9;
+    color: #64748b;
+    padding: 0.4rem 0.8rem;
+    border-radius: 2rem;
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.doc-comparison-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+@media (max-width: 640px) {
+    .doc-comparison-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+.doc-item-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.label-tiny-caps {
+    font-size: 0.7rem;
+    color: #64748b;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+}
+
+.id-document-preview {
+    border-radius: 1rem;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    height: 200px;
+    background: #f8fafc;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.id-document-preview:hover {
+    border-color: var(--primary-color);
+}
+
+.id-document-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.id-number-display {
+    margin-top: 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: var(--secondary-color);
+    background: #f1f5f9;
+    padding: 0.5rem 1rem;
+    border-radius: 0.75rem;
+}
+
+.liveness-thumbs-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.liveness-img-wrapper {
+    aspect-ratio: 1;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    border: 2px solid #f1f5f9;
+    transition: all 0.2s;
+}
+
+.liveness-img-wrapper:hover {
+    border-color: var(--primary-color);
+}
+
+.liveness-img-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.status-pill-indicator {
+    margin-top: 1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.7rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 2rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.status-pill-indicator.success {
+    background: #f0fdf4;
+    color: #10b981;
+}
+
+.status-pill-indicator.danger {
+    background: #fef2f2;
+    color: #ef4444;
+}
+
+.fraud-score-summary-box {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: #f8fafc;
+    border-radius: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px dashed #e2e8f0;
+}
+
+.score-label-text {
+    font-weight: 700;
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.score-value-highlight {
+    font-size: 1.75rem;
+    font-weight: 900;
+}
+
+/* Compliance Actions */
+.system-notes-container {
+    margin: 1.5rem 0;
+    background: #f8fafc;
+    padding: 1.5rem;
+    border-radius: 1rem;
+    border-left: 4px solid var(--primary-color);
+}
+
+.notes-label-tiny {
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.system-notes-text {
+    font-size: 0.9rem;
+    color: #334155;
+    margin-top: 0.5rem;
+    line-height: 1.6;
+}
+
+.audit-action-form {
+    margin-top: 2rem;
+}
+
+.audit-action-form h3 {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--secondary-color);
+    margin-bottom: 1.25rem;
+}
+
+.audit-notes-textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 1rem;
+    border-radius: 1rem;
+    border: 1px solid #e2e8f0;
+    background: #fcfcfc;
+    font-family: inherit;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+    outline: none;
+}
+
+.audit-notes-textarea:focus {
+    border-color: var(--primary-color);
+    background: white;
+}
+
+.audit-decision-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.btn-audit {
+    padding: 1rem;
+    border-radius: 1rem;
+    font-weight: 800;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+}
+
+.btn-audit.approve {
+    background: #10b981;
+    color: white;
+}
+
+.btn-audit.reject {
+    background: #fee2e2;
+    color: #ef4444;
+}
+
+.btn-audit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Audit Trail Table */
+.audit-trail-wrapper {
+    margin-top: 2rem;
+}
+
+.audit-history-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-top: 1.5rem;
+}
+
+.audit-history-table th {
+    text-align: left;
+    color: #64748b;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.audit-history-table td {
+    padding: 1.25rem;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 0.85rem;
+    color: #334155;
+    vertical-align: middle;
+}
+
+.audit-txn-row:hover {
+    background: #fcfcfc;
+}
+
+/* Dynamic Score Levels */
+.score-high { color: #10b981 !important; }
+.score-medium { color: var(--primary-color) !important; }
+.score-low { color: #ef4444 !important; }

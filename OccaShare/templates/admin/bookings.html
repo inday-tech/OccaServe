@@ -1,0 +1,153 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}All Bookings - Admin Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/bookings.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 2rem;">
+    <h1>All Platform Bookings</h1>
+    <p>Monitor all reservations and event activity across the platform.</p>
+</div>
+
+<div class="bookings-management-wrapper">
+    <div class="management-header-flex">
+        <h3 class="management-title"><i class="fas fa-calendar-check"></i> Booking Registry</h3>
+        <div class="header-controls-pro">
+            <select class="filter-select-pro" id="statusFilter" onchange="filterBookings()">
+                <option value="">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="flagged">Flagged</option>
+            </select>
+            <div class="search-box-pro">
+                <i class="fas fa-search"></i>
+                <input type="text" id="bookingSearchInput" placeholder="Search events or clients..."
+                    onkeyup="filterBookings()">
+            </div>
+        </div>
+    </div>
+
+    {% if bookings %}
+    <div style="overflow-x: auto;">
+        <table class="bookings-list-table">
+            <thead>
+                <tr>
+                    <th>Reference</th>
+                    <th>Customer</th>
+                    <th>Catering Partner</th>
+                    <th>Amount Due</th>
+                    <th>Current Status</th>
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for booking in bookings %}
+                <tr class="booking-row">
+                    <td>
+                        <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                            <a href="/admin/bookings/{{ booking.id }}/kyc" class="booking-id-link">#BK-{{ booking.id
+                                }}</a>
+                            <div class="booking-date-text">{{ booking.event_date.strftime('%b %d, %Y') if
+                                booking.event_date else 'TBD' }}</div>
+                        </div>
+                    </td>
+                    <td>
+                        <div style="font-weight: 600; color: var(--secondary-color);">{{ booking.user.first_name }} {{
+                            booking.user.last_name }}</div>
+                        <div style="font-size: 0.8rem; color: #64748b;">{{ booking.user.email }}</div>
+                    </td>
+                    <td>
+                        <div style="font-weight: 600; color: var(--secondary-color); font-size: 0.9rem;">
+                            {{ booking.caterer.business_name if booking.caterer else 'Platform Service' }}
+                        </div>
+                    </td>
+                    <td>
+                        <span class="booking-amount-value">₱{{ "{:,.2f}".format(booking.total_amount) if
+                            booking.total_amount else 'TBD' }}</span>
+                    </td>
+                    <td>
+                        <span
+                            class="status-badge-pill status-{{ booking.status if booking.status in ['draft', 'pending_payment', 'pending', 'verified', 'confirmed', 'completed', 'cancelled', 'expired', 'flagged'] else 'default' }}">
+                            <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
+                            {{ booking.status.replace('_', ' ') }}
+                        </span>
+                    </td>
+                    <td style="text-align: right;">
+                        <form action="/admin/bookings/{{ booking.id }}/archive" method="POST" style="display: inline;"
+                            onsubmit="event.preventDefault(); showConfirm('Are you sure you want to archive this booking?', () => this.submit(), 'Confirm Archive', 'Yes, Archive');">
+                            <button type="submit" class="stat-icon-container" title="Archive Booking"
+                                style="background: none; border: none; cursor: pointer; color: #64748b; font-size: 1.1rem;">
+                                <i class="fas fa-archive"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination Controls -->
+    {% if total_pages > 1 %}
+    <div class="pagination-registry-pro">
+        <div class="pagination-info">
+            Showing {{ (page-1)*20 + 1 }}-{{ (page-1)*20 + bookings|length }} of {{ total_bookings }} records
+        </div>
+        <div class="pagination-buttons">
+            {% if page > 1 %}
+            <a href="/admin/bookings?page={{ page - 1 }}" class="btn-pagination">
+                <i class="fas fa-arrow-left"></i> Previous
+            </a>
+            {% else %}
+            <button class="btn-pagination disabled" disabled>
+                <i class="fas fa-arrow-left"></i> Previous
+            </button>
+            {% endif %}
+
+            {% if page < total_pages %} <a href="/admin/bookings?page={{ page + 1 }}" class="btn-pagination">
+                Next <i class="fas fa-arrow-right"></i>
+                </a>
+                {% else %}
+                <button class="btn-pagination disabled" disabled>
+                    Next <i class="fas fa-arrow-right"></i>
+                </button>
+                {% endif %}
+        </div>
+    </div>
+    {% endif %}
+    {% else %}
+    <div style="text-align: center; padding: 5rem 2rem;">
+        <i class="fas fa-calendar-xmark" style="font-size: 3.5rem; color: #cbd5e1; margin-bottom: 1.5rem;"></i>
+        <h3 style="color: var(--secondary-color); font-weight: 700; margin-bottom: 0.5rem;">No Bookings Recorded</h3>
+        <p style="color: #64748b; font-size: 0.95rem;">There are no booking activities on the platform yet.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function filterBookings() {
+        const searchInput = document.getElementById('bookingSearchInput').value.toLowerCase();
+        const statusFilter = document.getElementById('statusFilter').value.toLowerCase();
+        const rows = document.querySelectorAll('.bookings-list-table tbody tr.booking-row');
+
+        rows.forEach(row => {
+            const textContent = row.textContent || row.innerText;
+            let matchesSearch = textContent.toLowerCase().indexOf(searchInput) > -1;
+            let matchesStatus = statusFilter === "" || textContent.toLowerCase().indexOf(statusFilter) > -1;
+
+            if (matchesSearch && matchesStatus) {
+                row.style.display = "";
+            } else {
+                row.style.display = "none";
+            }
+        });
+    }
+</script>
+{% endblock %}

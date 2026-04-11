@@ -1,0 +1,267 @@
+<div class="professional-card" id="catererRegFormContainer">
+    <div class="icon-header" style="background: transparent; box-shadow: none; width: auto; height: auto; display: flex; align-items: center; justify-content: center; margin-bottom: 2rem;">
+        {% set wconfig = website_config() %}
+        {% if wconfig and wconfig.logo_url %}
+        <img src="{{ wconfig.logo_url }}" alt="Logo" style="height: 55px; object-fit: contain;">
+        {% else %}
+        <span style="font-size: 2.2rem; font-weight: 800; color: var(--auth-primary); letter-spacing: -0.02em;">OccaServe</span>
+        {% endif %}
+    </div>
+    <h2 class="auth-title">Partner with OccaServe</h2>
+    <p class="auth-subtitle">Register your catering business today and reach elite customers.</p>
+
+    <!-- Progress Tracker -->
+    <div class="progress-container">
+        <div class="progress-step active" id="p-step-1">
+            1
+            <span class="step-label">Account</span>
+        </div>
+        <div class="progress-step" id="p-step-2">
+            2
+            <span class="step-label">Business</span>
+        </div>
+        <div class="progress-step" id="p-step-3">
+            3
+            <span class="step-label">Services</span>
+        </div>
+        <div class="progress-step" id="p-step-4">
+            4
+            <span class="step-label">Verification</span>
+        </div>
+    </div>
+
+    {% if error %}
+    <div style="background: #fee2e2; color: #b91c1c; padding: 0.75rem; border-radius: 0.5rem; margin-bottom: 1.5rem; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
+        <i class="fas fa-exclamation-circle"></i> {{ error }}
+    </div>
+    {% endif %}
+
+    <form action="/auth/register" method="post" enctype="multipart/form-data" id="catererForm">
+        <input type="hidden" name="role" value="caterer">
+        <input type="hidden" name="event_types" id="eventTypesInput" value="">
+
+        <!-- Step 1: Basic Account Information -->
+        <div class="form-step active" id="step-1">
+            <div class="form-grid">
+                <div class="form-group full-width">
+                    <label for="full_name_cat">Full Name</label>
+                    <div class="input-wrapper" id="fullNameCatWrapper">
+                        <input type="text" id="full_name_cat" name="full_name" class="minimal-input" required
+                            placeholder="Juan Dela Cruz"
+                            value="{{ user.first_name ~ ' ' ~ user.last_name if user else '' }}">
+                        <div id="fullNameCatError" class="error-drawer">Required</div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="email_cat">Email Address</label>
+                    <div class="input-wrapper" id="emailCatWrapper">
+                        <input type="email" id="email_cat" name="email" class="minimal-input" required
+                            placeholder="juan@example.com" value="{{ user.email if user else '' }}" autocomplete="off"
+                            {{ 'readonly' if user and user.auth_provider !='email' else '' }}>
+                        <div id="emailCatError" class="error-drawer">Invalid email format</div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="mobile_number_cat">Contact Number</label>
+                    <div class="input-wrapper" id="mobileCatWrapper">
+                        <input type="tel" id="mobile_number_cat" name="mobile_number" class="minimal-input" required
+                            placeholder="0917 123 4567" maxlength="11"
+                            value="{{ user.phone_number if user else '' }}">
+                        <div id="mobileCatError" class="error-drawer">Format: 09XXXXXXXXX</div>
+                    </div>
+                </div>
+                {% if not user or user.auth_provider == 'email' %}
+                <div class="form-group">
+                    <label for="password_cat">Password</label>
+                    <div class="input-wrapper" id="passwordCatWrapper">
+                        <div class="password-field-wrapper">
+                            <input type="password" id="password_cat" name="password" class="minimal-input has-toggle" required
+                                placeholder="••••••••" autocomplete="new-password">
+                            <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility(this)" tabindex="-1">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <div id="passwordCatError" class="error-drawer">Min 8 chars, Uppercase, Number & Symbol</div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="confirm_password_cat">Confirm Password</label>
+                    <div class="input-wrapper" id="confirmCatWrapper">
+                        <div class="password-field-wrapper">
+                            <input type="password" id="confirm_password_cat" name="confirm_password"
+                                class="minimal-input has-toggle" required placeholder="••••••••" autocomplete="new-password">
+                            <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility(this)" tabindex="-1">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <div id="confirmCatError" class="error-drawer">Passwords do not match</div>
+                    </div>
+                </div>
+                {% else %}
+                <input type="hidden" name="password" value="social_login_auto">
+                <input type="hidden" name="confirm_password" value="social_login_auto">
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Step 2: Business Information -->
+        <div class="form-step" id="step-2">
+            <div class="form-grid">
+                <div class="form-group full-width">
+                    <label for="business_name">Business Name</label>
+                    <div class="input-wrapper" id="businessNameWrapper">
+                        <input type="text" id="business_name" name="business_name" class="minimal-input"
+                            required placeholder="Gourmet Catering Services">
+                        <div id="businessNameError" class="error-drawer">Required</div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="province_cat">Province</label>
+                    <div class="input-wrapper">
+                        <select id="province_cat" class="minimal-input" required>
+                            <option value="">-- Province --</option>
+                            <option value="Laguna" selected>Laguna</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="city_cat">City / Municipality</label>
+                    <div class="input-wrapper">
+                        <select name="city" id="city_cat" class="minimal-input" required>
+                            <option value="">-- City --</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="barangay_cat">Barangay</label>
+                    <div class="input-wrapper">
+                        <select id="barangay_cat" class="minimal-input" required>
+                            <option value="">-- Barangay --</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group full-width">
+                    <label for="street_cat">Street Address / Landmark</label>
+                    <input type="text" id="street_cat" class="minimal-input" placeholder="e.g. Unit 2A, Residencia Bldg">
+                </div>
+                <input type="hidden" name="address" id="address_cat_hidden">
+                <div class="form-group">
+                    <label for="business_type">Business Type</label>
+                    <select id="business_type" name="business_type" class="minimal-input" required>
+                        <option value="">Select Type</option>
+                        <option value="Sole Proprietorship">Sole Proprietorship</option>
+                        <option value="Partnership">Partnership</option>
+                        <option value="Corporation">Corporation</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="years_of_operation">Years in Business</label>
+                    <div class="input-wrapper" id="yearsWrapper">
+                        <input type="text" id="years_of_operation" name="years_of_operation" class="minimal-input js-format-comma" required
+                            placeholder="e.g. 5" inputmode="numeric">
+                        <div id="yearsError" class="error-drawer">Required</div>
+                    </div>
+                </div>
+                <div class="form-group full-width">
+                    <label for="business_description">Short Description</label>
+                    <textarea id="business_description" name="business_description" class="minimal-input"
+                        rows="2" placeholder="Tell us about your specialties..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Services -->
+        <div class="form-step" id="step-3">
+            <div class="form-grid">
+                <div class="form-group full-width">
+                    <label>Type of Events Supported</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-item {{ 'checked' if 'Wedding' in event_types else '' }}">
+                            <input type="checkbox" name="event_type_choice" value="Wedding" onchange="this.parentElement.classList.toggle('checked', this.checked)"> 
+                            Wedding
+                        </label>
+                        <label class="checkbox-item {{ 'checked' if 'Birthday' in event_types else '' }}">
+                            <input type="checkbox" name="event_type_choice" value="Birthday" onchange="this.parentElement.classList.toggle('checked', this.checked)"> 
+                            Birthday
+                        </label>
+                        <label class="checkbox-item {{ 'checked' if 'Corporate' in event_types else '' }}">
+                            <input type="checkbox" name="event_type_choice" value="Corporate" onchange="this.parentElement.classList.toggle('checked', this.checked)"> 
+                            Corporate
+                        </label>
+                        <label class="checkbox-item {{ 'checked' if 'Private Occasion' in event_types else '' }}">
+                            <input type="checkbox" name="event_type_choice" value="Private Occasion" onchange="this.parentElement.classList.toggle('checked', this.checked)"> 
+                            Private Occasion
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="min_pax">Minimum Pax</label>
+                    <div class="input-wrapper" id="minPaxWrapper">
+                        <input type="text" id="min_pax" name="min_pax" class="minimal-input js-format-comma" required placeholder="e.g. 50" inputmode="numeric">
+                        <div id="minPaxError" class="error-drawer">Required</div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="starting_price">Starting Price (₱)</label>
+                    <div class="input-wrapper" id="priceWrapper">
+                        <input type="text" id="starting_price" name="starting_price" class="minimal-input js-format-comma" required placeholder="e.g. 15,000" inputmode="numeric">
+                        <div id="priceError" class="error-drawer">Required</div>
+                    </div>
+                </div>
+                <div class="form-group full-width">
+                    <label for="sample_menu_cat">Sample Menu (e.g., Food List, Price List)</label>
+                    <div class="file-upload-box">
+                        <i class="fas fa-utensils"></i>
+                        <p id="menuNameCat">Select or Drag Menu PDF/Image</p>
+                        <input type="file" id="sample_menu_cat" name="sample_menu" accept=".pdf,image/*"
+                            onchange="updateFileNameCat(this, 'menuNameCat')">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 4: Verification -->
+        <div class="form-step" id="step-4">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="permit_cat">Business Permit / DTI</label>
+                    <div class="file-upload-box">
+                        <i class="fas fa-file-invoice"></i>
+                        <p id="permitNameCat">BusinessPermit.pdf / jpg</p>
+                        <input type="file" id="permit_cat" name="permit" accept=".pdf,image/*" required
+                            onchange="updateFileNameCat(this, 'permitNameCat')">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="gov_id_cat">Valid Government ID</label>
+                    <div class="file-upload-box">
+                        <i class="fas fa-id-card"></i>
+                        <p id="govIdNameCat">GovID.pdf / jpg</p>
+                        <input type="file" id="gov_id_cat" name="gov_id" accept=".pdf,image/*" required
+                            onchange="updateFileNameCat(this, 'govIdNameCat')">
+                    </div>
+                </div>
+                <div class="form-group full-width">
+                    <label for="logo_cat">Business Logo / Brand Picture</label>
+                    <div class="file-upload-box">
+                        <img id="logoPreviewCat" class="logo-preview" style="display:none;">
+                        <span id="logoDefaultIcon"><i class="fas fa-user-circle"></i></span>
+                        <p id="uploadTextCat">Upload or Drag Store Logo</p>
+                        <input type="file" id="logo_cat" name="logo" accept="image/*" onchange="previewLogoCat(this)">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="btn-container" style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--auth-slate-100);">
+            <button type="button" class="btn-secondary" id="prevBtnCat" style="display: none; margin-right: auto;"
+                onclick="changeStepCat(-1)">Back</button>
+            <button type="button" class="btn-primary" id="nextBtnCat" onclick="changeStepCat(1)">Next</button>
+        </div>
+    </form>
+
+    <div class="auth-footer" style="text-align: center; margin-top: 2rem; border-top: 1px solid var(--auth-slate-100); padding-top: 1.5rem;">
+        <p style="color: var(--auth-slate-600); margin-bottom: 0.5rem;">Already a partner? <a href="#" onclick="openAuthModal('login'); return false;" id="catLoginLink" style="color: var(--auth-primary); font-weight: 600; text-decoration: none;">Log in here</a></p>
+        <p><a href="#" onclick="openAuthModal('signup'); return false;" id="catCustomerLink" style="color: var(--auth-slate-700); font-weight: 500; font-size: 0.9rem; text-decoration: underline;">Wait, I'm a regular customer</a></p>
+    </div>
+</div>

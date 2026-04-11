@@ -1,0 +1,102 @@
+{% set nav_page = 'help' %}
+{% extends "landing_base.html" %}
+
+{% block title %}Help Center - OccaServe{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/support/help_center.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<div class="page-hero-premium">
+    <div class="container">
+        <h1>Help Center</h1>
+        <p>Find answers to common questions about using OccaServe. Can't find what you need? <a href="/contact"
+                style="color:var(--primary-color); font-weight:600;">Contact our team.</a></p>
+    </div>
+</div>
+
+<section class="section">
+    <div class="container">
+        <div class="help-center-wrapper">
+
+            {% set sections = [
+            ("For Customers", "fas fa-user", [
+            ("How do I find a caterer?", "Browse our Featured Caterers on the home page, or use the Event Categories
+            section to filter by event type. You can also search by name or description using the search field."),
+            ("How do I book a caterer?", "Click 'View Profile' on any caterer card to see their full profile, packages,
+            and menu options. Select a package and follow the booking steps. You'll receive a confirmation email once
+            the caterer accepts."),
+            ("Can I request a custom menu?", "Yes! After viewing a caterer's profile, you can message them directly to
+            discuss custom menu options or special dietary requirements before booking."),
+            ("What happens after I book?", "You'll receive an email confirmation with booking details. Your caterer will
+            reach out to finalize logistics. You can track your booking status in your customer dashboard."),
+            ("How do I cancel a booking?", "Go to My Dashboard → My Bookings → select your booking → click 'Cancel'.
+            Cancellation terms depend on the caterer's policy listed on their profile."),
+            ]),
+            ("Payments & Billing", "fas fa-credit-card", [
+            ("What payment methods are accepted?", "We accept credit/debit cards (Visa, Mastercard), GCash, Maya, and
+            other digital wallets through our secure PayMongo payment gateway."),
+            ("Is my payment information safe?", "Yes. All payments are processed through PayMongo, which is PCI-DSS
+            compliant. OccaServe never stores your card details."),
+            ("When am I charged?", "Payment is collected upon booking confirmation. Some caterers allow a partial
+            downpayment — this will be clearly indicated during checkout."),
+            ("Can I get a refund?", "Refund eligibility depends on the caterer's cancellation and refund policy. If
+            there's a dispute, contact our support team and we'll help mediate."),
+            ]),
+            ("For Caterers", "fas fa-utensils", [
+            ("How do I join as a caterer?", "Click 'Join as Caterer' in the navigation or footer. Register, complete
+            your caterer profile, submit KYC documents, and await approval from our admin team."),
+            ("How long does approval take?", "Caterer applications are typically reviewed within 3–5 business days.
+            You'll receive an email notification once your account is approved."),
+            ("How do I receive payments?", "Payments are collected by OccaServe on your behalf and disbursed to your
+            registered bank account after the event is completed, minus a small platform fee."),
+            ("Can I set my own packages?", "Yes! Once your account is approved, you can create and manage your own
+            catering packages including pricing, menus, and availability through your Caterer Dashboard."),
+            ]),
+            ("Technical Support", "fas fa-cog", [
+            ("I can't log in to my account.", "Try resetting your password using 'Forgot Password' on the login page. If
+            you still have issues, contact our support team with your registered email address."),
+            ("I didn't receive a verification email.", "Check your spam/junk folder. If it's not there, try
+            re-registering. If the issue persists, contact us at support@occaserve.com."),
+            ("The website isn't loading properly.", "Try clearing your browser cache and cookies, then reload. If you're
+            on mobile, ensure you have a stable internet connection. Supported browsers: Chrome, Firefox, Edge,
+            Safari."),
+            ]),
+            ] %}
+
+            {% for section_title, section_icon, faqs in sections %}
+            <div class="help-section">
+                <h3 class="help-section-title">
+                    <i class="{{ section_icon }}"></i> {{ section_title }}
+                </h3>
+                <div class="help-faq-list">
+                    {% for q, a in faqs %}
+                    <div class="help-faq-item">
+                        <details class="help-faq-details">
+                            <summary class="help-faq-summary">
+                                {{ q }}
+                                <i class="fas fa-chevron-down"></i>
+                            </summary>
+                            <p class="help-faq-answer">{{ a }}</p>
+                        </details>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+
+            <!-- Contact CTA -->
+            <div class="help-contact-cta">
+                <i class="fas fa-headset help-contact-icon"></i>
+                <h3 class="help-contact-title">Still need help?</h3>
+                <p class="help-contact-desc">Our support team is ready to assist you. Reach out and
+                    we'll respond within 24 hours.</p>
+                <a href="/contact" class="btn-primary">Contact Support Team</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% endblock %}

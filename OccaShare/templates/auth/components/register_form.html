@@ -1,0 +1,115 @@
+<div class="professional-card">
+    <div class="icon-header" style="background: transparent; box-shadow: none; width: auto; height: auto; display: flex; align-items: center; justify-content: center; margin-bottom: 2rem;">
+        {% set wconfig = website_config() %}
+        {% if wconfig and wconfig.logo_url %}
+        <img src="{{ wconfig.logo_url }}" alt="Logo" style="height: 65px; object-fit: contain;">
+        {% else %}
+        <span style="font-size: 2.2rem; font-weight: 800; color: var(--auth-primary); letter-spacing: -0.02em;">OccaServe</span>
+        {% endif %}
+    </div>
+    <h2 class="auth-title">Create Account</h2>
+    <p class="auth-subtitle">Join our community of event enthusiasts and start booking extraordinary catering today.</p>
+
+    {% if error %}
+    <div class="alert-error">
+        <i class="fas fa-exclamation-circle"></i> {{ error }}
+    </div>
+    {% endif %}
+
+    <form action="/auth/register" method="post" id="regForm">
+        {% if next_url %}
+        <input type="hidden" name="next_url" value="{{ next_url }}">
+        {% endif %}
+        <input type="hidden" name="role" id="roleInput" value="customer">
+
+        <div class="form-group">
+            <label for="full_name">Full Name</label>
+            <div class="input-wrapper" id="nameWrapper">
+                <input type="text" id="full_name" name="full_name" class="minimal-input" required placeholder="John Doe"
+                    value="{{ user.full_name if user else (submitted_data.full_name if submitted_data else '') }}">
+                <div id="nameError" class="error-drawer">Required</div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="email">Email Address</label>
+            <div class="input-wrapper" id="emailWrapper">
+                <input type="email" id="email" name="email" class="minimal-input" required
+                    placeholder="name@example.com" autocomplete="off"
+                    value="{{ user.email if user else (submitted_data.email if submitted_data else '') }}">
+                <div id="emailError" class="error-drawer">Required</div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="mobile_number">Mobile Number</label>
+            <div class="input-wrapper" id="mobileWrapper">
+                <input type="tel" id="mobile_number" name="mobile_number" class="minimal-input" required
+                    placeholder="0917 000 0000" maxlength="11"
+                    value="{{ user.phone_number if user else (submitted_data.mobile_number if submitted_data else '') }}">
+                <div id="mobileError" class="error-drawer">Required</div>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="form-group">
+                <label for="password">Password</label>
+                <div class="input-wrapper" id="passwordWrapper">
+                    <div class="password-field-wrapper">
+                        <input type="password" id="password" name="password" class="minimal-input has-toggle" required
+                            placeholder="••••••••" autocomplete="new-password">
+                        <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility(this)" tabindex="-1">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <div id="passwordError" class="error-drawer">Required</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="confirm_password">Confirm</label>
+                <div class="input-wrapper" id="confirmWrapper">
+                    <div class="password-field-wrapper">
+                        <input type="password" id="confirm_password" name="confirm_password" class="minimal-input has-toggle" required
+                            placeholder="••••••••" autocomplete="new-password">
+                        <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility(this)" tabindex="-1">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <div id="confirmError" class="error-drawer">Required</div>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-luxury-submit" style="margin-top: 1rem;">
+            <span>Create Account</span>
+            <i class="fas fa-user-plus"></i>
+        </button>
+    </form>
+
+    <div class="auth-divider">
+        <span>or join with social</span>
+    </div>
+
+    <div class="social-auth-grid">
+        <a href="javascript:void(0)" onclick="handleSocialLogin('facebook')" class="btn-social btn-facebook"
+            title="Continue with Facebook">
+            <i class="fab fa-facebook-f"></i>
+        </a>
+        <a href="javascript:void(0)" onclick="handleSocialLogin('google')" class="btn-social btn-google"
+            title="Continue with Google">
+            <i class="fab fa-google"></i>
+        </a>
+        <a href="javascript:void(0)" onclick="handleSocialLogin('instagram')" class="btn-social btn-instagram"
+            title="Continue with Instagram">
+            <i class="fab fa-instagram"></i>
+        </a>
+    </div>
+
+    <div class="auth-footer">
+        <p>Joined already? <a href="#" onclick="openAuthModal('login'); return false;">Log in here</a></p>
+        <div style="margin-top: 1rem;">
+            <a href="#" onclick="openAuthModal('caterer-signup'); return false;" style="font-size: 0.9rem; font-weight: 500; color: var(--auth-slate-600); text-decoration: underline;">Are you a catering organization? Switch to Caterer</a>
+        </div>
+    </div>
+</div>

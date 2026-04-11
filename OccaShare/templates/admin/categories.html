@@ -1,0 +1,68 @@
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/categories.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h1>Manage Categories</h1>
+        <p>Define and organize catering categories for the platform.</p>
+    </div>
+    <button class="btn-primary" onclick="document.getElementById('addCategoryModal').style.display='flex'">
+        <i class="fas fa-plus"></i> Add New Category
+    </button>
+</div>
+
+<div class="categories-stats-grid">
+    {% for category in categories %}
+    <div class="category-card-fancy">
+        <div class="category-info-header">
+            <div class="category-icon-box">
+                <i class="{{ category.icon_class }}"></i>
+            </div>
+            <div>
+                <h3 class="category-title-text">{{ category.name }}</h3>
+                <span class="category-package-count">{{ category.packages|length }} Packages linked</span>
+            </div>
+        </div>
+        <p class="category-description-text">{{ category.description }}</p>
+
+        <div class="category-actions-flex">
+            <button class="btn-text">Edit</button>
+            <form action="/admin/categories/{{ category.id }}/toggle" method="POST" style="display: inline;">
+                <button type="submit"
+                    class="btn-text {% if category.is_active %}status-inactive{% else %}status-active{% endif %}">
+                    {{ 'Deactivate' if category.is_active else 'Activate' }}
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Add Category Modal -->
+<div id="addCategoryModal" class="category-modal-overlay">
+    <div class="category-modal-content">
+        <button onclick="this.parentElement.parentElement.style.display='none'"
+            class="category-modal-close">&times;</button>
+        <h2 class="category-modal-title">Add Category</h2>
+        <p class="category-modal-subtitle">Create a new catering category for the platform.</p>
+
+        <form action="/admin/categories/add" method="POST">
+            <div class="category-form-group">
+                <label class="category-form-label">Category Name</label>
+                <input type="text" name="name" required placeholder="e.g., Weddings" class="category-form-input">
+            </div>
+            <div class="category-form-group">
+                <label class="category-form-label">Icon Class (FontAwesome)</label>
+                <input type="text" name="icon_class" required value="fas fa-utensils" class="category-form-input">
+            </div>
+            <div class="category-form-group">
+                <label class="category-form-label">Description</label>
+                <textarea name="description" rows="3" class="category-form-textarea"></textarea>
+            </div>
+            <button type="submit" class="btn-primary btn-category-submit">Create Category</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

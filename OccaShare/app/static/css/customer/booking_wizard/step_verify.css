@@ -1,0 +1,158 @@
+.verification-container {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.form-group-spacer {
+    margin-bottom: 2rem;
+}
+
+.form-group-large-spacer {
+    margin-bottom: 3rem;
+}
+
+.scanner-box {
+    position: relative;
+    overflow: hidden;
+    border: 2px solid #e2e8f0;
+    background: #fff;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.id-scanner {
+    border-radius: 1.5rem;
+    padding: 2rem;
+}
+
+.face-scanner {
+    border-radius: 50%;
+    width: 220px;
+    height: 220px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.scanning-line {
+    display: none;
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    z-index: 10;
+    animation: scan 2s infinite linear;
+}
+
+.line-id {
+    background: #4f46e5;
+    box-shadow: 0 0 15px #4f46e5;
+}
+
+.line-face {
+    background: #10b981;
+    box-shadow: 0 0 15px #10b981;
+}
+
+.hidden-file-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.scanner-status i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.scanner-status h4 {
+    margin-bottom: 0.5rem;
+}
+
+.scanner-status p {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.status-id i {
+    color: #4f46e5;
+}
+
+.status-face i {
+    color: #10b981;
+}
+
+.status-face h4 {
+    font-size: 0.9rem;
+}
+
+.status-completed i {
+    color: #10b981;
+}
+
+.status-completed h4 {
+    color: #166534;
+}
+
+.btn-verify {
+    width: 100%;
+    padding: 1.25rem;
+    border-radius: 1rem;
+    font-weight: 700;
+    font-size: 1.1rem;
+    box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.3);
+}
+
+.btn-verify i {
+    margin-left: 0.5rem;
+}
+
+.privacy-notice-card {
+    margin-top: 4rem;
+    padding: 1.5rem;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.privacy-notice-card i {
+    color: #16a34a;
+    font-size: 1.25rem;
+    margin-top: 0.25rem;
+}
+
+.privacy-notice-text {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #166534;
+    line-height: 1.5;
+}
+
+@keyframes scan {
+    0% {
+        top: 0;
+    }
+
+    100% {
+        top: 100%;
+    }
+}
+
+.scanner-box.active {
+    border-color: #4f46e5;
+    background: #f8fafc;
+}
+
+.scanner-box.completed {
+    border-color: #10b981;
+    background: #f0fdf4;
+}

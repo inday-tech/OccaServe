@@ -1,0 +1,74 @@
+<div class="professional-card">
+    <div class="icon-header" style="background: transparent; box-shadow: none; width: auto; height: auto; display: flex; align-items: center; justify-content: center; margin-bottom: 2rem;">
+        {% set wconfig = website_config() %}
+        {% if wconfig and wconfig.logo_url %}
+        <img src="{{ wconfig.logo_url }}" alt="Logo" style="height: 65px; object-fit: contain;">
+        {% else %}
+        <span style="font-size: 2.2rem; font-weight: 800; color: var(--auth-primary); letter-spacing: -0.02em;">OccaServe</span>
+        {% endif %}
+    </div>
+    <h2 class="auth-title">Welcome Back</h2>
+    <p class="auth-subtitle">Join us again and book the finest catering services for your next unforgettable event.</p>
+
+    {% if error %}
+    <div class="alert-error">
+        <i class="fas fa-exclamation-circle"></i> {{ error }}
+    </div>
+    {% endif %}
+
+    <form action="/auth/login" method="post" class="auth-form" id="loginForm">
+        {% if next_url %}
+        <input type="hidden" name="next_url" value="{{ next_url }}">
+        {% endif %}
+        <div class="form-group">
+            <label for="email">Email or Username</label>
+            <div class="input-wrapper">
+                <input type="text" id="email" name="email" class="minimal-input" required
+                    placeholder="you@example.com">
+            </div>
+        </div>
+        <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                <label for="password" style="margin-bottom: 0;">Password</label>
+                <a href="#" onclick="openAuthModal('forgot'); return false;" style="font-size: 0.85rem; color: var(--auth-primary); font-weight: 700;">Forgot password?</a>
+            </div>
+            <div class="input-wrapper">
+                <div class="password-field-wrapper">
+                    <input type="password" id="password" name="password" class="minimal-input has-toggle" required
+                        placeholder="••••••••">
+                    <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility(this)" tabindex="-1">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <button type="submit" class="btn-primary-action">
+            <span>Login</span>
+            <i class="fas fa-sign-in-alt"></i>
+        </button>
+    </form>
+
+    <div class="auth-divider">
+        <span>or join with social</span>
+    </div>
+
+    <div class="social-auth-grid">
+        <a href="javascript:void(0)" onclick="handleSocialLogin('facebook')" class="btn-social btn-facebook"
+            title="Continue with Facebook">
+            <i class="fab fa-facebook-f"></i>
+        </a>
+        <a href="javascript:void(0)" onclick="handleSocialLogin('google')" class="btn-social btn-google"
+            title="Continue with Google">
+            <i class="fab fa-google"></i>
+        </a>
+        <a href="javascript:void(0)" onclick="handleSocialLogin('instagram')" class="btn-social btn-instagram"
+            title="Continue with Instagram">
+            <i class="fab fa-instagram"></i>
+        </a>
+    </div>
+
+    <div class="auth-footer">
+        <p>New to OccaServe? <a href="#" onclick="openAuthModal('signup'); return false;">Create an account</a></p>
+        <p style="margin-top: 0.75rem;"><a href="#" onclick="openAuthModal('caterer-signup'); return false;" style="font-size: 0.9rem; font-weight: 500; color: var(--auth-slate-600); text-decoration: underline;">Are you a catering provider? Join here</a></p>
+    </div>
+</div>

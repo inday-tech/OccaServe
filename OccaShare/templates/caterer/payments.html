@@ -1,0 +1,228 @@
+{% extends "caterer/layout.html" %}
+
+{% block title %}Payments - Caterer Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/payments.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Payments & Earnings</h1>
+    <p>Track your revenue, collected deposits, and pending balances from bookings.</p>
+</div>
+
+<!-- Financial Calculations -->
+{% set ns = namespace(received=0, pending=0, this_month=0, active_count=0) %}
+{% set current_month = 3 %} {# March 2026 for demo context #}
+
+{% for b in bookings %}
+    {% if b.status != 'cancelled' and b.status != 'rejected' %}
+        {% set ns.active_count = ns.active_count + 1 %}
+        {% set amount = (b.total_amount or b.total_price or 0)|float %}
+        
+        {% if b.payment_status == 'paid' %}
+            {% set ns.received = ns.received + amount %}
+        {% elif b.payment_status == 'deposit_paid' %}
+            {% set deposit = amount * 0.20 %}
+            {% if b.quotation %}
+                {% set deposit = amount * (b.quotation.downpayment_percent / 100) %}
+            {% endif %}
+            {% set ns.received = ns.received + deposit %}
+            {% set ns.pending = ns.pending + (amount - deposit) %}
+        {% else %}
+            {% set ns.pending = ns.pending + amount %}
+        {% endif %}
+
+        {% if b.created_at.month == current_month %}
+            {% set ns.this_month = ns.this_month + amount %}
+        {% endif %}
+    {% endif %}
+{% endfor %}
+
+<!-- Stats Cards -->
+<div class="stats-grid-dashboard" style="margin-bottom: 3rem;">
+    <div class="stat-card-premium c-card-premium stat-card-white">
+        <div class="stat-icon-bg halo-green"><i class="fas fa-wallet"></i></div>
+        <div class="stat-label-dashboard">Total Received</div>
+        <div class="stat-value-dashboard" style="color: #10b981;">₱{{ "{:,.2f}".format(ns.received) }}</div>
+        <div class="stat-hint-dashboard">Successfully collected</div>
+    </div>
+
+    <div class="stat-card-premium c-card-premium stat-card-white">
+        <div class="stat-icon-bg halo-amber"><i class="fas fa-clock"></i></div>
+        <div class="stat-label-dashboard">Pending Payments</div>
+        <div class="stat-value-dashboard" style="color: #f59e0b;">₱{{ "{:,.2f}".format(ns.pending) }}</div>
+        <div class="stat-hint-dashboard">{{ bookings|selectattr('payment_status', 'ne', 'paid')|list|length }} transactions</div>
+    </div>
+
+    <div class="stat-card-premium c-card-premium stat-card-white">
+        <div class="stat-icon-bg halo-purple"><i class="fas fa-chart-line"></i></div>
+        <div class="stat-label-dashboard">This Month</div>
+        <div class="stat-value-dashboard">₱{{ "{:,.2f}".format(ns.this_month) }}</div>
+        <div class="stat-hint-dashboard">Current period revenue</div>
+    </div>
+
+    <div class="stat-card-premium c-card-premium stat-card-white">
+        <div class="stat-icon-bg halo-red"><i class="fas fa-calendar-check"></i></div>
+        <div class="stat-label-dashboard">Active Bookings</div>
+        <div class="stat-value-dashboard">{{ ns.active_count }}</div>
+        <div class="stat-hint-dashboard">Total confirmed events</div>
+    </div>
+</div>
+
+<!-- Main Table Container -->
+<div class="payments-main-container c-card-premium">
+    <div class="payments-toolbar">
+        <h3>Payment History</h3>
+        <div class="toolbar-actions">
+            <div class="search-box-pro" style="display: flex; align-items: center; gap: 0.75rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 0 1.25rem; height: 46px; box-sizing: border-box; width: 320px; transition: all 0.2s ease;">
+                <i class="fas fa-search" style="color: #94a3b8; font-size: 0.95rem;"></i>
+                <input type="text" id="paymentSearch" placeholder="Search payments..." style="border: none; outline: none; background: transparent; height: 100%; width: 100%; font-size: 0.9rem; color: #1e293b; font-weight: 500;" onkeyup="filterPayments()">
+            </div>
+            <select id="statusFilter" class="filter-select-pro" onchange="filterPayments()">
+                <option value="all">All Status</option>
+                <option value="completed">Completed</option>
+                <option value="pending">Pending</option>
+                <option value="partial">Partial</option>
+            </select>
+            <div class="export-dropdown-container" style="position: relative;">
+                <button class="btn-export-pro" onclick="toggleExportMenu(event)">
+                    <i class="fas fa-download"></i> Export <i class="fas fa-chevron-down" style="font-size: 0.7rem; margin-left: 0.3rem;"></i>
+                </button>
+                <div id="exportMenu" class="action-menu-pro">
+                    <button class="action-item-pro" onclick="exportToExcel()">
+                        <i class="fas fa-file-excel" style="color: #166534;"></i> Excel File (.xlsx)
+                    </button>
+                    <button class="action-item-pro" onclick="exportToPDF()">
+                        <i class="fas fa-file-pdf" style="color: #991b1b;"></i> PDF Document
+                    </button>
+                    <button class="action-item-pro" onclick="exportToCSV()">
+                        <i class="fas fa-file-csv" style="color: #0369a1;"></i> CSV File
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-responsive-pro">
+        <table class="payments-table-pro">
+            <thead>
+                <tr>
+                    <th>Payment ID</th>
+                    <th>Customer</th>
+                    <th>Event</th>
+                    <th>Amount</th>
+                    <th>Method</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th class="text-right">Action</th>
+                </tr>
+            </thead>
+            <tbody id="paymentsTableBody">
+                {% for b in bookings %}
+                <tr class="payment-row">
+                    <td><span class="payment-id">PAY-{{ "%03d"|format(b.id) }}</span></td>
+                    <td>
+                        <div class="customer-info-pro">
+                            <span class="cust-name">{{ b.user.first_name }} {{ b.user.last_name }}</span>
+                            <span class="bk-id">BK-{{ b.id }}</span>
+                        </div>
+                    </td>
+                    <td>{{ b.event_name or b.event_type }}</td>
+                    <td><span class="amount-pro">₱{{ "{:,.0f}".format(b.total_amount or 0) }}</span></td>
+                    <td>{{ b.payment_method or 'Manual' }}</td>
+                    <td>{{ b.created_at.strftime('%b %d, %Y') }}</td>
+                    <td>
+                        {% set p_status = b.payment_status %}
+                        {% if p_status == 'paid' %}<span class="badge-status-pro completed">completed</span>
+                        {% elif p_status == 'deposit_paid' %}<span class="badge-status-pro partial">partial</span>
+                        {% else %}<span class="badge-status-pro pending">pending</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-right" style="padding: 1.25rem 1.5rem;">
+                        <div class="action-dropdown-container">
+                            <button class="action-dropdown-btn" onclick="toggleActionMenu('{{ b.id }}', event)" style="color: #94a3b8;">
+                                <i class="fas fa-ellipsis-h"></i>
+                            </button>
+                            <div id="actionMenu-{{ b.id }}" class="action-dropdown-menu">
+                                {% if b.payment_status != 'paid' %}
+                                <button class="action-item-pro" onclick="verifyPayment('{{ b.id }}')">
+                                    <i class="fas fa-check-circle" style="color: #10b981;"></i> Verify Payment
+                                </button>
+                                {% endif %}
+                                <button class="action-item-pro" onclick="viewPaymentDetails('{{ b.id }}')">
+                                    <i class="fas fa-eye" style="color: #64748b;"></i> View Details
+                                </button>
+                                {% if b.payment_proof_url %}
+                                <button class="action-item-pro" onclick="showProof('{{ b.payment_proof_url }}', 'Proof - BK-{{ b.id }}')">
+                                    <i class="fas fa-receipt" style="color: #f59e0b;"></i> View Proof
+                                </button>
+                                {% endif %}
+                                {% if b.payment_status == 'paid' %}
+                                <button class="action-item-pro" onclick="archivePayment('{{ b.id }}')" style="color: #dc2626;">
+                                    <i class="fas fa-archive"></i> Archive
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Payments-style Pagination Controls -->
+    <div class="pagination-container-p" style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9; width: 100%;">
+        <div class="pagination-info" style="font-size: 0.85rem; color: #64748b; font-weight: 500;">
+            Showing <span id="startRange">0</span> to <span id="endRange">0</span> of <span id="totalEntries">0</span> transactions
+        </div>
+        <div class="pagination-buttons" style="display: flex; gap: 0.5rem; align-items: center;">
+            <button id="prevPage" class="btn-pagination" style="padding: 0.5rem 1rem; border: 1px solid #e2e8f0; background: white; border-radius: 0.5rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #475569;">
+                <i class="fas fa-chevron-left"></i> Previous
+            </button>
+            <div id="pageNumbers" class="page-numbers" style="display: flex; gap: 0.4rem;">
+                <!-- Page numbers dynamically injected -->
+            </div>
+            <button id="nextPage" class="btn-pagination" style="padding: 0.5rem 1rem; border: 1px solid #e2e8f0; background: white; border-radius: 0.5rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #475569;">
+                Next <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Details Modal -->
+<div id="detailsModal" class="modal-pro" onclick="closeDetailsModal()">
+    <div class="modal-content-pro" onclick="event.stopPropagation()">
+        <div class="modal-header-pro">
+            <h3>Transaction Details</h3>
+            <button onclick="closeDetailsModal()">&times;</button>
+        </div>
+        <div id="detailsContent" class="modal-body-pro">
+            <!-- Populated by JS -->
+        </div>
+    </div>
+</div>
+
+<!-- Proof Modal (Keeping for showProof compatibility) -->
+<div id="proofModal" class="modal-pro" onclick="closeProof()">
+    <div class="modal-content-pro" onclick="event.stopPropagation()">
+        <div class="modal-header-pro">
+            <h3 id="proofModalTitle">Payment Proof</h3>
+            <button onclick="closeProof()">&times;</button>
+        </div>
+        <div class="modal-body-pro" style="text-align: center;">
+            <img id="proofModalImg" src="" alt="Proof" style="max-width: 100%; border-radius: 0.5rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="{{ url_for('static', path='/js/caterer/payments.js') }}"></script>
+
+{% endblock %}

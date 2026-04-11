@@ -1,0 +1,198 @@
+/* Admin Bookings Management Styles */
+
+.bookings-management-wrapper {
+    background: var(--white);
+    border-radius: 1.5rem;
+    padding: 2rem;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+}
+
+.management-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    gap: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+    .management-header-flex {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .header-controls-pro {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .search-box-pro {
+        max-width: 100% !important;
+    }
+}
+
+.header-controls-pro {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.management-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--secondary-color);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.management-title i {
+    color: var(--primary-color);
+}
+
+.filter-select-pro {
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    font-family: inherit;
+    font-size: 0.9rem;
+    color: var(--secondary-color);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.filter-select-pro:focus {
+    border-color: var(--primary-color);
+    outline: none;
+    background: white;
+}
+
+/* Table Styles */
+.bookings-list-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.bookings-list-table thead th {
+    text-align: left;
+    color: #64748b;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    background: #f8fafc;
+}
+
+.booking-row {
+    transition: all 0.2s ease;
+}
+
+.booking-row:hover {
+    background: #fcfcfc;
+}
+
+.booking-row td {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.booking-id-link {
+    font-weight: 800;
+    color: var(--primary-color);
+    text-decoration: none;
+    font-size: 0.95rem;
+}
+
+.booking-id-link:hover {
+    text-decoration: underline;
+}
+
+.booking-date-text {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-top: 0.25rem;
+}
+
+.booking-amount-value {
+    font-weight: 700;
+    color: var(--secondary-color);
+    font-size: 1rem;
+}
+
+/* Status Badges */
+.status-badge-pill {
+    padding: 0.4rem 0.8rem;
+    border-radius: 2rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    letter-spacing: 0.05em;
+}
+
+/* Status Colors - Refined for Orange/Navy Theme */
+.status-draft { color: #64748b; background: #f1f5f9; }
+.status-pending_payment { color: #d97706; background: #fffbeb; }
+.status-pending { color: #d97706; background: #fffbeb; }
+.status-verified { color: #10b981; background: #f0fdf4; }
+.status-confirmed { color: #166534; background: #dcfce7; }
+.status-completed { color: #0869da; background: #eff6ff; }
+.status-cancelled { color: #ef4444; background: #fef2f2; }
+.status-expired { color: #71717a; background: #f4f4f5; }
+.status-flagged { color: #f59e0b; background: #fff7ed; border: 1px solid #ffedd5; }
+.status-default { color: #374151; background: #f1f5f9; }
+
+/* Pagination Registry */
+.pagination-registry-pro {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #f1f5f9;
+}
+
+.pagination-info {
+    font-size: 0.85rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.pagination-buttons {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.btn-pagination {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.25rem;
+    border-radius: 0.75rem;
+    border: 1px solid #e2e8f0;
+    background: white;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.btn-pagination:hover:not(.disabled) {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background: #fff7ed;
+}
+
+.btn-pagination.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #f8fafc;
+}

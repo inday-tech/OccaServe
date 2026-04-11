@@ -1,0 +1,230 @@
+{% extends "customer/layout.html" %}
+
+{% block title %}Booking Confirmed - OccaServe{% endblock %}
+
+{% block extra_css %}
+<style>
+    .success-card {
+        background: #ffffff;
+        border-radius: 2rem;
+        width: 100%;
+        max-width: 700px;
+        padding: 3.5rem 2.5rem;
+        box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.05);
+        text-align: center;
+        margin: 1rem auto;
+    }
+
+    .success-header h1 {
+        font-size: 2.5rem;
+        margin: 1.5rem 0 0.5rem;
+        color: var(--secondary-color, #2c3e50);
+        font-family: 'Playfair Display', serif;
+    }
+
+    .success-header .subtitle {
+        color: #64748b;
+        margin-bottom: 2.5rem;
+        font-size: 1.1rem;
+    }
+
+    .success-icon {
+        font-size: 5rem;
+        color: #ff7b54;
+        background: rgba(255, 123, 84, 0.15);
+        border-radius: 50%;
+        padding: 1rem;
+    }
+
+    .icon-pulse {
+        animation: pulse 2s infinite;
+        display: inline-block;
+    }
+
+    @keyframes pulse {
+        0% {
+            transform: scale(1);
+        }
+
+        50% {
+            transform: scale(1.05);
+        }
+
+        100% {
+            transform: scale(1);
+        }
+    }
+
+    .instruction-box {
+        display: flex;
+        gap: 1.25rem;
+        padding: 1.5rem;
+        border-radius: 1.25rem;
+        text-align: left;
+        margin-bottom: 2rem;
+        border: 1px solid transparent;
+    }
+
+    .cash-instruction {
+        background: rgba(255, 123, 84, 0.12);
+        border-color: rgba(255, 123, 84, 0.35);
+    }
+
+    .digital-instruction {
+        background: rgba(255, 123, 84, 0.12);
+        border-color: rgba(255, 123, 84, 0.35);
+    }
+
+    .box-icon {
+        font-size: 1.5rem;
+        width: 48px;
+        height: 48px;
+        border-radius: 1rem;
+        background: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .cash-instruction .box-icon,
+    .digital-instruction .box-icon {
+        color: #ff7b54;
+        background: rgba(255, 123, 84, 0.15);
+    }
+
+    .box-content h4 {
+        margin: 0 0 0.25rem;
+        font-size: 1rem;
+        color: #2c3e50;
+    }
+
+    .box-content p {
+        margin: 0;
+        font-size: 0.85rem;
+        color: #64748b;
+        line-height: 1.4;
+    }
+
+    .status-summary {
+        display: flex;
+        justify-content: space-around;
+        padding: 1.5rem;
+        background: #f8fafc;
+        border-radius: 1.25rem;
+        margin-bottom: 2.5rem;
+        border: 1px solid #e2e8f0;
+    }
+
+    .summary-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .summary-item .label {
+        font-size: 0.75rem;
+        color: #64748b;
+        text-transform: uppercase;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+    }
+
+    .summary-item .value {
+        font-weight: 800;
+        color: #1e293b;
+        font-size: 1.1rem;
+    }
+
+    .success-actions {
+        margin-top: 3rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .btn-manage-booking {
+        background: linear-gradient(90deg, #ff7b54 0%, #f97316 100%);
+        color: white !important;
+        padding: 1.25rem;
+        border-radius: 1.25rem;
+        text-decoration: none;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        transition: all 0.3s;
+        box-shadow: 0 10px 20px -5px rgba(255, 123, 84, 0.4);
+    }
+
+    .btn-manage-booking:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 14px 24px -6px rgba(255, 123, 84, 0.45);
+    }
+
+    .btn-return-home {
+        color: #64748b;
+        text-decoration: none;
+        font-size: 0.95rem;
+        font-weight: 600;
+        transition: color 0.2s;
+    }
+
+    .btn-return-home:hover {
+        color: #1e293b;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="success-card">
+    <div class="success-header">
+        <div class="icon-pulse">
+            <i class="fas fa-check-circle success-icon"></i>
+        </div>
+        <h1>Booking Success!</h1>
+        <p class="subtitle">Your request has been delivered to the caterer.</p>
+    </div>
+
+    <div class="success-details">
+        {% if booking.payment_method == 'Cash' %}
+        <div class="instruction-box cash-instruction">
+            <div class="box-icon"><i class="fas fa-hand-holding-usd"></i></div>
+            <div class="box-content">
+                <h4>Cash Payment Selected</h4>
+                <p>Please coordinate directly with <strong>{{ booking.caterer.business_name }}</strong>
+                    regarding the settlement of your reservation fee and total balance.</p>
+            </div>
+        </div>
+        {% else %}
+        <div class="instruction-box digital-instruction">
+            <div class="box-icon"><i class="fas fa-credit-card"></i></div>
+            <div class="box-content">
+                <h4>Digital Payment Recorded</h4>
+                <p>Your transaction has been logged. The caterer will review your booking and finalize the
+                    confirmation shortly.</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="status-summary">
+            <div class="summary-item">
+                <span class="label">Booking ID</span>
+                <span class="value">#{{ booking.id }}</span>
+            </div>
+            <div class="summary-item">
+                <span class="label">Event Date</span>
+                <span class="value">{{ booking.event_date.strftime('%B %d, %Y') }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="success-actions">
+        <a href="/customer/bookings" class="btn-manage-booking">
+            Manage My Bookings <i class="fas fa-arrow-right"></i>
+        </a>
+        <a href="/" class="btn-return-home">Return to Home</a>
+    </div>
+</div>
+{% endblock %}

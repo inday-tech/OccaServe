@@ -1,0 +1,341 @@
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&display=swap');
+
+/* Formal Contract Aesthetic - OccaShare Standard */
+.contract-document-wrapper-formal {
+    font-family: 'Crimson Pro', serif;
+    color: #1a1a1a;
+    line-height: 1.6;
+    padding: 0;
+    max-width: 100%;
+}
+
+.formal-doc-header {
+    text-align: center;
+    border-bottom: 2px solid #000;
+    padding-bottom: 1.5rem;
+    margin-bottom: 2.5rem;
+}
+
+.formal-doc-main-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    margin: 0 0 0.5rem 0;
+    text-transform: uppercase;
+}
+
+.formal-doc-meta {
+    font-size: 0.85rem;
+    color: #4b5563;
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+}
+
+/* Preamble */
+.contract-preamble-wrapper {
+    margin-bottom: 2rem;
+}
+
+.contract-preamble {
+    text-align: justify;
+    font-size: 1rem;
+}
+
+/* Parties Layout */
+.contract-parties-layout {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+    align-items: center;
+}
+
+.party-card-pro {
+    border: 1px solid #e5e7eb;
+    padding: 1.25rem;
+    border-radius: 0.5rem;
+}
+
+.party-label-tag {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+}
+
+.party-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem 0;
+}
+
+.party-detail-text {
+    font-size: 0.9rem;
+    color: #374151;
+    margin: 0;
+}
+
+.parties-divider-icon {
+    font-size: 1.25rem;
+    color: #d1d5db;
+}
+
+/* Sections */
+.contract-section-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 0.5rem;
+    margin: 2.5rem 0 1rem 0;
+    display: flex;
+    align-items: center;
+}
+
+/* Specifications Table */
+.contract-spec-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1.5rem;
+}
+
+.contract-spec-table td {
+    padding: 0.6rem 0;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 0.95rem;
+}
+
+.spec-label-col {
+    font-weight: 600;
+    width: 180px;
+    color: #4b5563;
+}
+
+/* Financial Table */
+.financial-summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5rem 0;
+    border: 1px solid #000;
+}
+
+.summary-header-row th {
+    background: #f9fafb;
+    padding: 0.75rem;
+    text-align: left;
+    font-weight: 700;
+    border-bottom: 1px solid #000;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+}
+
+.summary-th-amount { text-align: right !important; }
+
+.summary-row-item td, .addon-row-item td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 0.95rem;
+}
+
+.summary-td-amount { text-align: right; font-weight: 600; }
+
+.summary-desc-subtext {
+    font-size: 0.8rem;
+    color: #6b7280;
+    font-style: italic;
+}
+
+.summary-tfoot {
+    background: #fdfdfd;
+}
+
+.summary-tfoot td {
+    padding: 0.75rem;
+    font-size: 1rem;
+}
+
+.total-value-label-cell { text-align: right; font-weight: 700; border-top: 2px solid #000; }
+.total-value-amount-cell { text-align: right; font-weight: 700; border-top: 2px solid #000; font-size: 1.1rem; }
+
+.deposit-info-label-cell { text-align: right; color: #4b5563; }
+.deposit-info-amount-cell { text-align: right; font-weight: 600; color: var(--primary-color); }
+
+/* Clauses */
+.contract-clauses-list {
+    margin-bottom: 2rem;
+}
+
+.clause-item {
+    margin-bottom: 0.75rem;
+    text-align: justify;
+    font-size: 0.95rem;
+}
+
+.clause-num { font-weight: 700; margin-right: 0.5rem; }
+
+/* Agreement Status */
+.agreement-status-para {
+    font-size: 0.9rem;
+    color: #4b5563;
+    text-align: justify;
+    margin-bottom: 3rem;
+}
+
+/* Signatures */
+.signatures-wrapper-formal {
+    margin-top: 4rem;
+}
+
+.signatures-side-by-side {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    margin-top: 4rem;
+    padding: 0 1rem;
+    align-items: end;
+}
+
+.signature-column {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: 120px;
+}
+
+.sig-line-top {
+    display: none; /* Removed in favor of sig-name-formal border-top */
+}
+
+.sig-placeholder-area {
+    height: 90px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 5px;
+}
+
+.formal-sig-img {
+    max-height: 55px;
+    max-width: 100%;
+    display: block;
+    margin: 0 auto;
+}
+
+.sig-awaiting {
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: #cbd5e1;
+    letter-spacing: 0.15em;
+    padding-bottom: 1rem;
+}
+
+.sig-details-formal {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    text-align: center;
+}
+
+.sig-name-formal {
+    font-weight: 700;
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    color: #111;
+    display: block;
+    letter-spacing: 0.05em;
+    border-top: 2px solid #000;
+    padding-top: 0.75rem;
+    margin-top: 0.5rem;
+    min-height: 1.5rem;
+    text-align: center;
+}
+
+.sig-label-formal {
+    display: block;
+    font-size: 0.65rem;
+    color: #64748b;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.sig-date-formal {
+    font-size: 0.65rem;
+    color: #94a3b8;
+    font-style: normal;
+    font-weight: 500;
+}
+
+.formal-footer-note {
+    text-align: center;
+    margin-top: 4rem;
+    font-size: 0.75rem;
+    color: #9ca3af;
+    position: relative;
+}
+
+.verified-seal-watermark {
+    position: absolute;
+    top: -45px;
+    right: 5%;
+    width: 110px;
+    height: 110px;
+    border: 3px double var(--primary-color); /* Slightly darker green */
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-color);
+    transform: rotate(-12deg);
+    font-weight: 800;
+    opacity: 0.45; /* More visible "stamp" */
+    pointer-events: none;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    line-height: 1;
+    background: rgba(16, 185, 129, 0.05); /* Very subtle tint */
+    box-shadow: 0 0 0 4px white; /* Clear background behind the stamp border */
+}
+
+.verified-seal-watermark i { font-size: 1.5rem; margin-bottom: 0.35rem; }
+
+@media (max-width: 640px) {
+    .contract-parties-layout {
+        grid-template-columns: 1fr;
+    }
+    .parties-divider-icon { display: none; }
+    /* Signatures MUST stay parallel as requested */
+    .signatures-side-by-side { 
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem; 
+    }
+    .sig-name-formal { font-size: 0.75rem; }
+    .sig-label-formal { font-size: 0.6rem; }
+}
+
+@media print {
+    body * { visibility: hidden; }
+    #printable-contract, #printable-contract * { visibility: visible; }
+    #printable-contract {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        padding: 0;
+        margin: 0;
+    }
+    .contract-document-wrapper-formal {
+        box-shadow: none !important;
+        border: none !important;
+    }
+    .print-btn-container, .modal-header-p, .back-navigation { display: none !important; }
+    .verified-seal-watermark { 
+        opacity: 0.6 !important; 
+        -webkit-print-color-adjust: exact; 
+        print-color-adjust: exact;
+    }
+}

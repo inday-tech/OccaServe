@@ -1,0 +1,521 @@
+{% set active_page = 'archives' %}
+{% extends "caterer/layout.html" %}
+
+{% block title %}Archives - OccaShare Caterer{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Premium Styling for Archives Page */
+    :root {
+        --text-dark: #1E293B;
+        --text-muted: #64748B;
+        --bg-light: #F8FAFC;
+        --bg-white: #FFFFFF;
+        --border-color: #E2E8F0;
+        --radius-md: 0.75rem;
+        --radius-lg: 1rem;
+        --radius-xl: 1.5rem;
+        --transition-base: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+
+    /* Tabs Navigation */
+    .archive-tabs-container {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 2.5rem;
+        padding-bottom: 0.5rem;
+        overflow-x: auto;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .archive-tab-btn {
+        background: transparent;
+        border: none;
+        padding: 0.75rem 1.25rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        cursor: pointer;
+        border-radius: 0.75rem;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        white-space: nowrap;
+    }
+
+    .archive-tab-btn:hover {
+        background: #f8fafc;
+        color: var(--secondary-color);
+    }
+
+    .archive-tab-btn.active {
+        background: rgba(var(--primary-color-rgb), 0.1);
+        color: var(--primary-color);
+    }
+
+    /* Tab Content Area */
+    .archive-tab-pane {
+        display: none;
+        animation: slideUp 0.4s ease-out forwards;
+    }
+
+    .archive-tab-pane.active {
+        display: block;
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(15px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Grid Layout */
+    .archived-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+
+    /* Premium Card Application */
+    .archived-card {
+        padding: 0 !important;
+        /* Reset for overflow content */
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .archived-card-media {
+        height: 140px;
+        background: #f8fafc;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .archived-card-media img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        filter: grayscale(100%) opacity(0.7);
+        transition: all 0.4s ease;
+    }
+
+    .archived-card:hover .archived-card-media img {
+        filter: grayscale(0%) opacity(1);
+        transform: scale(1.05);
+    }
+
+    .archived-card-body {
+        padding: 1.5rem;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .archived-card-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--secondary-color);
+        margin-bottom: 0.5rem;
+    }
+
+    /* Actions Toolbar - 2 columns */
+    .archived-card-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+        padding-top: 1.25rem;
+        border-top: 1px solid #f1f5f9;
+    }
+
+    .archive-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.7rem;
+        border-radius: 0.75rem;
+        font-size: 0.85rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+    }
+
+    .btn-restore {
+        background: rgba(16, 185, 129, 0.08);
+        color: #059669;
+    }
+
+    .btn-restore:hover {
+        background: #10b981;
+        color: white;
+    }
+
+    .btn-delete {
+        background: rgba(239, 68, 68, 0.08);
+        color: #dc2626;
+    }
+
+    .btn-delete:hover {
+        background: #ef4444;
+        color: white;
+    }
+
+    /* Gallery Specific */
+    .gallery-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .gallery-item {
+        position: relative;
+        aspect-ratio: 1;
+        border-radius: 1.25rem;
+        overflow: hidden;
+        background: #f8fafc;
+        border: 1px solid #f1f5f9;
+    }
+
+    .gallery-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        filter: grayscale(100%) opacity(0.8);
+        transition: 0.3s;
+    }
+
+    .gallery-item:hover img {
+        filter: grayscale(0%) opacity(1);
+    }
+
+    .gallery-actions-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: 0.3s;
+    }
+
+    .gallery-item:hover .gallery-actions-overlay {
+        opacity: 1;
+    }
+
+    /* Empty States */
+    .archive-empty-state {
+        text-align: center;
+        padding: 5rem 2rem;
+        background: white;
+        border-radius: 1.5rem;
+        border: 2px dashed #f1f5f9;
+    }
+
+    .archive-empty-icon {
+        font-size: 3rem;
+        color: #cbd5e1;
+        margin-bottom: 1rem;
+    }
+</style>
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="archives-wrapper">
+    <!-- Header -->
+    <div class="page-header" style="display: flex; justify-content: space-between; align-items: start;">
+        <div>
+            <h1>Archive Center</h1>
+            <p>Review, restore, or permanently remove your archived business data in a secure environment.</p>
+        </div>
+        <div class="header-stats-visual" style="display: flex; gap: 2rem; margin-right: 1rem; align-items: center; height: 100%;">
+            <div style="text-align: center;">
+                <span style="display: block; font-size: 1.5rem; font-weight: 800; color: #000;">{{ archived_bookings|length + archived_packages|length + archived_menu_items|length + archived_gallery_items|length }}</span>
+                <span style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Items</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="archive-tabs-container animate-slide-up" style="animation-delay: 0.1s;">
+        <button class="archive-tab-btn active" onclick="switchTab('bookings')">
+            <i class="fas fa-calendar-check"></i> Bookings ({{ archived_bookings|length }})
+        </button>
+        <button class="archive-tab-btn" onclick="switchTab('packages')">
+            <i class="fas fa-layer-group"></i> Packages ({{ archived_packages|length }})
+        </button>
+        <button class="archive-tab-btn" onclick="switchTab('menu')">
+            <i class="fas fa-utensils"></i> Menu Items ({{ archived_menu_items|length }})
+        </button>
+        <button class="archive-tab-btn" onclick="switchTab('gallery')">
+            <i class="fas fa-images"></i> Gallery ({{ archived_gallery_items|length }})
+        </button>
+    </div>
+
+    <!-- Bookings Tab -->
+    <div id="tab-bookings" class="archive-tab-pane active">
+        {% if archived_bookings %}
+        <div class="archived-grid">
+            {% for booking in archived_bookings %}
+            <div class="archived-card c-card-premium" id="archive-booking-{{ booking.id }}">
+                <div class="archived-card-body">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                        <h3 class="archived-card-title">Booking #{{ booking.id }}</h3>
+                        <span
+                            style="background: #f1f5f9; color: #64748b; padding: 0.25rem 0.6rem; border-radius: 0.5rem; font-size: 0.75rem; font-weight: 700;">{{
+                            booking.status|upper }}</span>
+                    </div>
+                    <div style="margin-bottom: 0.5rem; flex: 1; display: flex; flex-direction: column; gap: 0.4rem;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                            <span style="color: var(--text-muted);">Customer:</span>
+                            <span style="font-weight: 600; color: var(--secondary-color);">{{ booking.user.first_name }}
+                                {{ booking.user.last_name }}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                            <span style="color: var(--text-muted);">Event Date:</span>
+                            <span style="font-weight: 600; color: var(--secondary-color);">{{
+                                booking.event_date.strftime('%b %d, %Y') }}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                            <span style="color: var(--text-muted);">Amount:</span>
+                            <span style="font-weight: 800; color: var(--primary-color);">₱{{
+                                "{:,.2f}".format(booking.total_price or booking.total_amount) }}</span>
+                        </div>
+                    </div>
+                    <div class="archived-card-actions">
+                        <button class="archive-btn btn-restore" onclick="restoreAction('booking', {{ booking.id }})">
+                            <i class="fas fa-undo"></i> Restore
+                        </button>
+                        <button class="archive-btn btn-delete" onclick="deleteAction('booking', {{ booking.id }})">
+                            <i class="fas fa-trash-alt"></i> Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="archive-empty-state">
+            <div class="archive-empty-icon"><i class="fas fa-calendar-times"></i></div>
+            <h3 class="archive-empty-title">No Archived Bookings</h3>
+            <p class="archive-empty-desc">Completed or cancelled bookings that you archive will appear here.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Packages Tab -->
+    <div id="tab-packages" class="archive-tab-pane">
+        {% if archived_packages %}
+        <div class="archived-grid">
+            {% for package in archived_packages %}
+            <div class="archived-card c-card-premium" id="archive-package-{{ package.id }}">
+                <div class="archived-card-media">
+                    {% if package.image_url %}
+                    <img src="{{ package.image_url }}" alt="{{ package.name }}" loading="lazy">
+                    {% else %}
+                    <div
+                        style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #cbd5e1; font-size: 3rem;">
+                        <i class="fas fa-concierge-bell"></i>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="archived-card-body">
+                    <h3 class="archived-card-title">{{ package.name }}</h3>
+                    <div
+                        style="display: flex; gap: 0.75rem; margin-bottom: 0.75rem; font-size: 0.8rem; color: var(--text-muted);">
+                        <span><i class="fas fa-tags"></i> ₱{{ "{:,.0f}".format(package.price_per_head or package.price)
+                            }}/pax</span>
+                        <span><i class="fas fa-users"></i> {{ package.min_guests }}+ pax</span>
+                    </div>
+                    <p
+                        style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 1rem; flex: 1;">
+                        {{ package.description|truncate(80) }}</p>
+                    <div class="archived-card-actions">
+                        <button class="archive-btn btn-restore" onclick="restoreAction('package', {{ package.id }})">
+                            <i class="fas fa-undo"></i> Restore
+                        </button>
+                        <button class="archive-btn btn-delete" onclick="deleteAction('package', {{ package.id }})">
+                            <i class="fas fa-trash-alt"></i> Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="archive-empty-state">
+            <div class="archive-empty-icon"><i class="fas fa-box"></i></div>
+            <h3 class="archive-empty-title">No Archived Packages</h3>
+            <p class="archive-empty-desc">Packages you remove from your active offerings will be stored here.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Menu Items Tab -->
+    <div id="tab-menu" class="archive-tab-pane">
+        {% if archived_menu_items %}
+        <div class="archived-grid">
+            {% for item in archived_menu_items %}
+            <div class="archived-card c-card-premium" id="archive-menu-{{ item.id }}">
+                <div class="archived-card-media">
+                    {% if item.image_url %}
+                    <img src="{{ item.image_url }}" alt="{{ item.name }}" loading="lazy">
+                    {% else %}
+                    <div
+                        style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #cbd5e1; font-size: 2.5rem;">
+                        <i class="fas fa-utensils"></i>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="archived-card-body">
+                    <h3 class="archived-card-title">{{ item.name }}</h3>
+                    <div style="margin-bottom: 0.75rem; font-size: 0.8rem; color: var(--text-muted);">
+                        <i class="fas fa-tag"></i> ₱{{ "{:,.2f}".format(item.price or 0) }} • {{ item.category }}
+                    </div>
+                    <p
+                        style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 1rem; flex: 1;">
+                        {{ item.description|truncate(80) if item.description else 'No description available.' }}</p>
+                    <div class="archived-card-actions">
+                        <button class="archive-btn btn-restore" onclick="restoreAction('menu', {{ item.id }})">
+                            <i class="fas fa-undo"></i> Restore
+                        </button>
+                        <button class="archive-btn btn-delete" onclick="deleteAction('menu', {{ item.id }})">
+                            <i class="fas fa-trash-alt"></i> Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="archive-empty-state">
+            <div class="archive-empty-icon"><i class="fas fa-utensils-slash"></i></div>
+            <h3 class="archive-empty-title">No Archived Menu Items</h3>
+            <p class="archive-empty-desc">Dishes you remove from your library will be kept here safely.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Gallery Tab -->
+    <div id="tab-gallery" class="archive-tab-pane">
+        {% if archived_gallery_items %}
+        <div class="gallery-grid">
+            {% for item in archived_gallery_items %}
+            <div class="gallery-item" id="archive-gallery-{{ item.id }}">
+                <img src="{{ item.media_url }}" alt="Archived Gallery Image" loading="lazy">
+                <div class="gallery-actions-overlay">
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="archive-btn btn-restore"
+                            style="padding: 0.5rem; width: 40px; height: 40px; border-radius: 50%; background: white; border: none;"
+                            onclick="restoreAction('gallery', {{ item.id }})" title="Restore">
+                            <i class="fas fa-undo"></i>
+                        </button>
+                        <button class="archive-btn btn-delete"
+                            style="padding: 0.5rem; width: 40px; height: 40px; border-radius: 50%; background: white; border: none;"
+                            onclick="deleteAction('gallery', {{ item.id }})" title="Delete Permanent">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="archive-empty-state">
+            <div class="archive-empty-icon"><i class="fas fa-images"></i></div>
+            <h3 class="archive-empty-title">No Archived Photos</h3>
+            <p class="archive-empty-desc">Images you remove from your public gallery will be stored here.</p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function switchTab(tabId) {
+        // Update Buttons
+        document.querySelectorAll('.archive-tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        event.currentTarget.classList.add('active');
+
+        // Update Panes
+        document.querySelectorAll('.archive-tab-pane').forEach(pane => {
+            pane.classList.remove('active');
+        });
+        document.getElementById('tab-' + tabId).classList.add('active');
+    }
+
+    // Standardized Action Handler
+    async function performAction(type, id, action, url, confirmMsg, confirmTitle, confirmBtn) {
+        window.showConfirm(confirmMsg, async () => {
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (response.ok) {
+                    const card = document.getElementById(`archive-${type}-${id}`);
+                    if (card) {
+                        card.style.transform = 'scale(0.9)';
+                        card.style.opacity = '0';
+                    }
+                    
+                    // Use URL success message for the reload
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('success_msg', `${type.charAt(0).toUpperCase() + type.slice(1)} ${action}ed successfully!`);
+                    window.location.href = url.pathname + url.search + url.hash;
+                } else {
+                    window.showError(`Failed to ${action} ${type}. Please try again.`);
+                }
+            } catch (error) {
+                console.error(error);
+                window.showError(`An error occurred while ${action}ing the ${type}.`);
+            }
+        }, confirmTitle, confirmBtn);
+    }
+
+    // Restore Handlers
+    function restoreAction(type, id) {
+        let url = '';
+        if (type === 'booking') url = `/caterer/bookings/${id}/restore`;
+        else if (type === 'package') url = `/caterer/packages/${id}/restore`;
+        else if (type === 'menu') url = `/caterer/menu/${id}/restore`;
+        else if (type === 'gallery') url = `/caterer/gallery/${id}/restore`;
+
+        performAction(type, id, 'restore', url,
+            `Are you sure you want to restore this item?`,
+            'Restore Item?', 'Yes, Restore');
+    }
+
+    // Delete Handlers
+    function deleteAction(type, id) {
+        let url = '';
+        if (type === 'booking') url = `/caterer/bookings/${id}/delete`;
+        else if (type === 'package') url = `/caterer/packages/${id}/delete`;
+        else if (type === 'menu') url = `/caterer/menu/${id}/delete`;
+        else if (type === 'gallery') url = `/caterer/gallery/${id}/delete`;
+
+        performAction(type, id, 'delete', url,
+            `WARNING: This deletion is PERMANENT and cannot be undone. Are you sure?`,
+            'Delete Permanently?', 'Yes, Delete');
+    }
+</script>
+{% endblock %}

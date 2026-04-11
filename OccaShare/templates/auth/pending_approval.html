@@ -1,0 +1,237 @@
+{% extends "landing_base.html" %}
+
+{% block title %}Account Pending Approval - OccaServe{% endblock %}
+
+{% block extra_css %}
+<style>
+    .pending-hero {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #fff5f0 0%, #fff 100%);
+        padding: 100px 20px;
+    }
+
+    .pending-card {
+        max-width: 600px;
+        width: 100%;
+        background: white;
+        padding: 4rem;
+        border-radius: 24px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.05);
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .pending-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 6px;
+        background: linear-gradient(90deg, #ff7e5f, #feb47b);
+    }
+
+    .icon-wrapper {
+        width: 100px;
+        height: 100px;
+        background: #fff5f0;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 2rem;
+        position: relative;
+    }
+
+    .icon-wrapper i {
+        font-size: 3rem;
+        color: #ff7e5f;
+    }
+
+    .pulse-ring {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        border: 2px solid #ff7e5f;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% { transform: scale(1); opacity: 0.5; }
+        100% { transform: scale(1.5); opacity: 0; }
+    }
+
+    h1 {
+        font-size: 2.5rem;
+        color: #2d3748;
+        margin-bottom: 1.5rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+    }
+
+    p {
+        color: #718096;
+        font-size: 1.15rem;
+        line-height: 1.7;
+        margin-bottom: 2.5rem;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 20px;
+        background: #edf2f7;
+        color: #4a5568;
+        border-radius: 100px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 2rem;
+    }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        background: #f59e0b;
+        border-radius: 50%;
+        animation: blink 1.5s infinite;
+    }
+
+    @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+    }
+
+    .btn-home {
+        display: inline-block;
+        padding: 16px 40px;
+        background: #2d3748;
+        color: white;
+        border-radius: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .btn-home:hover {
+        background: #1a202c;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        color: white;
+    }
+
+    .waiting-indicator {
+        margin-top: 3rem;
+        padding-top: 2rem;
+        border-top: 1px solid #edf2f7;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        color: #a0aec0;
+        font-size: 0.9rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="pending-hero">
+    <div class="pending-card">
+        <div class="icon-wrapper">
+            <div class="pulse-ring"></div>
+            <i class="fas fa-clock"></i>
+        </div>
+
+        <div class="status-badge">
+            <div class="status-dot"></div>
+            Review in Progress
+        </div>
+
+        <h1>Verification Pending</h1>
+        <p>
+            Welcome to the OccaServe community! Your caterer application has been submitted successfully and is now being reviewed by our compliance team.
+            <br><br>
+            This process typically takes 12-24 hours. We'll notify you via email as soon as your account is activated.
+        </p>
+
+        <div class="actions-group" style="display: flex; gap: 1rem; justify-content: center; margin-top: 2rem;">
+            <a href="/" class="btn-home">Return to Homepage</a>
+            <a href="/auth/logout" class="btn-home" style="background: #edf2f7; color: #4a5568; box-shadow: none;">Logout</a>
+        </div>
+
+        <div class="waiting-indicator">
+            <i class="fas fa-satellite-dish fa-spin" style="color: #48bb78;"></i>
+            <span>Monitoring for account activation...</span>
+        </div>
+    </div>
+</section>
+
+{% if user_id %}
+<script>
+    (function() {
+        let socket;
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
+        const reconnectDelay = 3000;
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            // Use a specific client ID format that the backend broadcast_to_user will match
+            const clientId = `user_{{ user_id }}_pending_${Math.random().toString(36).substr(2, 9)}`;
+            const wsUrl = `${protocol}//${window.location.host}/ws/${clientId}`;
+
+            console.log("Connecting to WebSocket for approval updates...");
+            socket = new WebSocket(wsUrl);
+
+            socket.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log("Real-time update received:", data);
+                    
+                    if (data.type === 'status_update' && (data.status === 'approved' || data.status === 'Verified')) {
+                        // Show success state briefly then redirect
+                        const card = document.querySelector('.pending-card');
+                        card.innerHTML = `
+                            <div class="icon-wrapper" style="background: #f0fff4;">
+                                <i class="fas fa-check-circle" style="color: #48bb78;"></i>
+                            </div>
+                            <div class="status-badge" style="background: #f0fff4; color: #2f855a;">
+                                <div class="status-dot" style="background: #48bb78;"></div>
+                                Approved & Activated
+                            </div>
+                            <h1>Welcome Aboard!</h1>
+                            <p>${data.message || 'Your account has been approved. Redirecting you to the dashboard...'}</p>
+                            <div class="waiting-indicator">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <span>Redirecting...</span>
+                            </div>
+                        `;
+                        
+                        setTimeout(() => {
+                            window.location.href = '/auth/login?success=approved';
+                        }, 3000);
+                    }
+                } catch (e) {
+                    console.error("Failed to parse WebSocket message:", e);
+                }
+            };
+
+            socket.onclose = function() {
+                if (reconnectAttempts < maxReconnectAttempts) {
+                    reconnectAttempts++;
+                    setTimeout(connectWebSocket, reconnectDelay * reconnectAttempts);
+                }
+            };
+        }
+
+        connectWebSocket();
+    })();
+</script>
+{% endif %}
+{% endblock %}

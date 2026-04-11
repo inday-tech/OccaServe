@@ -1,0 +1,141 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Payouts & Financials - Admin Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/payouts.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 2rem;">
+    <h1>Financials & Payouts</h1>
+    <p>Manage platform holdings and disburse funds to your catering partners.</p>
+</div>
+
+<div class="payout-sections-container">
+
+    <!-- SECTION 1: Pending Payouts (Holdings) -->
+    <div class="payout-admin-card">
+        <h3 class="payout-card-title"><i class="fas fa-vault"></i> Funds Held for Caterers</h3>
+
+        {% if caterer_holdings %}
+        <div style="overflow-x: auto;">
+            <table class="payout-data-table auto-paginate">
+                <thead>
+                    <tr>
+                        <th>Catering Partner</th>
+                        <th>Pending Bookings</th>
+                        <th>Total Net Amount</th>
+                        <th style="text-align: right;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in caterer_holdings %}
+                    <tr class="payout-txn-row">
+                        <td>
+                            <div class="caterer-business-identity">{{ item.caterer.business_name }}</div>
+                            <div class="caterer-contact-small">{{ item.caterer.contact_phone or 'No contact' }}</div>
+                        </td>
+                        <td>
+                            <span class="event-count-badge">{{ item.booking_count }} events</span>
+                        </td>
+                        <td class="net-due-amount">₱{{ "{:,.2f}".format(item.total_held) }}</td>
+                        <td style="text-align: right;">
+                            <form action="/admin/payouts/create" method="POST"
+                                onsubmit="event.preventDefault(); showConfirm('Generate this payout request?', () => this.submit(), 'Confirm Payout', 'Yes, Generate');">
+                                <input type="hidden" name="caterer_id" value="{{ item.caterer.id }}">
+                                <button type="submit" class="btn-generate-payout">
+                                    <i class="fas fa-file-invoice-dollar"></i> Generate Payout
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state-container">
+            <i class="fas fa-circle-check empty-state-icon" style="color: #10b981; opacity: 1;"></i>
+            <h3 style="color: var(--secondary-color); font-weight: 700; margin-bottom: 0.5rem;">All Clear!</h3>
+            <p style="color: #64748b; font-size: 0.95rem;">All completed bookings have been successfully grouped into
+                payouts.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- SECTION 2: Payout History & Processing -->
+    <div class="payout-admin-card">
+        <h3 class="payout-card-title"><i class="fas fa-history"></i> Payout Queue & History</h3>
+
+        {% if payout_history %}
+        <div style="overflow-x: auto;">
+            <table class="payout-data-table auto-paginate">
+                <thead>
+                    <tr>
+                        <th>Payout ID / Partner</th>
+                        <th>Date Generated</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Transfer Details / Ref #</th>
+                        <th style="text-align: right;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for payout in payout_history %}
+                    <tr class="payout-txn-row">
+                        <td>
+                            <div class="caterer-business-identity">#{{ payout.id }} - {{ payout.caterer.business_name }}
+                            </div>
+                            <div class="caterer-contact-small">{{ payout.items|length }} bookings included</div>
+                        </td>
+                        <td><span style="font-size: 0.9rem; color: #64748b;">{{ payout.created_at.strftime('%b %d, %Y')
+                                }}</span></td>
+                        <td class="payout-amount-bold">₱{{ "{:,.2f}".format(payout.amount) }}</td>
+                        <td>
+                            {% if payout.status == 'completed' %}
+                            <span class="status-pill-payout paid">COMPLETED</span>
+                            {% else %}
+                            <span class="status-pill-payout processing">PENDING RELEASE</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right;">
+                            {% if payout.status == 'completed' %}
+                            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem;">
+                                <span class="txn-ref-ref-text">Ref: {{ payout.reference_number }}</span>
+                                <span style="font-size: 0.75rem; color: #64748b; font-weight: 500;">Sent on {{
+                                    payout.completed_at.strftime('%b %d, %Y') }}</span>
+                            </div>
+                            {% else %}
+                            <form action="/admin/payouts/{{ payout.id }}/mark_paid" method="POST"
+                                class="mark-paid-form-flex"
+                                onsubmit="event.preventDefault(); showConfirm('Mark this payout as paid?', () => this.submit(), 'Confirm Payment', 'Yes, Mark Paid');">
+                                <input type="text" name="reference_number" placeholder="Reference #" required
+                                    class="ref-input-fancy">
+                                <button type="submit" class="btn-mark-sent">Confirm Sent</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right;">
+                            <form action="/admin/payouts/{{ payout.id }}/archive" method="POST" style="display: inline;"
+                                onsubmit="event.preventDefault(); showConfirm('Are you sure you want to archive this payout?', () => this.submit(), 'Confirm Archive', 'Yes, Archive');">
+                                <button type="submit" class="stat-icon-container" title="Archive Payout"
+                                    style="background: none; border: none; cursor: pointer; color: #64748b; font-size: 1.1rem;">
+                                    <i class="fas fa-archive"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 3rem;">
+            <p style="color: #64748b; font-size: 0.95rem;">No payout records found in the history.</p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

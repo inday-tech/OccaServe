@@ -1,0 +1,79 @@
+.fc-event.blocked-date {
+    background-color: #fee2e2 !important;
+    border-color: #fecaca !important;
+    color: #ef4444 !important;
+    cursor: not-allowed;
+}
+
+.fc-daygrid-day.fc-day-disabled {
+    background-color: #f1f5f9 !important;
+    cursor: not-allowed;
+}
+
+.fc-daygrid-day:hover {
+    background-color: #f8fafc;
+    cursor: pointer;
+}
+
+/* Step Specific Layout */
+.date-selection-form {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.calendar-wrapper {
+    margin-bottom: 2.5rem;
+}
+
+.calendar-label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--secondary-color);
+}
+
+.calendar-container {
+    background: white;
+    padding: 1rem;
+    border-radius: 1.5rem;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+}
+
+.form-grid-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.input-icon-wrapper {
+    position: relative;
+}
+
+.input-icon {
+    position: absolute;
+    left: 1.25rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--primary-color);
+}
+
+.wizard-input-with-icon {
+    width: 100%;
+    padding: 1rem 1rem 1rem 3rem;
+    border-radius: 1rem;
+    border: 1px solid var(--border-color);
+    font-family: inherit;
+}
+
+.btn-wizard-next {
+    padding: 1.25rem 2.5rem;
+    border-radius: 1rem;
+    font-weight: 700;
+}
+
+.btn-wizard-next i {
+    margin-left: 0.5rem;
+    font-size: 0.8rem;
+}

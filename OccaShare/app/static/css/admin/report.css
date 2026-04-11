@@ -1,0 +1,70 @@
+/* Verification Accuracy Report Styles */
+
+.report-page-container {
+    max-width: 900px;
+    margin: 5rem auto;
+    padding: 2rem;
+    background: white;
+    border-radius: 1rem;
+    box-shadow: var(--shadow-md);
+}
+
+.report-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.report-meta-summary {
+    background: #f8fafc;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    margin-bottom: 2rem;
+    display: flex;
+    gap: 2rem;
+}
+
+.metric-row-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 1.5rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.metric-label-text {
+    font-weight: 600;
+    color: var(--secondary-color);
+}
+
+.metric-value-mono {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--primary-color);
+    font-weight: 700;
+}
+
+.status-badge-compact {
+    padding: 0.25rem 0.75rem;
+    border-radius: 2rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    background: #dcfce7;
+    color: #166534;
+}
+
+.insight-callout-box {
+    margin-top: 3rem;
+    padding: 1.5rem;
+    border-left: 4px solid var(--primary-color);
+    background: #f0f9ff;
+}
+
+.insight-text-small {
+    font-size: 0.9rem;
+    color: #0369a1;
+    margin: 0;
+}
+
+.report-body-bg {
+    background: #f4f7f6;
+}

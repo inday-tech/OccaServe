@@ -1,0 +1,62 @@
+{% if caterers %}
+{% for caterer in caterers %}
+<article class="caterer-card-premium animate-up">
+    <div class="card-image-wrapper">
+        <img src="{{ caterer.cover_image_url if caterer.cover_image_url else 'https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=800&auto=format&fit=crop' }}"
+            class="card-img" alt="{{ caterer.business_name }}" loading="lazy">
+
+        {% if caterer.is_verified %}
+        <div class="status-pill-small active" style="position: absolute; top: 1rem; left: 1rem; z-index: 2;">
+            VERIFIED
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="card-body-premium">
+        <h3 class="card-title">{{ caterer.business_name }}</h3>
+
+        <div class="package-stats-minimal" style="margin-top: 0.5rem;">
+            <span class="rating-pro"><i class="fas fa-star"></i> {{ "%.1f"|format(caterer.rating or 4.9) }}</span>
+            <span class="bookings-count-pro" style="margin-left: 0.25rem;">({{ caterer.reviews|length if caterer.reviews
+                else 0 }} reviews)</span>
+        </div>
+
+        <p class="card-description">
+            {{ (caterer.description or "Exquisite culinary experiences tailored for your special
+            occasions.")|truncate(120) }}
+        </p>
+
+        <div class="package-price-pro">
+            <span class="price-val">₱{{ "{:,.0f}".format(caterer.min_package_price or 0) }}</span>
+            <span class="price-type">starting</span>
+        </div>
+
+        <div class="package-specs-minimal">
+            <div class="spec-item-min">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>{{ caterer.city or "Manila" }}</span>
+            </div>
+            <div class="spec-item-min">
+                <i class="fas fa-users"></i>
+                <span>{{ caterer.max_capacity or 100 }}+ guests</span>
+            </div>
+        </div>
+
+        <div class="package-footer-pro-new" style="margin-top: 1rem;">
+            <a href="/customer/marketplace/{{ caterer.id }}" class="btn-edit-full" style="text-decoration: none;">
+                <i class="fas fa-eye"></i> View Details
+            </a>
+        </div>
+    </div>
+</article>
+{% endfor %}
+{% else %}
+<div class="empty-results-state py-5 text-center">
+    <div class="empty-icon-box">
+        <i class="fas fa-utensils"></i>
+    </div>
+    <h2 class="outfit-font">No caterers found</h2>
+    <p class="text-muted">We couldn't find any partners matching your search. Try different filters.</p>
+    <button onclick="window.location.reload()" class="btn-clear-search">Clear All Filters</button>
+</div>
+{% endif %}

@@ -1,0 +1,41 @@
+{% extends "customer/layout.html" %}
+
+{% block title %}{% block wizard_title %}Booking{% endblock %} - OccaServe{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/wizard_base.css') }}?v={{ range(1, 9999) | random }}">
+
+{% block step_css %}{% endblock %}
+{% endblock %}
+
+{% block content %}
+<div class="wizard-container">
+    <!-- Progress Bar -->
+    <div class="progress-stepper-premium">
+        <div class="step-item-p {% if current_step >= 1 %}active{% if current_step > 1 %} completed{% endif %}{% endif %}">
+            <div class="step-icon-p">{% if current_step > 1 %}<i class="fas fa-check"></i>{% else %}1{% endif %}</div>
+            <div class="step-label-p">Details</div>
+        </div>
+        <div class="step-item-p {% if current_step >= 2 %}active{% if current_step > 2 %} completed{% endif %}{% endif %}">
+            <div class="step-icon-p">{% if current_step > 2 %}<i class="fas fa-check"></i>{% else %}2{% endif %}</div>
+            <div class="step-label-p">Identity</div>
+        </div>
+        <div class="step-item-p {% if current_step >= 3 %}active{% if current_step > 3 %} completed{% endif %}{% endif %}">
+            <div class="step-icon-p">{% if current_step > 3 %}<i class="fas fa-check"></i>{% else %}3{% endif %}</div>
+            <div class="step-label-p">Contract</div>
+        </div>
+        <div class="step-item-p {% if current_step >= 4 %}active{% if current_step > 4 %} completed{% endif %}{% endif %}">
+            <div class="step-icon-p">{% if current_step > 4 %}<i class="fas fa-check"></i>{% else %}4{% endif %}</div>
+            <div class="step-label-p">Payment</div>
+        </div>
+    </div>
+
+    <div class="wizard-content-wrap animate-up">
+        {% block wizard_content %}{% endblock %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% block step_js %}{% endblock %}
+{% endblock %}

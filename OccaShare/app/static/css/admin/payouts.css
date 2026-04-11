@@ -1,0 +1,219 @@
+/* Admin Payouts & Financials Styles */
+
+.payout-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.payout-header-title {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--secondary-color);
+    margin: 0;
+    letter-spacing: -0.02em;
+}
+
+.payout-header-subtitle {
+    color: var(--text-light);
+    font-size: 1rem;
+    margin-top: 0.25rem;
+}
+
+.payout-sections-container {
+    display: grid;
+    gap: 2rem;
+}
+
+.payout-admin-card {
+    background: white;
+    border-radius: 1.5rem;
+    padding: 2.25rem;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
+}
+
+.payout-card-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    margin-bottom: 2rem;
+    color: var(--secondary-color);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.payout-card-title::before {
+    content: '';
+    width: 4px;
+    height: 1.5rem;
+    background: var(--primary-color);
+    border-radius: 4px;
+}
+
+/* Table Styles */
+.payout-data-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.payout-data-table thead th {
+    text-align: left;
+    color: var(--text-light);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    background: #f8fafc;
+}
+
+.payout-txn-row {
+    transition: all 0.2s ease;
+}
+
+.payout-txn-row:hover {
+    background: #fcfcfc;
+}
+
+.payout-txn-row td {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.caterer-business-identity {
+    font-weight: 700;
+    color: var(--secondary-color);
+    font-size: 1rem;
+}
+
+.caterer-contact-small {
+    font-size: 0.85rem;
+    color: var(--text-light);
+}
+
+.event-count-badge {
+    background: #fff7ed;
+    color: var(--primary-color);
+    padding: 0.4rem 1rem;
+    border-radius: 2rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border: 1px solid #ffedd5;
+}
+
+.net-due-amount {
+    font-weight: 800;
+    color: #10b981;
+    font-size: 1.15rem;
+}
+
+.payout-amount-bold {
+    font-weight: 800;
+    color: var(--secondary-color);
+    font-size: 1.15rem;
+}
+
+.btn-generate-payout {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.85rem 1.5rem;
+    border-radius: 0.85rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 700;
+    transition: all 0.2s ease;
+}
+
+.btn-generate-payout:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(var(--primary-color-rgb), 0.25);
+}
+
+/* Status Pills */
+.status-pill-payout {
+    padding: 0.4rem 1rem;
+    border-radius: 2rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.status-pill-payout.paid {
+    background: #f0fdf4;
+    color: #10b981;
+}
+
+.status-pill-payout.processing {
+    background: #fffbeb;
+    color: #d97706;
+}
+
+.txn-ref-ref-text {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--secondary-color);
+    background: #f1f5f9;
+    padding: 0.35rem 0.65rem;
+    border-radius: 6px;
+}
+
+.mark-paid-form-flex {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
+.ref-input-fancy {
+    padding: 0.75rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.85rem;
+    font-size: 0.85rem;
+    width: 180px;
+    background: #fcfcfc;
+    transition: all 0.3s ease;
+}
+
+.ref-input-fancy:focus {
+    border-color: var(--primary-color);
+    outline: none;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(var(--primary-color-rgb), 0.1);
+}
+
+.btn-mark-sent {
+    background: #10b981;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.85rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 700;
+    transition: all 0.2s;
+}
+
+.btn-mark-sent:hover {
+    background: #059669;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px rgba(16, 185, 129, 0.2);
+}
+
+.empty-state-container {
+    text-align: center;
+    padding: 5rem 2rem;
+}
+
+.empty-state-icon {
+    font-size: 3.5rem;
+    color: #cbd5e1;
+    margin-bottom: 1.5rem;
+}
+

@@ -1,0 +1,114 @@
+{% extends "customer/layout.html" %}
+
+{% block title %}Reviews - OccaServe Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>My Reviews</h1>
+    <p>Share your experiences and help others find the best caterers.</p>
+</div>
+
+
+<div class="c-card-premium">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h3
+            style="margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--secondary-color); display: flex; align-items: center; gap: 0.75rem;">
+            <i class="fas fa-star" style="color: #f59e0b;"></i> Reviews You've Shared
+        </h3>
+    </div>
+
+    {% if reviews %}
+    <div id="reviewsContainer" style="display: grid; gap: 1.5rem;">
+        {% for review in reviews %}
+        <div class="review-item-card"
+            style="background: #f8fafc; padding: 1.75rem; border-radius: 1.25rem; border: 1px solid var(--border-color); transition: transform 0.2s;"
+            onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                <div>
+                    <div style="font-weight: 700; font-size: 1.05rem; color: var(--secondary-color);">{{
+                        review.caterer.business_name }}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.25rem;">Reviewed on {{
+                        review.created_at.strftime('%B %d, %Y') }}</div>
+                </div>
+                <div style="color: #f59e0b; font-size: 0.9rem;">
+                    {% for _ in range(review.rating) %}<i class="fas fa-star"></i>{% endfor %}
+                    {% for _ in range(5 - review.rating) %}<i class="far fa-star"></i>{% endfor %}
+                </div>
+            </div>
+            <p
+                style="color: var(--secondary-color); font-size: 0.95rem; line-height: 1.6; font-style: italic; margin: 0; padding: 1rem; background: white; border-radius: 0.75rem; border: 1px solid rgba(0,0,0,0.03);">
+                "{{ review.comment }}"
+            </p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination-container-p">
+        <div class="pagination-info">
+            Per page: <b>5 reviews</b>
+        </div>
+        <div class="pagination-buttons">
+            <button id="rvPrevPage" class="btn-pagination" disabled><i class="fas fa-chevron-left"></i></button>
+            <div id="rvPageNumbers" class="pagination-buttons"></div>
+            <button id="rvNextPage" class="btn-pagination" disabled><i class="fas fa-chevron-right"></i></button>
+        </div>
+    </div>
+
+    {% else %}
+    <div style="text-align: center; padding: 5rem 2rem;">
+        <img src="https://illustrations.popsy.co/gray/chatting.svg" alt="Empty"
+            style="width: 140px; margin-bottom: 2rem; opacity: 0.5;">
+        <h3 style="color: var(--secondary-color); font-size: 1.5rem; margin-bottom: 0.5rem;">No reviews yet</h3>
+        <p style="color: var(--text-muted); max-width: 400px; margin: 0 auto 2rem;">After your event is completed,
+            you'll be able to leave a review for your caterer here.</p>
+        <a href="/customer/bookings" class="btn-primary" style="text-decoration: none;">Go to My Bookings</a>
+    </div>
+    {% endif %}
+</div>
+
+{% block extra_js %}
+<script>
+    const RV_PER_PAGE = 5;
+    let rvCurrentPage = 1;
+    let rvItems = [];
+
+    document.addEventListener('DOMContentLoaded', () => {
+        rvItems = Array.from(document.querySelectorAll('.review-item-card'));
+        if (rvItems.length > 0) updateRV_Pagination();
+    });
+
+    function updateRV_Pagination() {
+        const totalPages = Math.ceil(rvItems.length / RV_PER_PAGE) || 1;
+        const start = (rvCurrentPage - 1) * RV_PER_PAGE;
+        const end = start + RV_PER_PAGE;
+
+        rvItems.forEach((it, idx) => {
+            it.style.display = (idx >= start && idx < end) ? 'block' : 'none';
+        });
+
+        const prevBtn = document.getElementById('rvPrevPage');
+        const nextBtn = document.getElementById('rvNextPage');
+        const numbers = document.getElementById('rvPageNumbers');
+
+        if (prevBtn) prevBtn.disabled = rvCurrentPage === 1;
+        if (nextBtn) nextBtn.disabled = rvCurrentPage === totalPages;
+        if (numbers) {
+            numbers.innerHTML = '';
+            for (let i = 1; i <= totalPages; i++) {
+                const btn = document.createElement('button');
+                btn.className = `page-num-btn ${i === rvCurrentPage ? 'active' : ''}`;
+                btn.innerText = i;
+                btn.onclick = () => { rvCurrentPage = i; updateRV_Pagination(); };
+                numbers.appendChild(btn);
+            }
+        }
+    }
+
+    const rvPrev = document.getElementById('rvPrevPage');
+    const rvNext = document.getElementById('rvNextPage');
+    if (rvPrev) rvPrev.onclick = () => { rvCurrentPage--; updateRV_Pagination(); };
+    if (rvNext) rvNext.onclick = () => { rvCurrentPage++; updateRV_Pagination(); };
+</script>
+{% endblock %}
+{% endblock %}

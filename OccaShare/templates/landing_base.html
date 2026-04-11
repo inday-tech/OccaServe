@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}OccaServe - Book the Best Catering Services Near You{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}?v=10.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/landing_base.css') }}?v=10.0">
+
+    {% set wconfig = website_config() %}
+    {% if wconfig and wconfig.favicon_url %}
+    <link rel="icon" href="{{ wconfig.favicon_url }}">
+    {% endif %}
+
+    <!-- SweetAlert2 -->
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
+
+    {% block head %}{% endblock %}
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v=12.1">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}?v=10.0">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/diamond_auth_modals.css') }}?v=10.0">
+</head>
+
+<body data-nav-page="{{ nav_page | default('') }}">
+
+    <!-- Navigation -->
+    <nav class="navbar" id="mainNavbar">
+        <div class="container nav-container">
+            <a href="/" class="logo" style="display: flex; align-items: center;">
+                {% if wconfig and wconfig.logo_url %}
+                <img src="{{ wconfig.logo_url }}" alt="Logo"
+                    style="height: 32px; margin-right: 8px; border-radius: 4px; object-fit: contain;">
+                {% endif %}
+                <span>OccaServe</span>
+            </a>
+            <div class="nav-menu">
+                <ul class="nav-links">
+                    <li><a href="/#home" data-nav="home">Home</a></li>
+                    <li><a href="/#caterers" data-nav="caterers">Browse Caterers</a></li>
+                    <li><a href="/#categories" data-nav="categories">Event Categories</a></li>
+                    <li><a href="/#how-it-works" data-nav="how-it-works">How It Works</a></li>
+                    <li><a href="/#about" data-nav="about">About Us</a></li>
+                    <li><a href="/#contact" data-nav="contact">Contact Us</a></li>
+                </ul>
+                <div class="nav-auth">
+                    {% if user %}
+                    {% if user.role == 'admin' %}
+                    <a href="/admin/dashboard" class="btn-text">Admin Panel</a>
+                    {% elif user.role == 'caterer' %}
+                    <a href="/caterer/dashboard" class="btn-text">Caterer Dashboard</a>
+                    {% else %}
+                    <a href="/customer/dashboard" class="btn-text">My Dashboard</a>
+                    {% endif %}
+                    <a href="/auth/logout" class="btn-primary">Logout</a>
+                    {% else %}
+                    <a href="/auth/login" class="btn-text" id="navLoginBtn">Log In</a>
+                    <a href="/auth/register" class="btn-primary" id="navSignupBtn">Sign Up</a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="hamburger">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </div>
+        </div>
+    </nav>
+
+    {% block content %}{% endblock %}
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <a href="/" class="logo" style="margin-bottom:1.5rem; display:flex; align-items: center;">
+                        {% if wconfig and wconfig.logo_url %}
+                        <img src="{{ wconfig.logo_url }}" alt="Logo"
+                            style="height: 32px; margin-right: 8px; border-radius: 4px; object-fit: contain;">
+                        {% endif %}
+                        <span>OccaServe</span>
+                    </a>
+                    <p>Your trusted partner for discovering the Philippines' finest catering services. We bring elite
+                        flavors and seamless booking to your most meaningful moments.</p>
+                    <div class="social-links">
+                        <a href="#" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                        <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                        <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+                    </div>
+                </div>
+                <!-- Quick Links Col -->
+                <div class="footer-col">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="/#home">Home</a></li>
+                        <li><a href="/#caterers">Browse Caterers</a></li>
+                        <li><a href="/#categories">Event Categories</a></li>
+                        <li><a href="/#how-it-works">How It Works</a></li>
+                        <li><a href="/#about">About Us</a></li>
+                    </ul>
+                </div>
+                <!-- Support Col -->
+                <div class="footer-col">
+                    <h4>Support</h4>
+                    <ul>
+                        <li><a href="/support/help-center">Help Center</a></li>
+                        <li><a href="/#contact">Contact Support</a></li>
+                        <li><a href="/support/privacy-policy">Privacy Policy</a></li>
+                        <li><a href="/support/terms-of-service">Terms of Service</a></li>
+                    </ul>
+                </div>
+                <!-- Professionals Col -->
+                <div class="footer-col">
+                    <h4>Professionals</h4>
+                    <ul>
+                        <li><a href="/auth/register/caterer">Join as Caterer</a></li>
+                        <li><a href="/auth/login">Book a Caterer</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 OccaServe. All rights reserved. Crafted with passion for fine events.</p>
+            </div>
+        </div>
+    </footer>
+
+    {% include "shared/auth_modals.html" %}
+    <script src="{{ url_for('static', path='/js/main.js') }}?v=30.0"></script>
+    <script src="{{ url_for('static', path='/js/landing_base.js') }}?v=30.0"></script>
+    <script src="{{ url_for('static', path='/js/global/diamond_auth_modals.js') }}?v=30.0"></script>
+    <script src="{{ url_for('static', path='/js/global/diamond_validation.js') }}?v=30.0"></script>
+    <script src="{{ url_for('static', path='/js/global/diamond_caterer_auth.js') }}?v=30.0"></script>
+
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>

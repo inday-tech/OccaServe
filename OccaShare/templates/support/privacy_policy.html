@@ -1,0 +1,110 @@
+{% extends "landing_base.html" %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/support/privacy_policy.css') }}">
+{% endblock %}
+
+
+{% block title %}Privacy Policy - OccaServe{% endblock %}
+
+{% block content %}
+
+<div class="page-hero-premium">
+    <div class="container">
+        <h1>Privacy Policy</h1>
+        <p>Last updated: February 2026. We are committed to protecting your personal information and your right to
+            privacy.</p>
+    </div>
+</div>
+
+<section class="section">
+    <div class="container">
+        <div class="legal-wrapper">
+
+            <!-- Intro -->
+            <div class="legal-alert-box info">
+                <p class="legal-alert-text">OccaServe ("we," "our," or "us")
+                    operates the OccaServe platform. This Privacy Policy explains how we collect, use, disclose, and
+                    safeguard your information when you use our platform. By using OccaServe, you agree to the
+                    collection and use of information in accordance with this policy.</p>
+            </div>
+
+            {% set sections = [
+            ("1. Information We Collect", [
+            ("Personal Identification Information", "When you register, we collect your name, email address, mobile
+            number, and address. Caterers additionally provide business information, certifications, government-issued
+            IDs, and bank account details for payouts."),
+            ("Usage Data", "We automatically collect information your browser sends when you visit our platform,
+            including your IP address, browser type, pages visited, and timestamps."),
+            ("Payment Information", "Payment details are collected and processed by our third-party provider, PayMongo.
+            OccaServe does not store credit card numbers or sensitive financial data."),
+            ("Communications", "We store messages sent between customers and caterers on our platform to provide
+            customer support and resolve disputes."),
+            ]),
+            ("2. How We Use Your Information", [
+            ("Service Delivery", "To facilitate bookings, process payments, send confirmations, and provide customer
+            support."),
+            ("Account Management", "To verify your identity, manage your account, and process caterer applications and
+            KYC verification."),
+            ("Communications", "To send booking updates, promotional offers (if opted in), and important service
+            announcements."),
+            ("Improvement & Analytics", "To analyze usage patterns, improve our platform features, and detect fraud or
+            security issues."),
+            ]),
+            ("3. Sharing Your Information", [
+            ("With Caterers", "When you book a caterer, your name, contact details, and event information are shared
+            with that caterer to fulfill your booking."),
+            ("With Service Providers", "We share data with PayMongo (payments), email service providers, and analytics
+            tools, all bound by confidentiality agreements."),
+            ("Legal Requirements", "We may disclose information if required by Philippine law or in response to valid
+            legal process."),
+            ("We Do Not Sell Your Data", "OccaServe does not sell, trade, or rent your personal information to third
+            parties for marketing purposes."),
+            ]),
+            ("4. Data Security", [
+            ("Security Measures", "We use industry-standard encryption (TLS/HTTPS), secure password hashing, and access
+            controls to protect your data."),
+            ("Data Retention", "We retain your data for as long as your account is active or as needed to provide
+            services and comply with legal obligations."),
+            ("Breach Notification", "In the event of a data breach affecting your information, we will notify you within
+            72 hours as required by the Data Privacy Act of 2012."),
+            ]),
+            ("5. Your Rights (Data Privacy Act of 2012)", [
+            ("Right to Access", "You may request a copy of your personal data held by us at any time."),
+            ("Right to Correction", "You may update or correct your personal information through your account settings
+            or by contacting us."),
+            ("Right to Erasure", "You may request deletion of your account and associated data. Note that some data may
+            be retained for legal compliance."),
+            ("Right to Object", "You may opt out of marketing communications at any time by clicking 'Unsubscribe' in
+            any email or updating your notification preferences."),
+            ]),
+            ] %}
+
+            {% for section_title, items in sections %}
+            <div class="legal-section">
+                <h2 class="legal-section-title">{{ section_title }}</h2>
+                {% for sub_title, sub_text in items %}
+                <div class="legal-subsection">
+                    <h4 class="legal-subsection-title">{{ sub_title }}</h4>
+                    <p class="legal-text">{{ sub_text }}</p>
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+
+            <!-- Contact -->
+            <div class="legal-contact-box">
+                <h3 class="legal-contact-title">Contact Our Data Protection Officer</h3>
+                <p class="legal-text">For questions or concerns about this
+                    Privacy Policy or your personal data, please contact:</p>
+                <div class="legal-contact-info">
+                    <span class="legal-contact-item"><i class="fas fa-envelope"></i> privacy@occaserve.com</span>
+                    <span class="legal-contact-item"><i class="fas fa-map-marker-alt"></i> Philippines</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+{% endblock %}

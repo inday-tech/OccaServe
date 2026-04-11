@@ -1,0 +1,139 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}KYC Audit: Booking #{{ booking.id }} - Admin{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/booking_kyc.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h1>Identity Verification Audit</h1>
+            <p>Sensitive data review for Booking #{{ booking.id }}</p>
+        </div>
+        <div class="status-badge-pill status-{{ booking.status if booking.status in ['draft', 'pending_payment', 'pending', 'verified', 'confirmed', 'completed', 'cancelled', 'expired', 'flagged'] else 'default' }}">
+            <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
+            {{ booking.status.replace('_', ' ') }}
+        </div>
+    </div>
+</div>
+
+<div class="kyc-review-grid">
+    <!-- Left: Identity Documents -->
+    <div class="kyc-review-card">
+        <div class="kyc-card-header-flex">
+            <h3><i class="fas fa-fingerprint" style="color: var(--primary-color);"></i> Biometric Evidence</h3>
+            <span class="kyc-type-badge">
+                {{ kyc.verification_type or 'Government ID' }}
+            </span>
+        </div>
+
+        <div class="doc-comparison-layout">
+            <div class="doc-item-container">
+                <p class="label-tiny-caps">Primary Identity Document</p>
+                <div class="id-document-preview">
+                    {% if kyc.document_url %}
+                    <img src="{{ kyc.document_url }}" alt="ID Document">
+                    {% else %}
+                    <div style="height: 100%; display: flex; align-items: center; justify-content: center; color: #cbd5e1;">
+                        <i class="fas fa-image" style="font-size: 2rem;"></i>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="id-number-display">ID NUM: {{ kyc.id_number or 'Not Extracted' }}</div>
+            </div>
+            <div class="doc-item-container">
+                <p class="label-tiny-caps">Liveness Verification</p>
+                <div class="liveness-thumbs-grid">
+                    <div class="liveness-img-wrapper">
+                        <img src="{{ kyc.selfie_url if kyc.selfie_url else url_for('static', path='/images/default-avatar.png') }}">
+                    </div>
+                    <div class="liveness-img-wrapper">
+                        <img src="{{ kyc.selfie_2_url if kyc.selfie_2_url else (kyc.selfie_url if kyc.selfie_url else url_for('static', path='/images/default-avatar.png')) }}">
+                    </div>
+                    <div class="liveness-img-wrapper">
+                        <img src="{{ kyc.selfie_3_url if kyc.selfie_3_url else (kyc.selfie_url if kyc.selfie_url else url_for('static', path='/images/default-avatar.png')) }}">
+                    </div>
+                </div>
+                <div class="status-pill-indicator {% if kyc.liveness_status == 'passed' %}success{% else %}danger{% endif %}">
+                    <i class="fas {% if kyc.liveness_status == 'passed' %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %}"></i>
+                    Liveness Score: {{ kyc.liveness_status|capitalize }}
+                </div>
+            </div>
+        </div>
+
+        <div class="fraud-score-summary-box">
+            <span class="score-label-text">Automated Credibility Score:</span>
+            <span class="score-value-highlight {% if kyc.fraud_score >= 85 %}score-high{% elif kyc.fraud_score >= 60 %}score-medium{% else %}score-low{% endif %}">
+                {{ kyc.fraud_score }}%
+            </span>
+        </div>
+    </div>
+
+    <!-- Right: OCR & Actions -->
+    <div class="kyc-review-card">
+        <h3><i class="fas fa-shield-halved" style="color: var(--primary-color);"></i> Risk Assessment</h3>
+
+        <div class="system-notes-container">
+            <div class="notes-label-tiny">Automated Risk Analysis</div>
+            <p class="system-notes-text">
+                {{ kyc.failure_reason or 'No high-risk anomalies detected during automated background check. Data integrity appears within acceptable platform parameters.' }}
+            </p>
+        </div>
+
+        <div class="audit-action-form">
+            <h3>Manual Compliance Decision</h3>
+            <form action="/admin/kyc/{{ kyc.id }}/action" method="POST">
+                <div style="margin-bottom: 1.5rem;">
+                    <label class="label-tiny-caps">Audit Observations</label>
+                    <textarea name="notes" class="audit-notes-textarea"
+                        placeholder="Detail any manual red flags or verification confirmation here..."></textarea>
+                </div>
+                <div class="audit-decision-grid">
+                    <button type="submit" name="action" value="approve" class="btn-audit approve">
+                        <i class="fas fa-user-check"></i> Verify User
+                    </button>
+                    <button type="submit" name="action" value="reject" class="btn-audit reject">
+                        <i class="fas fa-user-slash"></i> Flag Risk
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="audit-trail-wrapper">
+    <div class="kyc-review-card">
+        <h3><i class="fas fa-history" style="color: var(--primary-color);"></i> Identity Audit Log</h3>
+        <div style="overflow-x: auto;">
+            <table class="audit-history-table">
+                <thead>
+                    <tr>
+                        <th>Date & Time</th>
+                        <th>Activity</th>
+                        <th>Network Trace</th>
+                        <th>Administrative Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in audit_trail %}
+                    <tr class="audit-txn-row">
+                        <td style="white-space: nowrap; font-weight: 500;">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                        <td><strong style="color: var(--secondary-color);">{{ log.action|replace('_', ' ')|capitalize }}</strong></td>
+                        <td style="font-family: monospace; color: #64748b;">{{ log.ip_address }}</td>
+                        <td>{{ log.notes or '...' }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% if not audit_trail %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: #64748b; padding: 2rem;">No previous audit entries recorded.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

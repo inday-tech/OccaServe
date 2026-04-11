@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Your Role - OccaServe</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #FF7B54;
+            --primary-hover: #E66A45;
+            --slate-50: #F9F9FB;
+            --slate-100: #E8ECEF;
+            --slate-200: #DEE2E6;
+            --slate-600: #67727E;
+            --slate-700: #4B5563;
+            --slate-800: #2D4059;
+            --slate-900: #1E2532;
+        }
+
+        body {
+            background-color: var(--slate-50);
+            background-image: radial-gradient(at 0% 0%, hsla(15, 80%, 15%, 1) 0, transparent 50%),
+                radial-gradient(at 50% 0%, hsla(210, 30%, 30%, 1) 0, transparent 50%),
+                radial-gradient(at 100% 0%, hsla(30, 80%, 50%, 0.1) 0, transparent 50%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .selection-container {
+            max-width: 900px;
+            width: 100%;
+            text-align: center;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .selection-header {
+            margin-bottom: 3.5rem;
+        }
+
+        .selection-header h1 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 3rem;
+            color: #ffffff;
+            margin-bottom: 1rem;
+            letter-spacing: -0.02em;
+            font-weight: 800;
+        }
+
+        .selection-header p {
+            color: var(--slate-200);
+            font-size: 1.1rem;
+        }
+
+        .role-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+        }
+
+        .role-card {
+            background: #ffffff;
+            padding: 3.5rem;
+            border-radius: 2rem;
+            border: 1px solid var(--slate-200);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .role-card:hover {
+            transform: translateY(-10px);
+            border-color: var(--primary);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.2);
+        }
+
+        .role-icon {
+            width: 80px;
+            height: 80px;
+            background: var(--slate-50);
+            color: var(--primary);
+            border-radius: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s;
+        }
+
+        .role-card:hover .role-icon {
+            background: var(--primary);
+            color: #ffffff;
+        }
+
+        .role-card h3 {
+            font-size: 1.75rem;
+            color: var(--slate-900);
+            margin-bottom: 1rem;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+        }
+
+        .role-card p {
+            color: var(--slate-600);
+            font-size: 1rem;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .btn-selection {
+            width: 100%;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            font-weight: 700;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .btn-customer {
+            background: var(--slate-900);
+            color: white;
+        }
+
+        .btn-caterer {
+            background: var(--primary);
+            color: white;
+        }
+
+        .admin-link {
+            margin-top: 4rem;
+            color: var(--slate-300);
+            font-size: 0.95rem;
+        }
+
+        .admin-link a {
+            color: #ffffff;
+            font-weight: 700;
+            text-decoration: none;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 2px;
+        }
+
+        @media (max-width: 768px) {
+            .selection-header h1 {
+                font-size: 2.25rem;
+            }
+
+            .role-card {
+                padding: 2.5rem 1.5rem;
+            }
+
+            body {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}">
+</head>
+
+<body>
+    <div class="selection-container">
+        <div class="selection-header">
+            <h1>Welcome to OccaServe</h1>
+            <p>Select how you want to use the platform today</p>
+        </div>
+
+        <div class="role-grid">
+            <!-- Customer Role -->
+            <div class="role-card" onclick="window.location.href='/auth/register?role=customer'">
+                <div class="role-icon"><i class="fas fa-user"></i></div>
+                <h3>Customer</h3>
+                <p>Find and book the best catering services for your events.</p>
+                <div class="btn-selection btn-customer">Sign Up as Customer</div>
+            </div>
+
+            <!-- Caterer Role -->
+            <div class="role-card" onclick="window.location.href='/auth/register/caterer'">
+                <div class="role-icon"><i class="fas fa-utensils"></i></div>
+                <h3>Caterer</h3>
+                <p>Showcase your menu and grow your business with elite bookings.</p>
+                <div class="btn-selection btn-caterer">Join as Caterer</div>
+            </div>
+        </div>
+
+        <div class="admin-link">
+            Already have an account? <a href="/auth/login">Login here</a><br><br>
+            <a href="/auth/login?role=admin" style="font-size: 0.8rem; opacity: 0.7;">Admin Login</a>
+        </div>
+    </div>
+</body>
+</html>

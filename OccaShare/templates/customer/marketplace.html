@@ -1,0 +1,104 @@
+{% set nav_page = 'marketplace' %}
+{% extends "customer/layout.html" %}
+
+{% block title %}Discover Catering Partners - OccaServe{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/marketplace.css') }}?v=1.2">
+{% endblock %}
+
+{% block content %}
+<!-- Premium Compact Hero (Redesigned matching Packages) -->
+<div class="page-header"
+    style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 2.25rem;">
+    <div>
+        <h1>Discover Elite Caterers</h1>
+        <p>Hand-picked professionals for your unforgettable events.</p>
+    </div>
+    <div class="header-actions" style="display: flex; gap: 1rem; align-items: center;">
+        <div class="search-box-pro"
+            style="display: flex; align-items: center; gap: 0.75rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0 1.25rem; height: 48px; box-sizing: border-box; width: 340px; transition: all 0.2s ease;">
+            <i class="fas fa-search" style="color: #94a3b8; font-size: 1.1rem;"></i>
+            <input type="text" id="searchInput" placeholder="Search by name, cuisine, or city..."
+                style="border: none; outline: none; background: transparent; height: 100%; width: 100%; font-size: 0.95rem; color: #1e293b; font-weight: 400;"
+                value="{{ filters.q }}" oninput="debounceRunFilters()">
+        </div>
+    </div>
+</div>
+
+
+<div class="mkt-body-bg">
+    <div class="container py-4">
+        <!-- Skeleton loaders shown during fetch -->
+        <div id="skeletonContainer" class="mkt-grid-premium" style="display: none;">
+            {% for i in range(8) %}
+            <div class="skeleton-card">
+                <div class="skeleton-banner"></div>
+                <div class="skeleton-info">
+                    <div class="skeleton-line" style="width: 40%"></div>
+                    <div class="skeleton-line" style="height: 40px; width: 80%"></div>
+                    <div class="skeleton-line" style="width: 60%"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Real caterer cards -->
+        <div id="catererResults" class="mkt-grid-premium">
+            {% include "customer/marketplace_partial.html" %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let filterTimeout;
+    let abortController;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Initialization code if needed later
+    });
+
+    function debounceRunFilters() {
+        clearTimeout(filterTimeout);
+        filterTimeout = setTimeout(runFilters, 300);
+    }
+
+    async function runFilters() {
+        const query = document.getElementById('searchInput').value;
+        const params = new URLSearchParams();
+        if (query) params.append('q', query);
+
+        const resultsContainer = document.getElementById('catererResults');
+        const skeletonContainer = document.getElementById('skeletonContainer');
+
+        if (abortController) abortController.abort();
+        abortController = new AbortController();
+
+        try {
+            resultsContainer.style.opacity = '0.4';
+            skeletonContainer.style.display = 'grid';
+
+            const response = await fetch(`/customer/marketplace?${params.toString()}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                signal: abortController.signal
+            });
+
+            if (response.ok) {
+                const html = await response.text();
+                resultsContainer.innerHTML = html;
+            }
+        } catch (e) {
+            if (e.name === 'AbortError') return;
+            console.error('Search error:', e);
+        } finally {
+            if (!abortController || !abortController.signal.aborted) {
+                skeletonContainer.style.display = 'none';
+                resultsContainer.style.opacity = '1';
+            }
+        }
+    }
+</script>
+{% endblock %}

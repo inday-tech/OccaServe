@@ -1,0 +1,51 @@
+{% extends "customer/booking_wizard/wizard_base.html" %}
+
+{% block wizard_title %}Select Package{% endblock %}
+
+{% block step_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_menu.css') }}">
+{% endblock %}
+
+{% block wizard_content %}
+<div class="wizard-header-content">
+    <h2 class="wizard-title font-playfair">Select Your Catering Package</h2>
+    <p class="wizard-subtitle">Choose the perfect curated experience from {{ caterer.business_name }} to begin your
+        journey.</p>
+</div>
+
+<div class="packages-grid">
+    {% for pkg in packages %}
+    <div class="package-wizard-card">
+        <div class="package-card-image"
+            style="background-image: url('{{ pkg.image_url or 'https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=2070&auto=format&fit=crop' }}');">
+            <div class="package-card-price-badge">
+                &#8369;{{ "{:,.0f}".format(pkg.price_per_head or pkg.price or 0) }} <span class="price-unit">/
+                    head</span>
+            </div>
+        </div>
+        <div class="package-card-content">
+            <h4 class="package-card-title">{{ pkg.name }}</h4>
+            <p class="package-card-description">{{ pkg.description }}</p>
+
+            <form action="/bookings/step/menu" method="POST" style="margin-top: auto;">
+                <input type="hidden" name="package_id" value="{{ pkg.id }}">
+                <button type="submit" class="btn-primary package-card-btn">
+                    Select Experience <i class="fas fa-arrow-right"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="wizard-actions custom-journey-footer">
+    <div class="custom-journey-card">
+        <p class="custom-journey-text">
+            Seeking a customized culinary journey?
+        </p>
+        <a href="/caterers/{{ caterer.id }}" class="contact-chef-link">
+            Contact Master Chef <i class="fas fa-comment-alt-edit"></i>
+        </a>
+    </div>
+</div>
+{% endblock %}

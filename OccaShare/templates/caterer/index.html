@@ -1,0 +1,376 @@
+{% extends "caterer/layout.html" %}
+
+{% block title %}Overview - Caterer Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/index.css') }}?v=1.4">
+<style>
+    .revenue-analytics-card {
+        background: var(--white);
+        border-radius: 1.25rem;
+        padding: 2rem;
+        border: 1px solid rgba(var(--primary-color-rgb), 0.08);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+        margin-top: 2rem;
+        margin-bottom: 2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Welcome back, {{ user.first_name }}!</h1>
+    <p>Monitor your performance and manage your upcoming events.</p>
+</div>
+
+<!-- Stats Dashboard -->
+<div class="stats-grid-dashboard">
+    <!-- Revenue Card -->
+    <div class="stat-card-premium c-card-premium stat-card-revenue animate-up" style="border: none !important;">
+        <div class="stat-icon-bg"><i class="fas fa-coins"></i></div>
+        <div class="stat-label-dashboard">Gross Revenue</div>
+        <div class="stat-value-dashboard">₱{{ "{:,.2f}".format(total_revenue if total_revenue is defined else 0.0) }}
+        </div>
+        <div class="stat-hint-dashboard">Successfully collected</div>
+    </div>
+
+    <!-- ROI Card -->
+    <div class="stat-card-premium c-card-premium stat-card-white animate-up"
+        style="animation-delay: 0.1s; border-left: 4px solid #10b981 !important;">
+        <div class="stat-icon-bg" style="color: #10b981;"><i class="fas fa-percentage"></i></div>
+        <div class="stat-label-dashboard">Return on Investment (ROI)</div>
+        <div class="stat-value-dashboard" style="color: #10b981;">{{ roi_percentage if roi_percentage is defined else 0
+            }}%</div>
+        <div class="stat-hint-dashboard">Based on 60% standard cost</div>
+    </div>
+
+    <!-- Net Profit Card -->
+    <div class="stat-card-premium c-card-premium stat-card-white animate-up" style="animation-delay: 0.2s;">
+        <div class="stat-icon-bg" style="color: #059669;"><i class="fas fa-hand-holding-usd"></i></div>
+        <div class="stat-label-dashboard">Net Profit</div>
+        <div class="stat-value-dashboard">₱{{ "{:,.2f}".format(net_profit if net_profit is defined else 0.0) }}</div>
+        <div class="stat-hint-dashboard">Estimated earnings</div>
+    </div>
+
+    <!-- Total Customers Card -->
+    <div class="stat-card-premium c-card-premium stat-card-white animate-up" style="animation-delay: 0.3s;">
+        <div class="stat-icon-bg" style="color: #7c3aed;"><i class="fas fa-users"></i></div>
+        <div class="stat-label-dashboard">Total Customers</div>
+        <div class="stat-value-dashboard">{{ total_customers if total_customers is defined else 0 }}</div>
+        <div class="stat-hint-dashboard">Unique clients served</div>
+    </div>
+</div>
+
+<!-- Profitability Breakdown -->
+<div class="revenue-analytics-card c-card-premium animate-up" style="animation-delay: 0.4s; margin-top: 1.5rem;">
+    <div class="card-header-flex">
+        <div>
+            <h3 style="margin:0; font-weight: 700; color: var(--secondary-color);"><i
+                    class="fas fa-file-invoice-dollar"></i> Profitability Analysis</h3>
+            <p class="stat-hint-dashboard" style="margin-top: 0.5rem;">Detailed breakdown of your financial performance
+            </p>
+        </div>
+        <div class="roi-badge-premium"
+            style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 0.5rem 1rem; border-radius: 2rem; font-weight: 700; font-size: 0.9rem;">
+            <i class="fas fa-trending-up"></i> Healthy Margin
+        </div>
+    </div>
+
+    <div class="profit-breakdown-grid"
+        style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 1.5rem;">
+        <div class="breakdown-left">
+            <div class="mb-4">
+                <div class="flex justify-between mb-1"
+                    style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.85rem; font-weight: 600; color: var(--secondary-color);">Revenue vs.
+                        Expenses</span>
+                    <span style="font-size: 0.85rem; font-weight: 600; color: #10b981;">{{ ((net_profit / total_revenue
+                        * 100)|round if total_revenue > 0 else 0) if (net_profit is defined and total_revenue is
+                        defined) else 0 }}% Margin</span>
+                </div>
+                <div style="height: 12px; background: #f1f5f9; border-radius: 6px; overflow: hidden; display: flex;">
+                    <div style="width: 60%; background: #94a3b8; height: 100%; transition: width 0.5s ease;"
+                        title="Expenses (60%)"></div>
+                    <div style="width: 40%; background: #10b981; height: 100%; transition: width 0.5s ease;"
+                        title="Net Profit (40%)"></div>
+                </div>
+                <div style="display: flex; gap: 1.5rem; margin-top: 0.75rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: #64748b;">
+                        <span style="width: 8px; height: 8px; background: #94a3b8; border-radius: 50%;"></span> Est.
+                        Expenses (60%)
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: #64748b;">
+                        <span style="width: 8px; height: 8px; background: #10b981; border-radius: 50%;"></span> Net
+                        Profit (40%)
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="breakdown-right"
+            style="display: flex; flex-direction: column; justify-content: center; border-left: 1px solid #f1f5f9; padding-left: 2rem;">
+            <div style="margin-bottom: 1rem;">
+                <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                    Estimated Expenses</div>
+                <div style="font-size: 1.25rem; font-weight: 700; color: #e11d48;">- ₱{{
+                    "{:,.2f}".format(estimated_expenses if estimated_expenses is defined else 0.0) }}</div>
+            </div>
+            <div>
+                <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Net
+                    Earnings</div>
+                <div style="font-size: 1.25rem; font-weight: 700; color: #059669;">+ ₱{{ "{:,.2f}".format(net_profit if
+                    net_profit is defined else 0.0) }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="charts-grid-dashboard" style="margin-top: 1.5rem;">
+    <!-- Revenue Analytics Chart -->
+    <div class="revenue-analytics-card c-card-premium" style="margin-top: 0; margin-bottom: 0;">
+        <div class="card-header-flex">
+            <div>
+                <h3 style="margin:0; font-weight: 700; color: var(--secondary-color);"><i class="fas fa-chart-line"></i>
+                    Revenue Overview</h3>
+                <p class="stat-hint-dashboard" style="margin-top: 0.5rem;">Monthly revenue performance for the year</p>
+            </div>
+        </div>
+        <div class="chart-canvas-wrapper" style="height: 250px; position: relative;">
+            <canvas id="revenueChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Monthly Bookings Chart -->
+    <div class="revenue-analytics-card c-card-premium" style="margin-top: 0; margin-bottom: 0;">
+        <div class="card-header-flex">
+            <div>
+                <h3 style="margin:0; font-weight: 700; color: var(--secondary-color);"><i class="fas fa-chart-bar"></i>
+                    Monthly Bookings</h3>
+                <p class="stat-hint-dashboard" style="margin-top: 0.5rem;">Completed vs pending bookings this year</p>
+            </div>
+        </div>
+        <div class="chart-canvas-wrapper" style="height: 250px; position: relative;">
+            <canvas id="bookingsChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="dashboard-three-col-grid">
+    <!-- Upcoming Events -->
+    <div class="sidebar-card-dashboard upcoming-events-card">
+        <h3 class="sidebar-card-title">Upcoming Events</h3>
+        {% if upcoming_events %}
+        <div class="event-list-dashboard">
+            {% for event in upcoming_events %}
+            <div class="upcoming-item-row">
+                <div class="event-date-box">
+                    <span class="month">{{ event.event_date.strftime('%b') if event.event_date else '???' }}</span>
+                    <span class="day">{{ event.event_date.strftime('%d') if event.event_date else '??' }}</span>
+                </div>
+                <div class="event-details-box">
+                    <div class="event-head-box">
+                        <span class="event-title-text">{{ event.event_name or 'Event Title' }}</span>
+                        <span class="event-status status-badge-dashboard status-{{ event.status }}">{{
+                            event.status|replace('_', ' ')|capitalize }}</span>
+                    </div>
+                    <div class="event-subtitle-text">{{ event.package.name if event.package else event.event_type }}
+                    </div>
+                    <div class="event-meta-text">
+                        <span><i class="far fa-clock"></i> {{ event.event_time.strftime('%I:%M %p') if event.event_time
+                            else 'TBD' }}</span>
+                        <span><i class="fas fa-map-marker-alt"></i> {{ event.venue_address or 'TBD' }}</span>
+                        <span><i class="fas fa-user-friends"></i> {{ event.guest_count }} guests</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="no-packages-dashboard">No upcoming events found.</p>
+        {% endif %}
+    </div>
+
+    <!-- Live Messages Widget -->
+    <div class="sidebar-card-dashboard messages-widget-container">
+        {% include "shared/dashboard_messages_widget.html" %}
+    </div>
+
+    <!-- Popular Packages -->
+    <div class="sidebar-card-dashboard popular-packages-card">
+        <h3 class="sidebar-card-title">Popular Packages</h3>
+        {% if popular_packages %}
+        <div class="popular-list-dashboard">
+            {% for p in popular_packages %}
+            {% set pct = [((p.orders / popular_packages[0].orders) * 100), 100]|min if popular_packages[0].orders > 0
+            else 0 %}
+            <div class="popular-item-row">
+                <div class="popular-head-box">
+                    <span class="popular-name-text">{{ p.package.name }}</span>
+                    <span class="popular-price-text">₱{{ "{:,.2f}".format(p.package.price or p.package.price_per_head or
+                        0.0) }}</span>
+                </div>
+                <div class="popular-orders-text">{{ p.orders }} orders</div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill" style="width: {{ pct }}%;"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="no-packages-dashboard">No popular packages.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Recent Orders Card -->
+<div class="recent-requests-card c-card-premium" style="margin-top: 1.5rem;">
+    <div class="card-header-flex">
+        <h3 style="margin:0; font-weight: 700; color: var(--secondary-color);">Recent Orders</h3>
+    </div>
+    {% if bookings %}
+    <div class="recent-orders-list">
+        {% for booking in bookings %}
+        <div class="recent-order-row">
+            <div class="ro-avatar">
+                {% if booking.user %}
+                {{ booking.user.first_name[0] | upper }}{{ booking.user.last_name[0] | upper }}
+                {% else %}
+                WI
+                {% endif %}
+            </div>
+            <div class="ro-details">
+                <div class="ro-name">
+                    {% if booking.user %}
+                    {{ booking.user.first_name }} {{ booking.user.last_name }}
+                    {% else %}
+                    Walk-in Customer
+                    {% endif %}
+                </div>
+                <div class="ro-event">{{ booking.event_type }}</div>
+            </div>
+            <div class="ro-price-date">
+                <div class="ro-amount">₱{{ "{:,.2f}".format(booking.total_amount) if booking.total_amount else 'TBD' }}
+                </div>
+                <div class="ro-date">{{ booking.event_date.strftime('%b %d, %Y') if booking.event_date else '' }}</div>
+            </div>
+            <div class="ro-status">
+                {% set status_class = {
+                'confirmed': 'ro-status-confirmed',
+                'completed': 'ro-status-completed',
+                'cancelled': 'ro-status-cancelled',
+                'pending': 'ro-status-pending',
+                'in_progress': 'ro-status-inprogress'
+                }.get(booking.status, 'ro-status-default') %}
+                <span class="ro-badge {{ status_class }}">{{ booking.status|replace('_', ' ')|capitalize }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state-dashboard">
+        <p>No recent orders found.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const chartData = {{ chart_data | tojson if chart_data is defined else '[]'
+    }};
+    const bookingsChartData = {{ bookings_chart_data | tojson if bookings_chart_data is defined else '[]' }};
+
+    const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#FF7B54';
+    const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim() || '#E66A45';
+    const highlightColor = getComputedStyle(document.documentElement).getPropertyValue('--highlight-color').trim() || '#48BB78';
+
+    // Revenue Chart (Line Chart)
+    if (chartData && chartData.length > 0) {
+        const ctxRev = document.getElementById('revenueChart').getContext('2d');
+        const gradientRev = ctxRev.createLinearGradient(0, 0, 0, 300);
+        gradientRev.addColorStop(0, 'rgba(var(--primary-color-rgb), 0.4)'); 
+        gradientRev.addColorStop(1, 'rgba(var(--primary-color-rgb), 0.0)');
+
+        new Chart(ctxRev, {
+            type: 'line',
+            data: {
+                labels: chartData.map(d => d.label),
+                datasets: [{
+                    label: 'Gross Revenue (₱)',
+                    data: chartData.map(d => d.revenue),
+                    borderColor: primaryColor,
+                    backgroundColor: gradientRev,
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: primaryColor,
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false },
+                        ticks: { callback: value => '₱' + (value >= 1000 ? value / 1000 + 'k' : value) }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    }
+
+    // Bookings Chart (Bar Chart)
+    if (bookingsChartData && bookingsChartData.length > 0) {
+        const ctxBook = document.getElementById('bookingsChart').getContext('2d');
+        new Chart(ctxBook, {
+            type: 'bar',
+            data: {
+                labels: bookingsChartData.map(d => d.label.split(" ")[0]), // Use short month string
+                datasets: [
+                    {
+                        label: 'Completed',
+                        data: bookingsChartData.map(d => d.completed),
+                        backgroundColor: highlightColor, 
+                        borderRadius: 6,
+                        barThickness: 15
+                    },
+                    {
+                        label: 'Pending',
+                        data: bookingsChartData.map(d => d.pending),
+                        backgroundColor: primaryColor, 
+                        borderRadius: 6,
+                        barThickness: 15
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false },
+                        ticks: { stepSize: 3 }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    }
+
+    });
+</script>
+{% endblock %}

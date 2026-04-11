@@ -1,0 +1,180 @@
+{% set wconfig = website_config() %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>{% block title %}Admin Dashboard - OccaServe{% endblock %}</title>
+
+    <!-- Core Assets -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/admin/layout.css') }}?v=1.6">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/alert_modal.css') }}?v=1.5">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    {% if wconfig and wconfig.favicon_url %}
+    <link rel="icon" href="{{ wconfig.favicon_url }}">
+    {% endif %}
+
+    {% block extra_css %}{% endblock %}
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}">
+</head>
+
+<body class="no-transition">
+    <script>
+        // Apply historical scroll position and collapse state immediately
+        (function () {
+            const isCollapsed = localStorage.getItem('adminSidebarCollapsed') === 'true';
+            if (isCollapsed) {
+                // We apply to a wrapper later via ID, but we can also set a class on body or html
+                document.documentElement.classList.toggle('sidebar-icons-only', isCollapsed);
+            }
+            // Remove no-transition after a frame so future toggles ARE smooth
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    document.body.classList.remove('no-transition');
+                }, 100);
+            });
+        })();
+    </script>
+
+    <!-- Floating Mobile Toggle -->
+    <button class="floating-burger" id="burgerBtn" onclick="toggleSidebar()" aria-label="Toggle navigation">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+    <div class="dashboard-wrapper" id="dashboardWrapper">
+        <aside class="sidebar" id="mainSidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-toggle-row">
+                    <button type="button" id="desktopToggleBtn" class="desktop-toggle-btn"
+                        aria-label="Toggle Desktop Sidebar">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+
+                <div class="sidebar-user-profile">
+                    <div class="user-avatar-initials">
+                        {{ user.first_name[0] }}{{ user.last_name[0] }}
+                    </div>
+                    <div class="user-info-container">
+                        <h2 class="user-full-name">{{ user.first_name }} {{ user.last_name }}</h2>
+                        <span class="user-role-label">Platform Administrator</span>
+                    </div>
+                </div>
+            </div>
+
+            <ul class="sidebar-menu" id="sidebarMenu">
+                <li>
+                    <a href="/admin/dashboard" class="{{ 'active' if active_page == 'overview' }}"
+                        onclick="closeSidebar()">
+                        <i class="fas fa-home"></i> <span>Overview</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/admin/caterers" class="{{ 'active' if active_page == 'caterers' }}"
+                        onclick="closeSidebar()">
+                        <i class="fas fa-utensils"></i> <span>Manage Caterers</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/admin/customers" class="{{ 'active' if active_page == 'customers' }}"
+                        onclick="closeSidebar()">
+                        <i class="fas fa-user-friends"></i> <span>Manage Customers</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/admin/bookings" class="{{ 'active' if active_page == 'bookings' }}"
+                        onclick="closeSidebar()">
+                        <i class="fas fa-calendar-check"></i> <span>All Bookings</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/admin/payments" class="{{ 'active' if active_page == 'payments' }}"
+                        onclick="closeSidebar()">
+                        <i class="fas fa-money-bill-trend-up"></i> <span>Earnings & Commissions</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/admin/inquiries" class="{{ 'active' if active_page == 'inquiries' }}">
+                        <i class="fas fa-envelope-open-text"></i> <span>Visitor Inquiries</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/admin/payouts" class="{{ 'active' if active_page == 'payouts' }}"
+                        onclick="closeSidebar()">
+                        <i class="fas fa-hand-holding-dollar"></i> <span>Payouts</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/admin/reviews" class="{{ 'active' if active_page == 'reviews' }}"
+                        onclick="closeSidebar()">
+                        <i class="fas fa-star"></i> <span>Reviews</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/admin/kyc" class="{{ 'active' if active_page == 'kyc' }}" onclick="closeSidebar()">
+                        <i class="fas fa-shield-halved"></i> <span>Compliance</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/admin/archives" class="{{ 'active' if active_page == 'archives' }}"
+                        onclick="closeSidebar()">
+                        <i class="fas fa-archive"></i> <span>Archives</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/admin/settings" class="{{ 'active' if active_page == 'settings' }}"
+                        onclick="closeSidebar()">
+                        <i class="fas fa-sliders"></i> <span>Site Settings</span>
+                    </a>
+                </li>
+                <li class="menu-divider"></li>
+                <li>
+                    <a href="/auth/logout" class="logout-link">
+                        <i class="fas fa-right-from-bracket"></i> <span>Logout</span>
+                    </a>
+                </li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v=1.4"></script>
+    <script src="{{ url_for('static', path='/js/main.js') }}?v=2.0"></script>
+    <script src="{{ url_for('static', path='/js/admin/layout.js') }}?v=1.1"></script>
+
+    <!-- Inactivity Auto-Logout -->
+    <div id="inactivityModal" class="modal"
+        style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center;">
+        <div
+            style="background-color: #ffffff; padding: 2.5rem; border-radius: 1.5rem; max-width: 400px; width: 90%; text-align: center; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+            <div style="font-size: 3rem; color: #f59e0b; margin-bottom: 1rem;"><i
+                    class="fas fa-exclamation-triangle"></i></div>
+            <h2 style="font-size: 1.25rem; font-weight: 700; color: #11141A; margin-bottom: 0.5rem;">Session Expiring
+                Soon</h2>
+            <p style="color: #64748b; margin-bottom: 2rem; font-size: 0.95rem;">You've been inactive for a while. Your
+                session will expire in 1 minute. Would you like to stay logged in?</p>
+            <button id="stayLoggedInBtn"
+                style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; font-weight: 600; background: #FF7B54; color: white; border: none; cursor: pointer;">Yes,
+                keep me logged in</button>
+        </div>
+    </div>
+
+    {% block extra_js %}{% endblock %}
+</body>
+
+</html>

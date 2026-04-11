@@ -1,0 +1,206 @@
+/**
+ * Auth Modal Controller
+ */
+
+function openAuthModal(type) {
+    const overlay = document.getElementById('authModalOverlay');
+    const container = overlay ? overlay.querySelector('.auth-modal-container') : null;
+    const loginContent = document.getElementById('authModalLogin');
+    const signupContent = document.getElementById('authModalSignup');
+    const forgotContent = document.getElementById('authModalForgot');
+    const verifyContent = document.getElementById('authModalVerify');
+    const catererContent = document.getElementById('authModalCaterer');
+
+    if (!overlay || !loginContent || !signupContent || !forgotContent || !verifyContent) return;
+
+    // Reset all
+    loginContent.classList.remove('active');
+    signupContent.classList.remove('active');
+    forgotContent.classList.remove('active');
+    verifyContent.classList.remove('active');
+    if (catererContent) catererContent.classList.remove('active');
+    if (container) container.classList.remove('wide');
+
+    if (type === 'login') {
+        loginContent.classList.add('active');
+    } else if (type === 'signup') {
+        signupContent.classList.add('active');
+    } else if (type === 'forgot') {
+        forgotContent.classList.add('active');
+    } else if (type === 'verify') {
+        verifyContent.classList.add('active');
+    } else if (type === 'caterer-signup' && catererContent) {
+        catererContent.classList.add('active');
+        if (container) container.classList.add('wide');
+    }
+
+    // Show overlay
+    overlay.classList.add('active');
+    document.body.classList.add('modal-open');
+}
+
+function closeAuthModal() {
+    const overlay = document.getElementById('authModalOverlay');
+    if (!overlay) return;
+
+    overlay.classList.remove('active');
+    document.body.classList.remove('modal-open');
+
+    // Optional: Clean up URL hash
+    if (window.location.hash.includes('#login') || window.location.hash.includes('#signup')) {
+        history.pushState("", document.title, window.location.pathname + window.location.search);
+    }
+}
+
+// Global initialization
+document.addEventListener('DOMContentLoaded', () => {
+    const overlay = document.getElementById('authModalOverlay');
+
+    // Close on background click
+    if (overlay) {
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) closeAuthModal();
+        });
+    }
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeAuthModal();
+    });
+
+    // Intercept navbar buttons
+    const loginLink = document.getElementById('navLoginBtn');
+    const signupLink = document.getElementById('navSignupBtn');
+
+    if (loginLink) {
+        loginLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            openAuthModal('login');
+        });
+    }
+
+    if (signupLink) {
+        signupLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            openAuthModal('signup');
+        });
+    }
+
+    // --- GLOBAL AUTH LINK INTERCEPTION ---
+    // This allows ANY link on the page (footer, navbar, etc) to open the modal
+    // instead of a full page reload if it points to an auth route.
+    function attachGlobalAuthInterceptors() {
+        document.addEventListener('click', function(e) {
+            const link = e.target.closest('a');
+            if (!link || !link.href) return;
+
+            try {
+                const url = new URL(link.href);
+                // Only intercept internal links
+                if (url.origin !== window.location.origin) return;
+
+                const path = url.pathname;
+                
+                // Route mapping
+                if (path === '/auth/login') {
+                    e.preventDefault();
+                    openAuthModal('login');
+                } else if (path === '/auth/register/caterer') {
+                    e.preventDefault();
+                    openAuthModal('caterer-signup');
+                } else if (path === '/auth/register') {
+                    e.preventDefault();
+                    openAuthModal('signup');
+                } else if (path === '/auth/forgot-password') {
+                    e.preventDefault();
+                    openAuthModal('forgot');
+                }
+            } catch (err) {
+                // Not a valid URL or other issue, ignore
+            }
+        });
+    }
+
+    // Modal internal link interception (for links ALREADY inside modals)
+    function attachModalInternalInterceptors() {
+        const modalContents = document.querySelectorAll('.auth-modal-content');
+        modalContents.forEach(content => {
+            const links = content.querySelectorAll('a');
+            links.forEach(link => {
+                // If the link is just a "#" but has internal logic, skip
+                if (link.getAttribute('onclick') || link.getAttribute('href') === '#') return;
+                
+                link.addEventListener('click', (e) => {
+                    const href = link.getAttribute('href') || '';
+                    if (href === '/auth/login') {
+                        e.preventDefault();
+                        openAuthModal('login');
+                    } else if (href === '/auth/register') {
+                        e.preventDefault();
+                        openAuthModal('signup');
+                    } else if (href === '/auth/register/caterer') {
+                        e.preventDefault();
+                        openAuthModal('caterer-signup');
+                    }
+                });
+            });
+        });
+    }
+
+    // Initialize all interceptors
+    attachGlobalAuthInterceptors();
+    attachModalInternalInterceptors();
+
+    // Auto-open from hash
+    if (window.location.hash === '#login') openAuthModal('login');
+    else if (window.location.hash === '#signup') openAuthModal('signup');
+    else if (window.location.hash === '#forgot') openAuthModal('forgot');
+    else if (window.location.hash === '#verify') openAuthModal('verify');
+    else if (window.location.hash === '#caterer-signup') openAuthModal('caterer-signup');
+});
+
+// Export for global use
+window.openAuthModal = openAuthModal;
+window.closeAuthModal = closeAuthModal;
+
+// --- DIAMOND STANDARD: SOCIAL LOGIN HANDLER ---
+let isSocialLoggingIn = false;
+window.handleSocialLogin = function (provider) {
+    if (isSocialLoggingIn) return;
+    isSocialLoggingIn = true;
+
+    // Target by provider class
+    const btn = document.querySelector(`.btn-${provider}`);
+    if (btn) {
+        btn.style.opacity = '0.7';
+        btn.style.cursor = 'wait';
+        btn.style.pointerEvents = 'none';
+
+        // Show loading spinner in place of existing icon
+        const icon = btn.querySelector('i');
+        if (icon) {
+            icon.className = 'fas fa-circle-notch fa-spin';
+        } else {
+            btn.innerHTML = `<i class="fas fa-circle-notch fa-spin"></i>`;
+        }
+    }
+
+    // Direct redirection to backend OAuth route
+    window.location.href = `/auth/login/${provider}`;
+};
+
+window.togglePasswordVisibility = function (button) {
+    const wrapper = button.parentElement;
+    const input = wrapper.querySelector('input');
+    const icon = button.querySelector('i');
+
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+};

@@ -1,0 +1,461 @@
+{% set wconfig = website_config() %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>{% block title %}Caterer Dashboard - OccaServe{% endblock %}</title>
+
+    <!-- Core Assets (Base) -->
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}?v=9.9">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- System & Layout Presets -->
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v=9.9">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}?v=9.9">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/alert_modal.css') }}?v=9.9">
+    
+    <!-- MASTER LAYOUT (Force Priority) -->
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/layout.css') }}?v=9.9">
+
+    <script>
+        // Apply historical sidebar state immediately to prevent flicker
+        (function () {
+            const isCollapsed = localStorage.getItem('catererSidebarCollapsed') === 'true';
+            if (isCollapsed) {
+                document.documentElement.classList.add('sidebar-icons-only');
+            }
+        })();
+    </script>
+
+    {% if wconfig and wconfig.favicon_url %}
+    <link rel="icon" href="{{ wconfig.favicon_url }}">
+    {% endif %}
+
+    {% block extra_css %}{% endblock %}
+
+    {% if user and user.caterer_profile %}
+    <style>
+        :root {
+            /* Theme Color Injection with Enforced Fallbacks */
+            {% if user.caterer_profile.primary_color %}
+            --primary-color: {{ user.caterer_profile.primary_color }} !important;
+            --primary-color-rgb: {{ user.caterer_profile.primary_color|hex_to_rgb if user.caterer_profile.primary_color else '255, 123, 84' }} !important;
+            {% else %}
+            --primary-color: #ff7b54 !important;
+            --primary-color-rgb: 255, 123, 84 !important;
+            {% endif %}
+
+            {% if user.caterer_profile.secondary_color %}
+            --secondary-color: {{ user.caterer_profile.secondary_color }} !important;
+            {% endif %}
+
+            {% if user.caterer_profile.accent_color %}
+            --accent-color: {{ user.caterer_profile.accent_color }} !important;
+            --accent-color-rgb: {{ user.caterer_profile.accent_color|hex_to_rgb if user.caterer_profile.accent_color else '230, 106, 69' }} !important;
+            {% endif %}
+
+            {% if user.caterer_profile.highlight_color %}
+            --highlight-color: {{ user.caterer_profile.highlight_color }} !important;
+            --highlight-color-rgb: {{ user.caterer_profile.highlight_color|hex_to_rgb if user.caterer_profile.highlight_color else '72, 187, 120' }} !important;
+            {% else %}
+            --highlight-color: #48BB78 !important;
+            --highlight-color-rgb: 72, 187, 120 !important;
+            {% endif %}
+
+            /* Advanced Branding Variables */
+            --font-family-base: 'Poppins', sans-serif;
+            --border-radius-base: {{ user.caterer_profile.border_radius or 12 }}px;
+            
+            /* Enforced Sidebar Spacing Variable */
+            --sidebar-width: 280px !important;
+        }
+
+        body {
+            font-family: var(--font-family-base), sans-serif !important;
+        }
+
+        /* Global Border Radius Overrides */
+        .card,
+        .profile-card,
+        .btn,
+        .btn-primary,
+        .btn-secondary,
+        .form-group input,
+        .form-group select,
+        .form-group textarea,
+        .sidebar-link,
+        .stat-card,
+        .menu-item-card,
+        .account-status-box,
+        .modal-content,
+        .search-bar-container {
+            border-radius: var(--border-radius-base) !important;
+        }
+
+        /* Hide number spinners globally */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type=number] {
+            -moz-appearance: textfield;
+            /* Firefox */
+        }
+
+        /* Error Drawer Styles */
+        .error-drawer {
+            background: #fef2f2;
+            border-left: 4px solid #ef4444;
+            color: #b91c1c;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            border-radius: var(--border-radius-base);
+            display: none;
+            align-items: flex-start;
+            gap: 12px;
+            font-size: 0.9rem;
+            animation: slideDown 0.3s ease-out;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .error-drawer i {
+            margin-top: 3px;
+            font-size: 1.1rem;
+        }
+
+        .error-drawer ul {
+            margin: 0;
+            padding-left: 20px;
+            text-align: left;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+
+    <!-- ULTIMATE DIRECT INJECTION (Cache Bypass & Responsive) -->
+    <style>
+        /* Base Desktop (Full Sidebar) */
+        @media (min-width: 1025px) {
+            .sidebar:not(.sidebar-icons-only) {
+                width: 280px !important;
+            }
+            .dashboard-wrapper:not(.sidebar-icons-only) .main-content {
+                margin-left: 280px !important;
+                width: calc(100% - 280px) !important;
+            }
+        }
+        
+        /* Icons Only Mode (Desktop/Tablet) */
+        .sidebar-icons-only .sidebar,
+        html.sidebar-icons-only .sidebar {
+            width: 80px !important;
+        }
+        .sidebar-icons-only .main-content,
+        html.sidebar-icons-only .main-content {
+            margin-left: 80px !important;
+            width: calc(100% - 80px) !important;
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0 !important;
+                width: 100% !important;
+                padding-top: calc(var(--topbar-height, 60px) + 1.5rem) !important;
+            }
+        }
+
+        /* Enforced Active Menu Aesthetics */
+        .sidebar-menu a.active {
+            background-color: var(--primary-color) !important;
+            color: white !important;
+            border-radius: 0.85rem !important;
+            box-shadow: 0 4px 15px rgba(var(--primary-color-rgb), 0.3) !important;
+        }
+        .sidebar-menu a.active::before {
+            display: none !important;
+        }
+
+        /* Ultimate Consistency for Mini Icons (Match Customer UI) */
+        .sidebar-icons-only .sidebar-menu a,
+        html.sidebar-icons-only .sidebar-menu a {
+            padding: 0 !important;
+            width: 44px !important;
+            height: 44px !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            margin: 0 auto 0.5rem auto !important;
+            border-radius: 12px !important;
+        }
+        
+        .sidebar-icons-only .sidebar-menu li,
+        html.sidebar-icons-only .sidebar-menu li {
+            padding: 0 !important;
+            display: flex !important;
+            justify-content: center !important;
+        }
+
+        .sidebar-icons-only .sidebar-menu a i,
+        html.sidebar-icons-only .sidebar-menu a i {
+            margin: 0 !important;
+            width: auto !important;
+            height: auto !important;
+            text-align: center !important;
+            background: transparent !important;
+            box-shadow: none !important;
+        }
+        
+        /* Ensure there's no double background on hover/active child elements */
+        .sidebar-icons-only .sidebar-menu a.active i,
+        html.sidebar-icons-only .sidebar-menu a.active i {
+            background: transparent !important;
+            color: white !important;
+            box-shadow: none !important;
+        }
+        
+        /* Stop the logo from stretching and fix the 'Pill' shape in mini mode */
+        .sidebar-icons-only .sidebar-branding,
+        html.sidebar-icons-only .sidebar-branding {
+            background: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            justify-content: center !important;
+        }
+        
+        .sidebar-icons-only .branding-logo-box,
+        html.sidebar-icons-only .branding-logo-box {
+            margin: 0 auto !important;
+            display: flex !important;
+            justify-content: center !important;
+        }
+        
+        /* Make Logo perfectly round like Customer Dashboard (Image 2) */
+        .sidebar-brand-img,
+        .sidebar-brand-initial {
+            border-radius: 50% !important;
+            width: 40px !important;
+            height: 40px !important;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05) !important;
+        }
+
+        /* Expanded Mode Styling Refinement */
+        .sidebar-branding {
+            background: transparent !important;
+            border: none !important;
+            padding: 0.5rem !important;
+            margin-bottom: 0.5rem !important;
+        }
+        .business-name-short {
+            color: var(--secondary-color) !important;
+            font-size: 0.95rem !important;
+            text-transform: capitalize !important;
+        }
+        .business-email-mini {
+            color: #64748b !important;
+            text-transform: lowercase !important;
+            font-size: 0.70rem !important;
+        }
+    </style>
+
+    <script>
+        window.catererConfig = {
+            userId: {{ user.id }},
+            businessName: "{{ user.caterer_profile.business_name|escape }}",
+            baseUrl: window.location.origin
+        };
+    </script>
+    {% endif %}
+</head>
+
+<body>
+
+    <!-- Mobile Top Bar -->
+    <div class="mobile-topbar" id="mobileTopbar">
+        <button class="burger-btn" id="burgerBtn" onclick="toggleSidebar()" aria-label="Toggle navigation">
+            <span></span><span></span><span></span>
+        </button>
+        <div class="mobile-brand">
+            {% if wconfig and wconfig.logo_url %}
+            <img src="{{ wconfig.logo_url }}" alt="Logo" style="height:22px; border-radius:4px; object-fit:contain;">
+            {% endif %}
+            <span>{{ user.caterer_profile.business_name if user.caterer_profile else 'OccaServe' }}</span>
+        </div>
+    </div>
+
+    <!-- Sidebar Overlay (mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+    <div
+        class="dashboard-wrapper {{ wrapper_class if wrapper_class else '' }} {{ 'sidebar-icons-only' if user and user.caterer_profile and user.caterer_profile.sidebar_mode == 'icons' else '' }}">
+        <aside class="sidebar" id="mainSidebar">
+            <!-- New Header Structure -->
+            <div class="sidebar-header">
+                <div class="sidebar-toggle-row">
+                    <button type="button" id="desktopToggleBtn" class="desktop-toggle-btn"
+                        aria-label="Toggle Desktop Sidebar">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+
+                <div class="sidebar-branding">
+                    <div class="branding-logo-box">
+                        {% if user and user.caterer_profile and user.caterer_profile.logo_url %}
+                        <img src="{{ user.caterer_profile.logo_url }}" alt="Logo" class="sidebar-brand-img">
+                        {% else %}
+                        <div class="sidebar-brand-initial">
+                            {{ user.first_name[0] if user.first_name else '?' }}{{ user.last_name[0] if user.last_name
+                            else '' }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="sidebar-text branding-text">
+                        <h2 class="business-name-short">{{ user.caterer_profile.business_name|truncate(20) if
+                            user.caterer_profile else 'My Business' }}</h2>
+                        <span class="business-email-mini">{{ user.email|truncate(24) if user else '' }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <ul class="sidebar-menu" id="sidebarMenu">
+                <li>
+                    <a href="/caterer/dashboard" class="{{ 'active' if active_page == 'overview' }}"
+                        onclick="closeSidebar()">
+                        <i class="fas fa-th-large"></i> <span>Overview</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/caterer/bookings" class="{{ 'active' if active_page == 'bookings' }}"
+                        onclick="closeSidebar()">
+                        <i class="fas fa-tasks"></i> <span>Manage Bookings</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/caterer/packages" class="{{ 'active' if active_page == 'packages' }}"
+                        onclick="closeSidebar()">
+                        <i class="fas fa-box"></i> <span>Packages</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/caterer/menu" class="{{ 'active' if active_page == 'menu' }}" onclick="closeSidebar()">
+                        <i class="fas fa-utensils"></i> <span>Menu Library</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/caterer/payments" class="{{ 'active' if active_page == 'payments' }}"
+                        onclick="closeSidebar()">
+                        <i class="fas fa-wallet"></i> <span>Payments</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/caterer/reviews" class="{{ 'active' if active_page == 'reviews' }}"
+                        onclick="closeSidebar()">
+                        <i class="fas fa-star"></i> <span>Reviews</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/caterer/customers" class="{{ 'active' if active_page == 'customers' }}"
+                        onclick="closeSidebar()">
+                        <i class="fas fa-users"></i> <span>Customers</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/caterer/calendar" class="{{ 'active' if active_page == 'calendar' }}"
+                        onclick="closeSidebar()">
+                        <i class="fas fa-calendar-alt"></i> <span>Calendar</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/caterer/archives" class="{{ 'active' if active_page == 'archives' }}"
+                        onclick="closeSidebar()">
+                        <i class="fas fa-archive"></i> <span>Archives</span>
+                    </a>
+                </li>
+                <li style="position: relative;">
+                    <a href="/caterer/notifications" class="{{ 'active' if active_page == 'notifications' }}"
+                        onclick="closeSidebar()">
+                        <i class="fas fa-bell"></i> <span class="sidebar-text">Notifications</span>
+                        {% set unread_count = user.notifications|selectattr('is_read', 'equalto', false)|list|count if
+                        user and user.notifications else 0 %}
+                        <span id="nav-notif-badge"
+                            style="background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.65rem; display: {{ 'flex' if unread_count > 0 else 'none' }}; align-items: center; justify-content: center; margin-left: auto;">{{
+                            unread_count }}</span>
+                    </a>
+                </li>
+                <li class="menu-divider"></li>
+                <li>
+                    <a href="/caterer/profile" class="{{ 'active' if active_page == 'profile' }}"
+                        onclick="closeSidebar()">
+                        <i class="fas fa-store"></i> <span>Business Profile</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/auth/logout" class="logout-link">
+                        <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+                    </a>
+                </li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Notification system assets -->
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/notifications.css') }}?v=9.9">
+    <script src="{{ url_for('static', path='/js/caterer/notifications.js') }}?v=9.9"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="{{ url_for('static', path='/js/main.js') }}?v=30.0"></script>
+    <script src="{{ url_for('static', path='/js/global/diamond_validation.js') }}?v=30.0"></script>
+    <script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v=9.9"></script>
+    <script src="{{ url_for('static', path='/js/caterer/layout.js') }}?v=9.9"></script>
+
+    {% block extra_js %}{% endblock %}
+
+    <!-- Inactivity Auto-Logout -->
+    <div id="inactivityModal" class="modal"
+        style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center;">
+        <div
+            style="background-color: #ffffff; padding: 2.5rem; border-radius: 1.5rem; max-width: 400px; width: 90%; text-align: center; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+            <div style="font-size: 3rem; color: #f59e0b; margin-bottom: 1rem;"><i
+                    class="fas fa-exclamation-triangle"></i></div>
+            <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--secondary-color); margin-bottom: 0.5rem;">
+                Session Expiring Soon</h2>
+            <p style="color: var(--text-light); margin-bottom: 2rem; font-size: 0.95rem;">You've been inactive for a
+                while. Your session will expire in 1 minute. Would you like to stay logged in?</p>
+            <button id="stayLoggedInBtn" class="btn-primary"
+                style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; font-weight: 600;">Yes, keep me logged
+                in</button>
+        </div>
+    </div>
+
+
+
+    {% if user %}
+    {% include "shared/floating_chat.html" %}
+    {% endif %}
+
+    {% block extra_body %}{% endblock %}
+</body>
+
+</html>

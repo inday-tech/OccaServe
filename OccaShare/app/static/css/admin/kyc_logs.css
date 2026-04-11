@@ -1,0 +1,161 @@
+/* Admin KYC & Fraud Review Styles */
+
+.review-filters-container {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 2rem;
+}
+
+/* Audit Table Card */
+.kyc-review-card-wrapper {
+    background: white;
+    border-radius: 1.5rem;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.audit-review-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.audit-review-table th {
+    text-align: left;
+    color: #64748b;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+    background: #f8fafc;
+}
+
+.audit-review-table td {
+    padding: 1.25rem;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.audit-review-table tr:hover {
+    background: #fcfcfc;
+}
+
+.kyc-user-identity-box {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.kyc-user-name {
+    font-weight: 700;
+    color: var(--secondary-color);
+    font-size: 0.95rem;
+}
+
+.kyc-user-email {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+/* Score Pill Customization */
+.fraud-score-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.4rem 0.8rem;
+    border-radius: 2rem;
+    font-weight: 800;
+    font-size: 0.75rem;
+}
+
+.fraud-score-pill.high {
+    background: #f0fdf4;
+    color: #10b981;
+}
+
+.fraud-score-pill.mid {
+    background: #fff7ed;
+    color: var(--primary-color);
+}
+
+.fraud-score-pill.low {
+    background: #fef2f2;
+    color: #ef4444;
+}
+
+/* Status Badges */
+.kyc-status-badge {
+    padding: 0.4rem 0.8rem;
+    border-radius: 2rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.status-manual_review {
+    background: #fffbeb;
+    color: #d97706;
+}
+
+.status-processing {
+    background: #eff6ff;
+    color: #0869da;
+}
+
+.status-flagged {
+    background: #fef2f2;
+    color: #ef4444;
+}
+
+.status-verified {
+    background: #f0fdf4;
+    color: #10b981;
+}
+
+.btn-review-kyc {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.25rem;
+    border-radius: 0.75rem;
+    background: white;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+    font-weight: 700;
+    font-size: 0.8rem;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.btn-review-kyc:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background: #fff7ed;
+}
+
+/* Risk Flags */
+.risk-flag-pill {
+    font-size: 0.65rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 0.5rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-block;
+}
+
+.risk-flag-pill.high_risk {
+    background: #fee2e2;
+    color: #ef4444;
+}
+
+.risk-flag-pill.ocr_failure {
+    background: #fffbeb;
+    color: #d97706;
+}

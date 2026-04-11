@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facebook - Login</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        /* --- FACEBOOK REPLICA STYLES --- */
+        .fb-window {
+            width: 500px;
+            background: #fff;
+            border-radius: 8px;
+            /* Slightly rounded on Windows 11 style */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            font-family: Helvetica, Arial, sans-serif;
+        }
+
+        .fb-header {
+            background-color: #3b5998;
+            /* Classic FB Blue */
+            color: #fff;
+            padding: 8px 10px;
+            display: flex;
+            align-items: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .fb-header i {
+            margin-right: 6px;
+            font-size: 16px;
+        }
+
+        .fb-stripe {
+            height: 25px;
+            background: repeating-linear-gradient(45deg,
+                    #f1f1f1,
+                    #f1f1f1 10px,
+                    #e9e9e9 10px,
+                    #e9e9e9 20px);
+            border-bottom: 1px solid #ccc;
+        }
+
+        .fb-content {
+            padding: 20px;
+        }
+
+        .fb-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #1c1e21;
+            margin-bottom: 15px;
+        }
+
+        .fb-profile {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .fb-avatar {
+            width: 50px;
+            height: 50px;
+            margin-right: 15px;
+            border: 1px solid #ccc;
+        }
+
+        .fb-name {
+            font-weight: bold;
+            font-size: 14px;
+            color: #1c1e21;
+        }
+
+        .fb-text {
+            font-size: 13px;
+            color: #1c1e21;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+
+        .fb-label {
+            font-size: 12px;
+            font-weight: bold;
+            color: #666;
+            margin-right: 10px;
+        }
+
+        .fb-input {
+            padding: 6px;
+            border: 1px solid #bdc7d8;
+            border-radius: 0;
+            width: 200px;
+            margin-right: 10px;
+        }
+
+        .fb-link {
+            font-size: 11px;
+            color: #3b5998;
+            text-decoration: none;
+        }
+
+        .fb-link:hover {
+            text-decoration: underline;
+        }
+
+        .fb-footer {
+            background-color: #f2f2f2;
+            border-top: 1px solid #ccc;
+            padding: 10px 15px;
+            text-align: right;
+        }
+
+        .fb-btn {
+            background-color: #4267b2;
+            color: #fff;
+            border: 1px solid #4267b2;
+            font-weight: bold;
+            font-size: 12px;
+            padding: 6px 20px;
+            cursor: pointer;
+            border-radius: 2px;
+        }
+
+        .fb-btn:hover {
+            background-color: #365899;
+        }
+
+        /* --- OVERLAY --- */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3b5998;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .status-text {
+            font-size: 18px;
+            color: #333;
+            font-weight: 500;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+    </style>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}">
+</head>
+
+<body>
+
+    <!-- FACEBOOK REPLICA -->
+    <div class="fb-window">
+        <div class="fb-header">
+            <i class="fab fa-facebook-square"></i> Facebook
+        </div>
+        <div class="fb-stripe"></div>
+
+        <div class="fb-content">
+            <div class="fb-title">Please enter your password to continue</div>
+
+            <div class="fb-profile">
+                <!-- Using a placeholder but styling it to look like the screenshot -->
+                <img src="https://ui-avatars.com/api/?name=Naomi+Caragay&background=random&size=100" class="fb-avatar"
+                    alt="Profile">
+                <div class="fb-name">Naomi Trillana Caragay</div>
+            </div>
+
+            <div class="fb-text">
+                The Page you are trying to visit on <strong style="color: #3b5998;">OccaServe</strong> requires that you
+                re-enter your Facebook password.
+            </div>
+
+            <div style="display: flex; align-items: center;">
+                <span class="fb-label">Password:</span>
+                <input type="password" class="fb-input" id="fbPassword">
+                <a href="#" class="fb-link">Forgotten your password?</a>
+            </div>
+        </div>
+
+        <div class="fb-footer">
+            <form id="authForm" action="/auth/callback/facebook" method="GET" style="display: inline;">
+                <input type="hidden" name="code" value="mock_fb_auth_code_fixed">
+                <button type="submit" class="fb-btn" onclick="startVerification(event)">Continue</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Realtime Overlay -->
+    <div class="overlay" id="loaderOverlay">
+        <div class="spinner" id="spinner"></div>
+        <div class="status-text" id="statusText">Connecting...</div>
+    </div>
+
+    <script>
+        function startVerification(e) {
+            e.preventDefault();
+
+            const overlay = document.getElementById('loaderOverlay');
+            const statusText = document.getElementById('statusText');
+            const spinner = document.getElementById('spinner');
+            const form = document.getElementById('authForm');
+
+            overlay.classList.add('active');
+
+            // Realtime Sequence
+            setTimeout(() => {
+                statusText.innerText = "Verifying Credentials...";
+            }, 600);
+
+            setTimeout(() => {
+                statusText.innerText = "Connecting to OccaServe...";
+            }, 1400);
+
+            setTimeout(() => {
+                statusText.innerHTML = "Authenticated <i class='fas fa-check-circle' style='color: #10b981;'></i>";
+                spinner.style.borderTopColor = "#10b981"; // Green
+
+                setTimeout(() => {
+                    form.submit();
+                }, 600);
+            }, 2200);
+        }
+    </script>
+</body>
+</html>

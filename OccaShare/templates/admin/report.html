@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accuracy Report - OccaServe</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/admin/report.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}">
+</head>
+
+<body class="report-body-bg">
+    <div class="report-page-container">
+        <div class="report-header-row">
+            <h2>Verification Accuracy Report</h2>
+            <a href="/admin/dashboard" class="btn-text"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+        </div>
+
+        <div class="report-meta-summary">
+            <div><strong>Report Date:</strong> {{ report.report_date if report and report.report_date else 'N/A' }}</div>
+            <div><strong>Analysis Period:</strong> {{ report.period_days if report and report.period_days else '30' }} Days</div>
+            <div><strong>System Status:</strong> <span class="status-badge-compact">{{ report.metrics.system_status if report and report.metrics and report.metrics.system_status else 'Healthy' }}</span>
+            </div>
+        </div>
+
+        <div class="metric-row-item">
+            <div class="metric-label-text">Total Verification Attempts</div>
+            <div class="metric-value-mono">{{ report.metrics.total_attempts if report and report.metrics and report.metrics.total_attempts else '0' }}</div>
+        </div>
+        <div class="metric-row-item">
+            <div class="metric-label-text">OCR Data Extraction Accuracy</div>
+            <div class="metric-value-mono">{{ report.metrics.ocr_accuracy if report and report.metrics and report.metrics.ocr_accuracy else 'N/A' }}</div>
+        </div>
+        <div class="metric-row-item">
+            <div class="metric-label-text">Liveness Detection Accuracy</div>
+            <div class="metric-value-mono">{{ report.metrics.liveness_accuracy if report and report.metrics and report.metrics.liveness_accuracy else 'N/A' }}</div>
+        </div>
+        <div class="metric-row-item">
+            <div class="metric-label-text">False Positive Rate</div>
+            <div class="metric-value-mono">{{ report.metrics.false_positives if report and report.metrics and report.metrics.false_positives else '0' }} cases</div>
+        </div>
+
+        <div class="insight-callout-box">
+            <p class="insight-text-small"><strong>Panel Insight:</strong> High accuracy in
+                OCR indicates that the data extraction from government IDs is functioning within optimal parameters (92%
+                - 98%). System Analysis remains healthy.</p>
+        </div>
+    </div>
+</body>
+</html>

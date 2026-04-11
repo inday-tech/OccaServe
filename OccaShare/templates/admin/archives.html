@@ -1,0 +1,333 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Data Archives - Admin Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .archive-tabs {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 0.5rem;
+        overflow-x: auto;
+    }
+
+    .archive-tab {
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.75rem;
+        font-weight: 700;
+        color: #64748b;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+
+    .archive-tab:hover {
+        background: #f1f5f9;
+        color: var(--secondary-color);
+    }
+
+    .archive-tab.active {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .archive-pane {
+        display: none;
+    }
+
+    .archive-pane.active {
+        display: block;
+    }
+
+    .archive-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .archive-table th {
+        text-align: left;
+        padding: 1rem;
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        color: #64748b;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+    }
+
+    .archive-table td {
+        padding: 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+
+    .btn-restore {
+        color: #10b981;
+        background: #ecfdf5;
+        border: 1px solid #d1fae5;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.5rem;
+        font-weight: 700;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-restore:hover {
+        background: #10b981;
+        color: white;
+    }
+
+    .btn-permanent-delete {
+        color: #ef4444;
+        background: #fef2f2;
+        border: 1px solid #fee2e2;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.5rem;
+        font-weight: 700;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-permanent-delete:hover {
+        background: #ef4444;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>System Archives</h1>
+    <p>Restore previously archived records or perform permanent deletions.</p>
+</div>
+
+<div class="c-card-premium">
+    <div class="archive-tabs">
+        <div class="archive-tab active" onclick="switchArchiveTab('caterers')">Caterers ({{ caterers|length }})</div>
+        <div class="archive-tab" onclick="switchArchiveTab('customers')">Customers ({{ customers|length }})</div>
+        <div class="archive-tab" onclick="switchArchiveTab('bookings')">Bookings ({{ bookings|length }})</div>
+        <div class="archive-tab" onclick="switchArchiveTab('reviews')">Reviews ({{ reviews|length }})</div>
+        <div class="archive-tab" onclick="switchArchiveTab('payouts')">Payouts ({{ payouts|length }})</div>
+    </div>
+
+    <!-- CATERERS PANE -->
+    <div id="pane-caterers" class="archive-pane active">
+        {% if caterers %}
+        <table class="archive-table auto-paginate">
+            <thead>
+                <tr>
+                    <th>Partner</th>
+                    <th>Email</th>
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for caterer in caterers %}
+                <tr>
+                    <td><strong>{{ caterer.business_name }}</strong></td>
+                    <td>{{ caterer.user.email }}</td>
+                    <td style="text-align: right;">
+                        <form action="/admin/caterers/{{ caterer.id }}/restore?success_msg=Caterer+restored+successfully" method="POST" style="display: inline;"
+                            onsubmit="event.preventDefault(); window.showConfirm('Restore this caterer record?', () => this.submit(), 'Confirm Restore', 'Yes, Restore');">
+                            <button type="submit" class="btn-restore"><i class="fas fa-undo"></i> Restore</button>
+                        </form>
+                        <form action="/admin/caterers/{{ caterer.id }}/delete_permanent?success_msg=Caterer+permanently+deleted" method="POST"
+                            style="display: inline;"
+                            onsubmit="event.preventDefault(); window.showConfirm('PERMANENTLY DELETE this caterer? This cannot be undone.', () => this.submit(), 'Wait! Permanent Action', 'Yes, Delete Forever');">
+                            <button type="submit" class="btn-permanent-delete"><i class="fas fa-trash-alt"></i>
+                                Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align: center; padding: 3rem;">
+            <p style="color: #64748b;">No archived caterers found.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- CUSTOMERS PANE -->
+    <div id="pane-customers" class="archive-pane">
+        {% if customers %}
+        <table class="archive-table auto-paginate">
+            <thead>
+                <tr>
+                    <th>Customer</th>
+                    <th>Email</th>
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in customers %}
+                <tr>
+                    <td><strong>{{ c.first_name }} {{ c.last_name }}</strong></td>
+                    <td>{{ c.email }}</td>
+                    <td style="text-align: right;">
+                        <form action="/admin/customers/{{ c.id }}/restore?success_msg=Customer+restored+successfully" method="POST" style="display: inline;"
+                            onsubmit="event.preventDefault(); window.showConfirm('Restore this customer record?', () => this.submit(), 'Confirm Restore', 'Yes, Restore');">
+                            <button type="submit" class="btn-restore"><i class="fas fa-undo"></i> Restore</button>
+                        </form>
+                        <form action="/admin/customers/{{ c.id }}/delete_permanent?success_msg=Customer+permanently+deleted" method="POST"
+                            style="display: inline;"
+                            onsubmit="event.preventDefault(); window.showConfirm('PERMANENTLY DELETE this customer and all their data?', () => this.submit(), 'Wait! Permanent Action', 'Yes, Delete Forever');">
+                            <button type="submit" class="btn-permanent-delete"><i class="fas fa-trash-alt"></i>
+                                Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align: center; padding: 3rem;">
+            <p style="color: #64748b;">No archived customers found.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- BOOKINGS PANE -->
+    <div id="pane-bookings" class="archive-pane">
+        {% if bookings %}
+        <table class="archive-table auto-paginate">
+            <thead>
+                <tr>
+                    <th>Ref #</th>
+                    <th>Customer</th>
+                    <th>Amount</th>
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in bookings %}
+                <tr>
+                    <td><strong>#BK-{{ b.id }}</strong></td>
+                    <td>{{ b.user.first_name }} {{ b.user.last_name }}</td>
+                    <td>₱{{ "{:,.2f}".format(b.total_amount) }}</td>
+                    <td style="text-align: right;">
+                        <form action="/admin/bookings/{{ b.id }}/restore?success_msg=Booking+restored+successfully" method="POST" style="display: inline;"
+                            onsubmit="event.preventDefault(); window.showConfirm('Restore this booking record?', () => this.submit(), 'Confirm Restore', 'Yes, Restore');">
+                            <button type="submit" class="btn-restore"><i class="fas fa-undo"></i> Restore</button>
+                        </form>
+                        <form action="/admin/bookings/{{ b.id }}/delete_permanent?success_msg=Booking+permanently+deleted" method="POST"
+                            style="display: inline;"
+                            onsubmit="event.preventDefault(); window.showConfirm('PERMANENTLY DELETE this booking history?', () => this.submit(), 'Wait! Permanent Action', 'Yes, Delete Forever');">
+                            <button type="submit" class="btn-permanent-delete"><i class="fas fa-trash-alt"></i>
+                                Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align: center; padding: 3rem;">
+            <p style="color: #64748b;">No archived bookings found.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- REVIEWS PANE -->
+    <div id="pane-reviews" class="archive-pane">
+        {% if reviews %}
+        <table class="archive-table auto-paginate">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Comment</th>
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in reviews %}
+                <tr>
+                    <td><strong>{{ r.user.first_name }}</strong></td>
+                    <td><span style="font-size: 0.85rem; color: #64748b;">{{ r.comment[:50] }}...</span></td>
+                    <td style="text-align: right;">
+                        <form action="/admin/reviews/{{ r.id }}/restore?success_msg=Review+restored+successfully" method="POST" style="display: inline;"
+                            onsubmit="event.preventDefault(); window.showConfirm('Restore this review record?', () => this.submit(), 'Confirm Restore', 'Yes, Restore');">
+                            <button type="submit" class="btn-restore"><i class="fas fa-undo"></i> Restore</button>
+                        </form>
+                        <form action="/admin/reviews/{{ r.id }}/delete_permanent?success_msg=Review+permanently+deleted" method="POST" style="display: inline;"
+                            onsubmit="event.preventDefault(); window.showConfirm('PERMANENTLY DELETE this review?', () => this.submit(), 'Wait! Permanent Action', 'Yes, Delete Forever');">
+                            <button type="submit" class="btn-permanent-delete"><i class="fas fa-trash-alt"></i>
+                                Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align: center; padding: 3rem;">
+            <p style="color: #64748b;">No archived reviews found.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- PAYOUTS PANE -->
+    <div id="pane-payouts" class="archive-pane">
+        {% if payouts %}
+        <table class="archive-table auto-paginate">
+            <thead>
+                <tr>
+                    <th>Ref #</th>
+                    <th>Amount</th>
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in payouts %}
+                <tr>
+                    <td><strong>#PAY-{{ p.id }}</strong></td>
+                    <td>₱{{ "{:,.2f}".format(p.amount) }}</td>
+                    <td style="text-align: right;">
+                        <form action="/admin/payouts/{{ p.id }}/restore?success_msg=Payout+restored+successfully" method="POST" style="display: inline;"
+                            onsubmit="event.preventDefault(); window.showConfirm('Restore this payout record?', () => this.submit(), 'Confirm Restore', 'Yes, Restore');">
+                            <button type="submit" class="btn-restore"><i class="fas fa-undo"></i> Restore</button>
+                        </form>
+                        <form action="/admin/payouts/{{ p.id }}/delete_permanent?success_msg=Payout+permanently+deleted" method="POST" style="display: inline;"
+                            onsubmit="event.preventDefault(); window.showConfirm('PERMANENTLY DELETE this payout record?', () => this.submit(), 'Wait! Permanent Action', 'Yes, Delete Forever');">
+                            <button type="submit" class="btn-permanent-delete"><i class="fas fa-trash-alt"></i>
+                                Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align: center; padding: 3rem;">
+            <p style="color: #64748b;">No archived payouts found.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function switchArchiveTab(tab) {
+        // Update tabs
+        document.querySelectorAll('.archive-tab').forEach(el => {
+            el.classList.remove('active');
+            if (el.innerText.toLowerCase().includes(tab)) {
+                el.classList.add('active');
+            }
+        });
+
+        // Update panes
+        document.querySelectorAll('.archive-pane').forEach(el => {
+            el.classList.remove('active');
+        });
+        document.getElementById('pane-' + tab).classList.add('active');
+    }
+</script>
+{% endblock %}

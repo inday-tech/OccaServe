@@ -1,0 +1,42 @@
+<div class="professional-card">
+    <div class="icon-header" style="background: transparent; box-shadow: none; width: auto; height: auto; display: flex; align-items: center; justify-content: center; margin-bottom: 2rem;">
+        <div style="width: 60px; height: 60px; background: var(--auth-slate-100); border-radius: 18px; display: flex; align-items: center; justify-content: center; box-shadow: var(--auth-shadow-sm);">
+            <i class="fas fa-envelope-open-text" style="font-size: 1.5rem; color: var(--auth-primary);"></i>
+        </div>
+    </div>
+
+    <h2 class="auth-title">Verify Your Email</h2>
+    <p class="auth-subtitle">
+        Enter the 6-digit security code we sent to<br>
+        <strong id="email-display" style="color: var(--auth-slate-900);">{{ email if email else (user.email if user else '') }}</strong>
+    </p>
+
+    {% if error %}
+    <div class="alert-error">
+        <i class="fas fa-exclamation-circle"></i>
+        <span>{{ error }}</span>
+    </div>
+    {% endif %}
+
+    <form action="/auth/verify" method="post" id="verifyForm">
+        <input type="hidden" name="email" value="{{ email if email else (user.email if user else '') }}" id="emailField">
+        {% if next_url %}
+        <input type="hidden" name="next_url" value="{{ next_url }}">
+        {% endif %}
+        <div class="form-group" style="margin: 2rem 0;">
+            <input type="text" id="code" name="code" class="minimal-input-large" required
+                placeholder="000000" maxlength="6" autocomplete="off" inputmode="numeric"
+                style="text-align: center; font-size: 2.2rem; font-weight: 800; letter-spacing: 0.8rem; padding: 1.2rem; background: var(--auth-slate-50); border: 2px solid var(--auth-slate-200); border-radius: 1.5rem; transition: all 0.3s ease;">
+        </div>
+        <button type="submit" class="btn-primary-action">
+            <span>Verify Account</span>
+            <i class="fas fa-shield-alt"></i>
+        </button>
+    </form>
+
+    <div class="auth-footer" style="margin-top: 2rem;">
+        <p>Didn't receive the code? Resend in <span id="timer" style="font-weight: 700; color: var(--auth-slate-900);">03:00</span>
+        </p>
+        <a href="#" class="resend-link disabled" id="resendBtn" onclick="resendCode(event)" style="display: block; margin-top: 0.5rem; font-weight: 700; text-decoration: underline;">Resend Security Code</a>
+    </div>
+</div>

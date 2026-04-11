@@ -1,0 +1,220 @@
+/* Admin Customers Management Styles */
+
+.customers-management-wrapper {
+    background: var(--white);
+    border-radius: 1.5rem;
+    padding: 2rem;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+}
+
+.management-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    gap: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .management-header-flex {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .search-box-pro {
+        max-width: 100% !important;
+    }
+}
+
+.management-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--secondary-color);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.management-title i {
+    color: var(--primary-color);
+}
+
+/* Table Styles */
+.customers-list-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.customers-list-table thead th {
+    text-align: left;
+    color: #64748b;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    background: #f8fafc;
+}
+
+.customer-row {
+    transition: all 0.2s ease;
+}
+
+.customer-row:hover {
+    background: #fcfcfc;
+}
+
+.customer-row td {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.customer-name-identity {
+    font-weight: 700;
+    color: var(--secondary-color);
+    font-size: 0.95rem;
+}
+
+.customer-join-date {
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+/* Status Badges */
+.status-badge-fancy {
+    padding: 0.4rem 0.8rem;
+    border-radius: 2rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    width: fit-content;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.status-badge-fancy.active {
+    background: #f0fdf4;
+    color: #10b981;
+}
+
+.status-badge-fancy.suspended {
+    background: #fef2f2;
+    color: #ef4444;
+}
+
+/* Action Group */
+.actions-cell-flex {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.btn-status-toggle {
+    border: none;
+    width: 38px;
+    height: 38px;
+    border-radius: 0.75rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.btn-status-toggle.activate {
+    background: #10b981;
+    color: white;
+}
+
+.btn-status-toggle.suspend {
+    background: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+
+.btn-status-toggle:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.btn-delete-customer {
+    background: #fef2f2;
+    color: #ef4444;
+    border: 1px solid #fee2e2;
+    width: 38px;
+    height: 38px;
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-delete-customer:hover {
+    background: #ef4444;
+    color: white;
+    transform: rotate(10deg) scale(1.1);
+}
+
+/* Pagination Box */
+.pagination-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #f1f5f9;
+}
+
+.pagination-info {
+    font-size: 0.85rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.pagination-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.page-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: white;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.page-btn:hover:not(:disabled) {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background: #fff7ed;
+}
+
+.page-btn.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.page-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #f8fafc;
+}

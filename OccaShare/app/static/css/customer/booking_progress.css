@@ -1,0 +1,192 @@
+/* Granular Progress Timeline (Post-Payment) */
+.progress-card-premium {
+    background: #fff;
+    border-radius: 1.5rem;
+    padding: 2.5rem;
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.06);
+    margin: 2rem 0;
+    margin-bottom: 2.5rem;
+    border: 1px solid #f1f5f9;
+    position: relative;
+    overflow: hidden;
+    font-family: 'Poppins', sans-serif;
+}
+
+.progress-card-premium::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #f97316, #fbbf24);
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 3rem;
+}
+
+.progress-header h3 {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.progress-header h3 i {
+    color: #f97316;
+}
+
+.live-status-pulse {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #fff7ed;
+    color: #c2410c;
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    border: 1px solid #ffedd5;
+}
+
+.pulse-dot {
+    width: 8px;
+    height: 8px;
+    background: #f97316;
+    border-radius: 50%;
+    animation: pPulse-animation 2s infinite;
+}
+
+@keyframes pPulse-animation {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(249, 115, 22, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
+}
+
+.catering-timeline {
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+    padding: 0 1rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.catering-timeline-track {
+    position: absolute;
+    top: 25px;
+    left: 2rem;
+    right: 2rem;
+    height: 3px;
+    background: #f1f5f9;
+    z-index: 1;
+}
+
+.timeline-progress-bar-granular {
+    position: absolute;
+    top: 25px;
+    left: 2rem;
+    height: 3px;
+    background: linear-gradient(90deg, #f97316, #fb923c);
+    z-index: 2;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.catering-step {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100px;
+    text-align: center;
+}
+
+.c-step-icon {
+    width: 54px;
+    height: 54px;
+    background: #fff;
+    border: 3px solid #f1f5f9;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    font-size: 1.2rem;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.catering-step.active .c-step-icon {
+    border-color: #f97316;
+    color: #f97316;
+    background: #fff;
+    transform: scale(1.1);
+    box-shadow: 0 10px 15px -3px rgba(249, 115, 22, 0.2);
+}
+
+.catering-step.completed .c-step-icon {
+    background: #f97316;
+    border-color: #f97316;
+    color: #fff;
+}
+
+.c-step-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+}
+
+.catering-step.active .c-step-label { color: #1e293b; }
+.catering-step.completed .c-step-label { color: #64748b; }
+
+.c-step-desc {
+    font-size: 0.65rem;
+    color: #94a3b8;
+    font-weight: 500;
+    max-width: 80px;
+    line-height: 1.3;
+}
+
+.catering-step.active .c-step-desc { color: #64748b; }
+
+@media (max-width: 768px) {
+    .catering-timeline {
+        flex-direction: column;
+        gap: 2rem;
+        padding-left: 2rem;
+        align-items: flex-start;
+    }
+    .catering-timeline-track {
+        left: 47px;
+        top: 2rem;
+        bottom: 2rem;
+        width: 3px;
+        height: auto;
+    }
+    .timeline-progress-bar-granular {
+        left: 47px;
+        top: 2rem;
+        width: 3px;
+        height: 0;
+    }
+    .catering-step {
+        flex-direction: row;
+        width: 100%;
+        text-align: left;
+        gap: 1.5rem;
+    }
+    .c-step-icon { margin-bottom: 0; flex-shrink: 0; }
+    .c-step-desc { max-width: none; }
+}

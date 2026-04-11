@@ -1,0 +1,288 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Overview - Admin Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v=1.1">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Platform Overview</h1>
+    <p>Monitor platform growth, revenue, and pending administrative tasks.</p>
+</div>
+
+<!-- Stats Grid -->
+<div class="stats-grid-dashboard">
+    <div class="stat-card-premium"
+        style="background: linear-gradient(135deg, var(--secondary-color), var(--primary-color)); color: white;">
+        <i class="fas fa-wallet stat-icon-bg stat-icon-vibrant icon-white"></i>
+        <div class="stat-label-dashboard" style="color: rgba(255,255,255,0.8);">Platform Revenue</div>
+        <div class="stat-value-dashboard" style="color: white;">₱{{ "{:,.2f}".format(metrics.platform_earnings) }}</div>
+        <div class="stat-hint-dashboard" style="color: rgba(255,255,255,0.6);">Net earnings</div>
+    </div>
+
+    <div class="stat-card-premium">
+        <i class="fas fa-users stat-icon-bg stat-icon-vibrant icon-purple"></i>
+        <div class="stat-label-dashboard">Total Users</div>
+        <div class="stat-value-dashboard">{{ metrics.user_count }}</div>
+        <div class="stat-hint-dashboard">Lifetime registered</div>
+    </div>
+
+    <div class="stat-card-premium">
+        <i class="fas fa-store stat-icon-bg stat-icon-vibrant icon-amber"></i>
+        <div class="stat-label-dashboard">Active Caterers</div>
+        <div class="stat-value-dashboard">{{ metrics.approved_caterers_count }}</div>
+        <div class="stat-hint-dashboard">Verified partners</div>
+    </div>
+
+    <div class="stat-card-premium">
+        <i class="fas fa-calendar-check stat-icon-bg stat-icon-vibrant icon-blue"></i>
+        <div class="stat-label-dashboard">Total Bookings</div>
+        <div class="stat-value-dashboard">{{ metrics.booking_count }}</div>
+        <div class="stat-hint-dashboard">Successful orders</div>
+    </div>
+</div>
+
+<!-- Analytics Overview Section -->
+<div class="analytics-overview-section"
+    style="margin-bottom: 2rem; background: var(--white); border-radius: 1.5rem; padding: 2.5rem; border: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);">
+    <h3 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 1.5rem;"><i class="fas fa-chart-pie"
+            style="color: var(--primary-color); margin-right: 0.5rem;"></i> Analytics Overview</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+
+        <div onclick="openChartModal('grossVolumeChart')"
+            style="padding: 1.5rem; background: var(--background-soft); border-radius: 1rem; text-align: center; cursor: pointer; transition: transform 0.2s;">
+            <div
+                style="font-size: 0.85rem; color: #64748b; font-weight: 600; text-transform: uppercase; margin-bottom: 0.5rem;">
+                Total Gross Volume <i class="fas fa-external-link-alt"
+                    style="margin-left: 0.25rem; font-size: 0.75rem;"></i>
+            </div>
+            <div style="font-size: 1.75rem; font-weight: 800; color: #0f172a;">₱{{ "{:,.2f}".format(metrics.total_sales)
+                }}</div>
+        </div>
+
+        <div onclick="openChartModal('disbursedChart')"
+            style="padding: 1.5rem; background: var(--background-soft); border-radius: 1rem; text-align: center; cursor: pointer; transition: transform 0.2s;">
+            <div
+                style="font-size: 0.85rem; color: #64748b; font-weight: 600; text-transform: uppercase; margin-bottom: 0.5rem;">
+                Total Disbursed <i class="fas fa-external-link-alt"
+                    style="margin-left: 0.25rem; font-size: 0.75rem;"></i>
+            </div>
+            <div style="font-size: 1.75rem; font-weight: 800; color: #0f172a;">₱{{ "{:,.2f}".format(metrics.total_sales
+                - metrics.platform_earnings) }}</div>
+        </div>
+
+        <div onclick="openChartModal('retainedChart')"
+            style="padding: 1.5rem; background: var(--background-soft); border-radius: 1rem; text-align: center; cursor: pointer; transition: transform 0.2s;">
+            <div
+                style="font-size: 0.85rem; color: var(--primary-color); font-weight: 600; text-transform: uppercase; margin-bottom: 0.5rem;">
+                Net Platform Retained <i class="fas fa-external-link-alt"
+                    style="margin-left: 0.25rem; font-size: 0.75rem;"></i>
+            </div>
+            <div style="font-size: 1.75rem; font-weight: 800; color: var(--primary-color);">₱{{
+                "{:,.2f}".format(metrics.platform_earnings) }}</div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Chart Modals Container -->
+<div id="chartModalOverlay" class="modal"
+    style="display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); align-items: center; justify-content: center;">
+    <div
+        style="background-color: #ffffff; padding: 2rem; border-radius: 1.5rem; width: 90%; max-width: 700px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); position: relative;">
+        <button onclick="closeChartModal()"
+            style="position: absolute; top: 1.5rem; right: 1.5rem; background: none; border: none; font-size: 1.5rem; color: #64748b; cursor: pointer;"><i
+                class="fas fa-times"></i></button>
+        <h2 id="chartModalTitle"
+            style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 1.5rem; text-align: center;">
+            Analytics Chart</h2>
+        <div style="position: relative; height: 350px; width: 100%;">
+            <canvas id="analyticsChartCanvas"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="dashboard-content-split">
+    <!-- Pending Verifications -->
+    <div class="c-card-premium">
+        <div class="verifications-header-flex">
+            <h3 class="verifications-title"><i class="fas fa-id-card-alt"></i> Pending Verifications</h3>
+            <a href="/admin/caterers"
+                style="color: var(--primary-color); font-weight: 600; font-size: 0.85rem; text-decoration: none;">Manage
+                All <i class="fas fa-arrow-right"></i></a>
+        </div>
+
+        {% if pending_caterers %}
+        <div class="admin-table-container">
+            <table class="admin-dashboard-table">
+                <thead>
+                    <tr>
+                        <th style="padding: 0 1.25rem;">Business Name</th>
+                        <th style="padding: 0 1.25rem;">City</th>
+                        <th style="padding: 0 1.25rem; text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in pending_caterers %}
+                    <tr>
+                        <td class="business-name-cell">{{ c.business_name }}</td>
+                        <td class="location-cell">{{ c.city }}</td>
+                        <td style="text-align: right;">
+                            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                                <a href="/admin/verify/{{ c.user_id }}" class="stat-icon-container"
+                                    title="Review Documents"
+                                    style="background: none; border: none; cursor: pointer; color: var(--primary-color); font-size: 1.1rem; text-decoration: none;">
+                                    <i class="fas fa-file-invoice"></i>
+                                </a>
+                                <form action="/admin/caterers/{{ c.id }}/archive" method="POST" style="display: inline;"
+                                    onsubmit="event.preventDefault(); showConfirm('Are you sure you want to archive this request?', () => this.submit(), 'Confirm Archive', 'Yes, Archive');">
+                                    <button type="submit" class="stat-icon-container" title="Archive Request"
+                                        style="background: none; border: none; cursor: pointer; color: #64748b; font-size: 1.1rem;">
+                                        <i class="fas fa-archive"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 3rem 1rem;">
+            <div
+                style="width: 60px; height: 60px; background: #f0fdf4; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+                <i class="fas fa-check" style="color: #10b981; font-size: 1.5rem;"></i>
+            </div>
+            <p style="font-weight: 700; color: var(--secondary-color); margin-bottom: 0.25rem;">No pending verifications
+            </p>
+            <p style="color: #64748b; font-size: 0.85rem;">You've processed all caterer applications.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Platform Stats / Quick Info -->
+    <div class="sidebar-widgets-column">
+        <div class="system-status-widget">
+            <h3 class="system-status-title">System Status</h3>
+            <div class="system-online-indicator">
+                <span class="status-dot-pulse"></span>
+                PostgreSQL Online
+            </div>
+            <div
+                style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 0.7rem; color: rgba(255,255,255,0.4); font-weight: 600;">Engine
+                    v1.2.4-stable</span>
+                <i class="fas fa-shield-check" style="color: rgba(255,255,255,0.2);"></i>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentChart = null;
+    const chartCtx = document.getElementById('analyticsChartCanvas').getContext('2d');
+    const modal = document.getElementById('chartModalOverlay');
+    const modalTitle = document.getElementById('chartModalTitle');
+
+    const months = ['January', 'February', 'March', 'April', 'May', 'June'];
+
+    const grossVal = Number("{{ metrics.total_sales }}") || 0;
+    const grossData = [grossVal * 0.3, grossVal * 0.4, grossVal * 0.6, grossVal * 0.8, grossVal * 0.9, grossVal];
+
+    const disbursedVal = Number("{{ metrics.total_sales - metrics.platform_earnings }}") || 0;
+    const disbursedData = [disbursedVal * 0.3, disbursedVal * 0.4, disbursedVal * 0.6, disbursedVal * 0.8, disbursedVal * 0.9, disbursedVal];
+
+    const retainedVal = Number("{{ metrics.platform_earnings }}") || 0;
+    const retainedData = [retainedVal * 0.3, retainedVal * 0.4, retainedVal * 0.6, retainedVal * 0.8, retainedVal * 0.9, retainedVal];
+
+    function openChartModal(type) {
+        modal.style.display = 'flex';
+
+        if (currentChart) {
+            currentChart.destroy();
+        }
+
+        let config = {};
+
+        if (type === 'grossVolumeChart') {
+            modalTitle.innerText = "Total Gross Volume (6 Months)";
+            config = {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [{
+                        label: 'Gross Volume (₱)',
+                        data: grossData,
+                        borderColor: '#2563eb',
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                }
+            };
+        } else if (type === 'disbursedChart') {
+            modalTitle.innerText = "Total Disbursed to Caterers (6 Months)";
+            config = {
+                type: 'bar',
+                data: {
+                    labels: months,
+                    datasets: [{
+                        label: 'Disbursed (₱)',
+                        data: disbursedData,
+                        backgroundColor: '#64748b',
+                        borderRadius: 4
+                    }]
+                }
+            };
+        } else if (type === 'retainedChart') {
+            modalTitle.innerText = "Net Platform Retained (6 Months)";
+            config = {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [{
+                        label: 'Retained (₱)',
+                        data: retainedData,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                }
+            };
+        }
+
+        config.options = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        };
+
+        currentChart = new Chart(chartCtx, config);
+    }
+
+    function closeChartModal() {
+        modal.style.display = 'none';
+        if (currentChart) {
+            currentChart.destroy();
+            currentChart = null;
+        }
+    }
+
+    window.onclick = function (event) {
+        if (event.target == modal) {
+            closeChartModal();
+        }
+    }
+</script>
+{% endblock %}

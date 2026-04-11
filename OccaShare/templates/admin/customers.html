@@ -1,0 +1,215 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Manage Customers - Admin Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/customers.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 2rem;">
+    <h1>Manage Customers</h1>
+    <p>View and manage individual customer accounts and their platform activity.</p>
+</div>
+
+<div class="customers-management-wrapper">
+    <div class="management-header-flex">
+        <h3 class="management-title"><i class="fas fa-user-friends"></i> Platform Users</h3>
+        <div class="search-box-pro">
+            <i class="fas fa-search"></i>
+            <input type="text" id="customerSearchInput" placeholder="Search by name or email..."
+                onkeyup="filterCustomers()">
+        </div>
+    </div>
+
+    {% if customers %}
+    <div style="overflow-x: auto; margin: 0 -1rem; padding: 0 1rem;">
+        <table class="customers-list-table" id="customersTable">
+            <thead>
+                <tr>
+                    <th>Customer Name</th>
+                    <th>Email Address</th>
+                    <th>Date Joined</th>
+                    <th>Status</th>
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for customer in customers %}
+                <tr class="customer-row">
+                    <td>
+                        <div class="customer-name-identity">{{ customer.first_name }} {{ customer.last_name }}</div>
+                    </td>
+                    <td><span style="font-size: 0.9rem; color: #64748b;">{{ customer.email }}</span></td>
+                    <td class="customer-join-date">{{ customer.created_at.strftime('%b %d, %Y') if customer.created_at
+                        else 'N/A' }}</td>
+                    <td>
+                        {% if customer.status == 'active' %}
+                        <span class="status-badge-fancy active">
+                            <i class="fas fa-check-circle"></i> Active
+                        </span>
+                        {% else %}
+                        <span class="status-badge-fancy suspended">
+                            <i class="fas fa-times-circle"></i> {{ customer.status|title }}
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="actions-cell-flex">
+                            <form action="/admin/customers/{{ customer.id }}/status" method="POST"
+                                style="display: inline;">
+                                {% if customer.status == 'suspended' %}
+                                <button type="submit" class="btn-status-toggle activate" title="Restore Account">
+                                    <i class="fas fa-user-check"></i>
+                                </button>
+                                {% else %}
+                                <button type="submit" class="btn-status-toggle suspend" title="Suspend Account">
+                                    <i class="fas fa-user-slash"></i>
+                                </button>
+                                {% endif %}
+                            </form>
+
+                            <form action="/admin/customers/{{ customer.id }}/archive" method="POST"
+                                style="display: inline;"
+                                onsubmit="event.preventDefault(); showConfirm('Are you sure you want to archive this customer?', () => this.submit(), 'Confirm Archive', 'Yes, Archive');">
+                                <button type="submit" class="btn-delete-customer" title="Archive Customer"
+                                    style="color: #64748b;">
+                                    <i class="fas fa-archive"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination-box" id="paginationBox">
+        <div class="pagination-info" id="paginationInfo">
+            Showing 1 to 10 of {{ customers|length }} entries
+        </div>
+        <div class="pagination-controls" id="paginationControls">
+            <!-- Dynamic Buttons -->
+        </div>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 5rem 2rem;">
+        <div
+            style="width: 80px; height: 80px; background: #f8fafc; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+            <i class="fas fa-user-slash" style="color: #cbd5e1; font-size: 2.5rem;"></i>
+        </div>
+        <h3 style="color: var(--secondary-color); font-weight: 700; margin-bottom: 0.5rem;">No Customers Found</h3>
+        <p style="color: #64748b; font-size: 0.95rem;">There are currently no customer accounts to display.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // ─── Pagination Logic ────────────────────────────────────────────────────
+    let currentPage = 1;
+    let rowsPerPage = 5;
+    let filteredRows = [];
+
+    function initPagination() {
+        const table = document.getElementById('customersTable');
+        if (!table) return;
+
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+        filteredRows = rows;
+        updateTableDisplay();
+    }
+
+    function updateTableDisplay() {
+        const startIndex = (currentPage - 1) * rowsPerPage;
+        const endIndex = startIndex + rowsPerPage;
+
+        filteredRows.forEach((row, index) => {
+            if (index >= startIndex && index < endIndex) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        renderPaginationControls();
+        updatePaginationInfo();
+    }
+
+    function renderPaginationControls() {
+        const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
+        const controls = document.getElementById('paginationControls');
+        if (!controls) return;
+
+        controls.innerHTML = '';
+
+        if (totalPages <= 1) {
+            document.getElementById('paginationBox').style.display = 'none';
+            return;
+        } else {
+            document.getElementById('paginationBox').style.display = 'flex';
+        }
+
+        const prevBtn = document.createElement('button');
+        prevBtn.className = 'page-btn';
+        prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+        prevBtn.disabled = currentPage === 1;
+        prevBtn.onclick = () => { currentPage--; updateTableDisplay(); };
+        controls.appendChild(prevBtn);
+
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+                const btn = document.createElement('button');
+                btn.className = `page-btn ${i === currentPage ? 'active' : ''}`;
+                btn.innerText = i;
+                btn.onclick = () => { currentPage = i; updateTableDisplay(); };
+                controls.appendChild(btn);
+            } else if (i === currentPage - 2 || i === currentPage + 2) {
+                const dots = document.createElement('span');
+                dots.innerText = '...';
+                dots.style.alignSelf = 'center';
+                dots.style.padding = '0 0.25rem';
+                controls.appendChild(dots);
+            }
+        }
+
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'page-btn';
+        nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+        nextBtn.disabled = currentPage === totalPages;
+        nextBtn.onclick = () => { currentPage++; updateTableDisplay(); };
+        controls.appendChild(nextBtn);
+    }
+
+    function updatePaginationInfo() {
+        const info = document.getElementById('paginationInfo');
+        if (!info) return;
+
+        const totalEntries = filteredRows.length;
+        const start = totalEntries === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
+        const end = Math.min(currentPage * rowsPerPage, totalEntries);
+
+        info.innerText = `Showing ${start} to ${end} of ${totalEntries} entries`;
+    }
+
+    function filterCustomers() {
+        const input = document.getElementById('customerSearchInput');
+        const filter = input.value.toLowerCase();
+        const table = document.getElementById('customersTable');
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+
+        filteredRows = rows.filter(row => {
+            const textContent = row.textContent.toLowerCase();
+            return textContent.includes(filter);
+        });
+
+        currentPage = 1;
+        updateTableDisplay();
+    }
+
+    window.onload = initPagination;
+</script>
+{% endblock %}

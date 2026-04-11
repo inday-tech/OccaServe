@@ -1,0 +1,62 @@
+/* Additional styles for category cards as filters */
+.category-card {
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s, border 0.2s;
+    border: 2px solid transparent;
+}
+
+.category-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.category-card.active-category {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px var(--primary-light);
+}
+
+.filter-others {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+}
+
+.filter-others input {
+    padding: 0.75rem 1.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 2rem;
+    font-size: 1rem;
+    min-width: 250px;
+    transition: border-color 0.2s;
+}
+
+.filter-others input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.filter-others button {
+    background-color: var(--primary-color);
+    border: none;
+    color: white;
+    padding: 0.75rem 2rem;
+    border-radius: 2rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.filter-others button:hover {
+    background-color: var(--primary-dark);
+}
+
+.caterer-card {
+    transition: opacity 0.2s ease;
+}
+
+.caterer-card.hidden {
+    display: none;
+}

@@ -1,0 +1,440 @@
+{% set active_page = 'menu' %}
+{% extends "caterer/layout.html" %}
+
+{% block title %}Menu Library - OccaShare Caterer{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/menu.css') }}?v=1.4">
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: start;">
+    <div>
+        <h1>Menu Library</h1>
+        <p>Manage your collection of exquisite dishes and culinary offerings.</p>
+    </div>
+    <div class="header-actions" style="display: flex; gap: 1rem; align-items: center;">
+        <div class="search-box-pro"
+            style="display: flex; align-items: center; gap: 0.75rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 0 1.25rem; height: 46px; box-sizing: border-box; width: 320px; transition: all 0.2s ease;">
+            <i class="fas fa-search" style="color: #94a3b8; font-size: 0.95rem;"></i>
+            <input type="text" id="menuSearchInput" placeholder="Search dishes..."
+                style="border: none; outline: none; background: transparent; height: 100%; width: 100%; font-size: 0.9rem; color: #1e293b; font-weight: 500;"
+                onkeyup="filterMenu()">
+        </div>
+        <button class="btn-primary-pro" onclick="openAddMenuModal()"
+            style="height: 46px; padding: 0 1.5rem; border-radius: 0.75rem; background: var(--primary-gradient); color: white; border: none; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);">
+            <i class="fas fa-plus"></i> Add New Dish
+        </button>
+    </div>
+</div>
+
+{% set categories_list = ['Appetizer', 'Soup', 'Salad', 'Main Course', 'Side Dish', 'Dessert', 'Drinks'] %}
+<div class="category-filters animate-up delay-1">
+    <button class="cat-chip active" data-cat="all" onclick="filterByCategory('all')">
+        All Items <span class="badge-count">{{ menu_items|length }}</span>
+    </button>
+    {% for cat in categories_list %}
+    {% set count = menu_items|selectattr('category', 'equalto', cat)|list|length %}
+    {% if count > 0 %}
+    <button class="cat-chip" data-cat="{{ cat }}" onclick="filterByCategory('{{ cat }}')">
+        {{ cat }} <span class="badge-count">{{ count }}</span>
+    </button>
+    {% endif %}
+    {% endfor %}
+</div>
+
+{% if menu_items %}
+<div class="menu-grid animate-up delay-2">
+    {% for item in menu_items %}
+    <div class="menu-item-card-pro" data-category="{{ item.category }}" data-name="{{ item.name|lower }}">
+        <div class="card-options-dropdown">
+            <button class="btn-dots" onclick="toggleDropdown(this)">
+                <i class="fas fa-ellipsis-v"></i>
+            </button>
+            <div class="dropdown-menu-pro">
+                <button class="dropdown-item-pro"
+                    data-item='{{ {"id": item.id, "name": item.name, "category": item.category, "description": item.description, "price": item.price, "cost_price": item.cost_price, "serving_size": item.serving_size, "is_addon": item.is_addon, "addon_price": item.addon_price, "dietary_tags": item.dietary_tags, "image_url": item.image_url}|tojson }}'
+                    onclick="editMenuItem(this)">
+                    <i class="fas fa-edit"></i> Edit Dish
+                </button>
+                <button class="dropdown-item-pro delete" onclick="confirmArchiveDish('{{ item.id }}')">
+                    <i class="fas fa-archive"></i> Archive Dish
+                </button>
+            </div>
+        </div>
+
+        <div class="menu-item-content-pro">
+            <div class="item-main-info">
+                <h3 class="item-name-pro">{{ item.name }}</h3>
+                <span class="item-category-tag">{{ item.category }}</span>
+                <p class="item-desc-pro">
+                    {{ item.description|truncate(100) if item.description else 'No description provided.' }}
+                </p>
+                <div class="item-footer-row">
+                    <span class="item-price-pro">₱{{ "{:,.0f}".format(item.price or 0) }}</span>
+                    {% if item.is_addon %}
+                    <span class="addon-mini-badge">Add-on</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="item-status-col">
+                {% if item.is_hidden %}
+                <span class="status-badge-pro unavailable">unavailable</span>
+                {% else %}
+                <span class="status-badge-pro available">available</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state animate-up delay-2 d-flex flex-column align-items-center justify-content-center text-center">
+    <div class="empty-icon">
+        <i class="fas fa-utensils"></i>
+    </div>
+    <h2>Your Library is Empty</h2>
+    <p class="mx-auto" style="max-width: 400px;">Start building your culinary collection by adding your signature
+        dishes.</p>
+    <button class="btn-primary-pro mt-4 mx-auto" onclick="openAddMenuModal()">Add Your First Dish</button>
+</div>
+{% endif %}
+
+<!-- Add/Edit Menu Modal -->
+<div id="menuModal" class="modal-pro">
+    <div class="modal-content-pro">
+        <div class="modal-header-pro">
+            <div>
+                <h3 id="menuModalTitle">Add New Dish</h3>
+
+                <p class="text-muted small mb-0">Dishes in your library can be added to any package.</p>
+            </div>
+            <button onclick="hideModal()" class="btn-close-pro">&times;</button>
+        </div>
+
+        <form id="menuForm" action="/caterer/menu/add" method="POST" enctype="multipart/form-data" novalidate>
+            <div class="modal-body-pro">
+                <div id="menuErrorDrawer" class="error-drawer"></div>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="form-group-pro">
+                            <label>Dish Name</label>
+                            <input type="text" name="name" class="control-pro"
+                                placeholder="e.g. Braised Beef Short Ribs" required minlength="2" maxlength="100"
+                                title="Dish name must be between 2 and 100 characters">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group-pro">
+                            <label>Base Price (₱)</label>
+                            <input type="text" name="price" class="control-pro js-format-comma" placeholder="0"
+                                required title="Price must be a valid whole number between 0 and 100,000"
+                                inputmode="numeric">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group-pro">
+                            <label>Internal Cost (₱) <i class="fas fa-info-circle"
+                                    title="This is your internal cost (ingredients, labor, etc.). Used for ROI calculation only. Customers won't see this."></i></label>
+                            <input type="text" name="cost_price" class="control-pro js-format-comma"
+                                placeholder="0" title="Internal cost tracking for ROI"
+                                inputmode="numeric">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="form-group-pro">
+                            <label>Category</label>
+                            <select name="category" id="modalCategory" class="filter-select-pro w-100" required>
+                                <option value="Appetizer">Appetizer</option>
+                                <option value="Soup">Soup</option>
+                                <option value="Salad">Salad</option>
+                                <option value="Main Course">Main Course</option>
+                                <option value="Side Dish">Side Dish</option>
+                                <option value="Dessert">Dessert</option>
+                                <option value="Drinks">Drinks</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group-pro">
+                            <label>Serving Size</label>
+                            <input type="text" name="serving_size" class="control-pro"
+                                placeholder="e.g. Good for 1 / Per Tray" maxlength="50"
+                                title="Keep serving size short and descriptive">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group-pro">
+                    <label>Description</label>
+                    <textarea name="description" rows="3" class="control-pro"
+                        placeholder="Describe the flavors, ingredients, and presentation..." maxlength="500"></textarea>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-12">
+                        <div class="addon-toggle-box">
+                            <div class="d-flex align-items-center gap-3">
+                                <label class="switch">
+                                    <input type="checkbox" name="is_addon" id="isAddonCheckbox"
+                                        onchange="toggleAddonPrice()">
+                                    <span class="slider round"></span>
+                                </label>
+                                <div>
+                                    <div class="fw-bold">Mark as Premium Add-on</div>
+                                    <div class="text-muted small">Can be added to packages for an extra fee.</div>
+                                </div>
+                            </div>
+                            <div id="addonPriceContainer" class="mt-3" style="display: none;">
+                                <label class="small fw-bold">Add-on Surcharge (₱)</label>
+                                <input type="text" name="addon_price" id="addonPriceInput"
+                                    class="control-pro js-format-comma" placeholder="0"
+                                    title="Surcharge must be a valid whole number between 0 and 50,000"
+                                    inputmode="numeric">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group-pro mt-3">
+                    <label>Dietary Labels</label>
+                    <div class="dietary-matrix">
+                        <label class="matrix-item"><input type="checkbox" name="dietary_tags" value="Vegetarian">
+                            Vegetarian</label>
+                        <label class="matrix-item"><input type="checkbox" name="dietary_tags" value="Vegan">
+                            Vegan</label>
+                        <label class="matrix-item"><input type="checkbox" name="dietary_tags" value="Halal">
+                            Halal</label>
+                        <label class="matrix-item"><input type="checkbox" name="dietary_tags" value="Gluten-Free">
+                            Gluten-Free</label>
+                        <label class="matrix-item"><input type="checkbox" name="dietary_tags" value="Spicy">
+                            Spicy</label>
+                    </div>
+                </div>
+
+                <div class="form-group-pro mt-3">
+                    <label>Dish Photo</label>
+                    <div class="photo-dropzone" id="photoDropzone"
+                        onclick="document.getElementById('menuImageInput').click()">
+                        <i class="fas fa-camera"></i>
+                        <span>Upload Photo</span>
+                        <input type="file" name="image" id="menuImageInput" accept="image/*" style="display: none;"
+                            onchange="previewImage(event)">
+                    </div>
+                    <div id="imagePreviewContainer" style="display: none; position: relative; margin-top: 1rem;">
+                        <img id="imagePreview" src="" class="img-preview" alt="Preview">
+                        <button type="button" class="btn-remove-img" onclick="removeImage()"><i
+                                class="fas fa-times"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer-pro">
+                <button type="button" class="btn-secondary-pro" onclick="hideModal()">Cancel</button>
+                <button type="submit" class="btn-primary-pro">Save to Library</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const modal = document.getElementById('menuModal');
+    const form = document.getElementById('menuForm');
+    const modalTitle = document.getElementById('menuModalTitle');
+
+    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+    const imagePreview = document.getElementById('imagePreview');
+    const photoDropzone = document.getElementById('photoDropzone');
+    const addonPriceContainer = document.getElementById('addonPriceContainer');
+
+    function openAddMenuModal() {
+        modalTitle.innerText = 'Add New Dish';
+        form.action = '/caterer/menu/add';
+        form.reset();
+        removeImage();
+        toggleAddonPrice();
+        document.getElementById('menuErrorDrawer').style.display = 'none';
+        modal.classList.add('active');
+    }
+
+    function editMenuItem(el) {
+        const item = JSON.parse(el.dataset.item);
+        modalTitle.innerText = 'Edit Dish';
+        form.action = `/caterer/menu/${item.id}/update`;
+
+        form.name.value = item.name;
+        form.category.value = item.category;
+        form.description.value = item.description || '';
+        form.price.value = item.price || 0;
+        form.cost_price.value = item.cost_price || 0;
+        form.serving_size.value = item.serving_size || '';
+
+        const isAddon = item.is_addon;
+        document.getElementById('isAddonCheckbox').checked = isAddon;
+        form.addon_price.value = item.addon_price || 0;
+
+        // Apply immediate formatting
+        if (window.applyCommaFormatting) {
+            window.applyCommaFormatting(form.price);
+            window.applyCommaFormatting(form.cost_price);
+            window.applyCommaFormatting(form.addon_price);
+        }
+        toggleAddonPrice();
+
+        // Handle Dietary Tags
+        const tags = item.dietary_tags || [];
+        form.querySelectorAll('input[name="dietary_tags"]').forEach(cb => {
+            cb.checked = tags.includes(cb.value);
+        });
+
+        if (item.image_url) {
+            imagePreview.src = item.image_url;
+            imagePreviewContainer.style.display = 'block';
+            photoDropzone.style.display = 'none';
+        } else {
+            removeImage();
+        }
+
+        document.getElementById('menuErrorDrawer').style.display = 'none';
+        modal.classList.add('active');
+    }
+
+    function hideModal() {
+        modal.classList.remove('active');
+    }
+
+    function previewImage(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                imagePreview.src = e.target.result;
+                imagePreviewContainer.style.display = 'block';
+                photoDropzone.style.display = 'none';
+            }
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function removeImage() {
+        imagePreview.src = '';
+        imagePreviewContainer.style.display = 'none';
+        photoDropzone.style.display = 'flex';
+        document.getElementById('menuImageInput').value = '';
+    }
+
+    function toggleAddonPrice() {
+        const checked = document.getElementById('isAddonCheckbox').checked;
+        addonPriceContainer.style.display = checked ? 'block' : 'none';
+    }
+
+    function toggleDropdown(btn) {
+        const dropdown = btn.nextElementSibling;
+        const isActive = dropdown.classList.contains('active');
+
+        // Close all other dropdowns first
+        document.querySelectorAll('.dropdown-menu-pro').forEach(d => d.classList.remove('active'));
+
+        if (!isActive) {
+            dropdown.classList.add('active');
+        }
+
+        // Stop bubbling
+        event.stopPropagation();
+    }
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', () => {
+        document.querySelectorAll('.dropdown-menu-pro').forEach(d => d.classList.remove('active'));
+    });
+
+    let currentCategory = 'all';
+
+    function filterByCategory(cat) {
+        currentCategory = cat;
+        const chips = document.querySelectorAll('.cat-chip');
+        chips.forEach(chip => {
+            chip.classList.toggle('active', chip.dataset.cat === cat);
+        });
+        applyFilters();
+    }
+
+    function filterMenu() {
+        applyFilters();
+    }
+
+    function applyFilters() {
+        const query = document.getElementById('menuSearchInput').value.toLowerCase();
+        const cards = document.querySelectorAll('.menu-item-card-pro');
+        let visibleCount = 0;
+
+        cards.forEach(card => {
+            const name = card.dataset.name;
+            const itemCat = card.dataset.category;
+
+            const matchQuery = name.includes(query);
+            const matchCategory = currentCategory === 'all' || itemCat === currentCategory;
+
+            if (matchQuery && matchCategory) {
+                card.style.display = 'block';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        // Toggle empty state if no results found during filter
+        const emptyState = document.querySelector('.empty-state');
+        if (emptyState && cards.length > 0) {
+            emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
+        }
+    }
+
+    function confirmArchiveDish(id) {
+        window.showConfirm("Are you sure you want to archive this dish? It will be moved to your archives and hidden from your offerings.", () => {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/caterer/menu/${id}/archive?success_msg=Dish+archived+successfully`;
+            document.body.appendChild(form);
+            form.submit();
+        }, "Archive Dish?", "Yes, Archive Dish");
+    }
+
+    // Intercept form submission to show Error Drawer instead of browser popups
+    form.addEventListener('submit', function (e) {
+        const drawer = document.getElementById('menuErrorDrawer');
+        drawer.style.display = 'none';
+
+        if (!this.checkValidity()) {
+            e.preventDefault();
+            const invalidInputs = Array.from(this.querySelectorAll(':invalid'));
+            const errors = invalidInputs.map(input => {
+                let label = input.previousElementSibling ? input.previousElementSibling.innerText : input.name;
+                label = label.replace(/\s*\([^)]*\)/g, ''); // Remove units from text
+                return `<li><strong>${label}:</strong> ${input.validationMessage}</li>`;
+            });
+            drawer.innerHTML = `<i class="fas fa-exclamation-circle"></i><div><strong>Please fix the following issues:</strong><ul>${errors.join('')}</ul></div>`;
+            drawer.style.display = 'flex';
+            document.querySelector('#menuModal .modal-body-pro').scrollTop = 0;
+        } else {
+            // Success - sanitize numeric inputs by stripping commas
+            this.querySelectorAll('.js-format-comma').forEach(input => {
+                input.value = input.value.replace(/,/g, '');
+            });
+        }
+    });
+
+    // Close modal on click outside
+    window.onclick = function (event) {
+        if (event.target == modal) {
+            hideModal();
+        }
+    }
+</script>
+{% endblock %}

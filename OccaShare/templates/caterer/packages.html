@@ -1,0 +1,493 @@
+{% set nav_page = 'packages' %}
+{% extends "caterer/layout.html" %}
+
+{% block title %}Manage Packages - OccaShare Caterer{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/packages.css') }}?v=1.4">
+{% endblock %}
+
+{% block content %}
+<div class="page-header"
+    style="margin-bottom: 3rem; display: flex; justify-content: space-between; align-items: start;">
+    <div>
+        <h1
+            style="font-size: 2.25rem; font-weight: 800; color: var(--secondary-color); margin: 0; letter-spacing: -0.02em;">
+            Service Packages</h1>
+        <p style="color: var(--text-muted); font-size: 1rem; margin-top: 0.5rem; font-weight: 400;">High-impact menu
+            offerings and professional pricing tiers.</p>
+    </div>
+    <div class="header-actions" style="display: flex; gap: 1rem; align-items: center;">
+        <div class="search-box-pro"
+            style="display: flex; align-items: center; gap: 0.75rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 0 1.25rem; height: 46px; box-sizing: border-box; width: 320px; transition: all 0.2s ease;">
+            <i class="fas fa-search" style="color: #94a3b8; font-size: 0.95rem;"></i>
+            <input type="text" id="packageSearchInput" placeholder="Search packages, tiers..."
+                style="border: none; outline: none; background: transparent; height: 100%; width: 100%; font-size: 0.9rem; color: #1e293b; font-weight: 500;"
+                onkeyup="filterPackages()">
+        </div>
+        <button class="btn-primary-pro" onclick="openAddPackageModal()"
+            style="height: 46px; padding: 0 1.5rem; border-radius: 0.75rem; background: var(--primary-gradient); color: white; border: none; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);">
+            <i class="fas fa-plus"></i> Create New Package
+        </button>
+    </div>
+</div>
+
+{% if packages %}
+<div class="packages-grid-pro animate-up delay-1">
+    {% for package in packages %}
+    <div class="package-card-pro" id="package-{{ package.id }}">
+        <div class="package-media-pro">
+            {% if package.image_url %}
+            <img src="{{ package.image_url }}" alt="{{ package.name }}" loading="lazy">
+            {% else %}
+            <div class="no-image-placeholder">
+                <i class="fas fa-utensils"></i>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="package-body-pro">
+            <div class="pkg-header-row">
+                <h3 class="package-name-pro">{{ package.name }}</h3>
+                <span class="status-pill-small {% if package.is_active %}active{% endif %}"
+                    onclick="togglePackageStatus({{ package.id }}, this)" title="Click to toggle status">
+                    {{ 'active' if package.is_active else 'hidden' }}
+                </span>
+            </div>
+
+            <div class="package-stats-minimal">
+                <span class="rating-pro"><i class="fas fa-star"></i> {{ "%.1f"|format(user.caterer_profile.rating or
+                    4.9) }}</span>
+                <span class="bookings-count-pro">({{ package.bookings|length if package.bookings else 0 }}
+                    bookings)</span>
+            </div>
+
+            <p class="package-desc-pro">
+                {{ package.description|truncate(120) }}
+            </p>
+
+            <div class="package-price-pro">
+                <span class="price-val">₱{{ "{:,.0f}".format(package.price_per_head or package.price or 0) }}</span>
+                <span class="price-type">starting</span>
+            </div>
+
+            <div class="package-specs-minimal">
+                <div class="spec-item-min">
+                    <i class="fas fa-users"></i>
+                    <span>{{ package.min_guests or 1 }}-{{ package.max_guests or '500+' }} guests</span>
+                </div>
+                <div class="spec-item-min">
+                    <i class="fas fa-utensils-alt"></i>
+                    <span>{{ package.menu_items|length if package.menu_items else 0 }} items</span>
+                </div>
+            </div>
+
+            <div class="package-footer-pro-new">
+                <div class="footer-buttons-row">
+                    <button class="btn-edit-full" onclick="editPackage({{ package.id }})">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    <button class="btn-menu-items" onclick="showMenuModal({{ package.id }}, '{{ package.name }}')"
+                        title="Menu Items">
+                        <i class="fas fa-list-ul"></i>
+                    </button>
+                    <button class="btn-archive-pro" onclick="archivePackage({{ package.id }})" title="Archive Package">
+                        <i class="fas fa-archive"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div
+    class="packages-empty-pro animate-up delay-1 d-flex flex-column align-items-center justify-content-center text-center py-5">
+    <div class="empty-icon-pro">
+        <i class="fas fa-layer-group"></i>
+    </div>
+    <h2 class="mt-3">No Packages Available</h2>
+    <p class="max-w-md mx-auto">Your menu offerings drive your bookings. Start creating your first professional package
+        now.</p>
+    <button class="btn-primary-pro mt-4" onclick="openAddPackageModal()">Get Started</button>
+</div>
+{% endif %}
+
+<!-- Create/Edit Package Modal -->
+<div id="packageModal" class="modal-pro">
+    <div class="modal-content-pro">
+        <div class="modal-header-pro">
+            <div>
+                <h3 id="packageModalTitle">Create New Package</h3>
+
+                <p class="text-muted small mb-0">Define your service logistics and pricing.</p>
+            </div>
+            <button onclick="hideModal()" class="btn-close-pro">&times;</button>
+        </div>
+
+        <form id="packageForm" action="/caterer/packages/add" method="POST" enctype="multipart/form-data" novalidate>
+            <div class="modal-body-pro">
+                <div id="packageErrorDrawer" class="error-drawer"></div>
+                <div class="modal-tabs-pro">
+                    <button type="button" class="mtab-btn active"
+                        onclick="switchPackageTab(event, 'basic')">Logistics</button>
+                    <button type="button" class="mtab-btn"
+                        onclick="switchPackageTab(event, 'details')">Features</button>
+                    <button type="button" class="mtab-btn" onclick="switchPackageTab(event, 'pricing')">Pricing</button>
+                </div>
+
+                <!-- Logistics Tab -->
+                <div id="tab-basic" class="tab-pane-pro active">
+                    <div class="form-group-pro">
+                        <label>Package Title</label>
+                        <input type="text" name="name" class="control-pro" placeholder="e.g. Royal Wedding Tier"
+                            required minlength="3" maxlength="100"
+                            title="Package name must be between 3 and 100 characters">
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="form-group-pro">
+                                <label>Event Category</label>
+                                <select name="service_type" class="filter-select-pro w-100">
+                                    <option value="Wedding">Wedding Celebration</option>
+                                    <option value="Birthday">Birthday Party</option>
+                                    <option value="Corporate">Corporate Event</option>
+                                    <option value="Debut">Debut/Engagement</option>
+                                    <option value="General">Custom Gathering</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group-pro">
+                                <label>Service Hours</label>
+                                <input type="text" name="service_duration" class="control-pro js-format-comma" value="8" required title="Service duration must be between 8 and 12 hours"
+                                    inputmode="numeric">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group-pro">
+                        <label>Description</label>
+                        <textarea name="description" rows="3" class="control-pro"
+                            placeholder="Tell the story of this dining experience..." required
+                            maxlength="1000"></textarea>
+                    </div>
+                    <!-- Package Photo Upload -->
+                    <div class="form-group-pro">
+                        <label>Package Photo</label>
+                        <div class="photo-upload-area" id="photoUploadArea">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span>Click to upload a package cover photo</span>
+                            <input type="file" name="image" accept="image/*" id="packageImageInput"
+                                onchange="previewPackageImage(event)">
+                        </div>
+                        <img id="packageImagePreview" class="photo-preview-img" style="display:none;" alt="Preview">
+                    </div>
+                </div>
+
+                <!-- Pricing Tab -->
+                <div id="tab-pricing" class="tab-pane-pro">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="form-group-pro">
+                                <label>Price Per Guest (₱)</label>
+                                <input type="text" name="price_per_head" class="control-pro js-format-comma" placeholder="0" required
+                                    title="Price per guest must be a whole number between 0 and 100,000"
+                                    inputmode="numeric">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group-pro">
+                                <label>Cost Per Guest (₱) <i class="fas fa-info-circle"
+                                        title="This is your internal cost (ingredients, labor, etc.). Used for ROI calculation only. Customers won't see this."></i></label>
+                                <input type="text" name="cost_price" class="control-pro js-format-comma" placeholder="0" title="Internal cost per guest"
+                                    inputmode="numeric">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group-pro">
+                                <label>Min. Investment (₱)</label>
+                                <input type="text" name="min_contract_amount" class="control-pro js-format-comma" placeholder="0"
+                                    title="Minimum contract amount must be a whole number between 0 and 10,000,000"
+                                    inputmode="numeric">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="form-group-pro">
+                                <label>Min. Guest Count</label>
+                                <input type="text" name="min_guests" class="control-pro js-format-comma" value="50" required
+                                    title="Minimum guests must be between 1 and 10,000"
+                                    inputmode="numeric">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group-pro">
+                                <label>Max. Guest Count</label>
+                                <input type="text" name="max_guests" class="control-pro js-format-comma" placeholder="Unlimited"
+                                    title="Maximum guests must be between 1 and 10,000"
+                                    inputmode="numeric">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Features Tab -->
+                <div id="tab-details" class="tab-pane-pro">
+                    <label class="d-block mb-3 fw-bold">Inclusions & Logistics:</label>
+                    <div class="inclusion-matrix" id="inclusionMatrix">
+                        <label class="matrix-item"><input type="checkbox" name="inclusions" value="Full Setup"> Full
+                            Venue Setup</label>
+                        <label class="matrix-item"><input type="checkbox" name="inclusions" value="Wait Staff">
+                            Professional Staff</label>
+                        <label class="matrix-item"><input type="checkbox" name="inclusions" value="Styling"> Event
+                            Styling</label>
+                        <label class="matrix-item"><input type="checkbox" name="inclusions" value="Equipment"> Service
+                            Equipment</label>
+                        <label class="matrix-item"><input type="checkbox" name="inclusions" value="Lights/Sounds">
+                            Lights & Sounds</label>
+                        <label class="matrix-item"><input type="checkbox" name="inclusions" value="Mobile Bar"> Mobile
+                            Bar</label>
+                    </div>
+
+                    <div class="mt-4 p-3 rounded" style="background:#f8fafc; border:1px solid #e2e8f0;">
+                        <label class="fw-bold mb-2 d-block" style="font-size:0.9rem; color:#475569;">Add Custom
+                            Inclusion</label>
+                        <div class="d-flex align-items-center w-100" style="gap: 0.5rem;">
+                            <input type="text" id="customInclusionInput" class="form-control flex-grow-1"
+                                style="font-size: 0.9rem; padding: 0.45rem 0.75rem; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: none; min-width: 0;"
+                                placeholder="e.g. Free Champagne Toast"
+                                onkeydown="if(event.key === 'Enter') { event.preventDefault(); window.addCustomInclusion(); }">
+                            <button type="button" class="btn btn-primary flex-shrink-0 m-0"
+                                onclick="window.addCustomInclusion()"
+                                style="font-size: 0.9rem; padding: 0.45rem 1rem; border-radius: 6px; white-space: nowrap; display: flex; align-items: center; gap: 0.35rem; border: none; background-color: var(--primary-color, #0d6efd);">
+                                <i class="fas fa-plus" style="font-size: 0.8rem;"></i> Add
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer-pro">
+                <button type="button" class="btn-secondary-pro" onclick="hideModal()">Cancel</button>
+                <button type="submit" class="btn-primary-pro">Save Package</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Menu Management Modal -->
+<div id="menuModal" class="modal-pro">
+    <div class="modal-content-pro modal-content-menu">
+        <div class="modal-header-pro glass">
+            <div>
+                <h3>Manage Menu Items</h3>
+                <p id="targetPkgDisplay" class="text-muted small mb-0"></p>
+            </div>
+            <button onclick="hideMenuModal()" class="btn-close-pro">&times;</button>
+        </div>
+
+        <div class="modal-body-pro">
+            <div class="modal-tabs-pro mb-3">
+                <button type="button" class="mtab-btn active" onclick="switchMenuMode('current')">Curated Items</button>
+                <button type="button" class="mtab-btn" onclick="switchMenuMode('library')">Link from Library</button>
+                <button type="button" class="mtab-btn" onclick="switchMenuMode('new')">Add New Dish</button>
+            </div>
+
+            <!-- Current Package Items -->
+            <div id="menu-mode-current" class="menu-mode-pane active">
+                <div id="menuItemsContainer" class="menu-items-scroll">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+
+            <!-- Library Linking -->
+            <div id="menu-mode-library" class="menu-mode-pane" style="display: none;">
+                <div class="form-group-pro mb-3">
+                    <div class="search-box-pro">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="librarySearchInput" class="search-input-pro"
+                            placeholder="Search your library..." onkeyup="filterLibraryItems()">
+                    </div>
+                </div>
+                <div id="libraryItemsContainer" class="menu-items-scroll">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+
+            <!-- New Dish Form -->
+            <div id="menu-mode-new" class="menu-mode-pane" style="display: none;">
+                <div class="add-dish-section">
+                    <form id="menuForm" method="POST" enctype="multipart/form-data" novalidate>
+                        <div id="menuErrorDrawer" class="error-drawer"></div>
+                        <input type="hidden" name="package_id" id="modalMenuPackageId">
+                        <div class="form-group-pro">
+                            <label>Dish Name</label>
+                            <input type="text" name="name" class="control-pro"
+                                placeholder="e.g. Slow-Roasted Angus Beef" required minlength="2" maxlength="100"
+                                title="Dish name must be between 2 and 100 characters">
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="form-group-pro">
+                                    <label>Category</label>
+                                    <select name="category" class="filter-select-pro w-100">
+                                        <option>Main Course</option>
+                                        <option>Appetizer</option>
+                                        <option>Soup / Salad</option>
+                                        <option>Dessert</option>
+                                        <option>Beverage</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group-pro">
+                                    <label>Dish Photo</label>
+                                    <input type="file" name="image" class="control-pro p-1" accept="image/*">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="form-group-pro">
+                                    <label>Internal Cost (₱)</label>
+                                    <input type="number" name="cost_price" class="control-pro" placeholder="0" min="0"
+                                        oninput="this.value = this.value.replace(/[^0-9]/g, '');">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="addon-toggle-pro">
+                            <div class="form-check form-switch d-flex align-items-center gap-3">
+                                <input class="form-check-input" type="checkbox" name="is_addon" id="is_addon">
+                                <label class="form-check-label fw-bold" for="is_addon">Premium Add-on (optional)</label>
+                            </div>
+                            <div id="addonPriceGroup" class="mt-2" style="display: none;">
+                                <input type="text" name="addon_price" class="control-pro js-format-comma" placeholder="0"
+                                    title="Add-on price must be a valid whole number between 0 and 50,000"
+                                    inputmode="numeric">
+                            </div>
+                        </div>
+
+                        <div class="addon-toggle-pro mt-3 border-top pt-3">
+                            <div class="form-check form-switch d-flex align-items-center gap-3">
+                                <input class="form-check-input" type="checkbox" name="link_to_package"
+                                    id="link_to_package" value="true" checked>
+                                <label class="form-check-label fw-bold" for="link_to_package">Link this dish to the
+                                    current package immediately</label>
+                            </div>
+                        </div>
+
+                        <div class="modal-footer-pro mt-4 px-0 pb-0 shadow-none border-0 bg-transparent text-end"
+                            style="justify-content: flex-end;">
+                            <button type="submit" id="menuSubmitBtn" class="btn-primary-pro">Add to Library &
+                                Package</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', path='/js/caterer/packages.js') }}"></script>
+<script>
+    function previewPackageImage(event) {
+        const preview = document.getElementById('packageImagePreview');
+        const area = document.getElementById('photoUploadArea');
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+                area.style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function filterPackages() {
+        const input = document.getElementById('packageSearchInput');
+        const filter = input.value.toLowerCase();
+        const cards = document.querySelectorAll('.package-card-pro');
+
+        cards.forEach(card => {
+            const textContent = card.textContent || card.innerText;
+            if (textContent.toLowerCase().indexOf(filter) > -1) {
+                card.style.display = "";
+            } else {
+                card.style.display = "none";
+            }
+        });
+    }
+
+    document.getElementById('packageForm').addEventListener('submit', function (e) {
+        const drawer = document.getElementById('packageErrorDrawer');
+        drawer.style.display = 'none';
+
+        if (!this.checkValidity()) {
+            e.preventDefault();
+            const invalidInputs = Array.from(this.querySelectorAll(':invalid'));
+            const errors = invalidInputs.map(input => {
+                let label = input.previousElementSibling ? input.previousElementSibling.innerText : input.name;
+                label = label.replace(/\s*\([^)]*\)/g, ''); // Remove units
+                return `<li><strong>${label}:</strong> ${input.validationMessage}</li>`;
+            });
+            drawer.innerHTML = `<i class="fas fa-exclamation-circle"></i><div><strong>Please fix the following issues:</strong><ul>${errors.join('')}</ul></div>`;
+            drawer.style.display = 'flex';
+            document.querySelector('#packageModal .modal-body-pro').scrollTop = 0;
+        }
+    });
+
+    const menuForm = document.getElementById('menuForm');
+    if (menuForm) {
+        menuForm.addEventListener('submit', function (e) {
+            const drawer = document.getElementById('menuErrorDrawer');
+            if (drawer) drawer.style.display = 'none';
+
+            if (!this.checkValidity()) {
+                e.preventDefault();
+                const invalidInputs = Array.from(this.querySelectorAll(':invalid'));
+                const errors = invalidInputs.map(input => {
+                    let label = input.previousElementSibling ? input.previousElementSibling.innerText : input.name;
+                    label = label.replace(/\s*\([^)]*\)/g, '');
+                    return `<li><strong>${label}:</strong> ${input.validationMessage}</li>`;
+                });
+                if (drawer) {
+                    drawer.innerHTML = `<i class="fas fa-exclamation-circle"></i><div><strong>Please fix the following issues:</strong><ul>${errors.join('')}</ul></div>`;
+                    drawer.style.display = 'flex';
+                }
+            }
+        });
+    }
+
+    // Attempt to hijack modal opens to hide drawers
+    if (typeof openAddPackageModal === 'function') {
+        const originalOpenPackage = openAddPackageModal;
+        window.openAddPackageModal = function () {
+            document.getElementById('packageErrorDrawer').style.display = 'none';
+            originalOpenPackage();
+        };
+    }
+    if (typeof editPackage === 'function') {
+        const originalEditPackage = editPackage;
+        window.editPackage = function (id) {
+            document.getElementById('packageErrorDrawer').style.display = 'none';
+            originalEditPackage(id);
+        };
+    }
+    if (typeof showMenuModal === 'function') {
+        const originalShowMenu = showMenuModal;
+        window.showMenuModal = function (id, name) {
+            const drawer = document.getElementById('menuErrorDrawer');
+            if (drawer) drawer.style.display = 'none';
+            originalShowMenu(id, name);
+        };
+    }
+</script>
+{% endblock %}

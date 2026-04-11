@@ -1,0 +1,115 @@
+/* Shared Wizard Navigation Styles */
+
+.wizard-actions {
+    display: flex;
+    gap: 1.25rem;
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.btn-wizard-back {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    height: 3.5rem;
+    background: white;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-wizard-back:hover {
+    background: #fff1e6;
+    transform: translateY(-2px);
+    color: var(--secondary-slate);
+    border-color: #e2e8f0;
+}
+
+.btn-wizard-next {
+    flex: 1.5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    height: 3.5rem;
+    background: #1e293b;
+    color: white;
+    border: none;
+    border-radius: 999px;
+    font-weight: 800;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 8px 20px rgba(255, 123, 84, 0.3);
+}
+
+.btn-wizard-next:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(var(--primary-color-rgb, 79, 70, 229), 0.3);
+    filter: brightness(1.05);
+}
+
+.btn-wizard-next:disabled {
+    background: #cbd5e1;
+    cursor: not-allowed;
+    box-shadow: none;
+    opacity: 0.7;
+}
+
+/* Payment Specific Improvements */
+.qr-container {
+    margin-top: 1.5rem;
+    padding: 1.25rem;
+    background: #f8fafc;
+    border-radius: 1rem;
+    border: 2px dashed var(--border-color);
+    text-align: center;
+}
+
+.qr-hint {
+    font-size: 0.8rem;
+    color: var(--text-light);
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+}
+
+.qr-image {
+    max-width: 150px;
+    height: auto;
+    border-radius: 0.75rem;
+    border: 4px solid white;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+@media (max-width: 640px) {
+    .wizard-actions {
+        flex-direction: column-reverse;
+    }
+    
+    .btn-wizard-back, .btn-wizard-next {
+        width: 100%;
+    }
+}
+
+/* Reusable QR Preview for Payment Step */
+.qr-preview-sm {
+    margin-top: 1.25rem;
+    padding: 1rem;
+    background: white;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-color);
+    display: inline-block;
+}
+
+.qr-preview-sm img {
+    max-width: 120px;
+    height: auto;
+    border-radius: 0.5rem;
+}

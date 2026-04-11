@@ -1,0 +1,98 @@
+{% extends "customer/booking_wizard/wizard_base.html" %}
+
+{% block title %}Review Your Booking - OccaServe{% endblock %}
+
+{% block step_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_review.css') }}">
+{% endblock %}
+
+{% block wizard_content %}
+<div class="wizard-header-content">
+    <h2 class="wizard-title font-playfair">Review Your Booking</h2>
+    <p class="wizard-subtitle">Please double-check your event details before proceeding to verification.</p>
+</div>
+
+<div class="review-details-container">
+    <div class="review-section">
+        <h4 class="section-label">Catering Partner</h4>
+        <div class="partner-info">
+            <div class="partner-logo-placeholder">
+                <i class="fas fa-store"></i>
+            </div>
+            <div>
+                <h3 class="partner-name">{{ caterer.business_name }}</h3>
+                <span class="partner-status">Verified Partner</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="review-section">
+        <h4 class="section-label">Selected Package</h4>
+        {% if package %}
+        <div class="package-review-card">
+            <h4 class="package-review-name">{{ package.name }}</h4>
+            <p class="package-review-desc">{{ package.description }}</p>
+        </div>
+        {% else %}
+        <p class="no-selection-error">No package selected</p>
+        {% endif %}
+    </div>
+
+    <div class="review-section review-section-final">
+        <h4 class="section-label">Event Information</h4>
+        <div class="event-info-grid">
+            <div class="info-card info-card-full">
+                <i class="fas fa-magic"></i>
+                <div>
+                    <span class="info-content-label">Event Name & Type</span>
+                    <span class="info-content-value">{{ data.event_name }} ({{ data.event_type }})</span>
+                </div>
+            </div>
+            <div class="info-card">
+                <i class="far fa-calendar-check"></i>
+                <div>
+                    <span class="info-content-label">Date & Time</span>
+                    <span class="info-content-value">{{ data.event_date }} at {{ data.event_time }}</span>
+                </div>
+            </div>
+            <div class="info-card">
+                <i class="fas fa-users"></i>
+                <div>
+                    <span class="info-content-label">Guest Count</span>
+                    <span class="info-content-value">{{ data.guest_count }} guests</span>
+                </div>
+            </div>
+            <div class="info-card info-card-full">
+                <i class="fas fa-map-marker-alt"></i>
+                <div>
+                    <span class="info-content-label">Venue / Address</span>
+                    <span class="info-content-value">{{ data.venue_address }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="total-summary-card">
+        <i class="fas fa-receipt bg-icon"></i>
+        <div class="summary-flex">
+            <div>
+                <span class="total-amount-label">Estimated Total</span>
+                <h2 class="total-amount-value">₱{{ "{:,.2f}".format(total_price) }}</h2>
+            </div>
+            <div style="text-align: right;">
+                <span class="payment-schedule-label">Payment Schedule</span>
+                <span class="payment-schedule-value">Full amount due after approval</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="wizard-actions">
+        <a href="/bookings/step/details" class="btn-prev">
+            <i class="fas fa-edit"></i> Edit Details
+        </a>
+        <a href="/bookings/step/verify" class="btn-primary btn-confirm-review">
+            Confirm & Verify <i class="fas fa-shield-alt"></i>
+        </a>
+    </div>
+</div>
+{% endblock %}

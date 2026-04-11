@@ -1,0 +1,296 @@
+{% extends "caterer/layout.html" %}
+
+{% block title %}Reviews - Caterer Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/reviews.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Customer Reviews</h1>
+    <p>Monitor your reputation and engage with customer feedback.</p>
+</div>
+
+<!-- Stats Cards Row -->
+<div class="reviews-stats-grid">
+    <div class="stat-card-premium c-card-premium stat-card-white">
+        <div class="stat-icon-bg halo-amber"><i class="fas fa-star"></i></div>
+        <div class="stat-label-dashboard">Average Rating</div>
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-top: 0.25rem;">
+            <div class="stat-value-dashboard" style="margin: 0;">{{ avg_rating }}</div>
+            <div style="color: #f59e0b; font-size: 1.1rem;">
+                {% for _ in range(avg_rating|int) %}<i class="fas fa-star"></i>{% endfor %}
+                {% if avg_rating % 1 >= 0.5 %}<i class="fas fa-star-half-alt"></i>{% endif %}
+            </div>
+        </div>
+        <div class="stat-hint-dashboard">Out of 5.0 total</div>
+    </div>
+
+    <div class="stat-card-premium c-card-premium stat-card-white">
+        <div class="stat-icon-bg halo-green"><i class="fas fa-comments"></i></div>
+        <div class="stat-label-dashboard">Total Reviews</div>
+        <div class="stat-value-dashboard">{{ total_reviews }}</div>
+        <div class="stat-hint-dashboard">All customer feedback</div>
+    </div>
+
+    <div class="stat-card-premium c-card-premium stat-card-white rating-breakdown-card">
+        <div class="breakdown-header">
+            <span class="stat-label-dashboard" style="margin-bottom: 0.5rem;">Rating Breakdown</span>
+        </div>
+        <div class="breakdown-list">
+            {% for star in [5, 4, 3, 2, 1] %}
+            {% set count = rating_stats.get(star, 0) %}
+            {% set percent = (count / total_reviews * 100)|int if total_reviews > 0 else 0 %}
+            <div class="breakdown-item">
+                <span class="star-label">{{ star }} <i class="fas fa-star" style="font-size: 0.7rem;"></i></span>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" style="width: {{ percent }}%;"></div>
+                </div>
+                <span class="count-label">{{ count }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+
+<div class="reviews-main-container c-card-premium">
+    <div class="reviews-toolbar">
+        <h3>Feedback History</h3>
+        <div class="toolbar-actions">
+            <div class="search-box-pro" style="display: flex; align-items: center; gap: 0.75rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 0 1.25rem; height: 46px; box-sizing: border-box; width: 320px; min-width: 250px; transition: all 0.2s ease;">
+                <i class="fas fa-search" style="color: #94a3b8; font-size: 0.95rem;"></i>
+                <input type="text" id="reviewSearch" placeholder="Search customer names or review text..." style="border: none; outline: none; background: transparent; height: 100%; width: 100%; font-size: 0.9rem; color: #1e293b; font-weight: 500;" onkeyup="filterReviews()">
+            </div>
+        </div>
+    </div>
+
+    <div id="reviewsList" class="reviews-list-vertical">
+        {% if reviews %}
+            {% for r in reviews %}
+            <div class="review-item-pro" data-id="{{ r.id }}">
+                <div class="review-side-info">
+                    <div class="reviewer-avatar">
+                        {{ r.user.first_name[0] }}{{ r.user.last_name[0] }}
+                    </div>
+                </div>
+                <div class="review-content-main">
+                    <div class="review-meta-top">
+                        <div class="reviewer-details">
+                            <span class="reviewer-name">{{ r.user.first_name }} {{ r.user.last_name }}</span>
+                            <span class="review-date">{{ r.created_at.strftime('%b %d, %Y') }}</span>
+                        </div>
+                        <div class="review-stars-pro">
+                            {% for _ in range(r.rating) %}<i class="fas fa-star"></i>{% endfor %}
+                            {% for _ in range(5 - r.rating) %}<i class="far fa-star"></i>{% endfor %}
+                        </div>
+                    </div>
+                    <div class="review-text-pro">
+                        "{{ r.comment }}"
+                    </div>
+                    
+                    <div class="review-actions-pro">
+                        <button class="btn-review-action btn-helpful {% if r.is_helpful %}active{% endif %}" onclick="toggleHelpful(this, {{ r.id }})">
+                            <i class="{% if r.is_helpful %}fas{% else %}far{% endif %} fa-thumbs-up"></i> 
+                            <span class="action-label">{% if r.is_helpful %}Helpful Checked{% else %}Helpful{% endif %}</span>
+                        </button>
+                        <button class="btn-review-action btn-helpful btn-reply {% if r.caterer_reply %}replied{% endif %}" onclick="toggleReplyBox('{{ r.id }}')">
+                            <i class="far fa-comment-dots"></i> {% if r.caterer_reply %}Update Reply{% else %}Reply{% endif %}
+                        </button>
+                    </div>
+
+                    <!-- Display saved reply if exists -->
+                    <div id="savedReply-{{ r.id }}" class="caterer-response-pro {% if r.caterer_reply %}active{% endif %}">
+                        <div class="response-header">
+                            <span class="response-tag"><i class="fas fa-reply"></i> Your Response</span>
+                        </div>
+                        <div class="response-content">
+                            {{ r.caterer_reply or "" }}
+                        </div>
+                    </div>
+
+                    <!-- Toggleable Reply Box -->
+                    <div id="replyBox-{{ r.id }}" class="reply-box-pro">
+                        <textarea placeholder="Write your professional response here...">{{ r.caterer_reply or "" }}</textarea>
+                        <div class="reply-box-actions">
+                            <button class="btn-cancel-reply" onclick="toggleReplyBox('{{ r.id }}')">Cancel</button>
+                            <button class="btn-submit-reply" onclick="submitReply('{{ r.id }}')">{% if r.caterer_reply %}Save Changes{% else %}Send Response{% endif %}</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-comment-slash"></i>
+                <p>No reviews found matching your criteria.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination-container-p" id="reviewPagination" style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9;">
+        <div class="pagination-info" style="font-size: 0.85rem; color: #64748b; font-weight: 500;">
+            Showing <span id="startRange">0</span> to <span id="endRange">0</span> of <span id="totalEntries">0</span> reviews
+        </div>
+        <div class="pagination-buttons" style="display: flex; gap: 0.5rem; align-items: center;">
+            <button id="prevPage" class="btn-pagination">
+                <i class="fas fa-chevron-left"></i> Previous
+            </button>
+            <div id="pageNumbers" class="page-numbers" style="display: flex; gap: 0.4rem;"></div>
+            <button id="nextPage" class="btn-pagination">
+                Next <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const itemsPerPage = 5;
+    let currentPage = 1;
+    let filteredItems = [];
+    
+    const reviewsList = document.getElementById('reviewsList');
+    const allItems = Array.from(reviewsList.querySelectorAll('.review-item-pro'));
+    const searchInput = document.getElementById('reviewSearch');
+    
+    function updateDisplay() {
+        const start = (currentPage - 1) * itemsPerPage;
+        const end = start + itemsPerPage;
+        
+        allItems.forEach(item => item.style.display = 'none');
+        
+        const currentItems = filteredItems.slice(start, end);
+        currentItems.forEach(item => item.style.display = 'flex');
+        
+        // Update Info
+        const total = filteredItems.length;
+        document.getElementById('startRange').textContent = total === 0 ? 0 : start + 1;
+        document.getElementById('endRange').textContent = Math.min(end, total);
+        document.getElementById('totalEntries').textContent = total;
+        
+        renderPagination(total);
+    }
+    
+    function renderPagination(total) {
+        const pageCount = Math.ceil(total / itemsPerPage);
+        const pageNumbers = document.getElementById('pageNumbers');
+        pageNumbers.innerHTML = '';
+        
+        for (let i = 1; i <= pageCount; i++) {
+            const btn = document.createElement('button');
+            btn.className = `btn-page ${i === currentPage ? 'active' : ''}`;
+            btn.textContent = i;
+            btn.onclick = () => { currentPage = i; updateDisplay(); window.scrollTo({top: 0, behavior: 'smooth'}); };
+            pageNumbers.appendChild(btn);
+        }
+        
+        document.getElementById('prevPage').disabled = currentPage === 1;
+        document.getElementById('nextPage').disabled = currentPage === pageCount || pageCount === 0;
+    }
+    
+    window.filterReviews = function() {
+        const query = searchInput.value.toLowerCase();
+        filteredItems = allItems.filter(item => {
+            const text = item.textContent.toLowerCase();
+            return text.includes(query);
+        });
+        
+        currentPage = 1;
+        updateDisplay();
+    };
+    
+    window.toggleReplyBox = function(id) {
+        const box = document.getElementById(`replyBox-${id}`);
+        const isVisible = box.classList.contains('active');
+        
+        // Close others first for a clean UI
+        document.querySelectorAll('.reply-box-pro').forEach(b => b.classList.remove('active'));
+        
+        if (!isVisible) {
+            box.classList.add('active');
+            box.querySelector('textarea').focus();
+        }
+    };
+
+    window.submitReply = async function(id) {
+        const box = document.getElementById(`replyBox-${id}`);
+        const textarea = box.querySelector('textarea');
+        const text = textarea.value.trim();
+        const savedBox = document.getElementById(`savedReply-${id}`);
+        
+        if (!text) {
+            alert("Please enter a response message.");
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/caterer/reviews/${id}/reply`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reply: text })
+            });
+            
+            if (response.ok) {
+                // Update UI visually
+                savedBox.querySelector('.response-content').textContent = text;
+                savedBox.classList.add('active');
+                box.classList.remove('active');
+                
+                // Update the button text
+                const btnReply = box.closest('.review-content-main').querySelector('.btn-reply');
+                btnReply.classList.add('replied');
+                btnReply.innerHTML = '<i class="far fa-comment-dots"></i> Update Reply';
+                
+                // Optional: Toast/Success message
+                console.log("Reply saved successfully");
+            } else {
+                alert("Failed to save reply. Please try again.");
+            }
+        } catch (error) {
+            console.error("Error submitting reply:", error);
+            alert("An error occurred. Check your connection.");
+        }
+    };
+
+    window.toggleHelpful = async function(btn, id) {
+        try {
+            const response = await fetch(`/caterer/reviews/${id}/helpful`, {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                btn.classList.toggle('active', data.is_helpful);
+                const icon = btn.querySelector('i');
+                const label = btn.querySelector('.action-label');
+                
+                if (data.is_helpful) {
+                    icon.className = 'fas fa-thumbs-up';
+                    label.textContent = 'Helpful Checked';
+                } else {
+                    icon.className = 'far fa-thumbs-up';
+                    label.textContent = 'Helpful';
+                }
+            }
+        } catch (error) {
+            console.error("Error toggling helpful:", error);
+        }
+    };
+    
+    document.getElementById('prevPage').onclick = () => { if(currentPage > 1) { currentPage--; updateDisplay(); } };
+    document.getElementById('nextPage').onclick = () => { 
+        const pageCount = Math.ceil(filteredItems.length / itemsPerPage);
+        if(currentPage < pageCount) { currentPage++; updateDisplay(); } 
+    };
+    
+    // Initial load
+    filteredItems = [...allItems];
+    updateDisplay();
+});
+</script>
+{% endblock %}

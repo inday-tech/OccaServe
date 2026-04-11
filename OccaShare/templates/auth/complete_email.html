@@ -1,0 +1,35 @@
+{% set nav_page = 'login' %}
+{% extends "landing_base.html" %}
+
+{% block title %}Complete Your Registration - OccaServe{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="/static/css/auth.css">
+{% endblock %}
+
+{% block content %}
+<div class="main-content-wrap">
+    <div class="auth-container">
+        <div class="professional-card">
+            <h2>Complete Registration</h2>
+            <p class="auth-subtitle">Your Facebook account does not provide an email. Please enter your email to
+                continue.</p>
+
+            {% if error %}
+            <div class="alert-error">
+                <i class="fas fa-exclamation-circle"></i> {{ error }}
+            </div>
+            {% endif %}
+
+            <form action="/auth/complete-email" method="post" class="auth-form">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" class="minimal-input" required
+                        placeholder="you@example.com">
+                </div>
+                <button type="submit" class="btn-primary-action">Continue</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

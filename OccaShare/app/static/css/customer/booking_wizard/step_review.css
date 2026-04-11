@@ -1,0 +1,199 @@
+.review-details-container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.review-section {
+    margin-bottom: 2.5rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px dashed var(--border-color);
+}
+
+.review-section-final {
+    margin-bottom: 3rem;
+    border-bottom: none;
+}
+
+.section-label {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-light);
+    margin-bottom: 1.25rem;
+}
+
+.partner-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.partner-logo-placeholder {
+    width: 50px;
+    height: 50px;
+    background: #f1f5f9;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-color);
+}
+
+.partner-name {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.partner-status {
+    font-size: 0.85rem;
+    color: var(--text-light);
+}
+
+.package-review-card {
+    background: #f8fafc;
+    padding: 1.5rem;
+    border-radius: 1rem;
+    border: 1px solid var(--border-color);
+}
+
+.package-review-name {
+    margin: 0 0 0.5rem;
+    color: var(--secondary-color);
+}
+
+.package-review-desc {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--text-light);
+    line-height: 1.5;
+}
+
+.no-selection-error {
+    color: #ef4444;
+    font-weight: 600;
+}
+
+.event-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.info-card {
+    background: white;
+    padding: 1.25rem;
+    border-radius: 1rem;
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.info-card-full {
+    grid-column: span 2;
+}
+
+.info-card i {
+    color: var(--primary-color);
+    font-size: 1.25rem;
+}
+
+.info-content-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-light);
+}
+
+.info-content-value {
+    font-weight: 600;
+}
+
+.total-summary-card {
+    background: var(--secondary-color);
+    padding: 2.5rem;
+    border-radius: 1.5rem;
+    color: white;
+    margin-bottom: 4rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.total-summary-card .bg-icon {
+    position: absolute;
+    right: -20px;
+    bottom: -20px;
+    font-size: 8rem;
+    opacity: 0.05;
+}
+
+.summary-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.total-amount-label {
+    font-size: 1rem;
+    opacity: 0.8;
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.total-amount-value {
+    margin: 0;
+    font-size: 2.5rem;
+    color: white;
+}
+
+.payment-schedule-label {
+    display: block;
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+.payment-schedule-value {
+    font-weight: 600;
+}
+
+.btn-confirm-review {
+    padding: 1.25rem 2.5rem;
+    border-radius: 1rem;
+    font-weight: 700;
+    text-decoration: none;
+    text-align: center;
+}
+
+.btn-confirm-review i {
+    margin-left: 0.5rem;
+    font-size: 0.8rem;
+}
+
+@media (max-width: 768px) {
+    .event-info-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .info-card-full {
+        grid-column: span 1;
+    }
+
+    .total-amount-value {
+        font-size: 2rem;
+    }
+
+    .total-summary-card {
+        padding: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .review-section {
+        padding-bottom: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .partner-name {
+        font-size: 1.1rem;
+    }
+}

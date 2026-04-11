@@ -1,0 +1,208 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Inquiries Management - Admin Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/inquiries.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 2rem;">
+    <h1>Visitor Inquiries</h1>
+    <p>Manage all messages sent to the platform or caterers by potential clients.</p>
+</div>
+
+<div class="inquiries-management-wrapper">
+    <div class="management-header-flex">
+        <h3 class="management-title"><i class="fas fa-envelope-open-text"></i> Message Registry</h3>
+        <div class="header-controls-pro">
+            <select class="filter-select-pro" id="statusFilter" onchange="filterInquiries()">
+                <option value="">All Messages</option>
+                <option value="new">New / Unread</option>
+                <option value="responded">Responded</option>
+                <option value="archived">Archived</option>
+            </select>
+            <div class="search-box-pro">
+                <i class="fas fa-search"></i>
+                <input type="text" id="inquirySearchInput" placeholder="Search sender or message..."
+                    onkeyup="filterInquiries()">
+            </div>
+        </div>
+    </div>
+
+    {% if senders %}
+    <div style="overflow-x: auto;">
+        <table class="inquiries-list-table" id="inquiriesTable">
+            <thead>
+                <tr>
+                    <th>Sender</th>
+                    <th>Latest Message Snippet</th>
+                    <th>Message Count</th>
+                    <th>Last Activity</th>
+                    <th>Status</th>
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in senders %}
+                <tr class="inquiry-row" data-email="{{ s.email }}" data-status="{{ s.status }}">
+                    <td>
+                        <div style="font-weight: 600; color: #1e293b;">{{ s.name }}</div>
+                        <div style="font-size: 0.8rem; color: #64748b;">{{ s.email }}</div>
+                    </td>
+                    <td>
+                        <div class="inquiry-snippet">{{ s.messages[0].message if s.messages else 'No message text' }}
+                        </div>
+                    </td>
+                    <td>
+                        <span
+                            style="background: #f1f5f9; padding: 0.25rem 0.625rem; border-radius: 0.5rem; font-weight: 700; font-size: 0.85rem; color: #475569;">
+                            {{ s.messages|length }} msg(s)
+                        </span>
+                    </td>
+                    <td>
+                        <div style="font-size: 0.9rem; color: #64748b;">{{ s.latest_date.strftime('%b %d, %Y') if
+                            s.latest_date else 'N/A' }}</div>
+                    </td>
+                    <td>
+                        <span class="status-badge-pill status-{{ s.status }}">
+                            <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
+                            {{ s.status|title }}
+                        </span>
+                    </td>
+                    <td style="text-align: right;">
+                        <div class="action-btn-group">
+                            <button class="btn-icon-only btn-primary" title="View Thread"
+                                onclick="viewThread('{{ s.email }}')">
+                                <i class="fas fa-comments"></i>
+                            </button>
+                            <form action="/admin/inquiries/thread/{{ s.email }}/status?status=responded" method="POST"
+                                style="display:inline;"
+                                onsubmit="return confirm('Mark all messages from this sender as responded?')">
+                                <button type="submit" class="btn-icon-only" title="Mark Thread as Responded">
+                                    <i class="fas fa-check-double"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 5rem 2rem;">
+        <i class="fas fa-envelope-open-text" style="font-size: 3.5rem; color: #cbd5e1; margin-bottom: 1.5rem;"></i>
+        <h3 style="color: #1e293b; font-weight: 700; margin-bottom: 0.5rem;">No Inquiries Found</h3>
+        <p style="color: #64748b; font-size: 0.95rem;">All messages have been cleared or haven't arrived yet.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- View Modal -->
+<div class="modal-overlay" id="viewInquiryModal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Inquiry Details</h3>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div
+                style="display: flex; justify-content: space-between; margin-bottom: 1.5rem; background: #f8fafc; padding: 1rem; border-radius: 0.75rem;">
+                <div>
+                    <span class="info-label">Sender</span>
+                    <div class="info-value" id="modalName">-</div>
+                </div>
+                <div style="text-align: right;">
+                    <span class="info-label">Email</span>
+                    <div class="info-value"><a href="" id="modalEmail"
+                            style="color: #4f46e5; text-decoration: none;">-</a></div>
+                </div>
+            </div>
+
+            <span class="info-label">Message History</span>
+            <div id="threadContainer"
+                style="display: flex; flex-direction: column; gap: 1rem; margin-top: 0.5rem; max-height: 400px; overflow-y: auto; padding-right: 0.5rem;">
+                <!-- Messages will be injected here -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary-pro" onclick="closeModal()">Close Window</button>
+            <a href="" id="modalReplyBtn" class="btn-primary-pro" style="text-decoration: none;">Reply via Email</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const sendersData = {{ senders_json| safe if senders_json else '[]' }};
+
+    function filterInquiries() {
+        const searchInput = document.getElementById('inquirySearchInput').value.toLowerCase();
+        const statusFilter = document.getElementById('statusFilter').value.toLowerCase();
+        const rows = document.querySelectorAll('#inquiriesTable tbody tr');
+
+        rows.forEach(row => {
+            const textContent = row.textContent || row.innerText;
+            const status = row.getAttribute('data-status');
+
+            let matchesSearch = textContent.toLowerCase().indexOf(searchInput) > -1;
+            let matchesStatus = statusFilter === "" || (statusFilter === "new" ? status === "new" : status === statusFilter);
+
+            if (matchesSearch && matchesStatus) {
+                row.style.display = "";
+            } else {
+                row.style.display = "none";
+            }
+        });
+    }
+
+    function viewThread(email) {
+        const sender = sendersData.find(s => s.email === email);
+        if (sender) {
+            document.getElementById('modalName').textContent = sender.name;
+            document.getElementById('modalEmail').textContent = sender.email;
+            document.getElementById('modalEmail').href = `mailto:${sender.email}`;
+
+            const threadContainer = document.getElementById('threadContainer');
+            threadContainer.innerHTML = '';
+
+            const messages = [...sender.messages].reverse();
+
+            messages.forEach(msg => {
+                const msgEl = document.createElement('div');
+                msgEl.className = 'message-box';
+                msgEl.style.position = 'relative';
+                msgEl.style.paddingTop = '1.75rem';
+                msgEl.innerHTML = `
+                    <div style="position: absolute; top: 0.5rem; left: 1rem; font-size: 0.7rem; font-weight: 700; color: #94a3b8; text-transform: uppercase;">
+                        Sent on ${msg.created_at}
+                        ${msg.status === 'new' ? '<span style="color: #10b981; margin-left: 0.5rem;">● NEW</span>' : ''}
+                    </div>
+                    ${msg.message}
+                `;
+                threadContainer.appendChild(msgEl);
+            });
+
+            document.getElementById('modalReplyBtn').href = `mailto:${sender.email}?subject=RE: OccaServe Inquiry`;
+            document.getElementById('viewInquiryModal').style.display = 'flex';
+
+            setTimeout(() => {
+                threadContainer.scrollTop = threadContainer.scrollHeight;
+            }, 50);
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('viewInquiryModal').style.display = 'none';
+    }
+
+    window.onclick = function (event) {
+        const modal = document.getElementById('viewInquiryModal');
+        if (event.target == modal) {
+            closeModal();
+        }
+    }
+</script>
+{% endblock %}

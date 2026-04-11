@@ -1,0 +1,192 @@
+{% extends "customer/layout.html" %}
+
+{% block title %}Overview - OccaServe Dashboard{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', path='/js/customer/dashboard.js') }}"></script>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/dashboard.css') }}?v=1.1">
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-hero">
+    <h1>Welcome back, {{ user.first_name }}!</h1>
+    <p>Here's what's happening with your bookings today.</p>
+</div>
+
+{% if not user.is_verified %}
+<!-- Unverified Alert -->
+<div class="verification-alert">
+    <div class="verification-alert-content">
+        <div class="verification-icon-box">
+            <i class="fas fa-id-card"></i>
+        </div>
+        <div class="verification-text">
+            <h4>Account Verification Required</h4>
+            <p>Complete your one-time identity verification to start booking caterers.</p>
+        </div>
+    </div>
+    <a href="/customer/verification" class="btn-primary btn-verify-now">Verify Now</a>
+</div>
+{% endif %}
+
+<!-- Stats Cards -->
+<div class="stats-container">
+    <div class="stat-card">
+        <div class="stat-icon halo-amber">
+            <i class="fas fa-calendar-alt"></i>
+        </div>
+        <div class="stat-label">Upcoming Events</div>
+        <div class="stat-value">{{ upcoming_count if upcoming_count is defined else 0 }}</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon halo-purple">
+            <i class="fas fa-history"></i>
+        </div>
+        <div class="stat-label">Total Bookings</div>
+        <div class="stat-value">{{ total_count if total_count is defined else 0 }}</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon halo-green">
+            <i class="fas fa-star"></i>
+        </div>
+        <div class="stat-label">Reviews Given</div>
+        <div class="stat-value">{{ user.reviews|length if user.reviews else 0 }}</div>
+    </div>
+</div>
+
+<!-- Dashboard Content Grid -->
+<div class="dashboard-grid-container"
+    style="display: grid; grid-template-columns: 2.2fr 1fr; gap: 2rem; margin-bottom: 3.5rem; align-items: start;">
+
+    <!-- Left Column: Recent Activity -->
+    <div class="activity-card">
+        <div class="activity-header">
+            <h3><i class="fas fa-clock"></i> Recent Events</h3>
+            <a href="/customer/bookings" class="btn-text-arrow">View All <i class="fas fa-arrow-right"></i></a>
+        </div>
+
+        {% if bookings %}
+        <div class="table-responsive">
+            <table class="activity-table">
+                <thead>
+                    <tr>
+                        <th>Caterer</th>
+                        <th>Date</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th style="text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for booking in bookings %}
+                    <tr class="activity-row">
+                        <td class="activity-cell" style="border-radius: 1rem 0 0 1rem;">
+                            <div class="activity-caterer-info">
+                                <div class="activity-caterer-icon">
+                                    <i class="fas fa-magic"></i>
+                                </div>
+                                <div>
+                                    <h4 class="activity-event-name">{{ booking.event_name }}</h4>
+                                    <span class="activity-caterer-name">with {{ booking.caterer_name }}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="activity-cell">
+                            <div class="activity-date-primary">{{ booking.display_date }}</div>
+                            <div class="activity-time-secondary">{{ booking.display_time }}</div>
+                        </td>
+                        <td class="activity-cell">
+                            <div class="activity-amount">{{ booking.display_amount }}</div>
+                            <div class="activity-payment-method">{{ booking.payment_method }}</div>
+                        </td>
+                        <td class="activity-cell">
+                            <!-- Booking Status -->
+                            <div class="status-badge status-{{ booking.status or 'pending' }}">
+                                {{ (booking.status or 'pending')|capitalize }}
+                            </div>
+                            <!-- Payment Status Hint -->
+                            {% if booking.payment_status %}
+                            <div class="payment-status-hint py-1"
+                                style="font-size: 0.7rem; font-weight: 700; color: #64748b;">
+                                <i class="fas fa-circle"
+                                    style="font-size: 0.5rem; color: {% if booking.payment_status == 'paid' %}#10b981{% else %}#f59e0b{% endif %};"></i>
+                                {{ booking.payment_status|replace('_', ' ')|upper }}
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td class="activity-cell" style="border-radius: 0 1rem 1rem 0; text-align: right;">
+                            <div class="activity-actions">
+                                {% if booking.status == 'draft' %}
+                                <a href="/bookings/continue/{{ booking.id }}"
+                                    class="btn-primary btn-status-action">Continue</a>
+                                {% elif booking.needs_signing %}
+                                <a href="/contracts/{{ booking.id }}/sign" class="btn-primary btn-status-action"
+                                    style="background-color: #1e293b;">Sign Contract</a>
+                                {% else %}
+                                <a href="/customer/bookings/manage/{{ booking.id }}" class="btn-icon-action"
+                                    title="View Details"><i class="fas fa-eye"></i></a>
+                                {% if booking.status == 'completed' and not booking.has_review %}
+                                <a href="/customer/feedback/{{ booking.id }}"
+                                    class="btn-primary btn-status-action">Rate</a>
+                                {% endif %}
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <img src="https://illustrations.popsy.co/gray/calendar.svg" alt="Empty"
+                style="width: 120px; margin-bottom: 1.5rem;">
+            <h3>No bookings found</h3>
+            <p>Host your first event with OccaServe!</p>
+            <a href="/customer/marketplace" class="btn-primary" style="text-decoration: none; margin-top: 1rem;">Browse
+                Caterers</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Right Column: Sidebar Widgets -->
+    <div class="dashboard-sidebar">
+        <!-- Live Messages Widget -->
+        <div class="sidebar-widget-card">
+            {% include "shared/dashboard_messages_widget.html" %}
+        </div>
+
+        <!-- Premium Planning Tip -->
+        <div class="planning-tip-card">
+            <div class="tip-icon-glow">
+                <i class="fas fa-lightbulb"></i>
+            </div>
+            <div class="tip-content">
+                <h4>Planning Tip</h4>
+                <p>Book your caterer at least 2 months in advance for big events like weddings to ensure availability of
+                    the best packages.</p>
+            </div>
+            <div class="tip-sparkle-bg"></div>
+        </div>
+    </div>
+</div>
+
+<style>
+    @media (max-width: 1100px) {
+        .dashboard-grid-container {
+            grid-template-columns: 1fr !important;
+        }
+    }
+
+    .payment-status-hint i {
+        margin-right: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block body_attributes %}data-client-id="{{ client_id }}"{% endblock %}

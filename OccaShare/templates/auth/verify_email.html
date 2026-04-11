@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Email - OccaServe</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        :root {
+            --primary: #FF7B54;
+            --primary-hover: #E66A45;
+            --slate-50: #F9F9FB;
+            --slate-100: #E8ECEF;
+            --slate-200: #DEE2E6;
+            --slate-600: #67727E;
+            --slate-700: #4B5563;
+            --slate-800: #2D4059;
+            --slate-900: #1E2532;
+        }
+
+        body.auth-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 1rem;
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #FF8B6B 0%, #FFB695 100%);
+            background-attachment: fixed;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 450px;
+            animation: slideIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .professional-card {
+            background: #ffffff;
+            border-radius: 1.5rem;
+            padding: 4rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--slate-200);
+            text-align: center;
+        }
+
+        .icon-header {
+            width: 70px;
+            height: 70px;
+            background: #ecfdf5;
+            color: #10b981;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 2rem;
+            font-size: 1.8rem;
+        }
+
+        .professional-card h2 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--slate-900);
+            margin-bottom: 0.75rem;
+            letter-spacing: -0.02em;
+        }
+
+        .auth-subtitle {
+            color: var(--slate-600);
+            margin-bottom: 2.5rem;
+            line-height: 1.6;
+            font-size: 1rem;
+        }
+
+        .form-group {
+            margin-bottom: 2rem;
+        }
+
+        .minimal-input-large {
+            width: 100%;
+            padding: 1.25rem;
+            border: 2px solid var(--slate-200);
+            border-radius: 1rem;
+            font-size: 2rem;
+            font-weight: 700;
+            text-align: center;
+            letter-spacing: 0.75rem;
+            transition: all 0.2s ease;
+            background: var(--slate-50);
+            color: var(--slate-900);
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        .minimal-input-large:focus {
+            border-color: var(--primary);
+            background: #fff;
+            box-shadow: 0 0 0 4px rgba(255, 123, 84, 0.1);
+        }
+
+        .btn-primary-action {
+            background: var(--slate-900);
+            color: white;
+            padding: 1.1rem;
+            border-radius: 1rem;
+            font-size: 1.1rem;
+            font-weight: 700;
+            width: 100%;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-primary-action:hover {
+            background: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(255, 123, 84, 0.4);
+        }
+
+        .auth-footer {
+            margin-top: 2.5rem;
+            text-align: center;
+            border-top: 1px solid var(--slate-100);
+            padding-top: 1.5rem;
+            color: var(--slate-600);
+            font-size: 0.95rem;
+        }
+
+        .resend-link {
+            color: var(--primary);
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        .resend-link.disabled {
+            color: var(--slate-600);
+            cursor: not-allowed;
+            pointer-events: none;
+            font-weight: 400;
+        }
+
+        .alert-error {
+            background: #fef2f2;
+            border: 1px solid #fee2e2;
+            color: #991b1b;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.9rem;
+            text-align: left;
+        }
+    </style>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}">
+</head>
+
+<body class="auth-page">
+    <div class="auth-container">
+        <div class="professional-card">
+            <div class="icon-header">
+                <i class="fas fa-envelope-open-text"></i>
+            </div>
+
+            <h2>Verify Account</h2>
+            <p class="auth-subtitle">
+                Enter the 6-digit code sent to<br>
+                <strong id="email-display" style="color: var(--slate-900);">{{ email }}</strong>
+            </p>
+
+            {% if error %}
+            <div class="alert-error">
+                <i class="fas fa-exclamation-circle"></i>
+                <span>{{ error }}</span>
+            </div>
+            {% endif %}
+
+            <form action="/auth/verify" method="post" id="verifyForm">
+                <input type="hidden" name="email" value="{{ email }}" id="emailField">
+                {% if next_url %}
+                <input type="hidden" name="next_url" value="{{ next_url }}">
+                {% endif %}
+                <div class="form-group">
+                    <input type="text" id="code" name="code" class="minimal-input-large" required placeholder="000000"
+                        maxlength="6" autocomplete="off" inputmode="numeric">
+                </div>
+                <button type="submit" class="btn-primary-action">Verify Now</button>
+            </form>
+
+            <div class="auth-footer">
+                <p>Resend code in <span id="timer" style="font-weight: 700; color: var(--slate-900);">03:00</span></p>
+                <a href="#" class="resend-link disabled" id="resendBtn" onclick="resendCode(event)">Resend Code</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Countdown Timer Logic
+        let timeLeft = 180; // 3 minutes
+        const timerElement = document.getElementById('timer');
+        const resendBtn = document.getElementById('resendBtn');
+        let timerId;
+
+        function startTimer() {
+            timeLeft = 60;
+            resendBtn.classList.add('disabled');
+            resendBtn.textContent = "Resend Code";
+
+            clearInterval(timerId);
+            timerId = setInterval(() => {
+                if (timeLeft <= 0) {
+                    clearInterval(timerId);
+                    timerElement.textContent = "00:00";
+                    resendBtn.classList.remove('disabled');
+                } else {
+                    timeLeft--;
+                    const minutes = Math.floor(timeLeft / 60);
+                    const seconds = timeLeft % 60;
+                    timerElement.textContent = `${minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+                }
+            }, 1000);
+        }
+
+        function resetTimer() {
+            timeLeft = 180;
+            startTimer();
+        }
+
+        startTimer();
+
+        // Initial alert to confirm code was sent
+        window.addEventListener('load', () => {
+            Swal.fire({
+                icon: 'info',
+                title: 'Verification Code Sent',
+                text: 'Please check your email inbox for the 6-digit verification code.',
+                timer: 4000,
+                showConfirmButton: false,
+                toast: true,
+                position: 'top-end',
+                timerProgressBar: true
+            });
+        });
+
+        // Real-time Polling for Verification Status
+        const email = document.getElementById('emailField').value;
+        let pollingId = setInterval(async () => {
+            try {
+                const response = await fetch(`/auth/verify-status?email=${encodeURIComponent(email)}`);
+                const result = await response.json();
+                if (result.verified) {
+                    clearInterval(pollingId);
+                    await Swal.fire({
+                        icon: 'success',
+                        title: 'Email successfully verified!',
+                        text: 'You will be redirected shortly.',
+                        timer: 2000,
+                        showConfirmButton: false,
+                        confirmButtonColor: '#FF7B54'
+                    });
+                    const nextUrl = "{{ next_url if next_url else '/customer/dashboard' }}";
+                    window.location.href = nextUrl;
+                }
+            } catch (error) {
+                console.error('Polling error:', error);
+            }
+        }, 3000);
+
+        // Resend Code Logic
+        async function resendCode(e) {
+            e.preventDefault();
+            if (resendBtn.classList.contains('disabled')) return;
+
+            resendBtn.textContent = "Sending...";
+            resendBtn.classList.add('disabled');
+
+            try {
+                const formData = new FormData();
+                formData.append('email', email);
+
+                const response = await fetch('/auth/resend-code', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Email Sent!',
+                        text: 'A new verification code has been sent to your inbox.',
+                        timer: 2000,
+                        showConfirmButton: false,
+                        confirmButtonColor: '#FF7B54'
+                    });
+                    resetTimer();
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Oops...',
+                        text: result.message || 'Failed to resend code.',
+                        confirmButtonColor: '#FF7B54'
+                    });
+                    resendBtn.classList.remove('disabled');
+                    resendBtn.textContent = "Resend Code";
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                resendBtn.classList.remove('disabled');
+                resendBtn.textContent = "Resend Code";
+            }
+        }
+
+        // Handle Form Submit for Floating Success
+        document.getElementById('verifyForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const form = this;
+            const formData = new FormData(form);
+
+            try {
+                const response = await fetch('/auth/verify', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.redirected) {
+                    if (response.url.includes('verified=true')) {
+                        await Swal.fire({
+                            icon: 'success',
+                            title: 'Email successfully verified!',
+                            text: 'You will be redirected shortly.',
+                            timer: 2000,
+                            showConfirmButton: false,
+                            confirmButtonColor: '#FF7B54'
+                        });
+                        window.location.href = response.url;
+                    } else {
+                        window.location.href = response.url;
+                    }
+                } else {
+                    const text = await response.text();
+                    if (text.includes('Expired')) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Code Expired',
+                            text: 'Your code has expired. Please request a new one.',
+                            confirmButtonColor: '#FF7B54'
+                        });
+                    } else if (text.includes('Invalid')) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Invalid Code',
+                            text: 'Please check the code and try again.',
+                            confirmButtonColor: '#FF7B54'
+                        });
+                    } else if (response.ok) {
+                        const nextUrl = "{{ next_url if next_url else '/customer/dashboard' }}";
+                        window.location.href = nextUrl;
+                    } else {
+                        form.submit();
+                    }
+                }
+            } catch (error) {
+                form.submit();
+            }
+        });
+    </script>
+</body>
+</html>

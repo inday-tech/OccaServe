@@ -1,0 +1,160 @@
+<div class="card-header-flex" style="padding-bottom: 0.75rem; border-bottom: 1px solid #f1f5f9; margin-bottom: 0;">
+    <h3 style="margin:0; font-size: 1.25rem; font-weight: 700; color: var(--secondary-color);"><i
+            class="fas fa-comments"></i> Live Messages</h3>
+    <span id="widget-unread-count" class="unread-badge"
+        style="background: var(--primary-color, #10b981); color: white; font-size: 0.65rem; padding: 2px 8px; border-radius: 99px; display: none;">0
+        New</span>
+</div>
+
+<div id="dashboard-conv-list" class="dashboard-conv-list" style="flex: 1; overflow-y: auto; margin-top: 0.75rem;">
+    <!-- Loading State -->
+    <div style="padding: 1.5rem; text-align: center; color: #94a3b8;">
+        <i class="fas fa-spinner fa-spin fa-lg"></i>
+    </div>
+</div>
+
+<div class="card-footer-action" style="padding-top: 0.75rem; border-top: 1px solid #f1f5f9; text-align: center;">
+    <a href="javascript:void(0)" onclick="document.getElementById('chatTrigger').click()"
+        style="color: var(--primary-color, #3b82f6); font-weight: 600; font-size: 0.85rem; text-decoration: none;">View
+        All Conversations</a>
+</div>
+
+<style>
+    .dashboard-conv-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .widget-conv-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.85rem;
+        border-radius: 1rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+        background: #fcfcfd;
+    }
+
+    .widget-conv-item:hover {
+        background: #f0f7ff;
+        border-color: #e2e8f0;
+        transform: translateY(-2px);
+    }
+
+    .widget-peer-img {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        font-weight: 600;
+        color: #64748b;
+        overflow: hidden;
+    }
+
+    .widget-peer-img img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .widget-conv-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .widget-peer-name {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #334155;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .widget-last-msg {
+        font-size: 0.8rem;
+        color: #64748b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .widget-time {
+        font-size: 0.7rem;
+        color: #94a3b8;
+        white-space: nowrap;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        initDashboardMessages();
+
+        // Refresh every 30 seconds for non-websocket updates (insurance)
+        setInterval(initDashboardMessages, 30000);
+    });
+
+    async function initDashboardMessages() {
+        const listDiv = document.getElementById('dashboard-conv-list');
+        if (!listDiv) return;
+
+        const conversations = await loadConversations();
+        const unreadCountSpan = document.getElementById('widget-unread-count');
+
+        const totalUnread = conversations.reduce((sum, c) => sum + c.unread_count, 0);
+        if (totalUnread > 0) {
+            unreadCountSpan.innerText = `${totalUnread} New`;
+            unreadCountSpan.style.display = 'inline-block';
+        } else {
+            unreadCountSpan.style.display = 'none';
+        }
+
+        if (conversations.length === 0) {
+            listDiv.innerHTML = `
+                <div style="padding: 2rem; text-align: center; color: #94a3b8;">
+                    <p style="font-size: 0.9rem;">No messages yet.</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Show top 5 recent conversations
+        const displayLimit = 5;
+        const recentConvs = conversations.slice(0, displayLimit);
+
+        listDiv.innerHTML = recentConvs.map(conv => {
+            const time = new Date(conv.last_message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            return `
+                <div class="widget-conv-item" onclick="openFloatingActiveChat(${conv.peer.id}, '${conv.peer.name.replace(/'/g, "\\'")}', '${(conv.peer.logo || '').replace(/'/g, "\\'")}'); document.getElementById('chatFloatingContainer').classList.add('active');">
+                    <div class="widget-peer-img">
+                        ${conv.peer.logo ? `<img src="${conv.peer.logo}" alt="Logo">` : conv.peer.name[0]}
+                    </div>
+                    <div class="widget-conv-info">
+                        <div style="display:flex; justify-content: space-between; align-items: baseline;">
+                            <span class="widget-peer-name">${conv.peer.name}</span>
+                            <span class="widget-time">${time}</span>
+                        </div>
+                        <div style="display:flex; justify-content: space-between; align-items: center;">
+                            <span class="widget-last-msg">
+                                ${conv.last_message.sender_id == {{ user.id }} ? 'You: ' : ''}
+                                ${conv.last_message.message_type === 'image' ? 'Sent a photo' : (conv.last_message.message_type === 'file' ? 'Sent a file' : conv.last_message.content)}
+                            </span>
+                            ${conv.unread_count > 0 ? `<span class="unread-dot-glow"></span>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // Hook into global WebSocket events if they exist
+    // In floating_chat.html, we have onMessageReceived which updates badges.
+    // We can add a hook there to refresh this widget too.
+</script>

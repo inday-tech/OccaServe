@@ -1,0 +1,317 @@
+{% set nav_page = 'login' %}
+{% extends "landing_base.html" %}
+
+{% block title %}Complete Your Profile - OccaServe{% endblock %}
+
+{% block head %}
+<style>
+    :root {
+        --primary: #99cc66;
+        --slate-50: #fdfdfb;
+        --slate-100: #cae4c5;
+        --slate-200: #e2e8e0;
+        --slate-600: #5a7a56;
+        --slate-700: #3b5a37;
+        --slate-800: #254222;
+        --slate-900: #1a2e18;
+    }
+
+    .main-content-wrap {
+        padding-top: 100px;
+        padding-bottom: 80px;
+        min-height: 80vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .onboarding-container {
+        width: 100%;
+        max-width: 600px;
+        animation: slideIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .professional-card {
+        background: #ffffff;
+        border-radius: 1.5rem;
+        padding: 3.5rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        border: 1px solid var(--slate-200);
+        text-align: center;
+    }
+
+    .welcome-header {
+        margin-bottom: 2.5rem;
+    }
+
+    .welcome-header h2 {
+        font-family: 'Poppins', sans-serif;
+        font-size: 2.25rem;
+        color: var(--slate-900);
+        margin-bottom: 0.5rem;
+    }
+
+    .welcome-header p {
+        color: var(--slate-600);
+        font-size: 1rem;
+    }
+
+    .role-selection {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        margin-bottom: 2.5rem;
+    }
+
+    .role-card {
+        border: 2px solid var(--slate-200);
+        border-radius: 1.25rem;
+        padding: 2rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-align: center;
+        background: var(--slate-50);
+    }
+
+    .role-card:hover {
+        border-color: var(--primary);
+        transform: translateY(-5px);
+        background: white;
+    }
+
+    .role-card.active {
+        border-color: var(--primary);
+        background: white;
+        box-shadow: 0 10px 20px rgba(153, 204, 102, 0.2);
+    }
+
+    .role-card i {
+        font-size: 2.5rem;
+        color: var(--primary);
+        margin-bottom: 1rem;
+    }
+
+    .role-card h3 {
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+        color: var(--slate-900);
+    }
+
+    .role-card p {
+        font-size: 0.85rem;
+        color: var(--slate-600);
+        line-height: 1.4;
+    }
+
+    .onboarding-form {
+        display: none;
+        text-align: left;
+        animation: fadeIn 0.4s ease;
+    }
+
+    .onboarding-form.active {
+        display: block;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--slate-700);
+        margin-bottom: 0.6rem;
+    }
+
+    .minimal-input {
+        width: 100%;
+        padding: 0.85rem 1.25rem;
+        border: 2px solid var(--slate-200);
+        border-radius: 0.75rem;
+        font-size: 1rem;
+        transition: all 0.2s ease;
+    }
+
+    .minimal-input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(153, 204, 102, 0.1);
+    }
+
+    .btn-primary-action {
+        background: var(--slate-900);
+        color: white;
+        padding: 1.1rem;
+        border-radius: 1rem;
+        font-size: 1.1rem;
+        font-weight: 700;
+        width: 100%;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-top: 1rem;
+    }
+
+    .btn-primary-action:hover {
+        background: var(--primary);
+        transform: translateY(-2px);
+    }
+
+    .caterer-notice {
+        display: none;
+        background: #f0f9ff;
+        border: 1px solid #bae6fd;
+        padding: 1.5rem;
+        border-radius: 1rem;
+        text-align: left;
+        margin-bottom: 2rem;
+    }
+
+    .caterer-notice.active {
+        display: block;
+    }
+
+    .caterer-notice h4 {
+        color: #0369a1;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .caterer-notice p {
+        font-size: 0.9rem;
+        color: #0c4a6e;
+        line-height: 1.5;
+    }
+
+    @media (max-width: 600px) {
+        .role-selection {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .professional-card {
+            padding: 2.5rem 1.5rem;
+        }
+
+        .welcome-header h2 {
+            font-size: 1.75rem;
+        }
+
+        .main-content-wrap {
+            padding-top: 80px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="main-content-wrap">
+    <div class="onboarding-container">
+        <div class="professional-card">
+            <div class="welcome-header">
+                <h2>Almost there!</h2>
+                <p>Welcome to OccaServe. Tell us how you'd like to use our platform.</p>
+            </div>
+
+            {% if request.query_params.get('social') == 'true' or user.auth_provider != 'email' %}
+            <div id="socialNotice" class="welcome-header" style="margin-bottom: 1.5rem;">
+                <p>Please provide your contact details to complete your registration as a <strong>Customer</strong>.</p>
+            </div>
+            {% else %}
+            <div class="role-selection">
+                <div class="role-card" onclick="selectRole('customer')" id="role-customer">
+                    <i class="fas fa-user-circle"></i>
+                    <h3>I'm a Customer</h3>
+                    <p>I want to book the best cakes and catering services.</p>
+                </div>
+                <div class="role-card" onclick="selectRole('caterer')" id="role-caterer">
+                    <i class="fas fa-store"></i>
+                    <h3>I'm a Caterer</h3>
+                    <p>I want to list my business and reach more clients.</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <div id="customerForm" class="onboarding-form">
+                <form action="/auth/onboarding" method="post">
+                    <input type="hidden" name="role" value="customer">
+                    <div class="form-group">
+                        <label for="mobile_number">Mobile Number</label>
+                        <input type="tel" id="mobile_number" name="mobile_number" class="minimal-input" required
+                            placeholder="0917 123 4567">
+                    </div>
+                    <div class="form-group">
+                        <label for="address">Default Delivery Address</label>
+                        <textarea id="address" name="address" class="minimal-input" rows="3" required
+                            placeholder="123 Street Name, Barangay, City"></textarea>
+                    </div>
+                    <button type="submit" class="btn-primary-action">Complete Profile</button>
+                </form>
+            </div>
+
+            <div id="catererNotice" class="caterer-notice">
+                <h4><i class="fas fa-info-circle"></i> Business Registration</h4>
+                <p>To join as a caterer, we'll need a few more details about your business and some documents for
+                    verification. We've pre-filled your name and email from your social account.</p>
+                <a href="/auth/register/caterer" class="btn-primary-action"
+                    style="display: block; text-decoration: none; text-align: center; margin-top: 1.5rem;">Continue to
+                    Caterer Setup</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function selectRole(role) {
+        document.querySelectorAll('.role-card').forEach(c => c.classList.remove('active'));
+        const card = document.getElementById(`role-${role}`);
+        if (card) card.classList.add('active');
+
+        if (role === 'customer') {
+            document.getElementById('customerForm').classList.add('active');
+            const notice = document.getElementById('catererNotice');
+            if (notice) notice.classList.remove('active');
+        } else {
+            document.getElementById('customerForm').classList.remove('active');
+            const notice = document.getElementById('catererNotice');
+            if (notice) notice.classList.add('active');
+        }
+    }
+
+    // Auto-select customer if social user
+    document.addEventListener('DOMContentLoaded', function () {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('social') === 'true' || "{{ user.auth_provider }}" !== 'email') {
+            selectRole('customer');
+        }
+    });
+</script>
+{% endblock %}

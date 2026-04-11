@@ -1,0 +1,512 @@
+/* Caterer Contract View Styles */
+
+@media print {
+    body * {
+        visibility: hidden;
+    }
+
+    #printable-contract,
+    #printable-contract * {
+        visibility: visible;
+    }
+
+    #printable-contract {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        box-shadow: none;
+        border: none;
+    }
+
+    .print-btn-container {
+        display: none !important;
+    }
+
+    /* Ensure tables and borders print properly */
+    table {
+        page-break-inside: auto;
+    }
+
+    tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+    }
+}
+
+.contract-print-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 2rem;
+}
+
+.btn-print-contract {
+    padding: 0.75rem 2rem;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.contract-document-wrapper {
+    background: white;
+    max-width: 8.5in;
+    min-height: 11in;
+    margin: 0 auto;
+    padding: 1.25in;
+    font-family: 'Times New Roman', Times, serif;
+    color: #1a1a1a;
+    line-height: 1.6;
+    box-shadow: 0 0 40px rgba(0,0,0,0.1);
+    position: relative;
+    box-sizing: border-box;
+    border: 1px solid #e2e8f0;
+}
+
+@media (max-width: 768px) {
+    .contract-document-wrapper {
+        padding: 1.75rem 1.25rem;
+        min-height: auto;
+        box-shadow: none;
+        border: none;
+        border-radius: 0;
+    }
+    
+    .contract-parties-layout {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .parties-divider-icon {
+        display: none;
+    }
+
+    .contract-spec-table, .financial-summary-table {
+        display: block;
+        overflow-x: auto;
+    }
+}
+
+.contract-ref-text {
+    font-size: 11pt;
+    margin: 5px 0 0 0;
+}
+
+/* Premium Formal Header */
+.contract-header-premium {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 3px solid #1e293b;
+    padding-bottom: 2rem;
+    margin-bottom: 3rem;
+    font-family: 'Poppins', sans-serif;
+}
+
+.header-logo-placeholder {
+    font-size: 1.5rem;
+    font-weight: 900;
+    color: #1e293b;
+    letter-spacing: -0.5px;
+    background: #f1f5f9;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+}
+
+.header-main-title {
+    text-align: center;
+}
+
+.header-main-title h1 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+    letter-spacing: 1px;
+}
+
+.contract-badge-pro {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-top: 5px;
+}
+
+.header-meta-info {
+    text-align: right;
+    background: #f8fafc;
+    padding: 0.75rem 1.25rem;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+}
+
+.meta-label {
+    display: block;
+    font-size: 0.65rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.meta-value {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #1e293b;
+}
+
+/* Formal Parties Layout */
+.contract-parties-layout {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 3rem;
+    align-items: stretch;
+}
+
+.party-card-pro {
+    flex: 1;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.5rem;
+    position: relative;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.party-label-tag {
+    position: absolute;
+    top: -10px;
+    left: 1.5rem;
+    background: #1e293b;
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 0.2rem 0.8rem;
+    border-radius: 4px;
+    letter-spacing: 1px;
+}
+
+.party-name {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0.5rem 0 0.75rem 0;
+}
+
+.party-detail-text {
+    font-size: 0.9rem;
+    color: #475569;
+    line-height: 1.6;
+    margin: 0;
+    font-family: 'Times New Roman', serif;
+}
+
+.parties-divider-icon {
+    display: flex;
+    align-items: center;
+    color: #cbd5e1;
+    font-size: 1.5rem;
+}
+
+/* Clause List */
+.contract-clauses-list {
+    margin-bottom: 3rem;
+}
+
+.clause-item {
+    margin-bottom: 1.5rem;
+    padding-left: 1rem;
+    border-left: 3px solid #f1f5f9;
+}
+
+.clause-num {
+    display: block;
+    font-weight: 800;
+    color: #1e293b;
+    font-size: 0.95rem;
+    margin-bottom: 0.4rem;
+}
+
+.clause-text {
+    font-size: 10.5pt;
+    color: #334155;
+    line-height: 1.7;
+    text-align: justify;
+}
+
+.badge-status-pro {
+    background: #1e293b;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    margin-left: 0.5rem;
+}
+
+.contract-preamble {
+    font-size: 11.5pt;
+    line-height: 1.8;
+    text-align: justify;
+    margin-bottom: 25px;
+    color: #334155;
+}
+
+.contract-preamble-wrapper {
+    padding: 1.5rem 0;
+    border-bottom: 1px dashed #e2e8f0;
+    margin-bottom: 2.5rem;
+}
+
+.contract-parties-info {
+    margin-bottom: 30px;
+    font-size: 11pt;
+    line-height: 1.6;
+}
+
+.party-block {
+    margin-top: 15px;
+}
+
+.contract-section-title {
+    font-size: 14pt;
+    font-weight: bold;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 5px;
+    margin-top: 30px;
+    margin-bottom: 15px;
+}
+
+.contract-details-table-wrapper {
+    font-size: 11pt;
+    line-height: 1.8;
+    margin-left: 15px;
+    margin-bottom: 30px;
+}
+
+.contract-spec-table {
+    width: 100%;
+    text-align: left;
+}
+
+.spec-label-col {
+    width: 150px;
+    font-weight: bold;
+}
+
+.financial-terms-para {
+    font-size: 11pt;
+    line-height: 1.6;
+    text-align: justify;
+    margin-bottom: 15px;
+}
+
+.financial-summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 30px;
+    font-size: 11pt;
+}
+
+.summary-header-row {
+    border-bottom: 2px solid #000;
+}
+
+.summary-th-desc {
+    padding: 10px 5px;
+    text-align: left;
+}
+
+.summary-th-amount {
+    padding: 10px 5px;
+    text-align: right;
+}
+
+.summary-row-item {
+    border-bottom: 1px solid #eee;
+}
+
+.summary-td-desc {
+    padding: 10px 5px;
+}
+
+.summary-desc-subtext {
+    font-size: 10pt;
+}
+
+.summary-td-amount {
+    padding: 10px 5px;
+    text-align: right;
+}
+
+.addon-row-item {
+    border-bottom: 1px solid #eee;
+}
+
+.addon-td-desc {
+    padding: 10px 5px;
+    padding-left: 20px;
+}
+
+.summary-tfoot {
+    border-top: 2px solid #000;
+}
+
+.total-value-label-cell {
+    padding: 15px 5px 5px;
+    text-align: right;
+    font-weight: bold;
+}
+
+.total-value-amount-cell {
+    padding: 15px 5px 5px;
+    text-align: right;
+    font-weight: bold;
+    font-size: 12pt;
+}
+
+.deposit-info-label-cell {
+    padding: 5px;
+    text-align: right;
+}
+
+.deposit-info-amount-cell {
+    padding: 5px;
+    text-align: right;
+}
+
+.agreement-status-para {
+    font-size: 11pt;
+    line-height: 1.6;
+    text-align: justify;
+    margin-bottom: 40px;
+}
+
+.signatures-container {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 60px;
+    page-break-inside: avoid;
+}
+
+.signature-block {
+    width: 45%;
+    text-align: center;
+}
+
+.signature-title {
+    margin-bottom: 10px;
+    font-style: italic;
+    font-weight: bold;
+}
+
+.signature-line-name {
+    border-bottom: 1px solid #000;
+    padding-bottom: 5px;
+    font-weight: bold;
+    font-size: 12pt;
+    height: 30px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.signature-role-sub {
+    margin-top: 5px;
+    font-size: 10pt;
+}
+
+.signature-date-sub {
+    font-size: 9pt;
+    color: #555;
+    margin-top: 2px;
+}
+
+
+/* Premium Signature Styles */
+.signatures-wrapper-premium {
+    margin-top: 50px;
+    padding: 30px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+}
+
+.signatures-header-text {
+    font-size: 8pt;
+    color: #64748b;
+    text-align: center;
+    margin-bottom: 25px;
+    font-family: sans-serif;
+    font-style: italic;
+}
+
+.signatures-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 40px;
+}
+
+.signature-block {
+    flex: 1;
+    text-align: center;
+}
+
+.signature-title {
+    font-size: 9pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #475569;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-family: sans-serif;
+}
+
+.signature-img-wrapper {
+    height: 100px;
+    border-bottom: 2px solid #1e293b;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+}
+
+.signature-img-wrapper img {
+    max-height: 80px;
+    max-width: 100%;
+}
+
+.awaiting-sig {
+    color: #94a3b8;
+    font-style: italic;
+    font-size: 10pt;
+}
+
+.signature-info-pro {
+    text-align: center;
+}
+
+.sig-name-line {
+    font-size: 12pt;
+    font-weight: 800;
+    color: #1e293b;
+}
+
+.sig-role-line {
+    font-size: 9pt;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.sig-date-line {
+    font-size: 8pt;
+    color: #94a3b8;
+    margin-top: 4px;
+}

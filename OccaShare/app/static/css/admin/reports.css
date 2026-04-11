@@ -1,0 +1,102 @@
+/* Admin Analytics & Reports Styles */
+
+.reports-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 2.5rem;
+    margin-bottom: 3.5rem;
+}
+
+.report-analytics-card {
+    background: var(--white);
+    padding: 2.5rem;
+    border-radius: 2rem;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.report-analytics-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-md);
+}
+
+.report-card-label {
+    color: var(--text-light);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.report-card-value {
+    font-size: 2.75rem;
+    font-weight: 700;
+}
+
+.report-card-meta {
+    font-size: 0.9rem;
+    color: #10b981;
+    margin-top: 0.75rem;
+}
+
+/* Regional Performance Section */
+.performance-detail-wrapper {
+    background: var(--white);
+    border-radius: 2rem;
+    padding: 3rem;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-md);
+}
+
+.performance-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 3rem;
+}
+
+.performance-title-text {
+    font-size: 1.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.btn-export-reports {
+    padding: 0.75rem 1.5rem;
+}
+
+/* Heatmap Placeholder */
+.heatmap-visualization-container {
+    height: 400px;
+    background: #f8fafc;
+    border-radius: 2rem;
+    border: 2px dashed var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    color: var(--text-light);
+    text-align: center;
+    padding: 2rem;
+}
+
+.heatmap-icon-large {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+    opacity: 0.15;
+}
+
+.heatmap-status-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.heatmap-status-desc {
+    font-size: 0.95rem;
+    max-width: 400px;
+}

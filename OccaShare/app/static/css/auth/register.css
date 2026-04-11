@@ -1,0 +1,218 @@
+body {
+    margin-top: 20px;
+}
+
+:root {
+    --primary: #FF7B54;
+    --primary-hover: #E66A45;
+    --slate-50: #F9F9FB;
+    --slate-100: #E8ECEF;
+    --slate-200: #DEE2E6;
+    --slate-600: #67727E;
+    --slate-700: #4B5563;
+    --slate-800: #2D4059;
+    --slate-900: #1E2532;
+}
+
+.main-content-wrap {
+    padding-top: 120px;
+    padding-bottom: 100px;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #FF8B6B 0%, #FFB695 100%);
+    background-attachment: fixed;
+}
+
+.auth-container {
+    width: 100%;
+    max-width: 500px;
+    animation: slideIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.professional-card {
+    background: #ffffff;
+    border-radius: 1.5rem;
+    padding: 3rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--slate-200);
+}
+
+.brand-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.brand-header h2 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--slate-900);
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.02em;
+}
+
+.brand-header p {
+    font-size: 1rem;
+    color: var(--slate-600);
+    line-height: 1.6;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--slate-700);
+    margin-bottom: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.minimal-input {
+    width: 100%;
+    padding: 1rem 1.25rem;
+    border: none !important;
+    background: transparent !important;
+    font-size: 1rem;
+    color: var(--slate-900);
+    box-sizing: border-box;
+    display: block;
+}
+
+.minimal-input:focus {
+    outline: none;
+    box-shadow: none !important;
+}
+
+.btn-luxury-submit {
+    background: var(--primary);
+    color: white;
+    padding: 1.25rem;
+    border-radius: 1rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    width: 100%;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-top: 1.5rem;
+    box-shadow: 0 10px 25px -5px rgba(255, 123, 84, 0.3);
+}
+
+.btn-luxury-submit:hover {
+    background: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 20px 25px -5px rgba(255, 123, 84, 0.4);
+}
+
+.auth-footer {
+    margin-top: 3rem;
+    text-align: center;
+    border-top: 1px solid var(--slate-100);
+    padding-top: 2rem;
+    color: var(--slate-600);
+}
+
+.auth-footer p {
+    font-size: 0.95rem;
+    margin-bottom: 0.75rem;
+}
+
+.auth-footer a {
+    color: var(--primary);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.auth-footer a:hover {
+    text-decoration: underline;
+}
+
+.role-hint {
+    font-size: 0.85rem;
+    color: var(--slate-600);
+    margin-top: 1.25rem;
+}
+
+.alert-error {
+    background: #fef2f2;
+    border: 1px solid #fee2e2;
+    color: #991b1b;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    margin-bottom: 2rem;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* Integrated Validation UI */
+.input-wrapper {
+    position: relative;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: var(--slate-50);
+    border: 2px solid var(--slate-200);
+    margin-bottom: 0.5rem;
+}
+
+.input-wrapper:focus-within {
+    border-color: var(--primary);
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(255, 123, 84, 0.15);
+}
+
+.error-drawer {
+    background: #ef4444;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    padding-left: 1.25rem;
+}
+
+.input-wrapper.error {
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1) !important;
+}
+
+.input-wrapper.error .error-drawer {
+    max-height: 30px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+.input-wrapper.warning {
+    border-color: #f59e0b !important;
+}
+
+.input-wrapper.warning .error-drawer {
+    background: #f59e0b;
+    max-height: 30px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+}

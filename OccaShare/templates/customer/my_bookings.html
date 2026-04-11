@@ -1,0 +1,258 @@
+<<<<<<< HEAD
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Bookings - OccaServe</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/my_bookings.css') }}">
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="/" class="logo">OccaServe</a>
+            <div class="nav-menu">
+                <ul class="nav-links">
+                    <li><a href="/">Home</a></li>
+                    <li><a href="/#caterers">Caterers</a></li>
+                    <li><a href="/bookings/my" class="active">My Bookings</a></li>
+                </ul>
+                <div class="nav-auth">
+                    <a href="/auth/logout" class="btn-outline">Log Out</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-bookings-container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <h1 class="my-bookings-title" style="margin-bottom: 0;">My Bookings</h1>
+            <div class="search-box-pro" style="max-width: 350px;">
+                <i class="fas fa-search"></i>
+                <input type="text" id="customerBookingSearch" placeholder="Search events..." class="search-input-pro"
+                    onkeyup="filterCustomerBookings()">
+            </div>
+        </div>
+
+        {% if bookings %}
+        <div class="dashboard-grid my-bookings-grid">
+            <div class="my-bookings-table-card">
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Booking ID</th>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Guests</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for booking in bookings %}
+                            <tr>
+                                <td>#{{ booking.id }}</td>
+                                <td>{{ booking.event_date }}</td>
+                                <td>{{ booking.event_time or '-' }}</td>
+                                <td>{{ booking.guest_count }}</td>
+                                <td>
+                                    <span
+                                        class="status {{ 'active' if booking.status == 'confirmed' else 'inactive' if booking.status == 'pending' else '' }}">
+                                        {{ booking.status|capitalize }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div style="display: flex; gap: 0.5rem;">
+                                        <button class="btn-outline btn-details-small">View Details</button>
+                                        {% if booking.status != 'pending_quotation' %}
+                                        <a href="/bookings/step/quotation/{{ booking.id }}"
+                                            class="btn-outline btn-details-small"
+                                            style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                                            <i class="fas fa-file-contract"></i> Contract
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="my-bookings-empty">
+            <i class="far fa-calendar-times my-bookings-empty-icon"></i>
+            <h3>No Bookings Yet</h3>
+            <p class="my-bookings-empty-text">You haven't made any bookings yet.</p>
+            <a href="/#caterers" class="btn-primary">Find a Caterer</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2026 OccaServe. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function filterCustomerBookings() {
+            const input = document.getElementById('customerBookingSearch');
+            const filter = input.value.toLowerCase();
+            const rows = document.querySelectorAll('.data-table tbody tr');
+
+            rows.forEach(row => {
+                const textContent = row.textContent || row.innerText;
+                if (textContent.toLowerCase().indexOf(filter) > -1) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        }
+    </script>
+</body>
+
+=======
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Bookings - OccaServe</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/my_bookings.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}">
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="/" class="logo">OccaServe</a>
+            <div class="nav-menu">
+                <ul class="nav-links">
+                    <li><a href="/">Home</a></li>
+                    <li><a href="/#caterers">Caterers</a></li>
+                    <li><a href="/bookings/my" class="active">My Bookings</a></li>
+                </ul>
+                <div class="nav-auth">
+                    <a href="/auth/logout" class="btn-outline">Log Out</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-bookings-container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <h1 class="my-bookings-title" style="margin-bottom: 0;">My Bookings</h1>
+            <div class="search-box-pro" style="max-width: 350px;">
+                <i class="fas fa-search"></i>
+                <input type="text" id="customerBookingSearch" placeholder="Search events..." class="search-input-pro"
+                    onkeyup="filterCustomerBookings()">
+            </div>
+        </div>
+
+        {% if bookings %}
+        <div class="dashboard-grid my-bookings-grid">
+            <div class="my-bookings-table-card">
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Booking ID</th>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Guests</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for booking in bookings %}
+                            <tr>
+                                <td>#{{ booking.id }}</td>
+                                <td>{{ booking.event_date }}</td>
+                                <td>{{ booking.event_time or '-' }}</td>
+                                <td>{{ booking.guest_count }}</td>
+                                <td>
+                                    <span
+                                        class="status {{ 'active' if booking.status == 'confirmed' else 'inactive' if booking.status == 'pending' else '' }}">
+                                        {{ booking.status|capitalize }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div style="display: flex; gap: 0.5rem;">
+                                        <button class="btn-outline btn-details-small">View Details</button>
+                                        {% if booking.status != 'pending_quotation' %}
+                                        <a href="/bookings/step/quotation/{{ booking.id }}" class="btn-outline btn-details-small" style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                                            <i class="fas fa-file-contract"></i> Contract
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="my-bookings-empty">
+            <i class="far fa-calendar-times my-bookings-empty-icon"></i>
+            <h3>No Bookings Yet</h3>
+            <p class="my-bookings-empty-text">You haven't made any bookings yet.</p>
+            <a href="/#caterers" class="btn-primary">Find a Caterer</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2026 OccaServe. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function filterCustomerBookings() {
+            const input = document.getElementById('customerBookingSearch');
+            const filter = input.value.toLowerCase();
+            const rows = document.querySelectorAll('.data-table tbody tr');
+
+            rows.forEach(row => {
+                const textContent = row.textContent || row.innerText;
+                if (textContent.toLowerCase().indexOf(filter) > -1) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        }
+    </script>
+</body>
+
+>>>>>>> fd7a8fa962e9dd3c6b614d6d58c19e8b1ba7015a
+</html>

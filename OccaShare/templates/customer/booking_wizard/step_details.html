@@ -1,0 +1,265 @@
+{% extends "customer/booking_wizard/wizard_base.html" %}
+
+{% block wizard_title %}Event Details - Phase 1{% endblock %}
+
+{% block step_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_details.css') }}?v={{ range(1, 9999) | random }}">
+<style>
+    /* --- Other event type reveal --- */
+    #other-event-wrap {
+        display: none;
+        margin-top: 0.65rem;
+    }
+
+    #other-event-wrap.visible {
+        display: block;
+    }
+
+    /* --- City search dropdown Removed in favor of cascading selects --- */
+
+    /* --- validation --- */
+    .form-input.error {
+        border-color: #ef4444;
+    }
+
+    .field-error {
+        color: #ef4444;
+        font-size: 0.78rem;
+        margin-top: 0.3rem;
+        display: none;
+    }
+
+    .field-error.show {
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block wizard_content %}
+<div class="wizard-header-content">
+    <h2 class="wizard-title">Event Details</h2>
+    <p class="wizard-subtitle">Phase 1: Configure your event requirements and check availability.</p>
+</div>
+
+<form action="/bookings/step/details" method="POST" id="detailsForm" novalidate>
+    <input type="hidden" name="caterer_id" value="{{ caterer.id }}">
+    <input type="hidden" name="package_id" value="{{ package.id if package else '' }}">
+    <input type="hidden" name="booking_id" value="{{ booking.id if booking else '' }}">
+    <input type="hidden" name="total_price" id="total_price_input">
+    <input type="hidden" name="reservation_fee" id="reservation_fee_input">
+
+    <div class="details-grid">
+        <div class="form-area">
+            <!-- Essential Information -->
+            <div class="c-card-premium">
+                <div class="section-header-wrap">
+                    <div class="section-icon-wrap"><i class="fas fa-file-alt"></i></div>
+                    <h3 class="form-section-title">Essential Information</h3>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Event Name</label>
+                    <input type="text" name="event_name" class="form-input" placeholder="e.g., Rodriguez Wedding" 
+                           value="{{ booking.event_name if booking else '' }}" required>
+                    <span class="field-error" id="err-name">Please enter a descriptive event name.</span>
+                </div>
+
+                <div class="grid-2-col">
+                    <div class="form-group">
+                        <label class="form-label">Event Type</label>
+                        <select name="event_type" id="event_type_select" class="filter-select-pro" required>
+                            <option value="">Birthday</option>
+                            <option value="Wedding" {% if booking and booking.event_type == 'Wedding' %}selected{% endif %}>Wedding</option>
+                            <option value="Birthday" {% if booking and booking.event_type == 'Birthday' %}selected{% endif %}>Birthday</option>
+                            <option value="Corporate" {% if booking and booking.event_type == 'Corporate' %}selected{% endif %}>Corporate</option>
+                            <option value="Debut" {% if booking and booking.event_type == 'Debut' %}selected{% endif %}>Debut</option>
+                            <option value="Anniversary" {% if booking and booking.event_type == 'Anniversary' %}selected{% endif %}>Anniversary</option>
+                            <option value="Graduation" {% if booking and booking.event_type == 'Graduation' %}selected{% endif %}>Graduation</option>
+                            <option value="Other" {% if booking and (booking.event_type not in ['Wedding','Birthday','Corporate','Debut','Anniversary','Graduation']) and booking.event_type %}selected{% endif %}>Other (specify below)</option>
+                        </select>
+                        <span class="field-error" id="err-type">Selection required.</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Guest Count <small>(min {{ caterer.min_pax or package.min_guests or 1 }})</small></label>
+                        <div class="input-with-icon">
+                            <i class="fas fa-users"></i>
+                            <input type="number" name="guest_count" id="guest_count" class="form-input"
+                                value="{{ booking.guest_count if booking else (caterer.min_pax or package.min_guests or 50) }}"
+                                min="{{ caterer.min_pax or package.min_guests or 1 }}" oninput="updateCalculator()" required>
+                        </div>
+                        <span class="field-error" id="err-guests">Min required: {{ caterer.min_pax or package.min_guests or 1 }}.</span>
+                    </div>
+                </div>
+
+                <div id="other-event-wrap" class="{% if booking and (booking.event_type not in ['Wedding','Birthday','Corporate','Debut','Anniversary','Graduation']) and booking.event_type %}visible{% endif %}">
+                    <div class="form-group">
+                        <label class="form-label">Specify Event Type</label>
+                        <input type="text" name="other_event_type" id="other_event_type" class="form-input"
+                            value="{{ booking.event_type if booking and (booking.event_type not in ['Wedding','Birthday','Corporate','Debut','Anniversary','Graduation']) else '' }}"
+                            placeholder="e.g., Family Reunion" maxlength="80">
+                        <span class="field-error" id="err-other-type">Please describe.</span>
+                    </div>
+                </div>
+
+                <div class="grid-2-col">
+                    <div class="form-group">
+                        <label class="form-label">Event Date</label>
+                        <div class="input-with-icon">
+                            <i class="fas fa-calendar"></i>
+                            <input type="date" name="event_date" id="event_date" class="form-input" 
+                                value="{{ booking.event_date.isoformat() if booking and booking.event_date else '' }}" required
+                                onchange="checkAvailability()">
+                        </div>
+                        <span class="field-error" id="err-date">Please select a future date.</span>
+                        <div id="availability-chip" class="availability-chip"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Start Time</label>
+                        <div class="input-with-icon">
+                            <i class="fas fa-clock"></i>
+                            <input type="time" name="event_time" id="event_time" class="form-input" 
+                                value="{{ booking.event_time.strftime('%H:%M') if booking and booking.event_time else '' }}"
+                                required>
+                        </div>
+                        <span class="field-error" id="err-time">Please select a valid event time.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Menu Personalization -->
+            <div class="c-card-premium">
+                <div class="section-header-wrap">
+                    <div class="section-icon-wrap"><i class="fas fa-utensils"></i></div>
+                    <h3 class="form-section-title">Menu Personalization</h3>
+                </div>
+                <p class="form-subtitle">Enhance your experience with premium add-ons</p>
+                
+                <div class="menu-item-cards">
+                    <!-- Included Items -->
+                    {% for item in package.menu_items %}
+                    <div class="menu-item-card included selected">
+                        <div class="indicator-circle"></div>
+                        <div class="mic-info">
+                            <span class="mic-name">{{ item.name }}</span>
+                            <span class="mic-cat">{{ item.category }}</span>
+                        </div>
+                        <span class="mic-status">Package</span>
+                    </div>
+                    {% endfor %}
+
+                    <!-- Addons -->
+                    {% if addon_items %}
+                    {% for item in addon_items %}
+                    <label class="menu-item-card {% if item.id in selected_addon_ids %}selected{% endif %}">
+                        <input type="checkbox" name="selected_addons" value="{{ item.id }}" 
+                               {% if item.id in selected_addon_ids %}checked{% endif %}
+                               data-price="{{ item.addon_price or 0 }}" onchange="handleMenuCardToggle(this)">
+                        <div class="indicator-circle"></div>
+                        <div class="mic-info">
+                            <span class="mic-name">{{ item.name }}</span>
+                            <span class="mic-cat">{{ item.category }}</span>
+                        </div>
+                        <span class="mic-price">+₱{{ "{:,.2f}".format(item.addon_price or 0) }}</span>
+                    </label>
+                    {% endfor %}
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Venue Location -->
+            <div class="c-card-premium">
+                <div class="section-header-wrap">
+                    <div class="section-icon-wrap"><i class="fas fa-map-marker-alt"></i></div>
+                    <h3 class="form-section-title">Venue Location</h3>
+                </div>
+
+                <div class="location-cascade-grid">
+                    <div class="form-group">
+                        <label class="form-label">Province</label>
+                        <select name="province" id="province_select" class="filter-select-pro" required>
+                            <option value="">-- Province --</option>
+                            <option value="Laguna" selected>Laguna</option>
+                        </select>
+                        <span class="field-error" id="err-province">Required.</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">City / Municipality</label>
+                        <select name="city" id="city_select" class="filter-select-pro" required>
+                            <option value="">-- City --</option>
+                        </select>
+                        <span class="field-error" id="err-city">Required.</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Barangay</label>
+                        <select name="barangay" id="barangay_select" class="filter-select-pro" required>
+                            <option value="">-- Barangay --</option>
+                        </select>
+                        <span class="field-error" id="err-barangay">Required.</span>
+                    </div>
+                </div>
+                
+                <input type="hidden" name="venue_address" id="venue_address_hidden" value="{{ booking.venue_address if booking else '' }}">
+
+                <div class="form-group">
+                    <label class="form-label">Special Requests <small>(Optional)</small></label>
+                    <textarea name="special_requests" class="form-input" rows="3"
+                        placeholder="e.g., Dietary restrictions, specific theme colors...">{{ booking.special_requests if booking else '' }}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar: Cost Projection -->
+        <aside class="calculator-sidebar">
+            <div class="calc-card">
+                <h3 class="calc-title">Cost Projection</h3>
+
+                <div class="calc-row">
+                    <span class="calc-label">Package Price</span>
+                    <span class="calc-val">₱{{ "{:,.2f}".format(package.price_per_head or package.price or 0) }}/pax</span>
+                </div>
+                <div class="calc-row">
+                    <span class="calc-label">Estimated Guests</span>
+                    <span class="calc-val" id="calc-guests">0</span>
+                </div>
+                <div class="calc-row addons">
+                    <span class="calc-label">Add-ons (<span id="calc-addons-count">0</span>)</span>
+                    <span class="calc-val" id="calc-addons-total">+₱0.00</span>
+                </div>
+                
+                <div class="calc-divider"></div>
+
+                <div class="calc-total">
+                    <span class="total-label">Total</span>
+                    <span class="total-price" id="calc-grand-total">₱0.00</span>
+                </div>
+
+                <div class="calc-info-box">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span>This is an initial estimate. Final pricing may be adjusted based on menu selections and add-ons in the next steps.</span>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <div class="wizard-actions">
+        <a href="/caterers/{{ caterer.id }}" class="btn-wizard-back">
+            Cancel Booking
+        </a>
+        <button type="submit" id="submitBtn" class="btn-wizard-next">
+            Next: Verify Identity <i class="fas fa-chevron-right" style="font-size: 0.8rem;"></i>
+        </button>
+    </div>
+</form>
+{% endblock %}
+
+{% block step_js %}
+<script>
+    window.pricePerHead = parseFloat("{{ package.price_per_head or package.price or 0 }}") || 0;
+    window.catererId = "{{ caterer.id }}";
+    window.minGuests = parseInt("{{ caterer.min_pax or package.min_guests or 1 }}") || 1;
+</script>
+<script src="{{ url_for('static', path='/js/customer/booking_wizard/step_details.js') }}?v={{ range(1, 9999) | random }}"></script>
+{% endblock %}

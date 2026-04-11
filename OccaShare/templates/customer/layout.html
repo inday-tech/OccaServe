@@ -1,0 +1,230 @@
+{% set wconfig = website_config() %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>{% block title %}Dashboard - OccaServe{% endblock %}</title>
+
+    <!-- Core Assets -->
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/layout.css') }}?v=3.5">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/shared/dashboard_premium.css') }}?v=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/alert_modal.css') }}?v=1.4">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}">
+
+    {% if wconfig and wconfig.favicon_url %}
+    <link rel="icon" href="{{ wconfig.favicon_url }}">
+    {% endif %}
+
+    {% block extra_css %}{% endblock %}
+
+    <!-- Early Sidebar State Handler (Prevents Flash) -->
+    <script>
+        (function() {
+            const isMini = localStorage.getItem('sidebar-mini') === 'true';
+            if (isMini && window.innerWidth > 1024) {
+                document.documentElement.classList.add('sidebar-is-mini');
+            }
+        })();
+    </script>
+</head>
+
+<body>
+
+    <!-- Unified Dashboard Top Bar -->
+    <!-- Floating Mobile Toggle -->
+    <button class="floating-burger" onclick="toggleSidebar()" aria-label="Toggle Menu">
+        <i class="fas fa-bars"></i>
+    </button>
+
+
+    <!-- Sidebar Toggle Logic -->
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            const burgerBtn = document.querySelector('.floating-burger');
+            const isMobile = window.innerWidth <= 1024;
+
+            window.openSidebar = function () {
+                if (!sidebar) return;
+                sidebar.classList.add('sidebar-open');
+                if (overlay) overlay.classList.add('active');
+                if (burgerBtn) burgerBtn.classList.add('burger-open');
+                document.body.style.overflow = 'hidden'; 
+            };
+
+            if (sidebar) {
+                if (isMobile) {
+                    sidebar.classList.toggle('active');
+                    if (overlay) overlay.classList.toggle('active');
+                    document.body.style.overflow = sidebar.classList.contains('active') ? '' : 'hidden';
+                } else {
+                    const isMiniNow = document.documentElement.classList.toggle('sidebar-is-mini');
+                    localStorage.setItem('sidebar-mini', isMiniNow);
+                    // Also toggle 'active' for any logic still relying on it
+                    sidebar.classList.toggle('active');
+                }
+            }
+        }
+
+        // Initialize mobile state on load
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.innerWidth <= 1024) {
+                const sidebar = document.getElementById('sidebar');
+                // On mobile, 'active' means visible. So we start without 'active'.
+                // The CSS 'left: -285px' is the default.
+            } else if (document.documentElement.classList.contains('sidebar-is-mini')) {
+                const sidebar = document.getElementById('sidebar');
+                if (sidebar) sidebar.classList.add('active');
+            }
+            
+            const overlay = document.getElementById('sidebarOverlay');
+            if (overlay) overlay.addEventListener('click', toggleSidebar);
+        });
+    </script>
+
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <div class="dashboard-wrapper">
+        <!-- Dashboard Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-toggle-row">
+                    <button id="sidebarToggle" class="desktop-toggle-btn" onclick="toggleSidebar()" aria-label="Toggle Sidebar">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+
+                <a href="/customer/profile" class="sidebar-user-card" style="text-decoration: none;">
+                    <div class="user-avatar">
+                        {% if user and user.profile_image_url %}
+                        <img src="{{ user.profile_image_url }}" alt="Profile"
+                            style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                        {% else %}
+                        {{ user.first_name[0] if user and user.first_name else '?' }}{{ user.last_name[0] if user and user.last_name else '' }}
+                        {% endif %}
+                    </div>
+                    <div class="user-info">
+                        <div class="user-name">
+                            {{ user.first_name if user else 'Guest' }} {{ user.last_name if user else '' }}</div>
+                        <div class="user-role">
+                            Customer</div>
+                    </div>
+                </a>
+            </div>
+            <ul class="sidebar-menu">
+                <li>
+                    <a href="/customer/dashboard" class="{{ 'active' if active_page == 'overview' }}">
+                        <i class="fas fa-th-large"></i> <span>Overview</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/customer/marketplace" class="{{ 'active' if active_page == 'marketplace' }}">
+                        <i class="fas fa-shop"></i> <span>Browse Caterers</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/customer/bookings" class="{{ 'active' if active_page == 'bookings' }}">
+                        <i class="fas fa-calendar-check"></i>
+                        <span>My Bookings</span>
+                        {% if active_page == 'bookings' and current_step %}
+                        <span class="nav-badge-booking">BOOKING</span>
+                        {% endif %}
+                    </a>
+                </li>
+                <li>
+                    <a href="/customer/payments" class="{{ 'active' if active_page == 'payments' }}">
+                        <i class="fas fa-credit-card"></i> <span>Payments</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/customer/reviews" class="{{ 'active' if active_page == 'reviews' }}">
+                        <i class="fas fa-star"></i> <span>Reviews</span>
+                    </a>
+                </li>
+                <li style="position: relative;">
+                    <a href="/customer/notifications" class="{{ 'active' if active_page == 'notifications' }}">
+                        <i class="fas fa-bell"></i> <span>Notifications</span>
+                        {% set unread_count = user.notifications|selectattr('is_read', 'equalto', false)|list|count if user and user.notifications else 0 %}
+                        <span id="nav-notif-badge"
+                            style="background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.65rem; display: {{ 'flex' if unread_count > 0 else 'none' }}; align-items: center; justify-content: center; margin-left: auto;">{{
+                            unread_count }}</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/customer/profile" class="{{ 'active' if active_page == 'profile' }}">
+                        <i class="fas fa-user-circle"></i> <span>Profile</span>
+                    </a>
+                </li>
+                <li class="menu-divider"></li>
+                <li>
+                    <a href="#" class="logout-link" onclick="confirmLogout(event)">
+                        <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
+                    </a>
+                </li>
+            </ul>
+        </aside>
+
+        <!-- Main Dashboard Content -->
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="{{ url_for('static', path='js/main.js') }}?v=2.0"></script>
+    <script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v=1.4"></script>
+    <script>
+        function confirmLogout(e) {
+            e.preventDefault();
+            if (typeof window.showConfirm === 'function') {
+                window.showConfirm('Are you sure you want to log out?', function() {
+                    window.location.href = '/auth/logout';
+                }, 'Logout', 'Yes, Logout');
+            } else {
+                if (confirm('Are you sure you want to log out?')) {
+                    window.location.href = '/auth/logout';
+                }
+            }
+        }
+    </script>
+
+    <!-- Notification system assets -->
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/notifications.css') }}?v=2.0">
+    <script src="{{ url_for('static', path='/js/caterer/notifications.js') }}?v=1.4"></script>
+
+    <!-- Inactivity Auto-Logout -->
+    <div id="inactivityModal" class="modal modal-overlay" style="display: none;">
+        <div class="modal-content-card">
+            <div class="modal-icon-container">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h2 class="modal-title">Session Expiring Soon</h2>
+            <p class="modal-text">You've been inactive for a while. Your session will expire in 1 minute. Would you like
+                to stay logged in?</p>
+            <button id="stayLoggedInBtn" class="btn-primary modal-button-full">Yes, keep me logged in</button>
+        </div>
+    </div>
+
+    {% if user %}
+    {% include "shared/floating_chat.html" %}
+    {% endif %}
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

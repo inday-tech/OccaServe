@@ -1,0 +1,301 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Audit Center: KYC & Fraud Review - Admin{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/kyc_logs.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h1>KYC & Compliance Queue</h1>
+            <p>High-precision verification monitoring and risk mitigation.</p>
+        </div>
+        <div class="review-filters-container">
+            <div class="search-box-pro">
+                <i class="fas fa-search"></i>
+                <input type="text" id="kycSearchInput" placeholder="Search identity files..." onkeyup="filterKYC()">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="kyc-review-card-wrapper">
+    <div style="padding: 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 0.75rem;">
+        <i class="fas fa-user-shield" style="color: var(--primary-color);"></i>
+        <h3 style="margin: 0; color: var(--secondary-color); font-size: 1rem; font-weight: 800;">Customer Identity
+            Verification</h3>
+    </div>
+    <div style="overflow-x: auto;">
+        <table class="audit-review-table auto-paginate">
+            <thead>
+                <tr>
+                    <th>Customer Identity</th>
+                    <th>ID Type</th>
+                    <th>Trust Score</th>
+                    <th>Verification Status</th>
+                    <th>Audit Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in customers %}
+                {% set kyc = kyc_map.get(u.id) %}
+                <tr>
+                    <td>
+                        <div class="kyc-user-identity-box">
+                            <strong class="kyc-user-name">{{ u.first_name }} {{ u.last_name }}</strong>
+                            <span class="kyc-user-email">{{ u.email }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <span style="font-size: 0.85rem; font-weight: 500; color: #475569;">
+                            {% if kyc %}
+                            {{ kyc.verification_type or 'Gov ID' }}
+                            {% else %}
+                            <i class="fas fa-exclamation-triangle" style="color: #f59e0b; margin-right: 0.25rem;"></i>
+                            No ID Yet
+                            {% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        {% if kyc %}
+                        <div
+                            class="fraud-score-pill {% if kyc.fraud_score >= 85 %}high{% elif kyc.fraud_score >= 60 %}mid{% else %}low{% endif %}">
+                            <i class="fas fa-fingerprint" style="font-size: 0.7rem; margin-right: 0.4rem;"></i>
+                            {{ kyc.fraud_score }}% Confidence
+                        </div>
+                        {% else %}
+                        <span style="color: #94a3b8; font-size: 0.8rem; font-style: italic;">N/A</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if u.is_verified %}
+                        <span class="kyc-status-badge status-approved"
+                            style="background: #ecfdf5; color: #059669; border: 1px solid #d1fae5;">
+                            <i class="fas fa-check-circle" style="font-size: 0.7rem;"></i> Verified
+                        </span>
+                        {% elif kyc %}
+                        <span class="kyc-status-badge status-{{ kyc.verification_status }}">
+                            <i class="fas fa-circle" style="font-size: 0.4rem;"></i>
+                            {{ kyc.verification_status|replace('_', ' ') }}
+                        </span>
+                        {% else %}
+                        <span class="kyc-status-badge status-pending">
+                            <i class="fas fa-clock" style="font-size: 0.7rem;"></i> No Documents
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            {% if u.is_verified %}
+                            <a href="/admin/verify/{{ u.id }}" class="btn-review-kyc"
+                                style="background: #f8fafc; border-color: #e2e8f0; color: #64748b;">
+                                Audit Profile <i class="fas fa-history"></i>
+                            </a>
+                            {% elif kyc %}
+                            <a href="/admin/verify/{{ u.id }}" class="btn-review-kyc">
+                                Audit Details <i class="fas fa-arrow-right"></i>
+                            </a>
+                            <form action="/admin/kyc/{{ kyc.id }}/archive" method="POST" style="display: inline;"
+                                onsubmit="event.preventDefault(); window.showConfirm('Are you sure you want to archive this record?', () => this.submit(), 'Confirm Archive', 'Yes, Archive');">
+                                <button type="submit" class="stat-icon-container" title="Archive Record"
+                                    style="background: none; border: none; cursor: pointer; color: #64748b; font-size: 1.1rem;">
+                                    <i class="fas fa-archive"></i>
+                                </button>
+                            </form>
+                            {% else %}
+                            <form action="/admin/customers/{{ u.id }}/verify?success_msg=Customer+verified+manually"
+                                method="POST" style="display: inline;"
+                                onsubmit="event.preventDefault(); window.showConfirm('Vouch for this customer and verify them manually?', () => this.submit(), 'Manual Verification', 'Verify Now');">
+                                <input type="hidden" name="action" value="approve">
+                                <button type="submit" class="btn-review-kyc"
+                                    style="background: var(--primary-color); border: none; color: white; cursor: pointer;">
+                                    Quick Verify <i class="fas fa-user-check"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="kyc-review-card-wrapper" style="margin-top: 2rem;">
+    <div style="padding: 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 0.75rem;">
+        <i class="fas fa-store" style="color: var(--primary-color);"></i>
+        <h3 style="margin: 0; color: var(--secondary-color); font-size: 1rem; font-weight: 800;">Platform Partners &
+            Applications</h3>
+    </div>
+    <div style="overflow-x: auto;">
+        <table class="audit-review-table auto-paginate">
+            <thead>
+                <tr>
+                    <th>Business Entity</th>
+                    <th>Managing Partner</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for caterer in caterers %}
+                <tr>
+                    <td>
+                        <div class="kyc-user-identity-box">
+                            <strong class="kyc-user-name">{{ caterer.business_name }}</strong>
+                            <span class="kyc-user-email">{{ caterer.city }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="kyc-user-identity-box">
+                            <strong class="kyc-user-name" style="font-size: 0.85rem;">{{ caterer.user.first_name }} {{
+                                caterer.user.last_name }}</strong>
+                            <span class="kyc-user-email">{{ caterer.user.email }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        {% if caterer.verification_status == 'Verified' %}
+                        <span class="kyc-status-badge status-approved"
+                            style="background: #eff6ff; color: #2563eb; border: 1px solid #dbeafe;">
+                            <i class="fas fa-certificate" style="font-size: 0.7rem;"></i> Official Partner
+                        </span>
+                        {% else %}
+                        <span class="kyc-status-badge status-pending">
+                            <i class="fas fa-clock" style="font-size: 0.7rem;"></i> Pending Approval
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="/admin/verify/{{ caterer.user_id }}" class="btn-review-kyc">
+                            {% if caterer.verification_status == 'Verified' %}
+                            View Records <i class="fas fa-history"></i>
+                            {% else %}
+                            Review Audit <i class="fas fa-file-contract"></i>
+                            {% endif %}
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function filterKYC() {
+        const input = document.getElementById('kycSearchInput');
+        const filter = input.value.toLowerCase();
+        const tables = document.querySelectorAll('.audit-review-table');
+
+        tables.forEach(table => {
+            const rows = table.querySelectorAll('tbody tr');
+            rows.forEach(row => {
+                const textContent = row.textContent || row.innerText;
+                const isPlaceholder = textContent.includes('no signups') || textContent.includes('No pending');
+
+                if (!isPlaceholder) {
+                    if (textContent.toLowerCase().indexOf(filter) > -1) {
+                        row.style.display = "";
+                    } else {
+                        row.style.display = "none";
+                    }
+                }
+            });
+        });
+    }
+
+    // --- High-Performance Pagination for KYC Tables ---
+    document.addEventListener('DOMContentLoaded', function () {
+        const tables = document.querySelectorAll('.audit-review-table.auto-paginate');
+        const rowsPerPage = 10; // Increased for unified view
+
+        tables.forEach(table => {
+            const body = table.querySelector('tbody');
+            const allRows = Array.from(body.querySelectorAll('tr')).filter(r => !r.innerText.includes('empty') && !r.innerText.includes('No records'));
+
+            if (allRows.length <= rowsPerPage) return;
+
+            let currentPage = 1;
+            const totalPages = Math.ceil(allRows.length / rowsPerPage);
+
+            // Create Pagination UI
+            const wrapper = table.closest('.kyc-review-card-wrapper');
+            const paginationContainer = document.createElement('div');
+            paginationContainer.className = 'pagination-box';
+            paginationContainer.style = 'padding: 1rem; border-top: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;';
+
+            const info = document.createElement('div');
+            info.style = 'font-size: 0.85rem; color: #64748b;';
+
+            const controls = document.createElement('div');
+            controls.style = 'display: flex; gap: 0.5rem;';
+
+            function updateDisplay() {
+                const start = (currentPage - 1) * rowsPerPage;
+                const end = start + rowsPerPage;
+
+                allRows.forEach((row, i) => {
+                    row.style.display = (i >= start && i < end) ? '' : 'none';
+                });
+
+                info.innerText = `Showing ${start + 1} to ${Math.min(end, allRows.length)} of ${allRows.length} entries`;
+                renderButtons();
+            }
+
+            function renderButtons() {
+                controls.innerHTML = '';
+
+                const prev = document.createElement('button');
+                prev.innerHTML = '<i class="fas fa-chevron-left"></i>';
+                prev.disabled = currentPage === 1;
+                prev.onclick = () => { if (currentPage > 1) { currentPage--; updateDisplay(); } };
+                applyBtnStyle(prev, currentPage === 1);
+                controls.appendChild(prev);
+
+                for (let i = 1; i <= totalPages; i++) {
+                    if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+                        const btn = document.createElement('button');
+                        btn.innerText = i;
+                        if (i === currentPage) btn.style.background = 'var(--primary-color)';
+                        if (i === currentPage) btn.style.color = 'white';
+                        btn.onclick = () => { currentPage = i; updateDisplay(); };
+                        applyBtnStyle(btn, false, i === currentPage);
+                        controls.appendChild(btn);
+                    }
+                }
+
+                const next = document.createElement('button');
+                next.innerHTML = '<i class="fas fa-chevron-right"></i>';
+                next.disabled = currentPage === totalPages;
+                next.onclick = () => { if (currentPage < totalPages) { currentPage++; updateDisplay(); } };
+                applyBtnStyle(next, currentPage === totalPages);
+                controls.appendChild(next);
+            }
+
+            function applyBtnStyle(btn, disabled, active) {
+                btn.style.padding = '0.4rem 0.8rem';
+                btn.style.borderRadius = '0.5rem';
+                btn.style.border = '1px solid #e2e8f0';
+                btn.style.background = active ? 'var(--primary-color)' : 'white';
+                btn.style.color = active ? 'white' : '#475569';
+                btn.style.cursor = disabled ? 'default' : 'pointer';
+                btn.style.opacity = disabled ? '0.5' : '1';
+                btn.style.fontSize = '0.8rem';
+                btn.style.transition = 'all 0.2s';
+            }
+
+            wrapper.appendChild(paginationContainer);
+            paginationContainer.appendChild(info);
+            paginationContainer.appendChild(controls);
+
+            updateDisplay();
+        });
+    });
+</script>
+{% endblock %}

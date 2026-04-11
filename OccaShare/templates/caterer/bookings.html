@@ -1,0 +1,688 @@
+{% set wrapper_class = "fixed-viewport" %}
+{% extends "caterer/layout.html" %}
+
+{% block title %}Manage Bookings - Caterer Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/bookings.css') }}?v=1.4">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/contract_view.css') }}?v=1.4">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}?v=1.4">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Manage Bookings</h1>
+    <p>Review, track, and manage all your customer event reservations in one place.</p>
+</div>
+
+<!-- Stats Grid -->
+<div class="stats-grid-dashboard" style="margin-bottom: 3rem;">
+    <div class="stat-card-premium c-card-premium stat-card-white">
+        <div class="stat-icon-bg halo-slate"><i class="fas fa-calendar-alt"></i></div>
+        <div class="stat-label-dashboard">Total Bookings</div>
+        <div class="stat-value-dashboard">{{ bookings|count }}</div>
+        <div class="stat-hint-dashboard">All reservations</div>
+    </div>
+    <div class="stat-card-premium c-card-premium stat-card-white">
+        <div class="stat-icon-bg halo-green"><i class="fas fa-check-circle"></i></div>
+        <div class="stat-label-dashboard">Confirmed</div>
+        <div class="stat-value-dashboard" style="color: #10b981;">{{ bookings|selectattr('status', 'equalto', 'confirmed')|list|count }}</div>
+        <div class="stat-hint-dashboard">Ready to serve</div>
+    </div>
+    <div class="stat-card-premium c-card-premium stat-card-white">
+        <div class="stat-icon-bg halo-amber"><i class="fas fa-hourglass-half"></i></div>
+        <div class="stat-label-dashboard">Pending</div>
+        <div class="stat-value-dashboard" style="color: #f59e0b;">{{ bookings|selectattr('status', 'in', ['pending', 'pending_quotation', 'awaiting_payment'])|list|count }}</div>
+        <div class="stat-hint-dashboard">Awaiting action</div>
+    </div>
+    <div class="stat-card-premium c-card-premium stat-card-white">
+        <div class="stat-icon-bg halo-red"><i class="fas fa-times-circle"></i></div>
+        <div class="stat-label-dashboard">Cancelled</div>
+        <div class="stat-value-dashboard" style="color: #ef4444;">{{ bookings|selectattr('status', 'equalto', 'cancelled')|list|count }}</div>
+        <div class="stat-hint-dashboard">Cancelled events</div>
+    </div>
+</div>
+
+<!-- ── ACTION REQUIRED BANNER ── -->
+{% set pending_sigs = bookings|selectattr('status', 'equalto', 'awaiting_caterer')|list %}
+{% if pending_sigs %}
+<div class="action-banner-premium animate-up">
+    <div class="abs-icon-bg"><i class="fas fa-pen-nib"></i></div>
+    <div class="banner-content">
+        <div class="banner-tag">ACTION REQUIRED</div>
+        <h3>You have {{ pending_sigs|length }} Contract{{ 's' if pending_sigs|length > 1 }} awaiting your signature</h3>
+        <p>Customers have signed their part. Please countersign to allow them to proceed to payment.</p>
+    </div>
+    <button class="btn-banner-action" onclick="filterBySignature()">
+        Show Pending Contracts <i class="fas fa-arrow-right"></i>
+    </button>
+</div>
+{% endif %}
+
+<div class="b-table-container c-card-premium" style="width: 100%; box-sizing: border-box; padding: 2rem; margin-bottom: 3rem;">
+    <div class="b-table-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 2.5rem; padding: 0 0.5rem; width: 100%; box-sizing: border-box;">
+        <h3 style="margin: 0; font-size: 1.35rem; font-weight: 800; color: #0f172a;">All Bookings</h3>
+        <div class="header-controls" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+            <div class="search-box-pro" style="display: flex; align-items: center; gap: 0.75rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 0 1.25rem; height: 46px; box-sizing: border-box; width: 300px; min-width: 250px; transition: all 0.2s ease;">
+                <i class="fas fa-search" style="color: #94a3b8; font-size: 0.95rem;"></i>
+                <input type="text" id="bookingSearchInput" placeholder="Search by customer, event, or ID..." style="border: none; outline: none; background: transparent; height: 100%; width: 100%; font-size: 0.9rem; color: #1e293b; font-weight: 500;" onkeyup="filterBookings()">
+            </div>
+            <div class="filter-wrapper" style="position: relative; display: flex; align-items: center;">
+                <select class="filter-select-pro" id="statusFilter" onchange="filterBookings()">
+                    <option value="">All Status</option>
+                    <option value="pending">Pending</option>
+                    <option value="pending_quotation">Draft</option>
+                    <option value="awaiting_caterer">To Sign</option>
+                    <option value="awaiting_payment">Payment</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
+            </div>
+            <button onclick="openWalkinModal()" style="height: 46px; background: var(--primary-color); color: white; padding: 0 1.5rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; border: none; font-size: 0.95rem; white-space: nowrap; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.25);">
+                <i class="fas fa-plus"></i><span class="btn-text">New Booking</span>
+            </button>
+        </div>
+    </div>
+
+    {% if bookings %}
+    <div class="bookings-table-scroll-wrapper" style="overflow-x: auto; width: 100%;">
+        <table class="b-table bookings-list-table" style="width: 100%; border-collapse: collapse; min-width: 1000px;">
+            <thead>
+                <tr style="border-bottom: 2px solid #f1f5f9;">
+                    <th style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Booking ID</th>
+                    <th style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Customer</th>
+                    <th style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Event</th>
+                    <th style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Date & Time</th>
+                    <th style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Guests</th>
+                    <th style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Amount</th>
+                    <th style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Status</th>
+                    <th style="padding: 1.5rem; text-align: right; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for booking in bookings %}
+                <tr class="booking-row-item" data-status="{{ booking.status }}" style="border-bottom: 1px solid #f8fafc; transition: all 0.2s ease;">
+                    <!-- ID -->
+                    <td style="padding: 1.5rem; font-weight: 600; color: #64748b; font-size: 0.95rem;">BK-{{ "%03d" | format(booking.id) }}</td>
+                    
+                    <!-- CUSTOMER -->
+                    <td style="padding: 1.5rem;">
+                        <div style="font-weight: 700; color: #0f172a; font-size: 1rem;">
+                            {% if booking.user %}
+                                {{ booking.user.first_name }} {{ booking.user.last_name }}
+                            {% else %}
+                                Walk-in Customer
+                            {% endif %}
+                        </div>
+                        <div style="font-size: 0.85rem; color: #94a3b8; font-weight: 500; margin-top: 0.1rem;">
+                            {% if booking.user %}
+                                {{ booking.user.email }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </div>
+                    </td>
+
+                    <!-- EVENT -->
+                    <td style="padding: 1.5rem;">
+                        <div style="font-weight: 700; color: #0f172a; font-size: 1rem;">{{ booking.event_type }}</div>
+                        <div style="font-size: 0.85rem; color: #94a3b8; font-weight: 500; margin-top: 0.1rem;">{{ booking.package.name if booking.package else 'Custom Menu' }}</div>
+                    </td>
+
+                    <!-- DATE -->
+                    <td style="padding: 1.5rem;">
+                        <div style="font-weight: 700; color: #0f172a; font-size: 1rem;">{{ booking.event_date.strftime('%b %d, %Y') }}</div>
+                        <div style="font-size: 0.85rem; color: #94a3b8; font-weight: 500; margin-top: 0.1rem;">{{ booking.event_time.strftime('%I:%M %p') if booking.event_time else 'TBD' }}</div>
+                    </td>
+
+                    <!-- GUESTS -->
+                    <td style="padding: 1.5rem; color: #334155; font-weight: 600; font-size: 1rem;">{{ booking.guest_count }}</td>
+
+                    <!-- AMOUNT -->
+                    <td style="padding: 1.5rem; color: #0f172a; font-weight: 800; font-size: 1.05rem;">₱{{ "{:,.0f}".format(booking.total_price or booking.total_amount) }}</td>
+                    
+                    <!-- STATUS -->
+                    <td style="padding: 1.5rem;">
+                        {% set badge_class = {
+                            'confirmed': 'badge-green',
+                            'completed': 'badge-green',
+                            'pending': 'badge-orange',
+                            'pending_quotation': 'badge-orange',
+                            'awaiting_caterer': 'badge-orange',
+                            'awaiting_payment': 'badge-orange',
+                            'cancelled': 'badge-red'
+                        }.get(booking.status, 'badge-gray') %}
+                        
+                        {% set status_display = {
+                            'pending_quotation': 'Draft',
+                            'awaiting_caterer': 'To Sign',
+                            'awaiting_payment': 'Payment',
+                            'pending': 'Pending'
+                        }.get(booking.status, booking.status|capitalize) %}
+                        
+                        <span class="badge-rounded {{ badge_class }}" style="font-size: 0.75rem; font-weight: 700; padding: 0.35rem 1rem; border-radius: 2rem;">{{ status_display }}</span>
+                    </td>
+                    <td class="action-dropdown-container" style="padding: 1.25rem 1.5rem; text-align: right;">
+                        <button class="btn-action-trigger" onclick="toggleActionMenu('{{ booking.id }}')" style="background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 1.1rem; padding: 0.4rem; transition: color 0.2s;">
+                            <i class="fas fa-ellipsis-h"></i>
+                        </button>
+                        <div id="actionMenu-{{ booking.id }}" class="action-dropdown-menu" style="display: none; position: absolute; right: 1.5rem; background: white; border: 1px solid #e2e8f0; border-radius: 0.75rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); z-index: 50; min-width: 160px; overflow: hidden;">
+                            <button class="view-details" 
+                                style="width: 100%; text-align: left; padding: 0.75rem 1rem; background: none; border: none; font-size: 0.85rem; color: #475569; cursor: pointer; display: flex; align-items: center; gap: 0.6rem; transition: background 0.2s;"
+                                data-id="{{ booking.id }}" 
+                                data-event-name="{{ booking.event_name or 'N/A' }}"
+                                data-event-type="{{ booking.event_type or 'N/A' }}"
+                                data-venue="{{ booking.venue_address or 'TBD' }}"
+                                data-requests="{{ booking.special_requests or 'None' }}"
+                                {% if booking.user %}
+                                data-customer="{{ booking.user.first_name }} {{ booking.user.last_name }}"
+                                data-email="{{ booking.user.email }}"
+                                {% else %}
+                                data-customer="Walk-in Customer"
+                                data-email="N/A"
+                                {% endif %}
+                                data-amount="₱{{ '{:,.2f}'.format(booking.total_price or booking.total_amount) }}"
+                                data-status="{{ booking.status }}"
+                                data-payment-status="{{ booking.payment_status }}"
+                                data-payment-method="{{ booking.payment_method or 'TBD' }}"
+                                data-proof-url="{{ booking.payment_proof_url or '' }}"
+                                data-balance-proof-url="{{ booking.balance_proof_url or '' }}"
+                                data-booked-on="{{ booking.created_at.strftime('%B %d, %Y %H:%M') }}"
+                                data-guest-count="{{ booking.guest_count }}"
+                                data-balance-due="{{ booking.balance_due_date.strftime('%Y-%m-%d') if booking.balance_due_date else '' }}"
+                                data-has-contract="{{ 'true' if booking.quotation else 'false' }}">
+                                <i class="far fa-eye" style="color: #64748b;"></i> View Details
+                            </button>
+                            {% if booking.status in ['pending_quotation', 'awaiting_caterer'] %}
+                            <a href="/caterer/bookings/{{ booking.id }}/sign" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.75rem 1rem; text-decoration: none; font-size: 0.85rem; color: #059669; transition: background 0.2s;">
+                                <i class="fas fa-pen-nib"></i> Sign Contract
+                            </a>
+                            {% endif %}
+                            {% if booking.status in ['completed', 'cancelled'] %}
+                            <button type="button" onclick="confirmArchiveBooking({{ booking.id }})" style="width: 100%; text-align: left; padding: 0.75rem 1rem; background: none; border: none; font-size: 0.85rem; color: #dc2626; cursor: pointer; display: flex; align-items: center; gap: 0.6rem; transition: background 0.2s;">
+                                <i class="fas fa-archive"></i> Archive
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Payments-style Pagination Controls -->
+    <div class="pagination-container-p" style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9;">
+        <div class="pagination-info" style="font-size: 0.85rem; color: #64748b; font-weight: 500;">
+            Showing <span id="startRange">0</span> to <span id="endRange">0</span> of <span id="totalEntries">0</span> bookings
+        </div>
+        <div class="pagination-buttons" style="display: flex; gap: 0.5rem; align-items: center;">
+            <button id="prevPage" class="btn-pagination" style="padding: 0.5rem 1rem; border: 1px solid #e2e8f0; background: white; border-radius: 0.5rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #475569;"><i class="fas fa-chevron-left"></i> Previous</button>
+            <div id="pageNumbers" class="page-numbers" style="display: flex; gap: 0.4rem;">
+                <!-- Page numbers dynamically injected -->
+            </div>
+            <button id="nextPage" class="btn-pagination" style="padding: 0.5rem 1rem; border: 1px solid #e2e8f0; background: white; border-radius: 0.5rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #475569;">Next <i class="fas fa-chevron-right"></i></button>
+        </div>
+    </div>
+    {% else %}
+    <div class="no-bookings-empty" style="text-align: center; padding: 4rem 2rem; color: #94a3b8;">
+        <i class="fas fa-calendar-times" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+        <p style="font-size: 1.1rem; font-weight: 500;">No bookings yet. They will appear here once customers book your services.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Booking Detail Modal -->
+<div id="bookingDetailModal" class="modal-overlay-p">
+    <div class="modal-content-p">
+        <!-- Modal Header -->
+        <div class="modal-header-p">
+            <div>
+                <h2 id="modalBookingId" class="modal-title-p">Booking Details</h2>
+                <div class="modal-header-meta">
+                    <span id="modalStatus" class="modal-status-badge"></span>
+                    <span class="modal-booked-on-text" id="modalBookedOn"></span>
+                </div>
+            </div>
+            <button onclick="closeModal()" class="btn-close-modal-p">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Modal Body (Scrollable) -->
+        <div class="modal-body-p">
+            <div class="modal-summary-grid">
+                <!-- Customer Card -->
+                <div class="modal-info-card">
+                    <div class="modal-card-label"><i class="fas fa-user-circle"></i> Customer Information</div>
+                    <div id="modalCustomer" class="modal-card-value-main"></div>
+                    <div id="modalEmail" class="modal-card-value-sub"></div>
+                </div>
+
+                <!-- Event Details Card -->
+                <div class="modal-info-card">
+                    <div class="modal-card-label"><i class="fas fa-calendar-alt"></i> Event Specifics</div>
+                    <div id="modalEventName" class="modal-card-value-main"></div>
+                    <div class="flex-between align-center">
+                        <span id="modalEventType" class="modal-card-value-sub"></span>
+                        <span id="modalGuestCount" class="modal-guest-count-badge"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-details-layout">
+                <div class="modal-main-content">
+                    <!-- Venue & Requests -->
+                    <div class="info-section-compact mb-1-5">
+                        <h3 class="modal-section-title"><i class="fas fa-map-marker-alt"></i> Location & Venue</h3>
+                        <div id="modalVenue" class="modal-venue-text"></div>
+                    </div>
+
+                    <div class="info-section-compact mb-1-5">
+                        <h3 class="modal-section-title"><i class="fas fa-comment-dots"></i> Special Requests</h3>
+                        <div id="modalRequests" class="modal-requests-box"></div>
+                    </div>
+
+                    <!-- Menu Selection -->
+                    <div id="modalMenuSection" class="info-section-compact mb-1-5">
+                        <h3 class="modal-section-title"><i class="fas fa-utensils"></i> Menu & Add-ons</h3>
+                        <div id="modalMenuItems" class="modal-menu-container"></div>
+                    </div>
+
+                    <!-- Payment Proof Section -->
+                    <div id="modalProofSection" class="info-section-compact mb-1-5" style="display: none;">
+                        <h3 class="modal-section-title"><i class="fas fa-file-invoice-dollar"></i> Payment Proofs</h3>
+                        <div id="modalProofContainer" class="modal-proof-container"></div>
+                    </div>
+                </div>
+
+                <div class="modal-side-content">
+                    <!-- Financial Summary -->
+                    <div class="info-section-compact mb-1-5">
+                        <h3 class="modal-section-title"><i class="fas fa-money-bill-wave"></i> Financials</h3>
+                        <div class="financial-stat-box-pro">
+                            <span class="fsn-label">Total Amount</span>
+                            <span id="modalTotalAmount" class="fsn-value-compact"></span>
+                        </div>
+                        <div class="payment-extra-box mt-1">
+                            <div class="pxb-row">
+                                <span>Status</span>
+                                <strong id="modalPaymentStatus"></strong>
+                            </div>
+                            <div class="pxb-row">
+                                <span>Method</span>
+                                <strong id="modalPaymentMethod"></strong>
+                            </div>
+                        </div>
+
+                        <!-- Due Date Block -->
+                        <div class="due-date-compact-box mt-1">
+                            <div class="flex-between align-center dueDateHeader">
+                                <div style="font-size: 0.85rem; font-weight: 700; color: #475569;"><i
+                                        class="fas fa-clock"></i> Balance Due Date</div>
+                                <button onclick="toggleDueDateEdit()" class="btn-sm-outline" id="btnEditDueDate">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                            </div>
+                            <div id="dueDateDisplaySection" style="margin-top: 0.5rem;">
+                                <div id="modalDueDate"
+                                    style="font-weight: 800; color: var(--primary-color); font-size: 1.1rem;">Not Set
+                                </div>
+                            </div>
+                            <div id="dueDateEditSection" style="display: none; margin-top: 0.5rem;">
+                                <div style="display: flex; gap: 0.5rem; align-items: stretch;">
+                                    <input type="date" id="balanceDueDateInput" class="compact-date-input">
+                                    <button onclick="saveDueDate()" class="btn-sm-confirm">Save</button>
+                                    <button onclick="toggleDueDateEdit()" class="btn-sm-cancel"><i
+                                            class="fas fa-times"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Timeline / History Removed -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Footer (Sticky) -->
+        <div class="modal-footer-p">
+            <button onclick="closeModal()" class="btn-footer-action"
+                style="background: #f1f5f9; color: #475569; flex: unset; min-width: 90px;">
+                <i class="fas fa-times"></i> Close
+            </button>
+            <div id="bookingModalActions" class="modal-actions-container-p"></div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Contract View Modal -->
+<div id="contractModal" class="modal-overlay-p" style="display: none;">
+    <div class="modal-content-p">
+        <div class="modal-header-p">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <div class="secure-badge-pro"><i class="fas fa-shield-check"></i> Certified Secure</div>
+                <h2 style="font-size: 1.25rem; font-weight: 800; color: #1e293b; margin: 0; letter-spacing: -0.5px;">
+                    Digital Service Agreement</h2>
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <button onclick="printContract(currentBookingIdForContract)" class="btn-outline-premium"
+                    style="padding: 0.6rem 1.25rem; border-radius: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <i class="fas fa-print"></i> Print / Save PDF
+                </button>
+                <button onclick="closeContractModal()"
+                    style="background: none; border: none; font-size: 1.5rem; color: #94a3b8; cursor: pointer; padding: 0.5rem; transition: color 0.2s;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        <div class="modal-body-p" id="contractModalBody">
+            <div style="text-align: center; padding: 4rem;">
+                <i class="fas fa-circle-notch fa-spin fa-3x" style="color: var(--primary-color);"></i>
+                <p style="margin-top: 1.25rem; color: #64748b; font-weight: 500;">Loading secure document...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Walk-in Booking Modal -->
+<div id="walkinBookingModal" class="modal-overlay-p" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+    <div class="modal-content-p" style="background: white; border-radius: 1rem; width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; padding: 2rem; position: relative;">
+        <!-- Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h2 style="margin: 0; font-size: 1.25rem; color: #0f172a;">Add Walk-In Booking</h2>
+            <button type="button" onclick="closeWalkinModal()" style="background: none; border: none; font-size: 1.5rem; color: #64748b; cursor: pointer;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form id="walkinBookingForm" onsubmit="submitWalkinBooking(event)">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div>
+                    <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem;">Customer Name *</label>
+                    <input type="text" name="customer_name" required style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-family: inherit;">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem;">Contact / Email</label>
+                    <input type="text" name="customer_contact" style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-family: inherit;">
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div>
+                    <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem;">Event Name *</label>
+                    <input type="text" name="event_name" required style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-family: inherit;">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem;">Event Type *</label>
+                    <select name="event_type" required class="filter-select-pro">
+                        <option value="">Select Type...</option>
+                        <option value="Wedding">Wedding</option>
+                        <option value="Birthday">Birthday</option>
+                        <option value="Corporate">Corporate</option>
+                        <option value="Private Party">Private Party</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div>
+                    <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem;">Event Date *</label>
+                    <input type="date" name="event_date" required style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-family: inherit;">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem;">Event Time</label>
+                    <input type="time" name="event_time" style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-family: inherit;">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem;">Guests *</label>
+                    <input type="number" name="guest_count" required min="1" style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-family: inherit;">
+                </div>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem;">Package</label>
+                <select name="package_id" class="filter-select-pro">
+                    <option value="">None / Custom</option>
+                    {% for pkg in packages %}
+                    <option value="{{ pkg.id }}">{{ pkg.name }} (₱{{ '{:,.2f}'.format(pkg.price) }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem;">Total Amount (₱) *</label>
+                <input type="number" name="total_amount" step="0.01" required style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-family: inherit;">
+            </div>
+
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem;">Venue Address</label>
+                <textarea name="venue_address" rows="2" style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-family: inherit; resize: vertical;"></textarea>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+                <button type="button" onclick="closeWalkinModal()" style="padding: 0.75rem 1.5rem; border: 1px solid #cbd5e1; background: white; border-radius: 0.5rem; font-weight: 600; color: #475569; cursor: pointer;">Cancel</button>
+                <button type="submit" id="walkinSubmitBtn" style="padding: 0.75rem 1.5rem; border: none; background: var(--primary-color); color: white; border-radius: 0.5rem; font-weight: 600; cursor: pointer;">Create Booking</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', path='/js/caterer/bookings.js') }}"></script>
+<script>
+    // ─── Archive Booking Confirmation ─────────────────────────────────────────
+    function confirmArchiveBooking(bookingId) {
+        window.showConfirm(
+            'Are you sure you want to archive this booking? It will be moved to your Archives and hidden from the active list.',
+            function () {
+                // Create and submit a hidden form via JS
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/caterer/bookings/${bookingId}/archive`;
+                document.body.appendChild(form);
+                form.submit();
+            },
+            'Archive Booking?',
+            'Yes, Archive'
+        );
+    }
+    window.confirmArchiveBooking = confirmArchiveBooking;
+    function filterBySignature() {
+        const statusFilter = document.getElementById('statusFilter');
+        statusFilter.value = "awaiting_caterer";
+        filterBookings();
+
+        // Scroll to table if on mobile
+        document.querySelector('.bookings-card-container').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Global Pagination State
+    const ROWS_PER_PAGE = 5;
+    let currentPage = 1;
+    let filteredRows = [];
+
+    // Initialize Pagination on Load
+    document.addEventListener('DOMContentLoaded', () => {
+        const rows = Array.from(document.querySelectorAll('.bookings-list-table tbody tr.booking-row-item'));
+        filteredRows = rows;
+        showPage(1);
+    });
+
+    function showPage(page) {
+        const totalPages = Math.ceil(filteredRows.length / ROWS_PER_PAGE) || 1;
+        if (page < 1) page = 1;
+        if (page > totalPages) page = totalPages;
+        currentPage = page;
+
+        const startIdx = (page - 1) * ROWS_PER_PAGE;
+        const endIdx = startIdx + ROWS_PER_PAGE;
+
+        // Hide all
+        document.querySelectorAll('.bookings-list-table tbody tr.booking-row-item').forEach(r => r.style.display = 'none');
+
+        // Show scoped
+        filteredRows.slice(startIdx, endIdx).forEach(r => { r.style.display = ''; });
+
+        renderPaginationControls(totalPages);
+
+        // Update Info Text
+        const startRange = document.getElementById('startRange');
+        const endRange = document.getElementById('endRange');
+        const totalEntries = document.getElementById('totalEntries');
+
+        if (startRange) {
+            startRange.innerText = filteredRows.length === 0 ? 0 : startIdx + 1;
+            endRange.innerText = Math.min(endIdx, filteredRows.length);
+            totalEntries.innerText = filteredRows.length;
+        }
+    }
+
+    function renderPaginationControls(totalPages) {
+        const pageNumbers = document.getElementById('pageNumbers');
+        const prevBtn = document.getElementById('prevPage');
+        const nextBtn = document.getElementById('nextPage');
+        
+        if (!pageNumbers) return;
+        pageNumbers.innerHTML = '';
+
+        prevBtn.disabled = currentPage === 1;
+        nextBtn.disabled = currentPage === totalPages || filteredRows.length === 0;
+
+        prevBtn.onclick = () => showPage(currentPage - 1);
+        nextBtn.onclick = () => showPage(currentPage + 1);
+
+        if (filteredRows.length === 0) return;
+
+        // Page Nums
+        for (let i = 1; i <= totalPages; i++) {
+            const btn = document.createElement('button');
+            btn.className = `page-num-btn ${i === currentPage ? 'active' : ''}`;
+            btn.style.cssText = `
+                width: 32px;
+                height: 32px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 0.4rem;
+                border: 1px solid ${i === currentPage ? 'var(--primary-color)' : '#e2e8f0'};
+                background: ${i === currentPage ? 'var(--primary-color)' : 'white'};
+                color: ${i === currentPage ? 'white' : '#475569'};
+                font-size: 0.85rem;
+                font-weight: 700;
+                cursor: pointer;
+                transition: all 0.2s;
+            `;
+            btn.innerText = i;
+            btn.onclick = () => showPage(i);
+            pageNumbers.appendChild(btn);
+        }
+    }
+
+    function filterBookings() {
+        const searchInput = document.getElementById('bookingSearchInput').value.toLowerCase();
+        const statusFilter = document.getElementById('statusFilter').value; // exact status string
+        const allRows = Array.from(document.querySelectorAll('.bookings-list-table tbody tr.booking-row-item'));
+
+        filteredRows = allRows.filter(row => {
+            const rawStatus = row.dataset.status || "";
+            const rowText = row.innerText.toLowerCase();
+
+            let matchesSearch = rowText.indexOf(searchInput) > -1;
+            let matchesStatus = statusFilter === "" || rawStatus === statusFilter;
+
+            return matchesSearch && matchesStatus;
+        });
+
+        // Reset to page 1 on filter
+        currentPage = 1;
+        showPage(1);
+    }
+
+    // Toggle Action Menu
+    function toggleActionMenu(id) {
+        document.querySelectorAll('.action-dropdown-menu').forEach(menu => {
+            if (menu.id !== 'actionMenu-' + id) {
+                menu.style.display = 'none';
+            }
+        });
+        
+        var element = document.getElementById('actionMenu-' + id);
+        if (element.style.display === "none" || element.style.display === "") {
+            element.style.display = "block";
+        } else {
+            element.style.display = "none";
+        }
+    }
+
+    // Close when clicking outside
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.action-dropdown-container')) {
+            document.querySelectorAll('.action-dropdown-menu').forEach(menu => {
+                menu.style.display = 'none';
+            });
+        }
+    });
+
+    // Walk-in booking modal logic
+    function openWalkinModal() {
+        document.getElementById('walkinBookingModal').style.display = 'flex';
+    }
+    
+    function closeWalkinModal() {
+        document.getElementById('walkinBookingModal').style.display = 'none';
+        document.getElementById('walkinBookingForm').reset();
+    }
+
+    async function submitWalkinBooking(e) {
+        e.preventDefault();
+        const btn = document.getElementById('walkinSubmitBtn');
+        btn.disabled = true;
+        btn.innerText = 'Creating...';
+        
+        const form = e.target;
+        const formData = new FormData(form);
+        const data = {};
+        for (let [key, value] of formData.entries()) {
+            data[key] = value;
+        }
+        
+        // Formatting numbers/empty fields
+        data.guest_count = parseInt(data.guest_count);
+        data.total_amount = parseFloat(data.total_amount);
+        if (!data.package_id) data.package_id = null;
+        else data.package_id = parseInt(data.package_id);
+        
+        if (!data.event_time) data.event_time = null;
+        
+        // menu_items is not in form by default so it's empty
+        data.menu_items = [];
+
+        try {
+            const res = await fetch('/caterer/api/bookings/manual', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            if (res.ok) {
+                window.showSuccess('Booking created successfully!');
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                const err = await res.json();
+                window.showError(err.detail || 'Failed to create booking.');
+            }
+        } catch (err) {
+            console.error(err);
+            window.showError('An error occurred. Please try again.');
+        } finally {
+            btn.disabled = false;
+            btn.innerText = 'Create Booking';
+        }
+    }
+
+</script>
+{% endblock %}

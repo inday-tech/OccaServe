@@ -1,0 +1,5 @@
+/* 
+ * caterer_profile_view.css has been deprecated. 
+ * The caterer profile view now uses Tailwind-free standard components from dashboard_premium.css
+ * and custom scoped styles within the template itself to match the "compact premium" global UX.
+ */

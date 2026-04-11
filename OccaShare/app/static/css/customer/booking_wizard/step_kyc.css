@@ -1,0 +1,230 @@
+/* Identity Verification - Robust UI Fix */
+
+:root {
+    --kyc-accent: #FF8800;
+    --kyc-accent-soft: rgba(255, 136, 0, 0.1);
+    --kyc-slate-50: #ffffff;
+    --kyc-slate-200: #e2e8f0;
+    --kyc-slate-400: #94a3b8;
+    --kyc-slate-700: #171717;
+}
+
+#kyc-form-container {
+    background: #ffffff !important;
+    border-radius: 2rem !important;
+    padding: 3rem !important;
+    box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.08) !important;
+    border: 1px solid var(--kyc-slate-200) !important;
+    margin: 2rem auto !important;
+    max-width: 800px !important;
+}
+
+/* TRACKER FIX */
+.kyc-status-tracker {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    margin-bottom: 3.5rem !important;
+    padding-bottom: 2rem !important;
+    border-bottom: 1px solid var(--kyc-slate-200) !important;
+    width: 100% !important;
+    gap: 0.5rem !important;
+}
+
+.status-item {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    flex: 1 !important;
+    text-align: center !important;
+    opacity: 0.4;
+    transition: all 0.3s ease;
+}
+
+.status-item.active,
+.status-item.completed {
+    opacity: 1 !important;
+}
+
+.status-icon {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 50% !important;
+    background: var(--kyc-slate-200) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-weight: 700 !important;
+    color: var(--kyc-slate-400) !important;
+    font-size: 0.95rem !important;
+    margin-bottom: 0.75rem !important;
+    border: 3px solid transparent !important;
+}
+
+.status-item.active .status-icon {
+    background: var(--kyc-accent-soft) !important;
+    color: var(--kyc-accent) !important;
+    border-color: var(--kyc-accent) !important;
+}
+
+.status-item.completed .status-icon {
+    background: var(--kyc-accent) !important;
+    color: #ffffff !important;
+}
+
+.status-label {
+    font-size: 0.7rem !important;
+    font-weight: 700 !important;
+    color: var(--kyc-slate-400) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    display: block !important;
+}
+
+.status-item.active .status-label {
+    color: var(--kyc-accent) !important;
+}
+
+/* INPUTS */
+.kyc-controls-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 1.5rem !important;
+    margin-bottom: 2.5rem !important;
+}
+
+.minimal-input {
+    background: var(--kyc-slate-50) !important;
+    border: 2px solid var(--kyc-slate-200) !important;
+    border-radius: 0.75rem !important;
+    padding: 1rem 1.25rem !important;
+}
+
+.minimal-input:focus {
+    border-color: var(--kyc-accent) !important;
+    background: #ffffff !important;
+    box-shadow: 0 0 0 4px var(--kyc-accent-soft) !important;
+}
+
+/* OPTION BOXES */
+#kyc-options-container {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 1.5rem !important;
+}
+
+.kyc-option-box {
+    background: #ffffff !important;
+    border: 2px dashed var(--kyc-slate-200) !important;
+    border-radius: 1.25rem !important;
+    padding: 2.5rem 1.5rem !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+}
+
+.kyc-option-box:hover:not(.disabled) {
+    border-color: var(--kyc-accent) !important;
+    transform: translateY(-5px) !important;
+    box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.1) !important;
+}
+
+.option-icon {
+    width: 56px !important;
+    height: 56px !important;
+    background: var(--kyc-accent-soft) !important;
+    color: var(--kyc-accent) !important;
+    border-radius: 14px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 1.4rem !important;
+    margin-bottom: 1rem !important;
+}
+
+.option-content h3 {
+    font-size: 1.1rem !important;
+    font-weight: 700 !important;
+    margin-bottom: 0.4rem !important;
+}
+
+.option-content p {
+    font-size: 0.85rem !important;
+    color: var(--kyc-slate-400) !important;
+}
+
+/* SCANNER FIXES */
+.scanner-viewport {
+    width: 100% !important;
+    max-width: 600px !important;
+    aspect-ratio: 16/10 !important;
+    border-radius: 1.5rem !important;
+    border: 4px solid var(--kyc-slate-200) !important;
+    margin: 2rem auto !important;
+    overflow: hidden !important;
+    position: relative !important;
+}
+
+.person-scanner {
+    max-width: 380px !important;
+    aspect-ratio: 1/1 !important;
+    border-radius: 50% !important;
+    border: 6px solid var(--kyc-accent) !important;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.05) !important;
+}
+
+.scan-feedback {
+    margin-top: 1rem;
+    width: 100%;
+    text-align: center;
+    color: var(--kyc-slate-700);
+    font-weight: 600;
+    font-size: 1.1rem;
+    background: transparent;
+    padding: 0.5rem;
+}
+
+#webcam {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+}
+
+.id-guide-box {
+    width: 80% !important;
+    height: 70% !important;
+    border: 2px solid rgba(255, 255, 255, 0.4) !important;
+    border-radius: 1rem !important;
+    box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5) !important;
+}
+
+.ocr-loader {
+    width: 64px !important;
+    height: 64px !important;
+    border: 5px solid var(--kyc-slate-200) !important;
+    border-top-color: var(--kyc-accent) !important;
+    border-radius: 50% !important;
+    animation: kyc-spin 1s linear infinite !important;
+    margin: 0 auto 2rem !important;
+}
+
+@keyframes kyc-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (max-width: 768px) {
+
+    .kyc-controls-grid,
+    #kyc-options-container {
+        grid-template-columns: 1fr !important;
+    }
+
+    .kyc-status-tracker {
+        flex-wrap: wrap !important;
+        gap: 1rem !important;
+    }
+}

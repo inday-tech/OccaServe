@@ -1,0 +1,625 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Manage Caterers - Admin Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/caterers.css') }}">
+<style>
+    /* Field Validation Styles & Modal Refinement */
+    .admin-modal-card {
+        max-width: 580px !important;
+    }
+
+    .modal-header-pro {
+        padding: 1.5rem 2rem 1rem !important;
+    }
+
+    .admin-form-pro {
+        padding: 1.5rem 2rem !important;
+    }
+
+    .form-grid-pro {
+        gap: 0.85rem !important;
+    }
+
+    .form-group-pro {
+        margin-bottom: 0.75rem !important;
+        position: relative;
+    }
+
+    .field-error-msg {
+        color: #ef4444;
+        font-size: 0.7rem;
+        font-weight: 500;
+        margin-top: 0.2rem;
+        min-height: 12px;
+        transition: all 0.2s ease;
+        opacity: 0;
+        transform: translateY(-3px);
+    }
+
+    .field-error-msg.active {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .input-wrapper.error input {
+        border-color: #ef4444 !important;
+        background-color: #fef2f2 !important;
+    }
+
+    .input-wrapper.error i {
+        color: #ef4444 !important;
+    }
+
+    .input-wrapper.success input {
+        border-color: #10b981 !important;
+    }
+
+    .input-wrapper.success i {
+        color: #10b981 !important;
+    }
+
+    .admin-form-pro label {
+        display: block;
+        margin-bottom: 0.25rem !important;
+        font-weight: 700;
+        color: #475569;
+        font-size: 0.75rem !important;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .form-group-pro input {
+        padding: 0.7rem 1rem 0.7rem 2.5rem !important;
+        font-size: 0.9rem !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header"
+    style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem;">
+    <div>
+        <h1>Manage Caterers</h1>
+        <p>Review caterer profiles, manage verification statuses, and monitor member activity.</p>
+    </div>
+    <button class="btn-add-caterer-trigger" onclick="openAddCatererModal()">
+        <i class="fas fa-plus-circle"></i> Add New Caterer
+    </button>
+</div>
+
+<!-- Caterer Stats Cards -->
+<div class="caterer-stats-grid">
+    <div class="caterer-stat-card">
+        <div class="stat-icon-container total">
+            <i class="fas fa-store"></i>
+        </div>
+        <div class="stat-info-group">
+            <div class="stat-info-label">Total Listings</div>
+            <div class="stat-info-value">{{ metrics.total_caterers }}</div>
+        </div>
+    </div>
+    <div class="caterer-stat-card">
+        <div class="stat-icon-container pending">
+            <i class="fas fa-clock"></i>
+        </div>
+        <div class="stat-info-group">
+            <div class="stat-info-label">Pending Review</div>
+            <div class="stat-info-value">{{ metrics.pending_caterers_count }}</div>
+        </div>
+    </div>
+    <div class="caterer-stat-card">
+        <div class="stat-icon-container approved">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="stat-info-group">
+            <div class="stat-info-label">Verified Partners</div>
+            <div class="stat-info-value">{{ metrics.approved_caterers_count }}</div>
+        </div>
+    </div>
+    <div class="caterer-stat-card">
+        <div class="stat-icon-container rejected">
+            <i class="fas fa-times-circle"></i>
+        </div>
+        <div class="stat-info-group">
+            <div class="stat-info-label">Rejected</div>
+            <div class="stat-info-value">{{ metrics.rejected_caterers_count }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="caterer-management-wrapper">
+    <div class="management-header-flex">
+        <h3 class="management-title"><i class="fas fa-store"></i> Application Management</h3>
+        <div class="search-box-pro">
+            <i class="fas fa-search"></i>
+            <input type="text" id="catererSearchInput" placeholder="Search businesses, owners, or emails..."
+                onkeyup="filterCaterers()">
+        </div>
+    </div>
+
+    {% if caterers %}
+    <div style="overflow-x: auto; margin: 0 -1rem; padding: 0 1rem;">
+        <table class="caterers-list-table" id="caterersTable">
+            <thead>
+                <tr>
+                    <th>Business Name</th>
+                    <th>Owner Information</th>
+                    <th>Service Area</th>
+                    <th>Status</th>
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for caterer in caterers %}
+                <tr class="caterer-row">
+                    <td>
+                        <div class="business-identity-cell">{{ caterer.business_name }}</div>
+                        <div class="registration-date-text">Joined {{ caterer.created_at.strftime('%b %d, %Y') if
+                            caterer.created_at else 'TBD' }}</div>
+                    </td>
+                    <td>
+                        <div class="owner-name-text">{{ caterer.user.first_name }} {{ caterer.user.last_name }}</div>
+                        <div class="owner-email-text">{{ caterer.user.email }}</div>
+                    </td>
+                    <td><span style="font-size: 0.9rem; font-weight: 500; color: var(--secondary-color);">{{
+                            caterer.city }}</span></td>
+                    <td>
+                        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                            {% if caterer.verification_status == 'Verified' %}
+                            <span class="status-badge-fancy approved">
+                                <i class="fas fa-check-circle"></i> Verified
+                            </span>
+                            {% elif caterer.verification_status == 'Pending' %}
+                            <span class="status-badge-fancy pending">
+                                <i class="fas fa-clock"></i> Pending
+                            </span>
+                            {% elif caterer.verification_status == 'Rejected' %}
+                            <span class="status-badge-fancy rejected">
+                                <i class="fas fa-times-circle"></i> Rejected
+                            </span>
+                            {% else %}
+                            <span class="status-badge-fancy default">
+                                <i class="fas fa-question-circle"></i> {{ caterer.verification_status }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        <div class="actions-cell-flex">
+                            <form action="/admin/caterers/{{ caterer.id }}/status?success_msg=Caterer+status+updated+successfully" method="POST"
+                                style="display: inline;"
+                                onsubmit="event.preventDefault(); window.showConfirm('Are you sure you want to {{ 'activate' if caterer.user and caterer.user.status == 'suspended' else 'suspend' }} this caterer account?', () => this.submit(), 'Account Status', 'Yes, Continue');">
+                                {% if caterer.user and caterer.user.status == 'suspended' %}
+                                <button type="submit" class="btn-status-toggle activate" title="Activate Account">
+                                    <i class="fas fa-user-check"></i>
+                                </button>
+                                {% else %}
+                                <button type="submit" class="btn-status-toggle suspend" title="Suspend Account">
+                                    <i class="fas fa-user-slash"></i>
+                                </button>
+                                {% endif %}
+                            </form>
+
+                            <form action="/admin/caterers/{{ caterer.id }}/archive?success_msg=Caterer+archived+successfully" method="POST"
+                                style="display: inline;"
+                                onsubmit="event.preventDefault(); window.showConfirm('Are you sure you want to archive this caterer? They will no longer appear in the marketplace but their data will be preserved.', () => this.submit(), 'Confirm Archive', 'Yes, Archive');">
+                                <button type="submit" class="btn-delete-customer" title="Archive Caterer"
+                                    style="color: #64748b;">
+                                    <i class="fas fa-archive"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination-box" id="paginationBox">
+        <div class="pagination-info" id="paginationInfo">
+            Showing 1 to 10 of {{ caterers|length }} entries
+        </div>
+        <div class="pagination-controls" id="paginationControls"></div>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 5rem 2rem;">
+        <div
+            style="width: 80px; height: 80px; background: #f8fafc; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+            <i class="fas fa-store-slash" style="color: #cbd5e1; font-size: 2.5rem;"></i>
+        </div>
+        <h3 style="color: var(--secondary-color); font-weight: 700; margin-bottom: 0.5rem;">No Caterers Found</h3>
+        <p style="color: #64748b; font-size: 0.95rem;">There are currently no caterer applications to display.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Onboard Caterer Modal -->
+<div id="addCatererModal" class="admin-modal-overlay">
+    <div class="admin-modal-card">
+        <div class="modal-header-pro">
+            <div class="header-content">
+                <h3><i class="fas fa-store-alt" style="color: var(--primary-color);"></i> Onboard New Caterer</h3>
+            </div>
+            <button class="modal-close-btn" onclick="closeAddCatererModal()">&times;</button>
+        </div>
+
+        <form id="addCatererForm" class="admin-form-pro">
+            <div class="error-drawer" id="formErrorDrawer" style="display: none;">
+                <div class="error-content-p">
+                    <i class="fas fa-exclamation-circle" style="margin-top: 5px;"></i>
+                    <ul class="error-list-p" id="errorList"></ul>
+                </div>
+            </div>
+
+            <div class="form-grid-pro">
+                <div class="form-group-pro" style="grid-column: span 2;">
+                    <label>Business Name</label>
+                    <div class="input-wrapper" style="position: relative;">
+                        <i class="fas fa-store"
+                            style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                        <input type="text" name="business_name" id="businessNameInput"
+                            placeholder="e.g. Skyline Catering Services" required>
+                    </div>
+                    <div class="field-error-msg" id="businessNameError"></div>
+                </div>
+                <div class="form-group-pro" style="grid-column: span 2;">
+                    <label>Full Name (Owner)</label>
+                    <div class="input-wrapper" style="position: relative;">
+                        <i class="fas fa-user"
+                            style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                        <input type="text" name="full_name" id="fullNameInput" placeholder="Enter First and Last Name"
+                            required>
+                    </div>
+                    <div class="field-error-msg" id="fullNameError"></div>
+                </div>
+                <div class="form-group-pro">
+                    <label>Email Address</label>
+                    <div class="input-wrapper" style="position: relative;">
+                        <i class="fas fa-envelope"
+                            style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                        <input type="email" name="email" id="emailInput" placeholder="caterer@example.com" required>
+                    </div>
+                    <div class="field-error-msg" id="emailError"></div>
+                </div>
+                <div class="form-group-pro">
+                    <label>Contact Phone</label>
+                    <div class="input-wrapper" style="position: relative;">
+                        <i class="fas fa-phone"
+                            style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                        <input type="text" name="phone" id="phoneInput" placeholder="09123456789" required
+                            maxlength="11">
+                    </div>
+                    <div class="field-error-msg" id="phoneError"></div>
+                </div>
+                <div class="form-group-pro" style="grid-column: span 2;">
+                    <label>City / Service Area</label>
+                    <div class="input-wrapper" style="position: relative;">
+                        <i class="fas fa-map-marker-alt"
+                            style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                        <input type="text" name="city" id="cityInput" placeholder="e.g. Biñan, Laguna" required>
+                    </div>
+                    <div class="field-error-msg" id="cityError"></div>
+                </div>
+            </div>
+
+            <div
+                style="margin-top: 2.5rem; display: flex; justify-content: flex-end; gap: 1rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9;">
+                <button type="button" class="btn-cancel-pro"
+                    style="background: white; color: #64748b; border: 1px solid #e2e8f0; padding: 0.8rem 1.5rem; border-radius: 0.75rem; font-weight: 600; cursor: pointer;"
+                    onclick="closeAddCatererModal()">Cancel</button>
+                <button type="submit" class="btn-submit-pro" id="submitAddCaterer">Create Account</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // ─── Pagination Logic ──────────────────────────────────────────────────
+    let currentPage = 1;
+    let rowsPerPage = 5;
+    let filteredRows = [];
+
+    function initPagination() {
+        const table = document.getElementById('caterersTable');
+        if (!table) return;
+
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+        filteredRows = rows;
+        updateTableDisplay();
+    }
+
+    function updateTableDisplay() {
+        const startIndex = (currentPage - 1) * rowsPerPage;
+        const endIndex = startIndex + rowsPerPage;
+
+        filteredRows.forEach((row, index) => {
+            if (index >= startIndex && index < endIndex) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        renderPaginationControls();
+        updatePaginationInfo();
+    }
+
+    function renderPaginationControls() {
+        const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
+        const controls = document.getElementById('paginationControls');
+        if (!controls) return;
+
+        controls.innerHTML = '';
+
+        if (totalPages <= 1) {
+            document.getElementById('paginationBox').style.display = 'none';
+            return;
+        } else {
+            document.getElementById('paginationBox').style.display = 'flex';
+        }
+
+        const prevBtn = document.createElement('button');
+        prevBtn.className = 'page-btn';
+        prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+        prevBtn.disabled = currentPage === 1;
+        prevBtn.onclick = () => { currentPage--; updateTableDisplay(); };
+        controls.appendChild(prevBtn);
+
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+                const btn = document.createElement('button');
+                btn.className = `page-btn ${i === currentPage ? 'active' : ''}`;
+                btn.innerText = i;
+                btn.onclick = () => { currentPage = i; updateTableDisplay(); };
+                controls.appendChild(btn);
+            } else if (i === currentPage - 2 || i === currentPage + 2) {
+                const dots = document.createElement('span');
+                dots.innerText = '...';
+                dots.style.alignSelf = 'center';
+                dots.style.padding = '0 0.25rem';
+                controls.appendChild(dots);
+            }
+        }
+
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'page-btn';
+        nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+        nextBtn.disabled = currentPage === totalPages;
+        nextBtn.onclick = () => { currentPage++; updateTableDisplay(); };
+        controls.appendChild(nextBtn);
+    }
+
+    function updatePaginationInfo() {
+        const info = document.getElementById('paginationInfo');
+        if (!info) return;
+
+        const totalEntries = filteredRows.length;
+        const start = totalEntries === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
+        const end = Math.min(currentPage * rowsPerPage, totalEntries);
+
+        info.innerText = `Showing ${start} to ${end} of ${totalEntries} entries`;
+    }
+
+    function filterCaterers() {
+        const input = document.getElementById('catererSearchInput');
+        const filter = input.value.toLowerCase();
+        const table = document.getElementById('caterersTable');
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+
+        filteredRows = rows.filter(row => {
+            const textContent = row.textContent.toLowerCase();
+            return textContent.includes(filter);
+        });
+
+        currentPage = 1;
+        updateTableDisplay();
+    }
+
+    // ─── Modal & Validation ────────────────────────────────────────────────
+    function openAddCatererModal() {
+        const modal = document.getElementById('addCatererModal');
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeAddCatererModal() {
+        const modal = document.getElementById('addCatererModal');
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+        document.getElementById('formErrorDrawer').style.display = 'none';
+        document.querySelectorAll('.field-error-msg').forEach(el => {
+            el.innerText = '';
+            el.classList.remove('active');
+        });
+        document.querySelectorAll('.input-wrapper').forEach(el => {
+            el.classList.remove('error', 'success');
+        });
+        document.getElementById('addCatererForm').reset();
+    }
+
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    const checkAvailability = debounce(async (id, value) => {
+        if (!value || value.length < 3) return;
+        if (validators[id](value)) return;
+
+        const params = new URLSearchParams();
+        if (id === 'emailInput') params.append('email', value);
+        if (id === 'businessNameInput') params.append('business_name', value);
+
+        try {
+            const response = await fetch(`/admin/caterers/check-availability?${params.toString()}`);
+            const result = await response.json();
+
+            const wrapper = document.getElementById(id).closest('.input-wrapper');
+            const errorMsg = document.getElementById(id.replace('Input', 'Error'));
+
+            if (id === 'emailInput' && result.email_taken) {
+                wrapper.classList.remove('success');
+                wrapper.classList.add('error');
+                errorMsg.innerText = "This email is already registered.";
+                errorMsg.classList.add('active');
+            } else if (id === 'businessNameInput' && result.business_name_taken) {
+                wrapper.classList.remove('success');
+                wrapper.classList.add('error');
+                errorMsg.innerText = "This business name is already taken.";
+                errorMsg.classList.add('active');
+            }
+        } catch (error) {
+            console.error("Availability check failed:", error);
+        }
+    }, 500);
+
+    const validators = {
+        businessNameInput: (val) => {
+            if (val.length < 3) return "Business name must be at least 3 characters.";
+            return null;
+        },
+        fullNameInput: (val) => {
+            if (val.length < 3) return "Full name must be at least 3 characters.";
+            if (!val.trim().includes(" ")) return "Please enter both first and last name.";
+            if (/(.)\1\1/.test(val)) return "Name cannot contain repetitive characters.";
+            return null;
+        },
+        emailInput: (val) => {
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) return "Invalid email format.";
+            if (!val.toLowerCase().endsWith("@gmail.com")) return "Only @gmail.com addresses are allowed.";
+            return null;
+        },
+        phoneInput: (val) => {
+            if (!/^09\d{9}$/.test(val)) return "Mobile number must start with 09 and be 11 digits.";
+            if (/(.)\1\1/.test(val)) return "Invalid pattern (3+ repetitive digits).";
+            return null;
+        },
+        cityInput: (val) => {
+            if (val.length < 5) return "Please provide a more detailed address.";
+            return null;
+        }
+    };
+
+    function validateField(id) {
+        const input = document.getElementById(id);
+        const wrapper = input.closest('.input-wrapper');
+        const errorMsg = document.getElementById(id.replace('Input', 'Error'));
+        const val = input.value.trim();
+
+        const error = validators[id](val);
+
+        if (error) {
+            wrapper.classList.remove('success');
+            wrapper.classList.add('error');
+            errorMsg.innerText = error;
+            errorMsg.classList.add('active');
+            return false;
+        } else {
+            wrapper.classList.remove('error');
+            wrapper.classList.add('success');
+            errorMsg.innerText = '';
+            errorMsg.classList.remove('active');
+            return true;
+        }
+    }
+
+    Object.keys(validators).forEach(id => {
+        const input = document.getElementById(id);
+        if (!input) return;
+
+        input.addEventListener('input', () => {
+            if (id === 'phoneInput') {
+                input.value = input.value.replace(/\D/g, '').slice(0, 11);
+            }
+            const isValid = validateField(id);
+            if (isValid && (id === 'emailInput' || id === 'businessNameInput')) {
+                checkAvailability(id, input.value.trim());
+            }
+        });
+
+        input.addEventListener('blur', () => {
+            input.dataset.touched = 'true';
+            const isValid = validateField(id);
+            if (isValid && (id === 'emailInput' || id === 'businessNameInput')) {
+                checkAvailability(id, input.value.trim());
+            }
+        });
+    });
+
+    document.getElementById('addCatererForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        let isValid = true;
+        Object.keys(validators).forEach(id => {
+            if (!validateField(id)) isValid = false;
+        });
+
+        if (!isValid) return;
+
+        const btn = document.getElementById('submitAddCaterer');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processing...';
+
+        const formData = new FormData(this);
+        try {
+            const response = await fetch('/admin/caterers/add', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                closeAddCatererModal();
+                // Avoid raw Swal.fire, redirect with success_msg so layout.js shows toast
+                window.location.href = "/admin/caterers?success_msg=" + encodeURIComponent(result.message);
+            } else {
+                if (result.errors) {
+                    Object.keys(result.errors).forEach(key => {
+                        const inputId = key === 'full_name' ? 'fullNameInput' : (key === 'phone' ? 'phoneInput' : (key === 'business_name' ? 'businessNameInput' : (key === 'city' ? 'cityInput' : 'emailInput')));
+                        const field = document.getElementById(inputId);
+                        if (field) {
+                            const wrapper = field.closest('.input-wrapper');
+                            const errorMsg = document.getElementById(inputId.replace('Input', 'Error'));
+                            wrapper.classList.add('error');
+                            errorMsg.innerText = result.errors[key];
+                            errorMsg.classList.add('active');
+                        }
+                    });
+                } else {
+                    if (window.showError) {
+                        window.showError(result.message, 'Registration Failed');
+                    } else {
+                        alert("Registration Failed: " + result.message);
+                    }
+                }
+                btn.disabled = false;
+                btn.innerHTML = 'Create Account';
+            }
+        } catch (error) {
+            if (window.showError) {
+                window.showError('System error. Please try again.', 'Error');
+            } else {
+                alert('System error. Please try again.');
+            }
+            btn.disabled = false;
+            btn.innerHTML = 'Create Account';
+        }
+    });
+
+    window.onload = initPagination;
+</script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+{% endblock %}

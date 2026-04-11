@@ -1,0 +1,118 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Community Feedback - Admin Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/reviews.css') }}?v=1.3">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Community Feedback</h1>
+    <p>Monitor and moderate user feedback to maintain service excellence across the platform.</p>
+</div>
+
+<div class="reviews-container">
+    <!-- Header Dashboard Stats -->
+    <div class="header-stats-panel">
+        <div class="stat-item-premium">
+            <span class="stat-label">Total Logs</span>
+            <span class="stat-value">{{ reviews|length }}</span>
+        </div>
+        <div class="stat-item-premium">
+            <span class="stat-label">High Rated</span>
+            <span class="stat-value">{{ reviews|selectattr('rating', 'ge', 4)|list|length }}</span>
+        </div>
+        <div class="stat-item-premium">
+            <span class="stat-label">Featured Reviews</span>
+            <span class="stat-value">
+                {% set highlighted_count = reviews | selectattr('is_highlighted', 'equalto', true) | list | length %}
+                {{ highlighted_count }}
+            </span>
+        </div>
+    </div>
+
+    <!-- Review Management Grid -->
+    <div class="reviews-grid" id="reviewsGrid">
+        {% for review in reviews %}
+        <div class="review-card-premium {{ 'highlighted' if review.is_highlighted else '' }}">
+            {% if review.is_highlighted %}
+            <div class="pinned-label"><i class="fas fa-star"></i> Featured on Site</div>
+            {% endif %}
+
+            <div class="card-top">
+                <div class="reviewer-info">
+                    <img src="{{ review.user.profile_image_url if (review.user and review.user.profile_image_url) else url_for('static', path='/images/default-avatar.png') }}"
+                        class="reviewer-avatar" alt="{{ review.user.first_name if review.user else 'User' }}">
+                    <div class="reviewer-text">
+                        <h4>{{ review.user.first_name if review.user else 'Deleted' }} {{ review.user.last_name if review.user else 'User' }}</h4>
+                        <span>{{ review.user.email if review.user else 'no-email' }}</span>
+                    </div>
+                </div>
+                <div class="rating-badge">
+                    <i class="fas fa-star"></i> {{ review.rating }}.0
+                </div>
+            </div>
+
+            <div class="review-body">
+                <p class="review-quote">"{{ review.comment }}"</p>
+                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem;">
+                    {% if review.recommend %}
+                    <span class="status-badge-pill status-verified">
+                        <i class="fas fa-thumbs-up"></i> Recommended
+                    </span>
+                    {% endif %}
+                    {% if review.was_punctual %}
+                    <span class="status-badge-pill status-confirmed">
+                        <i class="fas fa-clock"></i> Punctual Service
+                    </span>
+                    {% endif %}
+                </div>
+                
+                <a href="/caterers/{{ review.caterer.id if review.caterer else '#' }}" class="caterer-tag">
+                    <i class="fas fa-store"></i> 
+                    <span>{{ review.caterer.business_name if review.caterer else 'Unknown Caterer' }}</span>
+                    <span style="margin-left: auto; font-size: 0.7rem; color: #94a3b8; font-weight: 500;">
+                        #BK-{{ review.booking_id if review.booking_id else 'N/A' }}
+                    </span>
+                </a>
+            </div>
+
+            <div class="card-actions">
+                <form action="/admin/reviews/{{ review.id }}/highlight" method="POST" style="display: contents;">
+                    <button type="submit"
+                        class="btn-review-action btn-star {{ 'active' if review.is_highlighted else '' }}"
+                        title="{{ 'Remove from Landing Page' if review.is_highlighted else 'Feature on Landing Page' }}">
+                        <i class="fas {{ 'fa-star' if review.is_highlighted else 'fa-thumbtack' }}"></i>
+                    </button>
+                </form>
+                <form action="/admin/reviews/{{ review.id }}/archive" method="POST" style="display: contents;"
+                    onsubmit="event.preventDefault(); showConfirm('Are you sure you want to archive this review?', () => this.submit(), 'Confirm Archive', 'Yes, Archive');">
+                    <button type="submit" class="btn-review-action btn-trash" title="Archive Post">
+                        <i class="fas fa-archive"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-reviews">
+            <i class="fas fa-comment-slash"></i>
+            <h3>No Feedback Recorded</h3>
+            <p>Wait for customers to leave reviews. They will appear here for your moderation.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initializing grid animations or pagination if needed
+        const cards = document.querySelectorAll('.review-card-premium');
+        cards.forEach((card, index) => {
+            card.style.animationDelay = `${index * 0.05}s`;
+        });
+    });
+</script>
+{% endblock %}

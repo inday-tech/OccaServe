@@ -1,0 +1,296 @@
+{% extends "caterer/layout.html" %}
+
+{% block title %}Calendar - Caterer Dashboard{% endblock %}
+
+{% block extra_css %}
+<!-- FullCalendar CSS -->
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css' rel='stylesheet' />
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/calendar.css') }}?v=4">
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 2.5rem;">
+    <div>
+        <h1>Service Calendar</h1>
+        <p>Manage your availability and view upcoming event dates.</p>
+    </div>
+    <button onclick="openManualBookingModal()" class="btn-primary" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; border-radius: 999px;">
+        <i class="fas fa-plus"></i> Walk-in Booking
+    </button>
+</div>
+
+<div class="calendar-layout-grid">
+    <!-- Main Calendar -->
+    <div class="calendar-main-container">
+        <!-- Calendar Legend Moved Here -->
+        <div class="calendar-legend-top" style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+            <div class="legend-item-flex" style="display: flex; align-items: center; gap: 0.5rem;">
+                <span class="legend-dot" style="background: #ec4899; width: 12px; height: 12px; border-radius: 50%;"></span>
+                <span class="legend-text" style="font-size: 0.85rem; font-weight: 600;">Weddings</span>
+            </div>
+            <div class="legend-item-flex" style="display: flex; align-items: center; gap: 0.5rem;">
+                <span class="legend-dot" style="background: #3b82f6; width: 12px; height: 12px; border-radius: 50%;"></span>
+                <span class="legend-text" style="font-size: 0.85rem; font-weight: 600;">Birthdays</span>
+            </div>
+            <div class="legend-item-flex" style="display: flex; align-items: center; gap: 0.5rem;">
+                <span class="legend-dot" style="background: #10b981; width: 12px; height: 12px; border-radius: 50%;"></span>
+                <span class="legend-text" style="font-size: 0.85rem; font-weight: 600;">Corporate</span>
+            </div>
+            <div class="legend-item-flex" style="display: flex; align-items: center; gap: 0.5rem;">
+                <span class="legend-dot" style="background: #f59e0b; width: 12px; height: 12px; border-radius: 50%;"></span>
+                <span class="legend-text" style="font-size: 0.85rem; font-weight: 600;">Private Parties</span>
+            </div>
+            <div class="legend-item-flex" style="display: flex; align-items: center; gap: 0.5rem;">
+                <span class="legend-blocked-box" style="width: 12px; height: 12px; border-radius: 3px; background: #fee2e2; border: 1px solid #fecaca;"></span>
+                <span class="legend-text legend-text-danger" style="font-size: 0.85rem; font-weight: 600; color: #ef4444;">Blocked Date</span>
+            </div>
+        </div>
+        <div id='calendar'></div>
+    </div>
+
+    <!-- Info Column -->
+    <div class="calendar-info-sidebar">
+        <!-- Availability Management -->
+        <div class="calendar-sidebar-section">
+            <h4>Manage Availability</h4>
+            <form id="availabilityForm" class="availability-form-grid">
+                <div class="availability-input-group">
+                    <label class="availability-label-small">Select Date</label>
+                    <input type="date" id="blockDate" class="availability-input-field" required min="{{ current_date.strftime('%Y-%m-%d') }}">
+                </div>
+                <div class="availability-input-group">
+                    <label class="availability-label-small">Reason (Optional)</label>
+                    <input type="text" id="blockReason" class="availability-input-field"
+                        placeholder="Holiday, Repair, etc.">
+                </div>
+                <button type="button" onclick="toggleDateAvailability(false)" class="btn-primary btn-block-date">Block
+                    Date</button>
+                <button type="button" onclick="toggleDateAvailability(true)"
+                    class="btn-outline btn-unblock-date">Unblock Date</button>
+            </form>
+        </div>
+
+        <!-- Event Status Tracker -->
+        <div class="calendar-sidebar-section" style="flex: 1; display: flex; flex-direction: column;">
+            <h4>Event Status Tracker</h4>
+            {% if bookings %}
+            <div class="weekly-events-grid" style="flex: 1; overflow-y: auto;">
+                {% for booking in bookings %}
+                <div class="weekly-event-card type-{{ booking.event_type.lower().split(' ')[0] if booking.event_type else 'other' }}"
+                     style="cursor: pointer;"
+                     data-id="{{ booking.id }}"
+                     data-customer="{{ (booking.user.first_name ~ ' ' ~ booking.user.last_name) if booking.user else (booking.customer_name or 'Walk-in') }}"
+                     data-type="{{ booking.event_type or 'Other' }}"
+                     data-title="{{ booking.event_name or 'Event' }}"
+                     data-datetime="{{ booking.event_date.strftime('%A, %B %d, %Y') }} at {{ booking.event_time.strftime('%I:%M %p') if booking.event_time else 'TBD' }}"
+                     data-venue="{{ booking.venue_address or 'TBD' }}"
+                     data-package="{{ booking.guest_count }} Guests - {{ booking.package.name if booking.package else 'Custom Package' }}"
+                     onclick="openSidebarEventModal(this)">
+                    <div class="weekly-event-date">
+                        <span>{{ booking.event_date.strftime('%b') }}</span>
+                        <span>{{ booking.event_date.strftime('%d') }}</span>
+                    </div>
+                    <div class="weekly-event-info" style="gap: 0.35rem;">
+                        <div class="weekly-event-name">{{ booking.event_name or (booking.user.first_name if booking.user else 'Walk-in') }}</div>
+                        
+                        {% set days_left = (booking.event_date - current_date).days %}
+                        {% if days_left == 0 %}
+                            <div class="event-status-badge status-ongoing"><i class="fas fa-spinner fa-spin"></i> Ongoing / Transit</div>
+                        {% elif days_left <= 2 %}
+                            <div class="event-status-badge status-preparing"><i class="fas fa-fire"></i> Preparing</div>
+                        {% else %}
+                            <div class="event-status-badge status-upcoming"><i class="far fa-calendar-check"></i> Upcoming</div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="empty-week-text">No upcoming events right now.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Event Details Modal -->
+<div id="eventModal" class="calendar-modal">
+    <div class="calendar-modal-content">
+        <div class="modal-header-flex">
+            <h3 id="calModalTitle">Event Details</h3>
+            <button onclick="closeModal()" class="modal-close-btn">&times;</button>
+        </div>
+
+        <div id="modalBody">
+            <div class="calendar-detail-item">
+                <i class="fas fa-user"></i>
+                <div>
+                    <div class="calendar-detail-label">Customer</div>
+                    <div id="detCustomer" class="calendar-detail-value">---</div>
+                </div>
+            </div>
+            <div class="calendar-detail-item">
+                <i class="fas fa-tag"></i>
+                <div>
+                    <div class="calendar-detail-label">Event Type</div>
+                    <div id="detType" class="calendar-detail-value">---</div>
+                </div>
+            </div>
+            <div class="calendar-detail-item">
+                <i class="fas fa-clock"></i>
+                <div>
+                    <div class="calendar-detail-label">Date & Time</div>
+                    <div id="detDateTime" class="calendar-detail-value">---</div>
+                </div>
+            </div>
+            <div class="calendar-detail-item">
+                <i class="fas fa-map-marker-alt"></i>
+                <div>
+                    <div class="calendar-detail-label">Venue / Address</div>
+                    <div id="detVenue" class="calendar-detail-value">---</div>
+                </div>
+            </div>
+            <div class="calendar-detail-item">
+                <i class="fas fa-users"></i>
+                <div>
+                    <div class="calendar-detail-label">Guests & Package</div>
+                    <div id="detPackage" class="calendar-detail-value">---</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer-gap">
+            <input type="hidden" id="currentBookingId">
+            <button onclick="setReminder()" class="btn-primary flex-1 p-1">Set Reminder</button>
+            <button onclick="closeModal()" class="btn-outline flex-1 p-1">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Blocked Date Modal -->
+<div id="blockedDateModal" class="calendar-modal">
+    <div class="calendar-modal-content">
+        <div class="modal-header-flex">
+            <h3><i class="fas fa-ban" style="color: #ef4444; margin-right: 0.5rem;"></i> Blocked Date</h3>
+            <button onclick="closeModal()" class="modal-close-btn">&times;</button>
+        </div>
+        <div id="blockedBody" style="margin-bottom: 2rem;">
+            <p style="color: var(--text-light); font-size: 0.95rem;">This date is blocked and not available for booking.</p>
+            <div style="background: #f8fafc; padding: 1rem; border-radius: 1rem; margin-top: 1.5rem;">
+                <div class="calendar-detail-label">Reason for blocking</div>
+                <div id="detBlockedReason" class="calendar-detail-value" style="margin-top: 0.25rem;">---</div>
+            </div>
+            <div style="background: #f8fafc; padding: 1rem; border-radius: 1rem; margin-top: 1rem;">
+                <div class="calendar-detail-label">Date</div>
+                <div id="detBlockedDate" class="calendar-detail-value" style="margin-top: 0.25rem;">---</div>
+            </div>
+        </div>
+        <div class="modal-footer-gap">
+            <button onclick="unblockSelectedDate()" class="btn-outline flex-1 p-1" style="color: #ef4444; border-color: #fecaca; background: #fee2e2;">Unblock Date</button>
+            <button onclick="closeModal()" class="btn-primary flex-1 p-1">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Manual Booking Modal -->
+<div id="manualBookingModal" class="calendar-modal">
+    <div class="calendar-modal-content" style="max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header-flex">
+            <h3><i class="fas fa-calendar-plus" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Create Walk-in Booking</h3>
+            <button onclick="closeModal()" class="modal-close-btn">&times;</button>
+        </div>
+        <form id="manualBookingForm" onsubmit="submitManualEvent(event)">
+            <div id="manualBookingError" class="validation-error-drawer" style="display: none;"></div>
+            <div style="display: grid; gap: 1.25rem; margin-bottom: 2rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div>
+                        <label class="availability-label-small">Customer Name <span style="color:red">*</span></label>
+                        <input type="text" id="manCustName" class="availability-input-field" required placeholder="e.g. John Doe">
+                    </div>
+                    <div>
+                        <label class="availability-label-small">Contact Number</label>
+                        <input type="text" id="manCustContact" class="availability-input-field" placeholder="e.g. 09123456789">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr; gap: 1rem;">
+                    <div>
+                        <label class="availability-label-small">Event Name <span style="color:red">*</span></label>
+                        <input type="text" id="manEventName" class="availability-input-field" required placeholder="e.g. Garcia Wedding">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div>
+                        <label class="availability-label-small">Event Type <span style="color:red">*</span></label>
+                        <select id="manEventType" class="availability-input-field" required onchange="toggleOtherEventType()">
+                            <option value="Wedding">Wedding</option>
+                            <option value="Birthday">Birthday</option>
+                            <option value="Corporate">Corporate</option>
+                            <option value="Private Party">Private Party</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="availability-label-small">Number of Guests <span style="color:red">*</span></label>
+                        <input type="number" id="manGuests" class="availability-input-field" required min="1" max="100000" placeholder="e.g. 100" onkeydown="return ['Backspace','Delete','ArrowLeft','ArrowRight','Tab'].includes(event.key) || (!isNaN(Number(event.key)) && event.key !== ' ')">
+                    </div>
+                </div>
+                <div id="otherEventTypeDiv" style="display: none;">
+                    <label class="availability-label-small">Specify Event Type <span style="color:red">*</span></label>
+                    <input type="text" id="manOtherType" class="availability-input-field" placeholder="e.g. Anniversary">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div>
+                        <label class="availability-label-small">Event Date <span style="color:red">*</span></label>
+                        <input type="date" id="manDate" class="availability-input-field" required min="{{ current_date.strftime('%Y-%m-%d') }}">
+                    </div>
+                    <div>
+                        <label class="availability-label-small">Time</label>
+                        <input type="time" id="manTime" class="availability-input-field">
+                    </div>
+                </div>
+                <div>
+                    <label class="availability-label-small">Venue Address</label>
+                    <input type="text" id="manVenue" class="availability-input-field" placeholder="Full address">
+                </div>
+                <div>
+                    <label class="availability-label-small">Select Package (Optional)</label>
+                    <select id="manPackage" class="availability-input-field">
+                        <option value="" data-price="0" data-menus="[]">-- Custom / No Package --</option>
+                        {% for pkg in packages %}
+                        <option value="{{ pkg.id }}" data-price="{{ pkg.price }}" data-menus='{{ pkg.menu_items | map(attribute="id") | list | tojson }}'>{{ pkg.name }} (₱{{ '{:,.2f}'.format(pkg.price) }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="availability-label-small">Select Included Menus (Optional)</label>
+                    <div style="max-height: 150px; overflow-y: auto; border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; padding: 0.5rem; background: #fff;">
+                        {% if menu_items %}
+                            {% for mi in menu_items %}
+                            <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.25rem; border-bottom: 1px solid #f8fafc; cursor: pointer;">
+                                <input type="checkbox" value="{{ mi.id }}" data-price="{{ mi.price }}" class="man-menu-checkbox">
+                                <span style="font-size: 0.9rem;">{{ mi.name }} <small style="color:#64748b;">(₱{{ '{:,.2f}'.format(mi.price) }})</small></span>
+                            </label>
+                            {% endfor %}
+                        {% else %}
+                            <span style="color:#64748b; font-size:0.85rem;">No menu items available.</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div>
+                    <label class="availability-label-small">Total Amount <span style="color:red">*</span></label>
+                    <input type="text" id="manAmount" class="availability-input-field" required placeholder="₱ 0.00">
+                </div>
+            </div>
+            <div class="modal-footer-gap">
+                <button type="button" onclick="closeModal()" class="btn-outline flex-1 p-1">Cancel</button>
+                <button type="submit" id="btnSubmitManual" class="btn-primary flex-1 p-1">Create Booking</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- FullCalendar JS -->
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js'></script>
+<script src="{{ url_for('static', path='/js/caterer/calendar.js') }}?v=4"></script>
+{% endblock %}

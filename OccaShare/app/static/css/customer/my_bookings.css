@@ -1,0 +1,43 @@
+.my-bookings-container {
+    margin-top: 2rem;
+    min-height: 80vh;
+}
+
+.my-bookings-title {
+    margin-bottom: 2rem;
+}
+
+.my-bookings-grid {
+    grid-template-columns: 1fr;
+}
+
+.my-bookings-table-card {
+    background: #fff;
+    border-radius: 1rem;
+    padding: 2rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-details-small {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+}
+
+.my-bookings-empty {
+    text-align: center;
+    padding: 4rem;
+    background: #fff;
+    border-radius: 1rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.my-bookings-empty-icon {
+    font-size: 3rem;
+    color: var(--text-light);
+    margin-bottom: 1rem;
+}
+
+.my-bookings-empty-text {
+    color: var(--text-light);
+    margin-bottom: 2rem;
+}

@@ -1,0 +1,483 @@
+{% extends "customer/layout.html" %}
+
+{% block title %}Messages - OccaServe{% endblock %}
+
+{% block extra_css %}
+<style>
+    .messages-container {
+        display: grid;
+        grid-template-columns: 350px 1fr;
+        height: calc(100vh - 140px);
+        background: white;
+        border-radius: 1.5rem;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+        overflow: hidden;
+        margin-top: 1rem;
+    }
+
+    /* Conversations List */
+    .conversations-sidebar {
+        border-right: 1px solid #f1f5f9;
+        display: flex;
+        flex-direction: column;
+        background: #fcfcfd;
+    }
+
+    .sidebar-header-box {
+        padding: 1.5rem;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .sidebar-header-box h2 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 1rem;
+    }
+
+    .sidebar-search input {
+        width: 100%;
+        padding: 0.75rem 1.25rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 99px;
+        font-size: 0.9rem;
+        background: white;
+    }
+
+    .conversations-list {
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .conversation-item {
+        padding: 1.25rem 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        border-bottom: 1px solid #f8fafc;
+    }
+
+    .conversation-item:hover {
+        background: #f8fafc;
+    }
+
+    .conversation-item.active {
+        background: #f0f7ff;
+        border-right: 3px solid #3b82f6;
+    }
+
+    .peer-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        overflow: hidden;
+    }
+
+    .peer-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .conversation-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .conversation-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 0.25rem;
+    }
+
+    .peer-name {
+        font-weight: 600;
+        color: #334155;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .last-time {
+        font-size: 0.7rem;
+        color: #94a3b8;
+    }
+
+    .last-msg {
+        font-size: 0.85rem;
+        color: #64748b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .unread-badge {
+        background: #3b82f6;
+        color: white;
+        font-size: 0.7rem;
+        padding: 2px 6px;
+        border-radius: 99px;
+        min-width: 18px;
+        text-align: center;
+        font-weight: 600;
+    }
+
+    /* Chat Area */
+    .chat-area {
+        display: flex;
+        flex-direction: column;
+        background: white;
+    }
+
+    .chat-header {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .active-peer {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .chat-messages {
+        flex: 1;
+        padding: 1.5rem;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        background: #fafbfd;
+    }
+
+    .message-bubble {
+        max-width: 75%;
+        padding: 0.75rem 1.15rem;
+        border-radius: 1.15rem;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        position: relative;
+    }
+
+    .message-sent {
+        align-self: flex-end;
+        background: #1e293b;
+        color: white;
+        border-bottom-right-radius: 0.25rem;
+    }
+
+    .message-received {
+        align-self: flex-start;
+        background: white;
+        color: #1e293b;
+        border-bottom-left-radius: 0.25rem;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+        border: 1px solid #f1f5f9;
+    }
+
+    .message-time {
+        font-size: 0.65rem;
+        margin-top: 0.35rem;
+        opacity: 0.6;
+        display: block;
+        text-align: right;
+    }
+
+    .chat-input-area {
+        padding: 1.5rem;
+        border-top: 1px solid #f1f5f9;
+    }
+
+    .chat-input-wrapper {
+        display: flex;
+        gap: 0.75rem;
+        background: #f8fafc;
+        padding: 0.5rem;
+        border-radius: 1rem;
+        border: 1px solid #e2e8f0;
+    }
+
+    .chat-input-wrapper input {
+        flex: 1;
+        padding: 0.75rem 1rem;
+        border: none;
+        background: transparent;
+        outline: none;
+        font-size: 0.95rem;
+    }
+
+    .btn-send {
+        width: 45px;
+        height: 45px;
+        border-radius: 10px;
+        background: #1e293b;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+
+    .btn-send:hover {
+        transform: scale(1.05);
+    }
+
+    .no-chat-selected {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #94a3b8;
+        gap: 1.5rem;
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .no-chat-selected-icon {
+        width: 100px;
+        height: 100px;
+        background: #f1f5f9;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5rem;
+        color: #cbd5e1;
+    }
+
+    @media (max-width: 991px) {
+        .messages-container {
+            grid-template-columns: 1fr;
+            height: calc(100vh - 100px);
+        }
+        .conversations-sidebar.hidden {
+            display: none;
+        }
+        .chat-area.hidden {
+            display: none;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="messages-container">
+    <!-- Sidebar -->
+    <div class="conversations-sidebar" id="conversationsSidebar">
+        <div class="sidebar-header-box">
+            <h2>Messages</h2>
+            <div class="sidebar-search">
+                <input type="text" placeholder="Search caterers..." id="searchConversations">
+            </div>
+        </div>
+        <div class="conversations-list" id="conversationsList">
+            <!-- Loading State -->
+            <div style="padding: 3rem; text-align: center; color: #94a3b8;">
+                <i class="fas fa-spinner fa-spin fa-2x"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Area -->
+    <div class="chat-area" id="chatArea">
+        <div class="no-chat-selected" id="noChatSelected">
+            <div class="no-chat-selected-icon">
+                <i class="fas fa-paper-plane"></i>
+            </div>
+            <div>
+                <h3 style="color: #475569; margin-bottom: 0.5rem;">Select a Conversation</h3>
+                <p>Pick a caterer from the list to view your chat history or start a new message.</p>
+            </div>
+        </div>
+
+        <div id="activeChat" style="display: none; flex-direction: column; height: 100%;">
+            <div class="chat-header">
+                <div class="active-peer">
+                    <button class="mobile-back btn-icon" style="display: none;" onclick="showSidebar()"><i class="fas fa-arrow-left"></i></button>
+                    <div class="peer-avatar" id="activePeerAvatar">
+                        <i class="fas fa-store"></i>
+                    </div>
+                    <div>
+                        <div class="peer-name" id="activePeerName">Caterer Business Name</div>
+                        <div style="font-size: 0.7rem; color: #64748b;">Response time: usually within 1 hour</div>
+                    </div>
+                </div>
+                <div class="chat-actions">
+                    <button class="btn-icon" title="View Profile" id="viewPeerProfile"><i class="fas fa-external-link-alt"></i></button>
+                </div>
+            </div>
+
+            <div class="chat-messages" id="chatHistory">
+                <!-- Messages will load here -->
+            </div>
+
+            <div class="chat-input-area">
+                <form id="chatForm" class="chat-input-wrapper">
+                    <input type="text" id="messageInput" placeholder="Write a message..." autocomplete="off">
+                    <button type="submit" class="btn-send"><i class="fas fa-paper-plane"></i></button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', path='/js/chat.js') }}"></script>
+<script>
+    let chatClient;
+    let currentPeerId = null;
+    const currentUserId = Number("{{ user.id }}");
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        chatClient = new OccaChat({
+            userId: currentUserId,
+            userRole: 'customer',
+            websocketUrl: `ws://${window.location.host}/ws`,
+            onMessageReceived: (data) => {
+                if (currentPeerId && data.sender_id === currentPeerId) {
+                    appendMessage(data, 'received');
+                    scrollToBottom();
+                }
+                refreshConversations();
+            }
+        });
+
+        refreshConversations();
+
+        // Check if there's a peer ID in the URL to auto-open
+        const urlParams = new URLSearchParams(window.location.search);
+        const autoPeerId = urlParams.get('caterer');
+        if (autoPeerId) {
+            // Need to wait slightly for list to load or just fetch specific info
+            setTimeout(() => selectConversation(Number(autoPeerId), 'Caterer'), 500);
+        }
+
+        document.getElementById('chatForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('messageInput');
+            const content = input.value.trim();
+            if (!content || !currentPeerId) return;
+
+            const msg = await chatClient.sendMessage(currentPeerId, content);
+            if (msg) {
+                appendMessage(msg, 'sent');
+                input.value = '';
+                scrollToBottom();
+                refreshConversations();
+            }
+        });
+    });
+
+    async function refreshConversations() {
+        const conversations = await loadConversations();
+        const listDiv = document.getElementById('conversationsList');
+        
+        if (conversations.length === 0) {
+            listDiv.innerHTML = `
+                <div style="padding: 3rem; text-align: center; color: #94a3b8;">
+                    <p>No conversations yet.</p>
+                    <a href="/customer/marketplace" class="btn-text" style="color: #3b82f6; margin-top: 1rem; display: inline-block;">Browse Caterers</a>
+                </div>
+            `;
+            return;
+        }
+
+        listDiv.innerHTML = conversations.map(conv => `
+            <div class="conversation-item ${currentPeerId == conv.peer.id ? 'active' : ''}" onclick="selectConversation(${conv.peer.id}, '${conv.peer.name}', '${conv.peer.logo || ''}')">
+                <div class="peer-avatar">
+                    ${conv.peer.logo ? `<img src="${conv.peer.logo}" alt="Logo">` : conv.peer.name.charAt(0)}
+                </div>
+                <div class="conversation-info">
+                    <div class="conversation-header">
+                        <span class="peer-name">${conv.peer.name}</span>
+                        <span class="last-time">${new Date(conv.last_message.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="last-msg">${conv.last_message.sender_id == currentUserId ? 'You: ' : ''}${conv.last_message.content}</span>
+                        ${conv.unread_count > 0 ? `<span class="unread-badge">${conv.unread_count}</span>` : ''}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        const totalUnread = conversations.reduce((sum, c) => sum + c.unread_count, 0);
+        const navBadge = document.getElementById('nav-chat-badge');
+        if (navBadge) {
+            navBadge.innerText = totalUnread;
+            navBadge.style.display = totalUnread > 0 ? 'flex' : 'none';
+        }
+    }
+
+    async function selectConversation(peerId, peerName, peerLogo) {
+        currentPeerId = peerId;
+        chatClient.peerId = peerId;
+
+        document.getElementById('noChatSelected').style.display = 'none';
+        document.getElementById('activeChat').style.display = 'flex';
+        document.getElementById('activePeerName').innerText = peerName;
+        
+        const avatarBox = document.getElementById('activePeerAvatar');
+        if (peerLogo) avatarBox.innerHTML = `<img src="${peerLogo}" alt="Logo">`;
+        else avatarBox.innerText = peerName.charAt(0);
+
+        document.getElementById('viewPeerProfile').onclick = () => window.location.href = `/customer/marketplace/${peerId}`;
+        
+        document.querySelectorAll('.conversation-item').forEach(item => item.classList.remove('active'));
+        
+        const messages = await loadChatHistory(peerId);
+        const historyDiv = document.getElementById('chatHistory');
+        historyDiv.innerHTML = messages.map(msg => `
+            <div class="message-bubble ${msg.sender_id == currentUserId ? 'message-sent' : 'message-received'}">
+                ${msg.content}
+                <span class="message-time">${new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+            </div>
+        `).join('');
+
+        scrollToBottom();
+        await chatClient.markAllAsRead(peerId);
+        refreshConversations();
+
+        if (window.innerWidth <= 991) {
+            document.getElementById('conversationsSidebar').classList.add('hidden');
+            document.querySelector('.mobile-back').style.display = 'block';
+        }
+    }
+
+    function appendMessage(msg, type) {
+        const historyDiv = document.getElementById('chatHistory');
+        const msgHtml = `
+            <div class="message-bubble ${type == 'sent' ? 'message-sent' : 'message-received'}">
+                ${msg.content}
+                <span class="message-time">${new Date(msg.created_at || new Date()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+            </div>
+        `;
+        historyDiv.insertAdjacentHTML('beforeend', msgHtml);
+    }
+
+    function scrollToBottom() {
+        const historyDiv = document.getElementById('chatHistory');
+        historyDiv.scrollTop = historyDiv.scrollHeight;
+    }
+
+    function showSidebar() {
+        document.getElementById('conversationsSidebar').classList.remove('hidden');
+        document.getElementById('activeChat').style.display = 'none';
+        document.getElementById('noChatSelected').style.display = 'flex';
+    }
+</script>
+{% endblock %}

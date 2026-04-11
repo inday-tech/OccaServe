@@ -1,0 +1,91 @@
+{% extends "customer/layout.html" %}
+
+{% block title %}Share Your Feedback - OccaServe{% endblock %}
+
+{% block content %}
+<div class="page-header" style="text-align: center; margin-bottom: 3rem;">
+    <h1>Rate Your Experience</h1>
+    <p>How was the service provided by {{ booking.caterer.business_name }}?</p>
+</div>
+
+<div style="max-width: 600px; margin: 0 auto;">
+    <div
+        style="background: white; border-radius: 2rem; padding: 3rem; box-shadow: var(--shadow-md); border: 1px solid var(--border-color);">
+        <form action="/bookings/review" method="POST">
+            <input type="hidden" name="booking_id" value="{{ booking.id }}">
+
+            <div style="text-align: center; margin-bottom: 2.5rem;">
+                <h3 style="font-size: 1.1rem; color: var(--text-light); margin-bottom: 1rem;">Service Rating</h3>
+                <div class="star-rating"
+                    style="display: flex; justify-content: center; gap: 0.75rem; font-size: 2.5rem; color: #e2e8f0;">
+                    <i class="fas fa-star" data-value="1" style="cursor: pointer;"></i>
+                    <i class="fas fa-star" data-value="2" style="cursor: pointer;"></i>
+                    <i class="fas fa-star" data-value="3" style="cursor: pointer;"></i>
+                    <i class="fas fa-star" data-value="4" style="cursor: pointer;"></i>
+                    <i class="fas fa-star" data-value="5" style="cursor: pointer;"></i>
+                </div>
+                <input type="hidden" name="rating" id="rating-input" required>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 2rem;">
+                <label style="display: block; font-weight: 600; margin-bottom: 0.75rem;">Your Feedback</label>
+                <textarea name="comment" class="form-input" rows="5" required
+                    placeholder="What did you love? Any areas for improvement?"
+                    style="width: 100%; padding: 1rem; border-radius: 1rem; border: 1px solid var(--border-color);"></textarea>
+            </div>
+
+            <div
+                style="background: var(--background-light); padding: 1.5rem; border-radius: 1.25rem; margin-bottom: 2.5rem;">
+                <h4 style="font-size: 0.95rem; margin-bottom: 1rem;"><i class="fas fa-poll-h"
+                        style="margin-right: 0.5rem; color: var(--primary-color);"></i> Satisfaction Survey</h4>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <label
+                        style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; cursor: pointer;">
+                        <input type="checkbox" name="recommend" value="yes"> Would you recommend this caterer to others?
+                    </label>
+                    <label
+                        style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; cursor: pointer;">
+                        <input type="checkbox" name="ontime" value="yes"> Was the caterer punctual?
+                    </label>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-primary"
+                style="width: 100%; padding: 1.25rem; font-size: 1.1rem; border-radius: 1.25rem;">
+                Submit Feedback
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.querySelectorAll('.star-rating i').forEach(star => {
+        star.addEventListener('mouseover', function () {
+            const val = this.getAttribute('data-value');
+            highlightStars(val);
+        });
+
+        star.addEventListener('click', function () {
+            const val = this.getAttribute('data-value');
+            document.getElementById('rating-input').value = val;
+            highlightStars(val, true);
+        });
+    });
+
+    document.querySelector('.star-rating').addEventListener('mouseleave', function () {
+        const currentVal = document.getElementById('rating-input').value;
+        highlightStars(currentVal || 0, currentVal > 0);
+    });
+
+    function highlightStars(val, active = false) {
+        document.querySelectorAll('.star-rating i').forEach(star => {
+            const starVal = star.getAttribute('data-value');
+            if (starVal <= val) {
+                star.style.color = '#f59e0b';
+            } else {
+                star.style.color = '#e2e8f0';
+            }
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,360 @@
+{% extends "customer/layout.html" %}
+
+{% block title %}Identity Verification - OccaServe{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/liveness.css') }}">
+{% endblock %}
+
+{% block extra_js %}
+<!-- MediaPipe Tasks API -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/vision_bundle.js" crossorigin="anonymous"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="text-align: center; margin-bottom: 3rem;">
+    <h1>Account Verification</h1>
+    <p>Secure your account with a one-time identity check.</p>
+</div>
+
+<div style="max-width: 800px; margin: 0 auto;">
+    <div
+        style="background: white; border-radius: 2rem; padding: 3rem; box-shadow: var(--shadow-md); border: 1px solid var(--border-color);">
+
+        {% if error %}
+        <div
+            style="background: #fef2f2; border: 1px solid #fee2e2; color: #991b1b; padding: 1.25rem; border-radius: 1rem; margin-bottom: 2.5rem; display: flex; align-items: center; gap: 1rem;">
+            <i class="fas fa-exclamation-circle"></i>
+            <span>{{ error }}</span>
+        </div>
+        {% endif %}
+
+        <form action="/customer/verification/process" method="POST" enctype="multipart/form-data" id="verificationForm">
+            <input type="hidden" name="client_id" value="{{ client_id }}">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; margin-bottom: 3rem;">
+                <!-- ID Upload -->
+                <div>
+                    <h3 style="font-size: 1.1rem; margin-bottom: 1rem; color: var(--secondary-color);"><i
+                            class="fas fa-id-card" style="margin-right: 0.5rem; color: var(--primary-color);"></i> 1.
+                        Government ID</h3>
+                    <p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 1.5rem;">Upload a clear photo
+                        of your valid government-issued ID.</p>
+
+                    <div id="id-dropzone"
+                        style="border: 2px dashed var(--border-color); border-radius: 1.5rem; padding: 2.5rem; text-align: center; cursor: pointer; transition: all 0.3s ease; background: var(--background-light);"
+                        onclick="document.getElementById('id_document').click()"
+                        onmouseover="this.style.borderColor='var(--primary-color)'; this.style.background='white'"
+                        onmouseout="this.style.borderColor='var(--border-color)'; this.style.background='var(--background-light)'">
+                        <i class="fas fa-cloud-upload-alt"
+                            style="font-size: 2.5rem; color: var(--text-light); margin-bottom: 1rem;"></i>
+                        <p id="id-filename" style="font-weight: 500; font-size: 0.9rem; color: var(--text-dark);">Click
+                            to select document</p>
+                        <span style="font-size: 0.75rem; color: var(--text-light);">JPG, PNG or PDF (Max 5MB)</span>
+                        <input type="file" name="id_document" id="id_document" style="display: none;"
+                            onchange="handleFileSelect(this, 'id-filename', 'id-dropzone')">
+                    </div>
+                </div>
+
+                <!-- Liveness Detection -->
+                <div>
+                    <h3 style="font-size: 1.1rem; margin-bottom: 1rem; color: var(--secondary-color);"><i
+                            class="fas fa-face-smile" style="margin-right: 0.5rem; color: var(--primary-color);"></i> 2.
+                        Liveness Check</h3>
+                    <p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 1.5rem;">Perform a real-time
+                        liveness check to confirm you are present.</p>
+
+                    <div id="selfie-dropzone"
+                        style="border: 2px dashed var(--border-color); border-radius: 1.5rem; padding: 2.5rem; text-align: center; cursor: pointer; transition: all 0.3s ease; background: var(--background-light);"
+                        onclick="startLivenessCheck()"
+                        onmouseover="this.style.borderColor='var(--primary-color)'; this.style.background='white'"
+                        onmouseout="this.style.borderColor='var(--border-color)'; this.style.background='var(--background-light)'">
+                        <i class="fas fa-video"
+                            style="font-size: 2.5rem; color: var(--text-light); margin-bottom: 1rem;"></i>
+                        <p id="selfie-filename" style="font-weight: 500; font-size: 0.9rem; color: var(--text-dark);">
+                            Start Liveness Check</p>
+                        <span style="font-size: 0.75rem; color: var(--text-light);">Real-time biometric verification</span>
+                        <!-- Hidden input to store captured image -->
+                        <input type="hidden" name="selfie_data" id="selfie_data">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Liveness Overlay -->
+            <div id="liveness-overlay" class="liveness-overlay">
+                <div class="liveness-header">
+                    <button type="button" class="liveness-cancel" onclick="stopLivenessCheck()">Cancel</button>
+                    <div id="liveness-timer" class="liveness-timer">20S</div>
+                </div>
+
+                <div class="liveness-container">
+                    <video id="liveness-video" autoplay playsinline></video>
+                    <div class="liveness-mask"></div>
+                    <svg class="liveness-guide-svg" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="48" class="liveness-circle" id="liveness-circle" />
+                        <!-- Face Outline Path -->
+                        <path class="face-outline" d="M50,25 C40,25 32,33 32,45 C32,55 38,62 42,65 C43,70 45,75 50,75 C55,75 57,70 58,65 C62,62 68,55 68,45 C68,33 60,25 50,25 Z" />
+                    </svg>
+                    <div id="liveness-instruction" class="liveness-instruction">Position your face in the circle</div>
+                </div>
+            </div>
+
+            <div id="processing-view" style="display: none; text-align: center; margin-bottom: 2rem;">
+                <div class="loader" style="margin: 0 auto 1.5rem;"></div>
+                <h4 id="status-text" style="color: var(--primary-color);">Analyzing Document...</h4>
+                <p style="font-size: 0.85rem; color: var(--text-light);">Please do not refresh the page.</p>
+            </div>
+
+            <button type="submit" id="submit-btn" class="btn-primary"
+                style="width: 100%; padding: 1.25rem; font-size: 1.1rem; border-radius: 1.25rem;">
+                Submit for Verification
+            </button>
+        </form>
+    </div>
+
+    <div
+        style="margin-top: 2rem; display: flex; gap: 1rem; align-items: flex-start; padding: 1.5rem; background: #f0f9ff; border-radius: 1.25rem; color: #0369a1;">
+        <i class="fas fa-shield-halved" style="font-size: 1.5rem; margin-top: 0.25rem;"></i>
+        <div>
+            <h4 style="margin: 0 0 0.25rem 0;">Privacy & Security</h4>
+            <p style="margin: 0; font-size: 0.85rem; line-height: 1.5;">Your data is encrypted and securely processed.
+                We use industrial-grade OCR and Liveness detection to prevent fraud and ensure platform safety.</p>
+        </div>
+    </div>
+</div>
+
+<style>
+    .loader {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid var(--primary-color);
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+</style>
+
+<script>
+    let ws;
+    const clientId = "{{ client_id }}";
+
+    // Liveness Detection Variables
+    let faceLandmarker;
+    let runningMode = "VIDEO";
+    let video = document.getElementById("liveness-video");
+    let stream = null;
+    let lastVideoTime = -1;
+    let isLivenessActive = false;
+    let timerInterval = null;
+    let secondsLeft = 20;
+
+    // Blink Detection Variables
+    let blinkStarted = false;
+    let blinkTimestamp = 0;
+    let livenessStep = 'position'; // 'position' -> 'blink' -> 'capture'
+
+    async function initializeFaceLandmarker() {
+        const { FaceLandmarker, FilesetResolver } = await vision;
+        const filesetResolver = await FilesetResolver.forVisionTasks(
+            "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+        );
+        faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+            baseOptions: {
+                modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+                delegate: "GPU"
+            },
+            outputFaceBlendshapes: true,
+            runningMode: runningMode,
+            numFaces: 1
+        });
+    }
+
+    async function startLivenessCheck() {
+        document.getElementById('liveness-overlay').style.display = 'flex';
+        isLivenessActive = true;
+        secondsLeft = 20;
+        livenessStep = 'position';
+        updateInstruction("Position your face in the circle");
+        
+        startTimer();
+
+        if (!faceLandmarker) {
+            updateInstruction("Initializing Biometrics...");
+            await initializeFaceLandmarker();
+        }
+
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    facingMode: "user",
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                } 
+            });
+            video.srcObject = stream;
+            video.addEventListener("loadeddata", predictWebcam);
+        } catch (err) {
+            console.error(err);
+            updateInstruction("Camera access denied", true);
+        }
+    }
+
+    function startTimer() {
+        const timerEl = document.getElementById('liveness-timer');
+        timerInterval = setInterval(() => {
+            secondsLeft--;
+            timerEl.innerText = `${secondsLeft}S`;
+            if (secondsLeft <= 0) {
+                stopLivenessCheck();
+                if (window.showError) window.showError("Verification timed out. Please try again."); else alert("Verification timed out. Please try again.");
+            }
+        }, 1000);
+    }
+
+    function stopLivenessCheck() {
+        isLivenessActive = false;
+        clearInterval(timerInterval);
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
+        document.getElementById('liveness-overlay').style.display = 'none';
+        video.srcObject = null;
+    }
+
+    function updateInstruction(text, isError = false) {
+        const inst = document.getElementById('liveness-instruction');
+        const circle = document.getElementById('liveness-circle');
+        inst.innerText = text;
+        inst.className = 'liveness-instruction' + (isError ? ' error' : '');
+        circle.classList.toggle('active', !isError && livenessStep !== 'position');
+    }
+
+    async function predictWebcam() {
+        if (!isLivenessActive) return;
+
+        let startTimeMs = performance.now();
+        if (lastVideoTime !== video.currentTime) {
+            lastVideoTime = video.currentTime;
+            const results = faceLandmarker.detectForVideo(video, startTimeMs);
+
+            if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+                const landmarks = results.faceLandmarks[0];
+                const blendshapes = results.faceBlendshapes[0].categories;
+                
+                // 1. Position Check (Simplified: Check if landmarks are within a central bounds)
+                const nose = landmarks[1]; // Nose tip
+                const faceInCenter = nose.x > 0.4 && nose.x < 0.6 && nose.y > 0.4 && nose.y < 0.6;
+                
+                if (livenessStep === 'position') {
+                    if (faceInCenter) {
+                        livenessStep = 'blink';
+                        updateInstruction("Please blink your eyes");
+                    } else {
+                        updateInstruction("Position your face in the circle", true);
+                    }
+                } 
+                
+                if (livenessStep === 'blink') {
+                    // 2. Blink Detection using Blendshapes (eyeBlinkLeft/Right)
+                    const eyeBlinkLeft = blendshapes.find(c => c.categoryName === "eyeBlinkLeft").score;
+                    const eyeBlinkRight = blendshapes.find(c => c.categoryName === "eyeBlinkRight").score;
+                    
+                    if (eyeBlinkLeft > 0.5 && eyeBlinkRight > 0.5) {
+                        livenessStep = 'capture';
+                        updateInstruction("Verifying, please hold still...");
+                        captureSelfie();
+                    }
+                }
+            } else {
+                updateInstruction("No face detected", true);
+            }
+        }
+
+        if (isLivenessActive && livenessStep !== 'capture') {
+            window.requestAnimationFrame(predictWebcam);
+        }
+    }
+
+    function captureSelfie() {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0);
+        
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        document.getElementById('selfie_data').value = dataUrl;
+        
+        // Update UI to show success
+        const dropzone = document.getElementById('selfie-dropzone');
+        const filename = document.getElementById('selfie-filename');
+        filename.innerText = "Selfie Captured!";
+        filename.style.color = 'var(--primary-color)';
+        dropzone.style.borderColor = 'var(--primary-color)';
+        dropzone.style.background = 'white';
+
+        setTimeout(() => {
+            stopLivenessCheck();
+        }, 1000);
+    }
+
+    function connectWebSocket() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        ws = new WebSocket(`${protocol}//${window.location.host}/customer/verification/ws/${clientId}`);
+
+        ws.onmessage = function (event) {
+            const data = JSON.parse(event.data);
+            if (data.type === 'verification_update') {
+                const statusText = document.getElementById('status-text');
+                statusText.innerText = data.message;
+
+                if (data.status === 'success') {
+                    statusText.style.color = 'var(--primary-color)';
+                } else if (data.status === 'error') {
+                    statusText.style.color = '#991b1b';
+                }
+            }
+        };
+
+        ws.onclose = function () {
+            console.log('WebSocket connection closed');
+        };
+    }
+
+    function handleFileSelect(input, textId, dropzoneId) {
+        const text = document.getElementById(textId);
+        const dropzone = document.getElementById(dropzoneId);
+        if (input.files && input.files[0]) {
+            text.innerText = input.files[0].name;
+            text.style.color = 'var(--primary-color)';
+            dropzone.style.borderColor = 'var(--primary-color)';
+            dropzone.style.background = 'white';
+        }
+    }
+
+    document.getElementById('verificationForm').onsubmit = function () {
+        const idInput = document.getElementById('id_document');
+        const selfieData = document.getElementById('selfie_data').value;
+
+        if (!idInput.files[0] || !selfieData) {
+            if (window.showError) window.showError('Please select both your ID and complete the liveness check.'); else alert('Please select both your ID and complete the liveness check.');
+            return false;
+        }
+
+        document.getElementById('submit-btn').style.display = 'none';
+        document.getElementById('processing-view').style.display = 'block';
+
+        connectWebSocket();
+        return true;
+    };
+</script>
+{% endblock %}

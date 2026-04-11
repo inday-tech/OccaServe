@@ -1,0 +1,32 @@
+<!-- Auth Modals -->
+<div id="authModalOverlay" class="auth-modal-overlay">
+    <div class="auth-modal-container">
+        <!-- Close Button -->
+        <button class="auth-modal-close" onclick="closeAuthModal()" aria-label="Close Modal">&times;</button>
+
+        <!-- Login Modal Content -->
+        <div id="authModalLogin" class="auth-modal-content">
+            {% include "auth/components/login_form.html" %}
+        </div>
+
+        <!-- Register Modal Content -->
+        <div id="authModalSignup" class="auth-modal-content">
+            {% include "auth/components/register_form.html" %}
+        </div>
+
+        <!-- Forgot Password Modal Content -->
+        <div id="authModalForgot" class="auth-modal-content">
+            {% include "auth/components/forgot_password_form.html" %}
+        </div>
+
+        <!-- Verify Email Modal Content -->
+        <div id="authModalVerify" class="auth-modal-content">
+            {% include "auth/components/verify_email_form.html" %}
+        </div>
+
+        <!-- Caterer Signup Modal Content -->
+        <div id="authModalCaterer" class="auth-modal-content">
+            {% include "auth/components/register_caterer_form.html" %}
+        </div>
+    </div>
+</div>

@@ -1,0 +1,17 @@
+{% extends "caterer/layout.html" %}
+
+{% block title %}Contract for {{ booking.user.first_name }} {{ booking.user.last_name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="print-btn-container contract-print-actions">
+    <button onclick="window.print()" class="btn-primary btn-print-contract">
+        <i class="fas fa-file-download"></i> Download as PDF / Print
+    </button>
+</div>
+
+{% include "shared/contract_content_partial.html" %}
+{% endblock %}
