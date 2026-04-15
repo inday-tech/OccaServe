@@ -74,7 +74,9 @@ async def payment_webhook(
             )
             db.add(history)
             
-            # TODO: Send email confirmation
+            # --- Trigger Notification (In-App, Email, SMS) ---
+            from ..services.notification import NotificationService
+            await NotificationService.notify_payment_received(db, booking, float(booking.reservation_fee or 0), "Online Payment")
         
         db.commit()
         return {"status": "received"}

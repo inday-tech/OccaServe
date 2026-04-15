@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/alert_modal.css') }}?v=9.9">
     
     <!-- MASTER LAYOUT (Force Priority) -->
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/layout.css') }}?v=9.9">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/layout.css') }}?v=10.0">
 
     <script>
         // Apply historical sidebar state immediately to prevent flicker
@@ -428,24 +428,31 @@
     <script src="{{ url_for('static', path='/js/main.js') }}?v=30.0"></script>
     <script src="{{ url_for('static', path='/js/global/diamond_validation.js') }}?v=30.0"></script>
     <script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v=9.9"></script>
-    <script src="{{ url_for('static', path='/js/caterer/layout.js') }}?v=9.9"></script>
+    <script src="{{ url_for('static', path='/js/caterer/layout.js') }}?v=10.0"></script>
 
     {% block extra_js %}{% endblock %}
 
-    <!-- Inactivity Auto-Logout -->
-    <div id="inactivityModal" class="modal"
-        style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center;">
-        <div
-            style="background-color: #ffffff; padding: 2.5rem; border-radius: 1.5rem; max-width: 400px; width: 90%; text-align: center; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
-            <div style="font-size: 3rem; color: #f59e0b; margin-bottom: 1rem;"><i
-                    class="fas fa-exclamation-triangle"></i></div>
-            <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--secondary-color); margin-bottom: 0.5rem;">
-                Session Expiring Soon</h2>
-            <p style="color: var(--text-light); margin-bottom: 2rem; font-size: 0.95rem;">You've been inactive for a
-                while. Your session will expire in 1 minute. Would you like to stay logged in?</p>
-            <button id="stayLoggedInBtn" class="btn-primary"
-                style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; font-weight: 600;">Yes, keep me logged
-                in</button>
+    <!-- Inactivity Auto-Logout (Premium Refactor) -->
+    <div id="inactivityModal" class="occ-modal-overlay">
+        <div class="occ-modal-box sz-sm">
+            <div class="occ-modal-header">
+                <div>
+                    <h3 class="occ-modal-title">Session Expiring Soon</h3>
+                    <div class="occ-modal-subtitle">For your security, you'll be logged out due to inactivity.</div>
+                </div>
+            </div>
+            <div class="occ-modal-body" style="text-align: center; padding: 2rem 1.5rem;">
+                <div style="font-size: 3.5rem; color: #f59e0b; margin-bottom: 1.5rem; filter: drop-shadow(0 0 15px rgba(245, 158, 11, 0.2));">
+                    <i class="fas fa-clock-rotate-left"></i>
+                </div>
+                <p style="color: #475569; font-size: 1rem; font-weight: 500; line-height: 1.6;">
+                    You've been inactive for a while. Your session will expire in <strong style="color:var(--secondary-color);">1 minute</strong>.
+                    <br>Would you like to stay logged in?
+                </p>
+            </div>
+            <div class="occ-modal-footer">
+                <button id="stayLoggedInBtn" class="btn-primary" style="width: 100%; height: 48px;">Yes, Keep Me Logged In</button>
+            </div>
         </div>
     </div>
 

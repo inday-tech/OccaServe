@@ -4,9 +4,9 @@
 {% block title %}Manage Bookings - Caterer Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/bookings.css') }}?v=1.4">
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/contract_view.css') }}?v=1.4">
-<link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}?v=1.4">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/bookings.css') }}?v=1.6">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/contract_view.css') }}?v=1.6">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}?v=1.6">
 {% endblock %}
 
 {% block content %}
@@ -43,18 +43,27 @@
     </div>
 </div>
 
-<!-- ── ACTION REQUIRED BANNER ── -->
-{% set pending_sigs = bookings|selectattr('status', 'equalto', 'awaiting_caterer')|list %}
-{% if pending_sigs %}
-<div class="action-banner-premium animate-up">
-    <div class="abs-icon-bg"><i class="fas fa-pen-nib"></i></div>
-    <div class="banner-content">
-        <div class="banner-tag">ACTION REQUIRED</div>
-        <h3>You have {{ pending_sigs|length }} Contract{{ 's' if pending_sigs|length > 1 }} awaiting your signature</h3>
-        <p>Customers have signed their part. Please countersign to allow them to proceed to payment.</p>
+{% set payments_to_verify = bookings|selectattr('payment_status', 'in', ['proof_submitted', 'balance_proof_submitted'])|list %}
+{% set contracts_to_sign = bookings|selectattr('status', 'in', ['pending_quotation', 'awaiting_caterer'])|list %}
+{% set total_alerts = (payments_to_verify|length + contracts_to_sign|length) %}
+
+{% if total_alerts > 0 %}
+<div class="action-banner-premium animate-up delay-1">
+    <div class="action-banner-content">
+        <div class="action-banner-icon">
+            <i class="fas fa-bell"></i>
+        </div>
+        <div class="action-banner-text">
+            <h3>ACTION REQUIRED <span style="font-size:0.7rem; font-weight:700; background:rgba(239,68,68,0.1); color:#ef4444; padding:0.2rem 0.6rem; border-radius:1rem; margin-left:0.5rem; border:1px solid rgba(239,68,68,0.2);">{{ total_alerts }} ALERTS</span></h3>
+            <p>
+                {% if payments_to_verify %} <strong>{{ payments_to_verify|length }}</strong> internal payments to verify. {% endif %}
+                {% if contracts_to_sign %} <strong>{{ contracts_to_sign|length }}</strong> contracts waiting for your signature. {% endif %}
+            </p>
+        </div>
     </div>
-    <button class="btn-banner-action" onclick="filterBySignature()">
-        Show Pending Contracts <i class="fas fa-arrow-right"></i>
+    <button onclick="scrollToActionTable()" class="btn-banner-action">
+        <span>Attend Now</span>
+        <i class="fas fa-arrow-right"></i>
     </button>
 </div>
 {% endif %}
@@ -75,6 +84,10 @@
                     <option value="awaiting_caterer">To Sign</option>
                     <option value="awaiting_payment">Payment</option>
                     <option value="confirmed">Confirmed</option>
+                    <option value="preparing">Preparing</option>
+                    <option value="on_the_way">In Transit</option>
+                    <option value="in_progress">Ongoing</option>
+                    <option value="completed">Completed</option>
                     <option value="cancelled">Cancelled</option>
                 </select>
             </div>
@@ -143,27 +156,62 @@
                     
                     <!-- STATUS -->
                     <td style="padding: 1.5rem;">
-                        {% set badge_class = {
-                            'confirmed': 'badge-green',
-                            'completed': 'badge-green',
-                            'pending': 'badge-orange',
-                            'pending_quotation': 'badge-orange',
-                            'awaiting_caterer': 'badge-orange',
-                            'awaiting_payment': 'badge-orange',
-                            'cancelled': 'badge-red'
-                        }.get(booking.status, 'badge-gray') %}
+                        {% set badge_class = 'ps-badge-draft' %}
+                        {% set status_label = booking.status|capitalize %}
                         
-                        {% set status_display = {
-                            'pending_quotation': 'Draft',
-                            'awaiting_caterer': 'To Sign',
-                            'awaiting_payment': 'Payment',
-                            'pending': 'Pending'
-                        }.get(booking.status, booking.status|capitalize) %}
+                        {% if booking.status == 'pending' %}
+                            {% if booking.payment_status == 'proof_submitted' %}
+                                {% set badge_class = 'ps-badge-payment pulse-update' %}
+                                {% set status_label = 'Verify Payment' %}
+                            {% else %}
+                                {% set badge_class = 'ps-badge-pending' %}
+                                {% set status_label = 'Pending Pay' %}
+                            {% endif %}
+                        {% elif booking.status == 'confirmed' %}
+                            {% if booking.payment_status == 'balance_proof_submitted' %}
+                                {% set badge_class = 'ps-badge-payment pulse-update' %}
+                                {% set status_label = 'Verify Balance' %}
+                            {% else %}
+                                {% set badge_class = 'ps-badge-confirmed' %}
+                                {% set status_label = 'Confirmed' %}
+                            {% endif %}
+                        {% elif booking.status == 'pending_quotation' %}
+                            {% set badge_class = 'ps-badge-draft' %}
+                            {% set status_label = 'Draft' %}
+                        {% elif booking.status == 'awaiting_caterer' %}
+                            {% set badge_class = 'ps-badge-pending' %}
+                            {% set status_label = 'To Sign' %}
+                        {% elif booking.status == 'awaiting_payment' %}
+                            {% set badge_class = 'ps-badge-payment' %}
+                            {% set status_label = 'Payment' %}
+                        {% elif booking.status == 'preparing' %}
+                            {% set badge_class = 'ps-badge-preparing' %}
+                        {% elif booking.status == 'on_the_way' %}
+                            {% set badge_class = 'ps-badge-transit' %}
+                            {% set status_label = 'In Transit' %}
+                        {% elif booking.status == 'in_progress' %}
+                            {% set badge_class = 'ps-badge-ongoing' %}
+                            {% set status_label = 'Ongoing' %}
+                        {% elif booking.status == 'completed' %}
+                            {% set badge_class = 'ps-badge-completed' %}
+                        {% elif booking.status == 'cancelled' %}
+                            {% set badge_class = 'ps-badge-cancelled' %}
+                        {% endif %}
+
+                        {% if booking.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
+                            {% set badge_class = 'ps-badge-reupload' %}
+                            {% set status_label = 'Re-upload' %}
+                        {% endif %}
                         
-                        <span class="badge-rounded {{ badge_class }}" style="font-size: 0.75rem; font-weight: 700; padding: 0.35rem 1rem; border-radius: 2rem;">{{ status_display }}</span>
+                        <span class="premium-status-badge {{ badge_class }}">{{ status_label }}</span>
+                        {% if booking.fraud_flags and (booking.payment_proof_url or booking.balance_proof_url) %}
+                        <div class="risk-indicator-pill" title="AI detected high risk patterns in payment proof.">
+                            <i class="fas fa-exclamation-triangle"></i> HIGH RISK
+                        </div>
+                        {% endif %}
                     </td>
-                    <td class="action-dropdown-container" style="padding: 1.25rem 1.5rem; text-align: right;">
-                        <button class="btn-action-trigger" onclick="toggleActionMenu('{{ booking.id }}')" style="background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 1.1rem; padding: 0.4rem; transition: color 0.2s;">
+                    <td class="action-dropdown-container" style="padding: 1.25rem 1.5rem; text-align: right; position: relative;">
+                        <button class="btn-action-trigger" onclick="toggleActionMenuBookings('{{ booking.id }}', event)" style="background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 1.1rem; padding: 0.4rem; transition: color 0.2s;">
                             <i class="fas fa-ellipsis-h"></i>
                         </button>
                         <div id="actionMenu-{{ booking.id }}" class="action-dropdown-menu" style="display: none; position: absolute; right: 1.5rem; background: white; border: 1px solid #e2e8f0; border-radius: 0.75rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); z-index: 50; min-width: 160px; overflow: hidden;">
@@ -203,6 +251,14 @@
                                 <i class="fas fa-archive"></i> Archive
                             </button>
                             {% endif %}
+                            {% if booking.status in ['confirmed', 'completed'] %}
+                            <button type="button" onclick="openExpenseTracker({{ booking.id }}, this)" 
+                                data-breakdown="{{ (booking.actual_cost_breakdown or []) | tojson | forceescape }}" 
+                                data-total-amount="{{ booking.total_price or booking.total_amount }}"
+                                style="width: 100%; text-align: left; padding: 0.75rem 1rem; background: none; border: none; font-size: 0.85rem; color: #f59e0b; cursor: pointer; display: flex; align-items: center; gap: 0.6rem; transition: background 0.2s;">
+                                <i class="fas fa-receipt"></i> Track Expenses
+                            </button>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>
@@ -232,457 +288,376 @@
     {% endif %}
 </div>
 
-<!-- Booking Detail Modal -->
-<div id="bookingDetailModal" class="modal-overlay-p">
-    <div class="modal-content-p">
-        <!-- Modal Header -->
-        <div class="modal-header-p">
+<!-- ═══════════════════════════════════════════════════
+     MODAL: VIEW DETAILS
+════════════════════════════════════════════════════ -->
+<div id="bookingDetailModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-lg occ-content-pop">
+        <div class="occ-modal-header">
             <div>
-                <h2 id="modalBookingId" class="modal-title-p">Booking Details</h2>
-                <div class="modal-header-meta">
-                    <span id="modalStatus" class="modal-status-badge"></span>
-                    <span class="modal-booked-on-text" id="modalBookedOn"></span>
-                </div>
+                <h2 id="modalBookingId" class="occ-modal-title">Booking Details</h2>
+                <div class="occ-modal-subtitle">Comprehensive overview of event and financials</div>
             </div>
-            <button onclick="closeModal()" class="btn-close-modal-p">
+            <button onclick="bk_closeBookingDetailModal()" class="occ-modal-close">
                 <i class="fas fa-times"></i>
             </button>
         </div>
 
-        <!-- Modal Body (Scrollable) -->
-        <div class="modal-body-p">
-            <div class="modal-summary-grid">
-                <!-- Customer Card -->
-                <div class="modal-info-card">
-                    <div class="modal-card-label"><i class="fas fa-user-circle"></i> Customer Information</div>
-                    <div id="modalCustomer" class="modal-card-value-main"></div>
-                    <div id="modalEmail" class="modal-card-value-sub"></div>
+        <div class="occ-modal-body">
+            <!-- Header Meta Info -->
+            <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; padding:1.25rem; border-radius:1rem; border:1px solid #e2e8f0;">
+                <div style="display:flex; gap:1.5rem;">
+                    <div>
+                        <span style="display:block; font-size:0.7rem; font-weight:700; color:#64748b; text-transform:uppercase;">Status</span>
+                        <span id="modalStatus" class="premium-status-badge"></span>
+                    </div>
+                    <div>
+                        <span style="display:block; font-size:0.7rem; font-weight:700; color:#64748b; text-transform:uppercase;">Booked On</span>
+                        <span id="modalBookedOn" style="font-weight:700; color:#1e293b; font-size:0.9rem;"></span>
+                    </div>
                 </div>
+                <div id="modalRiskAlert" style="display:none; background:#fef2f2; color:#ef4444; padding:0.5rem 1rem; border-radius:2rem; font-size:0.75rem; font-weight:700; align-items:center; gap:0.5rem;">
+                    <i class="fas fa-exclamation-triangle"></i> HIGH RISK
+                </div>
+            </div>
 
-                <!-- Event Details Card -->
-                <div class="modal-info-card">
-                    <div class="modal-card-label"><i class="fas fa-calendar-alt"></i> Event Specifics</div>
-                    <div id="modalEventName" class="modal-card-value-main"></div>
-                    <div class="flex-between align-center">
-                        <span id="modalEventType" class="modal-card-value-sub"></span>
-                        <span id="modalGuestCount" class="modal-guest-count-badge"></span>
+            <!-- Tabs Navigation -->
+            <div class="modal-tabs-pro">
+                <button type="button" class="mtab-btn-pro active" onclick="switchBookingTab('summary')">Summary</button>
+                <button type="button" class="mtab-btn-pro" onclick="switchBookingTab('financials')">Financials</button>
+                <button type="button" class="mtab-btn-pro" onclick="switchBookingTab('logistics')">Menu & Logistics</button>
+            </div>
+
+            <!-- Tab Content -->
+            <div id="btab-summary" class="mtab-pane-pro active">
+                <div class="occ-form-grid">
+                    <div class="modal-info-card" style="margin-bottom:0;">
+                        <div class="modal-card-label"><i class="fas fa-user-circle"></i> Customer</div>
+                        <div id="modalCustomer" class="modal-card-value-main"></div>
+                        <div id="modalEmail" class="modal-card-value-sub"></div>
+                    </div>
+                    <div class="modal-info-card" style="margin-bottom:0;">
+                        <div class="modal-card-label"><i class="fas fa-calendar-alt"></i> Event</div>
+                        <div id="modalEventName" class="modal-card-value-main"></div>
+                        <div class="flex-between align-center">
+                            <span id="modalEventType" class="modal-card-value-sub"></span>
+                            <span id="modalGuestCount" class="modal-guest-count-badge"></span>
+                        </div>
+                    </div>
+                    <div class="occ-form-group full-width">
+                        <label class="occ-form-label"><i class="fas fa-map-marker-alt"></i> Venue Address</label>
+                        <div id="modalVenue" class="modal-venue-text" style="padding:1rem; background:#f8fafc; border-radius:0.75rem; border:1px solid #e2e8f0; min-height:60px;"></div>
+                    </div>
+                    <div class="occ-form-group full-width">
+                        <label class="occ-form-label"><i class="fas fa-comment-dots"></i> Special Requests</label>
+                        <div id="modalRequests" class="modal-requests-box" style="padding:1rem; background:#fffbeb; border-radius:0.75rem; border:1px solid #fef3c7; color:#92400e; font-size:0.9rem;"></div>
                     </div>
                 </div>
             </div>
 
-            <div class="modal-details-layout">
-                <div class="modal-main-content">
-                    <!-- Venue & Requests -->
-                    <div class="info-section-compact mb-1-5">
-                        <h3 class="modal-section-title"><i class="fas fa-map-marker-alt"></i> Location & Venue</h3>
-                        <div id="modalVenue" class="modal-venue-text"></div>
+            <div id="btab-financials" class="mtab-pane-pro">
+                <div class="financial-stat-box-pro">
+                    <span class="fsn-label">Total Amount</span>
+                    <span id="modalTotalAmount" class="fsn-value">₱0.00</span>
+                </div>
+                
+                <div class="occ-form-grid">
+                    <div class="occ-form-group">
+                        <label class="occ-form-label">Payment Status</label>
+                        <div id="modalPaymentStatus" class="premium-status-badge"></div>
+                    </div>
+                    <div class="occ-form-group">
+                        <label class="occ-form-label">Payment Method</label>
+                        <div id="modalPaymentMethod" style="font-weight:700; color:#1e293b;"></div>
+                    </div>
+                    
+                    <div class="occ-form-group full-width" style="margin-top:0.5rem;">
+                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:1rem; padding:1.25rem;">
+                            <div class="flex-between align-center mb-2">
+                                <label class="occ-form-label" style="margin:0;"><i class="fas fa-clock"></i> Balance Due Date</label>
+                                <button onclick="toggleDueDateEdit()" class="btn-sm-outline" id="btnEditDueDate">Update</button>
+                            </div>
+                            <div id="dueDateDisplaySection">
+                                <div id="modalDueDate" style="font-size:1.25rem; font-weight:800; color:var(--primary-color);">Not Set</div>
+                            </div>
+                            <div id="dueDateEditSection" style="display:none;">
+                                <div class="d-flex gap-2">
+                                    <input type="date" id="balanceDueDateInput" class="occ-form-input">
+                                    <button onclick="saveDueDate()" class="btn-sm-confirm">Save</button>
+                                    <button onclick="toggleDueDateEdit()" class="btn-sm-cancel"><i class="fas fa-times"></i></button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="info-section-compact mb-1-5">
-                        <h3 class="modal-section-title"><i class="fas fa-comment-dots"></i> Special Requests</h3>
-                        <div id="modalRequests" class="modal-requests-box"></div>
-                    </div>
-
-                    <!-- Menu Selection -->
-                    <div id="modalMenuSection" class="info-section-compact mb-1-5">
-                        <h3 class="modal-section-title"><i class="fas fa-utensils"></i> Menu & Add-ons</h3>
-                        <div id="modalMenuItems" class="modal-menu-container"></div>
-                    </div>
-
-                    <!-- Payment Proof Section -->
-                    <div id="modalProofSection" class="info-section-compact mb-1-5" style="display: none;">
-                        <h3 class="modal-section-title"><i class="fas fa-file-invoice-dollar"></i> Payment Proofs</h3>
-                        <div id="modalProofContainer" class="modal-proof-container"></div>
+                    <div id="modalProofSection" class="occ-form-group full-width" style="display:none;">
+                        <div class="flex-between align-center mb-2">
+                            <label class="occ-form-label" style="margin:0;"><i class="fas fa-file-invoice-dollar"></i> Transaction Proofs</label>
+                            <button id="aiVerifyBtn" onclick="runAIScan()" class="btn-sm-outline" style="background:#f0f9ff; border-color:#bae6fd; color:#0369a1;">
+                                <i class="fas fa-microchip me-1"></i> AI Scan
+                            </button>
+                        </div>
+                        <div id="modalProofContainer" class="modal-proof-container" style="background:#f8fafc; border:1px dashed #cbd5e1; padding:1rem; border-radius:1rem;"></div>
+                        
+                        <div id="aiScanResults" class="mt-3">
+                            <div class="ai-report-header">
+                                <span class="ai-report-title"><i class="fas fa-robot"></i> AI LEGITIMACY REPORT</span>
+                                <div id="aiConfidenceBadge"></div>
+                            </div>
+                            <div id="aiScanContent"></div>
+                            <div id="aiScanFlags" class="mt-2"></div>
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                <div class="modal-side-content">
-                    <!-- Financial Summary -->
-                    <div class="info-section-compact mb-1-5">
-                        <h3 class="modal-section-title"><i class="fas fa-money-bill-wave"></i> Financials</h3>
-                        <div class="financial-stat-box-pro">
-                            <span class="fsn-label">Total Amount</span>
-                            <span id="modalTotalAmount" class="fsn-value-compact"></span>
-                        </div>
-                        <div class="payment-extra-box mt-1">
-                            <div class="pxb-row">
-                                <span>Status</span>
-                                <strong id="modalPaymentStatus"></strong>
-                            </div>
-                            <div class="pxb-row">
-                                <span>Method</span>
-                                <strong id="modalPaymentMethod"></strong>
-                            </div>
-                        </div>
-
-                        <!-- Due Date Block -->
-                        <div class="due-date-compact-box mt-1">
-                            <div class="flex-between align-center dueDateHeader">
-                                <div style="font-size: 0.85rem; font-weight: 700; color: #475569;"><i
-                                        class="fas fa-clock"></i> Balance Due Date</div>
-                                <button onclick="toggleDueDateEdit()" class="btn-sm-outline" id="btnEditDueDate">
-                                    <i class="fas fa-edit"></i> Edit
-                                </button>
-                            </div>
-                            <div id="dueDateDisplaySection" style="margin-top: 0.5rem;">
-                                <div id="modalDueDate"
-                                    style="font-weight: 800; color: var(--primary-color); font-size: 1.1rem;">Not Set
-                                </div>
-                            </div>
-                            <div id="dueDateEditSection" style="display: none; margin-top: 0.5rem;">
-                                <div style="display: flex; gap: 0.5rem; align-items: stretch;">
-                                    <input type="date" id="balanceDueDateInput" class="compact-date-input">
-                                    <button onclick="saveDueDate()" class="btn-sm-confirm">Save</button>
-                                    <button onclick="toggleDueDateEdit()" class="btn-sm-cancel"><i
-                                            class="fas fa-times"></i></button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Timeline / History Removed -->
+            <div id="btab-logistics" class="mtab-pane-pro">
+                <div id="modalMenuSection">
+                    <label class="occ-form-label mb-2 d-block"><i class="fas fa-utensils"></i> Menu & Inclusions</label>
+                    <div id="modalMenuItems" class="modal-menu-container"></div>
                 </div>
             </div>
         </div>
 
-        <!-- Modal Footer (Sticky) -->
-        <div class="modal-footer-p">
-            <button onclick="closeModal()" class="btn-footer-action"
-                style="background: #f1f5f9; color: #475569; flex: unset; min-width: 90px;">
-                <i class="fas fa-times"></i> Close
-            </button>
+        <div class="occ-modal-footer">
+            <button onclick="bk_closeBookingDetailModal()" class="btn-sm-outline" style="min-width:100px; height:44px;">Close</button>
             <div id="bookingModalActions" class="modal-actions-container-p"></div>
-
         </div>
     </div>
 </div>
 
-<!-- Contract View Modal -->
-<div id="contractModal" class="modal-overlay-p" style="display: none;">
-    <div class="modal-content-p">
-        <div class="modal-header-p">
-            <div style="display: flex; align-items: center; gap: 0.75rem;">
+<!-- ═══════════════════════════════════════════════════
+     MODAL: CONTRACT VIEW
+════════════════════════════════════════════════════ -->
+<div id="contractModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-lg occ-content-slide-up">
+        <div class="occ-modal-header">
+            <div style="display:flex;align-items:center;gap:0.75rem;">
                 <div class="secure-badge-pro"><i class="fas fa-shield-check"></i> Certified Secure</div>
-                <h2 style="font-size: 1.25rem; font-weight: 800; color: #1e293b; margin: 0; letter-spacing: -0.5px;">
-                    Digital Service Agreement</h2>
+                <h2 class="occ-modal-title">Digital Service Agreement</h2>
             </div>
-            <div style="display: flex; gap: 1rem;">
-                <button onclick="printContract(currentBookingIdForContract)" class="btn-outline-premium"
-                    style="padding: 0.6rem 1.25rem; border-radius: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                    <i class="fas fa-print"></i> Print / Save PDF
+            <div style="display:flex;gap:1rem;align-items:center;">
+                <button onclick="printContract(currentBookingIdForContract)" class="btn-sm-outline" style="height:40px; display:inline-flex; align-items:center; gap:0.5rem;">
+                    <i class="fas fa-print"></i> Print / PDF
                 </button>
-                <button onclick="closeContractModal()"
-                    style="background: none; border: none; font-size: 1.5rem; color: #94a3b8; cursor: pointer; padding: 0.5rem; transition: color 0.2s;">
+                <button onclick="closeContractModal()" class="occ-modal-close">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
         </div>
-        <div class="modal-body-p" id="contractModalBody">
-            <div style="text-align: center; padding: 4rem;">
-                <i class="fas fa-circle-notch fa-spin fa-3x" style="color: var(--primary-color);"></i>
-                <p style="margin-top: 1.25rem; color: #64748b; font-weight: 500;">Loading secure document...</p>
+        <div class="occ-modal-body" id="contractModalBody" style="background:#f1f5f9; padding:2.5rem;">
+            <div style="text-align:center;padding:4rem;">
+                <i class="fas fa-circle-notch fa-spin fa-3x" style="color:var(--primary-color);"></i>
+                <p style="margin-top:1.25rem;color:#64748b;font-weight:500;">Loading secure document...</p>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Walk-in Booking Modal -->
-<div id="walkinBookingModal" class="modal-overlay-p" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
-    <div class="modal-content-p" style="background: white; border-radius: 1rem; width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; padding: 2rem; position: relative;">
-        <!-- Header -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <h2 style="margin: 0; font-size: 1.25rem; color: #0f172a;">Add Walk-In Booking</h2>
-            <button type="button" onclick="closeWalkinModal()" style="background: none; border: none; font-size: 1.5rem; color: #64748b; cursor: pointer;">
+<!-- ═══════════════════════════════════════════════════
+     MODAL: NEW BOOKING
+════════════════════════════════════════════════════ -->
+<div id="walkinBookingModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-md occ-content-slide-down">
+        <div class="occ-modal-header">
+            <div>
+                <h2 class="occ-modal-title"><i class="fas fa-plus-circle" style="color:var(--primary-color);"></i> New Walk-in Booking</h2>
+                <div class="occ-modal-subtitle">Manually record an event directly into your dashboard.</div>
+            </div>
+            <button type="button" onclick="closeWalkinModal()" class="occ-modal-close">
                 <i class="fas fa-times"></i>
             </button>
         </div>
-        
-        <form id="walkinBookingForm" onsubmit="submitWalkinBooking(event)">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-                <div>
-                    <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem;">Customer Name *</label>
-                    <input type="text" name="customer_name" required style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-family: inherit;">
-                </div>
-                <div>
-                    <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem;">Contact / Email</label>
-                    <input type="text" name="customer_contact" style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-family: inherit;">
-                </div>
-            </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-                <div>
-                    <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem;">Event Name *</label>
-                    <input type="text" name="event_name" required style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-family: inherit;">
-                </div>
-                <div>
-                    <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem;">Event Type *</label>
-                    <select name="event_type" required class="filter-select-pro">
-                        <option value="">Select Type...</option>
-                        <option value="Wedding">Wedding</option>
-                        <option value="Birthday">Birthday</option>
-                        <option value="Corporate">Corporate</option>
-                        <option value="Private Party">Private Party</option>
-                        <option value="Other">Other</option>
-                    </select>
-                </div>
-            </div>
+        <div class="occ-modal-body">
+            <form id="walkinBookingForm" onsubmit="submitWalkinBooking(event)">
+                <div class="occ-form-grid">
+                    <!-- Customer Group -->
+                    <div class="occ-form-group full-width" style="margin-bottom:0.5rem;">
+                        <span style="font-size:0.75rem; font-weight:800; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.05em;">Customer Details</span>
+                    </div>
+                    <div class="occ-form-group">
+                        <label class="occ-form-label">Full Name *</label>
+                        <input type="text" name="customer_name" required class="occ-form-input" placeholder="e.g. Juan Dela Cruz">
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    <div class="occ-form-group">
+                        <label class="occ-form-label">Contact / Email *</label>
+                        <input type="text" name="customer_contact" required class="occ-form-input" placeholder="Phone or Email">
+                        <div class="invalid-feedback"></div>
+                    </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-                <div>
-                    <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem;">Event Date *</label>
-                    <input type="date" name="event_date" required style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-family: inherit;">
-                </div>
-                <div>
-                    <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem;">Event Time</label>
-                    <input type="time" name="event_time" style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-family: inherit;">
-                </div>
-                <div>
-                    <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem;">Guests *</label>
-                    <input type="number" name="guest_count" required min="1" style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-family: inherit;">
-                </div>
-            </div>
+                    <!-- Event Group -->
+                    <div class="occ-form-group full-width" style="margin-top:1rem; margin-bottom:0.5rem; border-top:1px solid #f1f5f9; padding-top:1rem;">
+                        <span style="font-size:0.75rem; font-weight:800; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.05em;">Event Logistics</span>
+                    </div>
+                    <div class="occ-form-group">
+                        <label class="occ-form-label">Event Name *</label>
+                        <input type="text" name="event_name" required class="occ-form-input" placeholder="e.g. 18th Birthday Party">
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    <div class="occ-form-group">
+                        <label class="occ-form-label">Event Type *</label>
+                        <select name="event_type" required class="filter-select-pro">
+                            <option value="">Select Type...</option>
+                            <option value="Wedding">Wedding</option>
+                            <option value="Birthday">Birthday</option>
+                            <option value="Corporate">Corporate</option>
+                            <option value="Private Party">Private Party</option>
+                            <option value="Other">Other</option>
+                        </select>
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    <div class="occ-form-group">
+                        <label class="occ-form-label">Event Date *</label>
+                        <input type="date" name="event_date" id="walkin_event_date" required class="occ-form-input">
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    <div class="occ-form-group">
+                        <label class="occ-form-label">Event Time</label>
+                        <input type="time" name="event_time" class="occ-form-input">
+                    </div>
+                    <div class="occ-form-group">
+                        <label class="occ-form-label">Guest Count *</label>
+                        <input type="number" name="guest_count" required min="1" class="occ-form-input">
+                        <div class="invalid-feedback"></div>
+                    </div>
 
-            <div style="margin-bottom: 1rem;">
-                <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem;">Package</label>
-                <select name="package_id" class="filter-select-pro">
-                    <option value="">None / Custom</option>
-                    {% for pkg in packages %}
-                    <option value="{{ pkg.id }}">{{ pkg.name }} (₱{{ '{:,.2f}'.format(pkg.price) }})</option>
-                    {% endfor %}
-                </select>
-            </div>
-            
-            <div style="margin-bottom: 1rem;">
-                <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem;">Total Amount (₱) *</label>
-                <input type="number" name="total_amount" step="0.01" required style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-family: inherit;">
-            </div>
+                    <!-- Menu Group -->
+                    <div class="occ-form-group full-width" style="margin-top:1rem; margin-bottom:0.5rem; border-top:1px solid #f1f5f9; padding-top:1rem;">
+                        <span style="font-size:0.75rem; font-weight:800; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.05em;">Menu & Pricing</span>
+                    </div>
+                    <div class="occ-form-group">
+                        <label class="occ-form-label">Select Package</label>
+                        <select name="package_id" class="filter-select-pro">
+                            <option value="">None / Custom</option>
+                            {% for pkg in packages %}
+                            <option value="{{ pkg.id }}">{{ pkg.name }} (₱{{ '{:,.2f}'.format(pkg.price) }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="occ-form-group">
+                        <label class="occ-form-label">Total Amount (₱) *</label>
+                        <input type="text" name="total_amount" required class="occ-form-input js-format-comma" placeholder="₱ 0.00">
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    <div class="occ-form-group full-width">
+                        <label class="occ-form-label">Venue Address</label>
+                        <textarea name="venue_address" rows="2" class="occ-form-input" style="height:auto; min-height:80px;" placeholder="Full location details"></textarea>
+                    </div>
+                </div>
+            </form>
+        </div>
 
-            <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem;">Venue Address</label>
-                <textarea name="venue_address" rows="2" style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; font-family: inherit; resize: vertical;"></textarea>
-            </div>
-
-            <div style="display: flex; justify-content: flex-end; gap: 1rem;">
-                <button type="button" onclick="closeWalkinModal()" style="padding: 0.75rem 1.5rem; border: 1px solid #cbd5e1; background: white; border-radius: 0.5rem; font-weight: 600; color: #475569; cursor: pointer;">Cancel</button>
-                <button type="submit" id="walkinSubmitBtn" style="padding: 0.75rem 1.5rem; border: none; background: var(--primary-color); color: white; border-radius: 0.5rem; font-weight: 600; cursor: pointer;">Create Booking</button>
-            </div>
-        </form>
+        <div class="occ-modal-footer">
+            <button type="button" onclick="closeWalkinModal()" class="btn-sm-outline" style="min-width:100px;">Cancel</button>
+            <button type="submit" form="walkinBookingForm" id="walkinSubmitBtn" class="btn-primary" style="padding:0 1.5rem; border-radius:0.75rem; font-weight:700; height:44px; display:flex; align-items:center; gap:0.5rem;">Create Booking</button>
+        </div>
     </div>
 </div>
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL: EXPENSE TRACKER
+════════════════════════════════════════════════════ -->
+<div id="expenseTrackerModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-md occ-content-slide-right">
+        <div class="occ-modal-header">
+            <div>
+                <h2 class="occ-modal-title"><i class="fas fa-receipt" style="color:#f59e0b;"></i> Expense Tracker</h2>
+                <div class="occ-modal-subtitle">Audit event costs and calculate net profit.</div>
+            </div>
+            <button type="button" onclick="closeExpenseTracker()" class="occ-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="occ-modal-body">
+            <form id="expenseTrackerForm" onsubmit="submitExpenses(event)">
+                <input type="hidden" id="expenseBookingId">
+                <input type="hidden" id="bookingTotalAmount" value="0">
+                
+                <!-- Financial Summary Header -->
+                <div class="financial-summary-pro" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem; background: #f8fafc; padding: 1.25rem; border-radius: 1rem; border: 1px solid #e2e8f0;">
+                    <div class="summary-item">
+                        <div style="font-size: 0.65rem; text-transform: uppercase; color: #64748b; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Total Budget</div>
+                        <div id="modalBookingTotal" style="font-size: 1.1rem; font-weight: 800; color: #1e293b;">₱0.00</div>
+                    </div>
+                    <div class="summary-item">
+                        <div style="font-size: 0.65rem; text-transform: uppercase; color: #64748b; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Exp. Profit</div>
+                        <div id="modalEstimateProfit" style="font-size: 1.1rem; font-weight: 800; color: #10b981;">₱0.00</div>
+                    </div>
+                    <div class="summary-item">
+                        <div style="font-size: 0.65rem; text-transform: uppercase; color: #64748b; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 0.25rem;">ROI %</div>
+                        <div id="modalRoiPercent" style="font-size: 1.1rem; font-weight: 900; color: #0f172a; display: flex; align-items: center; gap: 0.4rem;">
+                            <span>0%</span>
+                            <span id="roiTrendIcon"><i class="fas fa-minus-circle" style="color:#94a3b8; font-size: 0.8rem;"></i></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                    <h4 style="font-size: 0.9rem; font-weight: 700; color: #1e293b; margin: 0;">Expense Breakdown</h4>
+                    <span style="font-size: 0.7rem; color: #64748b; background: white; padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid #e2e8f0;">Actual Costs</span>
+                </div>
+                
+                <div id="actualExpenseRows" style="display:flex; flex-direction:column; gap:0.75rem;">
+                    <!-- Rows injected by JS -->
+                </div>
+                
+                <button type="button" class="btn-sm-outline" style="margin-top:1rem; width:fit-content; border-style:dashed;" onclick="addExpenseRow()">
+                    <i class="fas fa-plus me-1"></i> Add Item
+                </button>
+
+                <div style="margin-top:2rem; padding-top:1.5rem; border-top:2px dashed #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-weight:700; color:#475569;">Total Actual Expenses</span>
+                    <span id="totalActualExpenseDisplay" style="font-size:1.25rem; font-weight:800; color:#ef4444;">₱0.00</span>
+                </div>
+            </form>
+        </div>
+
+        <div class="occ-modal-footer">
+            <button type="button" onclick="closeExpenseTracker()" class="btn-sm-outline" style="min-width:100px;">Cancel</button>
+            <button type="submit" form="expenseTrackerForm" id="saveExpenseBtn" class="btn-primary" style="background:#10b981 !important; box-shadow:0 4px 12px rgba(16, 185, 129, 0.25) !important;"><i class="fas fa-save me-1"></i> Save Expenses</button>
+        </div>
+{% endblock %}
+
+{% block extra_body %}
+<script>
+    // Robust inline verification to identify why modals/validation might fail
+    (function() {
+        console.log('[BookingsUI] Inline verification started.');
+        
+        window.addEventListener('load', function() {
+            const checklist = {
+                'window.bk_closeModal': typeof window.bk_closeModal,
+                'window.ValidationManager': typeof window.ValidationManager,
+                'document.getElementById("walkinBookingForm")': !!document.getElementById('walkinBookingForm')
+            };
+            
+            console.log('[BookingsUI] State Checklist:', checklist);
+            
+            // Emergency Recovery for Modal Closing
+            if (typeof window.bk_closeModal !== 'function') {
+                console.warn('[BookingsUI] bk_closeModal missing from window. Injecting emergency fallback.');
+                window.bk_closeModal = function(id) {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.classList.remove('active');
+                        setTimeout(() => { if(!el.classList.contains('active')) el.style.display = 'none'; }, 300);
+                        document.body.style.overflow = '';
+                    }
+                };
+                // Link aliases
+                window.closeWalkinModal = () => window.bk_closeModal('walkinBookingModal');
+                window.bk_closeBookingDetailModal = () => window.bk_closeModal('bookingDetailModal');
+                window.closeExpenseTracker = () => window.bk_closeModal('expenseTrackerModal');
+                window.closeContractModal = () => window.bk_closeModal('contractModal');
+            }
+        });
+    })();
+</script>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', path='/js/caterer/bookings.js') }}"></script>
-<script>
-    // ─── Archive Booking Confirmation ─────────────────────────────────────────
-    function confirmArchiveBooking(bookingId) {
-        window.showConfirm(
-            'Are you sure you want to archive this booking? It will be moved to your Archives and hidden from the active list.',
-            function () {
-                // Create and submit a hidden form via JS
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = `/caterer/bookings/${bookingId}/archive`;
-                document.body.appendChild(form);
-                form.submit();
-            },
-            'Archive Booking?',
-            'Yes, Archive'
-        );
-    }
-    window.confirmArchiveBooking = confirmArchiveBooking;
-    function filterBySignature() {
-        const statusFilter = document.getElementById('statusFilter');
-        statusFilter.value = "awaiting_caterer";
-        filterBookings();
-
-        // Scroll to table if on mobile
-        document.querySelector('.bookings-card-container').scrollIntoView({ behavior: 'smooth' });
-    }
-
-    // Global Pagination State
-    const ROWS_PER_PAGE = 5;
-    let currentPage = 1;
-    let filteredRows = [];
-
-    // Initialize Pagination on Load
-    document.addEventListener('DOMContentLoaded', () => {
-        const rows = Array.from(document.querySelectorAll('.bookings-list-table tbody tr.booking-row-item'));
-        filteredRows = rows;
-        showPage(1);
-    });
-
-    function showPage(page) {
-        const totalPages = Math.ceil(filteredRows.length / ROWS_PER_PAGE) || 1;
-        if (page < 1) page = 1;
-        if (page > totalPages) page = totalPages;
-        currentPage = page;
-
-        const startIdx = (page - 1) * ROWS_PER_PAGE;
-        const endIdx = startIdx + ROWS_PER_PAGE;
-
-        // Hide all
-        document.querySelectorAll('.bookings-list-table tbody tr.booking-row-item').forEach(r => r.style.display = 'none');
-
-        // Show scoped
-        filteredRows.slice(startIdx, endIdx).forEach(r => { r.style.display = ''; });
-
-        renderPaginationControls(totalPages);
-
-        // Update Info Text
-        const startRange = document.getElementById('startRange');
-        const endRange = document.getElementById('endRange');
-        const totalEntries = document.getElementById('totalEntries');
-
-        if (startRange) {
-            startRange.innerText = filteredRows.length === 0 ? 0 : startIdx + 1;
-            endRange.innerText = Math.min(endIdx, filteredRows.length);
-            totalEntries.innerText = filteredRows.length;
-        }
-    }
-
-    function renderPaginationControls(totalPages) {
-        const pageNumbers = document.getElementById('pageNumbers');
-        const prevBtn = document.getElementById('prevPage');
-        const nextBtn = document.getElementById('nextPage');
-        
-        if (!pageNumbers) return;
-        pageNumbers.innerHTML = '';
-
-        prevBtn.disabled = currentPage === 1;
-        nextBtn.disabled = currentPage === totalPages || filteredRows.length === 0;
-
-        prevBtn.onclick = () => showPage(currentPage - 1);
-        nextBtn.onclick = () => showPage(currentPage + 1);
-
-        if (filteredRows.length === 0) return;
-
-        // Page Nums
-        for (let i = 1; i <= totalPages; i++) {
-            const btn = document.createElement('button');
-            btn.className = `page-num-btn ${i === currentPage ? 'active' : ''}`;
-            btn.style.cssText = `
-                width: 32px;
-                height: 32px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                border-radius: 0.4rem;
-                border: 1px solid ${i === currentPage ? 'var(--primary-color)' : '#e2e8f0'};
-                background: ${i === currentPage ? 'var(--primary-color)' : 'white'};
-                color: ${i === currentPage ? 'white' : '#475569'};
-                font-size: 0.85rem;
-                font-weight: 700;
-                cursor: pointer;
-                transition: all 0.2s;
-            `;
-            btn.innerText = i;
-            btn.onclick = () => showPage(i);
-            pageNumbers.appendChild(btn);
-        }
-    }
-
-    function filterBookings() {
-        const searchInput = document.getElementById('bookingSearchInput').value.toLowerCase();
-        const statusFilter = document.getElementById('statusFilter').value; // exact status string
-        const allRows = Array.from(document.querySelectorAll('.bookings-list-table tbody tr.booking-row-item'));
-
-        filteredRows = allRows.filter(row => {
-            const rawStatus = row.dataset.status || "";
-            const rowText = row.innerText.toLowerCase();
-
-            let matchesSearch = rowText.indexOf(searchInput) > -1;
-            let matchesStatus = statusFilter === "" || rawStatus === statusFilter;
-
-            return matchesSearch && matchesStatus;
-        });
-
-        // Reset to page 1 on filter
-        currentPage = 1;
-        showPage(1);
-    }
-
-    // Toggle Action Menu
-    function toggleActionMenu(id) {
-        document.querySelectorAll('.action-dropdown-menu').forEach(menu => {
-            if (menu.id !== 'actionMenu-' + id) {
-                menu.style.display = 'none';
-            }
-        });
-        
-        var element = document.getElementById('actionMenu-' + id);
-        if (element.style.display === "none" || element.style.display === "") {
-            element.style.display = "block";
-        } else {
-            element.style.display = "none";
-        }
-    }
-
-    // Close when clicking outside
-    document.addEventListener('click', function(event) {
-        if (!event.target.closest('.action-dropdown-container')) {
-            document.querySelectorAll('.action-dropdown-menu').forEach(menu => {
-                menu.style.display = 'none';
-            });
-        }
-    });
-
-    // Walk-in booking modal logic
-    function openWalkinModal() {
-        document.getElementById('walkinBookingModal').style.display = 'flex';
-    }
-    
-    function closeWalkinModal() {
-        document.getElementById('walkinBookingModal').style.display = 'none';
-        document.getElementById('walkinBookingForm').reset();
-    }
-
-    async function submitWalkinBooking(e) {
-        e.preventDefault();
-        const btn = document.getElementById('walkinSubmitBtn');
-        btn.disabled = true;
-        btn.innerText = 'Creating...';
-        
-        const form = e.target;
-        const formData = new FormData(form);
-        const data = {};
-        for (let [key, value] of formData.entries()) {
-            data[key] = value;
-        }
-        
-        // Formatting numbers/empty fields
-        data.guest_count = parseInt(data.guest_count);
-        data.total_amount = parseFloat(data.total_amount);
-        if (!data.package_id) data.package_id = null;
-        else data.package_id = parseInt(data.package_id);
-        
-        if (!data.event_time) data.event_time = null;
-        
-        // menu_items is not in form by default so it's empty
-        data.menu_items = [];
-
-        try {
-            const res = await fetch('/caterer/api/bookings/manual', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            
-            if (res.ok) {
-                window.showSuccess('Booking created successfully!');
-                setTimeout(() => window.location.reload(), 1500);
-            } else {
-                const err = await res.json();
-                window.showError(err.detail || 'Failed to create booking.');
-            }
-        } catch (err) {
-            console.error(err);
-            window.showError('An error occurred. Please try again.');
-        } finally {
-            btn.disabled = false;
-            btn.innerText = 'Create Booking';
-        }
-    }
-
-</script>
+<script src="{{ url_for('static', path='/js/caterer/bookings.js') }}?v=1.8"></script>
 {% endblock %}

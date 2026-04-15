@@ -113,176 +113,213 @@
 </div>
 
 <!-- Event Details Modal -->
-<div id="eventModal" class="calendar-modal">
-    <div class="calendar-modal-content">
-        <div class="modal-header-flex">
-            <h3 id="calModalTitle">Event Details</h3>
-            <button onclick="closeModal()" class="modal-close-btn">&times;</button>
+<div id="eventModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-md">
+        <div class="occ-modal-header">
+            <div>
+                <h3 id="calModalTitle" class="occ-modal-title">Event Details</h3>
+                <div class="occ-modal-subtitle">Quick overview of the confirmed booking details and service requirements.</div>
+            </div>
+            <button onclick="closeModal()" class="occ-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
 
-        <div id="modalBody">
-            <div class="calendar-detail-item">
-                <i class="fas fa-user"></i>
-                <div>
-                    <div class="calendar-detail-label">Customer</div>
-                    <div id="detCustomer" class="calendar-detail-value">---</div>
+        <div id="modalBody" class="occ-modal-body">
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div class="calendar-detail-item" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: #f8fafc; border-radius: 0.75rem;">
+                    <i class="fas fa-user" style="color: var(--primary-color); font-size: 1.25rem; width: 24px; text-align: center;"></i>
+                    <div style="flex: 1;">
+                        <div class="calendar-detail-label" style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 700;">Customer</div>
+                        <div id="detCustomer" class="calendar-detail-value" style="font-size: 1rem; font-weight: 600; color: #1e293b;">---</div>
+                    </div>
                 </div>
-            </div>
-            <div class="calendar-detail-item">
-                <i class="fas fa-tag"></i>
-                <div>
-                    <div class="calendar-detail-label">Event Type</div>
-                    <div id="detType" class="calendar-detail-value">---</div>
+                <div class="calendar-detail-item" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: #f8fafc; border-radius: 0.75rem;">
+                    <i class="fas fa-tag" style="color: var(--primary-color); font-size: 1.25rem; width: 24px; text-align: center;"></i>
+                    <div style="flex: 1;">
+                        <div class="calendar-detail-label" style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 700;">Event Type</div>
+                        <div id="detType" class="calendar-detail-value" style="font-size: 1rem; font-weight: 600; color: #1e293b;">---</div>
+                    </div>
                 </div>
-            </div>
-            <div class="calendar-detail-item">
-                <i class="fas fa-clock"></i>
-                <div>
-                    <div class="calendar-detail-label">Date & Time</div>
-                    <div id="detDateTime" class="calendar-detail-value">---</div>
+                <div class="calendar-detail-item" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: #f8fafc; border-radius: 0.75rem;">
+                    <i class="fas fa-clock" style="color: var(--primary-color); font-size: 1.25rem; width: 24px; text-align: center;"></i>
+                    <div style="flex: 1;">
+                        <div class="calendar-detail-label" style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 700;">Date & Time</div>
+                        <div id="detDateTime" class="calendar-detail-value" style="font-size: 1rem; font-weight: 600; color: #1e293b;">---</div>
+                    </div>
                 </div>
-            </div>
-            <div class="calendar-detail-item">
-                <i class="fas fa-map-marker-alt"></i>
-                <div>
-                    <div class="calendar-detail-label">Venue / Address</div>
-                    <div id="detVenue" class="calendar-detail-value">---</div>
+                <div class="calendar-detail-item" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: #f8fafc; border-radius: 0.75rem;">
+                    <i class="fas fa-map-marker-alt" style="color: var(--primary-color); font-size: 1.25rem; width: 24px; text-align: center;"></i>
+                    <div style="flex: 1;">
+                        <div class="calendar-detail-label" style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 700;">Venue / Address</div>
+                        <div id="detVenue" class="calendar-detail-value" style="font-size: 1rem; font-weight: 600; color: #1e293b;">---</div>
+                    </div>
                 </div>
-            </div>
-            <div class="calendar-detail-item">
-                <i class="fas fa-users"></i>
-                <div>
-                    <div class="calendar-detail-label">Guests & Package</div>
-                    <div id="detPackage" class="calendar-detail-value">---</div>
+                <div class="calendar-detail-item" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: #f8fafc; border-radius: 0.75rem;">
+                    <i class="fas fa-users" style="color: var(--primary-color); font-size: 1.25rem; width: 24px; text-align: center;"></i>
+                    <div style="flex: 1;">
+                        <div class="calendar-detail-label" style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 700;">Guests & Package</div>
+                        <div id="detPackage" class="calendar-detail-value" style="font-size: 1rem; font-weight: 600; color: #1e293b;">---</div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="modal-footer-gap">
+        <div class="occ-modal-footer">
             <input type="hidden" id="currentBookingId">
-            <button onclick="setReminder()" class="btn-primary flex-1 p-1">Set Reminder</button>
-            <button onclick="closeModal()" class="btn-outline flex-1 p-1">Close</button>
+            <button onclick="closeModal()" class="btn-sm-outline" style="min-width:100px;">Close</button>
+            <button onclick="setReminder()" class="btn-primary" style="height:44px; padding:0 1.5rem;">Set Reminder</button>
         </div>
     </div>
 </div>
 
 <!-- Blocked Date Modal -->
-<div id="blockedDateModal" class="calendar-modal">
-    <div class="calendar-modal-content">
-        <div class="modal-header-flex">
-            <h3><i class="fas fa-ban" style="color: #ef4444; margin-right: 0.5rem;"></i> Blocked Date</h3>
-            <button onclick="closeModal()" class="modal-close-btn">&times;</button>
-        </div>
-        <div id="blockedBody" style="margin-bottom: 2rem;">
-            <p style="color: var(--text-light); font-size: 0.95rem;">This date is blocked and not available for booking.</p>
-            <div style="background: #f8fafc; padding: 1rem; border-radius: 1rem; margin-top: 1.5rem;">
-                <div class="calendar-detail-label">Reason for blocking</div>
-                <div id="detBlockedReason" class="calendar-detail-value" style="margin-top: 0.25rem;">---</div>
+<div id="blockedDateModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-sm">
+        <div class="occ-modal-header">
+            <div>
+                <h3 class="occ-modal-title"><i class="fas fa-ban" style="color: #ef4444; margin-right: 0.5rem;"></i> Blocked Date</h3>
+                <div class="occ-modal-subtitle">This date has been marked as unavailable for online bookings.</div>
             </div>
-            <div style="background: #f8fafc; padding: 1rem; border-radius: 1rem; margin-top: 1rem;">
-                <div class="calendar-detail-label">Date</div>
-                <div id="detBlockedDate" class="calendar-detail-value" style="margin-top: 0.25rem;">---</div>
+            <button onclick="closeModal()" class="occ-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div id="blockedBody" class="occ-modal-body">
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div style="background: #f8fafc; padding: 1.25rem; border-radius: 0.75rem; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 0.35rem;">Reason for blocking</div>
+                    <div id="detBlockedReason" style="font-size: 1rem; font-weight: 600; color: #1e293b;">---</div>
+                </div>
+                <div style="background: #f8fafc; padding: 1.25rem; border-radius: 0.75rem; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 0.35rem;">Date</div>
+                    <div id="detBlockedDate" style="font-size: 1rem; font-weight: 600; color: #1e293b;">---</div>
+                </div>
             </div>
         </div>
-        <div class="modal-footer-gap">
-            <button onclick="unblockSelectedDate()" class="btn-outline flex-1 p-1" style="color: #ef4444; border-color: #fecaca; background: #fee2e2;">Unblock Date</button>
-            <button onclick="closeModal()" class="btn-primary flex-1 p-1">Close</button>
+        <div class="occ-modal-footer">
+            <button onclick="unblockSelectedDate()" class="btn-sm-outline" style="color: #ef4444; border-color: #fee2e2; background: #fff5f5; height: 44px;">Unblock Date</button>
+            <button onclick="closeModal()" class="btn-primary" style="min-width:100px; height: 44px;">Close</button>
         </div>
     </div>
 </div>
 
 <!-- Manual Booking Modal -->
-<div id="manualBookingModal" class="calendar-modal">
-    <div class="calendar-modal-content" style="max-height: 90vh; overflow-y: auto;">
-        <div class="modal-header-flex">
-            <h3><i class="fas fa-calendar-plus" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Create Walk-in Booking</h3>
-            <button onclick="closeModal()" class="modal-close-btn">&times;</button>
+<div id="manualBookingModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-lg">
+        <div class="occ-modal-header">
+            <div>
+                <h3 class="occ-modal-title"><i class="fas fa-calendar-plus" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Create Walk-in Booking</h3>
+                <div class="occ-modal-subtitle">Manually register bookings from offline clients, phone calls, or walk-ins.</div>
+            </div>
+            <button onclick="closeModal()" class="occ-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
         <form id="manualBookingForm" onsubmit="submitManualEvent(event)">
-            <div id="manualBookingError" class="validation-error-drawer" style="display: none;"></div>
-            <div style="display: grid; gap: 1.25rem; margin-bottom: 2rem;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div>
-                        <label class="availability-label-small">Customer Name <span style="color:red">*</span></label>
-                        <input type="text" id="manCustName" class="availability-input-field" required placeholder="e.g. John Doe">
+            <div class="occ-modal-body">
+                <div id="manualBookingError" class="error-drawer"></div>
+                
+                <div class="occ-form-grid">
+                    <div class="occ-form-group">
+                        <label class="occ-form-label">Customer Name *</label>
+                        <input type="text" id="manCustName" name="customer_name" class="occ-form-input" required placeholder="e.g. John Doe">
+                        <div class="invalid-feedback"></div>
                     </div>
-                    <div>
-                        <label class="availability-label-small">Contact Number</label>
-                        <input type="text" id="manCustContact" class="availability-input-field" placeholder="e.g. 09123456789">
+                    <div class="occ-form-group">
+                        <label class="occ-form-label">Contact Number</label>
+                        <input type="text" id="manCustContact" name="customer_contact" class="occ-form-input" placeholder="e.g. 09123456789">
+                        <div class="invalid-feedback"></div>
                     </div>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr; gap: 1rem;">
-                    <div>
-                        <label class="availability-label-small">Event Name <span style="color:red">*</span></label>
-                        <input type="text" id="manEventName" class="availability-input-field" required placeholder="e.g. Garcia Wedding">
+
+                    <div class="occ-form-group full-width">
+                        <label class="occ-form-label">Event Name *</label>
+                        <input type="text" id="manEventName" name="event_name" class="occ-form-input" required placeholder="e.g. Garcia Wedding Anniversary">
+                        <div class="invalid-feedback"></div>
                     </div>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div>
-                        <label class="availability-label-small">Event Type <span style="color:red">*</span></label>
-                        <select id="manEventType" class="availability-input-field" required onchange="toggleOtherEventType()">
+
+                    <div class="occ-form-group">
+                        <label class="occ-form-label">Event Type *</label>
+                        <select id="manEventType" class="filter-select-pro w-100" required onchange="toggleOtherEventType()">
                             <option value="Wedding">Wedding</option>
                             <option value="Birthday">Birthday</option>
                             <option value="Corporate">Corporate</option>
                             <option value="Private Party">Private Party</option>
                             <option value="Other">Other</option>
                         </select>
+                        <div class="invalid-feedback"></div>
                     </div>
-                    <div>
-                        <label class="availability-label-small">Number of Guests <span style="color:red">*</span></label>
-                        <input type="number" id="manGuests" class="availability-input-field" required min="1" max="100000" placeholder="e.g. 100" onkeydown="return ['Backspace','Delete','ArrowLeft','ArrowRight','Tab'].includes(event.key) || (!isNaN(Number(event.key)) && event.key !== ' ')">
+                    <div class="occ-form-group">
+                        <label class="occ-form-label">Number of Guests *</label>
+                        <input type="number" id="manGuests" name="guest_count" class="occ-form-input" required min="1" max="100000" placeholder="e.g. 100">
+                        <div class="invalid-feedback"></div>
                     </div>
-                </div>
-                <div id="otherEventTypeDiv" style="display: none;">
-                    <label class="availability-label-small">Specify Event Type <span style="color:red">*</span></label>
-                    <input type="text" id="manOtherType" class="availability-input-field" placeholder="e.g. Anniversary">
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div>
-                        <label class="availability-label-small">Event Date <span style="color:red">*</span></label>
-                        <input type="date" id="manDate" class="availability-input-field" required min="{{ current_date.strftime('%Y-%m-%d') }}">
+
+                    <div id="otherEventTypeDiv" class="occ-form-group full-width" style="display: none;">
+                        <label class="occ-form-label">Specify Event Type *</label>
+                        <input type="text" id="manOtherType" class="occ-form-input" placeholder="e.g. Anniversary">
                     </div>
-                    <div>
-                        <label class="availability-label-small">Time</label>
-                        <input type="time" id="manTime" class="availability-input-field">
+
+                    <div class="occ-form-group">
+                        <label class="occ-form-label">Event Date *</label>
+                        <input type="date" id="manDate" name="event_date" class="occ-form-input" required min="{{ current_date.strftime('%Y-%m-%d') }}">
+                        <div class="invalid-feedback"></div>
                     </div>
-                </div>
-                <div>
-                    <label class="availability-label-small">Venue Address</label>
-                    <input type="text" id="manVenue" class="availability-input-field" placeholder="Full address">
-                </div>
-                <div>
-                    <label class="availability-label-small">Select Package (Optional)</label>
-                    <select id="manPackage" class="availability-input-field">
-                        <option value="" data-price="0" data-menus="[]">-- Custom / No Package --</option>
-                        {% for pkg in packages %}
-                        <option value="{{ pkg.id }}" data-price="{{ pkg.price }}" data-menus='{{ pkg.menu_items | map(attribute="id") | list | tojson }}'>{{ pkg.name }} (₱{{ '{:,.2f}'.format(pkg.price) }})</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div>
-                    <label class="availability-label-small">Select Included Menus (Optional)</label>
-                    <div style="max-height: 150px; overflow-y: auto; border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; padding: 0.5rem; background: #fff;">
-                        {% if menu_items %}
-                            {% for mi in menu_items %}
-                            <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.25rem; border-bottom: 1px solid #f8fafc; cursor: pointer;">
-                                <input type="checkbox" value="{{ mi.id }}" data-price="{{ mi.price }}" class="man-menu-checkbox">
-                                <span style="font-size: 0.9rem;">{{ mi.name }} <small style="color:#64748b;">(₱{{ '{:,.2f}'.format(mi.price) }})</small></span>
-                            </label>
-                            {% endfor %}
-                        {% else %}
-                            <span style="color:#64748b; font-size:0.85rem;">No menu items available.</span>
-                        {% endif %}
+                    <div class="occ-form-group">
+                        <label class="occ-form-label">Event Time</label>
+                        <input type="time" id="manTime" class="occ-form-input">
                     </div>
-                </div>
-                <div>
-                    <label class="availability-label-small">Total Amount <span style="color:red">*</span></label>
-                    <input type="text" id="manAmount" class="availability-input-field" required placeholder="₱ 0.00">
+
+                    <div class="occ-form-group full-width">
+                        <label class="occ-form-label">Venue Address</label>
+                        <input type="text" id="manVenue" name="venue_address" class="occ-form-input" placeholder="e.g. 123 Sky Garden, Metro Manila">
+                        <div class="invalid-feedback"></div>
+                    </div>
+
+                    <div class="occ-form-group full-width">
+                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:1rem; padding:1.25rem;">
+                            <label class="occ-form-label">Select Package (Optional)</label>
+                            <select id="manPackage" class="filter-select-pro w-100">
+                                <option value="" data-price="0" data-menus="[]">-- Custom / No Package --</option>
+                                {% for pkg in packages %}
+                                <option value="{{ pkg.id }}" data-price="{{ pkg.price }}" data-menus='{{ pkg.menu_items | map(attribute="id") | list | tojson }}'>{{ pkg.name }} (₱{{ '{:,.2f}'.format(pkg.price) }})</option>
+                                {% endfor %}
+                            </select>
+                            
+                            <label class="occ-form-label mt-3">Included Menus</label>
+                            <div class="inclusion-matrix" style="max-height: 200px; overflow-y: auto; background: white; border-radius: 0.75rem;">
+                                {% if menu_items %}
+                                    {% for mi in menu_items %}
+                                    <label class="matrix-item">
+                                        <input type="checkbox" value="{{ mi.id }}" data-price="{{ mi.price }}" class="man-menu-checkbox">
+                                        <span>{{ mi.name }} <small>(₱{{ '{:,.0f}'.format(mi.price) }})</small></span>
+                                    </label>
+                                    {% endfor %}
+                                {% else %}
+                                    <div style="grid-column: 1/-1; text-align: center; padding: 1rem; color: #94a3b8;">No menu items found.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="occ-form-group full-width">
+                        <div style="background: var(--primary-color); padding: 1.5rem; border-radius: 1rem; display: flex; justify-content: space-between; align-items: center; color: white; box-shadow: 0 10px 15px -3px rgba(30, 41, 59, 0.2);">
+                            <div>
+                                <div style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase; opacity: 0.8; letter-spacing: 0.05em;">Draft Quotation</div>
+                                <div style="font-size: 0.85rem; font-weight: 600;">Total Amount Matched</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <input type="text" id="manAmount" name="total_amount" class="js-format-comma" required 
+                                       style="background: transparent; border: none; color: white; font-size: 1.75rem; font-weight: 800; text-align: right; width: 220px; outline: none;" 
+                                       placeholder="₱ 0.00">
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer-gap">
-                <button type="button" onclick="closeModal()" class="btn-outline flex-1 p-1">Cancel</button>
-                <button type="submit" id="btnSubmitManual" class="btn-primary flex-1 p-1">Create Booking</button>
+            <div class="occ-modal-footer">
+                <button type="button" onclick="closeModal()" class="btn-sm-outline" style="min-width:100px;">Cancel</button>
+                <button type="submit" id="btnSubmitManual" class="btn-primary" style="height:44px; padding:0 2rem;">Confirm & Create Booking</button>
             </div>
         </form>
     </div>

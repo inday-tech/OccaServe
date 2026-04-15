@@ -1,15 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Form, Request, UploadFile, File
-from typing import Optional
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import APIRouter, Depends, HTTPException, status, Form, Request, UploadFile, File, Body
+from typing import Optional, List
+from pydantic import BaseModel
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from ..core.templates import templates
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from ..db import database, models, schemas
 from ..core import security as auth
+import json
 import os
 import shutil
 import uuid
 from ..services.realtime import manager
+from ..services.payment_verification import payment_verification_service
 
 router = APIRouter(prefix="/caterer", tags=["caterer"])
 
@@ -19,30 +22,245 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 # Standard dependency for caterer access
 caterer_only = auth.RoleChecker(["caterer"])
 
-@router.get("/dashboard", response_class=HTMLResponse)
-async def caterer_dashboard(
-    request: Request, 
+@router.post("/api/validate-package-name")
+async def validate_package_name(
+    request: Request,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    profile = user.caterer_profile
-    # Filter out 'draft' and 'archived' items
-    bookings = [b for b in profile.bookings if b.status != 'draft' and not b.is_archived]
+    data = await request.json()
+    name = data.get("name", "").strip()
+    exclude_id = data.get("exclude_id")
     
-    # Calculate Stats
-    total_revenue = 0
-    pending_balance = 0
-    active_bookings = 0
+    if not name:
+        return {"exists": False}
+
+    query = db.query(models.CateringPackage).filter(
+        models.CateringPackage.caterer_id == user.caterer_profile.id,
+        func.lower(models.CateringPackage.name) == name.lower(),
+        models.CateringPackage.status != "archived"
+    )
     
-    # Revenue aggregation for chart (Last 6 months based on event_date)
-    from datetime import datetime, date, timedelta
+    if exclude_id:
+        query = query.filter(models.CateringPackage.id != int(exclude_id))
+        
+    exists = query.first() is not None
+    return {"exists": exists}
+
+@router.post("/api/validate-dish-name")
+async def validate_dish_name(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    data = await request.json()
+    name = data.get("name", "").strip()
+    exclude_id = data.get("exclude_id")
+    
+    if not name:
+        return {"exists": False}
+
+    query = db.query(models.MenuItem).filter(
+        models.MenuItem.caterer_id == user.caterer_profile.id,
+        func.lower(models.MenuItem.name) == name.lower(),
+        models.MenuItem.is_archived == False
+    )
+    
+    if exclude_id:
+        query = query.filter(models.MenuItem.id != int(exclude_id))
+        
+    exists = query.first() is not None
+    return {"exists": exists}
+
+@router.post("/api/bookings/manual")
+async def create_manual_booking(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    try:
+        data = await request.json()
+        customer_email = data.get("customer_contact", "").strip()
+        customer_name = data.get("customer_name", "").strip()
+        
+        if not customer_name:
+            raise HTTPException(status_code=400, detail="Customer name is required")
+
+        # 1. Handle User (Customer)
+        # Check if user exists by email, else create a placeholder
+        target_user = None
+        if "@" in customer_email:
+            target_user = db.query(models.User).filter(models.User.email == customer_email).first()
+        
+        if not target_user:
+            # Create a shadow/guest user
+            from ..core import security as auth_utils
+            temp_pass = auth_utils.pwd_context.hash(str(uuid.uuid4()))
+            target_user = models.User(
+                email=customer_email if "@" in customer_email else f"walkin_{uuid.uuid4().hex[:8]}@guest.occashare.com",
+                first_name=customer_name,
+                password_hash=temp_pass,
+                role="customer",
+                status="active"
+            )
+            db.add(target_user)
+            db.flush() # Get ID
+
+        # 2. Create Booking
+        event_date = datetime.strptime(data.get("event_date"), "%Y-%m-%d").date()
+        event_time_str = data.get("event_time")
+        event_time = datetime.strptime(event_time_str, "%H:%M").time() if event_time_str else None
+
+        new_booking = models.Booking(
+            user_id=target_user.id,
+            caterer_id=user.caterer_profile.id,
+            package_id=data.get("package_id"),
+            event_name=data.get("event_name"),
+            event_type=data.get("event_type"),
+            event_date=event_date,
+            event_time=event_time,
+            guest_count=data.get("guest_count", 0),
+            total_amount=data.get("total_amount", 0),
+            total_price=data.get("total_amount", 0),
+            venue_address=data.get("venue_address"),
+            status="confirmed", # Walk-ins are usually confirmed immediately
+            payment_status="paid", # Typically paid on the spot
+            payment_method="Cash",
+            special_requests="Walk-in Booking"
+        )
+        db.add(new_booking)
+        
+        # 3. Add History
+        history = models.BookingHistory(
+            booking_id=None, # Will be set after flush
+            status="confirmed",
+            notes="Manual walk-in booking created by caterer."
+        )
+        db.add(history)
+        
+        db.commit()
+        
+        # Set history's booking_id (or rely on relationship if set up)
+        history.booking_id = new_booking.id
+        db.commit()
+
+        return {"status": "success", "booking_id": new_booking.id}
+    except Exception as e:
+        db.rollback()
+        print(f"[CATERER MANUAL BOOKING ERROR] {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+class StatusUpdateSchema(BaseModel):
+    status: str
+
+@router.post("/bookings/{booking_id}/update-status")
+async def update_booking_status(
+    booking_id: int,
+    data: StatusUpdateSchema,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking or booking.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    new_status = data.status
+    allowed_statuses = ["preparing", "on_the_way", "in_progress", "completed", "cancelled"]
+    
+    if new_status not in allowed_statuses:
+        raise HTTPException(status_code=400, detail="Invalid status")
+
+    # Business Logic Checks
+    if new_status == "completed" and booking.payment_status != "paid":
+        raise HTTPException(status_code=400, detail="Maaari lamang i-mark as Completed kung Fully Paid na ang booking.")
+
+    old_status = booking.status
+    booking.status = new_status
+    
+    # Log History
+    history = models.BookingHistory(
+        booking_id=booking.id,
+        status=new_status,
+        notes=f"Status changed from {old_status} to {new_status} by caterer."
+    )
+    db.add(history)
+    db.commit()
+
+    # Trigger Notifications
+    from ..services.notification import NotificationService
+    title = ""
+    message = ""
+    
+    if new_status == "preparing":
+        title = "Nagsimula na ang Paghahanda!"
+        message = f"Ang caterer na {user.caterer_profile.business_name} ay nagsimula na sa paghahanda para sa iyong event '{booking.event_name}'."
+    elif new_status == "on_the_way":
+        title = "Papunta na ang Caterer!"
+        message = f"Ang team ay on the way na para sa iyong event '{booking.event_name}'. Maghanda na para sa setup!"
+    elif new_status == "in_progress":
+        title = "Live na ang iyong Event!"
+        message = f"Kasalukuyang ginaganap ang iyong event '{booking.event_name}'. Enjoy the catering service!"
+    elif new_status == "completed":
+        title = "Event Finished & Completed"
+        message = f"Matagumpay na natapos ang iyong event '{booking.event_name}'. Salamat sa pagtitiwala sa {user.caterer_profile.business_name}!"
+
+    if title and message:
+        await NotificationService.notify_status_update(
+            db, 
+            booking.user_id, 
+            title, 
+            message, 
+            f"/customer/bookings/manage/{booking.id}"
+        )
+
+    # 4. WebSocket Update to Caterer
+    status_class_map = {
+        'pending_quotation': 'ps-badge-draft',
+        'awaiting_caterer': 'ps-badge-pending',
+        'awaiting_payment': 'ps-badge-payment',
+        'pending': 'ps-badge-pending',
+        'confirmed': 'ps-badge-confirmed',
+        'preparing': 'ps-badge-preparing',
+        'on_the_way': 'ps-badge-transit',
+        'in_progress': 'ps-badge-ongoing',
+        'completed': 'ps-badge-completed',
+        'cancelled': 'ps-badge-cancelled'
+    }
+    status_label_map = {
+        'pending_quotation': 'Draft',
+        'awaiting_caterer': 'To Sign',
+        'awaiting_payment': 'Payment',
+        'on_the_way': 'In Transit',
+        'in_progress': 'Ongoing',
+    }
+    
+    await manager.broadcast_to_user(user.id, {
+        "type": "booking_update",
+        "booking_id": booking.id,
+        "new_status": new_status,
+        "status_label": status_label_map.get(new_status, new_status.capitalize()),
+        "status_class": status_class_map.get(new_status, 'ps-badge-draft'),
+        "message": f"Status updated to {new_status}"
+    })
+
+    return {"status": "success", "new_status": new_status}
+
+def _get_caterer_stats(profile, bookings):
+    from datetime import datetime, date
     from dateutil.relativedelta import relativedelta
     
-    # Generate last 6 months list
+    # NEW ROI Logic: Realized (Cash in Hand) vs Projected (Total Contract)
+    total_realized_revenue = 0    # Money actually paid (verified)
+    total_projected_revenue = 0   # Total value of confirmed contract bookings
+    total_actual_expenses = 0     # Actual costs recorded by caterer
+    total_projected_expenses = 0  # Expected costs (Actual or Estimate baseline)
+    
     today = date.today()
     six_months_ago = today - relativedelta(months=5)
     six_months_ago = six_months_ago.replace(day=1)
     
+    unique_customers = set()
+    package_counts = {}
     chart_months = []
     curr = six_months_ago
     while curr <= today:
@@ -51,123 +269,168 @@ async def caterer_dashboard(
     
     monthly_revenue = {m: 0.0 for m in chart_months}
     monthly_bookings_data = {m: {'completed': 0, 'pending': 0} for m in chart_months}
-    
-    packages_sold = 0
-    unique_customers = set()
-    package_counts = {}
+
+    active_bookings = 0
     
     for b in bookings:
         amount = float(b.total_amount or b.total_price or 0)
-        
-        # Stats Logic
-        if b.status in ['pending', 'confirmed', 'pending_quotation', 'awaiting_caterer', 'awaiting_payment']:
-            active_bookings += 1
-            
-        if b.package_id:
-            packages_sold += 1
-            package_counts[b.package_id] = package_counts.get(b.package_id, 0) + 1
-            
         unique_customers.add(b.user_id)
+        
+        if b.status in ['confirmed', 'preparing', 'on_the_way', 'in_progress', 'completed']:
+            total_projected_revenue += amount
             
-        if b.payment_status == 'paid':
-            total_revenue += amount
-        elif b.payment_status == 'deposit_paid':
-            deposit = amount * 0.20
-            if b.quotation:
-                deposit = float(b.quotation.total_amount if b.quotation.total_amount else amount) * (b.quotation.downpayment_percent / 100)
-            total_revenue += deposit
-            pending_balance += (amount - deposit)
-        elif b.payment_status in ['pending', 'proof_submitted'] and b.status != 'cancelled':
-            pending_balance += amount
+            # 1. Deterministic Cost Baseline
+            base_cost_price = 0
+            if b.package and b.package.cost_price:
+                if b.package.price_unit == "per_guest":
+                    base_cost_price = (b.package.cost_price) * (b.guest_count or 1)
+                else:
+                    base_cost_price = b.package.cost_price
+            else:
+                base_cost_price = amount * 0.60 # Standard 60% fallback
+            
+            # 2. Use Actual Cost if caterer has started tracking it
+            if b.actual_cost and b.actual_cost > 0:
+                total_projected_expenses += b.actual_cost
+                total_actual_expenses += b.actual_cost
+            else:
+                total_projected_expenses += base_cost_price
+                
+            if b.status != 'completed': active_bookings += 1
 
-        # Chart Logic: Use event_date for performance tracking
+        # 3. Realized Revenue (Cleard Cash)
+        cleared_amount = 0
+        if b.payment_status == 'paid':
+            cleared_amount = amount
+        elif b.payment_status == 'deposit_paid':
+            dep_pct = 20
+            if b.quotation: dep_pct = b.quotation.downpayment_percent
+            cleared_amount = amount * (dep_pct / 100)
+        
+        total_realized_revenue += cleared_amount
+
+        # 4. Monthly Chart Data
         if b.event_date:
             month_key = b.event_date.strftime("%Y-%m")
             if month_key in monthly_revenue:
-                rev = 0
-                if b.payment_status == 'paid':
-                    rev = amount
-                elif b.payment_status == 'deposit_paid':
-                    dep_pct = 20
-                    if b.quotation:
-                        dep_pct = b.quotation.downpayment_percent
-                    rev = amount * (dep_pct / 100)
-                
-                monthly_revenue[month_key] += rev
-                
+                monthly_revenue[month_key] += cleared_amount
             if month_key in monthly_bookings_data:
-                if b.status in ['completed', 'confirmed']:
+                if b.status in ['completed', 'confirmed', 'in_progress']:
                     monthly_bookings_data[month_key]['completed'] += 1
-                elif b.status in ['pending', 'pending_quotation', 'awaiting_caterer', 'awaiting_payment']:
+                elif b.status != 'cancelled':
                     monthly_bookings_data[month_key]['pending'] += 1
 
-    # Convert to sorted list for JS
+        if b.package_id:
+            package_counts[b.package_id] = package_counts.get(b.package_id, 0) + 1
+
+    # Calculation Summary
+    projected_net_profit = total_projected_revenue - total_projected_expenses
+    projected_roi = ((projected_net_profit / total_projected_expenses) * 100) if total_projected_expenses > 0 else 0
+    
+    realized_net_profit = total_realized_revenue - total_actual_expenses
+    realized_roi = ((realized_net_profit / total_actual_expenses) * 100) if total_actual_expenses > 0 else 0
+
     chart_data = [{"date": k, "revenue": v, "label": datetime.strptime(k, "%Y-%m").strftime("%b %Y")} for k, v in monthly_revenue.items()]
     chart_data.sort(key=lambda x: x['date'])
     
     bookings_chart_data = [{"date": k, "completed": v['completed'], "pending": v['pending'], "label": datetime.strptime(k, "%Y-%m").strftime("%b %Y")} for k, v in monthly_bookings_data.items()]
     bookings_chart_data.sort(key=lambda x: x['date'])
     
-    upcoming_events = [b for b in bookings if b.status == 'confirmed' and b.event_date and b.event_date >= today]
-    upcoming_events.sort(key=lambda x: x.event_date)
-    upcoming_events = upcoming_events[:4]
+    upcoming_events = sorted([b for b in bookings if b.status == 'confirmed' and b.event_date and b.event_date >= today], key=lambda x: x.event_date)[:4]
     
     popular_packages = []
     for pkg in profile.packages:
         if pkg.id in package_counts:
-            popular_packages.append({"package": pkg, "orders": package_counts[pkg.id]})
+            popular_packages.append({"id": pkg.id, "name": pkg.name, "price": float(pkg.price_per_head or pkg.price or 0), "orders": package_counts[pkg.id]})
     popular_packages.sort(key=lambda x: x['orders'], reverse=True)
-    popular_packages = popular_packages[:4]
-
-    recent_orders = sorted(bookings, key=lambda x: x.id, reverse=True)[:5]
     
-    # ROI & Financial Logic (Accurate Data)
-    # Calculate actual expenses from bookings that have actual_cost recorded
-    # For bookings without actual_cost (old ones), fallback to 60% estimate
-    actual_expenses = 0
-    for b in bookings:
-        if b.payment_status in ['paid', 'deposit_paid']:
-            rev = 0
-            if b.payment_status == 'paid':
-                rev = float(b.total_amount or 0)
-            else:
-                dep_pct = 20
-                if b.quotation:
-                    dep_pct = b.quotation.downpayment_percent
-                rev = float(b.total_amount or 0) * (dep_pct / 100)
-            
-            if b.actual_cost and b.actual_cost > 0:
-                # If we have actual cost recorded, use it (pro-rated if only deposit paid)
-                if b.payment_status == 'deposit_paid':
-                    actual_expenses += b.actual_cost * (dep_pct / 100)
-                else:
-                    actual_expenses += b.actual_cost
-            else:
-                # Fallback to estimate for historical data
-                actual_expenses += rev * 0.60
-
-    net_profit = total_revenue - actual_expenses
-    roi_percentage = ((net_profit / actual_expenses) * 100) if actual_expenses > 0 else 0
-
-    return templates.TemplateResponse("caterer/index.html", {
-        "request": request,
-        "user": user,
-        "profile": profile,
-        "bookings": recent_orders, 
-        "total_revenue": total_revenue,
-        "net_profit": net_profit,
-        "estimated_expenses": actual_expenses,
-        "roi_percentage": round(roi_percentage, 1),
-        "pending_balance": pending_balance,
-        "active_bookings_count": active_bookings,
-        "total_bookings_count": len(bookings),
-        "packages_sold": packages_sold,
+    return {
+        "total_revenue": total_realized_revenue, 
+        "projected_revenue": total_projected_revenue,
+        "net_profit": realized_net_profit,
+        "projected_profit": projected_net_profit,
+        "estimated_expenses": total_projected_expenses,
+        "actual_expenses": total_actual_expenses,
+        "roi_percentage": round(realized_roi, 1),
+        "projected_roi": round(projected_roi, 1),
         "total_customers": len(unique_customers),
         "chart_data": chart_data,
         "bookings_chart_data": bookings_chart_data,
         "upcoming_events": upcoming_events,
-        "popular_packages": popular_packages,
-        "active_page": "overview"
+        "popular_packages": popular_packages[:4],
+        "recent_orders": sorted(bookings, key=lambda x: x.id, reverse=True)[:5]
+    }
+
+@router.get("/dashboard", response_class=HTMLResponse)
+async def caterer_dashboard(
+    request: Request, 
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    profile = user.caterer_profile
+    bookings = [b for b in profile.bookings if b.status != 'draft' and not b.is_archived]
+    
+    stats = _get_caterer_stats(profile, bookings)
+    
+    return templates.TemplateResponse("caterer/index.html", {
+        "request": request,
+        "user": user,
+        "profile": profile,
+        **stats,
+        "active_page": "dashboard"
+    })
+
+@router.get("/api/dashboard-overview")
+async def dashboard_overview_api(
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    from fastapi.responses import JSONResponse
+    profile = user.caterer_profile
+    bookings = [b for b in profile.bookings if b.status != 'draft' and not b.is_archived]
+    
+    stats = _get_caterer_stats(profile, bookings)
+    
+    # Process complex objects for JSON
+    serializable_upcoming = []
+    for e in stats['upcoming_events']:
+        serializable_upcoming.append({
+            "id": e.id,
+            "event_name": e.event_name,
+            "event_type": e.event_type,
+            "status": e.status,
+            "package_name": e.package.name if e.package else e.event_type,
+            "event_date": e.event_date.strftime('%Y-%m-%d') if e.event_date else None,
+            "event_time": e.event_time.strftime('%I:%M %p') if e.event_time else None,
+            "month_short": e.event_date.strftime('%b') if e.event_date else '???',
+            "day": e.event_date.strftime('%d') if e.event_date else '??',
+            "venue_address": e.venue_address,
+            "guest_count": e.guest_count
+        })
+
+    serializable_recent = []
+    for b in stats['recent_orders']:
+        serializable_recent.append({
+            "id": b.id,
+            "customer_name": f"{b.user.first_name} {b.user.last_name}" if b.user else "Walk-in Customer",
+            "customer_initials": f"{b.user.first_name[0]}{b.user.last_name[0]}" if b.user else "WI",
+            "event_type": b.event_type,
+            "total_amount": float(b.total_amount or 0),
+            "event_date": b.event_date.strftime('%b %d, %Y') if b.event_date else '',
+            "status": b.status
+        })
+
+    return JSONResponse({
+        "total_revenue": stats['total_revenue'],
+        "net_profit": stats['net_profit'],
+        "estimated_expenses": stats['estimated_expenses'],
+        "roi_percentage": stats['roi_percentage'],
+        "total_customers": stats['total_customers'],
+        "chart_data": stats['chart_data'],
+        "bookings_chart_data": stats['bookings_chart_data'],
+        "upcoming_events": serializable_upcoming,
+        "popular_packages": stats['popular_packages'],
+        "recent_orders": serializable_recent
     })
 
 @router.get("/bookings", response_class=HTMLResponse)
@@ -288,6 +551,133 @@ async def caterer_payments(
         "active_page": "payments"
     })
 
+@router.get("/payments/{booking_id}/confirm")
+async def confirm_caterer_payment_get(booking_id: int):
+    # This specifically handles cases where old cached JS or browser redirects 
+    # might attempt a GET request on this state-changing endpoint.
+    # We redirect back to payments with an instruction to retry.
+    return RedirectResponse(
+        url="/caterer/payments?error_msg=Manual+refresh+required.+Please+click+Verify+again.", 
+        status_code=303
+    )
+
+async def _confirm_booking_logic(db: Session, booking: models.Booking, caterer_user: models.User, is_manual_accept: bool = False):
+    """Shared logic for confirming a booking via payment verification or manual acceptance."""
+    from ..services.notification import NotificationService
+    import asyncio
+    
+    old_payment_status = booking.payment_status
+    history_note = "Booking confirmed by caterer."
+    
+    # CASE 1: Downpayment Verification or Initial Acceptance
+    if booking.payment_status in ['proof_submitted', 'reupload_requested', 'pending'] or booking.status == 'pending':
+        booking.payment_status = 'deposit_paid'
+        booking.status = 'confirmed'
+        
+        # Calculate Initial Actual Cost (Baseline)
+        total_cost = 0
+        if booking.package:
+            if booking.package.price_unit == "per_guest":
+                total_cost += (booking.package.cost_price or 0) * (booking.guest_count or 0)
+            else:
+                total_cost += (booking.package.cost_price or 0)
+        
+        # Add selected items cost
+        from sqlalchemy import text
+        # Using a join or subquery might be better but let's stick to the existing approach safely
+        for item in booking.selected_items:
+            if hasattr(item, 'menu_item') and item.menu_item:
+                total_cost += (item.menu_item.cost_price or 0)
+        
+        booking.actual_cost = total_cost
+        
+        if is_manual_accept:
+            history_note = "Booking manually ACCEPTED and CONFIRMED by caterer."
+        else:
+            history_note = "Downpayment verified and confirmed. Booking is now officially CONFIRMED."
+            
+        # Notification to Customer
+        await NotificationService.notify_status_update(
+            db, booking.user_id, 
+            "Booking Confirmed! ✅", 
+            f"Ang iyong booking para sa '{booking.event_name}' ay CONFIRMED na! Naka-verify na ang iyong reservation.", 
+            f"/customer/bookings/manage/{booking.id}"
+        )
+
+    # CASE 2: Final Balance Verification
+    elif booking.payment_status in ['balance_proof_submitted', 'balance_reupload_requested']:
+        booking.payment_status = 'paid'
+        history_note = "Final balance verified. Booking is now FULLY PAID."
+        
+        await NotificationService.notify_status_update(
+            db, booking.user_id, 
+            "Payment Fully Verified! 💰", 
+            f"Natanggap at na-verify na ang iyong full payment para sa '{booking.event_name}'. Maraming salamat!", 
+            f"/customer/bookings/manage/{booking.id}"
+        )
+    
+    # CASE 3: Fallback / Manual Override to Paid
+    else:
+        booking.payment_status = 'paid'
+        history_note = "Booking/Payment marked as fully received manually."
+
+    # Log History
+    history = models.BookingHistory(
+        booking_id=booking.id,
+        status=booking.status,
+        notes=history_note
+    )
+    db.add(history)
+    db.commit()
+
+    # WebSocket Updates
+    # 1. To Customer
+    asyncio.create_task(manager.broadcast_to_user(booking.user_id, {
+        "type": "payment_update",
+        "message": f"Status updated for {booking.event_name}",
+        "booking_id": booking.id,
+        "status": booking.status,
+        "payment_status": booking.payment_status
+    }))
+
+    # 2. To Caterer
+    status_class_map = {
+        'deposit_paid': 'ps-badge-confirmed',
+        'paid': 'ps-badge-completed',
+        'proof_submitted': 'ps-badge-payment',
+        'balance_proof_submitted': 'ps-badge-payment'
+    }
+    
+    await manager.broadcast_to_user(caterer_user.id, {
+        "type": "booking_update",
+        "booking_id": booking.id,
+        "new_status": booking.status,
+        "new_payment_status": booking.payment_status,
+        "payment_status_class": status_class_map.get(booking.payment_status, 'ps-badge-payment'),
+        "message": history_note
+    })
+
+    await manager.broadcast_to_user(caterer_user.id, {
+        "type": "dashboard_update",
+        "message": "Stats updated: Booking confirmed."
+    })
+
+    return {"status": "success", "message": history_note}
+
+@router.post("/bookings/{booking_id}/accept")
+async def accept_booking_manual(
+    booking_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    """Allows a caterer to manually accept a booking, bypassing digital proof verification."""
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking or booking.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+        
+    result = await _confirm_booking_logic(db, booking, user, is_manual_accept=True)
+    return result
+
 @router.post("/payments/{booking_id}/confirm")
 async def confirm_caterer_payment(
     booking_id: int,
@@ -299,56 +689,203 @@ async def confirm_caterer_payment(
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
         
-    # Check current status to decide what we are confirming
-    old_status = booking.payment_status
-    new_booking_status = booking.status
-    history_note = "Payment confirmed by caterer."
+    # [Rest of AI verification logic remains before calling logic]
+
+    # [NEW] Automated Proof Verification Detection
+    proof_path = None
+    if booking.payment_proof_url:
+        # Resolve path handling both root-relative and app-relative structures
+        raw_url = booking.payment_proof_url.lstrip("/")
+        proof_path = os.path.join(os.getcwd(), raw_url)
+        if not os.path.exists(proof_path):
+            # Fallback for when the file is inside the 'app/' directory but DB path is web-relative
+            proof_path = os.path.join(os.getcwd(), "app", raw_url)
+
+        if os.path.exists(proof_path):
+            verify_results = payment_verification_service.check_for_fraud(db, booking, proof_path)
+            booking.payment_verification_data = verify_results
+            booking.proof_image_hash = payment_verification_service.get_image_hash(proof_path)
+            if verify_results["confidence"] > 80:
+                booking.ocr_verified = True
+            
+            # [NEW] Automated Fraud Flagging
+            if verify_results["is_duplicate_ref"] or verify_results["confidence"] < 40 or not verify_results.get("amount_match", True):
+                for flag_desc in verify_results["flags"]:
+                    # Check if flag already exists to avoid duplicates
+                    exists = db.query(models.FraudFlag).filter(
+                        models.FraudFlag.booking_id == booking.id,
+                        models.FraudFlag.description == flag_desc
+                    ).first()
+                    if not exists:
+                        db.add(models.FraudFlag(
+                            booking_id=booking.id, 
+                            flag_type="high_risk_detected", 
+                            description=flag_desc
+                        ))
+                
+                # WebSocket Alert to Caterer
+                await manager.broadcast_to_user(user.id, {
+                    "type": "risk_alert",
+                    "booking_id": booking_id,
+                    "message": "⚠️ High Risk Payment Detected! Check AI Scan details."
+                })
+
+        
+    # Call shared confirmation logic
+    result = await _confirm_booking_logic(db, booking, user, is_manual_accept=False)
     
-    if booking.payment_status == 'proof_submitted' or booking.status == 'pending':
-        # Confirming Downpayment
-        booking.payment_status = 'deposit_paid'
-        booking.status = 'confirmed' # Acceptance happens when downpayment is confirmed
-        # Calculate Actual Cost based on current package/menu costs
-        total_cost = 0
-        if booking.package:
-            if booking.package.price_unit == "per_guest":
-                total_cost += (booking.package.cost_price or 0) * (booking.guest_count or 0)
-            else:
-                total_cost += (booking.package.cost_price or 0)
-        for item in booking.selected_items:
-            total_cost += (item.menu_item.cost_price or 0)
-        booking.actual_cost = total_cost
-        history_note = "Downpayment verified and confirmed. Booking is now officially CONFIRMED."
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JSONResponse({
+            "status": "success", 
+            "message": result["message"], 
+            "new_status": booking.status,
+            "new_payment_status": booking.payment_status
+        })
+        
+    return RedirectResponse(url="/caterer/payments?success_msg=Payment+confirmed+successfully", status_code=303)
+
+@router.post("/bookings/{booking_id}/request-new-proof")
+async def request_new_proof(
+    booking_id: int,
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking or booking.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    data = await request.json()
+    reason = data.get("reason", "The submitted proof was unreadable or incorrect.")
+
+    # 1. Reset proof fields and status based on current state
+    if booking.payment_status == 'proof_submitted':
+        booking.payment_status = 'reupload_requested'
+        booking.payment_proof_url = None
     elif booking.payment_status == 'balance_proof_submitted':
-        # Confirming Full Balance
-        booking.payment_status = 'paid'
-        history_note = "Final balance verified and confirmed. Booking is now FULLY PAID."
-    else:
-        # Fallback for manual overrides
-        booking.payment_status = 'paid'
-        history_note = "Payment marked as fully received manually by caterer."
-    
-    # Also log history
+        booking.payment_status = 'balance_reupload_requested'
+        booking.balance_proof_url = None
+
+    # 2. Add History
     history = models.BookingHistory(
         booking_id=booking.id,
         status=booking.status,
-        notes=history_note
+        notes=f"Payment proof rejected. Reason: {reason}"
     )
     db.add(history)
+    
+    # 3. Add Fraud Flag if it was rejected for suspicious reasons
+    if "fake" in reason.lower() or "suspicious" in reason.lower() or "duplicate" in reason.lower():
+        db.add(models.FraudFlag(
+            booking_id=booking.id,
+            flag_type="manual_rejection",
+            description=f"Caterer rejected proof as suspicious: {reason}"
+        ))
+
     db.commit()
-    
-    # Real-time WebSocket Alert to Customer
-    import asyncio
-    asyncio.create_task(manager.broadcast_to_user(booking.user_id, {
-        "type": "payment_update",
-        "message": f"Payment confirmed for {booking.event_name}",
+
+    # 4. Notify Customer
+    from ..services.notification import NotificationService
+    await NotificationService.notify_proof_rejected(db, booking, reason)
+
+    # 5. Broadcast real-time update to both parties
+    await manager.broadcast_to_user(booking.user_id, {
+        "type": "payment_rejected",
         "booking_id": booking.id,
-        "status": booking.status
-    }))
+        "reason": reason,
+        "message": f"Ay naku! Ang iyong payment proof sa {booking.event_name} ay tinanggihan. Silipin sa dashboard para sa detalye."
+    })
     
-    return RedirectResponse(url="/caterer/payments?success_msg=Payment+confirmed+successfully", status_code=303)
+    await manager.broadcast_to_user(user.id, {
+        "type": "booking_update",
+        "booking_id": booking.id,
+        "new_payment_status": booking.payment_status,
+        "message": "Proof rejected. Waiting for re-upload."
+    })
+
+    return {"status": "success", "message": "Customer notified to re-upload proof."}
+
+@router.post("/api/bookings/{booking_id}/verify-proof")
+async def verify_booking_proof(
+    booking_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking or booking.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    if not booking.payment_proof_url and not booking.balance_proof_url:
+        return {"status": "error", "message": "No proof uploaded yet."}
+
+    proof_url = (booking.balance_proof_url or booking.payment_proof_url).lstrip("/")
+    proof_path = os.path.join(os.getcwd(), proof_url)
+    
+    if not os.path.exists(proof_path):
+        # Fallback for 'app/' directory structure
+        proof_path = os.path.join(os.getcwd(), "app", proof_url)
+
+    if not os.path.exists(proof_path):
+        return {"status": "error", "message": f"Proof file missing on server. Looking at: {proof_path}"}
+
+    verify_results = payment_verification_service.check_for_fraud(db, booking, proof_path)
+    booking.payment_verification_data = verify_results
+    booking.proof_image_hash = payment_verification_service.get_image_hash(proof_path)
+    db.commit()
+
+    return {"status": "success", "data": verify_results}
+
+@router.get("/api/bookings/{booking_id}/details")
+async def get_booking_details_api(
+    booking_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking or booking.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    return {
+        "id": booking.id,
+        "event_name": booking.event_name,
+        "event_type": booking.event_type,
+        "total_amount": float(booking.total_amount or 0),
+        "payment_status": booking.payment_status,
+        "payment_method": booking.payment_method,
+        "payment_proof_url": booking.payment_proof_url,
+        "balance_proof_url": booking.balance_proof_url,
+        "payment_verification_data": booking.payment_verification_data,
+        "user": {
+            "first_name": booking.user.first_name,
+            "last_name": booking.user.last_name,
+            "email": booking.user.email
+        }
+    }
 
 
+@router.post("/bookings/{booking_id}/actual-cost")
+async def update_actual_cost(
+    booking_id: int,
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    booking = db.query(models.Booking).filter(
+        models.Booking.id == booking_id,
+        models.Booking.caterer_id == user.caterer_profile.id
+    ).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    data = await request.json()
+    actual_cost = data.get("actual_cost", 0)
+    actual_cost_breakdown = data.get("actual_cost_breakdown", [])
+
+    booking.actual_cost = actual_cost
+    booking.actual_cost_breakdown = actual_cost_breakdown
+    db.commit()
+
+    return {"status": "success", "message": "Actual cost updated"}
 @router.get("/reviews", response_class=HTMLResponse)
 async def caterer_reviews(
     request: Request, 
@@ -486,6 +1023,58 @@ async def caterer_customers(
         "active_page": "customers"
     })
 
+@router.get("/api/roi-analytics")
+async def caterer_roi_analytics(
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    from datetime import datetime
+    import calendar
+    from dateutil.relativedelta import relativedelta
+
+    # Get last 6 months list
+    now = datetime.now()
+    months_labels = []
+    projected_revenue = []
+    actual_costs = []
+    projected_costs = []
+
+    for i in range(5, -1, -1):
+        target_month = now - relativedelta(months=i)
+        month_label = target_month.strftime("%b %Y")
+        months_labels.append(month_label)
+        
+        # Calculate stats for this month
+        month_bookings = db.query(models.Booking).filter(
+            models.Booking.caterer_id == user.caterer_profile.id,
+            models.Booking.status == 'completed',
+            func.extract('month', models.Booking.event_date) == target_month.month,
+            func.extract('year', models.Booking.event_date) == target_month.year
+        ).all()
+        
+        rev = sum(b.total_price or 0 for b in month_bookings)
+        act_cost = sum(b.actual_cost or 0 for b in month_bookings)
+        
+        proj_cost = 0
+        for b in month_bookings:
+            c = 0
+            if b.package:
+                c += (b.package.cost_price or 0) * (b.guest_count if b.package.price_unit == 'per_guest' else 1)
+            for item in b.selected_items:
+                c += (item.menu_item.cost_price or 0)
+            proj_cost += c
+            
+        projected_revenue.append(float(rev))
+        actual_costs.append(float(act_cost))
+        projected_costs.append(float(proj_cost))
+
+    return {
+        "labels": months_labels,
+        "revenue": projected_revenue,
+        "actual_costs": actual_costs,
+        "projected_costs": projected_costs
+    }
+
 @router.get("/calendar", response_class=HTMLResponse)
 async def caterer_calendar(
     request: Request, 
@@ -530,11 +1119,14 @@ async def manage_packages(
     user: models.User = Depends(caterer_only)
 ):
     profile = user.caterer_profile
+    active_packages = [p for p in profile.packages if p.status != 'archived']
+    active_menu = [m for m in profile.menu_items if not m.is_archived]
+    
     return templates.TemplateResponse("caterer/packages.html", {
         "request": request,
         "user": user,
-        "packages": profile.packages,
-        "menu_items": profile.menu_items,
+        "packages": active_packages,
+        "menu_items": active_menu,
         "active_page": "packages"
     })
 
@@ -544,10 +1136,11 @@ async def manage_menu(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    active_menu = [m for m in user.caterer_profile.menu_items if not m.is_archived]
     return templates.TemplateResponse("caterer/menu.html", {
         "request": request,
         "user": user,
-        "menu_items": user.caterer_profile.menu_items,
+        "menu_items": active_menu,
         "active_page": "menu"
     })
 
@@ -573,6 +1166,7 @@ async def add_package(
     service_duration: int = Form(8),
     price_per_head: float = Form(0.0),
     cost_price: float = Form(0.0),
+    cost_breakdown: Optional[str] = Form(None),
     min_contract_amount: float = Form(0.0),
     min_guests: int = Form(1),
     max_guests: Optional[int] = Form(None),
@@ -597,6 +1191,7 @@ async def add_package(
         service_duration=service_duration,
         price_per_head=price_per_head,
         cost_price=cost_price,
+        cost_breakdown=json.loads(cost_breakdown) if cost_breakdown else None,
         min_contract_amount=min_contract_amount,
         min_guests=min_guests,
         max_guests=max_guests,
@@ -633,6 +1228,7 @@ async def add_menu_item(
     description: Optional[str] = Form(None),
     price: float = Form(0.0),
     cost_price: float = Form(0.0),
+    cost_breakdown: Optional[str] = Form(None),
     serving_size: Optional[str] = Form(None),
     is_addon: bool = Form(False),
     addon_price: float = Form(0.0),
@@ -656,6 +1252,7 @@ async def add_menu_item(
         description=description,
         price=price,
         cost_price=cost_price,
+        cost_breakdown=json.loads(cost_breakdown) if cost_breakdown else None,
         serving_size=serving_size,
         is_addon=is_addon,
         addon_price=addon_price,
@@ -762,6 +1359,7 @@ async def get_package_details_api(
         "service_type": package.service_type,
         "price_per_head": package.price_per_head,
         "cost_price": package.cost_price,
+        "cost_breakdown": package.cost_breakdown,
         "min_contract_amount": package.min_contract_amount,
         "min_guests": package.min_guests,
         "max_guests": package.max_guests,
@@ -780,6 +1378,7 @@ async def update_package(
     service_duration: int = Form(8),
     price_per_head: float = Form(0.0),
     cost_price: float = Form(0.0),
+    cost_breakdown: Optional[str] = Form(None),
     min_contract_amount: float = Form(0.0),
     min_guests: int = Form(1),
     max_guests: Optional[int] = Form(None),
@@ -801,6 +1400,8 @@ async def update_package(
     package.service_duration = service_duration
     package.price_per_head = price_per_head
     package.cost_price = cost_price
+    if cost_breakdown is not None:
+        package.cost_breakdown = json.loads(cost_breakdown) if cost_breakdown else None
     package.min_contract_amount = min_contract_amount
     package.min_guests = min_guests
     package.max_guests = max_guests
@@ -839,7 +1440,15 @@ async def archive_package_caterer(
     package.status = 'archived'
     package.is_active = False
     db.commit()
-    return {"status": "success"}
+
+    # Broadcast update
+    await manager.broadcast_to_user(user.id, {
+        "type": "package_archived",
+        "package_id": package_id,
+        "message": f"Package '{package.name}' archived."
+    })
+    
+    return JSONResponse({"status": "success", "message": "Package archived successfully", "package_id": package_id})
 
 @router.get("/packages/{package_id}/menu")
 async def get_package_menu(
@@ -872,6 +1481,7 @@ async def add_menu_to_package(
     category: str = Form(...),
     description: Optional[str] = Form(None),
     cost_price: float = Form(0.0),
+    cost_breakdown: Optional[str] = Form(None),
     is_addon: bool = Form(False),
     addon_price: float = Form(0.0),
     image: Optional[UploadFile] = File(None),
@@ -901,6 +1511,7 @@ async def add_menu_to_package(
         category=category,
         description=description,
         cost_price=cost_price,
+        cost_breakdown=json.loads(cost_breakdown) if cost_breakdown else None,
         is_addon=is_addon,
         addon_price=addon_price,
         image_url=image_url,
@@ -990,6 +1601,7 @@ async def update_menu_item(
     description: Optional[str] = Form(None),
     price: float = Form(0.0),
     cost_price: float = Form(0.0),
+    cost_breakdown: Optional[str] = Form(None),
     serving_size: Optional[str] = Form(None),
     is_addon: bool = Form(False),
     addon_price: float = Form(0.0),
@@ -1010,6 +1622,8 @@ async def update_menu_item(
     item.description = description
     item.price = price
     item.cost_price = cost_price
+    if cost_breakdown is not None:
+        item.cost_breakdown = json.loads(cost_breakdown) if cost_breakdown else None
     item.serving_size = serving_size
     item.is_addon = is_addon
     item.addon_price = addon_price
@@ -1041,6 +1655,17 @@ async def archive_menu_item_caterer(
     
     item.is_archived = True
     db.commit()
+
+    # Broadcast update
+    await manager.broadcast_to_user(user.id, {
+        "type": "menu_archived",
+        "item_id": item_id,
+        "message": f"Dish '{item.name}' archived."
+    })
+    
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JSONResponse({"status": "success", "message": "Menu item archived successfully", "item_id": item_id})
+
     return RedirectResponse(url="/caterer/menu?success_msg=Menu+item+archived+successfully", status_code=303)
 
 @router.post("/profile/change-password")
@@ -1316,6 +1941,12 @@ async def create_manual_booking(
                 db.add(bmi)
             db.commit()
             
+        # Broadcast update for real-time dashboard sync
+        await manager.broadcast_to_user(user.id, {
+            "type": "dashboard_update",
+            "message": f"Manual booking created: {new_booking.event_name}"
+        })
+
         return {"status": "success", "booking_id": new_booking.id}
     except Exception as e:
         db.rollback()
@@ -1375,7 +2006,97 @@ async def cancel_booking(
     db.add(history)
     db.commit()
     
+    # Broadcast update to sync other caterer tabs
+    await manager.broadcast_to_user(user.id, {
+        "type": "dashboard_update",
+        "message": "Stats updated: Booking cancelled."
+    })
+    await manager.broadcast_to_user(user.id, {
+        "type": "booking_update",
+        "booking_id": booking_id,
+        "new_status": "cancelled",
+        "message": f"Booking #{booking_id} has been cancelled."
+    })
+    
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JSONResponse({"status": "success", "message": "Booking cancelled successfully", "new_status": "cancelled"})
+
     return RedirectResponse(url="/caterer/bookings?success_msg=Booking+cancelled+successfully", status_code=303)
+
+@router.post("/bookings/{booking_id}/accept")
+async def accept_booking(
+    request: Request,
+    booking_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking or booking.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    booking.status = 'confirmed'
+    history = models.BookingHistory(booking_id=booking.id, status='confirmed', notes="Booking accepted by caterer manually.")
+    db.add(history)
+    db.commit()
+
+    await manager.broadcast_to_user(user.id, {
+        "type": "booking_update",
+        "booking_id": booking_id,
+        "new_status": "confirmed",
+        "message": "Booking accepted."
+    })
+    
+    return JSONResponse({"status": "success", "message": "Booking accepted", "new_status": "confirmed"})
+
+@router.post("/bookings/{booking_id}/reject")
+async def reject_booking(
+    request: Request,
+    booking_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking or booking.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    booking.status = 'cancelled'
+    history = models.BookingHistory(booking_id=booking.id, status='cancelled', notes="Booking rejected by caterer.")
+    db.add(history)
+    db.commit()
+
+    await manager.broadcast_to_user(user.id, {
+        "type": "booking_update",
+        "booking_id": booking_id,
+        "new_status": "cancelled",
+        "message": "Booking rejected."
+    })
+    
+    return JSONResponse({"status": "success", "message": "Booking rejected", "new_status": "cancelled"})
+
+@router.post("/bookings/{booking_id}/complete")
+async def complete_booking(
+    request: Request,
+    booking_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking or booking.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    booking.status = 'completed'
+    history = models.BookingHistory(booking_id=booking.id, status='completed', notes="Event marked as completed by caterer.")
+    db.add(history)
+    db.commit()
+
+    await manager.broadcast_to_user(user.id, {
+        "type": "booking_update",
+        "booking_id": booking_id,
+        "new_status": "completed",
+        "message": "Booking completed."
+    })
+    
+    return JSONResponse({"status": "success", "message": "Booking completed", "new_status": "completed"})
 
 @router.post("/bookings/{booking_id}/archive")
 async def archive_booking(
@@ -1394,6 +2115,20 @@ async def archive_booking(
     booking.is_archived = True
     db.commit()
     
+    # WebSocket Broadcast for real-time removal from dashboard & stats refresh
+    await manager.broadcast_to_user(user.id, {
+        "type": "dashboard_update",
+        "message": "Stats updated: Booking archived."
+    })
+    await manager.broadcast_to_user(user.id, {
+        "type": "booking_archived",
+        "booking_id": booking_id,
+        "message": "Booking has been archived successfully."
+    })
+    
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JSONResponse({"status": "success", "message": "Booking archived successfully", "booking_id": booking_id})
+
     # Allow redirecting back to where the request came from (e.g., payments page)
     next_url = request.query_params.get("next", "/caterer/bookings")
     if "?" in next_url:

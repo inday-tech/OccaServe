@@ -22,7 +22,7 @@ if not SQLALCHEMY_DATABASE_URL:
     hostname = os.getenv("DB_HOST", "localhost")
     database = os.getenv("DB_NAME", "occashare")
     username = os.getenv("DB_USER", "postgres")
-    pwd = os.getenv("DB_PASSWORD", "1425")
+    pwd = os.getenv("DB_PASSWORD", "2004")
     port_id = os.getenv("DB_PORT", "5432")
     SQLALCHEMY_DATABASE_URL = f"postgresql://{username}:{pwd}@{hostname}:{port_id}/{database}"
 else:

@@ -12,6 +12,7 @@ import shutil
 import os
 import uuid
 from ..services.realtime import manager
+from ..services.notification import NotificationService
 
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
@@ -413,27 +414,10 @@ async def step_payment_submit(
         db.add(history)
         db.commit()
         
-        # --- NEW: Trigger Notification & Email ---
-        from ..core.email_service import send_notification_email
-        caterer_user = booking.caterer.user
-        if caterer_user:
-            notif = models.Notification(
-                user_id=caterer_user.id,
-                title="New Booking Received (Cash)!",
-                message=f"You have a new cash booking from {user.first_name or user.email} for '{booking.event_name}'.",
-                type="success",
-                link=f"/caterer/bookings/{booking.id}"
-            )
-            db.add(notif)
-            db.commit()
-            
-            site_url = os.getenv("SITE_URL", "http://localhost:8000")
-            send_notification_email(
-                to_email=caterer_user.email,
-                subject="OccaShare: New Booking Request (Cash)!",
-                message=f"Hello {booking.caterer.business_name},\n\nYou have just received a new cash booking request for '{booking.event_name}'.\nPlease log in to your dashboard to review the details.",
-                link=f"{site_url}/auth/login"
-            )
+        # --- Trigger Notification (In-App, Email, SMS) ---
+        await NotificationService.notify_new_booking(db, booking)
+        if proof_url:
+            await NotificationService.notify_payment_received(db, booking, float(booking.reservation_fee or 0), "Downpayment Proof")
 
         return RedirectResponse(url=f"/bookings/success/{booking.id}", status_code=303)
 
@@ -486,36 +470,10 @@ async def step_payment_submit(
     db.add(history)
     db.commit()
 
-    # --- NEW: Trigger Notification & Email ---
-    from ..core.email_service import send_notification_email
-    caterer_user = booking.caterer.user
-    if caterer_user:
-        # 1. In-App Notification
-        notif = models.Notification(
-            user_id=caterer_user.id,
-            title="New Booking Received!",
-            message=f"You have a new booking from {user.first_name or user.email} for '{booking.event_name}'.",
-            type="success",
-            link=f"/caterer/bookings/{booking.id}"
-        )
-        db.add(notif)
-        db.commit()
-        
-        # 2. Email Alert (Background/Simulated)
-        site_url = os.getenv("SITE_URL", "http://localhost:8000")
-        send_notification_email(
-            to_email=caterer_user.email,
-            subject="OccaShare: New Booking Request!",
-            message=f"Hello {booking.caterer.business_name},\n\nYou have just received a new booking request for '{booking.event_name}'.\nPlease log in to your dashboard to review the details and verify any submitted payments.",
-            link=f"{site_url}/auth/login"
-        )
-
-        # 3. Real-time WebSocket Alert
-        await manager.broadcast_to_user(caterer_user.id, {
-            "type": "booking_update",
-            "message": f"New booking: {booking.event_name}",
-            "booking_id": booking.id
-        })
+    # --- Trigger Notification (In-App, Email, SMS) ---
+    await NotificationService.notify_new_booking(db, booking)
+    if proof_url:
+        await NotificationService.notify_payment_received(db, booking, float(booking.reservation_fee or 0), "Downpayment Proof")
 
     return RedirectResponse(url=f"/bookings/success/{booking.id}", status_code=303)
 
@@ -569,33 +527,8 @@ async def pay_balance_submit(
         )
         db.add(history)
         
-        # Notify Caterer
-        from ..core.email_service import send_notification_email
-        caterer_user = booking.caterer.user
-        if caterer_user:
-            notif = models.Notification(
-                user_id=caterer_user.id,
-                title="Balance Payment Proof Submitted",
-                message=f"Customer has submitted payment proof for the outstanding balance of '{booking.event_name}'.",
-                type="success",
-                link=f"/caterer/bookings" # Should ideally point to the booking in modal or filtered list
-            )
-            db.add(notif)
-            
-            site_url = os.getenv("SITE_URL", "http://localhost:8000")
-            send_notification_email(
-                to_email=caterer_user.email,
-                subject="OccaShare: Balance Payment Proof Recieved",
-                message=f"Hello {booking.caterer.business_name},\n\nA customer has uploaded a payment proof for the outstanding balance of ₱{outstanding_balance:,.2f} for the event '{booking.event_name}'.\nPlease verify this in your dashboard.",
-                link=f"{site_url}/auth/login"
-            )
-        
-        # Real-time WebSocket Alert
-        await manager.broadcast_to_user(caterer_user.id, {
-            "type": "booking_update",
-            "message": f"Balance proof submitted for {booking.event_name}",
-            "booking_id": booking.id
-        })
+        # --- Trigger Notification (In-App, Email, SMS) ---
+        await NotificationService.notify_payment_received(db, booking, outstanding_balance, "Balance Payment Proof")
 
         db.commit()
         return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?success=balance_proof_submitted", status_code=303)

@@ -77,138 +77,39 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         calendar.render();
     }
-    setupRealTimeValidation();
+
+    // Initialize Manual Booking Validation
+    if (window.ValidationManager) {
+        new window.ValidationManager('manualBookingForm', {
+            'customer_name': { label: 'customer name' },
+            'event_name': { label: 'event name' },
+            'guest_count': { numericOnly: true, max: 100000, autoStop: true },
+            'total_amount': { numericOnly: true, max: 10000000, autoStop: true }
+        });
+    }
 });
 
-function setupRealTimeValidation() {
-    const guestsInput = document.getElementById('manGuests');
+function attachPackageListeners() {
+    const pkgSelect = document.getElementById('manPackage');
     const amountInput = document.getElementById('manAmount');
-    const submitBtn = document.getElementById('btnSubmitManual');
-    
-    function setInputErrorState(input, isError) {
-        if (isError) {
-            input.style.borderColor = '#ef4444';
-            input.style.backgroundColor = '#fef2f2';
-        } else {
-            input.style.borderColor = '';
-            input.style.backgroundColor = '';
-        }
-    }
-    
-    function validateInputs(e) {
-        let isValid = true;
-        clearErrorDrawer();
-        
-        // Contact Format Validation
-        const contactInput = document.getElementById('manCustContact');
-        if (contactInput && contactInput.value !== '') {
-            let val = contactInput.value.replace(/\D/g, ''); 
-            contactInput.value = val;
-            if (val.length !== 11 || !val.startsWith('09')) {
-                showErrorInDrawer('Contact Number must be a valid 11-digit number starting with 09.');
-                isValid = false;
-                setInputErrorState(contactInput, true);
-            } else {
-                setInputErrorState(contactInput, false);
-            }
-        } else if (contactInput) {
-            setInputErrorState(contactInput, false);
-        }
+    if (!pkgSelect || !amountInput) return;
 
-        // Name Gibberish Validation
-        const nameInput = document.getElementById('manCustName');
-        if (nameInput && nameInput.value.trim() !== '') {
-            const val = nameInput.value;
-            // Catch 4+ repeating characters like aaaa
-            if (/(.)\1{3,}/.test(val)) {
-                showErrorInDrawer('Invalid Name! Consecutive repeating characters are not allowed.');
-                isValid = false;
-                setInputErrorState(nameInput, true);
-            } else {
-                setInputErrorState(nameInput, false);
-            }
+    pkgSelect.addEventListener('change', function () {
+        const option = this.options[this.selectedIndex];
+        const price = parseFloat(option.dataset.price) || 0;
+        if (price > 0) {
+            amountInput.value = price.toLocaleString();
+            // Trigger validation check
+            amountInput.dispatchEvent(new Event('input', { bubbles: true }));
         }
+    });
 
-        // Hard limits during typing
-        if (guestsInput && guestsInput.value !== '') {
-            let guestsStr = guestsInput.value;
-            let guests = parseInt(guestsStr);
-            if (guests > 100000) {
-                // If they typed something that made it > 100000, revert the last character
-                guestsInput.value = guestsStr.slice(0, -1);
-                guests = parseInt(guestsInput.value) || 0;
-            }
-            if (guests < 1 || isNaN(guests)) {
-                showErrorInDrawer('Invalid Guest Count! Must be at least 1.');
-                isValid = false;
-                setInputErrorState(guestsInput, true);
-            } else {
-                setInputErrorState(guestsInput, false);
-            }
-        } else if(guestsInput) {
-            setInputErrorState(guestsInput, false);
-        }
-        
-        // Process Amount Currency limits cleanly
-        if (amountInput && amountInput.value !== '') {
-            // Because formatting has commas and symbols, filter natively
-            let rawStr = amountInput.value.replace(/[^\d.]/g, '');
-            let amount = parseFloat(rawStr) || 0;
-            if (amount > 10000000) {
-                rawStr = rawStr.slice(0, -1);
-                amount = parseFloat(rawStr) || 0;
-                amountInput.value = rawStr; // Keep caret flow normally
-            }
-            if (amount <= 0 || isNaN(amount)) {
-                showErrorInDrawer('Invalid Amount! Must be at least ₱1.00');
-                isValid = false;
-                setInputErrorState(amountInput, true);
-            } else {
-                setInputErrorState(amountInput, false);
-            }
-        } else if(amountInput) {
-            setInputErrorState(amountInput, false);
-        }
-        
-        if (submitBtn) {
-            submitBtn.disabled = !isValid;
-            submitBtn.style.opacity = isValid ? '1' : '0.5';
-        }
-    }
-
-    function preventInvalidChars(e) {
-        if (['e', 'E', '+', '-'].includes(e.key)) {
-            e.preventDefault();
-        }
-    }
-
-    if (guestsInput) {
-        guestsInput.addEventListener('input', validateInputs);
-        guestsInput.addEventListener('keydown', preventInvalidChars);
-    }
-    if (amountInput) {
-        amountInput.addEventListener('input', validateInputs);
-        amountInput.addEventListener('keydown', preventInvalidChars);
-        
-        // Dynamic string currency formatting handles caret jumping when blurred
-        amountInput.addEventListener('blur', function() {
-            let val = parseCurrency(this.value);
-            if(val > 0) this.value = formatCurrency(val);
+    // Handle menu checkboxes
+    document.querySelectorAll('.man-menu-checkbox').forEach(cb => {
+        cb.addEventListener('change', () => {
+            // Optional: Auto-recalculate total if needed, but usually manual bookings are manual
         });
-        amountInput.addEventListener('focus', function() {
-            let parsed = parseCurrency(this.value);
-            if(parsed > 0) this.value = parsed;
-        });
-    }
-
-    // Attach listeners conditionally to ensure coverage if DOM repaints
-    const contactInput = document.getElementById('manCustContact');
-    if (contactInput) contactInput.addEventListener('input', validateInputs);
-    
-    const nameInput = document.getElementById('manCustName');
-    if (nameInput) nameInput.addEventListener('input', validateInputs);
-    
-    attachPackageListeners();
+    });
 }
 
 function showEventDetails(event) {
@@ -239,6 +140,11 @@ function showEventDetails(event) {
     }
 
     document.getElementById('eventModal').style.display = 'flex';
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            document.getElementById('eventModal').classList.add('active');
+        });
+    });
 }
 
 let currentBlockedDate = '';
@@ -254,6 +160,11 @@ function showBlockedDetails(event) {
     currentBlockedDate = event.startStr.split('T')[0];
     
     document.getElementById('blockedDateModal').style.display = 'flex';
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            document.getElementById('blockedDateModal').classList.add('active');
+        });
+    });
 }
 
 function openManualBookingModal(slotStr = null) {
@@ -275,7 +186,15 @@ function openManualBookingModal(slotStr = null) {
     document.getElementById('btnSubmitManual').disabled = true;
     document.getElementById('btnSubmitManual').style.opacity = '0.5';
 
+    // Initial validation check
+    document.getElementById('manualBookingForm').dispatchEvent(new Event('input', { bubbles: true }));
+
     modal.style.display = 'flex';
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            modal.classList.add('active');
+        });
+    });
 }
 
 function clearErrorDrawer() {
@@ -434,7 +353,14 @@ async function setReminder() {
 }
 
 function closeModal() {
-    document.querySelectorAll('.calendar-modal').forEach(m => m.style.display = 'none');
+    document.querySelectorAll('.occ-modal-overlay').forEach(m => {
+        m.classList.remove('active');
+        setTimeout(() => {
+            if (!m.classList.contains('active')) {
+                m.style.display = 'none';
+            }
+        }, 400);
+    });
 }
 
 async function toggleDateAvailability(isAvailable) {
@@ -531,4 +457,9 @@ window.openSidebarEventModal = function(elem) {
     }
 
     document.getElementById('eventModal').style.display = 'flex';
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            document.getElementById('eventModal').classList.add('active');
+        });
+    });
 };

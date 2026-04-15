@@ -655,3 +655,113 @@ textarea.control-pro {
     }
 }
 
+/* Real-time Validation Styles */
+.control-pro.is-invalid {
+    border-color: #ef4444 !important;
+    background: #fffafa !important;
+}
+
+/* Premium Costing Builder Styles */
+.premium-cost-row {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1rem;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.premium-cost-row:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.08);
+    transform: translateX(4px);
+}
+
+.premium-cost-input-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.premium-cost-input-group label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    margin: 0;
+}
+
+.premium-cost-control {
+    border: none;
+    background: transparent;
+    font-weight: 600;
+    color: var(--secondary-color);
+    padding: 0.25rem 0;
+    width: 100%;
+}
+
+.premium-cost-control:focus {
+    outline: none;
+    color: var(--primary-color);
+}
+
+.btn-remove-cost {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: #fff1f2;
+    color: #ef4444;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-remove-cost:hover {
+    background: #ef4444;
+    color: white;
+}
+
+.costing-snapshot-card {
+    background: #f8fafc;
+    border-radius: 16px;
+    padding: 1.5rem;
+    border: 1px solid #e2e8f0;
+}
+
+.margin-pulse-warning {
+    animation: marginPulse 2s infinite;
+}
+
+@keyframes marginPulse {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.invalid-feedback {
+    display: none;
+    color: #ef4444;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-top: 0.35rem;
+    margin-left: 0.5rem;
+    animation: fadeInError 0.2s ease-out;
+}
+
+.control-pro.is-invalid + .invalid-feedback {
+    display: block;
+}
+
+@keyframes fadeInError {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+

@@ -13,6 +13,12 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440 # 24 hours. Frontend inactivity JS handles the 15-minute idle timeout.
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
+# Patch for passlib/bcrypt version compatibility error
+import bcrypt
+if not hasattr(bcrypt, "__about__"):
+    class about: __version__ = getattr(bcrypt, "__version__", "4.0.0")
+    bcrypt.__about__ = about
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 

@@ -193,27 +193,43 @@
 </div>
 
 <!-- Details Modal -->
-<div id="detailsModal" class="modal-pro" onclick="closeDetailsModal()">
-    <div class="modal-content-pro" onclick="event.stopPropagation()">
-        <div class="modal-header-pro">
-            <h3>Transaction Details</h3>
-            <button onclick="closeDetailsModal()">&times;</button>
+<div id="detailsModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-md occ-content-pop">
+        <div class="occ-modal-header">
+            <div>
+                <h3 class="occ-modal-title">Transaction Details</h3>
+                <div class="occ-modal-subtitle">Comprehensive breakdown of the financial records and AI verification.</div>
+            </div>
+            <button onclick="closeDetailsModal()" class="occ-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
-        <div id="detailsContent" class="modal-body-pro">
+        <div id="detailsContent" class="occ-modal-body">
             <!-- Populated by JS -->
+        </div>
+        <div class="occ-modal-footer">
+            <button type="button" class="btn-sm-outline" style="min-width:100px;" onclick="closeDetailsModal()">Close</button>
         </div>
     </div>
 </div>
 
-<!-- Proof Modal (Keeping for showProof compatibility) -->
-<div id="proofModal" class="modal-pro" onclick="closeProof()">
-    <div class="modal-content-pro" onclick="event.stopPropagation()">
-        <div class="modal-header-pro">
-            <h3 id="proofModalTitle">Payment Proof</h3>
-            <button onclick="closeProof()">&times;</button>
+<!-- Proof Modal -->
+<div id="proofModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-md occ-content-slide-down">
+        <div class="occ-modal-header">
+            <div>
+                <h3 id="proofModalTitle" class="occ-modal-title">Payment Proof</h3>
+                <div class="occ-modal-subtitle">Official document provided by the customer for transaction audit.</div>
+            </div>
+            <button onclick="closeProof()" class="occ-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
-        <div class="modal-body-pro" style="text-align: center;">
-            <img id="proofModalImg" src="" alt="Proof" style="max-width: 100%; border-radius: 0.5rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+        <div class="occ-modal-body" style="text-align: center;">
+            <img id="proofModalImg" src="" alt="Proof" style="max-width: 100%; border-radius: 1rem; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: 1px solid #e2e8f0;">
+        </div>
+        <div class="occ-modal-footer">
+            <button type="button" class="btn-sm-outline" style="min-width:100px;" onclick="closeProof()">Close</button>
         </div>
     </div>
 </div>
@@ -223,6 +239,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="{{ url_for('static', path='/js/caterer/payments.js') }}"></script>
+<script src="{{ url_for('static', path='/js/caterer/payments.js') }}?v=1.2"></script>
 
 {% endblock %}

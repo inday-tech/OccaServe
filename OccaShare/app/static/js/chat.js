@@ -28,12 +28,40 @@ class OccaChat {
 
         this.socket.onmessage = (event) => {
             const data = JSON.parse(event.data);
+            
+            // Handle Chat Messages
             if (data.type === 'chat_message') {
                 this.handleIncomingMessage(data);
             } else if (data.type === 'message_edit') {
                 this.handleMessageEdit(data);
             } else if (data.type === 'message_delete') {
                 this.handleMessageDelete(data);
+            } 
+            
+            // Handle Generic Notifications
+            else if (data.type === 'new_notification' || data.type === 'dashboard_update') {
+                if (window.showToast && data.message) {
+                    window.showToast(data.message, 'info');
+                }
+                if (window.OccaEvents) window.OccaEvents.publish('notification', data);
+            }
+            
+            // Handle Payment/Booking events
+            else if (data.type === 'payment_rejected' || data.type === 'booking_update') {
+                if (window.showToast && data.message) {
+                    window.showToast(data.message, data.type === 'payment_rejected' ? 'warning' : 'info');
+                }
+                
+                // If on a specific booking management page, reload to show changes
+                if (window.location.pathname.includes('/bookings/manage/') || window.location.pathname.includes('/caterer/bookings')) {
+                   // Optional: Use OccaEvents to trigger a more subtle refresh if implemented
+                   if (window.OccaEvents) window.OccaEvents.publish('booking_status_changed', data);
+                   
+                   // For now, force reload after a short delay so the toast stays visible
+                   setTimeout(() => {
+                       window.location.reload();
+                   }, 2000);
+                }
             }
         };
 

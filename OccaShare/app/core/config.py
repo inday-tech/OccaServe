@@ -27,6 +27,11 @@ class Settings:
     INSTAGRAM_CLIENT_ID = os.getenv("INSTAGRAM_CLIENT_ID", "")
     INSTAGRAM_CLIENT_SECRET = os.getenv("INSTAGRAM_CLIENT_SECRET", "")
 
+    # SMS CONFIGURATION
+    SMS_API_KEY = os.getenv("SMS_API_KEY", "")
+    SMS_SENDER_NAME = os.getenv("SMS_SENDER_NAME", "OccaShare")
+    SMS_PROVIDER = os.getenv("SMS_PROVIDER", "semaphore") # semaphore, twilio, or mock
+
     # KYC CONFIG
     KYC_ENCRYPTION_KEY = os.getenv("KYC_ENCRYPTION_KEY", "")
 

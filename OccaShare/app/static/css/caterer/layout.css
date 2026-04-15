@@ -3,6 +3,15 @@
         /* Highlight color defaults (will be overridden by layout.html) */
         --highlight-color: #48BB78 !important;
         --highlight-color-rgb: 72, 187, 120 !important;
+
+        /* Premium Modal Variables */
+        --modal-radius: 1.5rem;
+        --modal-shadow: 0 25px 60px -12px rgba(15, 23, 42, 0.25);
+        --modal-glass-bg: rgba(255, 255, 255, 0.95);
+        --modal-border: 1px solid rgba(255, 255, 255, 0.6);
+        --modal-header-bg: #f8fafc;
+        --modal-body-padding: 2.5rem;
+        --modal-gap: 1.5rem;
     }
 
     /* Base themed buttons */
@@ -712,3 +721,340 @@
         border-color: var(--primary-color);
         box-shadow: 0 0 0 4px rgba(var(--primary-color-rgb), 0.1);
     }
+
+    /* Real-Time UI Animations */
+    @keyframes fadeOutDownArchive {
+        0% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+        100% {
+            opacity: 0;
+            transform: translateY(20px) scale(0.95);
+        }
+    }
+
+    .fade-out-archive {
+        animation: fadeOutDownArchive 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+        pointer-events: none;
+        overflow: hidden;
+    }
+
+    @keyframes pulseUpdate {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); color: var(--primary-color); }
+        100% { transform: scale(1); }
+    }
+
+    .pulse-update {
+        animation: pulseUpdate 0.6s ease-in-out;
+        display: inline-block;
+    }
+
+    @keyframes slideInRightDashboard {
+        from { opacity: 0; transform: translateX(20px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+
+    .animate-in {
+        animation: slideInRightDashboard 0.4s ease-out forwards;
+    }
+
+/* ===================================================
+   PREMIUM GLOBAL MODAL INTERACTION ENGINE v1.5
+   =================================================== */
+
+/* ===================================================
+   OCC-PREMIUM MODAL FRAMEWORK v2.0
+   =================================================== */
+
+.occ-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+    z-index: 3000;
+    display: none; /* Controlled by JS flex toggle */
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    opacity: 0;
+    transition: opacity 0.35s ease, backdrop-filter 0.4s ease;
+    visibility: hidden;
+    pointer-events: none;
+    box-sizing: border-box;
+}
+
+.occ-modal-overlay.active {
+    display: flex;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    backdrop-filter: blur(10px) saturate(180%);
+    -webkit-backdrop-filter: blur(10px) saturate(180%);
+}
+
+.occ-modal-box {
+    background: var(--modal-glass-bg);
+    border-radius: var(--modal-radius);
+    width: 100%;
+    max-width: 720px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: var(--modal-border);
+    box-shadow: var(--modal-shadow);
+    transform: translateY(20px) scale(0.96);
+    opacity: 0;
+    transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+    position: relative;
+    z-index: 3001;
+    will-change: transform, opacity;
+}
+
+.occ-modal-overlay.active .occ-modal-box {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+}
+
+/* ─── Entry Animation Variants ─── */
+.occ-content-pop { transform: scale(0.88) translateY(10px); }
+.occ-content-slide-down { transform: translateY(-50px) scale(0.98); }
+.occ-content-slide-right { transform: translateX(50px) scale(0.98); }
+.occ-content-slide-up { transform: translateY(50px) scale(0.98); }
+
+.occ-modal-overlay.active .occ-modal-box.occ-content-pop,
+.occ-modal-overlay.active .occ-modal-box.occ-content-slide-down,
+.occ-modal-overlay.active .occ-modal-box.occ-content-slide-right,
+.occ-modal-overlay.active .occ-modal-box.occ-content-slide-up {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+}
+
+.occ-modal-header {
+    padding: 1.5rem 2.5rem;
+    background: var(--modal-header-bg);
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.occ-modal-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    letter-spacing: -0.01em;
+}
+
+.occ-modal-subtitle {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-top: 0.25rem;
+    font-weight: 400;
+}
+
+.occ-modal-close {
+    background: #f1f5f9;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    flex-shrink: 0;
+}
+
+.occ-modal-close:hover {
+    background: #fee2e2;
+    color: #ef4444;
+    transform: rotate(90deg);
+}
+
+.occ-modal-body {
+    padding: var(--modal-body-padding);
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--modal-gap);
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+.occ-modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.occ-modal-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.occ-modal-body::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border-radius: 10px;
+}
+
+.occ-modal-body::-webkit-scrollbar-thumb:hover {
+    background: #cbd5e1;
+}
+
+.occ-modal-footer {
+    padding: 1.25rem 2.5rem;
+    background: #ffffff;
+    border-top: 1px solid #f1f5f9;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    flex-shrink: 0;
+}
+
+/* Modal Form Grid */
+.occ-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+}
+
+.occ-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.occ-form-group.full-width {
+    grid-column: span 2;
+}
+
+.occ-form-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #475569;
+}
+
+.occ-form-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.75rem;
+    font-family: inherit;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+    background: #ffffff;
+}
+
+.occ-form-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.15);
+}
+
+/* Size Variants */
+.occ-modal-box.sz-sm { max-width: 480px; }
+.occ-modal-box.sz-md { max-width: 640px; }
+.occ-modal-box.sz-lg { max-width: 850px; }
+.occ-modal-box.sz-xl { max-width: 1100px; }
+
+/* ─── Mobile Responsiveness (Bottom Sheet) ─── */
+@media (max-width: 640px) {
+    .occ-modal-overlay {
+        padding: 0;
+        align-items: flex-end;
+    }
+    .occ-modal-box {
+        border-radius: 1.75rem 1.75rem 0 0;
+        max-height: 94vh;
+        width: 100%;
+        transform: translateY(105%);
+        transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    .occ-modal-overlay.active .occ-modal-box {
+        transform: translateY(0);
+    }
+    
+    /* Animation overrides for mobile sheet */
+    .occ-content-pop, .occ-content-slide-down, .occ-content-slide-right, .occ-content-slide-up {
+        transform: translateY(100%);
+    }
+
+    .occ-modal-body {
+        padding: 1.5rem;
+        gap: 1.25rem;
+    }
+    .occ-modal-header {
+        padding: 1.25rem 1.5rem;
+    }
+    .occ-modal-footer {
+        padding: 1rem 1.5rem 2rem 1.5rem;
+    }
+    .occ-form-grid {
+        grid-template-columns: 1fr;
+    }
+    .occ-form-group.full-width {
+        grid-column: span 1;
+    }
+}
+
+/* ─── Validation UI ─── */
+.is-invalid {
+    border-color: #ef4444 !important;
+    background-color: #fffafb !important;
+}
+
+.invalid-feedback {
+    display: none;
+    width: 100%;
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: #ef4444;
+    font-weight: 600;
+}
+
+.is-invalid ~ .invalid-feedback {
+    display: block;
+}
+
+/* ROI & Profitability Utility Classes */
+.pulse-roi {
+    animation: roi-pulse 2s infinite;
+    padding: 0.1rem 0.3rem;
+    border-radius: 4px;
+    background: rgba(239, 68, 68, 0.1);
+}
+
+@keyframes roi-pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.05); opacity: 0.8; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.financial-summary-pro .summary-item {
+    display: flex;
+    flex-direction: column;
+}
+
+#roiTrendIcon i {
+    transition: all 0.3s ease;
+}
+
+.pulse-update {
+    animation: stat-pulse 0.8s ease-out;
+}
+
+@keyframes stat-pulse {
+    0% { transform: scale(1); filter: brightness(1); }
+    30% { transform: scale(1.08); filter: brightness(1.2); }
+    100% { transform: scale(1); filter: brightness(1); }
+}
+

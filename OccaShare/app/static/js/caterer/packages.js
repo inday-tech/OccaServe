@@ -21,46 +21,48 @@ function openAddPackageModal() {
     document.querySelectorAll('#packageModal .tab-pane-pro').forEach(p => p.classList.remove('active'));
     document.getElementById('tab-basic').classList.add('active');
 
-    validatePackageForm();
+
     showModal();
 }
 
-function validatePackageForm() {
-    const form = document.getElementById('packageForm');
-    if (!form) return;
-    
-    const submitBtn = form.querySelector('button[type="submit"]');
-    if (!submitBtn) return;
-
-    const name = form.name.value.trim();
-    const desc = form.description.value.trim();
-    const price = form.price_per_head.value;
-    const minGuests = form.min_guests.value;
-
-    if (name && desc && price && minGuests) {
-        submitBtn.disabled = false;
-        submitBtn.style.opacity = '1';
-        submitBtn.style.cursor = 'pointer';
-    } else {
-        submitBtn.disabled = true;
-        submitBtn.style.opacity = '0.5';
-        submitBtn.style.cursor = 'not-allowed';
-    }
-}
-
 document.addEventListener('DOMContentLoaded', () => {
-    const form = document.getElementById('packageForm');
-    if (form) {
-        form.addEventListener('input', validatePackageForm);
-    }
+    // Initialize Package Form Validation
+    const packageValidation = new window.ValidationManager('packageForm', {
+        'name': { unique: true, uniqueApi: '/caterer/api/validate-package-name', label: 'package' },
+        'service_duration': { numericOnly: true },
+        'price_per_head': { numericOnly: true, max: 100000, autoStop: true },
+        'cost_price': { numericOnly: true, max: 100000, autoStop: true },
+        'min_contract_amount': { numericOnly: true, max: 10000000, autoStop: true }
+    });
+
+    // Initialize Menu Form (Mini version in packages.html)
+    const innerMenuValidation = new window.ValidationManager('menuForm', {
+        'name': { unique: true, uniqueApi: '/caterer/api/validate-dish-name', label: 'dish' },
+        'cost_price': { numericOnly: true, max: 100000, autoStop: true },
+        'addon_price': { numericOnly: true, max: 50000, autoStop: true }
+    });
 });
 
 function showModal() {
-    document.getElementById('packageModal').style.display = 'flex';
+    const el = document.getElementById('packageModal');
+    if (!el) return;
+    el.style.display = 'flex';
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            el.classList.add('active');
+        });
+    });
 }
 
 function hideModal() {
-    document.getElementById('packageModal').style.display = 'none';
+    const el = document.getElementById('packageModal');
+    if (!el) return;
+    el.classList.remove('active');
+    setTimeout(() => {
+        if (!el.classList.contains('active')) {
+            el.style.display = 'none';
+        }
+    }, 400);
 }
 
 function addCustomInclusion() {
@@ -112,6 +114,32 @@ async function editPackage(pkgId) {
         form.service_duration.value = pkg.service_duration || 8;
         form.cost_price.value = pkg.cost_price || 0;
 
+        const costContainer = document.getElementById('costRowsContainer');
+        if (costContainer) {
+            costContainer.innerHTML = '';
+            if (pkg.cost_breakdown && pkg.cost_breakdown.length > 0) {
+                pkg.cost_breakdown.forEach(item => {
+                    const row = document.createElement('div');
+                    row.className = 'premium-cost-row';
+                    row.innerHTML = `
+                        <div class="premium-cost-input-group">
+                            <label>Expense Item</label>
+                            <input type="text" class="premium-cost-control cost-name" value="${item.name}" placeholder="Expense Name">
+                        </div>
+                        <div class="premium-cost-input-group" style="max-width: 120px;">
+                            <label>Cost (₱)</label>
+                            <input type="number" class="premium-cost-control cost-amount" value="${item.amount}" placeholder="0" min="0" oninput="calculateCosts()">
+                        </div>
+                        <button type="button" class="btn-remove-cost" onclick="this.parentElement.remove(); calculateCosts()"><i class="fas fa-trash-alt"></i></button>
+                    `;
+                    costContainer.appendChild(row);
+                });
+            } else {
+                if (window.addCostRow) window.addCostRow('costRowsContainer');
+            }
+            if (window.calculateCosts) window.calculateCosts();
+        }
+
         // Apply immediate formatting
         if (window.applyCommaFormatting) {
             window.applyCommaFormatting(form.price_per_head);
@@ -146,7 +174,10 @@ async function editPackage(pkgId) {
                 }
             }
         });
-
+        
+        // Refresh validation state
+        form.dispatchEvent(new Event('input'));
+        
         showModal();
     } catch (error) {
         console.error('Edit fetch failed:', error);
@@ -214,44 +245,36 @@ function showMenuModal(packageId, packageName) {
             }
         });
 
-    document.getElementById('menuModal').style.display = 'flex';
+    const el = document.getElementById('menuModal');
+    if (!el) return;
+    el.style.display = 'flex';
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            el.classList.add('active');
+        });
+    });
 }
 
 function hideMenuModal() {
-    document.getElementById('menuModal').style.display = 'none';
+    const el = document.getElementById('menuModal');
+    if (!el) return;
+    el.classList.remove('active');
+    setTimeout(() => {
+        if (!el.classList.contains('active')) {
+            el.style.display = 'none';
+        }
+    }, 400);
 }
 
-async    function confirmArchiveDish(id) {
-        window.showConfirm("Are you sure you want to archive this dish? It will be moved to your archives and hidden from your offerings.", () => {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = `/caterer/menu/${id}/archive?next=/caterer/menu?success_msg=Dish+archived+successfully`;
-            document.body.appendChild(form);
-            form.submit();
-        }, "Archive Dish?", "Yes, Archive Dish");
-    }
+function confirmArchiveDish(id) {
+    window.showConfirm("Are you sure you want to archive this dish? It will be moved to your archives and hidden from your offerings.", async () => {
+        await window.apiAction(`/caterer/menu/${id}/archive`, { method: 'POST' });
+    }, "Archive Dish?", "Yes, Archive Dish");
+}
 
 async function archivePackage(pkgId) {
     window.showConfirm('Are you sure you want to archive this package? It will be moved to your archives and hidden from your offerings.', async () => {
-        try {
-            const response = await fetch(`/caterer/packages/${pkgId}/archive`, { method: 'POST' });
-            if (response.ok) {
-                const card = document.getElementById(`package-${pkgId}`);
-                if (card) {
-                    card.style.transform = 'scale(0.9)';
-                    card.style.opacity = '0';
-                    setTimeout(() => {
-                        window.location.href = window.location.pathname + "?success_msg=Package+archived+successfully";
-                    }, 400);
-                } else {
-                    window.location.href = window.location.pathname + "?success_msg=Package+archived+successfully";
-                }
-            } else {
-                window.showError('Could not archive package. Please try again.');
-            }
-        } catch (error) {
-            window.showError('Could not archive package. Please try again.');
-        }
+        await window.apiAction(`/caterer/packages/${pkgId}/archive`, { method: 'POST' });
     }, "Archive Package?", "Yes, Archive");
 }
 
@@ -279,9 +302,10 @@ function switchMenuMode(mode) {
     const menuBtns = document.getElementById('menuModal').querySelectorAll('.mtab-btn');
     menuBtns.forEach(btn => {
         btn.classList.remove('active');
-        if (mode === 'current' && btn.innerText.includes('Curated')) btn.classList.add('active');
-        if (mode === 'library' && btn.innerText.includes('Library')) btn.classList.add('active');
-        if (mode === 'new' && btn.innerText.includes('New')) btn.classList.add('active');
+        const text = btn.innerText.toLowerCase();
+        if (mode === 'current' && (text.includes('curated') || text.includes('menu'))) btn.classList.add('active');
+        if (mode === 'library' && text.includes('library')) btn.classList.add('active');
+        if (mode === 'new' && (text.includes('new') || text.includes('dish'))) btn.classList.add('active');
     });
 
     if (mode === 'library') {
@@ -475,7 +499,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 window.onclick = function (event) {
-    if (event.target.classList.contains('modal-pro')) {
+    if (event.target.classList.contains('occ-modal-overlay')) {
         hideModal();
         hideMenuModal();
     }
