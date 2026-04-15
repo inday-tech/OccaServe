@@ -349,6 +349,43 @@ async def confirm_caterer_payment(
     return RedirectResponse(url="/caterer/payments?success_msg=Payment+confirmed+successfully", status_code=303)
 
 
+@router.post("/bookings/{booking_id}/complete")
+async def complete_booking(
+    booking_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    """Mark a confirmed booking as completed."""
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking or booking.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    if booking.status not in ['confirmed', 'paid']:
+        raise HTTPException(status_code=400, detail="Only confirmed bookings can be marked as completed")
+
+    booking.status = 'completed'
+    booking.payment_status = 'paid'  # Mark as fully settled when event is completed
+
+    history = models.BookingHistory(
+        booking_id=booking.id,
+        status='completed',
+        notes="Event completed. Booking marked as completed by caterer."
+    )
+    db.add(history)
+    db.commit()
+
+    # Real-time alert to customer
+    import asyncio
+    asyncio.create_task(manager.broadcast_to_user(booking.user_id, {
+        "type": "booking_update",
+        "message": f"Your event '{booking.event_name}' has been marked as completed!",
+        "booking_id": booking.id,
+        "status": "completed"
+    }))
+
+    return RedirectResponse(url=f"/caterer/bookings?success_msg=Booking+marked+as+completed", status_code=303)
+
+
 @router.get("/reviews", response_class=HTMLResponse)
 async def caterer_reviews(
     request: Request, 

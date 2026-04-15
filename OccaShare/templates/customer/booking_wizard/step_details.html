@@ -68,35 +68,39 @@
                     <div class="form-group">
                         <label class="form-label">Event Type</label>
                         <select name="event_type" id="event_type_select" class="filter-select-pro" required>
-                            <option value="">Birthday</option>
+                            <option value="">-- Select Event Type --</option>
                             <option value="Wedding" {% if booking and booking.event_type == 'Wedding' %}selected{% endif %}>Wedding</option>
                             <option value="Birthday" {% if booking and booking.event_type == 'Birthday' %}selected{% endif %}>Birthday</option>
-                            <option value="Corporate" {% if booking and booking.event_type == 'Corporate' %}selected{% endif %}>Corporate</option>
-                            <option value="Debut" {% if booking and booking.event_type == 'Debut' %}selected{% endif %}>Debut</option>
-                            <option value="Anniversary" {% if booking and booking.event_type == 'Anniversary' %}selected{% endif %}>Anniversary</option>
-                            <option value="Graduation" {% if booking and booking.event_type == 'Graduation' %}selected{% endif %}>Graduation</option>
-                            <option value="Other" {% if booking and (booking.event_type not in ['Wedding','Birthday','Corporate','Debut','Anniversary','Graduation']) and booking.event_type %}selected{% endif %}>Other (specify below)</option>
+                            <option value="Corporate Event" {% if booking and booking.event_type == 'Corporate Event' %}selected{% endif %}>Corporate Event</option>
+                            <option value="Debut / Milestone" {% if booking and booking.event_type == 'Debut / Milestone' %}selected{% endif %}>Debut / Milestone</option>
+                            <option value="Baptism / Family Event" {% if booking and booking.event_type == 'Baptism / Family Event' %}selected{% endif %}>Baptism / Family Event</option>
+                            <option value="Private Party" {% if booking and booking.event_type == 'Private Party' %}selected{% endif %}>Private Party</option>
+                            <option value="Fiesta / Large Event" {% if booking and booking.event_type == 'Fiesta / Large Event' %}selected{% endif %}>Fiesta / Large Event</option>
+                            <option value="Holiday Celebration" {% if booking and booking.event_type == 'Holiday Celebration' %}selected{% endif %}>Holiday Celebration</option>
+                            <option value="Other" {% if booking and (booking.event_type not in ['Wedding','Birthday','Corporate Event','Debut / Milestone','Baptism / Family Event','Private Party','Fiesta / Large Event','Holiday Celebration']) and booking.event_type %}selected{% endif %}>Other (specify below)</option>
                         </select>
                         <span class="field-error" id="err-type">Selection required.</span>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Guest Count <small>(min {{ caterer.min_pax or package.min_guests or 1 }})</small></label>
+                        <label class="form-label">Guest Count <small>(max 1000 pax)</small></label>
                         <div class="input-with-icon">
                             <i class="fas fa-users"></i>
-                            <input type="number" name="guest_count" id="guest_count" class="form-input"
-                                value="{{ booking.guest_count if booking else (caterer.min_pax or package.min_guests or 50) }}"
-                                min="{{ caterer.min_pax or package.min_guests or 1 }}" oninput="updateCalculator()" required>
+                            <input type="text" inputmode="numeric" id="guest_count_display" class="form-input"
+                                value="{{ "{:,}".format(booking.guest_count if booking else (caterer.min_pax or package.min_guests or 50)) }}"
+                                oninput="formatGuestCount(this); updateCalculator()" required>
+                            <input type="hidden" name="guest_count" id="guest_count"
+                                value="{{ booking.guest_count if booking else (caterer.min_pax or package.min_guests or 50) }}">
                         </div>
-                        <span class="field-error" id="err-guests">Min required: {{ caterer.min_pax or package.min_guests or 1 }}.</span>
+                        <span class="field-error" id="err-guests">Allowed guests: {{ caterer.min_pax or package.min_guests or 1 }} to 1000.</span>
                     </div>
                 </div>
 
-                <div id="other-event-wrap" class="{% if booking and (booking.event_type not in ['Wedding','Birthday','Corporate','Debut','Anniversary','Graduation']) and booking.event_type %}visible{% endif %}">
+                <div id="other-event-wrap" class="{% if booking and (booking.event_type not in ['Wedding','Birthday','Corporate Event','Debut / Milestone','Baptism / Family Event','Private Party','Fiesta / Large Event','Holiday Celebration']) and booking.event_type %}visible{% endif %}">
                     <div class="form-group">
                         <label class="form-label">Specify Event Type</label>
                         <input type="text" name="other_event_type" id="other_event_type" class="form-input"
-                            value="{{ booking.event_type if booking and (booking.event_type not in ['Wedding','Birthday','Corporate','Debut','Anniversary','Graduation']) else '' }}"
+                            value="{{ booking.event_type if booking and (booking.event_type not in ['Wedding','Birthday','Corporate Event','Debut / Milestone','Baptism / Family Event','Private Party','Fiesta / Large Event','Holiday Celebration']) else '' }}"
                             placeholder="e.g., Family Reunion" maxlength="80">
                         <span class="field-error" id="err-other-type">Please describe.</span>
                     </div>
@@ -115,14 +119,26 @@
                         <div id="availability-chip" class="availability-chip"></div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Start Time</label>
-                        <div class="input-with-icon">
-                            <i class="fas fa-clock"></i>
-                            <input type="time" name="event_time" id="event_time" class="form-input" 
-                                value="{{ booking.event_time.strftime('%H:%M') if booking and booking.event_time else '' }}"
-                                required>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div>
+                                <label class="form-label">Start Time <span style="color:red">*</span></label>
+                                <div class="input-with-icon">
+                                    <i class="fas fa-clock"></i>
+                                    <input type="time" name="event_time" id="event_time" class="form-input" 
+                                        value="{{ booking.event_time.strftime('%H:%M') if booking and booking.event_time else '' }}"
+                                        required>
+                                </div>
+                                <span class="field-error" id="err-time">Please select valid times.</span>
+                            </div>
+                            <div>
+                                <label class="form-label">End Time</label>
+                                <div class="input-with-icon">
+                                    <i class="fas fa-clock"></i>
+                                    <input type="time" name="event_end_time" id="event_end_time" class="form-input" 
+                                        value="{{ booking.event_end_time.strftime('%H:%M') if booking and booking.event_end_time else '' }}">
+                                </div>
+                            </div>
                         </div>
-                        <span class="field-error" id="err-time">Please select a valid event time.</span>
                     </div>
                 </div>
             </div>
@@ -179,7 +195,11 @@
                         <label class="form-label">Province</label>
                         <select name="province" id="province_select" class="filter-select-pro" required>
                             <option value="">-- Province --</option>
+                            <option value="Batangas">Batangas</option>
+                            <option value="Cavite">Cavite</option>
                             <option value="Laguna" selected>Laguna</option>
+                            <option value="Quezon">Quezon</option>
+                            <option value="Rizal">Rizal</option>
                         </select>
                         <span class="field-error" id="err-province">Required.</span>
                     </div>

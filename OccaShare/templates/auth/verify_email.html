@@ -363,23 +363,21 @@
                     }
                 } else {
                     const text = await response.text();
-                    if (text.includes('Expired')) {
+                    const textLower = text.toLowerCase();
+                    if (textLower.includes('expired')) {
                         Swal.fire({
                             icon: 'error',
                             title: 'Code Expired',
                             text: 'Your code has expired. Please request a new one.',
                             confirmButtonColor: '#FF7B54'
                         });
-                    } else if (text.includes('Invalid')) {
+                    } else if (textLower.includes('invalid')) {
                         Swal.fire({
                             icon: 'error',
                             title: 'Invalid Code',
                             text: 'Please check the code and try again.',
                             confirmButtonColor: '#FF7B54'
                         });
-                    } else if (response.ok) {
-                        const nextUrl = "{{ next_url if next_url else '/customer/dashboard' }}";
-                        window.location.href = nextUrl;
                     } else {
                         form.submit();
                     }

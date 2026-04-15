@@ -420,11 +420,18 @@
 
 /* Premium Layout Elements */
 .action-center-premium {
-    border: 2px dashed #fed7aa !important;
-    /* Lighter orange dashed border */
+    border: none !important;
     background: #fff !important;
-    box-shadow: none !important;
+    box-shadow: var(--shadow-md) !important;
+    border-top: 4px solid var(--primary-color) !important;
     border-radius: 0.75rem !important;
+}
+
+.sticky-right {
+    position: sticky;
+    top: 1.5rem;
+    align-self: start;
+    z-index: 10;
 }
 
 .contract-button-container {

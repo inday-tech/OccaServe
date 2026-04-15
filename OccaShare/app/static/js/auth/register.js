@@ -369,19 +369,42 @@
                 });
 
                 if (response.redirected) {
-                    // Show success alert before redirecting
                     const isVerify = response.url.includes('/auth/verify');
-                    if (window.Swal) {
-                        await Swal.fire({
-                            icon: 'success',
-                            title: 'Registration Successful!',
-                            text: isVerify ? 'Your account has been created. Please check your email inbox for the verification code.' : 'Your account has been created. Redirecting to your dashboard...',
-                            timer: 3000,
-                            showConfirmButton: false,
-                            confirmButtonColor: '#FF7B54'
-                        });
+                    if (isVerify) {
+                        const emailInputVal = emailEl ? emailEl.value : "";
+                        const emailDisplay = document.getElementById('email-display');
+                        const emailHidden = document.getElementById('emailField');
+                        
+                        if (emailDisplay) emailDisplay.innerText = emailInputVal;
+                        if (emailHidden) emailHidden.value = emailInputVal;
+                        
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalBtnText;
+
+                        if (typeof window.openAuthModal === 'function' && document.getElementById('authModalOverlay')) {
+                            window.openAuthModal('verify');
+                            if (typeof window.initVerifyPolling === 'function') {
+                                window.initVerifyPolling();
+                            }
+                            if (typeof window.startTimer === 'function') {
+                                window.startTimer();
+                            }
+                        } else {
+                            window.location.href = response.url;
+                        }
+                    } else {
+                        if (window.Swal) {
+                            await Swal.fire({
+                                icon: 'success',
+                                title: 'Registration Successful!',
+                                text: 'Your account has been created. Redirecting...',
+                                timer: 3000,
+                                showConfirmButton: false,
+                                confirmButtonColor: '#FF7B54'
+                            });
+                        }
+                        window.location.href = response.url;
                     }
-                    window.location.href = response.url;
                 } else {
                     const contentType = response.headers.get("content-type");
                     if (contentType && contentType.indexOf("application/json") !== -1) {

@@ -7,72 +7,199 @@
 {% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/dashboard.css') }}?v=1.1">
+<style>
+    /* 
+       DIAMOND STANDARD UNIFIED THEME
+       Aligning with Caterer Dashboard for UI Consistency
+    */
+    .main-content {
+        padding: 2.25rem 2.75rem !important;
+        background-color: #f8fafc !important;
+        /* Slightly softer background */
+    }
+
+    /* Page Header Overrides (Standardized) */
+    .page-header-standard {
+        margin-bottom: 2rem;
+    }
+
+    .page-header-standard h1 {
+        font-size: 2.2rem;
+        font-weight: 800;
+        color: var(--secondary-color);
+        margin: 0;
+        letter-spacing: -0.02em;
+    }
+
+    .page-header-standard h1 span.accent-text {
+        color: var(--primary-color);
+    }
+
+    .page-header-standard p {
+        font-size: 1rem;
+        color: #64748b;
+        margin-top: 0.4rem;
+        font-weight: 500;
+    }
+
+    /* Stats Grid Adjustments */
+    .stats-grid-standard {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    /* Sidebar and Layout Spacing */
+    .dashboard-layout-grid {
+        display: grid;
+        grid-template-columns: 2.2fr 1fr;
+        gap: 1.5rem;
+        align-items: start;
+    }
+
+    .widget-container-standard {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    /* Table & Card Standardizing */
+    .activity-card-standard {
+        padding: 1.75rem !important;
+    }
+
+    .activity-title i {
+        margin-right: 0.75rem;
+        color: var(--primary-color);
+    }
+
+    .premium-row:hover {
+        transform: none !important;
+        /* Customer preference: "sakto lang" */
+        background: #fdfdfd;
+        border-color: var(--primary-color);
+    }
+
+    /* Messaging Widget Overrides for Consistency */
+    .conv-item-std {
+        padding: 0.85rem 0;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .avatar-std {
+        width: 42px;
+        height: 42px;
+        background: rgba(var(--primary-color-rgb), 0.1);
+        color: var(--primary-color);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 0.8rem;
+    }
+
+    @media (max-width: 1200px) {
+        .dashboard-layout-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .stats-grid-standard {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    /* Stat Card Icon Hover Animations */
+    .stat-card-premium {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .stat-card-premium:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 20px rgba(0,0,0,0.06);
+    }
+
+    .stat-card-premium .stat-icon-bg {
+        transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .stat-card-premium .stat-icon-bg i {
+        transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .stat-card-premium:hover .stat-icon-bg {
+        transform: scale(1.1);
+    }
+
+    .stat-card-premium:hover .stat-icon-bg i {
+        transform: scale(1.15) rotate(12deg);
+    }
+
+    @media (max-width: 768px) {
+        .stats-grid-standard {
+            grid-template-columns: 1fr;
+        }
+
+        .main-content {
+            padding: 1.5rem !important;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="dashboard-hero">
-    <h1>Welcome back, {{ user.first_name }}!</h1>
+<div class="page-header-standard">
+    <h1>Welcome back, <span class="accent-text">{{ user.first_name }}!</span></h1>
     <p>Here's what's happening with your bookings today.</p>
 </div>
 
-{% if not user.is_verified %}
-<!-- Unverified Alert -->
-<div class="verification-alert">
-    <div class="verification-alert-content">
-        <div class="verification-icon-box">
-            <i class="fas fa-id-card"></i>
-        </div>
-        <div class="verification-text">
-            <h4>Account Verification Required</h4>
-            <p>Complete your one-time identity verification to start booking caterers.</p>
-        </div>
-    </div>
-    <a href="/customer/verification" class="btn-primary btn-verify-now">Verify Now</a>
-</div>
-{% endif %}
-
-<!-- Stats Cards -->
-<div class="stats-container">
-    <div class="stat-card">
-        <div class="stat-icon halo-amber">
+<!-- Standardized Stats Grid -->
+<div class="stats-grid-standard">
+    <div class="stat-card-premium animate-up">
+        <div class="stat-icon-bg">
             <i class="fas fa-calendar-alt"></i>
         </div>
-        <div class="stat-label">Upcoming Events</div>
-        <div class="stat-value">{{ upcoming_count if upcoming_count is defined else 0 }}</div>
+        <div class="stat-label-dashboard">Upcoming Events</div>
+        <div class="stat-value-dashboard">{{ upcoming_count }}</div>
+        <div class="stat-hint-dashboard">Confirmed bookings</div>
     </div>
 
-    <div class="stat-card">
-        <div class="stat-icon halo-purple">
+    <div class="stat-card-premium animate-up" style="animation-delay: 0.1s;">
+        <div class="stat-icon-bg" style="color: #6366f1; background: rgba(99, 102, 241, 0.1);">
             <i class="fas fa-history"></i>
         </div>
-        <div class="stat-label">Total Bookings</div>
-        <div class="stat-value">{{ total_count if total_count is defined else 0 }}</div>
+        <div class="stat-label-dashboard">Total Bookings</div>
+        <div class="stat-value-dashboard">{{ total_count }}</div>
+        <div class="stat-hint-dashboard">Lifetime orders</div>
     </div>
 
-    <div class="stat-card">
-        <div class="stat-icon halo-green">
+    <div class="stat-card-premium animate-up" style="animation-delay: 0.2s;">
+        <div class="stat-icon-bg" style="color: #f59e0b; background: rgba(245, 158, 11, 0.1);">
             <i class="fas fa-star"></i>
         </div>
-        <div class="stat-label">Reviews Given</div>
-        <div class="stat-value">{{ user.reviews|length if user.reviews else 0 }}</div>
+        <div class="stat-label-dashboard">Reviews Given</div>
+        <div class="stat-value-dashboard">{{ user.reviews|length if user.reviews else 0 }}</div>
+        <div class="stat-hint-dashboard">Feedback submitted</div>
     </div>
 </div>
 
-<!-- Dashboard Content Grid -->
-<div class="dashboard-grid-container"
-    style="display: grid; grid-template-columns: 2.2fr 1fr; gap: 2rem; margin-bottom: 3.5rem; align-items: start;">
+<div class="dashboard-layout-grid">
 
-    <!-- Left Column: Recent Activity -->
-    <div class="activity-card">
-        <div class="activity-header">
-            <h3><i class="fas fa-clock"></i> Recent Events</h3>
-            <a href="/customer/bookings" class="btn-text-arrow">View All <i class="fas fa-arrow-right"></i></a>
+    <!-- Left Column: Activity -->
+    <div class="c-card-premium activity-card-standard animate-up" style="animation-delay: 0.3s;">
+        <div class="card-header-flex" style="margin-bottom: 2rem;">
+            <h3 class="activity-title" style="margin:0; font-weight: 800; color: var(--secondary-color);">
+                <i class="fas fa-clock"></i> Recent Events
+            </h3>
         </div>
 
         {% if bookings %}
-        <div class="table-responsive">
-            <table class="activity-table">
+        <div class="premium-table-wrapper">
+            <table class="premium-table">
                 <thead>
                     <tr>
                         <th>Caterer</th>
@@ -84,109 +211,143 @@
                 </thead>
                 <tbody>
                     {% for booking in bookings %}
-                    <tr class="activity-row">
-                        <td class="activity-cell" style="border-radius: 1rem 0 0 1rem;">
-                            <div class="activity-caterer-info">
-                                <div class="activity-caterer-icon">
-                                    <i class="fas fa-magic"></i>
+                    <tr class="premium-row" onclick="window.location.href='/customer/bookings/manage/{{ booking.id }}'"
+                        style="cursor: pointer;">
+                        <td class="premium-cell">
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <div
+                                    style="width: 40px; height: 40px; background: rgba(var(--primary-color-rgb), 0.1); color: var(--primary-color); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-utensils"></i>
                                 </div>
                                 <div>
-                                    <h4 class="activity-event-name">{{ booking.event_name }}</h4>
-                                    <span class="activity-caterer-name">with {{ booking.caterer_name }}</span>
+                                    <div style="font-weight: 800; color: var(--secondary-color); font-size: 0.95rem;">{{
+                                        booking.event_name }}</div>
+                                    <div style="font-size: 0.8rem; color: #64748b;">{{ booking.caterer_name }}</div>
                                 </div>
                             </div>
                         </td>
-                        <td class="activity-cell">
-                            <div class="activity-date-primary">{{ booking.display_date }}</div>
-                            <div class="activity-time-secondary">{{ booking.display_time }}</div>
+                        <td class="premium-cell">
+                            <div style="font-weight: 700; color: var(--secondary-color); font-size: 0.85rem;">{{
+                                booking.display_date }}</div>
+                            <div style="font-size: 0.75rem; color: #94a3b8;">{{ booking.display_time }}</div>
                         </td>
-                        <td class="activity-cell">
-                            <div class="activity-amount">{{ booking.display_amount }}</div>
-                            <div class="activity-payment-method">{{ booking.payment_method }}</div>
+                        <td class="premium-cell">
+                            <div style="font-weight: 800; color: var(--secondary-color); font-size: 0.9rem;">{{
+                                booking.display_amount }}</div>
+                            <div style="font-size: 0.75rem; color: #94a3b8;">{{ booking.payment_method }}</div>
                         </td>
-                        <td class="activity-cell">
-                            <!-- Booking Status -->
-                            <div class="status-badge status-{{ booking.status or 'pending' }}">
-                                {{ (booking.status or 'pending')|capitalize }}
-                            </div>
-                            <!-- Payment Status Hint -->
-                            {% if booking.payment_status %}
-                            <div class="payment-status-hint py-1"
-                                style="font-size: 0.7rem; font-weight: 700; color: #64748b;">
-                                <i class="fas fa-circle"
-                                    style="font-size: 0.5rem; color: {% if booking.payment_status == 'paid' %}#10b981{% else %}#f59e0b{% endif %};"></i>
-                                {{ booking.payment_status|replace('_', ' ')|upper }}
+                        <td class="premium-cell">
+                            <span class="p-badge"
+                                style="display: inline-flex; padding: 0.35rem 0.85rem; border-radius: 2rem; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; background: rgba(var(--primary-color-rgb), 0.1); color: var(--primary-color);">
+                                {{ (booking.status or 'pending')|replace('_', ' ') }}
+                            </span>
+                            {% if booking.payment_status == 'paid' or booking.has_proof %}
+                            <div
+                                style="display: flex; align-items: center; gap: 4px; font-size: 0.7rem; font-weight: 700; color: #059669; margin-top: 4px;">
+                                <i class="fas fa-check-circle" style="font-size: 0.6rem;"></i> Paid
                             </div>
                             {% endif %}
                         </td>
-                        <td class="activity-cell" style="border-radius: 0 1rem 1rem 0; text-align: right;">
-                            <div class="activity-actions">
-                                {% if booking.status == 'draft' %}
-                                <a href="/bookings/continue/{{ booking.id }}"
-                                    class="btn-primary btn-status-action">Continue</a>
-                                {% elif booking.needs_signing %}
-                                <a href="/contracts/{{ booking.id }}/sign" class="btn-primary btn-status-action"
-                                    style="background-color: #1e293b;">Sign Contract</a>
-                                {% else %}
-                                <a href="/customer/bookings/manage/{{ booking.id }}" class="btn-icon-action"
-                                    title="View Details"><i class="fas fa-eye"></i></a>
-                                {% if booking.status == 'completed' and not booking.has_review %}
-                                <a href="/customer/feedback/{{ booking.id }}"
-                                    class="btn-primary btn-status-action">Rate</a>
-                                {% endif %}
-                                {% endif %}
-                            </div>
+                        <td class="premium-cell" style="text-align: right;">
+                            <button class="btn-pagination"
+                                style="border-radius: 0.5rem; padding: 0.4rem 0.8rem; font-size: 0.75rem; border-color: var(--primary-color); color: var(--primary-color);">
+                                Manage <i class="fas fa-arrow-right" style="font-size: 0.7rem;"></i>
+                            </button>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
+
+        <!-- Standardized Pagination Controls -->
+        <div class="pagination-container-p">
+            <div class="pagination-info">
+                Showing Page <strong>{{ current_page }}</strong> of {{ total_pages }}
+            </div>
+            <div class="pagination-buttons">
+                <button class="btn-pagination" {% if current_page==1 %}disabled{% endif %}
+                    onclick="window.location.href='/customer/dashboard?page={{ current_page - 1 }}'">
+                    <i class="fas fa-chevron-left"></i> Previous
+                </button>
+
+                {% for i in range(1, total_pages + 1) %}
+                {% if i == current_page %}
+                <button class="page-num-btn active">{{ i }}</button>
+                {% elif i <= 3 or i> total_pages - 2 or (i >= current_page - 1 and i <= current_page + 1) %} <button
+                        class="page-num-btn" onclick="window.location.href='/customer/dashboard?page={{ i }}'">{{ i
+                        }}</button>
+                        {% elif i == 4 and total_pages > 6 %}
+                        <span style="color: #cbd5e1;">...</span>
+                        {% endif %}
+                        {% endfor %}
+
+                        <button class="btn-pagination" {% if current_page==total_pages %}disabled{% endif %}
+                            onclick="window.location.href='/customer/dashboard?page={{ current_page + 1 }}'">
+                            Next <i class="fas fa-chevron-right"></i>
+                        </button>
+            </div>
+        </div>
+
         {% else %}
-        <div class="empty-state">
-            <img src="https://illustrations.popsy.co/gray/calendar.svg" alt="Empty"
-                style="width: 120px; margin-bottom: 1.5rem;">
-            <h3>No bookings found</h3>
-            <p>Host your first event with OccaServe!</p>
-            <a href="/customer/marketplace" class="btn-primary" style="text-decoration: none; margin-top: 1rem;">Browse
-                Caterers</a>
+        <div style="text-align: center; padding: 4rem 2rem;">
+            <p style="color: #94a3b8; font-weight: 700; font-size: 1.1rem;">No events found</p>
+            <a href="/customer/marketplace" class="btn-primary"
+                style="display: inline-flex; margin-top: 1.5rem; background: var(--primary-color); color: white; padding: 0.75rem 2rem; border-radius: 0.75rem; text-decoration: none; font-weight: 700;">Find
+                a Caterer</a>
         </div>
         {% endif %}
     </div>
 
     <!-- Right Column: Sidebar Widgets -->
-    <div class="dashboard-sidebar">
-        <!-- Live Messages Widget -->
-        <div class="sidebar-widget-card">
-            {% include "shared/dashboard_messages_widget.html" %}
+    <div class="widget-container-standard">
+        <!-- Messaging Widget -->
+        <div class="c-card-premium animate-up" style="animation-delay: 0.4s; padding: 1.75rem !important;">
+            <div class="card-header-flex" style="margin-bottom: 1.5rem;">
+                <h4 style="margin:0; font-weight: 800; color: var(--secondary-color);">
+                    <i class="fas fa-comments" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Live
+                    Messages
+                </h4>
+            </div>
+
+            <div class="conv-list-std">
+                {% if conversations %}
+                {% for conv in conversations %}
+                <div class="conv-item-std" onclick="window.location.href='/customer/messages'" style="cursor: pointer;">
+                    <div class="avatar-std">
+                        {{ conv.caterer_name[:2]|upper }}
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                            <span
+                                style="font-weight: 800; color: var(--secondary-color); font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{
+                                conv.caterer_name }}</span>
+                            <span style="font-size: 0.7rem; color: #94a3b8; font-weight: 600;">{{ conv.last_msg_time
+                                }}</span>
+                        </div>
+                        <div
+                            style="font-size: 0.8rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            {{ conv.last_msg_text }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div
+                    style="text-align: center; padding: 1.5rem 0; color: #94a3b8; font-size: 0.85rem; font-weight: 600;">
+                    No active chats</div>
+                {% endif %}
+            </div>
+
+            <div style="text-align: center; margin-top: 1.5rem;">
+                <a href="#" onclick="event.preventDefault(); document.getElementById('chatTrigger').click();"
+                    style="color: var(--primary-color); text-decoration: none; font-weight: 800; font-size: 0.9rem;">View All Conversations</a>
+            </div>
         </div>
 
-        <!-- Premium Planning Tip -->
-        <div class="planning-tip-card">
-            <div class="tip-icon-glow">
-                <i class="fas fa-lightbulb"></i>
-            </div>
-            <div class="tip-content">
-                <h4>Planning Tip</h4>
-                <p>Book your caterer at least 2 months in advance for big events like weddings to ensure availability of
-                    the best packages.</p>
-            </div>
-            <div class="tip-sparkle-bg"></div>
-        </div>
+
     </div>
 </div>
-
-<style>
-    @media (max-width: 1100px) {
-        .dashboard-grid-container {
-            grid-template-columns: 1fr !important;
-        }
-    }
-
-    .payment-status-hint i {
-        margin-right: 4px;
-    }
-</style>
 {% endblock %}
 
 {% block body_attributes %}data-client-id="{{ client_id }}"{% endblock %}

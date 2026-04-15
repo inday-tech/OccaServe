@@ -22,6 +22,7 @@ customer_only = auth.RoleChecker(["customer"])
 @router.get("/dashboard", response_class=HTMLResponse)
 async def customer_dashboard(
     request: Request, 
+    page: int = 1,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
@@ -39,9 +40,20 @@ async def customer_dashboard(
             except:
                 continue
 
+    # Pagination Logic
+    PER_PAGE = 5
+    page = max(1, page)
+    total_bookings = len(bookings)
+    total_pages = (total_bookings + PER_PAGE - 1) // PER_PAGE if total_bookings > 0 else 1
+    page = min(page, total_pages)
+    
+    start_idx = (page - 1) * PER_PAGE
+    end_idx = start_idx + PER_PAGE
+    paged_bookings = bookings[start_idx:end_idx]
+
     # Create display-friendly booking list
     display_bookings = []
-    for b in bookings[:5]:
+    for b in paged_bookings:
         b_data = {
             "id": b.id,
             "event_name": b.event_name or "Event Name",
@@ -82,13 +94,48 @@ async def customer_dashboard(
             
         display_bookings.append(b_data)
 
+    # Build conversations list for Live Messages widget
+    from sqlalchemy import or_
+    all_msgs = db.query(models.ChatMessage).filter(
+        or_(models.ChatMessage.sender_id == user.id, models.ChatMessage.receiver_id == user.id)
+    ).order_by(models.ChatMessage.created_at.desc()).all()
+
+    conversations_dict = {}
+    for msg in all_msgs:
+        peer_id = msg.receiver_id if msg.sender_id == user.id else msg.sender_id
+        if peer_id not in conversations_dict:
+            peer = db.query(models.User).get(peer_id)
+            if peer:
+                c_name = (
+                    peer.caterer_profile.business_name
+                    if peer.role == 'caterer' and peer.caterer_profile
+                    else (f"{peer.first_name or ''} {peer.last_name or ''}").strip() or peer.email
+                )
+                if msg.message_type == 'image':
+                    text = "📷 Photo"
+                elif msg.message_type == 'file':
+                    text = "📄 File"
+                else:
+                    text = msg.content or ""
+                if msg.sender_id == user.id:
+                    text = "You: " + text
+                conversations_dict[peer_id] = {
+                    "caterer_name": c_name,
+                    "last_msg_time": msg.created_at.strftime('%I:%M %p').lstrip('0'),
+                    "last_msg_text": text
+                }
+    conversations_list = list(conversations_dict.values())[:4]
+
     return templates.TemplateResponse("customer/dashboard.html", {
         "request": request,
         "user": user,
         "bookings": display_bookings,
-        "total_count": len(bookings),
+        "total_count": total_bookings,
         "upcoming_count": upcoming_count,
+        "current_page": page,
+        "total_pages": total_pages,
         "active_page": "overview",
+        "conversations": conversations_list,
         "client_id": f"dashboard_{user.id}"
     })
 
@@ -141,11 +188,21 @@ async def manage_booking(
     
     # Calculate status progress for timeline
     status_steps = ["draft", "pending", "confirmed", "completed"]
-    current_status = booking.status or "pending"
-    try:
-        current_step_idx = status_steps.index(current_status)
-    except ValueError:
-        current_step_idx = 1 # Default to pending
+    current_status = (booking.status or "pending").lower()
+    
+    if current_status == "draft":
+        if user.is_kyc_complete:
+            current_step_idx = 2 # KYC is done, next step is Quotation
+        else:
+            current_step_idx = 1 # User is on Draft/KYC step
+    elif current_status in ["pending", "pending_quotation"]:
+        current_step_idx = 3 # Quotation phase
+    elif current_status in ["pending_payment", "awaiting_payment", "confirmed", "balance_proof_submitted"]:
+        current_step_idx = 4 # Payment phase
+    elif current_status in ["paid", "completed"]:
+        current_step_idx = 5 # All steps complete
+    else:
+        current_step_idx = 4 if current_status == "cancelled" else 1 # Fallback
         
     from datetime import date as date_cls, datetime as datetime_cls
     return templates.TemplateResponse("customer/booking_manage.html", {

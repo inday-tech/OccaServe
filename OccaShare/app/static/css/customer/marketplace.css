@@ -94,8 +94,10 @@ h3,
 /* --- Professional Grid (Matching Packages) --- */
 .mkt-grid-premium, .packages-grid-pro {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
-    gap: 2.5rem;
+    /* Limit the max width to 320px but allow down-scaling on small devices */
+    grid-template-columns: repeat(auto-fill, minmax(260px, 320px));
+    justify-content: start;
+    gap: 1.5rem;
     margin-bottom: 4rem;
 }
 
@@ -121,7 +123,7 @@ h3,
 }
 
 .card-image-wrapper, .package-media-pro {
-    height: 200px;
+    height: 180px;
     position: relative;
     overflow: hidden;
     background: #fdfaf7;
@@ -137,7 +139,7 @@ h3,
 }
 
 .card-body-premium, .package-body-pro {
-    padding: 1.5rem;
+    padding: 1.25rem;
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -185,9 +187,9 @@ h3,
 
 .card-description, .package-desc-pro {
     color: #64748b;
-    font-size: 0.95rem;
-    line-height: 1.6;
-    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 1.25rem;
 }
 
 .price-pill {
@@ -208,7 +210,7 @@ h3,
 }
 
 .price-pill .price-val, .price-val {
-    font-size: 1.85rem !important;
+    font-size: 1.5rem !important;
     font-weight: 800 !important;
     color: #1a1a1a !important;
     font-family: 'Poppins', sans-serif;
@@ -224,19 +226,19 @@ h3,
 .card-meta-grid, .package-specs-minimal {
     display: flex;
     align-items: center;
-    gap: 1.5rem;
-    padding-top: 1.25rem;
+    gap: 1.25rem;
+    padding-top: 1rem;
     border-top: 1px solid #f1f5f9;
-    margin-bottom: 1.75rem;
+    margin-bottom: 1.25rem;
     margin-top: 0;
 }
 
 .meta-item-box, .spec-item-min {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.5rem;
     color: #64748b;
-    font-size: 1.05rem;
+    font-size: 0.95rem;
     font-weight: 500;
 }
 
@@ -295,7 +297,8 @@ h3,
 
 @media (max-width: 1024px) {
     .mkt-grid-premium {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 1rem;
     }
 }
 

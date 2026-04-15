@@ -216,3 +216,17 @@ body {
     padding-top: 4px;
     padding-bottom: 4px;
 }
+
+/* Fix browser autofill background changing the design */
+.minimal-input:-webkit-autofill,
+.minimal-input:-webkit-autofill:hover,
+.minimal-input:-webkit-autofill:focus,
+.minimal-input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px var(--slate-50) inset !important;
+    -webkit-text-fill-color: var(--slate-900) !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+.input-wrapper:focus-within .minimal-input:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 30px #fff inset !important;
+}

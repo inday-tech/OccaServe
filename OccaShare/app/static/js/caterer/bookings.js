@@ -151,7 +151,7 @@ function showBookingDetails(btn) {
     document.getElementById('modalTotalAmount').innerText = data.amount;
     document.getElementById('modalGuestCount').innerText = `${data.guestCount} Guests`;
     document.getElementById('modalDueDate').innerText = data.balanceDue ? data.balanceDue : 'Not Set';
-    
+
     // Reset due date edit UI
     document.getElementById('dueDateDisplaySection').style.display = 'block';
     document.getElementById('dueDateEditSection').style.display = 'none';
@@ -212,7 +212,7 @@ function openContractModal(bookingId) {
     const modal = document.getElementById('contractModal');
     const body = document.getElementById('contractModalBody');
     modal.style.display = 'flex';
-    
+
     fetch(`/api/bookings/${bookingId}/contract/content`)
         .then(response => response.text())
         .then(html => {
@@ -231,7 +231,7 @@ function closeContractModal() {
 function printContract(bookingId) {
     const url = `/caterer/bookings/${bookingId}/contract`;
     const printWindow = window.open(url, '_blank');
-    printWindow.onload = function() {
+    printWindow.onload = function () {
         printWindow.print();
     };
 }
@@ -275,11 +275,11 @@ async function saveDueDate() {
         if (response.ok) {
             document.getElementById('modalDueDate').innerText = newDate;
             toggleDueDateEdit();
-            
+
             // Update the data attribute on the button so it persists if modal is reopened
             const btn = document.querySelector(`.view-details[data-id="${currentBookingId}"]`);
             if (btn) btn.dataset.balanceDue = newDate;
-            
+
             window.showSuccess("Due date updated successfully!");
         } else {
             const err = await response.json();
@@ -294,10 +294,10 @@ async function saveDueDate() {
 // Confirmation Wrappers for Actions
 function confirmAcceptBooking(bookingId, isPayment = false) {
     const title = isPayment ? "Confirm Payment?" : "Accept Booking?";
-    const message = isPayment 
+    const message = isPayment
         ? "Sigurado ka bang natanggap mo na ang bayad? Ito ay magpapalit sa status ng booking bilang 'Confirmed'."
         : "Nais mo bang tanggapin ang booking na ito? Pakisiguradong tama ang lahat ng detalye bago mag-proceed.";
-    
+
     window.showConfirm(message, () => {
         const form = document.createElement('form');
         form.method = 'POST';
