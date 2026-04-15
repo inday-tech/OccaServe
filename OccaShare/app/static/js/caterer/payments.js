@@ -320,45 +320,120 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     // Modal Details
-    window.viewPaymentDetails = function(bookingId) {
+    window.viewPaymentDetails = async function(bookingId) {
         const modal = document.getElementById('detailsModal');
         const content = document.getElementById('detailsContent');
-        const row = allRows.find(r => r.innerHTML.includes(`BK-${bookingId}`));
-        if (!row) return;
-
-        const data = {
-            id: row.querySelector('.payment-id').textContent,
-            customer: row.querySelector('.cust-name').textContent,
-            amount: row.querySelector('.amount-pro').textContent,
-            method: row.cells[4].textContent,
-            date: row.cells[5].textContent,
-            event: row.cells[2].textContent,
-            status: row.querySelector('.badge-status-pro').textContent
-        };
-
-        content.innerHTML = `
-            <div style="display: flex; flex-direction: column; gap: 1.25rem;">
-                <div style="text-align: center; margin-bottom: 0.5rem; padding: 1.25rem; background: #f8fafc; border-radius: 1.25rem; border: 1px solid #f1f5f9;">
-                    <div style="font-size: 0.85rem; text-transform: uppercase; color: #64748b; font-weight: 700; margin-bottom: 0.35rem; letter-spacing: 0.05em;">Transaction Amount</div>
-                    <div style="font-size: 2.25rem; font-weight: 800; color: var(--primary-color);">${data.amount}</div>
-                </div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem;"><span style="color: #64748b; font-weight: 600;">Payment ID</span><span style="font-weight: 700; color: #0f172a;">${data.id}</span></div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem;"><span style="color: #64748b; font-weight: 600;">Customer</span><span style="font-weight: 700; color: #0f172a;">${data.customer}</span></div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem;"><span style="color: #64748b; font-weight: 600;">Booking Ref</span><span style="font-weight: 700; color: #0f172a;">BK-${bookingId}</span></div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem;"><span style="color: #64748b; font-weight: 600;">Event Name</span><span style="font-weight: 700; color: #0f172a;">${data.event}</span></div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem;"><span style="color: #64748b; font-weight: 600;">Payment Method</span><span style="font-weight: 700; color: #1e293b;">${data.method}</span></div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem;"><span style="color: #64748b; font-weight: 600;">Transaction Date</span><span style="font-weight: 700; color: #0f172a;">${data.date}</span></div>
-                <div style="display: flex; justify-content: space-between;"><span style="color: #64748b; font-weight: 600;">Payment Status</span><span class="badge-status-pro ${data.status.toLowerCase()}">${data.status}</span></div>
-            </div>
-        `;
         
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
+        // Initial Loading State
+        content.innerHTML = '<div style="text-align: center; padding: 3rem;"><i class="fas fa-spinner fa-spin fa-3x" style="color: var(--primary-color);"></i><p style="margin-top: 1rem; color: #64748b;">Fetching details...</p></div>';
+        window.openModal('detailsModal');
+
+        try {
+            const response = await fetch(`/caterer/api/bookings/${bookingId}/details`);
+            const booking = await response.json();
+            
+            if (!response.ok) throw new Error(booking.detail || "Failed to load details");
+
+            let verificationHtml = '';
+            if (booking.payment_proof_url) {
+                const verif = booking.payment_verification_data;
+                const confidence = verif ? verif.confidence : 0;
+                const statusColor = confidence > 70 ? '#10b981' : (confidence > 30 ? '#f59e0b' : '#ef4444');
+                const statusIcon = confidence > 70 ? 'fa-shield-check' : (confidence > 30 ? 'fa-shield-exclamation' : 'fa-shield-slash');
+                
+                verificationHtml = `
+                    <div class="verification-report-pro" style="margin-top: 1.5rem; padding: 1.5rem; background: #f8fafc; border: 2px solid ${statusColor}15; border-radius: 1.25rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h4 style="margin: 0; color: #1e293b; display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas ${statusIcon}" style="color: ${statusColor};"></i> Legitimacy Report
+                            </h4>
+                            <span style="font-size: 0.8rem; font-weight: 700; color: ${statusColor}; background: ${statusColor}15; padding: 0.2rem 0.6rem; border-radius: 2rem;">
+                                ${confidence}% Confidence
+                            </span>
+                        </div>
+                        
+                        ${verif ? `
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; font-size: 0.85rem;">
+                                <div style="color: #64748b;">Amount Match:</div>
+                                <div style="font-weight: 600; text-align: right; color: ${verif.amount_match ? '#10b981' : '#ef4444'}">
+                                    ${verif.amount_match ? 'Matched ✓' : 'Mismatch ✗'}
+                                </div>
+                                <div style="color: #64748b;">Unique Receipt:</div>
+                                <div style="font-weight: 600; text-align: right; color: ${!verif.is_duplicate_ref ? '#10b981' : '#ef4444'}">
+                                    ${!verif.is_duplicate_ref ? 'Verified ✓' : 'Duplicate Found ✗'}
+                                </div>
+                                <div style="color: #64748b;">Extracted Ref:</div>
+                                <div style="font-weight: 600; text-align: right; color: #1e293b;">
+                                    ${verif.extracted_data.reference_no || 'Not found'}
+                                </div>
+                            </div>
+                            
+                            ${verif.flags && verif.flags.length > 0 ? `
+                                <div style="margin-top: 1rem; padding: 0.75rem; background: #fff5f5; border: 1px solid #feb2b2; border-radius: 0.75rem;">
+                                    <div style="font-weight: 700; color: #c53030; font-size: 0.75rem; margin-bottom: 0.25rem; text-transform: uppercase;">System Alerts</div>
+                                    <ul style="margin: 0; padding-left: 1.25rem; font-size: 0.8rem; color: #9b2c2c;">
+                                        ${verif.flags.map(f => `<li>${f}</li>`).join('')}
+                                    </ul>
+                                </div>
+                            ` : ''}
+                        ` : `
+                            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Verification report not yet generated for this proof.</p>
+                            <button class="btn-primary-pro" onclick="runManualVerification(${bookingId})" style="width: 100%; border: none; padding: 0.6rem; border-radius: 0.75rem; font-weight: 600; font-size: 0.85rem; cursor: pointer;">
+                                <i class="fas fa-microchip"></i> Run AI Scan
+                            </button>
+                        `}
+                        
+                        <button onclick="showProof('${booking.payment_proof_url}', 'Proof - BK-${bookingId}')" style="width: 100%; margin-top: 0.75rem; background: white; border: 1px solid #e2e8f0; padding: 0.6rem; border-radius: 0.75rem; font-weight: 600; font-size: 0.85rem; cursor: pointer; color: #475569;">
+                            <i class="fas fa-search-plus"></i> Enlarged Proof
+                        </button>
+                    </div>
+                `;
+            }
+
+            content.innerHTML = `
+                <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                    <div style="text-align: center; margin-bottom: 0.5rem; padding: 1.25rem; background: #f8fafc; border-radius: 1.25rem; border: 1px solid #f1f5f9;">
+                        <div style="font-size: 0.85rem; text-transform: uppercase; color: #64748b; font-weight: 700; margin-bottom: 0.35rem; letter-spacing: 0.05em;">Transaction Amount</div>
+                        <div style="font-size: 2.25rem; font-weight: 800; color: var(--primary-color);">₱${parseFloat(booking.total_amount).toLocaleString()}</div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem;"><span style="color: #64748b; font-weight: 600;">Customer</span><span style="font-weight: 700; color: #0f172a;">${booking.user.first_name} ${booking.user.last_name}</span></div>
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem;"><span style="color: #64748b; font-weight: 600;">Booking Ref</span><span style="font-weight: 700; color: #0f172a;">BK-${bookingId}</span></div>
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem;"><span style="color: #64748b; font-weight: 600;">Event Name</span><span style="font-weight: 700; color: #0f172a;">${booking.event_name || booking.event_type}</span></div>
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem;"><span style="color: #64748b; font-weight: 600;">Payment Method</span><span style="font-weight: 700; color: #1e293b;">${booking.payment_method || 'Manual'}</span></div>
+                    <div style="display: flex; justify-content: space-between;"><span style="color: #64748b; font-weight: 600;">Payment Status</span><span class="badge-status-pro ${booking.payment_status.toLowerCase()}">${booking.payment_status}</span></div>
+                    
+                    ${verificationHtml}
+                </div>
+            `;
+        } catch (err) {
+            console.error(err);
+            content.innerHTML = `<div style="text-align: center; color: #ef4444; padding: 2rem;"><i class="fas fa-exclamation-triangle fa-2x"></i><p>${err.message}</p></div>`;
+        }
+    };
+
+    window.runManualVerification = async function(bookingId) {
+        const btn = event.currentTarget;
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...';
+        
+        try {
+            const res = await window.apiAction(`/caterer/api/bookings/${bookingId}/verify-proof`, { method: "POST" });
+            if (res && res.status === 'success') {
+                window.viewPaymentDetails(bookingId); // Refresh details
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        }
     };
 
     window.closeDetailsModal = function() {
-        document.getElementById('detailsModal').style.display = 'none';
-        document.body.style.overflow = '';
+        window.closeModal('detailsModal');
     };
 
     window.verifyPayment = function(bookingId) {
@@ -367,11 +442,31 @@ document.addEventListener('DOMContentLoaded', function() {
         const custName = row ? row.querySelector('.cust-name').textContent.trim() : "Unknown Customer";
         
         window.showConfirm(`Verify payment of <strong>${amount}</strong> from <strong>${custName}</strong>?<br><br>This will mark the transaction BK-${bookingId} as fully paid and confirm the booking.`, function() {
-            const f = document.createElement('form'); 
-            f.method = 'POST'; 
-            f.action = `/caterer/payments/${bookingId}/confirm`; 
-            document.body.appendChild(f); 
-            f.submit();
+            if (window.apiAction) {
+                window.apiAction(`/caterer/payments/${bookingId}/confirm`, { 
+                    method: "POST",
+                    headers: { 'Content-Type': 'application/json' }
+                })
+                .then(res => {
+                    if (res.status === 'success' && row) {
+                        row.classList.add('fade-out-archive');
+                        setTimeout(() => {
+                            row.remove();
+                            // Update total entries count if needed
+                            const total = document.getElementById('totalEntries');
+                            if (total) total.innerText = parseInt(total.innerText) - 1;
+                        }, 500);
+                    }
+                })
+                .catch(err => console.error("Payment Verification Error:", err));
+            } else {
+                // Fallback if layout.js not fully loaded or helpers missing
+                const f = document.createElement('form'); 
+                f.method = 'POST'; 
+                f.action = `/caterer/payments/${bookingId}/confirm`; 
+                document.body.appendChild(f); 
+                f.submit();
+            }
         }, "Are you sure?", "Yes, Verify Payment");
     };
     
@@ -380,20 +475,39 @@ document.addEventListener('DOMContentLoaded', function() {
         const displayId = row ? row.querySelector('.payment-id').textContent.trim() : `PAY-${bookingId}`;
         
         window.showConfirm(`Archive payment <strong>${displayId}</strong>?<br><br>This will move the payment record to archives. You can still view it in the Archives section.`, function() {
-            const f = document.createElement('form'); 
-            f.method = 'POST'; 
-            // Use the correct bookings archive endpoint
-            f.action = `/caterer/bookings/${bookingId}/archive?next=/caterer/payments`; 
-            document.body.appendChild(f); 
-            f.submit();
+            if (window.apiAction) {
+                window.apiAction(`/caterer/bookings/${bookingId}/archive`, { method: "POST" })
+                .then(res => {
+                    if (res.status === 'success' && row) {
+                        row.classList.add('fade-out-archive');
+                        setTimeout(() => {
+                            row.remove();
+                            const total = document.getElementById('totalEntries');
+                            if (total) total.innerText = parseInt(total.innerText) - 1;
+                        }, 500);
+                    }
+                })
+                .catch(err => console.error("Payment Archival Error:", err));
+            } else {
+                const f = document.createElement('form'); 
+                f.method = 'POST'; 
+                f.action = `/caterer/bookings/${bookingId}/archive?next=/caterer/payments`; 
+                document.body.appendChild(f); 
+                f.submit();
+            }
         }, "Archive Payment", "Yes, Archive");
     };
 
     window.showProof = function(url, title) {
-        const m = document.getElementById('proofModal');
         const img = document.getElementById('proofModalImg');
         const h3 = document.getElementById('proofModalTitle');
-        if (m && img) { img.src = url; h3.innerText = title; m.style.display = 'flex'; }
+        if (img) { 
+            img.src = url; 
+            if (h3) h3.innerText = title; 
+            window.openModal('proofModal');
+        }
     };
-    window.closeProof = function() { document.getElementById('proofModal').style.display = 'none'; };
+    window.closeProof = function() { 
+        window.closeModal('proofModal');
+    };
 });

@@ -200,6 +200,17 @@
                 </div>
 
                 <div class="action-main-content-col" style="margin-top: 2rem; border-top: 1px solid #f1f5f9; padding-top: 2rem;">
+                    {% set last_history = (booking.history|sort(attribute='created_at', reverse=True)|first) if booking.history else None %}
+                    {% if last_history and "proof rejected" in last_history.notes|lower %}
+                    <div class="alert-banner alert-danger" style="background: #fff5f5; border: 1px solid #feb2b2; color: #c53030; padding: 1.25rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 1rem;">
+                        <i class="fas fa-exclamation-circle" style="font-size: 1.5rem;"></i>
+                        <div>
+                            <div style="font-weight: 700; margin-bottom: 0.25rem;">Re-upload Required</div>
+                            <p style="margin: 0; font-size: 0.85rem; opacity: 0.9;">{{ last_history.notes.split('Reason: ')[1] if 'Reason: ' in last_history.notes else last_history.notes }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+
                     {% if booking.status == 'draft' %}
                     <div class="alert-banner alert-warning" style="background: #fffbeb; border: 1px solid #fef3c7; color: #92400e; padding: 1.25rem; border-radius: 0.75rem; margin-bottom: 1.5rem;">
                         <p style="margin: 0; font-size: 0.9rem;">This booking is incomplete. You need to finalize your quotation and reservation fee to secure your caterer.</p>
@@ -222,13 +233,19 @@
                         </form>
                     </div>
 
-                    {% elif booking.status in ['pending_payment', 'awaiting_payment'] %}
+                    {% elif booking.status in ['pending_payment', 'awaiting_payment'] or booking.payment_status == 'reupload_requested' %}
                     <div class="alert-banner alert-info" style="background: #eff6ff; border: 1px solid #dbeafe; color: #1e40af; padding: 1.25rem; border-radius: 0.75rem; margin-bottom: 1.5rem;">
-                        <p style="margin: 0; font-size: 0.9rem;">Your reservation is ready. Please complete the downpayment to secure your booking.</p>
+                        <p style="margin: 0; font-size: 0.9rem;">
+                            {% if booking.payment_status == 'reupload_requested' %}
+                            Your payment proof was rejected. Please review the reason and upload a new one.
+                            {% else %}
+                            Your reservation is ready. Please complete the downpayment to secure your booking.
+                            {% endif %}
+                        </p>
                         <div style="margin-top: 0.5rem; font-weight: 700;">Amount Due: ₱{{ "{:,.2f}".format(booking.reservation_fee or 0) }}</div>
                     </div>
                     <a href="/bookings/step/payment/{{ booking.id }}" class="btn-primary-premium" style="width: 100%; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 0.75rem;">
-                        Complete Downpayment <i class="fas fa-wallet"></i>
+                        {% if booking.payment_status == 'reupload_requested' %}Re-upload Proof{% else %}Complete Downpayment{% endif %} <i class="fas fa-wallet"></i>
                     </a>
 
                     {% elif booking.status == 'pending' %}

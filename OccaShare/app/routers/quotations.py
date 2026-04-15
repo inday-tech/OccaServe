@@ -11,33 +11,10 @@ from jose import jwt, JWTError
 from ..db.models import BookingMenuItem
 from ..core.templates import templates
 from ..services.realtime import manager
+from ..services.notification import NotificationService
 
 router = APIRouter(prefix="/api/bookings", tags=["quotations"])
 
-async def send_signature_notification(db_session_factory, user_id, title, message, type, link):
-    """Background task to send notification without blocking the response"""
-    db = db_session_factory()
-    try:
-        notif = models.Notification(
-            user_id=user_id,
-            title=title,
-            message=message,
-            type=type,
-            link=link
-        )
-        db.add(notif)
-        db.commit()
-
-        await manager.broadcast_to_user(user_id, {
-            "type": "new_notification",
-            "message": f"{title}: {message}",
-            "count": unread_count
-        })
-    except Exception as e:
-
-        print(f"Error sending background notification: {e}")
-    finally:
-        db.close()
 
 def get_session_user(request: Request, db: Session):
     """Helper for session-based auth in wizard routes"""
@@ -165,23 +142,8 @@ async def generate_quotation(
     try:
         quotation = quotation_service.create_quotation(db, booking, downpayment_percent)
         
-        # NEW: Notify Customer that a quotation is ready
-        notif = models.Notification(
-            user_id=booking.user_id,
-            title="Quotation Ready",
-            message=f"The caterer has generated a new quotation for your event '{booking.event_name}'.",
-            type="Booking",
-            link=f"/bookings/step/quotation/{booking.id}"
-        )
-        db.add(notif)
-        db.commit()
-        
-        # Real-time WebSocket Alert to Customer
-        await manager.broadcast_to_user(booking.user_id, {
-            "type": "new_quotation",
-            "message": f"New quotation generated for '{booking.event_name}'",
-            "booking_id": booking.id
-        })
+        # --- Trigger Notification (In-App, Email) ---
+        await NotificationService.notify_quotation_ready(db, booking)
         
         return quotation
     except Exception as e:
@@ -275,53 +237,19 @@ async def sign_contract(
         quotation.status = "signed"
         booking.status = "awaiting_payment"
         
-        # Notify both parties of full completion
-        background_tasks.add_task(
-            send_signature_notification,
-            database.SessionLocal,
-            booking.user_id,
-            "Contract Fully Signed",
-            f"Caterer {booking.caterer.business_name} has signed. Proceed to payment.",
-            "success",
-            f"/bookings/step/payment/{booking.id}"
-        )
-        background_tasks.add_task(
-            send_signature_notification,
-            database.SessionLocal,
-            booking.caterer.user_id,
-            "Contract Fully Signed",
-            f"Customer {booking.user.first_name} has signed. Awaiting payment.",
-            "success",
-            f"/caterer/bookings"
-        )
+        # Notify Both Parties
+        background_tasks.add_task(NotificationService.notify_status_update, db, booking.user_id, "Contract Fully Signed", f"Caterer {booking.caterer.business_name} has signed. Proceed to payment.", f"/bookings/step/payment/{booking.id}")
+        background_tasks.add_task(NotificationService.notify_status_update, db, booking.caterer.user_id, "Contract Fully Signed", f"Customer {booking.user.first_name} has signed. Awaiting payment.", f"/caterer/bookings")
     elif has_cust:
         quotation.status = "awaiting_caterer"
         booking.status = "awaiting_caterer"
         
-        # Notify Caterer
-        background_tasks.add_task(
-            send_signature_notification,
-            database.SessionLocal,
-            booking.caterer.user_id,
-            "Action Required: Sign Contract",
-            f"Customer {current_user.first_name} has signed the contract.",
-            "info",
-            f"/caterer/bookings/{booking.id}/sign"
-        )
+        background_tasks.add_task(NotificationService.notify_status_update, db, booking.caterer.user_id, "Action Required: Sign Contract", f"Customer {current_user.first_name} has signed the contract.", f"/caterer/bookings/{booking.id}/sign")
     elif has_cat:
         quotation.status = "awaiting_customer"
         booking.status = "awaiting_customer"
         
-        # Notify Customer
-        background_tasks.add_task(
-            send_signature_notification,
-            database.SessionLocal,
-            booking.user_id,
-            "Action Required: Sign Contract",
-            f"Caterer {booking.caterer.business_name} has signed the contract.",
-            "info",
-            f"/bookings/step/quotation/{booking.id}"
-        )
+        background_tasks.add_task(NotificationService.notify_status_update, db, booking.user_id, "Action Required: Sign Contract", f"Caterer {booking.caterer.business_name} has signed the contract.", f"/bookings/step/quotation/{booking.id}")
 
     # Real-time Broadcasts
     if is_customer:
@@ -441,16 +369,8 @@ async def set_balance_due_date(
         booking.balance_due_date = datetime.strptime(due_date_str, '%Y-%m-%d')
         db.commit()
         
-        # Notify Customer
-        notif = models.Notification(
-            user_id=booking.user_id,
-            title="Balance Due Date Set",
-            message=f"The caterer has set the balance due date for your event '{booking.event_name}' to {due_date_str}.",
-            type="info",
-            link=f"/customer/bookings/manage/{booking.id}"
-        )
-        db.add(notif)
-        db.commit()
+        # --- Trigger Notification ---
+        await NotificationService.notify_status_update(db, booking.user_id, "Balance Due Date Set", f"The caterer has set the balance due date for your event '{booking.event_name}' to {due_date_str}.", f"/customer/bookings/manage/{booking.id}")
         
         return {"status": "success", "due_date": due_date_str}
     except Exception as e:

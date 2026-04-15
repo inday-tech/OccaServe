@@ -145,6 +145,7 @@ class CateringPackage(Base):
     description = Column(Text)
     price = Column(Float)
     cost_price = Column(Float, default=0.0)
+    cost_breakdown = Column(JSONB, nullable=True)
     price_unit = Column(String, default='per_guest')
     min_guests = Column(Integer, default=10)
     max_guests = Column(Integer, nullable=True)
@@ -183,6 +184,7 @@ class MenuItem(Base):
     category = Column(String) # Starter, Soup, Salad, Main Dish (Beef), etc.
     price = Column(Float, default=0.0)
     cost_price = Column(Float, default=0.0)
+    cost_breakdown = Column(JSONB, nullable=True)
     
     # Dietary & Allergen Info
     dietary_tags = Column(ARRAY(String), nullable=True) # Vegetarian, Vegan, Halal
@@ -230,6 +232,7 @@ class Booking(Base):
     guest_count = Column(Integer)
     total_amount = Column(Float)
     actual_cost = Column(Float, default=0.0)
+    actual_cost_breakdown = Column(JSONB, nullable=True)
     total_price = Column(Float, nullable=True) # Alias to match user request structure
     reservation_fee = Column(DECIMAL, nullable=True)
     status = Column(String, default="pending")
@@ -241,6 +244,8 @@ class Booking(Base):
     payout_id = Column(Integer, ForeignKey("payouts.id"), nullable=True)
     ocr_verification = relationship("OCRVerification", back_populates="booking", uselist=False, cascade="all, delete-orphan")
 
+    payment_verification_data = Column(JSONB, nullable=True)
+    proof_image_hash = Column(String, nullable=True)
     ocr_verified = Column(Boolean, default=False)
     liveness_verified = Column(Boolean, default=False)
     special_requests = Column(Text)

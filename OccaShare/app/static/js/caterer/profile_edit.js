@@ -66,6 +66,35 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+
+function openPasswordModal() {
+    const modal = document.getElementById('passwordModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                modal.classList.add('active');
+            });
+        });
+    }
+    document.body.style.overflow = 'hidden';
+}
+
+function closePasswordModal() {
+    const modal = document.getElementById('passwordModal');
+    if (modal) {
+        modal.classList.remove('active');
+        setTimeout(() => {
+            if (!modal.classList.contains('active')) {
+                modal.style.display = 'none';
+            }
+        }, 400);
+    }
+    document.body.style.overflow = 'auto';
+    const form = document.getElementById('changePasswordForm');
+    if (form) form.reset();
+}
+
     mobileWalletInputs.forEach(input => {
         if (input) {
             input.addEventListener('input', (e) => {

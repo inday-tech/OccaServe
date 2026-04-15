@@ -1,21 +1,442 @@
 let currentBookingId = null;
+let currentPage = 1;
+const ROWS_PER_PAGE = 5;
+let filteredRows = [];
+
+// ─── IMMEDIATE GLOBAL EXPOSURE (Fail-safe) ───────────────────────────────────
+(function exposeGlobals() {
+    window.filterBookings = filterBookings;
+    window.filterBySignature = filterBySignature;
+    window.toggleActionMenu = toggleActionMenuBookings;
+    window.openWalkinModal = openWalkinModal;
+    window.closeWalkinModal = closeWalkinModal;
+    window.submitWalkinBooking = submitWalkinBooking;
+    window.openExpenseTracker = openExpenseTracker;
+    window.closeExpenseTracker = closeExpenseTracker;
+    window.addExpenseRow = addExpenseRow;
+    window.calculateActualExpenses = calculateActualExpenses;
+    window.submitExpenses = submitExpenses;
+    window.showBookingDetails = showBookingDetails;
+    window.switchBookingTab = switchBookingTab;
+    window.resetBookingTabs = resetBookingTabs;
+    window.bk_closeBookingDetailModal = bk_closeBookingDetailModal;
+    window.openContractModal = openContractModal;
+    window.closeContractModal = closeContractModal;
+    window.printContract = printContract;
+    window.toggleDueDateEdit = toggleDueDateEdit;
+    window.saveDueDate = saveDueDate;
+    window.confirmAcceptBooking = confirmAcceptBooking;
+    window.confirmRejectBooking = confirmRejectBooking;
+    window.confirmCompleteBooking = confirmCompleteBooking;
+    window.updateBookingStage = updateBookingStage;
+    window.requestNewProof = requestNewProof;
+    window.confirmArchiveBooking = confirmArchiveBooking;
+    window.bk_closeModal = bk_closeModal; // New exposure
+    console.log('[BookingsJS] Global functions exposed to window.');
+})();
+
+/* ─── Standardized modal helpers with Fallback ─── */
+function bk_openModal(id) {
+    if (window.openModal) {
+        window.openModal(id);
+    } else {
+        const el = document.getElementById(id);
+        if (el) {
+            el.style.display = 'flex';
+            setTimeout(() => el.classList.add('active'), 10);
+            document.body.style.overflow = 'hidden';
+        }
+    }
+}
+
+function bk_closeModal(id) {
+    console.log('[BookingsJS] Closing modal:', id);
+    if (window.closeModal) {
+        window.closeModal(id);
+    } else {
+        // Fallback dismissal
+        const el = document.getElementById(id);
+        if (el) {
+            el.classList.remove('active');
+            setTimeout(() => { if (!el.classList.contains('active')) el.style.display = 'none'; }, 450);
+            if (document.querySelectorAll('.occ-modal-overlay.active').length === 0) {
+                document.body.style.overflow = '';
+            }
+        }
+    }
+}
+
+/* ─── Safe action menu toggle ─── */
+function toggleActionMenuBookings(id, event) {
+    if (event) event.stopPropagation();
+    var allMenus = document.querySelectorAll('.action-dropdown-menu');
+    var target = document.getElementById('actionMenu-' + id);
+    allMenus.forEach(function(m) {
+        if (m !== target) m.style.display = 'none';
+    });
+    if (!target) return;
+    target.style.display = (target.style.display === 'none' || target.style.display === '') ? 'block' : 'none';
+}
 
 document.addEventListener('DOMContentLoaded', function () {
-    // Add click listeners to all detail buttons
-    document.querySelectorAll('.view-details').forEach(btn => {
-        btn.addEventListener('click', function () {
-            showBookingDetails(this);
+    console.log('[BookingsJS] Initializing components... [v1.8-robust]');
+
+    try {
+        // Override toggleActionMenu for this page
+        window.toggleActionMenu = toggleActionMenuBookings;
+
+        // 1. Attach view-details listeners
+        initDetailListeners();
+
+        // 2. Form Constraints
+        const dateInput = document.getElementById('walkin_event_date');
+        if (dateInput) {
+            const today = new Date().toISOString().split('T')[0];
+            dateInput.setAttribute('min', today);
+            console.log('[BookingsJS] Set min date for walk-in form:', today);
+        }
+
+        // 3. Walk-in Booking Validation
+        if (window.ValidationManager) {
+            console.log('[BookingsJS] Initializing ValidationManager for walkinBookingForm...');
+            new window.ValidationManager('walkinBookingForm', {
+                'customer_name': { label: 'customer name' },
+                'customer_contact': { label: 'contact details' },
+                'event_name':    { label: 'event name' },
+                'event_type':    { label: 'event type' },
+                'event_date':    { label: 'event date' },
+                'guest_count':   { numericOnly: true, max: 100000, autoStop: true },
+                'total_amount':  { numericOnly: true, max: 10000000, autoStop: true }
+            });
+            console.log('[BookingsJS] ValidationManager ready.');
+        } else {
+            console.warn('[BookingsJS] window.ValidationManager not found! Validation will be limited.');
+        }
+
+        // 4. Pagination
+        const allRows = Array.from(document.querySelectorAll('.bookings-list-table tbody tr.booking-row-item'));
+        filteredRows = allRows;
+        showPage(1);
+
+        // 5. Global Click Listeners (Backups)
+        document.addEventListener('click', function(e) {
+            // Backup for "X" buttons that might lose their onclick
+            if (e.target.closest('.occ-modal-close')) {
+                const modal = e.target.closest('.occ-modal-overlay');
+                if (modal) {
+                    console.log('[BookingsJS] Backup Close triggered for:', modal.id);
+                    bk_closeModal(modal.id);
+                }
+            }
+            
+            // Close action menus
+            if (!e.target.closest('.action-dropdown-container')) {
+                document.querySelectorAll('.action-dropdown-menu').forEach(function(m) {
+                    m.style.display = 'none';
+                });
+            }
         });
-    });
+
+        // 6. ESC key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                var open = document.querySelector('.occ-modal-overlay.active');
+                if (open) bk_closeModal(open.id);
+            }
+        });
+
+        console.log('[BookingsJS] Manage Bookings JS Ready.');
+    } catch (err) {
+        console.error('[BookingsJS] CRITICAL ERROR DURING INIT:', err);
+    }
 });
 
-function showBookingDetails(btn) {
-    const data = btn.dataset;
-    currentBookingId = data.id;
-    const modal = document.getElementById('bookingDetailModal');
-    if (!modal) return;
+function initDetailListeners() {
+    document.querySelectorAll('.view-details').forEach(function(btn) {
+        btn.onclick = function() { showBookingDetails(this); };
+    });
+}
 
-    document.getElementById('modalBookingId').innerText = `Booking #${data.id}`;
+// ─── FILTERING & PAGINATION ──────────────────────────────────────────────────
+
+function filterBookings() {
+    const searchInput = document.getElementById('bookingSearchInput').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    const allRows = Array.from(document.querySelectorAll('.bookings-list-table tbody tr.booking-row-item'));
+
+    filteredRows = allRows.filter(function(row) {
+        const rawStatus = row.dataset.status || '';
+        const rowText = row.innerText.toLowerCase();
+        const matchesSearch = rowText.indexOf(searchInput) > -1;
+        const matchesStatus = statusFilter === '' || rawStatus === statusFilter;
+        return matchesSearch && matchesStatus;
+    });
+
+    currentPage = 1;
+    showPage(1);
+}
+
+function showPage(page) {
+    const totalPages = Math.ceil(filteredRows.length / ROWS_PER_PAGE) || 1;
+    if (page < 1) page = 1;
+    if (page > totalPages) page = totalPages;
+    currentPage = page;
+
+    const startIdx = (page - 1) * ROWS_PER_PAGE;
+    const endIdx = startIdx + ROWS_PER_PAGE;
+
+    document.querySelectorAll('.bookings-list-table tbody tr.booking-row-item').forEach(function(r) { r.style.display = 'none'; });
+    filteredRows.slice(startIdx, endIdx).forEach(function(r) { r.style.display = ''; });
+
+    renderPaginationControls(totalPages);
+
+    var s = document.getElementById('startRange');
+    var e = document.getElementById('endRange');
+    var t = document.getElementById('totalEntries');
+    if (s && e && t) {
+        s.innerText = filteredRows.length === 0 ? 0 : startIdx + 1;
+        e.innerText = Math.min(endIdx, filteredRows.length);
+        t.innerText = filteredRows.length;
+    }
+}
+
+function renderPaginationControls(totalPages) {
+    var pageNumbers = document.getElementById('pageNumbers');
+    var prevBtn = document.getElementById('prevPage');
+    var nextBtn = document.getElementById('nextPage');
+    if (!pageNumbers || !prevBtn || !nextBtn) return;
+
+    pageNumbers.innerHTML = '';
+    prevBtn.disabled = currentPage === 1;
+    nextBtn.disabled = currentPage === totalPages || filteredRows.length === 0;
+    prevBtn.onclick = function() { showPage(currentPage - 1); };
+    nextBtn.onclick = function() { showPage(currentPage + 1); };
+
+    if (filteredRows.length === 0) return;
+
+    for (var i = 1; i <= totalPages; i++) {
+        var btn = document.createElement('button');
+        btn.className = 'page-num-btn' + (i === currentPage ? ' active' : '');
+        var isActive = i === currentPage;
+        btn.style.cssText = 'width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:0.4rem;border:1px solid ' + (isActive ? 'var(--primary-color)' : '#e2e8f0') + ';background:' + (isActive ? 'var(--primary-color)' : 'white') + ';color:' + (isActive ? 'white' : '#475569') + ';font-size:0.85rem;font-weight:700;cursor:pointer;transition:all 0.2s;';
+        btn.innerText = i;
+        (function(pg) { btn.onclick = function() { showPage(pg); }; })(i);
+        pageNumbers.appendChild(btn);
+    }
+}
+
+function filterBySignature() {
+    var sf = document.getElementById('statusFilter');
+    if (sf) { sf.value = 'awaiting_caterer'; filterBookings(); }
+    var tc = document.querySelector('.b-table-container');
+    if (tc) tc.scrollIntoView({ behavior: 'smooth' });
+}
+
+// ─── MODAL: NEW BOOKING ──────────────────────────────────────────────────────
+
+function openWalkinModal() {
+    bk_openModal('walkinBookingModal');
+    var form = document.getElementById('walkinBookingForm');
+    if (form) form.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function closeWalkinModal() {
+    bk_closeModal('walkinBookingModal');
+    var form = document.getElementById('walkinBookingForm');
+    if (form) {
+        form.reset();
+        form.querySelectorAll('.is-invalid').forEach(function(el) { el.classList.remove('is-invalid'); });
+    }
+}
+
+async function submitWalkinBooking(e) {
+    e.preventDefault();
+    const btn = document.getElementById('walkinSubmitBtn');
+    if (!btn) return;
+    btn.disabled = true;
+    btn.innerText = 'Creating...';
+
+    const form = e.target;
+    const formData = new FormData(form);
+    const data = {};
+    for (let [key, value] of formData.entries()) { data[key] = value; }
+    data.guest_count = parseInt(data.guest_count);
+    data.total_amount = parseFloat(data.total_amount.replace(/,/g, ''));
+    if (!data.package_id) data.package_id = null;
+    else data.package_id = parseInt(data.package_id);
+    if (!data.event_time) data.event_time = null;
+    data.menu_items = [];
+
+    try {
+        const res = await fetch('/caterer/api/bookings/manual', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (res.ok) {
+            window.showSuccess('Booking created successfully!');
+            setTimeout(function() { window.location.reload(); }, 1500);
+        } else {
+            const err = await res.json();
+            window.showError(err.detail || 'Failed to create booking.');
+        }
+    } catch (err) {
+        window.showError('An error occurred. Please try again.');
+    } finally {
+        btn.disabled = false;
+        btn.innerText = 'Create Booking';
+    }
+}
+
+// ─── MODAL: EXPENSE TRACKER ──────────────────────────────────────────────────
+
+function openExpenseTracker(bookingId, btn) {
+    document.getElementById('expenseBookingId').value = bookingId;
+    
+    // Set Total Budget from data attribute
+    var totalAmount = 0;
+    if (btn) {
+        totalAmount = parseFloat(btn.getAttribute('data-total-amount')) || 0;
+        document.getElementById('bookingTotalAmount').value = totalAmount;
+    }
+    
+    var modalTotal = document.getElementById('modalBookingTotal');
+    if (modalTotal) modalTotal.innerText = '₱' + totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    bk_openModal('expenseTrackerModal');
+    var container = document.getElementById('actualExpenseRows');
+    if (!container) return;
+    container.innerHTML = '';
+
+    var breakdown = [];
+    if (btn) {
+        try {
+            var breakdownStr = btn.getAttribute('data-breakdown');
+            if (breakdownStr) {
+                var unescaped = breakdownStr.replace(/&quot;/g, '"');
+                breakdown = JSON.parse(unescaped);
+                if (typeof breakdown === 'string') breakdown = JSON.parse(breakdown);
+            }
+        } catch (e) { breakdown = []; }
+    }
+
+    if (breakdown && breakdown.length > 0) {
+        breakdown.forEach(function(exp) {
+            var row = document.createElement('div');
+            row.className = 'd-flex gap-2 mb-2 expense-item-row';
+            row.innerHTML = '<input type="text" class="form-control form-control-sm exp-name" value="' + exp.name + '" placeholder="Item" style="flex:2;"><input type="number" class="form-control form-control-sm exp-amount" value="' + exp.amount + '" min="0" oninput="calculateActualExpenses()" style="flex:1;"><button type="button" class="btn btn-sm btn-light text-danger" onclick="this.parentElement.remove();calculateActualExpenses()"><i class="fas fa-times"></i></button>';
+            container.appendChild(row);
+        });
+    } else {
+        addExpenseRow();
+    }
+    calculateActualExpenses();
+}
+
+function closeExpenseTracker() {
+    bk_closeModal('expenseTrackerModal');
+    var form = document.getElementById('expenseTrackerForm');
+    if (form) form.reset();
+}
+
+function addExpenseRow() {
+    var container = document.getElementById('actualExpenseRows');
+    var row = document.createElement('div');
+    row.className = 'd-flex gap-2 mb-2 expense-item-row';
+    row.innerHTML = '<input type="text" class="form-control form-control-sm exp-name" placeholder="Item (e.g. Labor)" style="flex:2;"><input type="number" class="form-control form-control-sm exp-amount" placeholder="₱ 0.00" min="0" oninput="calculateActualExpenses()" style="flex:1;"><button type="button" class="btn btn-sm btn-light text-danger" onclick="this.parentElement.remove();calculateActualExpenses()"><i class="fas fa-times"></i></button>';
+    container.appendChild(row);
+}
+
+function calculateActualExpenses() {
+    var totalExpense = 0;
+    document.querySelectorAll('#actualExpenseRows .expense-item-row').forEach(function(row) {
+        totalExpense += parseFloat(row.querySelector('.exp-amount').value) || 0;
+    });
+    
+    var bookingTotal = parseFloat(document.getElementById('bookingTotalAmount').value) || 0;
+    var profit = bookingTotal - totalExpense;
+    var roi = totalExpense > 0 ? (profit / totalExpense) * 100 : 0;
+    
+    // Update Displays
+    var display = document.getElementById('totalActualExpenseDisplay');
+    if (display) display.innerText = '₱' + totalExpense.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    
+    var profitDisplay = document.getElementById('modalEstimateProfit');
+    if (profitDisplay) {
+        profitDisplay.innerText = '₱' + profit.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        profitDisplay.style.color = profit >= 0 ? '#10b981' : '#ef4444';
+    }
+    
+    var roiDisplay = document.getElementById('modalRoiPercent');
+    if (roiDisplay) {
+        var roiText = roiDisplay.querySelector('span');
+        var roiIcon = document.getElementById('roiTrendIcon');
+        
+        if (roiText) roiText.innerText = Math.round(roi) + '%';
+        
+        if (roi >= 25) {
+            roiDisplay.style.color = '#10b981';
+            if (roiIcon) roiIcon.innerHTML = '<i class="fas fa-arrow-up" style="color:#10b981; font-size: 0.8rem;"></i>';
+        } else if (roi >= 10) {
+            roiDisplay.style.color = '#f59e0b';
+            if (roiIcon) roiIcon.innerHTML = '<i class="fas fa-arrow-right" style="color:#f59e0b; font-size: 0.8rem;"></i>';
+        } else {
+            roiDisplay.style.color = '#ef4444';
+            if (roiIcon) roiIcon.innerHTML = '<i class="fas fa-arrow-down" style="color:#ef4444; font-size: 0.8rem;"></i>';
+            if (roi < 0) roiDisplay.classList.add('pulse-roi');
+            else roiDisplay.classList.remove('pulse-roi');
+        }
+    }
+    
+    return totalExpense;
+}
+
+async function submitExpenses(e) {
+    e.preventDefault();
+    var btn = document.getElementById('saveExpenseBtn');
+    if (!btn) return;
+    btn.disabled = true;
+    btn.innerText = 'Saving...';
+
+    var bookingId = document.getElementById('expenseBookingId').value;
+    var total = calculateActualExpenses();
+    var breakdown = [];
+    document.querySelectorAll('#actualExpenseRows .expense-item-row').forEach(function(row) {
+        var name = row.querySelector('.exp-name').value;
+        var amount = parseFloat(row.querySelector('.exp-amount').value) || 0;
+        if (name && amount > 0) breakdown.push({ name: name, amount: amount });
+    });
+
+    try {
+        var res = await fetch('/caterer/bookings/' + bookingId + '/actual-cost', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ actual_cost: total, actual_cost_breakdown: breakdown })
+        });
+        if (res.ok) {
+            window.showSuccess('Actual expenses saved.');
+            closeExpenseTracker();
+            setTimeout(function() { window.location.reload(); }, 1500);
+        } else {
+            window.showError('Failed to save expenses');
+        }
+    } catch (err) {
+        window.showError('Error saving expenses');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save"></i> Save Expenses';
+    }
+}
+
+// ─── MODAL: BOOKING DETAILS ──────────────────────────────────────────────────
+
+function showBookingDetails(btn) {
+    var data = btn.dataset;
+    currentBookingId = data.id;
+
+    resetBookingTabs();
+
+    document.getElementById('modalBookingId').innerText = 'Booking #' + data.id;
     document.getElementById('modalCustomer').innerText = data.customer;
     document.getElementById('modalEmail').innerText = data.email;
     document.getElementById('modalEventName').innerText = data.eventName;
@@ -23,224 +444,182 @@ function showBookingDetails(btn) {
     document.getElementById('modalVenue').innerText = data.venue;
     document.getElementById('modalRequests').innerText = data.requests;
 
-    // Status styling
-    const statusEl = document.getElementById('modalStatus');
-    statusEl.innerText = data.status;
-    const statusColors = {
-        'pending': { color: '#92400e', bg: '#fef3c7' },
-        'confirmed': { color: '#166534', bg: '#dcfce7' },
-        'completed': { color: '#1e40af', bg: '#dbeafe' },
-        'cancelled': { color: '#991b1b', bg: '#fee2e2' }
+    var statusEl = document.getElementById('modalStatus');
+    statusEl.innerText = data.status.replace(/_/g, ' ').toUpperCase();
+    statusEl.className = 'premium-status-badge';
+    var statusMap = {
+        'pending': 'ps-badge-pending',
+        'pending_quotation': 'ps-badge-draft',
+        'awaiting_caterer': 'ps-badge-pending',
+        'awaiting_payment': 'ps-badge-payment',
+        'confirmed': 'ps-badge-confirmed',
+        'preparing': 'ps-badge-preparing',
+        'on_the_way': 'ps-badge-transit',
+        'in_progress': 'ps-badge-ongoing',
+        'completed': 'ps-badge-completed',
+        'cancelled': 'ps-badge-cancelled'
     };
-    const style = statusColors[data.status] || { color: '#374151', bg: '#f1f5f9' };
-    statusEl.style.color = style.color;
-    statusEl.style.backgroundColor = style.bg;
+    statusEl.classList.add(statusMap[data.status] || 'ps-badge-draft');
 
-    // Menu items
-    const menuSource = document.getElementById(`booking-items-${data.id}`);
-    const menuTarget = document.getElementById('modalMenuItems');
-    const menuSection = document.getElementById('modalMenuSection');
-
-    if (menuSource) {
+    var menuSource = document.getElementById('booking-items-' + data.id);
+    var menuTarget = document.getElementById('modalMenuItems');
+    var menuSection = document.getElementById('modalMenuSection');
+    if (menuSource && menuTarget) {
         menuTarget.innerHTML = menuSource.innerHTML;
         if (menuSection) menuSection.style.display = 'block';
-    } else {
-        menuTarget.innerHTML = '<p style="color: #64748b; font-size: 0.9rem;">No menu items selected.</p>';
+    } else if (menuTarget) {
+        menuTarget.innerHTML = '<p style="color:#64748b;font-size:0.9rem;">No menu items selected.</p>';
     }
 
-    // Payment Proofs
-    const proofUrl = data.proofUrl;
-    const balanceProofUrl = data.balanceProofUrl;
-    const proofSection = document.getElementById('modalProofSection');
-    const proofContainer = document.getElementById('modalProofContainer');
-
+    var proofUrl = data.proofUrl;
+    var balanceProofUrl = data.balanceProofUrl;
+    var proofSection = document.getElementById('modalProofSection');
+    var proofContainer = document.getElementById('modalProofContainer');
     if (proofSection && proofContainer) {
         proofContainer.innerHTML = '';
-        let hasProof = false;
-
+        var hasProof = false;
         if (proofUrl) {
             hasProof = true;
-            proofContainer.innerHTML += `
-                <a href="${proofUrl}" target="_blank" class="modal-proof-item">
-                    <img src="${proofUrl}" class="modal-proof-img" onerror="this.src='/static/images/file-placeholder.png'">
-                    <span class="modal-proof-label">Downpayment Proof</span>
-                </a>
-            `;
+            proofContainer.innerHTML += '<a href="' + proofUrl + '" target="_blank" class="modal-proof-item"><img src="' + proofUrl + '" class="modal-proof-img" onerror="this.src=\'/static/images/file-placeholder.png\'"><span class="modal-proof-label">Downpayment Proof</span></a>';
         }
-
         if (balanceProofUrl) {
             hasProof = true;
-            proofContainer.innerHTML += `
-                <a href="${balanceProofUrl}" target="_blank" class="modal-proof-item">
-                    <img src="${balanceProofUrl}" class="modal-proof-img" onerror="this.src='/static/images/file-placeholder.png'">
-                    <span class="modal-proof-label">Balance Proof</span>
-                </a>
-            `;
+            proofContainer.innerHTML += '<a href="' + balanceProofUrl + '" target="_blank" class="modal-proof-item"><img src="' + balanceProofUrl + '" class="modal-proof-img" onerror="this.src=\'/static/images/file-placeholder.png\'"><span class="modal-proof-label">Balance Proof</span></a>';
         }
-
         proofSection.style.display = hasProof ? 'block' : 'none';
     }
 
-    // Actions
-    const actionsEl = document.getElementById('bookingModalActions');
-
-    actionsEl.innerHTML = '';
-
-
-    if (data.status === 'pending') {
-        const isPayment = data.paymentStatus === 'proof_submitted';
-        actionsEl.innerHTML += `
-            <button type="button" class="btn-footer-action btn-status-confirm" onclick="window.confirmAcceptBooking(${data.id}, ${isPayment})">
-                <i class="fas fa-check-circle"></i>
-                ${isPayment ? 'Confirm Payment' : 'Accept Booking'}
-            </button>
-            <button type="button" class="btn-footer-action btn-status-reject" onclick="window.confirmRejectBooking(${data.id})">
-                <i class="fas fa-times-circle"></i> Reject
-            </button>
-        `;
-    } else if (data.status === 'awaiting_caterer') {
-        const signLink = document.createElement('a');
-        signLink.href = `/caterer/bookings/${data.id}/sign`;
-        signLink.className = 'btn-footer-action btn-status-confirm';
-        signLink.style.textDecoration = 'none';
-        signLink.innerHTML = '<i class="fas fa-pen-nib"></i> Sign Contract Now';
-        actionsEl.appendChild(signLink);
-
-        const rejectBtn = document.createElement('button');
-        rejectBtn.type = 'button';
-        rejectBtn.className = 'btn-footer-action btn-status-reject';
-        rejectBtn.onclick = () => window.confirmRejectBooking(data.id);
-        rejectBtn.innerHTML = '<i class="fas fa-times-circle"></i> Reject';
-        actionsEl.appendChild(rejectBtn);
-    } else if (data.status === 'confirmed') {
-        // If balance proof uploaded, show confirm balance button
-        if (data.paymentStatus === 'balance_proof_submitted') {
-            actionsEl.innerHTML += `
-                <button type="button" class="btn-footer-action btn-status-confirm" onclick="window.confirmAcceptBooking(${data.id}, true)">
-                    <i class="fas fa-check-double"></i> Confirm Full Payment
-                </button>
-            `;
-        }
-
-        // Only show Mark as Completed if fully paid
-        if (data.paymentStatus === 'paid') {
-            actionsEl.innerHTML += `
-                <button type="button" class="btn-footer-action btn-status-complete" onclick="window.confirmCompleteBooking(${data.id})">
-                    <i class="fas fa-flag-checkered"></i> Mark Completed
-                </button>
-            `;
+    // RISK ALERT HANDLING
+    var riskAlert = document.getElementById('modalRiskAlert');
+    var riskMsg = document.getElementById('modalRiskMessage');
+    if (riskAlert) {
+        if (data.fraudFlags && data.fraudFlags.length > 0) {
+            riskAlert.style.display = 'flex';
+            riskMsg.innerHTML = data.fraudFlags.map(f => f.description).join('<br>');
+        } else if (data.paymentVerificationData && data.paymentVerificationData.confidence < 40) {
+            riskAlert.style.display = 'flex';
+            riskMsg.innerHTML = '⚠️ AI Confidence is LOW (' + data.paymentVerificationData.confidence + '%). Proof might be unreadable or suspicious.';
         } else {
-            actionsEl.innerHTML += `
-                <div class="completion-pending-hint">
-                    <i class="fas fa-lock"></i> Awaiting Full Payment Before Completion
-                </div>
-            `;
+            riskAlert.style.display = 'none';
         }
-    } else if (data.status === 'completed' || data.status === 'cancelled') {
-        actionsEl.innerHTML += `
-            <button type="button" class="btn-footer-action" style="background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; flex: 1;"
-                onclick="window.confirmArchiveBooking(${data.id})">
-                <i class="fas fa-archive"></i> Archive Booking
-            </button>
-        `;
     }
 
-    // Payment info
-    document.getElementById('modalBookedOn').innerText = data.bookedOn;
-    document.getElementById('modalPaymentMethod').innerText = `Method: ${data.paymentMethod}`;
-    document.getElementById('modalTotalAmount').innerText = data.amount;
-    document.getElementById('modalGuestCount').innerText = `${data.guestCount} Guests`;
-    document.getElementById('modalDueDate').innerText = data.balanceDue ? data.balanceDue : 'Not Set';
+    var actionsEl = document.getElementById('bookingModalActions');
+    if (actionsEl) {
+        actionsEl.innerHTML = '';
+        if (data.status === 'pending') {
+            const isPayment = data.paymentStatus === 'proof_submitted';
+            const btnLabel = isPayment ? 'Verify Downpayment' : 'Accept Booking';
+            const btnIcon = isPayment ? 'fa-check-double' : 'fa-check-circle';
+            
+            actionsEl.innerHTML = `<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.confirmAcceptBooking(${data.id}, ${isPayment})"><i class="fas ${btnIcon}"></i> ${btnLabel}</button>`;
+            
+            if (isPayment) {
+                actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-reject" onclick="window.requestNewProof(${data.id})" style="background:#64748b;"><i class="fas fa-redo"></i> Request New Proof</button>`;
+            }
+            
+            actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-reject" onclick="window.confirmRejectBooking(${data.id})"><i class="fas fa-times-circle"></i> Reject Booking</button>`;
+        } else if (data.status === 'awaiting_caterer') {
+            actionsEl.innerHTML = `<a href="/caterer/bookings/${data.id}/sign" class="btn-footer-action btn-status-confirm" style="text-decoration:none;"><i class="fas fa-pen-nib"></i> Sign Contract Now</a><button type="button" class="btn-footer-action btn-status-reject" onclick="window.confirmRejectBooking(${data.id})"><i class="fas fa-times-circle"></i> Reject</button>`;
+        } else if (data.status === 'confirmed') {
+            if (data.paymentStatus === 'balance_proof_submitted') {
+                actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-confirm pulse-update" onclick="window.confirmAcceptBooking(${data.id}, true)" style="margin-bottom:0.5rem;width:100%;"><i class="fas fa-check-double"></i> Verify Final Balance</button>`;
+            }
+            actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.updateBookingStage(${data.id}, 'preparing')" style="background:#5b5a9c;"><i class="fas fa-utensils"></i> Start Preparation</button>`;
+        } else if (data.status === 'preparing') {
+            actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.updateBookingStage(' + data.id + ', \'on_the_way\')" style="background:#0ea5e9;"><i class="fas fa-truck"></i> On the Way / Dispatch</button>';
+        } else if (data.status === 'on_the_way') {
+            actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.updateBookingStage(' + data.id + ', \'in_progress\')" style="background:#f59e0b;"><i class="fas fa-play-circle"></i> At Venue / Start Event</button>';
+        } else if (data.status === 'in_progress') {
+            if (data.paymentStatus === 'paid') {
+                actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-complete" onclick="window.confirmCompleteBooking(' + data.id + ')"><i class="fas fa-flag-checkered"></i> Complete Event</button>';
+            } else {
+                if (data.paymentStatus === 'balance_proof_submitted') {
+                    actionsEl.innerHTML = `<button type="button" class="btn-footer-action btn-status-confirm pulse-update" onclick="window.confirmAcceptBooking(${data.id}, true)" style="margin-bottom:0.5rem;width:100%;"><i class="fas fa-check-double"></i> Verify Final Balance</button>`;
+                }
+                actionsEl.innerHTML += '<div class="completion-pending-hint" style="background:#fff7ed;color:#c2410c;padding:0.75rem;border-radius:0.75rem;font-size:0.85rem;font-weight:600;display:flex;align-items:center;gap:0.5rem;width:100%;"><i class="fas fa-lock"></i> Bill Settlement Required to Complete</div>';
+                
+                if (data.paymentStatus === 'balance_proof_submitted') {
+                    actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-reject" onclick="window.requestNewProof(${data.id})" style="margin-top:0.5rem; width:100%;"><i class="fas fa-undo"></i> Request Correct Balance Proof</button>`;
+                }
+            }
+        } else if (data.status === 'completed' || data.status === 'cancelled') {
+            actionsEl.innerHTML = '<button type="button" class="btn-footer-action" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d;flex:1;" onclick="window.confirmArchiveBooking(' + data.id + ')"><i class="fas fa-archive"></i> Archive Booking</button>';
+        }
+    }
 
-    // Reset due date edit UI
+    document.getElementById('modalBookedOn').innerText = data.bookedOn;
+    document.getElementById('modalPaymentMethod').innerText = 'Method: ' + data.paymentMethod;
+    document.getElementById('modalTotalAmount').innerText = data.amount;
+    document.getElementById('modalGuestCount').innerText = data.guestCount + ' Guests';
+    document.getElementById('modalDueDate').innerText = data.balanceDue || 'Not Set';
     document.getElementById('dueDateDisplaySection').style.display = 'block';
     document.getElementById('dueDateEditSection').style.display = 'none';
     document.getElementById('balanceDueDateInput').value = data.balanceDue || '';
-    // Restrict past dates
-    const todayStr = new Date().toISOString().split('T')[0];
-    document.getElementById('balanceDueDateInput').min = todayStr;
+    document.getElementById('balanceDueDateInput').min = new Date().toISOString().split('T')[0];
 
-
-    const pStatusEl = document.getElementById('modalPaymentStatus');
-    const pStatusLabels = {
-        'paid': 'Fully Paid',
-        'deposit_paid': 'Downpayment Paid',
-        'proof_submitted': 'Downpayment Proof Sent',
-        'balance_proof_submitted': 'Balance Proof Sent',
-        'pending': 'Payment Pending'
-    };
-    pStatusEl.innerText = pStatusLabels[data.paymentStatus] || data.paymentStatus;
-
-    if (data.paymentStatus === 'paid') {
-        pStatusEl.style.color = '#166534';
-        pStatusEl.style.background = '#dcfce7';
-    } else if (data.paymentStatus === 'deposit_paid') {
-        pStatusEl.style.color = '#115e59';
-        pStatusEl.style.background = '#ccfbf1';
-    } else if (data.paymentStatus === 'proof_submitted' || data.paymentStatus === 'balance_proof_submitted') {
-        pStatusEl.style.color = '#92400e';
-        pStatusEl.style.background = '#fef3c7';
-    } else {
-        pStatusEl.style.color = '#991b1b';
-        pStatusEl.style.background = '#fee2e2';
+    var pStatusEl = document.getElementById('modalPaymentStatus');
+    var pLabels = { 'paid': 'Fully Paid', 'deposit_paid': 'Downpayment Paid', 'proof_submitted': 'Proof Sent', 'balance_proof_submitted': 'Balance Proof Sent', 'pending': 'Payment Pending' };
+    if (pStatusEl) {
+        pStatusEl.innerText = pLabels[data.paymentStatus] || data.paymentStatus;
+        pStatusEl.className = 'premium-status-badge';
+        if (data.paymentStatus === 'paid' || data.paymentStatus === 'deposit_paid') pStatusEl.classList.add('ps-badge-confirmed');
+        else if (data.paymentStatus === 'proof_submitted' || data.paymentStatus === 'balance_proof_submitted') pStatusEl.classList.add('ps-badge-payment');
+        else pStatusEl.classList.add('ps-badge-cancelled');
     }
 
-    // No History
-
-    modal.style.display = 'flex';
+    bk_openModal('bookingDetailModal');
 }
 
-// function promptCancel(bookingId) {
-//     // Removed per Phase 10E requirements to prevent intentional/scam cancellations by caterer
-// }
+function bk_closeBookingDetailModal() { bk_closeModal('bookingDetailModal'); }
 
-
-function showMenuDetails(bookingId) {
-    const btn = document.querySelector(`.view-details[data-id="${bookingId}"]`);
-    if (btn) showBookingDetails(btn);
+function switchBookingTab(tabId) {
+    document.querySelectorAll('.mtab-pane-pro').forEach(function(p) { p.classList.remove('active'); });
+    document.querySelectorAll('.mtab-btn-pro').forEach(function(b) { b.classList.remove('active'); });
+    var pane = document.getElementById('btab-' + tabId);
+    if (pane) pane.classList.add('active');
+    if (event && event.currentTarget) event.currentTarget.classList.add('active');
 }
 
-function closeModal() {
-    const modal = document.getElementById('bookingDetailModal');
-    if (modal) modal.style.display = 'none';
+function resetBookingTabs() {
+    document.querySelectorAll('.mtab-pane-pro').forEach(function(p) { p.classList.remove('active'); });
+    document.querySelectorAll('.mtab-btn-pro').forEach(function(b) { b.classList.remove('active'); });
+    var summaryTab = document.getElementById('btab-summary');
+    if (summaryTab) summaryTab.classList.add('active');
+    var firstBtn = document.querySelector('.mtab-btn-pro');
+    if (firstBtn) firstBtn.classList.add('active');
 }
 
-let currentBookingIdForContract = null;
+// ─── CONTRACT MODAL ──────────────────────────────────────────────────────────
 
+var currentBookingIdForContract = null;
 function openContractModal(bookingId) {
     currentBookingIdForContract = bookingId;
-    const modal = document.getElementById('contractModal');
-    const body = document.getElementById('contractModalBody');
-    modal.style.display = 'flex';
-
-    fetch(`/api/bookings/${bookingId}/contract/content`)
-        .then(response => response.text())
-        .then(html => {
-            body.innerHTML = html;
-        })
-        .catch(err => {
-            body.innerHTML = '<p style="color: #ef4444; text-align: center;">Failed to load contract content.</p>';
-            console.error(err);
-        });
+    var body = document.getElementById('contractModalBody');
+    if (!body) return;
+    body.innerHTML = '<div style="text-align:center;padding:4rem;"><i class="fas fa-circle-notch fa-spin fa-3x" style="color:var(--primary-color);"></i></div>';
+    bk_openModal('contractModal');
+    fetch('/caterer/api/bookings/' + bookingId + '/contract/content')
+        .then(function(r) { return r.text(); })
+        .then(function(html) { body.innerHTML = html; })
+        .catch(function() { body.innerHTML = '<p style="color:#ef4444;text-align:center;">Failed to load contract.</p>'; });
 }
 
-function closeContractModal() {
-    document.getElementById('contractModal').style.display = 'none';
-}
+function closeContractModal() { bk_closeModal('contractModal'); }
 
 function printContract(bookingId) {
-    const url = `/caterer/bookings/${bookingId}/contract`;
-    const printWindow = window.open(url, '_blank');
-    printWindow.onload = function () {
-        printWindow.print();
-    };
+    var url = '/caterer/bookings/' + bookingId + '/contract';
+    var w = window.open(url, '_blank');
+    if (w) w.onload = function() { w.print(); };
 }
 
-// Due Date Management
+// ─── DUE DATE ────────────────────────────────────────────────────────────────
+
 function toggleDueDateEdit() {
-    const display = document.getElementById('dueDateDisplaySection');
-    const edit = document.getElementById('dueDateEditSection');
-    const btnEdit = document.getElementById('btnEditDueDate');
+    var display = document.getElementById('dueDateDisplaySection');
+    var edit = document.getElementById('dueDateEditSection');
+    var btnEdit = document.getElementById('btnEditDueDate');
+    if (!display || !edit) return;
     if (display.style.display === 'none') {
         display.style.display = 'block';
         edit.style.display = 'none';
@@ -253,130 +632,238 @@ function toggleDueDateEdit() {
 }
 
 async function saveDueDate() {
-    const newDate = document.getElementById('balanceDueDateInput').value;
-    if (!newDate) {
-        window.showError("Please select a valid date.");
-        return;
-    }
-
+    var newDate = document.getElementById('balanceDueDateInput').value;
+    if (!newDate) { window.showError('Please select a valid date.'); return; }
+    var today = new Date().toISOString().split('T')[0];
+    if (newDate < today) { window.showError('Please select a current or future date.'); return; }
     try {
-        const today = new Date().toISOString().split('T')[0];
-        if (newDate < today) {
-            window.showError("Warning: You are setting a due date in the past. Please select a current or future date.");
-            return;
-        }
-
-        const response = await fetch(`/api/bookings/${currentBookingId}/set-due-date`, {
+        var response = await fetch('/caterer/api/bookings/' + currentBookingId + '/set-due-date', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ due_date: newDate })
         });
-
         if (response.ok) {
             document.getElementById('modalDueDate').innerText = newDate;
             toggleDueDateEdit();
-
-            // Update the data attribute on the button so it persists if modal is reopened
-            const btn = document.querySelector(`.view-details[data-id="${currentBookingId}"]`);
+            var btn = document.querySelector('.view-details[data-id="' + currentBookingId + '"]');
             if (btn) btn.dataset.balanceDue = newDate;
-
-            window.showSuccess("Due date updated successfully!");
+            window.showSuccess('Due date updated!');
         } else {
-            const err = await response.json();
-            window.showError(err.detail || "Failed to update due date.", "Error");
+            var err = await response.json();
+            window.showError(err.detail || 'Failed to update due date.');
         }
-    } catch (error) {
-        console.error("Error saving due date:", error);
-        window.showError("An error occurred while saving the due date.");
+    } catch (error) { window.showError('An error occurred.'); }
+}
+
+async function runAIScan() {
+    const resultsPanel = document.getElementById('aiScanResults');
+    const content = document.getElementById('aiScanContent');
+    const badge = document.getElementById('aiConfidenceBadge');
+    const flags = document.getElementById('aiScanFlags');
+    const btn = document.getElementById('aiVerifyBtn');
+
+    if (!resultsPanel || !btn) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Scanning...';
+    resultsPanel.style.display = 'block';
+    content.innerHTML = '<p class="text-muted italic">Engine processing image pixels and cross-referencing ledger data...</p>';
+    badge.innerHTML = '';
+    flags.innerHTML = '';
+
+    try {
+        const res = await fetch(`/caterer/api/bookings/${currentBookingId}/verify-proof`, { method: 'POST' });
+        const result = await res.json();
+
+        if (result.status === 'success') {
+            const data = result.data;
+            const score = data.confidence;
+            const isNonDoc = data.flags.some(f => f.includes('Non-Document'));
+            
+            // Render Badge with clearer status labels
+            let config = { icon: 'fa-shield-alt', color: '#e11d48', label: 'CRITICAL RISK', bg: '#fff1f2' };
+            if (score >= 80) config = { icon: 'fa-check-double', color: '#10b981', label: 'LEGIT', bg: '#f0fdf4' };
+            else if (score >= 40) config = { icon: 'fa-exclamation-triangle', color: '#f59e0b', label: 'SUSPICIOUS', bg: '#fffbeb' };
+            
+            badge.innerHTML = `<div class="ai-confidence-indicator" style="background:${config.bg}; color:${config.color};"><i class="fas ${config.icon}"></i> ${config.label} (${score}% Match)</div>`;
+
+            // Premium Grid Layout - Only show if it's a document
+            const extr = data.extracted_data;
+            if (isNonDoc) {
+                content.innerHTML = `
+                    <div style="padding:1rem; text-align:center; color:#64748b; font-style:italic;">
+                        <i class="fas fa-image-slash fa-2x mb-2 opacity-50"></i><br>
+                        Statistical analysis aborted. Image does not contain receipt-like data.
+                    </div>
+                `;
+            } else {
+                content.innerHTML = `
+                    <div class="ai-stat-grid mt-3">
+                        <div class="ai-stat-item"><span class="ai-stat-label">REF NO.</span><span class="ai-stat-value">${extr.reference_no || 'Missing'}</span></div>
+                        <div class="ai-stat-item"><span class="ai-stat-label">AMOUNT</span><span class="ai-stat-value">₱${(extr.amount || 0).toLocaleString()}</span></div>
+                        <div class="ai-stat-item"><span class="ai-stat-label">DATE</span><span class="ai-stat-value">${extr.date || 'Unknown'}</span></div>
+                    </div>
+                `;
+            }
+
+            // Render Flags in Pilled list
+            if (data.flags && data.flags.length > 0) {
+                flags.innerHTML = '<div class="ai-flags-container">' + 
+                    data.flags.map(f => {
+                        const isDanger = f.toLowerCase().includes('fraud') || f.toLowerCase().includes('risk') || f.toLowerCase().includes('mismatch') || f.toLowerCase().includes('invalid');
+                        const flagClass = isDanger ? 'ai-flag-danger' : 'ai-flag-warning';
+                        const flagIcon = isDanger ? 'fa-exclamation-triangle' : 'fa-flag';
+                        return `<div class="ai-flag-item ${flagClass}"><i class="fas ${flagIcon}"></i> ${f}</div>`;
+                    }).join('') + 
+                    '</div>';
+            } else {
+                flags.innerHTML = '<div class="ai-flag-item ai-flag-success"><i class="fas fa-check-double"></i> All data points matched perfectly. No fraud detected.</div>';
+            }
+        } else {
+            content.innerHTML = `<div class="ai-flag-item ai-flag-danger"><i class="fas fa-exclamation-circle"></i> ${result.message || 'Verification failed.'}</div>`;
+        }
+    } catch (err) {
+        content.innerHTML = '<div class="ai-flag-item ai-flag-danger"><i class="fas fa-wifi-slash"></i> Service unavailable.</div>';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-microchip me-1"></i> Run AI Scan Again';
+        resultsPanel.classList.add('ai-report-panel'); // Switch to new class
     }
 }
 
-// Confirmation Wrappers for Actions
-function confirmAcceptBooking(bookingId, isPayment = false) {
-    const title = isPayment ? "Confirm Payment?" : "Accept Booking?";
-    const message = isPayment
-        ? "Sigurado ka bang natanggap mo na ang bayad? Ito ay magpapalit sa status ng booking bilang 'Confirmed'."
-        : "Nais mo bang tanggapin ang booking na ito? Pakisiguradong tama ang lahat ng detalye bago mag-proceed.";
+function confirmAcceptBooking(bookingId, isPayment) {
+    isPayment = isPayment || false;
+    
+    let confirmMsg = isPayment ? 'Natanggap mo na ba ang bayad mula sa customer?' : 'Nais mo bang tanggapin ang booking na ito kahit wala pang payment proof?';
+    let confirmTitle = isPayment ? 'Confirm Payment?' : 'Accept Booking Manually?';
+    let confirmBtn = isPayment ? 'Yes, Verify Payment' : 'Yes, Accept Booking';
 
-    window.showConfirm(message, () => {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = isPayment ? `/caterer/payments/${bookingId}/confirm` : `/caterer/bookings/${bookingId}/accept`;
-        document.body.appendChild(form);
-        form.submit();
-    }, title, isPayment ? "Yes, Confirm Payment" : "Yes, Accept Booking");
+    window.showConfirm(confirmMsg,
+        async function() {
+            var url = isPayment ? '/caterer/payments/' + bookingId + '/confirm' : '/caterer/bookings/' + bookingId + '/accept';
+            var result = await window.apiAction(url, { method: 'POST' });
+            if (result && result.status === 'success') {
+                bk_closeBookingDetailModal();
+                if (typeof window.refreshDashboardData === 'function') window.refreshDashboardData();
+            }
+        },
+        confirmTitle, confirmBtn
+    );
 }
 
 function confirmRejectBooking(bookingId) {
-    window.showConfirm(
-        "Naniniwala ka bang nais mong i-REJECT ang booking na ito? Ang action na ito ay permanent at hindi na mababawi.",
-        () => {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = `/caterer/bookings/${bookingId}/reject`;
-            document.body.appendChild(form);
-            form.submit();
-        },
-        "Reject Booking?",
-        "Yes, Reject Booking"
+    window.showConfirm('Nais mo bang i-REJECT ang booking na ito?',
+        async function() { await window.apiAction('/caterer/bookings/' + bookingId + '/reject', { method: 'POST' }); },
+        'Reject Booking?', 'Yes, Reject Booking'
     );
 }
 
 function confirmCompleteBooking(bookingId) {
-    window.showConfirm(
-        "Tapos na ba ang event? Ang pag-marka nito bilang 'Completed' ay maglilipat sa status nito sa history.",
-        () => {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = `/caterer/bookings/${bookingId}/complete`;
-            document.body.appendChild(form);
-            form.submit();
+    window.showConfirm('Tapos na ba ang event at settle na ba ang lahat?',
+        async function() { await window.apiAction('/caterer/bookings/' + bookingId + '/update-status', { method: 'POST', body: JSON.stringify({status: 'completed'}) }); },
+        'Mark as Completed?', 'Yes, Event Finished'
+    );
+}
+
+function updateBookingStage(bookingId, status) {
+    var labels = {
+        'preparing': 'Magsimula na sa pagluluto at paghahanda?',
+        'on_the_way': 'Papunta na ba ang team sa location?',
+        'in_progress': 'Nagsimula na ba ang serving sa event?'
+    };
+    var titles = {
+        'preparing': 'Start Preparation?',
+        'on_the_way': 'Dispatch Team?',
+        'in_progress': 'Start Event?'
+    };
+
+    window.showConfirm(labels[status] || 'Sigurado ka ba?',
+        async function() {
+            var result = await window.apiAction('/caterer/bookings/' + bookingId + '/update-status', { 
+                method: 'POST', 
+                body: JSON.stringify({ status: status }) 
+            });
+            if (result && result.status === 'success') {
+                // 1. Immediate Modal Refresh
+                if (typeof window.showBookingDetails === 'function') {
+                    window.showBookingDetails(bookingId);
+                }
+                // 2. Immediate Table Row Update (Local Sync)
+                const rowBadge = document.querySelector(`#booking-row-${bookingId} .premium-status-badge`);
+                if (rowBadge) {
+                    const statusLabels = {
+                        'preparing': 'Preparing',
+                        'on_the_way': 'In Transit',
+                        'in_progress': 'Ongoing',
+                        'completed': 'Completed'
+                    };
+                    const statusClasses = {
+                        'preparing': 'ps-badge-preparing',
+                        'on_the_way': 'ps-badge-transit',
+                        'in_progress': 'ps-badge-ongoing',
+                        'completed': 'ps-badge-completed'
+                    };
+                    rowBadge.innerText = statusLabels[status] || status.toUpperCase();
+                    rowBadge.className = 'premium-status-badge ' + (statusClasses[status] || '');
+                }
+            }
         },
-        "Mark as Completed?",
-        "Yes, Event Finished"
+        titles[status] || 'Update Status', 'Yes, Proceed'
+    );
+}
+
+function requestNewProof(bookingId) {
+    var reason = prompt("Bakit mo ito nire-reject? (Hal: 'Unreadable image', 'Wrong amount', 'Fake receipt')");
+    if (reason === null) return;
+
+    window.showConfirm('Sigurado ka bang i-reject ang proof na ito at padalhan ng notif ang customer?',
+        async function() {
+            var result = await window.apiAction('/caterer/bookings/' + bookingId + '/request-new-proof', {
+                method: 'POST',
+                body: JSON.stringify({ reason: reason })
+            });
+            if (result && result.status === 'success') {
+                window.showToast('Notification sent to customer.', 'success');
+                if (typeof window.showBookingDetails === 'function') {
+                    window.showBookingDetails(bookingId);
+                }
+            }
+        },
+        'Request New Proof?', 'Yes, Notify Customer'
     );
 }
 
 function confirmArchiveBooking(bookingId) {
-    window.showConfirm(
-        "Nais mo bang i-archive ang booking na ito? Ito ay ililipat sa iyong archives folder.",
-        () => {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = `/caterer/bookings/${bookingId}/archive`;
-            document.body.appendChild(form);
-            form.submit();
-        },
-        "Archive Booking?",
-        "Yes, Archive"
+    window.showConfirm('Nais mo bang i-archive ang booking na ito?',
+        async function() { await window.apiAction('/caterer/bookings/' + bookingId + '/archive', { method: 'POST' }); },
+        'Archive Booking?', 'Yes, Archive'
     );
 }
 
-// Global exposure
-// window.promptCancel = promptCancel; // promptCancel was removed
-window.showMenuDetails = showMenuDetails;
-
-window.closeModal = closeModal;
+// ─── GLOBAL EXPOSURE ─────────────────────────────────────────────────────────
+window.filterBookings = filterBookings;
+window.filterBySignature = filterBySignature;
+window.toggleActionMenu = toggleActionMenuBookings;
+window.openWalkinModal = openWalkinModal;
+window.closeWalkinModal = closeWalkinModal;
+window.submitWalkinBooking = submitWalkinBooking;
+window.openExpenseTracker = openExpenseTracker;
+window.closeExpenseTracker = closeExpenseTracker;
+window.addExpenseRow = addExpenseRow;
+window.calculateActualExpenses = calculateActualExpenses;
+window.submitExpenses = submitExpenses;
+window.showBookingDetails = showBookingDetails;
+window.switchBookingTab = switchBookingTab;
+window.resetBookingTabs = resetBookingTabs;
+window.bk_closeBookingDetailModal = bk_closeBookingDetailModal;
 window.openContractModal = openContractModal;
 window.closeContractModal = closeContractModal;
 window.printContract = printContract;
 window.toggleDueDateEdit = toggleDueDateEdit;
 window.saveDueDate = saveDueDate;
-
-// Export confirmation functions
 window.confirmAcceptBooking = confirmAcceptBooking;
 window.confirmRejectBooking = confirmRejectBooking;
 window.confirmCompleteBooking = confirmCompleteBooking;
+window.updateBookingStage = updateBookingStage;
+window.requestNewProof = requestNewProof;
 window.confirmArchiveBooking = confirmArchiveBooking;
-
-// Close when clicking outside
-window.onclick = function (event) {
-    const detailModal = document.getElementById('bookingDetailModal');
-    const contractModal = document.getElementById('contractModal');
-    if (event.target == detailModal) {
-        closeModal();
-    }
-    if (event.target == contractModal) {
-        closeContractModal();
-    }
-}
