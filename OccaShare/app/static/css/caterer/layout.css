@@ -772,24 +772,21 @@
     position: fixed;
     inset: 0;
     background: rgba(15, 23, 42, 0.45);
-    backdrop-filter: blur(0px);
-    -webkit-backdrop-filter: blur(0px);
     z-index: 3000;
-    display: none; /* Controlled by JS flex toggle */
-    align-items: center;
+    display: none;
     justify-content: center;
     padding: 1.5rem;
     opacity: 0;
     transition: opacity 0.35s ease, backdrop-filter 0.4s ease;
-    visibility: hidden;
     pointer-events: none;
     box-sizing: border-box;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
 }
 
 .occ-modal-overlay.active {
     display: flex;
     opacity: 1;
-    visibility: visible;
     pointer-events: auto;
     backdrop-filter: blur(10px) saturate(180%);
     -webkit-backdrop-filter: blur(10px) saturate(180%);
@@ -801,6 +798,7 @@
     width: 100%;
     max-width: 720px;
     max-height: 90vh;
+    min-height: 0; /* Important for flex-child scrolling */
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -811,7 +809,19 @@
     transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
     position: relative;
     z-index: 3001;
+    pointer-events: auto !important;
     will-change: transform, opacity;
+}
+
+/* Fix for modals using forms: Ensure the form fills the box and allows the body to scroll */
+.occ-modal-box > form {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+    width: 100%;
+    pointer-events: auto;
 }
 
 .occ-modal-overlay.active .occ-modal-box {
@@ -886,9 +896,13 @@
     padding: var(--modal-body-padding);
     overflow-y: auto;
     flex: 1;
+    min-height: 0;
+    width: 100%;
     display: flex;
     flex-direction: column;
     gap: var(--modal-gap);
+    pointer-events: auto;
+    -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
     scrollbar-color: #cbd5e1 transparent;
 }

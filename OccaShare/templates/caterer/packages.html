@@ -130,10 +130,10 @@
             <div class="occ-modal-body">
                 <div id="packageErrorDrawer" class="error-drawer"></div>
                 
-                <div class="modal-tabs-pro">
-                    <button type="button" class="mtab-btn active" onclick="switchPackageTab(event, 'basic')">Logistics</button>
-                    <button type="button" class="mtab-btn" onclick="switchPackageTab(event, 'details')">Inclusions</button>
-                    <button type="button" class="mtab-btn" onclick="switchPackageTab(event, 'pricing')">Pricing & ROI</button>
+                <div class="modal-tabs-pro" style="position: relative; z-index: 5000; pointer-events: auto;">
+                    <button type="button" class="mtab-btn active" onclick="switchPackageTab(this, 'basic')">Logistics</button>
+                    <button type="button" class="mtab-btn" onclick="switchPackageTab(this, 'details')">Inclusions</button>
+                    <button type="button" class="mtab-btn" onclick="switchPackageTab(this, 'pricing')">Pricing & ROI</button>
                 </div>
 
                 <!-- Logistics Tab -->
@@ -370,7 +370,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', path='/js/caterer/packages.js') }}"></script>
+<script src="{{ url_for('static', path='/js/caterer/packages.js') }}?v=11.1"></script>
 <script>
     function previewPackageImage(event) {
         const preview = document.getElementById('packageImagePreview');
@@ -416,7 +416,7 @@
             });
             drawer.innerHTML = `<i class="fas fa-exclamation-circle"></i><div><strong>Please fix the following issues:</strong><ul>${errors.join('')}</ul></div>`;
             drawer.style.display = 'flex';
-            document.querySelector('#packageModal .modal-body-pro').scrollTop = 0;
+            document.querySelector('#packageModal .occ-modal-body').scrollTop = 0;
         }
     });
 
