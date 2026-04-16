@@ -44,23 +44,6 @@ document.addEventListener('DOMContentLoaded', function () {
     if (clientId) {
         const ws = new WebSocket(ws_scheme + window.location.host + "/ws/" + clientId);
         
-        ws.onmessage = function (event) {
-            try {
-                const data = JSON.parse(event.data);
-                if (data.type === 'new_package') {
-                    showToast(data);
-                } else if (data.type === 'chat_message') {
-                    updateChatBadge();
-                    // Don't show toast if we're already on the messages page
-                    if (window.location.pathname !== '/customer/messages') {
-                        showChatNotification(data);
-                    }
-                }
-            } catch (e) {
-                console.error("Error parsing WS message:", e);
-            }
-        };
-    }
 
     function updateChatBadge() {
         fetch('/api/chat/unread-count')

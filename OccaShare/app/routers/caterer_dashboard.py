@@ -923,7 +923,6 @@ async def update_actual_cost(
     db.commit()
 
     return {"status": "success", "message": "Actual cost updated"}
->>>>>>> 4f42ea3539af3a665df8d93adcc7002850ed8434
 @router.get("/reviews", response_class=HTMLResponse)
 async def caterer_reviews(
     request: Request, 
@@ -967,9 +966,6 @@ async def post_review_reply(
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
     
-    review.caterer_reply = reply_text
-    db.commit()
-    return {"status": "success", "message": "Reply saved"}
 
 @router.post("/reviews/{review_id}/helpful")
 async def toggle_review_helpful(
@@ -2056,6 +2052,17 @@ async def cancel_booking(
         "message": f"Booking #{booking_id} has been cancelled."
     })
     
+    # Notify Customer
+    from ..services.notification import NotificationService
+    import asyncio
+    asyncio.create_task(NotificationService.notify_status_update(
+        db, 
+        booking.user_id, 
+        "Booking Cancelled ❌", 
+        f"Ang iyong booking para sa '{booking.event_name}' ay kinansela ni {user.caterer_profile.business_name}. Reason: {reason}", 
+        f"/customer/bookings"
+    ))
+    
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
         return JSONResponse({"status": "success", "message": "Booking cancelled successfully", "new_status": "cancelled"})
 
@@ -2077,12 +2084,6 @@ async def accept_booking(
     db.add(history)
     db.commit()
 
-    await manager.broadcast_to_user(user.id, {
-        "type": "booking_update",
-        "booking_id": booking_id,
-        "new_status": "confirmed",
-        "message": "Booking accepted."
-    })
     
     return JSONResponse({"status": "success", "message": "Booking accepted", "new_status": "confirmed"})
 
@@ -2109,6 +2110,17 @@ async def reject_booking(
         "message": "Booking rejected."
     })
     
+    # Notify Customer
+    from ..services.notification import NotificationService
+    import asyncio
+    asyncio.create_task(NotificationService.notify_status_update(
+        db, 
+        booking.user_id, 
+        "Booking Rejected ❌", 
+        f"Pasensya na, hindi tinanggap ni {user.caterer_profile.business_name} ang iyong booking request para sa '{booking.event_name}'.", 
+        f"/customer/bookings"
+    ))
+    
     return JSONResponse({"status": "success", "message": "Booking rejected", "new_status": "cancelled"})
 
 @router.post("/bookings/{booking_id}/complete")
@@ -2133,6 +2145,17 @@ async def complete_booking(
         "new_status": "completed",
         "message": "Booking completed."
     })
+    
+    # Notify Customer
+    from ..services.notification import NotificationService
+    import asyncio
+    asyncio.create_task(NotificationService.notify_status_update(
+        db, 
+        booking.user_id, 
+        "Event Service Completed 🌟", 
+        f"Salamat! Ang iyong event '{booking.event_name}' ay itinalaga bilang COMPLETED ni {user.caterer_profile.business_name}. Huwag kalimutang i-rate ang kanilang serbisyo!", 
+        f"/customer/reviews"
+    ))
     
     return JSONResponse({"status": "success", "message": "Booking completed", "new_status": "completed"})
 
