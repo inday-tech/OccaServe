@@ -11,6 +11,7 @@ from ..services.email import EmailService
 import shutil
 import os
 import uuid
+import base64
 from ..services.realtime import manager
 from ..services.notification import NotificationService
 
@@ -49,11 +50,139 @@ def save_upload_file(upload_file: UploadFile) -> str:
         
     return f"/static/uploads/verification/{unique_filename}"
 
+def save_base64_file(base64_str: str) -> str:
+    if not base64_str or "," not in base64_str:
+        return ""
+    
+    header, encoded = base64_str.split(",", 1)
+    file_extension = ".jpg" # Default to jpg
+    if "png" in header: file_extension = ".png"
+    
+    unique_filename = f"{uuid.uuid4()}{file_extension}"
+    file_path = os.path.join(UPLOAD_DIR, unique_filename)
+    
+    with open(file_path, "wb") as buffer:
+        buffer.write(base64.b64decode(encoded))
+        
+    return f"/static/uploads/verification/{unique_filename}"
+
 @router.get("/my")
 async def my_bookings_redirect():
     return RedirectResponse(url="/customer/bookings", status_code=303)
 
 # --- Wizard Steps ---
+
+# --- Dedicated A La Carte Checkout ---
+@router.get("/alacarte/checkout/{caterer_id}")
+async def alacarte_checkout_page(request: Request, caterer_id: int, menu_id: int, db: Session = Depends(database.get_db)):
+    user = get_current_user_from_session(request, db)
+    if not user:
+        return RedirectResponse(url=f"/auth/login?next=/bookings/alacarte/checkout/{caterer_id}?menu_id={menu_id}")
+    
+    caterer = db.query(models.CatererProfile).get(caterer_id)
+    menu_item = db.query(models.MenuItem).get(menu_id)
+    
+    if not caterer or not menu_item:
+        return RedirectResponse(url="/marketplace", status_code=303)
+        
+    return templates.TemplateResponse("customer/booking_wizard/alacarte_checkout.html", {
+        "request": request,
+        "user": user,
+        "caterer": caterer,
+        "menu_item": menu_item,
+        "current_step": 1
+    })
+
+@router.post("/alacarte/checkout/submit")
+async def alacarte_checkout_submit(
+    request: Request,
+    caterer_id: int = Form(...),
+    menu_id: int = Form(...),
+    full_name: str = Form(...),
+    contact_number: str = Form(...),
+    delivery_date: str = Form(...),
+    delivery_time: str = Form(...),
+    address: str = Form(...),
+    quantity: int = Form(1),
+    fulfillment: str = Form(...),
+    payment_method: str = Form(...),
+    total_amount: float = Form(...),
+    landmark: Optional[str] = Form(None),
+    id_file: Optional[UploadFile] = File(None),
+    selfie_base64: Optional[str] = Form(None),
+    db: Session = Depends(database.get_db)
+):
+    user = get_current_user_from_session(request, db)
+    if not user:
+        return {"success": False, "message": "Unauthorized"}
+    
+    try:
+        # 1. Process Images
+        id_url = ""
+        if id_file and id_file.filename:
+            id_url = save_upload_file(id_file)
+            
+        selfie_url = ""
+        if selfie_base64:
+            selfie_url = save_base64_file(selfie_base64)
+
+        # 2. Create Booking
+        event_date_obj = date.fromisoformat(delivery_date)
+        event_time_obj = datetime.strptime(delivery_time, "%H:%M").time()
+        
+        # Determine status
+        # For A La Carte - COD is confirmed immediately after identity verification
+        status = "pending_payment" if payment_method == "GCASH" else "confirmed"
+        
+        new_booking = models.Booking(
+            user_id=user.id,
+            caterer_id=caterer_id,
+            event_name=f"Food Order: {full_name}",
+            event_type="Food Delivery",
+            event_date=event_date_obj,
+            event_time=event_time_obj,
+            venue_address=address if fulfillment == "delivery" else "PICKUP",
+            guest_count=quantity,
+            total_amount=total_amount,
+            total_price=total_amount,
+            status=status,
+            payment_method=payment_method,
+            special_requests=landmark
+        )
+        db.add(new_booking)
+        db.flush() # Get ID
+
+        # 3. Add Menu Item
+        menu_item = db.query(models.MenuItem).get(menu_id)
+        booking_item = models.BookingMenuItem(
+            booking_id=new_booking.id,
+            menu_item_id=menu_id,
+            price=menu_item.price if menu_item else 0
+        )
+        db.add(booking_item)
+
+        # 4. Save Identity Data
+        if id_url or selfie_url:
+            ocr_verify = models.OCRVerification(
+                booking_id=new_booking.id,
+                user_id=user.id,
+                document_url=id_url,
+                selfie_url=selfie_url,
+                status="verified", # We assume client-side liveness for this direct flow
+                ocr_data={"full_name_provided": full_name}
+            )
+            db.add(ocr_verify)
+
+        db.commit()
+        
+        # 5. Send Notification (Optional logic)
+        # NotificationService.send(...)
+
+        return {"success": True, "booking_id": new_booking.id}
+    except Exception as e:
+        db.rollback()
+        print(f"Error in alacarte submit: {e}")
+        return {"success": False, "message": str(e)}
 
 # Step 1: Initialize/Select Caterer (from Profile Page)
 @router.get("/start/{caterer_id}")

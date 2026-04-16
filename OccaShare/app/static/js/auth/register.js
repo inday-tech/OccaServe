@@ -247,6 +247,11 @@
             return { valid: false, message: "Please use your real name" };
         }
 
+        const parts = lowerName.split(/\s+/).filter(p => p.length > 0);
+        if (parts.length >= 2 && new Set(parts).size !== parts.length) {
+            return { valid: false, message: "Avoid repetitive names (e.g. Pepito Pepito)" };
+        }
+
         return { valid: true };
     };
 

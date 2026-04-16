@@ -88,8 +88,8 @@ def is_dummy_name(name: str) -> Optional[str]:
     parts = name_str.split()
     if len(parts) < 2:
         return "Please enter full name (at least 2 words)"
-    if parts[0] == parts[1] and len(parts[0]) > 2:
-        return "Avoid repetitive words in names"
+    if len(parts) != len(set(parts)):
+        return "Names cannot contain repetitive words (e.g. Pepito Pepito)"
     return None
 
 def is_dummy_phone(phone: str) -> Optional[str]:

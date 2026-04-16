@@ -463,34 +463,32 @@
                 </div>
             </div>
 
-            <!-- Culinary Offerings -->
+            <!-- A La Carte & Menus -->
             {% if caterer.menu_items %}
             <div class="c-card-premium" style="padding: 1.5rem;">
                 <div class="section-title-wrapper">
-                    <i class="fas fa-utensils"></i>
-                    <h2 class="section-title">Culinary Offerings</h2>
+                    <i class="fas fa-concierge-bell"></i>
+                    <h2 class="section-title">A La Carte Options</h2>
+                    <span style="margin-left:auto; font-size: 0.8rem; font-weight: 600; color: #f97316; background: #fff7ed; padding: 0.3rem 0.8rem; border-radius: 2rem;">Food Only Booking</span>
                 </div>
                 <div class="item-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
-                    {% for item in caterer.menu_items[:2] %}
+                    {% for item in caterer.menu_items %}
                     <div class="premium-item-card">
                         <div class="item-img-container">
                             {% if item.image_url %}
                             <img src="{{ item.image_url }}" class="item-img">
                             {% else %}
-                            <div
-                                style="display: flex; align-items: center; justify-content: center; height: 100%; color: #cbd5e1;">
-                                <i class="fas fa-concierge-bell fa-3x"></i>
+                            <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #cbd5e1; background: #f8fafc;">
+                                <i class="fas fa-utensils fa-3x"></i>
                             </div>
                             {% endif %}
-                            <span class="item-badge" style="background: #10b981;">NEW</span>
+                            <span class="item-badge" style="background: #10b981;">A LA CARTE</span>
                         </div>
                         <div class="item-body">
-                            <div
-                                style="font-size: 0.7rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">
-                                Menu Item</div>
+                            <div style="font-size: 0.7rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Menu Item</div>
                             <h3 class="item-title">{{ item.name }}</h3>
-                            <div class="item-price">₱{{ "{:,.0f}".format(item.price) if item.price else '1,500' }}
-                            </div>
+                            <div class="item-price" style="margin-bottom: 1rem;">₱{{ "{:,.0f}".format(item.price) if item.price else '1,500' }}</div>
+                            <button onclick="showPkgModal('menu-modal-{{ item.id }}')" class="btn-outline-full" style="margin-top: auto; padding: 0.6rem; font-size: 0.8rem;">Select A La Carte</button>
                         </div>
                     </div>
                     {% endfor %}
@@ -498,131 +496,129 @@
             </div>
             {% endif %}
 
-                <!-- Packages -->
-                <div class="c-card-premium" style="padding: 1.5rem;">
-                    <div class="section-title-wrapper">
-                        <i class="fas fa-gift"></i>
-                        <h2 class="section-title">Packages</h2>
-                    </div>
-                    <div class="item-grid">
-                        {% for pkg in packages[:3] %}
-                        <div class="premium-item-card">
-                            <div class="item-img-container">
-                                {% if pkg.image_url %}
-                                <img src="{{ pkg.image_url }}" class="item-img">
-                                {% else %}
-                                <img src="https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=400"
-                                    class="item-img">
-                                {% endif %}
-                                <span class="item-badge">FEATURED</span>
-                            </div>
-                            <div class="item-body">
-                                <h3 class="item-title">{{ pkg.name }}</h3>
-                                <ul class="item-meta-list">
-                                    <li><i class="fas fa-users"></i> {{ pkg.min_guests or 50 }}-{{ pkg.max_guests or
-                                        '100' }} Guests</li>
-                                    <li><i class="far fa-clock"></i> {{ pkg.service_duration or 4 }} Hours Serivce</li>
-                                    <li><i class="fas fa-utensils"></i> Wedding Food</li>
-                                </ul>
-                                <button onclick="showPkgModal('pkg-modal-{{ pkg.id }}')" class="btn-outline-full"
-                                    style="margin-top: auto;">View Details</button>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
+            <!-- Packages -->
+            <div class="c-card-premium" style="padding: 1.5rem;">
+                <div class="section-title-wrapper">
+                    <i class="fas fa-gift"></i>
+                    <h2 class="section-title">Packages</h2>
                 </div>
-
-                <!-- Gallery -->
-                <div class="c-card-premium" style="padding: 1.5rem;">
-                    <div class="section-title-wrapper">
-                        <i class="fas fa-camera"></i>
-                        <h2 class="section-title">Gallery</h2>
-                    </div>
-                    <div class="item-grid"
-                        style="grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.75rem;">
-                        {% for i in range(1, 7) %}
-                        <div
-                            style="height: 120px; border-radius: 0.5rem; overflow: hidden; background: #f8fafc; border: 1px solid #f1f5f9;">
-                            {% if gallery_items and gallery_items[i-1] %}
-                            <img src="{{ gallery_items[i-1].media_url }}"
-                                style="width: 100%; height: 100%; object-fit: cover;">
+                <div class="item-grid">
+                    {% for pkg in packages[:3] %}
+                    <div class="premium-item-card">
+                        <div class="item-img-container">
+                            {% if pkg.image_url %}
+                            <img src="{{ pkg.image_url }}" class="item-img">
                             {% else %}
-                            <img src="https://via.placeholder.com/150"
-                                style="width: 100%; height: 100%; object-fit: cover; filter: grayscale(100%); opacity: 0.5;">
+                            <img src="https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=400"
+                                class="item-img">
                             {% endif %}
+                            <span class="item-badge">FEATURED</span>
                         </div>
-                        {% endfor %}
-                    </div>
-                            <div class="stat-icon"><i class="far fa-calendar-check" style="font-size: 1.2rem;"></i>
-                            </div>
-                            <div class="item-title" style="margin-bottom: 0.25rem;">Booking Policy</div>
-                            <div style="font-size: 0.8rem; color: #64748b; line-height: 1.5;">Reservations should be
-                                made in advance. Contact the caterer for specific lead time requirements.</div>
-                        </div>
-                        <div class="profile-stat-box" style="text-align: left;">
-                            <div class="stat-icon"><i class="far fa-credit-card" style="font-size: 1.2rem;"></i></div>
-                            <div class="item-title" style="margin-bottom: 0.25rem;">Payment Policy</div>
-                            <div style="font-size: 0.8rem; color: #64748b; line-height: 1.5;">A downpayment is typically
-                                required to secure your booking date.</div>
-                        </div>
-                        <div class="profile-stat-box" style="text-align: left;">
-                            <div class="stat-icon"><i class="far fa-clock" style="font-size: 1.2rem;"></i></div>
-                            <div class="item-title" style="margin-bottom: 0.25rem;">Cancellation Policy</div>
-                            <div style="font-size: 0.8rem; color: #64748b; line-height: 1.5;">Please coordinate with the
-                                caterer regarding cancellations and refund eligibility.</div>
+                        <div class="item-body">
+                            <h3 class="item-title">{{ pkg.name }}</h3>
+                            <ul class="item-meta-list">
+                                <li><i class="fas fa-users"></i> {{ pkg.min_guests or 50 }}-{{ pkg.max_guests or
+                                    '100' }} Guests</li>
+                                <li><i class="far fa-clock"></i> {{ pkg.service_duration or 4 }} Hours Serivce</li>
+                                <li><i class="fas fa-utensils"></i> Wedding Food</li>
+                            </ul>
+                            <button onclick="showPkgModal('pkg-modal-{{ pkg.id }}')" class="btn-outline-full"
+                                style="margin-top: auto;">View Details</button>
                         </div>
                     </div>
+                    {% endfor %}
                 </div>
+            </div>
 
+            <!-- Gallery -->
+            <div class="c-card-premium" style="padding: 1.5rem;">
+                <div class="section-title-wrapper">
+                    <i class="fas fa-camera"></i>
+                    <h2 class="section-title">Gallery</h2>
+                </div>
+                <div class="item-grid"
+                    style="grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.75rem;">
+                    {% for i in range(1, 7) %}
+                    <div
+                        style="height: 120px; border-radius: 0.5rem; overflow: hidden; background: #f8fafc; border: 1px solid #f1f5f9;">
+                        {% if gallery_items and gallery_items[i-1] %}
+                        <img src="{{ gallery_items[i-1].media_url }}"
+                            style="width: 100%; height: 100%; object-fit: cover;">
+                        {% else %}
+                        <img src="https://via.placeholder.com/150"
+                            style="width: 100%; height: 100%; object-fit: cover; filter: grayscale(100%); opacity: 0.5;">
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="stat-icon"><i class="far fa-calendar-check" style="font-size: 1.2rem;"></i>
+                </div>
+                <div class="item-title" style="margin-bottom: 0.25rem;">Booking Policy</div>
+                <div style="font-size: 0.8rem; color: #64748b; line-height: 1.5;">Reservations should be
+                    made in advance. Contact the caterer for specific lead time requirements.</div>
+            </div>
+            <div class="profile-stat-box" style="text-align: left;">
+                <div class="stat-icon"><i class="far fa-credit-card" style="font-size: 1.2rem;"></i></div>
+                <div class="item-title" style="margin-bottom: 0.25rem;">Payment Policy</div>
+                <div style="font-size: 0.8rem; color: #64748b; line-height: 1.5;">A downpayment is typically
+                    required to secure your booking date.</div>
+            </div>
+            <div class="profile-stat-box" style="text-align: left;">
+                <div class="stat-icon"><i class="far fa-clock" style="font-size: 1.2rem;"></i></div>
+                <div class="item-title" style="margin-bottom: 0.25rem;">Cancellation Policy</div>
+                <div style="font-size: 0.8rem; color: #64748b; line-height: 1.5;">Please coordinate with the
+                    caterer regarding cancellations and refund eligibility.</div>
+            </div>
         </div>
 
         <!-- Sidebar -->
         <div class="sidebar-widget">
-            <div class="sidebar-inner-card">
-                <div class="stat-label" style="margin-bottom: 0.5rem;">Starting Price</div>
-                <div class="price-large">₱{{ "{:,.0f}".format(caterer.starting_price or 15000) }}</div>
+    <div class="sidebar-inner-card">
+        <div class="stat-label" style="margin-bottom: 0.5rem;">Starting Price</div>
+        <div class="price-large">₱{{ "{:,.0f}".format(caterer.starting_price or 15000) }}</div>
 
-                <div class="perks-list">
-                    <div class="perk-item">
-                        <div class="perk-icon"><i class="fas fa-bolt"></i></div>
-                        <div>
-                            <div class="perk-title">Rapid Response</div>
-                            <div class="perk-desc">Typically replies within 1 hour</div>
-                        </div>
-                    </div>
-                    <div class="perk-item">
-                        <div class="perk-icon"><i class="fas fa-check-circle"></i></div>
-                        <div>
-                            <div class="perk-title">Verified</div>
-                            <div class="perk-desc">Identity & Business Checked</div>
-                        </div>
-                    </div>
-                    <div class="perk-item">
-                        <div class="perk-icon"><i class="far fa-star"></i></div>
-                        <div>
-                            <div class="perk-title">Top Rated</div>
-                            <div class="perk-desc">5.0 Stars</div>
-                        </div>
-                    </div>
+        <div class="perks-list">
+            <div class="perk-item">
+                <div class="perk-icon"><i class="fas fa-bolt"></i></div>
+                <div>
+                    <div class="perk-title">Rapid Response</div>
+                    <div class="perk-desc">Typically replies within 1 hour</div>
                 </div>
-
-                <div style="margin-top: 1.5rem;">
-                    <button onclick="window.location.href='/bookings/start/{{ caterer.id }}'"
-                        class="btn-orange-full">Book Now</button>
-                    <button onclick="showPkgModal('contact-modal-{{ caterer.id }}')" class="btn-outline-full"><i class="far fa-comment-dots"></i> Contact Us</button>
+            </div>
+            <div class="perk-item">
+                <div class="perk-icon"><i class="fas fa-check-circle"></i></div>
+                <div>
+                    <div class="perk-title">Verified</div>
+                    <div class="perk-desc">Identity & Business Checked</div>
                 </div>
-
-                <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 1.5rem;">
-                    <button
-                        style="background: none; border: none; font-size: 0.8rem; font-weight: 700; color: #94a3b8; cursor: pointer;"><i
-                            class="far fa-heart"></i> Save</button>
-                    <button
-                        style="background: none; border: none; font-size: 0.8rem; font-weight: 700; color: #94a3b8; cursor: pointer;"><i
-                            class="fas fa-share-alt"></i> Share</button>
+            </div>
+            <div class="perk-item">
+                <div class="perk-icon"><i class="far fa-star"></i></div>
+                <div>
+                    <div class="perk-title">Top Rated</div>
+                    <div class="perk-desc">5.0 Stars</div>
                 </div>
             </div>
         </div>
+
+        <div style="margin-top: 1.5rem;">
+            <button onclick="window.location.href='/bookings/start/{{ caterer.id }}'" class="btn-orange-full">Book
+                Now</button>
+            <button onclick="showPkgModal('contact-modal-{{ caterer.id }}')" class="btn-outline-full"><i
+                    class="far fa-comment-dots"></i> Contact Us</button>
+        </div>
+
+        <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 1.5rem;">
+            <button
+                style="background: none; border: none; font-size: 0.8rem; font-weight: 700; color: #94a3b8; cursor: pointer;"><i
+                    class="far fa-heart"></i> Save</button>
+            <button
+                style="background: none; border: none; font-size: 0.8rem; font-weight: 700; color: #94a3b8; cursor: pointer;"><i
+                    class="fas fa-share-alt"></i> Share</button>
+        </div>
     </div>
+</div>
+</div>
 </div>
 
 {% for pkg in packages %}
@@ -646,17 +642,44 @@
 </div>
 {% endfor %}
 
+{% if caterer.menu_items %}
+{% for item in caterer.menu_items %}
+<div id="menu-modal-{{ item.id }}" class="modal-overlay">
+    <div class="modal-box">
+        <button class="modal-close" onclick="closePkgModal('menu-modal-{{ item.id }}')"><i
+                class="fas fa-times"></i></button>
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+            <h2 style="font-size: 1.5rem; font-weight: 800; color: #1e293b; margin: 0;">{{ item.name }}</h2>
+            <span style="background: #10b981; color: white; padding: 0.2rem 0.6rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700;">A LA CARTE</span>
+        </div>
+        <p style="color: #64748b; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem;">{{ item.description if
+            item.description else 'Special a la carte selection prepared fresh for your attendees. Book this specifically if you only need food without the full service packages.' }}</p>
+        <div style="font-size: 1.5rem; font-weight: 800; color: #f97316; margin-bottom: 2rem;">
+            ₱{{ "{:,.0f}".format(item.price) if item.price else '1,500' }}
+        </div>
+        <button onclick="window.location.href='/bookings/alacarte/checkout/{{ caterer.id }}?menu_id={{ item.id }}'"
+            class="btn-orange-full" style="margin-bottom: 0;"><i class="fas fa-shopping-basket"></i> Order Food Only</button>
+    </div>
+</div>
+{% endfor %}
+{% endif %}
+
 <div id="contact-modal-{{ caterer.id }}" class="modal-overlay">
     <div class="modal-box">
         <button class="modal-close" onclick="closePkgModal('contact-modal-{{ caterer.id }}')"><i
                 class="fas fa-times"></i></button>
         <h2 style="font-size: 1.5rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem;">Contact Us</h2>
-        <p style="color: #64748b; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem;">Send a direct message to {{ caterer.business_name }}. They typically reply within 1 hour.</p>
-        
-        <form onsubmit="submitContactInquiry(event, '{{ caterer.id }}', '{{ caterer.business_name }}')" style="display: flex; flex-direction: column; gap: 1rem;">
-            <input type="text" placeholder="Your Name" value="{{ user.first_name }} {{ user.last_name }}" required style="padding: 0.85rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-family: 'Poppins', sans-serif;">
-            <input type="email" placeholder="Your Email Address" value="{{ user.email }}" required style="padding: 0.85rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-family: 'Poppins', sans-serif;">
-            <textarea placeholder="How can we help make your event special?" rows="4" required style="padding: 0.85rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-family: 'Poppins', sans-serif; resize: none;"></textarea>
+        <p style="color: #64748b; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem;">Send a direct message to
+            {{ caterer.business_name }}. They typically reply within 1 hour.</p>
+
+        <form onsubmit="submitContactInquiry(event, '{{ caterer.id }}', '{{ caterer.business_name }}')"
+            style="display: flex; flex-direction: column; gap: 1rem;">
+            <input type="text" placeholder="Your Name" value="{{ user.first_name }} {{ user.last_name }}" required
+                style="padding: 0.85rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-family: 'Poppins', sans-serif;">
+            <input type="email" placeholder="Your Email Address" value="{{ user.email }}" required
+                style="padding: 0.85rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-family: 'Poppins', sans-serif;">
+            <textarea placeholder="How can we help make your event special?" rows="4" required
+                style="padding: 0.85rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-family: 'Poppins', sans-serif; resize: none;"></textarea>
             <button type="submit" class="btn-orange-full" style="margin-bottom: 0;">Send Message</button>
         </form>
     </div>
@@ -702,13 +725,13 @@
                 body: formData
             });
 
-            if(response.ok) {
+            if (response.ok) {
                 alert('Inquiry sent successfully! The admin has been notified.');
                 closePkgModal('contact-modal-' + catererId);
             } else {
                 alert('Failed to send inquiry. Please try again.');
             }
-        } catch(e) {
+        } catch (e) {
             alert('An error occurred while sending the message.');
             console.error(e);
         } finally {

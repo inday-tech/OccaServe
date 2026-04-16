@@ -47,6 +47,10 @@ class VerificationService:
         "Alien Certificate of Registration": r"^[A-Z][0-9]{9}$"
     }
 
+    BUSINESS_PERMIT_KEYWORDS = [
+        "BUSINESS PERMIT", "MAYOR'S PERMIT", "DTI", "SEC", "REGISTRATION", "PERMIT TO OPERATE", "CERTIFICATE OF REGISTRATION"
+    ]
+
     def __init__(self):
         # MediaPipe Tasks API Setup (Preferred for newer versions like 0.10.x)
         from mediapipe.tasks import python
@@ -656,6 +660,69 @@ class VerificationService:
                 "failure_reason": f"System Error: {str(e)}",
                 "ocr_data": {}
             }
+
+    def verify_business_permit(self, permit_path: str, business_name: str) -> Dict[str, Any]:
+        """OCR Verification for Business Permits."""
+        try:
+            # 1. Image Loading & Quality Check
+            img = self._prepare_image(permit_path)
+            quality_check = self.check_image_quality(img)
+            if not quality_check["valid"]:
+                return {"status": "mismatched", "ocr_match": False, "failure_reason": quality_check["reason"]}
+
+            # 2. Perform OCR
+            ocr_text = self._run_tesseract_multi_psm(img)
+            clean_ocr = " ".join(ocr_text.lower().split())
+            target_name = " ".join(business_name.lower().split())
+
+            print(f"[KYC DEBUG] Business Permit OCR - Target: '{target_name}'")
+            print(f"[KYC DEBUG] OCR Text (Preview): '{clean_ocr[:200]}...'")
+
+            # 3. Keyword Check (Is it even a permit?)
+            is_likely_permit = any(kw.lower() in clean_ocr for kw in self.BUSINESS_PERMIT_KEYWORDS)
+
+            # 4. Fuzzy Matching for Business Name
+            # We look for the business name or parts of it
+            name_parts = [p for p in target_name.split() if len(p) > 2]
+            matches = 0
+            for part in name_parts:
+                if part in clean_ocr:
+                    matches += 1
+                else:
+                    # Fuzzy check within words
+                    words = clean_ocr.split()
+                    for word in words:
+                        if difflib.SequenceMatcher(None, part, word).ratio() > 0.8:
+                            matches += 1
+                            break
+            
+            match_ratio = matches / len(name_parts) if name_parts else 0
+            name_match = match_ratio >= 0.5 # 50% of name parts found
+
+            status = "matched" if name_match else "mismatched"
+            failure_reason = None
+            if not name_match:
+                failure_reason = "Business Name not found on the permit. Please ensure the document is clear and matches the registered name."
+            elif not is_likely_permit:
+                # We still match the name, but warn that it might not be a permit
+                print("[KYC DEBUG] Name matched but permit keywords not found. Proceeding with caution.")
+            
+            return {
+                "status": status,
+                "ocr_match": name_match,
+                "is_likely_permit": is_likely_permit,
+                "failure_reason": failure_reason,
+                "extracted_text_preview": ocr_text[:300],
+                "ocr_data": {
+                    "raw_text": ocr_text,
+                    "business_name_match": name_match,
+                    "match_ratio": match_ratio
+                }
+            }
+
+        except Exception as e:
+            traceback.print_exc()
+            return {"status": "error", "failure_reason": f"System Error during Permit scan: {str(e)}"}
 
     def verify_identity(self, id_url: str, selfie_url: str) -> dict:
         """Legacy mock for compatibility."""

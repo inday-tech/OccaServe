@@ -382,6 +382,54 @@
         padding-top: 4px;
         padding-bottom: 4px;
     }
+
+    /* Scanning Animation */
+    .file-upload-box.scanning {
+        border-color: var(--primary);
+        pointer-events: none;
+    }
+    .file-upload-box.scanning::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: var(--primary);
+        box-shadow: 0 0 15px var(--primary);
+        animation: scanLine 1.5s infinite linear;
+        z-index: 10;
+    }
+    @keyframes scanLine {
+        0% { top: 0; }
+        100% { top: 100%; }
+    }
+    .file-upload-box.scanned-success {
+        border-color: #10b981;
+        background: #ecfdf5;
+    }
+    .file-upload-box.scanned-error {
+        border-color: #ef4444;
+        background: #fef2f2;
+    }
+    .scan-status-badge {
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 99px;
+        margin-top: 5px;
+        display: none;
+    }
+    .scanned-success .scan-status-badge {
+        display: inline-block;
+        background: #10b981;
+        color: white;
+    }
+    .scanned-error .scan-status-badge {
+        display: inline-block;
+        background: #ef4444;
+        color: white;
+    }
 </style>
 {% endblock %}
 
@@ -631,11 +679,12 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="permit">Business Permit</label>
-                            <div class="file-upload-box">
-                                <i class="fas fa-file-invoice"></i>
+                            <div class="file-upload-box" id="permitBox">
+                                <i class="fas fa-file-invoice" id="permitIcon"></i>
                                 <p id="permitName">BusinessPermit.pdf / jpg</p>
+                                <span class="scan-status-badge" id="permitStatus">Verified</span>
                                 <input type="file" id="permit" name="permit" accept=".pdf,image/*" required
-                                    onchange="updateFileName(this, 'permitName')">
+                                    onchange="handleFileUpload(this, 'permit')">
                             </div>
                         </div>
 
@@ -659,11 +708,12 @@
 
                         <div class="form-group">
                             <label for="gov_id">Valid ID Photo</label>
-                            <div class="file-upload-box">
-                                <i class="fas fa-id-card"></i>
+                            <div class="file-upload-box" id="govIdBox">
+                                <i class="fas fa-id-card" id="govIdIcon"></i>
                                 <p id="govIdName">GovID.pdf / jpg</p>
+                                <span class="scan-status-badge" id="govIdStatus">Verified</span>
                                 <input type="file" id="gov_id" name="gov_id" accept=".pdf,image/*" required
-                                    onchange="updateFileName(this, 'govIdName')">
+                                    onchange="handleFileUpload(this, 'id')">
                             </div>
                         </div>
 
@@ -909,13 +959,13 @@
             return { valid: false, message: "Please use a real name" };
         }
 
-        const parts = name.trim().split(/\s+/);
+        const parts = name.trim().toLowerCase().split(/\s+/).filter(p => p.length > 0);
         if (parts.length < 1) {
             return { valid: false, message: "Required" };
         }
 
-        if (parts.length >= 2 && parts[0].toLowerCase() === parts[1].toLowerCase()) {
-            return { valid: false, message: "Avoid repetitive words" };
+        if (parts.length >= 2 && new Set(parts).size !== parts.length) {
+            return { valid: false, message: "Avoid repetitive names (e.g. Pepito Pepito)" };
         }
 
         return { valid: true };
@@ -1220,6 +1270,77 @@
         const fileName = input.files[0] ? input.files[0].name : "Click to upload";
         document.getElementById(targetId).textContent = fileName;
         document.getElementById(targetId).parentElement.style.borderColor = 'var(--primary)';
+    }
+
+    async function handleFileUpload(input, type) {
+        const boxId = type === 'permit' ? 'permitBox' : 'govIdBox';
+        const labelId = type === 'permit' ? 'permitName' : 'govIdName';
+        const statusId = type === 'permit' ? 'permitStatus' : 'govIdStatus';
+        const iconId = type === 'permit' ? 'permitIcon' : 'govIdIcon';
+        const box = document.getElementById(boxId);
+        const statusBadge = document.getElementById(statusId);
+        const icon = document.getElementById(iconId);
+        
+        updateFileName(input, labelId);
+        
+        if (!input.files || !input.files[0]) return;
+        
+        // Only scan images for now (Tesseract/OpenCV needs pixels)
+        const file = input.files[0];
+        if (!file.type.startsWith('image/')) {
+            box.classList.remove('scanning', 'scanned-success', 'scanned-error');
+            return; 
+        }
+
+        // Prepare data for OCR
+        const formData = new FormData();
+        formData.append('document', file);
+        formData.append('doc_type', type);
+        
+        // Get name to match
+        const userName = type === 'permit' ? 
+            document.getElementById('business_name').value : 
+            document.getElementById('full_name').value;
+            
+        formData.append('user_name', userName || "Unknown");
+        if (type === 'id') {
+            formData.append('id_type', document.getElementById('id_type').value || "Passport");
+        }
+
+        // Start animation
+        box.classList.add('scanning');
+        box.classList.remove('scanned-success', 'scanned-error');
+        statusBadge.innerText = "Scanning...";
+
+        try {
+            const response = await fetch('/auth/scan-document', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            
+            box.classList.remove('scanning');
+            
+            if (result.status === 'matched') {
+                box.classList.add('scanned-success');
+                statusBadge.innerText = "Document Verified";
+                icon.className = "fas fa-check-circle";
+                icon.style.color = "#10b981";
+            } else if (result.status === 'mismatched') {
+                box.classList.add('scanned-error');
+                statusBadge.innerText = "Validation Flagged"; // Don't be too mean
+                icon.className = "fas fa-exclamation-triangle";
+                icon.style.color = "#ef4444";
+                
+                // Show a subtle toast or hint
+                console.warn("OCR Mismatch:", result.failure_reason);
+            } else {
+                box.classList.remove('scanned-success', 'scanned-error');
+            }
+        } catch (err) {
+            console.error("Scan error:", err);
+            box.classList.remove('scanning');
+        }
     }
 </script>
 {% if field_errors %}

@@ -12,6 +12,8 @@ from pydantic import EmailStr, ValidationError
 
 from ..db import database, schemas, models
 from ..core import security as security_auth, utils
+from ..core.encryption import encrypt_data
+from ..services.verification import verification_service
 
 # Router instance
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -23,6 +25,43 @@ from ..core.utils import (
     is_gibberish, calculate_entropy, is_keyboard_walk, 
     is_dummy_email, is_dummy_name, is_dummy_phone, is_dummy_address
 )
+
+@router.post("/scan-document")
+async def scan_document(
+    document: UploadFile = File(...),
+    doc_type: str = Form("id"), # "id" or "permit"
+    user_name: str = Form(...), # Full Name or Business Name
+    id_type: Optional[str] = Form(None), # e.g. "Passport"
+    db: Session = Depends(database.get_db)
+):
+    """AJAX endpoint for real-time document scanning."""
+    try:
+        content = await document.read()
+        # Temporary save for OCR
+        temp_id = str(uuid.uuid4())
+        filename = f"temp_{temp_id}_{document.filename}"
+        path = os.path.join(UPLOAD_DIR, filename)
+        
+        # We encrypt it for security even in temp storage if VerificationService expects it
+        # Actually, VerificationService._prepare_image expects encrypted files in the verification dir
+        encrypted_content = encrypt_data(content)
+        with open(path, "wb") as f:
+            f.write(encrypted_content)
+        
+        doc_url = f"/static/uploads/verification/{filename}"
+        
+        if doc_type == "permit":
+            result = verification_service.verify_business_permit(doc_url, user_name)
+        else:
+            result = verification_service.verify_id_document(doc_url, user_name, "", id_type or "Passport")
+            
+        # Clean up temp file immediately? 
+        # Actually, let's keep it for a bit or rely on a cleanup script
+        
+        return result
+    except Exception as e:
+        print(f"[AUTH OCR ERROR] {e}")
+        return {"status": "error", "failure_reason": str(e)}
 
 @router.get("/register", response_class=HTMLResponse)
 def register_page(request: Request, next: Optional[str] = None, db: Session = Depends(database.get_db)):
@@ -79,6 +118,7 @@ async def register(
     logo: UploadFile = File(None),
     gov_id: UploadFile = File(None),
     permit: UploadFile = File(None),
+    id_type: Optional[str] = Form(None), # Added for OCR
     sample_menu: UploadFile = File(None),
     next_url: Optional[str] = Form(None),
     db: Session = Depends(database.get_db)
@@ -290,20 +330,57 @@ async def register(
             db.add(new_profile)
 
             if gov_id_url or permit_url:
-                verification = models.IdentityVerification(
-                    user_id=new_user.id,
-                    document_url=gov_id_url,
-                    selfie_url=permit_url,
-                    ocr_data={
-                        "extracted_business_name": business_name,
-                        "document_type": "Business Permit",
-                        "confidence": 0.98,
-                        "verification_check_passed": True,
+                # --- REAL OCR INTEGRATION ---
+                print(f"[AUTH] Performing real OCR for new caterer: {business_name}")
+                try:
+                    # 1. OCR for ID
+                    id_res = verification_service.verify_id_document(
+                        gov_id_url, full_name, "", id_type or "Passport"
+                    )
+                    
+                    # 2. OCR for Permit
+                    permit_res = verification_service.verify_business_permit(
+                        permit_url, business_name
+                    )
+                    
+                    # Store results in ocr_data
+                    ocr_payload = {
+                        "id_verification": id_res,
+                        "permit_verification": permit_res,
                         "extracted_at": datetime.now().isoformat()
-                    },
-                    verification_status="pending"
-                )
-                db.add(verification)
+                    }
+                    
+                    verification = models.IdentityVerification(
+                        user_id=new_user.id,
+                        document_url=gov_id_url,
+                        selfie_url=permit_url,
+                        ocr_data=ocr_payload,
+                        verification_status="pending" # Default to pending for admin
+                    )
+                    
+                    # Determine final status (Fine-tune status based on match)
+                    if id_res["status"] == "matched" and permit_res["status"] == "matched":
+                        verification.verification_status = "pending"
+                    else:
+                        verification.verification_status = "manual_review"
+                        reasons = []
+                        if id_res["status"] != "matched": reasons.append("ID mismatch")
+                        if permit_res["status"] != "matched": reasons.append("Permit mismatch")
+                        verification.failure_reason = "OCR Flags: " + ", ".join(reasons)
+                        
+                    db.add(verification)
+                except Exception as ocr_err:
+                    print(f"[AUTH OCR ERROR] Registration OCR failed: {ocr_err}")
+                    # Fallback to a basic record so registration doesn't crash
+                    verification = models.IdentityVerification(
+                        user_id=new_user.id,
+                        document_url=gov_id_url,
+                        selfie_url=permit_url,
+                        ocr_data={"error": str(ocr_err)},
+                        verification_status="manual_review",
+                        failure_reason="System error during OCR scan."
+                    )
+                    db.add(verification)
 
         db.commit()
     
