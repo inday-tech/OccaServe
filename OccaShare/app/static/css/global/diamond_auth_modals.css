@@ -528,3 +528,18 @@
 body.modal-open {
     overflow: hidden;
 }
+
+/* Fix browser autofill background changing the design */
+.auth-modal-content .minimal-input:-webkit-autofill,
+.auth-modal-content .minimal-input:-webkit-autofill:hover,
+.auth-modal-content .minimal-input:-webkit-autofill:focus,
+.auth-modal-content .minimal-input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px #fff inset !important;
+    -webkit-text-fill-color: var(--auth-slate-900) !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+.auth-modal-content .input-wrapper.error .minimal-input:-webkit-autofill,
+.input-wrapper.error .minimal-input:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 30px #fffafa inset !important;
+}

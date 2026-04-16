@@ -26,19 +26,22 @@
     <div class="stat-card-premium c-card-premium stat-card-white">
         <div class="stat-icon-bg halo-green"><i class="fas fa-check-circle"></i></div>
         <div class="stat-label-dashboard">Confirmed</div>
-        <div class="stat-value-dashboard" style="color: #10b981;">{{ bookings|selectattr('status', 'equalto', 'confirmed')|list|count }}</div>
+        <div class="stat-value-dashboard" style="color: #10b981;">{{ bookings|selectattr('status', 'equalto',
+            'confirmed')|list|count }}</div>
         <div class="stat-hint-dashboard">Ready to serve</div>
     </div>
     <div class="stat-card-premium c-card-premium stat-card-white">
         <div class="stat-icon-bg halo-amber"><i class="fas fa-hourglass-half"></i></div>
         <div class="stat-label-dashboard">Pending</div>
-        <div class="stat-value-dashboard" style="color: #f59e0b;">{{ bookings|selectattr('status', 'in', ['pending', 'pending_quotation', 'awaiting_payment'])|list|count }}</div>
+        <div class="stat-value-dashboard" style="color: #f59e0b;">{{ bookings|selectattr('status', 'in', ['pending',
+            'pending_quotation', 'awaiting_payment'])|list|count }}</div>
         <div class="stat-hint-dashboard">Awaiting action</div>
     </div>
     <div class="stat-card-premium c-card-premium stat-card-white">
         <div class="stat-icon-bg halo-red"><i class="fas fa-times-circle"></i></div>
         <div class="stat-label-dashboard">Cancelled</div>
-        <div class="stat-value-dashboard" style="color: #ef4444;">{{ bookings|selectattr('status', 'equalto', 'cancelled')|list|count }}</div>
+        <div class="stat-value-dashboard" style="color: #ef4444;">{{ bookings|selectattr('status', 'equalto',
+            'cancelled')|list|count }}</div>
         <div class="stat-hint-dashboard">Cancelled events</div>
     </div>
 </div>
@@ -68,13 +71,18 @@
 </div>
 {% endif %}
 
-<div class="b-table-container c-card-premium" style="width: 100%; box-sizing: border-box; padding: 2rem; margin-bottom: 3rem;">
-    <div class="b-table-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 2.5rem; padding: 0 0.5rem; width: 100%; box-sizing: border-box;">
+<div class="b-table-container c-card-premium"
+    style="width: 100%; box-sizing: border-box; padding: 2rem; margin-bottom: 3rem;">
+    <div class="b-table-header"
+        style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 2.5rem; padding: 0 0.5rem; width: 100%; box-sizing: border-box;">
         <h3 style="margin: 0; font-size: 1.35rem; font-weight: 800; color: #0f172a;">All Bookings</h3>
         <div class="header-controls" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-            <div class="search-box-pro" style="display: flex; align-items: center; gap: 0.75rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 0 1.25rem; height: 46px; box-sizing: border-box; width: 300px; min-width: 250px; transition: all 0.2s ease;">
+            <div class="search-box-pro"
+                style="display: flex; align-items: center; gap: 0.75rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 0 1.25rem; height: 46px; box-sizing: border-box; width: 300px; min-width: 250px; transition: all 0.2s ease;">
                 <i class="fas fa-search" style="color: #94a3b8; font-size: 0.95rem;"></i>
-                <input type="text" id="bookingSearchInput" placeholder="Search by customer, event, or ID..." style="border: none; outline: none; background: transparent; height: 100%; width: 100%; font-size: 0.9rem; color: #1e293b; font-weight: 500;" onkeyup="filterBookings()">
+                <input type="text" id="bookingSearchInput" placeholder="Search by customer, event, or ID..."
+                    style="border: none; outline: none; background: transparent; height: 100%; width: 100%; font-size: 0.9rem; color: #1e293b; font-weight: 500;"
+                    onkeyup="filterBookings()">
             </div>
             <div class="filter-wrapper" style="position: relative; display: flex; align-items: center;">
                 <select class="filter-select-pro" id="statusFilter" onchange="filterBookings()">
@@ -91,7 +99,8 @@
                     <option value="cancelled">Cancelled</option>
                 </select>
             </div>
-            <button onclick="openWalkinModal()" style="height: 46px; background: var(--primary-color); color: white; padding: 0 1.5rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; border: none; font-size: 0.95rem; white-space: nowrap; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.25);">
+            <button onclick="openWalkinModal()"
+                style="height: 46px; background: var(--primary-color); color: white; padding: 0 1.5rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; border: none; font-size: 0.95rem; white-space: nowrap; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.25);">
                 <i class="fas fa-plus"></i><span class="btn-text">New Booking</span>
             </button>
         </div>
@@ -102,36 +111,54 @@
         <table class="b-table bookings-list-table" style="width: 100%; border-collapse: collapse; min-width: 1000px;">
             <thead>
                 <tr style="border-bottom: 2px solid #f1f5f9;">
-                    <th style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Booking ID</th>
-                    <th style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Customer</th>
-                    <th style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Event</th>
-                    <th style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Date & Time</th>
-                    <th style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Guests</th>
-                    <th style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Amount</th>
-                    <th style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Status</th>
-                    <th style="padding: 1.5rem; text-align: right; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Actions</th>
+                    <th
+                        style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Booking ID</th>
+                    <th
+                        style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Customer</th>
+                    <th
+                        style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Event</th>
+                    <th
+                        style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Date & Time</th>
+                    <th
+                        style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Guests</th>
+                    <th
+                        style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Amount</th>
+                    <th
+                        style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Status</th>
+                    <th
+                        style="padding: 1.5rem; text-align: right; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for booking in bookings %}
-                <tr class="booking-row-item" data-status="{{ booking.status }}" style="border-bottom: 1px solid #f8fafc; transition: all 0.2s ease;">
+                <tr class="booking-row-item" data-status="{{ booking.status }}"
+                    style="border-bottom: 1px solid #f8fafc; transition: all 0.2s ease;">
                     <!-- ID -->
-                    <td style="padding: 1.5rem; font-weight: 600; color: #64748b; font-size: 0.95rem;">BK-{{ "%03d" | format(booking.id) }}</td>
-                    
+                    <td style="padding: 1.5rem; font-weight: 600; color: #64748b; font-size: 0.95rem;">BK-{{ "%03d" |
+                        format(booking.id) }}</td>
+
                     <!-- CUSTOMER -->
                     <td style="padding: 1.5rem;">
                         <div style="font-weight: 700; color: #0f172a; font-size: 1rem;">
                             {% if booking.user %}
-                                {{ booking.user.first_name }} {{ booking.user.last_name }}
+                            {{ booking.user.first_name }} {{ booking.user.last_name }}
                             {% else %}
-                                Walk-in Customer
+                            Walk-in Customer
                             {% endif %}
                         </div>
                         <div style="font-size: 0.85rem; color: #94a3b8; font-weight: 500; margin-top: 0.1rem;">
                             {% if booking.user %}
-                                {{ booking.user.email }}
+                            {{ booking.user.email }}
                             {% else %}
-                                N/A
+                            N/A
                             {% endif %}
                         </div>
                     </td>
@@ -139,21 +166,26 @@
                     <!-- EVENT -->
                     <td style="padding: 1.5rem;">
                         <div style="font-weight: 700; color: #0f172a; font-size: 1rem;">{{ booking.event_type }}</div>
-                        <div style="font-size: 0.85rem; color: #94a3b8; font-weight: 500; margin-top: 0.1rem;">{{ booking.package.name if booking.package else 'Custom Menu' }}</div>
+                        <div style="font-size: 0.85rem; color: #94a3b8; font-weight: 500; margin-top: 0.1rem;">{{
+                            booking.package.name if booking.package else 'Custom Menu' }}</div>
                     </td>
 
                     <!-- DATE -->
                     <td style="padding: 1.5rem;">
-                        <div style="font-weight: 700; color: #0f172a; font-size: 1rem;">{{ booking.event_date.strftime('%b %d, %Y') }}</div>
-                        <div style="font-size: 0.85rem; color: #94a3b8; font-weight: 500; margin-top: 0.1rem;">{{ booking.event_time.strftime('%I:%M %p') if booking.event_time else 'TBD' }}</div>
+                        <div style="font-weight: 700; color: #0f172a; font-size: 1rem;">{{
+                            booking.event_date.strftime('%b %d, %Y') }}</div>
+                        <div style="font-size: 0.85rem; color: #94a3b8; font-weight: 500; margin-top: 0.1rem;">{{
+                            booking.event_time.strftime('%I:%M %p') if booking.event_time else 'TBD' }}</div>
                     </td>
 
                     <!-- GUESTS -->
-                    <td style="padding: 1.5rem; color: #334155; font-weight: 600; font-size: 1rem;">{{ booking.guest_count }}</td>
+                    <td style="padding: 1.5rem; color: #334155; font-weight: 600; font-size: 1rem;">{{
+                        booking.guest_count }}</td>
 
                     <!-- AMOUNT -->
-                    <td style="padding: 1.5rem; color: #0f172a; font-weight: 800; font-size: 1.05rem;">₱{{ "{:,.0f}".format(booking.total_price or booking.total_amount) }}</td>
-                    
+                    <td style="padding: 1.5rem; color: #0f172a; font-weight: 800; font-size: 1.05rem;">₱{{
+                        "{:,.0f}".format(booking.total_price or booking.total_amount) }}</td>
+
                     <!-- STATUS -->
                     <td style="padding: 1.5rem;">
                         {% set badge_class = 'ps-badge-draft' %}
@@ -214,24 +246,19 @@
                         <button class="btn-action-trigger" onclick="toggleActionMenuBookings('{{ booking.id }}', event)" style="background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 1.1rem; padding: 0.4rem; transition: color 0.2s;">
                             <i class="fas fa-ellipsis-h"></i>
                         </button>
-                        <div id="actionMenu-{{ booking.id }}" class="action-dropdown-menu" style="display: none; position: absolute; right: 1.5rem; background: white; border: 1px solid #e2e8f0; border-radius: 0.75rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); z-index: 50; min-width: 160px; overflow: hidden;">
-                            <button class="view-details" 
+                        <div id="actionMenu-{{ booking.id }}" class="action-dropdown-menu"
+                            style="display: none; position: absolute; right: 1.5rem; background: white; border: 1px solid #e2e8f0; border-radius: 0.75rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); z-index: 50; min-width: 160px; overflow: hidden;">
+                            <button class="view-details"
                                 style="width: 100%; text-align: left; padding: 0.75rem 1rem; background: none; border: none; font-size: 0.85rem; color: #475569; cursor: pointer; display: flex; align-items: center; gap: 0.6rem; transition: background 0.2s;"
-                                data-id="{{ booking.id }}" 
-                                data-event-name="{{ booking.event_name or 'N/A' }}"
+                                data-id="{{ booking.id }}" data-event-name="{{ booking.event_name or 'N/A' }}"
                                 data-event-type="{{ booking.event_type or 'N/A' }}"
                                 data-venue="{{ booking.venue_address or 'TBD' }}"
-                                data-requests="{{ booking.special_requests or 'None' }}"
-                                {% if booking.user %}
+                                data-requests="{{ booking.special_requests or 'None' }}" {% if booking.user %}
                                 data-customer="{{ booking.user.first_name }} {{ booking.user.last_name }}"
-                                data-email="{{ booking.user.email }}"
-                                {% else %}
-                                data-customer="Walk-in Customer"
-                                data-email="N/A"
-                                {% endif %}
+                                data-email="{{ booking.user.email }}" {% else %} data-customer="Walk-in Customer"
+                                data-email="N/A" {% endif %}
                                 data-amount="₱{{ '{:,.2f}'.format(booking.total_price or booking.total_amount) }}"
-                                data-status="{{ booking.status }}"
-                                data-payment-status="{{ booking.payment_status }}"
+                                data-status="{{ booking.status }}" data-payment-status="{{ booking.payment_status }}"
                                 data-payment-method="{{ booking.payment_method or 'TBD' }}"
                                 data-proof-url="{{ booking.payment_proof_url or '' }}"
                                 data-balance-proof-url="{{ booking.balance_proof_url or '' }}"
@@ -242,12 +269,14 @@
                                 <i class="far fa-eye" style="color: #64748b;"></i> View Details
                             </button>
                             {% if booking.status in ['pending_quotation', 'awaiting_caterer'] %}
-                            <a href="/caterer/bookings/{{ booking.id }}/sign" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.75rem 1rem; text-decoration: none; font-size: 0.85rem; color: #059669; transition: background 0.2s;">
+                            <a href="/caterer/bookings/{{ booking.id }}/sign"
+                                style="display: flex; align-items: center; gap: 0.6rem; padding: 0.75rem 1rem; text-decoration: none; font-size: 0.85rem; color: #059669; transition: background 0.2s;">
                                 <i class="fas fa-pen-nib"></i> Sign Contract
                             </a>
                             {% endif %}
                             {% if booking.status in ['completed', 'cancelled'] %}
-                            <button type="button" onclick="confirmArchiveBooking({{ booking.id }})" style="width: 100%; text-align: left; padding: 0.75rem 1rem; background: none; border: none; font-size: 0.85rem; color: #dc2626; cursor: pointer; display: flex; align-items: center; gap: 0.6rem; transition: background 0.2s;">
+                            <button type="button" onclick="confirmArchiveBooking({{ booking.id }})"
+                                style="width: 100%; text-align: left; padding: 0.75rem 1rem; background: none; border: none; font-size: 0.85rem; color: #dc2626; cursor: pointer; display: flex; align-items: center; gap: 0.6rem; transition: background 0.2s;">
                                 <i class="fas fa-archive"></i> Archive
                             </button>
                             {% endif %}
@@ -268,22 +297,29 @@
     </div>
 
     <!-- Payments-style Pagination Controls -->
-    <div class="pagination-container-p" style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9;">
+    <div class="pagination-container-p"
+        style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9;">
         <div class="pagination-info" style="font-size: 0.85rem; color: #64748b; font-weight: 500;">
-            Showing <span id="startRange">0</span> to <span id="endRange">0</span> of <span id="totalEntries">0</span> bookings
+            Showing <span id="startRange">0</span> to <span id="endRange">0</span> of <span id="totalEntries">0</span>
+            bookings
         </div>
         <div class="pagination-buttons" style="display: flex; gap: 0.5rem; align-items: center;">
-            <button id="prevPage" class="btn-pagination" style="padding: 0.5rem 1rem; border: 1px solid #e2e8f0; background: white; border-radius: 0.5rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #475569;"><i class="fas fa-chevron-left"></i> Previous</button>
+            <button id="prevPage" class="btn-pagination"
+                style="padding: 0.5rem 1rem; border: 1px solid #e2e8f0; background: white; border-radius: 0.5rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #475569;"><i
+                    class="fas fa-chevron-left"></i> Previous</button>
             <div id="pageNumbers" class="page-numbers" style="display: flex; gap: 0.4rem;">
                 <!-- Page numbers dynamically injected -->
             </div>
-            <button id="nextPage" class="btn-pagination" style="padding: 0.5rem 1rem; border: 1px solid #e2e8f0; background: white; border-radius: 0.5rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #475569;">Next <i class="fas fa-chevron-right"></i></button>
+            <button id="nextPage" class="btn-pagination"
+                style="padding: 0.5rem 1rem; border: 1px solid #e2e8f0; background: white; border-radius: 0.5rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #475569;">Next
+                <i class="fas fa-chevron-right"></i></button>
         </div>
     </div>
     {% else %}
     <div class="no-bookings-empty" style="text-align: center; padding: 4rem 2rem; color: #94a3b8;">
         <i class="fas fa-calendar-times" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
-        <p style="font-size: 1.1rem; font-weight: 500;">No bookings yet. They will appear here once customers book your services.</p>
+        <p style="font-size: 1.1rem; font-weight: 500;">No bookings yet. They will appear here once customers book your
+            services.</p>
     </div>
     {% endif %}
 </div>

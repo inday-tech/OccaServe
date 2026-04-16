@@ -245,35 +245,67 @@ async def register(
         if event_types:
             event_list = [e.strip() for e in event_types.split(",") if e.strip()]
 
-        request.session['pending_registration'] = {
-            'email': email,
-            'password_hash': hashed_password,
-            'role': role,
-            'first_name': first_name,
-            'last_name': last_name,
-            'phone_number': mobile_number,
-            'address': address,
-            'otp': otp,
-            'otp_expires_at': (datetime.now() + timedelta(minutes=3)).isoformat(),
-            'caterer_data': {
-                'business_name': business_name,
-                'business_type': business_type,
-                'years_of_operation': years_of_operation,
-                'description': business_description,
-                'coverage_area': coverage_area,
-                'payout_method': payout_method,
-                'payout_account_name': payout_account_name,
-                'payout_account_number': account_number,
-                'event_types': event_list,
-                'min_pax': min_pax,
-                'starting_price': starting_price,
-                'city': city,
-                'logo_url': logo_url,
-                'gov_id_url': gov_id_url,
-                'permit_url': permit_url,
-                'sample_menu_url': sample_menu_url
-            } if role == "caterer" else None
-        }
+        from datetime import datetime, timedelta, timezone
+        
+        new_user = models.User(
+            email=email, 
+            password_hash=hashed_password,
+            role=role, 
+            first_name=first_name,
+            last_name=last_name,
+            phone_number=mobile_number,
+            address=address,
+            status="pending_verification",
+            is_verified=False,
+            is_email_verified=False,
+            verification_code=otp,
+            otp_expires_at=datetime.now(timezone.utc) + timedelta(minutes=3)
+        )
+        db.add(new_user)
+        db.flush()
+
+        if role == "caterer":
+            new_profile = models.CatererProfile(
+                user_id=new_user.id,
+                business_name=business_name,
+                business_type=business_type,
+                years_of_operation=years_of_operation,
+                description=business_description,
+                coverage_area=coverage_area,
+                payout_method=payout_method,
+                payout_account_name=payout_account_name,
+                payout_account_number=account_number,
+                contact_address=address,
+                contact_phone=mobile_number,
+                logo_url=logo_url,
+                event_types=event_list,
+                min_pax=min_pax,
+                starting_price=starting_price,
+                city=city,
+                sample_menu_url=sample_menu_url,
+                permit_url=permit_url,
+                gov_id_url=gov_id_url,
+                verification_status="Pending"
+            )
+            db.add(new_profile)
+
+            if gov_id_url or permit_url:
+                verification = models.IdentityVerification(
+                    user_id=new_user.id,
+                    document_url=gov_id_url,
+                    selfie_url=permit_url,
+                    ocr_data={
+                        "extracted_business_name": business_name,
+                        "document_type": "Business Permit",
+                        "confidence": 0.98,
+                        "verification_check_passed": True,
+                        "extracted_at": datetime.now().isoformat()
+                    },
+                    verification_status="pending"
+                )
+                db.add(verification)
+
+        db.commit()
     
     # Only send verification email if it's a new email/password user
     if not is_upgrade:
@@ -318,88 +350,32 @@ def verify_email_submit(
     next_url: Optional[str] = Form(None),
     db: Session = Depends(database.get_db)
 ):
-    pending = request.session.get('pending_registration')
     user = db.query(models.User).filter(models.User.email == email).first()
     
-    if pending and pending['email'] == email:
-        if pending['otp'] == code:
-            from datetime import datetime
-            if datetime.now() > datetime.fromisoformat(pending['otp_expires_at']):
-                 return templates.TemplateResponse("auth/verify_email.html", {"request": request, "email": email, "error": "Verification code expired."})
-            
-            from sqlalchemy.sql import func
-            new_user = models.User(
-                email=pending['email'], 
-                password_hash=pending['password_hash'],
-                role=pending['role'], 
-                first_name=pending['first_name'],
-                last_name=pending['last_name'],
-                phone_number=pending['phone_number'],
-                address=pending['address'],
-                status="pending_approval" if pending['role'] == "caterer" else "active",
-                is_verified=False,
-                is_email_verified=True,
-                last_login=func.now()
-            )
-            db.add(new_user)
-            db.flush()
+    if user:
+        if user.is_email_verified:
+            redirect_url = next_url if next_url else utils.get_dashboard_url(user.role)
+            return RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
 
-            if pending['role'] == "caterer":
-                cdata = pending['caterer_data']
-                new_profile = models.CatererProfile(
-                    user_id=new_user.id,
-                    business_name=cdata['business_name'],
-                    business_type=cdata['business_type'],
-                    years_of_operation=cdata['years_of_operation'],
-                    description=cdata['description'],
-                    coverage_area=cdata['coverage_area'],
-                    payout_method=cdata['payout_method'],
-                    payout_account_name=cdata['payout_account_name'],
-                    payout_account_number=cdata['payout_account_number'],
-                    contact_address=pending['address'],
-                    contact_phone=pending['phone_number'],
-                    logo_url=cdata['logo_url'],
-                    event_types=cdata['event_types'],
-                    min_pax=cdata['min_pax'],
-                    starting_price=cdata['starting_price'],
-                    city=cdata['city'],
-                    sample_menu_url=cdata['sample_menu_url'],
-                    permit_url=cdata['permit_url'],
-                    gov_id_url=cdata['gov_id_url'],
-                    verification_status="Pending"
-                )
-                db.add(new_profile)
-
-                if cdata['gov_id_url'] or cdata['permit_url']:
-                    verification = models.IdentityVerification(
-                        user_id=new_user.id,
-                        document_url=cdata['gov_id_url'],
-                        selfie_url=cdata['permit_url'],
-                        ocr_data={
-                            "extracted_business_name": cdata['business_name'],
-                            "document_type": "Business Permit",
-                            "confidence": 0.98,
-                            "verification_check_passed": True,
-                            "extracted_at": datetime.now().isoformat()
-                        },
-                        verification_status="pending"
-                    )
-                    db.add(verification)
-
-            db.commit()
-            del request.session['pending_registration']
-            user = new_user
-        else:
-            return templates.TemplateResponse("auth/verify_email.html", {"request": request, "email": email, "error": "Invalid verification code"})
-    elif user:
-        if user.verification_code == code:
-            from datetime import datetime
-            if user.otp_expires_at and user.otp_expires_at < datetime.now(user.otp_expires_at.tzinfo):
-                return templates.TemplateResponse("auth/verify_email.html", {"request": request, "email": email, "error": "Verification code expired. Please request a new one."})
+        if user.verification_code == code.strip():
+            from datetime import datetime, timezone
+            if user.otp_expires_at:
+                now_time = datetime.now(timezone.utc)
+                expire_time = user.otp_expires_at
+                if expire_time.tzinfo is None:
+                    expire_time = expire_time.replace(tzinfo=timezone.utc)
+                
+                if now_time > expire_time:
+                    return templates.TemplateResponse("auth/verify_email.html", {"request": request, "email": email, "error": "Verification code expired. Please request a new one."})
 
             user.is_email_verified = True
             user.verification_code = None
             user.otp_expires_at = None
+            if user.role == "caterer" and user.status == "pending_verification":
+                user.status = "pending_approval"
+            elif user.status == "pending_verification":
+                user.status = "active"
+                
             from sqlalchemy.sql import func
             user.last_login = func.now()
             db.commit()
@@ -429,18 +405,6 @@ def resend_verification_code(
     email: str = Form(...),
     db: Session = Depends(database.get_db)
 ):
-    pending = request.session.get('pending_registration')
-    
-    if pending and pending['email'] == email:
-        otp = utils.get_random_digits(6)
-        pending['otp'] = otp
-        pending['otp_expires_at'] = (datetime.now() + timedelta(minutes=3)).isoformat()
-        request.session['pending_registration'] = pending
-        
-        from ..services.email import EmailService
-        EmailService.send_verification_email(email, otp)
-        return {"success": True, "message": "Verification code resent"}
-
     user = db.query(models.User).filter(models.User.email == email).first()
     if not user:
         return {"success": False, "message": "User not found"}
@@ -451,7 +415,8 @@ def resend_verification_code(
     # Generate new OTP
     otp = utils.get_random_digits(6)
     user.verification_code = otp
-    user.otp_expires_at = func.now() + timedelta(minutes=3)
+    from datetime import datetime, timedelta, timezone
+    user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=3)
     db.commit()
     
     # Resend Email
@@ -524,9 +489,11 @@ def login(
     if user.status != "active":
          if user.role == "caterer" and user.status == "pending_approval":
              return RedirectResponse(url=f"/auth/pending?email={user.email}&uid={user.id}", status_code=status.HTTP_303_SEE_OTHER)
+         
+         error_msg = "Please follow the email link to verify your account." if user.status == "pending_verification" else "Account is inactive or pending approval."
          return templates.TemplateResponse("auth/login.html", {
             "request": request,
-            "error": "Account is inactive or pending approval."
+            "error": error_msg
         })
         
     if not user.is_email_verified and user.role != "admin":

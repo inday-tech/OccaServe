@@ -227,6 +227,7 @@ class Booking(Base):
     event_type = Column(String, nullable=True) # Wedding, Birthday, Corporate, Private Party
     event_date = Column(Date)
     event_time = Column(Time, nullable=True)
+    event_end_time = Column(Time, nullable=True)
     venue_address = Column(Text, nullable=True)
     guest_count = Column(Integer)
     total_amount = Column(Float)

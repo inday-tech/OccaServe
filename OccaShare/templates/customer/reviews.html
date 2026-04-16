@@ -39,6 +39,17 @@
                 style="color: var(--secondary-color); font-size: 0.95rem; line-height: 1.6; font-style: italic; margin: 0; padding: 1rem; background: white; border-radius: 0.75rem; border: 1px solid rgba(0,0,0,0.03);">
                 "{{ review.comment }}"
             </p>
+
+            {% if review.caterer_reply %}
+            <div class="caterer-reply-pro" style="margin-top: 1.25rem; padding: 1.25rem; background: #fdf2f8; border-radius: 1rem; border-left: 4px solid var(--primary-color); position: relative;">
+                <div style="font-size: 0.75rem; font-weight: 800; color: var(--primary-color); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-reply"></i> Response from {{ review.caterer.business_name }}
+                </div>
+                <p style="color: var(--secondary-color); font-size: 0.9rem; margin: 0; line-height: 1.5;">
+                    {{ review.caterer_reply }}
+                </p>
+            </div>
+            {% endif %}
         </div>
         {% endfor %}
     </div>

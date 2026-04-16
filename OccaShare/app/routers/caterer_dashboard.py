@@ -863,6 +863,43 @@ async def get_booking_details_api(
     }
 
 
+@router.post("/bookings/{booking_id}/complete")
+async def complete_booking(
+    booking_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    """Mark a confirmed booking as completed."""
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking or booking.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    if booking.status not in ['confirmed', 'paid']:
+        raise HTTPException(status_code=400, detail="Only confirmed bookings can be marked as completed")
+
+    booking.status = 'completed'
+    booking.payment_status = 'paid'  # Mark as fully settled when event is completed
+
+    history = models.BookingHistory(
+        booking_id=booking.id,
+        status='completed',
+        notes="Event completed. Booking marked as completed by caterer."
+    )
+    db.add(history)
+    db.commit()
+
+    # Real-time alert to customer
+    import asyncio
+    asyncio.create_task(manager.broadcast_to_user(booking.user_id, {
+        "type": "booking_update",
+        "message": f"Your event '{booking.event_name}' has been marked as completed!",
+        "booking_id": booking.id,
+        "status": "completed"
+    }))
+
+    return RedirectResponse(url=f"/caterer/bookings?success_msg=Booking+marked+as+completed", status_code=303)
+
+
 @router.post("/bookings/{booking_id}/actual-cost")
 async def update_actual_cost(
     booking_id: int,
@@ -929,9 +966,6 @@ async def post_review_reply(
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
     
-    review.caterer_reply = reply_text
-    db.commit()
-    return {"status": "success", "message": "Reply saved"}
 
 @router.post("/reviews/{review_id}/helpful")
 async def toggle_review_helpful(
@@ -2018,6 +2052,17 @@ async def cancel_booking(
         "message": f"Booking #{booking_id} has been cancelled."
     })
     
+    # Notify Customer
+    from ..services.notification import NotificationService
+    import asyncio
+    asyncio.create_task(NotificationService.notify_status_update(
+        db, 
+        booking.user_id, 
+        "Booking Cancelled ❌", 
+        f"Ang iyong booking para sa '{booking.event_name}' ay kinansela ni {user.caterer_profile.business_name}. Reason: {reason}", 
+        f"/customer/bookings"
+    ))
+    
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
         return JSONResponse({"status": "success", "message": "Booking cancelled successfully", "new_status": "cancelled"})
 
@@ -2039,12 +2084,6 @@ async def accept_booking(
     db.add(history)
     db.commit()
 
-    await manager.broadcast_to_user(user.id, {
-        "type": "booking_update",
-        "booking_id": booking_id,
-        "new_status": "confirmed",
-        "message": "Booking accepted."
-    })
     
     return JSONResponse({"status": "success", "message": "Booking accepted", "new_status": "confirmed"})
 
@@ -2071,6 +2110,17 @@ async def reject_booking(
         "message": "Booking rejected."
     })
     
+    # Notify Customer
+    from ..services.notification import NotificationService
+    import asyncio
+    asyncio.create_task(NotificationService.notify_status_update(
+        db, 
+        booking.user_id, 
+        "Booking Rejected ❌", 
+        f"Pasensya na, hindi tinanggap ni {user.caterer_profile.business_name} ang iyong booking request para sa '{booking.event_name}'.", 
+        f"/customer/bookings"
+    ))
+    
     return JSONResponse({"status": "success", "message": "Booking rejected", "new_status": "cancelled"})
 
 @router.post("/bookings/{booking_id}/complete")
@@ -2095,6 +2145,17 @@ async def complete_booking(
         "new_status": "completed",
         "message": "Booking completed."
     })
+    
+    # Notify Customer
+    from ..services.notification import NotificationService
+    import asyncio
+    asyncio.create_task(NotificationService.notify_status_update(
+        db, 
+        booking.user_id, 
+        "Event Service Completed 🌟", 
+        f"Salamat! Ang iyong event '{booking.event_name}' ay itinalaga bilang COMPLETED ni {user.caterer_profile.business_name}. Huwag kalimutang i-rate ang kanilang serbisyo!", 
+        f"/customer/reviews"
+    ))
     
     return JSONResponse({"status": "success", "message": "Booking completed", "new_status": "completed"})
 

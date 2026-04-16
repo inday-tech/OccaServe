@@ -731,8 +731,6 @@ async function runAIScan() {
     }
 }
 
-// ─── ACTION WRAPPERS ─────────────────────────────────────────────────────────
-
 function confirmAcceptBooking(bookingId, isPayment) {
     isPayment = isPayment || false;
     

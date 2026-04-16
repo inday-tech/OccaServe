@@ -703,7 +703,7 @@
             }
         } catch (err) {
             console.error(err);
-            alert('Galing! May error sa pag-upload: ' + err.message);
+            if (window.showError) window.showError('File upload failed: ' + err.message); else alert('File upload failed: ' + err.message);
         } finally {
             attachmentBtn.innerHTML = originalIcon;
             attachmentBtn.disabled = false;

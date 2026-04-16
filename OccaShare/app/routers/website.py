@@ -25,6 +25,8 @@ async def read_root(request: Request, db: Session = Depends(database.get_db)):
     packages = db.query(models.CateringPackage).filter(models.CateringPackage.is_active == True).limit(3).all()
     caterers = db.query(models.CatererProfile).order_by(models.CatererProfile.rating.desc()).limit(5).all()
     highlighted_reviews = db.query(models.Review).filter(models.Review.is_highlighted == True).order_by(models.Review.created_at.desc()).limit(6).all()
+    if not highlighted_reviews:
+        highlighted_reviews = db.query(models.Review).filter(models.Review.rating >= 4).order_by(models.Review.created_at.desc()).limit(3).all()
     
     return templates.TemplateResponse("index.html", {
         "request": request, 

@@ -463,53 +463,40 @@
                 </div>
             </div>
 
-            <<<<<<< HEAD <!-- Culinary Offerings -->
-                {% if caterer.menu_items %}
-                <div class="c-card-premium" style="padding: 1.5rem;">
-                    <div class="section-title-wrapper">
-                        <i class="fas fa-utensils"></i>
-                        <h2 class="section-title">Culinary Offerings</h2>
-                    </div>
-                    <div class="item-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
-                        {% for item in caterer.menu_items[:2] %}
-                        <div class="premium-item-card">
-                            <div class="item-img-container">
-                                {% if item.image_url %}
-                                <img src="{{ item.image_url }}" class="item-img">
-                                {% else %}
-                                <div
-                                    style="display: flex; align-items: center; justify-content: center; height: 100%; color: #cbd5e1;">
-                                    <i class="fas fa-concierge-bell fa-3x"></i>
-                                </div>
-                                {% endif %}
-                                <span class="item-badge" style="background: #10b981;">NEW</span>
+            <!-- Culinary Offerings -->
+            {% if caterer.menu_items %}
+            <div class="c-card-premium" style="padding: 1.5rem;">
+                <div class="section-title-wrapper">
+                    <i class="fas fa-utensils"></i>
+                    <h2 class="section-title">Culinary Offerings</h2>
+                </div>
+                <div class="item-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+                    {% for item in caterer.menu_items[:2] %}
+                    <div class="premium-item-card">
+                        <div class="item-img-container">
+                            {% if item.image_url %}
+                            <img src="{{ item.image_url }}" class="item-img">
+                            {% else %}
+                            <div
+                                style="display: flex; align-items: center; justify-content: center; height: 100%; color: #cbd5e1;">
+                                <i class="fas fa-concierge-bell fa-3x"></i>
                             </div>
-                            <div class="item-body">
-                                <div
-                                    style="font-size: 0.7rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">
-                                    Menu Item</div>
-                                <h3 class="item-title">{{ item.name }}</h3>
-                                <div class="item-price">₱{{ "{:,.0f}".format(item.price) if item.price else '1,500' }}
-                                </div>
+                            {% endif %}
+                            <span class="item-badge" style="background: #10b981;">NEW</span>
+                        </div>
+                        <div class="item-body">
+                            <div
+                                style="font-size: 0.7rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">
+                                Menu Item</div>
+                            <h3 class="item-title">{{ item.name }}</h3>
+                            <div class="item-price">₱{{ "{:,.0f}".format(item.price) if item.price else '1,500' }}
                             </div>
                         </div>
-                        {% endfor %}
                     </div>
+                    {% endfor %}
                 </div>
-                {% endif %}
-                =======
-                <button onclick="startBooking('{{ caterer.id }}')" class="btn-primary-cta ctp-side-book">
-                    <i class="fas fa-calendar-check"></i> Book Now
-                </button>
-                <button onclick="window.location.href='/customer/messages?caterer={{ caterer.user_id }}'"
-                    class="btn-primary-cta ctp-side-message"
-                    style="background: #10b981; border: none; margin-top: 0.75rem;">
-                    <i class="fas fa-comment-dots"></i> Message Caterer
-                </button>
-                <button class="btn-outline-cta ctp-side-inquiry" style="margin-top: 0.75rem;">
-                    <i class="far fa-envelope"></i> Send Inquiry
-                </button>
-                >>>>>>> adab1d026e4a135ecf6b4fa911fb45315296d7a2
+            </div>
+            {% endif %}
 
                 <!-- Packages -->
                 <div class="c-card-premium" style="padding: 1.5rem;">
@@ -566,16 +553,6 @@
                         </div>
                         {% endfor %}
                     </div>
-                </div>
-
-                <!-- Policies -->
-                <div class="c-card-premium" style="padding: 1.5rem;">
-                    <div class="section-title-wrapper">
-                        <i class="fas fa-file-alt"></i>
-                        <h2 class="section-title">Policies & Terms</h2>
-                    </div>
-                    <div class="item-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
-                        <div class="profile-stat-box" style="text-align: left;">
                             <div class="stat-icon"><i class="far fa-calendar-check" style="font-size: 1.2rem;"></i>
                             </div>
                             <div class="item-title" style="margin-bottom: 0.25rem;">Booking Policy</div>
@@ -632,7 +609,7 @@
                 <div style="margin-top: 1.5rem;">
                     <button onclick="window.location.href='/bookings/start/{{ caterer.id }}'"
                         class="btn-orange-full">Book Now</button>
-                    <button class="btn-outline-full"><i class="far fa-comment-dots"></i> Send Inquiry</button>
+                    <button onclick="showPkgModal('contact-modal-{{ caterer.id }}')" class="btn-outline-full"><i class="far fa-comment-dots"></i> Contact Us</button>
                 </div>
 
                 <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 1.5rem;">
@@ -669,6 +646,22 @@
 </div>
 {% endfor %}
 
+<div id="contact-modal-{{ caterer.id }}" class="modal-overlay">
+    <div class="modal-box">
+        <button class="modal-close" onclick="closePkgModal('contact-modal-{{ caterer.id }}')"><i
+                class="fas fa-times"></i></button>
+        <h2 style="font-size: 1.5rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem;">Contact Us</h2>
+        <p style="color: #64748b; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem;">Send a direct message to {{ caterer.business_name }}. They typically reply within 1 hour.</p>
+        
+        <form onsubmit="submitContactInquiry(event, '{{ caterer.id }}', '{{ caterer.business_name }}')" style="display: flex; flex-direction: column; gap: 1rem;">
+            <input type="text" placeholder="Your Name" value="{{ user.first_name }} {{ user.last_name }}" required style="padding: 0.85rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-family: 'Poppins', sans-serif;">
+            <input type="email" placeholder="Your Email Address" value="{{ user.email }}" required style="padding: 0.85rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-family: 'Poppins', sans-serif;">
+            <textarea placeholder="How can we help make your event special?" rows="4" required style="padding: 0.85rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-family: 'Poppins', sans-serif; resize: none;"></textarea>
+            <button type="submit" class="btn-orange-full" style="margin-bottom: 0;">Send Message</button>
+        </form>
+    </div>
+</div>
+
 <script>
     function showPkgModal(id) {
         var m = document.getElementById(id);
@@ -684,5 +677,44 @@
             document.body.style.overflow = '';
         }
     });
+
+    async function submitContactInquiry(event, catererId, catererName) {
+        event.preventDefault();
+        const form = event.target;
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const name = form.querySelector('input[type="text"]').value;
+        const email = form.querySelector('input[type="email"]').value;
+        const rawMessage = form.querySelector('textarea').value;
+        const message = `[Inquiry to Caterer: ${catererName}]\n\n${rawMessage}`;
+
+        submitBtn.disabled = true;
+        const originalText = submitBtn.innerText;
+        submitBtn.innerText = 'Sending...';
+
+        try {
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('email', email);
+            formData.append('message', message);
+
+            const response = await fetch('/contact/api', {
+                method: 'POST',
+                body: formData
+            });
+
+            if(response.ok) {
+                alert('Inquiry sent successfully! The admin has been notified.');
+                closePkgModal('contact-modal-' + catererId);
+            } else {
+                alert('Failed to send inquiry. Please try again.');
+            }
+        } catch(e) {
+            alert('An error occurred while sending the message.');
+            console.error(e);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = originalText;
+        }
+    }
 </script>
 {% endblock %}

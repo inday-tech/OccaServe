@@ -183,7 +183,42 @@ p, h1, h2, h3, h4, h5, h6 {
     background-clip: text;
     -webkit-text-fill-color: transparent;
 }
-.btn-instagram:hover {
-    border-color: #C13584 !important;
-    box-shadow: 0 0 15px rgba(193, 53, 132, 0.2) !important;
+
+/* ============================================================ 
+   DIAMOND STANDARD: GLOBAL ALERT MODALS (SweetAlert2)
+   ============================================================ */
+.premium-swal-popup {
+    border-radius: 1.5rem !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+    padding: 2rem !important;
+    border: 1px solid #e2e8f0 !important;
+    font-family: 'Poppins', sans-serif !important;
+}
+
+.premium-swal-popup .swal2-title {
+    font-weight: 800 !important;
+    color: #1e293b !important;
+    font-size: 1.5rem !important;
+}
+
+.premium-swal-popup .swal2-html-container {
+    font-weight: 500 !important;
+    color: #475569 !important;
+    font-size: 0.95rem !important;
+    line-height: 1.6 !important;
+}
+
+.premium-swal-btn {
+    border-radius: 0.75rem !important;
+    font-weight: 700 !important;
+    padding: 0.75rem 2rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    font-size: 0.85rem !important;
+    transition: all 0.3s ease !important;
+}
+
+.premium-swal-btn:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
 }

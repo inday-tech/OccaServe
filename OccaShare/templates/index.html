@@ -4,7 +4,7 @@
 {% block title %}OccaServe - Book the Best Catering Services Near You{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/landing_neutral.css') }}?v=7">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/landing_neutral.css') }}?v=8">
 <style>
     /* Specific styles for single-page layout */
     html {
@@ -63,8 +63,20 @@
     /* Event Categories Clickable Cards */
     .event-cards-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        grid-template-columns: repeat(4, 1fr);
         gap: 1.5rem;
+    }
+
+    @media (max-width: 1024px) {
+        .event-cards-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 640px) {
+        .event-cards-grid {
+            grid-template-columns: 1fr;
+        }
     }
 
     .event-card {
@@ -100,6 +112,14 @@
         align-items: center;
         justify-content: center;
         border-radius: 50%;
+        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.3s ease, color 0.3s ease;
+    }
+
+    .event-card:hover i {
+        transform: scale(1.15) rotate(-10deg);
+        background: var(--lp-primary, #f97316);
+        color: white;
+        box-shadow: 0 10px 20px rgba(249, 115, 22, 0.3);
     }
 
     .event-card h3 {
@@ -314,11 +334,10 @@
         style="background-image: url('{{ url_for('static', path='/images/bg_image.jpg') }}');">
         <div class="hero-content-centered animate-on-scroll">
             <h1 class="hero-title-main">
-                Find the Perfect <span>Caterer</span> for Any Event
+                Make Every Occasion <span>Easy</span> and Memorable
             </h1>
             <p class="hero-subtitle-main">
-                Connect with the finest professional caterers for your most meaningful moments. <br
-                    class="desktop-only"> Seamless booking and masterful service.
+                From catering to complete event services, OccaServe helps you plan and book everything in one place.
             </p>
             <div class="hero-buttons-centered">
                 <a href="#caterers" class="btn-cta-main"><i class="fas fa-utensils"></i> Browse Caterers</a>
@@ -337,36 +356,6 @@
                     trusted by hundreds of clients.</p>
             </div>
 
-            <!-- Functional Search Bar -->
-            <form action="/caterers" method="GET" class="search-filter-bar animate-on-scroll">
-                <div class="search-filter-item">
-                    <label>Event Type</label>
-                    <select name="type">
-                        <option value="">Any Event</option>
-                        <option value="wedding">Wedding</option>
-                        <option value="corporate">Corporate</option>
-                        <option value="birthday">Birthday</option>
-                        <option value="debut">Debut</option>
-                    </select>
-                </div>
-                <div class="search-filter-item">
-                    <label>Location</label>
-                    <input type="text" name="location" placeholder="e.g. Metro Manila">
-                </div>
-                <div class="search-filter-item">
-                    <label>Budget Range</label>
-                    <select name="budget">
-                        <option value="">Any Budget</option>
-                        <option value="1">₱ - Budget-friendly</option>
-                        <option value="2">₱₱ - Mid-range</option>
-                        <option value="3">₱₱₱ - Premium</option>
-                    </select>
-                </div>
-                <div class="search-filter-item">
-                    <button type="submit" class="btn-cta-main"
-                        style="margin-top: 1.2rem; border-radius: 0.5rem; padding: 0.8rem 2rem; border: none; font-family: 'Poppins', sans-serif; font-size: 1rem; cursor: pointer;">Search</button>
-                </div>
-            </form>
 
             <div class="caterer-grid-new">
                 {% for caterer in caterers[:3] %}
@@ -450,30 +439,58 @@
         <div class="container">
             <div class="section-header" style="text-align: center; margin-bottom: 3rem;">
                 <h2 style="font-size: 2.5rem; margin-bottom: 1rem; color: var(--lp-secondary);">Event Categories</h2>
-                <p style="color: var(--lp-text-muted); font-size: 1.1rem;">Whatever the occasion, we have the perfect
-                    professional waiting for you.</p>
+                <p style="color: var(--lp-text-muted); font-size: 1.1rem;">Whatever the occasion, we bring exceptional
+                    food and service to your table.</p>
             </div>
 
             <div class="event-cards-grid animate-on-scroll">
                 <a href="/caterers?type=wedding" class="event-card">
                     <i class="fas fa-ring"></i>
                     <h3>Weddings</h3>
-                    <p style="color: var(--lp-text-muted); font-size: 0.9rem;">Elegant dining for your special day.</p>
+                    <p style="color: var(--lp-text-muted); font-size: 0.9rem;">Celebrate your special day with elegant,
+                        thoughtfully curated menus and seamless service your guests will remember.</p>
                 </a>
                 <a href="/caterers?type=birthday" class="event-card">
                     <i class="fas fa-birthday-cake"></i>
                     <h3>Birthdays</h3>
-                    <p style="color: var(--lp-text-muted); font-size: 0.9rem;">Fun, festive, and memorable spreads.</p>
+                    <p style="color: var(--lp-text-muted); font-size: 0.9rem;">From intimate gatherings to lively
+                        celebrations, we create fun and flavorful spreads for all ages.</p>
                 </a>
                 <a href="/caterers?type=corporate" class="event-card">
                     <i class="fas fa-briefcase"></i>
-                    <h3>Corporate</h3>
-                    <p style="color: var(--lp-text-muted); font-size: 0.9rem;">Professional and prompt service.</p>
+                    <h3>Corporate Events</h3>
+                    <p style="color: var(--lp-text-muted); font-size: 0.9rem;">Professional catering for meetings,
+                        seminars, and company events—delivered with efficiency and style.</p>
                 </a>
                 <a href="/caterers?type=debut" class="event-card">
                     <i class="fas fa-crown"></i>
-                    <h3>Debuts</h3>
-                    <p style="color: var(--lp-text-muted); font-size: 0.9rem;">Grand celebrations done right.</p>
+                    <h3>Debuts & Milestones</h3>
+                    <p style="color: var(--lp-text-muted); font-size: 0.9rem;">Mark life’s important moments with
+                        beautifully presented dishes perfect for unforgettable celebrations.</p>
+                </a>
+                <a href="/caterers?type=baptism" class="event-card">
+                    <i class="fas fa-child"></i>
+                    <h3>Baptism & Family Events</h3>
+                    <p style="color: var(--lp-text-muted); font-size: 0.9rem;">Warm, comforting meals designed for
+                        meaningful gatherings with family and friends.</p>
+                </a>
+                <a href="/caterers?type=private" class="event-card">
+                    <i class="fas fa-glass-cheers"></i>
+                    <h3>Private Parties</h3>
+                    <p style="color: var(--lp-text-muted); font-size: 0.9rem;">Whether it’s a small dinner or a big
+                        celebration, we provide customized menus to match your vibe.</p>
+                </a>
+                <a href="/caterers?type=fiesta" class="event-card">
+                    <i class="fas fa-utensils"></i>
+                    <h3>Fiestas & Large Events</h3>
+                    <p style="color: var(--lp-text-muted); font-size: 0.9rem;">Reliable catering for big crowds—generous
+                        servings, organized setup, and smooth service.</p>
+                </a>
+                <a href="/caterers?type=holiday" class="event-card">
+                    <i class="fas fa-gift"></i>
+                    <h3>Holiday Celebrations</h3>
+                    <p style="color: var(--lp-text-muted); font-size: 0.9rem;">Make every season special with festive
+                        menus perfect for Christmas parties and year-end events.</p>
                 </a>
             </div>
         </div>
@@ -526,56 +543,45 @@
             </div>
 
             <div class="testimonial-grid animate-on-scroll">
+                {% if highlighted_reviews %}
+                {% for review in highlighted_reviews %}
+                {% set initials = (review.user.first_name[0] if review.user.first_name else '?') ~
+                (review.user.last_name[0] if review.user.last_name else '') %}
+                {% set full_name = ((review.user.first_name or '') ~ ' ' ~ (review.user.last_name or ''))|trim or
+                review.user.email %}
                 <div class="testimonial-card">
                     <div class="testimonial-rating" style="margin-bottom: 1rem;">
-                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i
-                            class="fas fa-star"></i><i class="fas fa-star"></i>
+                        {% for i in range(review.rating) %}<i class="fas fa-star"></i>{% endfor %}
+                        {% for i in range(5 - review.rating) %}<i class="far fa-star" style="color: #d1d5db;"></i>{%
+                        endfor %}
                     </div>
-                    <p class="testimonial-quote">"The entire process was stress-free! I booked an elite catering team
-                        for my 50th birthday, and everyone was blown away by the service."</p>
+                    <p class="testimonial-quote">"{{ review.comment }}"</p>
                     <div class="testimonial-author">
-                        <img src="https://ui-avatars.com/api/?name=Maria+Santos&background=E67E22&color=fff"
-                            class="testimonial-avatar" alt="Maria S.">
+                        {% if review.user.profile_image_url %}
+                        <img src="{{ review.user.profile_image_url }}" class="testimonial-avatar" alt="{{ initials }}"
+                            style="object-fit: cover;">
+                        {% else %}
+                        <img src="https://ui-avatars.com/api/?name={{ full_name|urlencode }}&background=E67E22&color=fff"
+                            class="testimonial-avatar" alt="{{ initials }}">
+                        {% endif %}
                         <div>
-                            <span style="display: block; font-weight: 600; color: var(--lp-secondary);">Maria
-                                Santos</span>
-                            <span style="font-size: 0.85rem; color: var(--lp-text-muted);">Birthday Host</span>
+                            <span style="display: block; font-weight: 600; color: var(--lp-secondary);">{{ full_name
+                                }}</span>
+                            <span style="font-size: 0.85rem; color: var(--lp-text-muted);">{{ review.booking.event_type
+                                if review.booking and review.booking.event_type else 'OccaServe Customer' }}</span>
                         </div>
                     </div>
                 </div>
-                <div class="testimonial-card">
-                    <div class="testimonial-rating" style="margin-bottom: 1rem;">
-                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i
-                            class="fas fa-star"></i><i class="fas fa-star"></i>
-                    </div>
-                    <p class="testimonial-quote">"We needed a caterer last minute for our company seminar. OccaServe had
-                        exactly what we needed and the booking took 5 minutes!"</p>
-                    <div class="testimonial-author">
-                        <img src="https://ui-avatars.com/api/?name=John+Lim&background=E67E22&color=fff"
-                            class="testimonial-avatar" alt="John L.">
-                        <div>
-                            <span style="display: block; font-weight: 600; color: var(--lp-secondary);">John Lim</span>
-                            <span style="font-size: 0.85rem; color: var(--lp-text-muted);">Event Coordinator</span>
-                        </div>
-                    </div>
+                {% endfor %}
+                {% else %}
+                <div style="grid-column: 1 / -1; text-align: center; padding: 4rem 2rem;">
+                    <div style="font-size: 3rem; color: #fcd34d; margin-bottom: 1rem;">⭐</div>
+                    <p style="color: var(--lp-text-muted); font-size: 1.1rem; font-weight: 600;">Be the first to leave a
+                        review!</p>
+                    <p style="color: var(--lp-text-muted); font-size: 0.95rem; margin-top: 0.5rem;">Book a caterer today
+                        and share your experience with our community.</p>
                 </div>
-                <div class="testimonial-card">
-                    <div class="testimonial-rating" style="margin-bottom: 1rem;">
-                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i
-                            class="fas fa-star"></i><i class="fas fa-star"></i>
-                    </div>
-                    <p class="testimonial-quote">"As transparency with prices is tough to find in local caterers,
-                        OccaServe is a lifesaver. Highly recommend the platform!"</p>
-                    <div class="testimonial-author">
-                        <img src="https://ui-avatars.com/api/?name=Anna+Reyes&background=E67E22&color=fff"
-                            class="testimonial-avatar" alt="Anna R.">
-                        <div>
-                            <span style="display: block; font-weight: 600; color: var(--lp-secondary);">Anna
-                                Reyes</span>
-                            <span style="font-size: 0.85rem; color: var(--lp-text-muted);">Wedding Planner</span>
-                        </div>
-                    </div>
-                </div>
+                {% endif %}
             </div>
         </div>
     </section>
@@ -588,14 +594,16 @@
                 <div
                     style="width: 60px; height: 4px; background: var(--lp-primary); margin: 0 auto 2rem; border-radius: 2px;">
                 </div>
-                <p style="color: var(--lp-text-muted); font-size: 1.15rem; line-height: 1.8;">
-                    OccaServe operates as the bridge connecting world-class culinary talent with hosts who value
-                    excellence.
-                    We believe that exceptional food brings life's best moments together. By enforcing a strict vetting
-                    and rating process,
-                    we ensure that every caterer on our marketplace delivers an unparalleled experience characterized by
-                    trust, transparency, and unforgettable flavors.
+                <p style="color: var(--lp-text-muted); font-size: 1.15rem; line-height: 1.8; margin-bottom: 1.5rem;">
+                    OccaServe provides catering and services for all kinds of occasions. From weddings and birthdays to
+                    corporate events and small gatherings, we help make every event simple, smooth, and enjoyable.
+                    <br><br>
+                    We offer good food, organized setup, and reliable service to fit your needs. Our goal is to take the
+                    stress out of planning so you can focus on enjoying your event.
+                    <br><br>
+                    At OccaServe, we don’t just serve food—we help create moments for every occasion.
                 </p>
+
             </div>
         </div>
     </section>

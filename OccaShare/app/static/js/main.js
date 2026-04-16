@@ -102,6 +102,55 @@ window.showToast = function(message, icon = 'info') {
     });
 };
 
+// --- 3.5 Global Alert Modals (Premium Design) ---
+window.showError = function(message, title = 'Error') {
+    Swal.fire({
+        title: title,
+        html: message,
+        icon: 'error',
+        confirmButtonText: 'Understood',
+        confirmButtonColor: '#1e293b',
+        customClass: {
+            popup: 'premium-swal-popup',
+            confirmButton: 'premium-swal-btn'
+        }
+    });
+};
+
+window.showAlert = function(options) {
+    Swal.fire({
+        title: options.title || 'Message',
+        html: options.message,
+        icon: options.type || 'info',
+        confirmButtonText: 'OK',
+        confirmButtonColor: 'var(--primary-color, #10b981)',
+        customClass: {
+            popup: 'premium-swal-popup',
+            confirmButton: 'premium-swal-btn'
+        }
+    });
+};
+
+window.showConfirm = function(message, onConfirm, title = 'Are you sure?', confirmText = 'Yes') {
+    Swal.fire({
+        title: title,
+        html: message,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: confirmText,
+        cancelButtonText: 'Cancel',
+        customClass: {
+            popup: 'premium-swal-popup'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            onConfirm();
+        }
+    });
+};
+
 // --- 4. Global URL Parameter Listener for Toasts ---
 document.addEventListener('DOMContentLoaded', function() {
     // Check both search params and hash (in case params are after the #)

@@ -84,7 +84,7 @@ async def continue_draft_booking(booking_id: int, request: Request, db: Session 
         
     booking = db.query(models.Booking).get(booking_id)
     if not booking or booking.user_id != user.id:
-        return RedirectResponse(url="/customer/dashboard?error=booking_not_found", status_code=303)
+        return RedirectResponse(url="/customer/dashboard?error_msg=Booking+not+found", status_code=303)
         
     if booking.status not in ['draft', 'pending_quotation', 'awaiting_caterer', 'awaiting_payment']:
         return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}", status_code=303)
@@ -204,6 +204,7 @@ async def step_details_submit(
     event_type: str = Form(...),
     event_date: date = Form(...),
     event_time: time = Form(...),
+    event_end_time: Optional[time] = Form(None),
     guest_count: int = Form(...),
     venue_address: str = Form(...),
     total_price: float = Form(...),
@@ -228,7 +229,7 @@ async def step_details_submit(
     ).first()
     
     if availability:
-        return RedirectResponse(url=f"/packages/{package_id}?error=date_unavailable", status_code=303)
+        return RedirectResponse(url=f"/packages/{package_id}?error_msg=Date+unavailable", status_code=303)
 
     # 2. Create or Update Booking
     booking = None
@@ -241,6 +242,7 @@ async def step_details_submit(
         booking.event_type = event_type
         booking.event_date = event_date
         booking.event_time = event_time
+        booking.event_end_time = event_end_time
         booking.venue_address = venue_address
         booking.guest_count = guest_count
         booking.total_price = total_price
@@ -259,6 +261,7 @@ async def step_details_submit(
             event_type=event_type,
             event_date=event_date,
             event_time=event_time,
+            event_end_time=event_end_time,
             venue_address=venue_address,
             guest_count=guest_count,
             total_price=total_price,
@@ -294,6 +297,10 @@ async def step_details_submit(
         "package_id": package_id
     }
 
+    # Check if we should skip KYC for verified users
+    if user.is_verified or user.is_kyc_complete:
+        return RedirectResponse(url=f"/bookings/step/quotation/{booking.id}", status_code=303)
+        
     return RedirectResponse(url=f"/bookings/step/kyc/{booking.id}", status_code=303)
 
 # Phase 2: Identity Verification
@@ -531,10 +538,10 @@ async def pay_balance_submit(
         await NotificationService.notify_payment_received(db, booking, outstanding_balance, "Balance Payment Proof")
 
         db.commit()
-        return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?success=balance_proof_submitted", status_code=303)
+        return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?success_msg=Balance+payment+proof+submitted!+Please+wait+for+verification.", status_code=303)
 
 
-    return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?error=no_file", status_code=303)
+    return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?error_msg=No+file+uploaded", status_code=303)
 
 @router.get("/success/{booking_id}", response_class=HTMLResponse)
 async def booking_success_page(request: Request, booking_id: int, db: Session = Depends(database.get_db)):
@@ -587,4 +594,4 @@ async def submit_review(
     # Actually, let's just commit.
     
     db.commit()
-    return RedirectResponse(url="/customer/dashboard?success=review_submitted", status_code=303)
+    return RedirectResponse(url="/customer/dashboard?success_msg=Your+review+has+been+submitted!+Thank+you!.", status_code=303)

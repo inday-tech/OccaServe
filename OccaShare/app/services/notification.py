@@ -56,7 +56,7 @@ class NotificationService:
             user_id=user.id,
             title="New Booking Received!",
             message=f"New booking for '{booking.event_name}' on {booking.event_date}.",
-            type="success",
+            type="Booking",
             link=f"/caterer/bookings"
         )
         db.add(notif)
@@ -108,14 +108,6 @@ class NotificationService:
         user = db.query(models.User).get(user_id)
         if not user: return
 
-        # 1. In-App Notification
-        notif = models.Notification(
-            user_id=user_id,
-            title=title,
-            message=message,
-            type="info",
-            link=link
-        )
         db.add(notif)
         db.commit()
 
@@ -168,31 +160,3 @@ class NotificationService:
         # 3. Real-time
         await manager.broadcast_to_user(user.id, {"type": "dashboard_update", "message": "New payment received"})
 
-    @staticmethod
-    async def notify_proof_rejected(db: Session, booking: models.Booking, reason: str):
-        """Notifies customer that their payment proof was rejected and requires re-upload."""
-        user_id = booking.user_id
-        
-        # 1. In-App
-        notif = models.Notification(
-            user_id=user_id,
-            title="Payment Proof Required",
-            message=f"Ang iyong payment proof para sa '{booking.event_name}' ay hindi tinanggap. Reason: {reason}. Mangyaring mag-upload muli.",
-            type="warning",
-            link=f"/customer/bookings/manage/{booking.id}"
-        )
-        db.add(notif)
-        db.commit()
-
-        # 2. Email
-        EmailService._send_email(
-            booking.user.email, 
-            "Action Required: Payment Proof Rejected", 
-            f"Hello,\n\nAng iyong payment proof para sa '{booking.event_name}' ay hindi tinanggap ni {booking.caterer.business_name}.\n\nReason: {reason}\n\nMangyaring mag-log in sa OccaShare para mag-upload ng tamang proof."
-        )
-
-        # 3. Real-time
-        await manager.broadcast_to_user(user_id, {
-            "type": "new_notification", 
-            "message": f"Payment Proof Rejected: {reason}"
-        })

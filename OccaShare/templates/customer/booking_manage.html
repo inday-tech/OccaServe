@@ -87,8 +87,35 @@
             {% endif %}
         </div>
 
+        <!-- Menu Details moved to sidebar -->
+        <div class="c-card-premium menu-sidebar-card">
+            <h2 class="section-title"><i class="far fa-file-alt"></i> Menu Selection</h2>
+            <div class="menu-package-header">
+                <div class="package-name-label" style="font-size: 0.9rem;">Package: {{ booking.package.name if
+                    booking.package else 'Custom Menu' }}</div>
+                <div class="package-desc-text" style="font-size: 0.8rem;">{{ booking.package.description if
+                    booking.package else '' }}</div>
+            </div>
+
+            <div class="menu-items-grid">
+                {% for b_item in booking.selected_items %}
+                <div class="menu-item-tag" style="background: #f8fafc; border-radius: 0.75rem; padding: 0.75rem 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                         <i class="fas fa-check-circle" style="color: #10b981;"></i>
+                        <span class="item-name-text" style="font-size: 0.95rem; font-weight: 500; color: #1e293b;">
+                            {{ b_item.menu_item.name }}
+                        </span>
+                    </div>
+                    {% if b_item.is_add_on %} <span class="addon-badge" style="font-size: 0.65rem; background: #fee2e2; color: #ef4444; padding: 0.2rem 0.5rem; border-radius: 99px; font-weight: 700;">ADD-ON</span> {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="right-col sticky-right">
         <!-- Action Center -->
-        <div class="c-card-premium action-center-premium" style="border: 2px dashed var(--primary-color);">
+        <div class="c-card-premium action-center-premium brand-action-card">
             <h2 class="section-title"><i class="fas fa-bolt"></i> Action Center & Settlement</h2>
             
             <div class="action-landscape-grid">
@@ -108,13 +135,43 @@
                             </span>
                         </div>
 
+                        {% if booking.status == 'completed' or booking.payment_status == 'paid' %}
+                        {% set balance_val = 0.0 %}
+                        {% else %}
                         {% set balance_val = (booking.total_amount|float) - ((booking.reservation_fee|float) if
-                        booking.payment_status in ['paid', 'deposit_paid'] and booking.reservation_fee else 0.0) %}
+                        booking.payment_status in ['deposit_paid'] and booking.reservation_fee else 0.0) %}
+                        {% endif %}
+                        
+                        <!-- PAYMENT PROGRESS BAR INJECTED HERE -->
+                        <div class="payment-progress-container" style="margin-top: 1.5rem; margin-bottom: 1rem;">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.5rem; font-weight: 700; color: #64748b;">
+                                <span>Payment Progress</span>
+                                {% if booking.status == 'completed' or booking.payment_status == 'paid' %}
+                                <span style="color: #10b981;">100% Paid</span>
+                                {% else %}
+                                <span style="color: var(--primary-color);">{{ "{:,.0f}".format(((booking.reservation_fee|float if booking.reservation_fee else 0.0) / (booking.total_amount|float if booking.total_amount else 1.0)) * 100) }}% Paid</span>
+                                {% endif %}
+                            </div>
+                            <div class="progress-track" style="height: 8px; background: #e2e8f0; border-radius: 99px; overflow: hidden; display: flex;">
+                                {% if booking.status == 'completed' or booking.payment_status == 'paid' %}
+                                <div class="progress-fill" style="width: 100%; background: #10b981; border-radius: 99px; transition: width 0.5s ease;"></div>
+                                {% else %}
+                                <div class="progress-fill" style="width: {{ ((booking.reservation_fee|float if booking.reservation_fee else 0.0) / (booking.total_amount|float if booking.total_amount else 1.0)) * 100 }}%; background: #10b981; border-radius: 99px; transition: width 0.5s ease;"></div>
+                                {% endif %}
+                            </div>
+                        </div>
+
                         <div class="detail-row balance-highlight-row-pro">
                             <span class="detail-label" style="font-weight: 700; color: #1e293b;">Balance</span>
+                            {% if booking.status == 'completed' or booking.payment_status == 'paid' %}
+                            <span class="detail-value" style="color: #10b981; font-size: 1.1rem; font-weight: 800;">
+                                ₱0.00 <i class="fas fa-check-circle" style="font-size: 0.9rem;"></i>
+                            </span>
+                            {% else %}
                             <span class="detail-value" style="color: var(--primary-color); font-size: 1.1rem;">
                                 ₱{{ "{:,.2f}".format(balance_val) }}
                             </span>
+                            {% endif %}
                         </div>
 
                         {% if booking.balance_due_date %}
@@ -265,15 +322,23 @@
                             <i class="fas fa-clock" style="margin-right: 0.5rem;"></i> Proof Submitted. Awaiting verification.
                         </div>
                         {% else %}
-                        <form action="/bookings/pay-balance/{{ booking.id }}?success_msg=Payment+proof+submitted+successfully!+Please+wait+for+verification." method="POST" enctype="multipart/form-data" style="margin-top: 1.5rem; background: #fff; border: 1px dashed #e2e8f0; padding: 1rem; border-radius: 0.75rem;">
+                        <form action="/bookings/pay-balance/{{ booking.id }}?success_msg=Payment+proof+submitted+successfully!+Please+wait+for+verification." method="POST" enctype="multipart/form-data" 
+                              onsubmit="event.preventDefault(); submitPaymentForm(this);" 
+                              style="margin-top: 1.5rem; background: #fff; border: 1px dashed #e2e8f0; padding: 1rem; border-radius: 0.75rem;">
+                            
+                            <!-- Image Preview Container -->
+                            <div id="image-preview-container" style="display: none; margin-bottom: 1rem; text-align: center;">
+                                <img id="payment-preview-img" src="" alt="Payment Preview" style="max-height: 150px; max-width: 100%; border-radius: 0.5rem; border: 1px solid #e2e8f0; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); object-fit: contain;">
+                            </div>
+                            
                             <div class="file-upload-wrapper-p" style="position: relative;">
                                 <label for="payment_proof" style="display: block; text-align: center; cursor: pointer; padding: 1.5rem;">
                                     <div style="font-size: 1.5rem; color: #f97316; margin-bottom: 0.5rem;"><i class="fas fa-file-upload"></i></div>
                                     <div id="file-name-display" style="font-size: 0.85rem; color: #64748b; font-weight: 500;">Click to upload proof of payment</div>
                                 </label>
-                                <input type="file" name="payment_proof" id="payment_proof" accept="image/*" required onchange="updateFileName(this)" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; opacity: 0; cursor: pointer;">
+                                <input type="file" name="payment_proof" id="payment_proof" accept="image/*" required onchange="handleFileSelect(this)" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; opacity: 0; cursor: pointer;">
                             </div>
-                            <button type="submit" class="btn-primary-premium" style="width: 100%; margin-top: 1rem; padding: 0.8rem; border-radius: 0.75rem; font-weight: 700; background: var(--primary-color);">Submit Final Proof</button>
+                            <button type="submit" id="submit-payment-btn" class="btn-primary-premium" disabled style="width: 100%; margin-top: 1rem; padding: 0.8rem; border-radius: 0.75rem; font-weight: 700; background: var(--primary-color); opacity: 0.6; cursor: not-allowed;">Submit Final Proof</button>
                         </form>
                         {% endif %}
                     </div>
@@ -299,9 +364,7 @@
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="right-col">
         <!-- Caterer Card -->
         <div class="c-card-premium caterer-card-premium">
             <h2 class="section-title"><i class="far fa-user"></i> Your Caterer</h2>
@@ -322,30 +385,6 @@
             </div>
         </div>
 
-        <!-- Menu Details moved to sidebar -->
-        <div class="c-card-premium menu-sidebar-card">
-            <h2 class="section-title"><i class="far fa-file-alt"></i> Menu Selection</h2>
-            <div class="menu-package-header">
-                <div class="package-name-label" style="font-size: 0.9rem;">Package: {{ booking.package.name if
-                    booking.package else 'Custom Menu' }}</div>
-                <div class="package-desc-text" style="font-size: 0.8rem;">{{ booking.package.description if
-                    booking.package else '' }}</div>
-            </div>
-
-            <div class="menu-items-grid">
-                {% for b_item in booking.selected_items %}
-                <div class="menu-item-tag" style="background: #f8fafc; border-radius: 0.75rem; padding: 0.75rem 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
-                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                         <i class="fas fa-check-circle" style="color: #10b981;"></i>
-                        <span class="item-name-text" style="font-size: 0.95rem; font-weight: 500; color: #1e293b;">
-                            {{ b_item.menu_item.name }}
-                        </span>
-                    </div>
-                    {% if b_item.is_add_on %} <span class="addon-badge" style="font-size: 0.65rem; background: #fee2e2; color: #ef4444; padding: 0.2rem 0.5rem; border-radius: 99px; font-weight: 700;">ADD-ON</span> {% endif %}
-                </div>
-                {% endfor %}
-            </div>
-        </div>
     </div>
 </div>
 
@@ -403,9 +442,57 @@ function copyToClipboard(text) {
     });
 }
 
-function updateFileName(input) {
+function handleFileSelect(input) {
     const display = document.getElementById('file-name-display');
-    display.innerText = input.files[0] ? input.files[0].name : 'No file chosen';
+    const previewContainer = document.getElementById('image-preview-container');
+    const previewImg = document.getElementById('payment-preview-img');
+    const submitBtn = document.getElementById('submit-payment-btn');
+    
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        // Basic image validation
+        if (!file.type.startsWith('image/')) {
+            if(window.showError){ window.showError("Please upload a valid image file."); } else { alert("Please upload a valid image."); }
+            input.value = ''; // clear
+            return;
+        }
+
+        display.innerText = file.name;
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            previewImg.src = e.target.result;
+            previewContainer.style.display = 'block';
+            
+            // Enable button
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = '1';
+            submitBtn.style.cursor = 'pointer';
+        }
+        reader.readAsDataURL(file);
+    } else {
+        display.innerText = 'Click to upload proof of payment';
+        previewContainer.style.display = 'none';
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.6';
+        submitBtn.style.cursor = 'not-allowed';
+    }
+}
+
+function submitPaymentForm(form) {
+    if (window.showConfirm) {
+        window.showConfirm(
+            "Are you sure you want to submit this payment proof?",
+            () => form.submit(),
+            "Submit Payment",
+            "Yes, Submit"
+        );
+    } else {
+        if(confirm("Are you sure you want to submit this payment proof?")) {
+            form.submit();
+        }
+    }
 }
 
 function openContractModal(bookingId) {

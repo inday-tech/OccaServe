@@ -568,17 +568,16 @@
     flex-direction: column;
     border: 1px solid #f1f5f9;
     height: 100%;
-    max-width: 400px;
-    /* Capping width so it's not too big */
+    max-width: 320px;
+    /* Capping width strictly */
     margin: 0 auto;
-    /* Centered when there's only one */
 }
 
 /* Ensure the grid doesn't force a single card to stretch too much */
 .caterer-grid-new {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 2.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 320px));
+    gap: 1.5rem;
     justify-content: center;
     max-width: 1200px;
     margin: 0 auto;
@@ -586,7 +585,7 @@
 
 .elite-card-image {
     position: relative;
-    height: 220px;
+    height: 180px;
     width: 100%;
 }
 
@@ -613,17 +612,17 @@
 }
 
 .elite-card-body {
-    padding: 2rem;
+    padding: 1.25rem;
     display: flex;
     flex-direction: column;
     flex: 1;
 }
 
 .elite-card-body h3 {
-    font-size: 1.4rem;
+    font-size: 1.25rem;
     font-weight: 800;
     color: #171717;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
     line-height: 1.2;
 }
 
@@ -648,9 +647,9 @@
 
 .elite-card-desc {
     color: #64748b;
-    font-size: 0.95rem;
-    line-height: 1.6;
-    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 1.25rem;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
@@ -658,10 +657,10 @@
 }
 
 .elite-card-price {
-    font-size: 1.5rem;
+    font-size: 1.4rem;
     font-weight: 800;
     color: #171717;
-    margin-bottom: 2rem;
+    margin-bottom: 1.25rem;
 }
 
 .elite-card-price span {
@@ -674,9 +673,9 @@
 .elite-card-footer {
     display: flex;
     align-items: center;
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-    padding-top: 1.5rem;
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+    padding-top: 1.25rem;
     border-top: 1px solid #f1f5f9;
 }
 

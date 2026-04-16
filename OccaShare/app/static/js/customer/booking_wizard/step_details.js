@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- Selectors ---
     const form = document.getElementById('detailsForm');
     const guestInput = document.getElementById('guest_count');
+    const guestDisplay = document.getElementById('guest_count_display');
     const dateInput = document.getElementById('event_date');
     const timeInput = document.getElementById('event_time');
     const provinceSelect = document.getElementById('province_select');
@@ -18,43 +19,35 @@ document.addEventListener('DOMContentLoaded', function () {
     const otherEventInput = document.getElementById('other_event_type');
     const submitBtn = document.getElementById('submitBtn');
 
-    // --- Location Data (Laguna Focus) ---
-    const LAGUNA_DATA = {
-        "Alaminos": ["Barangay I", "Barangay II", "Barangay III", "Barangay IV", "Del Carmen", "Palma", "San Agustin", "San Andres", "San Benito", "San Gregorio", "San Juan", "San Miguel", "San Roque", "Santa Rosa", "Victoria"],
-        "Bay": ["Bitin", "Calo", "Dila", "Maitim", "Puypuy", "San Antonio", "San Isidro", "Santa Cruz", "Santo Domingo", "Tagapo"],
-        "Biñan": ["Biñan (Poblacion)", "Bungahan", "Canlalay", "Casile", "De La Paz", "Dela Paz", "Ganado", "Langkiwa", "Loma", "Malaban", "Malamig", "Mamplasan", "Platero", "Poblacion", "San Antonio", "San Francisco", "San Jose", "San Vicente", "Santo Niño", "Santo Tomas", "Soro-soro", "Timbao", "Tubigan", "Zapote"],
-        "Cabuyao": ["Baclaran", "Banay-Banay", "Banlic", "Bigaa", "Butong", "Casile", "Diezmo", "Gulod", "Mamatid", "Marinig", "Niugan", "Pittland", "Pulo", "Sala", "San Isidro"],
-        "Calamba": ["Bagong Kalsada", "Bañadero", "Banlic", "Barandal", "Barangay 1", "Barangay 2", "Barangay 3", "Barangay 4", "Barangay 5", "Barangay 6", "Barangay 7", "Batino", "Bubuyan", "Bucal", "Bunggo", "Burol", "Camaligan", "Canlubang", "Halang", "Hornalan", "Kay-Anlog", "Laguerta", "La Mesa", "Lawa", "Lecheria", "Lingga", "Looc", "Mabato", "Majada Labas", "Makiling", "Mapagong", "Masili", "Maunong", "Mayapa", "Milagrosa", "Palingon", "Palo-Alto", "Pansol", "Parian", "Prinza", "Punta", "Putho Tuntungin", "Real", "Saimsim", "Sampiruhan", "San Cristobal", "San Jose", "San Juan", "Sirang Lupa", "Sucol", "Turbina", "Uwisan"],
-        "Calauan": ["Balayhangin", "Bangyas", "Dayap", "Hanggan", "Imok", "Kanluran", "Lamot 1", "Lamot 2", "Limao", "Mabacan", "Masiit", "Paliparan", "Pérez", "Prinza", "San Isidro", "Santo Tomas"],
-        "Cavinti": ["Anglas", "Bangco", "Bukal", "Bulajo", "Cansuso", "Duhat", "Inao-Awan", "Labayo", "Layasin", "Layug", "Mahipon", "Paowin", "Poblacion", "Sisilmin", "Sumucab", "Tibatib", "Udia"],
-        "Famy": ["Asana", "Bacong-Sangi", "Balitoc", "Banaba", "Batuhan", "Bulihan", "Caballero", "Calumpang", "Kapatalan", "Kataypuanan", "Liyang", "Maatubang", "Mag-Ampon", "Minayutan", "Poblacion", "Salangbato", "Tunhac"],
-        "Kalayaan": ["Longos", "San Juan", "San Antonio"],
-        "Liliw": ["Bagong Anyo", "Bayate", "Bongkol", "Bubukal", "Cabuyew", "Calumpang", "Culit", "Dagatan", "Daniw", "Dita", "Ibabang Palina", "Ibabang San Roque", "Ibabang Taykin", "Ilayang Palina", "Ilayang San Roque", "Ilayang Taykin", "Kanluran", "Luquin", "Malabo-Kalantukan", "Masikap", "Novillos", "Oogong", "Pag-Asa", "Poblacion", "Rizal", "San Isidro", "Santa Lucia", "Tibatib", "Tuy-Baanan"],
-        "Los Baños": ["Anos", "Bagong Silang", "Bambang", "Batong Malake", "Baybayin", "Bayog", "Lalakay", "Maahas", "Malinta", "Mayondon", "Putho Tuntungin", "San Antonio", "Tadlac", "Timugan"],
-        "Luisiana": ["De La Paz", "San Antonio", "San Buenaventura", "San Diego", "San Isidro", "San Jose", "San Juan", "San Lorenzo", "San Pablo", "San Pedro", "San Rafael", "San Roque", "San Sebastian", "Santa Catalina", "Santa Lucia", "Santo Domingo", "Santo Tomas"],
-        "Lumban": ["Bagong Silang", "Balayu", "Concepcion", "Lewin", "Maytalang I", "Maytalang II", "Maracta", "Poblacion", "Primera Parang", "Primera Pulo", "Salac", "Santo Niño", "Segunda Parang", "Segunda Pulo", "Talahib", "Wawa"],
-        "Mabitac": ["Amuyong", "Lambac", "Lucong", "Matalatala", "Nangun", "Pag-Asa", "Poblacion", "San Antonio", "San Francisco", "San Jose", "San Miguel", "San Nicolas", "San Pedro", "San Roque", "San Vicente", "Santa Maria"],
-        "Magdalena": ["Alipit", "Baanan", "Balanac", "Bucal", "Buenavista", "Bungkol", "Burol", "Ibabang Atingay", "Ibabang Butnong", "Ilayang Atingay", "Ilayang Butnong", "Malaking Ambling", "Mali-Mali", "Munting Ambling", "Poblacion", "Sabang", "Salasad", "Tanawan", "Tipunan"],
-        "Majayjay": ["Amonoy", "Bakia", "Balanac", "Bukal", "Bunga", "Butnong", "Gagalot", "Ibabang Banga", "Ibabang Bayucain", "Ilayang Banga", "Ilayang Bayucain", "Isabang", "Malinao", "May-It", "Munting Kawayan", "Olla", "Oobi", "Pangil", "Panglan", "Piit", "Poblacion", "Rizal", "Suba", "Talortor", "Taytay"],
-        "Nagcarlan": ["Abo", "Alibungbungan", "Alumbrado", "Antipolo", "Balayhangin", "Balimbing", "Balinacon", "Bambang", "Banago", "Banca-Banca", "Bangcuro", "Banilad", "Bayaquitos", "Buboy", "Buenavista", "Bunga", "Cabuyew", "Calumpang", "Kanluran Lazaan", "Kanluran Kabubuhayan", "Labangan", "Lawaguin", "Malinao", "Malipunyo", "Manaol", "Maravilla", "Nagcalit", "Oogong", "Poblacion", "Sabang", "San Francisco", "Santa Lucia", "Sulsuguin", "Talahib", "Talangan", "Taytay", "Tibatib", "Wakat"],
-        "Paete": ["Barangay 1 - Ibaba", "Barangay 2 - Maytoong", "Barangay 3 - Ermita", "Barangay 4 - Quinale", "Barangay 5 - Ilaya", "Barangay 6 - Ilaya", "Barangay 7 - Bagumbayan", "Barangay 8 - Bangkusay", "Barangay 9 - Ibaba"],
-        "Pagsanjan": ["Anahaw", "Barangay I", "Barangay II", "Barangay III", "Bubukal", "Cabanbanan", "Calusiche", "Dingin", "Lambac", "Layugan", "Magdapio", "Maulawin", "Pinagsanjan", "Sabang", "Sampaloc", "San Isidro"],
-        "Pakil": ["Baño", "Banilan", "Burgos", "Casa Real", "Casinsin", "Dorado", "Gonzales", "Kabulusan", "Matikiw", "Pangil", "Rizal", "Saray", "Taft", "Tavera"],
-        "Pangil": ["Balian", "Isla", "Natividad", "Poblacion", "Sulib", "Galas"],
-        "Pila": ["Aplaya", "Bagong Pook", "Bukal", "Bulilan Sur", "Concepcion", "Labuin", "Linga", "Masico", "Mojon", "Pansol", "Poblacion", "San Antonio", "Santa Clara"],
-        "Rizal": ["Antipolo", "Entablado", "Laguan", "Pauli 1", "Pauli 2", "Poblacion", "Puypuy", "Talaga", "Talaoc", "Tuy"],
-        "San Pablo": ["Barangay I-A", "Barangay I-B", "Barangay II-A", "Barangay II-B", "Barangay III-A", "Barangay III-B", "Barangay IV-A", "Barangay IV-B", "Barangay V-A", "Barangay V-B", "Barangay VI-A", "Barangay VI-B", "Barangay VII-A", "Barangay VII-B", "Atisan", "Bautista", "Concepcion", "Del Remedio", "Dolores", "San Antonio", "San Buenaventura", "San Cristobal", "San Francisco", "San Gabriel", "San Gregorio", "San Ignacio", "San Isidro", "San Jose", "San Juan", "San Lucas", "San Marcos", "San Mateo", "San Miguel", "San Nicolas", "San Pedro", "San Rafael", "San Roque", "San Vicente", "Santa Ana", "Santa Catalina", "Santa Cruz", "Santa Elena", "Santa Filomena", "Santa Maria", "Santa Maria Magdalena", "Santa Monica", "Santa Veronica", "Santiago", "Santisimo Rosario", "Soledad"],
-        "San Pedro": ["Bagong Silang", "Chrysanthemum", "Cuyab", "Estrella", "Fatima", "G.S.I.S.", "Holiday Hills", "Lハンドゥング", "Langgam", "Laram", "Magsaysay", "Maharlika", "Narra", "Nueva", "Pacita 1", "Pacita 2", "Poblacion", "Riverside", "Sampaguita Village", "San Antonio", "San Roque", "San Vicente", "Santa Felomina", "Santo Niño", "United Bayanihan", "United Better Living", "Vicente Leyos"],
-        "Santa Cruz": ["Alipit", "Bagumbayan", "Bubukal", "Calios", "Duhat", "Gatid", "Jasaan", "Labuin", "Malinao", "Oogong", "Pagsawitan", "Palasan", "Patimbao", "Poblacion", "San Jose", "San Juan", "San Pablo Norte", "San Pablo Sur", "San Pedro", "Santa Cruz", "Santisteban", "Santo Angel Central", "Santo Angel Norte", "Santo Angel Sur"],
-        "Santa Maria": ["Bagong Pook", "Bubukal", "Cabooan", "Calangay", "Cambuja", "Coralan", "Juan Santiago", "Kayhakat", "Lungsod", "Macasipac", "Masinao", "Matalatala", "Pao-o", "Parang Ng Buho", "Poblacion", "Real Velasquez", "Santiago", "Talahiban"],
-        "Santa Rosa": ["Aplaya", "Balibago", "Caingin", "Dila", "Ditam", "Don Jose", "Ibaba", "Kanluran", "Labas", "Macabling", "Malitlit", "Market Area", "Pook", "Pulong Santa Cruz", "Santo Domingo", "Sinalhan", "Tagapo"],
-        "Siniloan": ["Acevida", "Bagong Pag-Asa", "Buhay", "Gen. Luna", "G. Redor", "Halayhayin", "L. De Leon", "Laguio", "Magsaysay", "M. Pandeño", "North Poblacion", "P. Burgos", "Salubungan", "Sambat", "South Poblacion", "Wawa"],
-        "Victoria": ["Daniw", "Masapang", "Nanhaya", "Pagalangan", "Poblacion", "San Francisco", "San Roque", "Santa Cruz"]
+    // --- Dynamic Location Data via PSGC ---
+    const PROVINCE_CODES = {
+        "Batangas": "041000000",
+        "Cavite": "042100000",
+        "Laguna": "043400000",
+        "Quezon": "045600000",
+        "Rizal": "045800000"
     };
+
+    let cachedCities = {};
+    let cachedBarangays = {};
 
     // --- 1. Set Min Date to Today ---
     const today = new Date().toISOString().split('T')[0];
     dateInput.setAttribute('min', today);
+
+    // --- 1.5 Format Guest Count ---
+    window.formatGuestCount = function (input) {
+        let rawValue = input.value.replace(/\D/g, '');
+        if (!rawValue) {
+            guestInput.value = "";
+            input.value = "";
+            return;
+        }
+        let num = parseInt(rawValue, 10);
+        if (num > 1000) num = 1000;
+        guestInput.value = num;
+        input.value = num.toLocaleString();
+    };
 
     // --- 2. Update Calculator ---
     window.updateCalculator = function () {
@@ -146,42 +139,76 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // --- 5. Cascading Location Choice ---
-    function populateCities(province, selectedCity = null) {
+    // --- 5. Cascading Location Choice (PSGC API) ---
+    async function populateCities(province, selectedCity = null, selectedBrgy = null) {
         citySelect.innerHTML = '<option value="">-- Select City --</option>';
         barangaySelect.innerHTML = '<option value="">-- Select Barangay --</option>';
         barangaySelect.disabled = true;
 
-        if (province === 'Laguna') {
-            citySelect.disabled = false;
-            const cities = Object.keys(LAGUNA_DATA).sort();
-            cities.forEach(city => {
-                const opt = document.createElement('option');
-                opt.value = city;
-                opt.textContent = city;
-                if (city === selectedCity) opt.selected = true;
-                citySelect.appendChild(opt);
-            });
-            if (selectedCity && LAGUNA_DATA[selectedCity]) {
-                populateBarangays(selectedCity);
+        if (PROVINCE_CODES[province]) {
+            citySelect.disabled = true;
+            try {
+                const code = PROVINCE_CODES[province];
+                let cities = cachedCities[code];
+                if (!cities) {
+                    citySelect.innerHTML = '<option value="">Loading...</option>';
+                    const res = await fetch(`https://psgc.gitlab.io/api/provinces/${code}/cities-municipalities/`);
+                    cities = await res.json();
+                    cities.sort((a, b) => a.name.localeCompare(b.name));
+                    cachedCities[code] = cities;
+                }
+                
+                citySelect.innerHTML = '<option value="">-- Select City --</option>';
+                cities.forEach(city => {
+                    const opt = document.createElement('option');
+                    opt.value = city.name;
+                    opt.textContent = city.name;
+                    opt.dataset.code = city.code;
+                    if (city.name === selectedCity) opt.selected = true;
+                    citySelect.appendChild(opt);
+                });
+                citySelect.disabled = false;
+                
+                if (selectedCity) {
+                    const matchedCity = cities.find(c => c.name === selectedCity);
+                    if (matchedCity) {
+                        populateBarangays(matchedCity.code, selectedBrgy);
+                    }
+                }
+            } catch (e) {
+                console.error('API Error:', e);
             }
         } else {
             citySelect.disabled = true;
         }
     }
 
-    function populateBarangays(city, selectedBrgy = null) {
+    async function populateBarangays(cityCode, selectedBrgy = null) {
         barangaySelect.innerHTML = '<option value="">-- Select Barangay --</option>';
-        if (city && LAGUNA_DATA[city]) {
-            barangaySelect.disabled = false;
-            const barangays = LAGUNA_DATA[city].sort();
-            barangays.forEach(brgy => {
-                const opt = document.createElement('option');
-                opt.value = brgy;
-                opt.textContent = brgy;
-                if (brgy === selectedBrgy) opt.selected = true;
-                barangaySelect.appendChild(opt);
-            });
+        if (cityCode) {
+            barangaySelect.disabled = true;
+            try {
+                let brgys = cachedBarangays[cityCode];
+                if (!brgys) {
+                    barangaySelect.innerHTML = '<option value="">Loading...</option>';
+                    const res = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${cityCode}/barangays/`);
+                    brgys = await res.json();
+                    brgys.sort((a, b) => a.name.localeCompare(b.name));
+                    cachedBarangays[cityCode] = brgys;
+                }
+                
+                barangaySelect.innerHTML = '<option value="">-- Select Barangay --</option>';
+                brgys.forEach(b => {
+                    const opt = document.createElement('option');
+                    opt.value = b.name;
+                    opt.textContent = b.name;
+                    if (b.name === selectedBrgy) opt.selected = true;
+                    barangaySelect.appendChild(opt);
+                });
+                barangaySelect.disabled = false;
+            } catch (e) {
+                console.error('API Error:', e);
+            }
         } else {
             barangaySelect.disabled = true;
         }
@@ -194,7 +221,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         citySelect.addEventListener('change', function () {
-            populateBarangays(this.value);
+            const selOpt = this.options[this.selectedIndex];
+            const code = selOpt ? selOpt.dataset.code : null;
+            populateBarangays(code);
             updateHiddenVenue();
         });
 
@@ -222,7 +251,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 const city = parts[1];
                 const prov = parts[2];
 
-                // Set province
                 for (let i = 0; i < provinceSelect.options.length; i++) {
                     if (provinceSelect.options[i].value === prov) {
                         provinceSelect.selectedIndex = i;
@@ -230,13 +258,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 }
 
-                // Populate and set city/barangay
-                populateCities(prov, city);
-                populateBarangays(city, brgy);
+                populateCities(prov, city, brgy);
             }
-        } else if (provinceSelect.value === 'Laguna') {
-            // Default Laguna population if selected but no full address yet
-            populateCities('Laguna');
+        } else if (provinceSelect.value) {
+            populateCities(provinceSelect.value);
         }
     }
 
@@ -270,10 +295,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Guests
             const guests = parseInt(guestInput.value) || 0;
-            if (guests < minGuests) {
+            if (guests < minGuests || guests > 1000) {
                 isValid = false;
                 document.getElementById('err-guests').classList.add('show');
-                guestInput.classList.add('error');
+                if (guestDisplay) guestDisplay.classList.add('error');
             }
 
             // Date

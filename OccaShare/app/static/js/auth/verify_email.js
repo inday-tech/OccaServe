@@ -163,11 +163,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.location.href = response.url;
                 } else {
                     const text = await response.text();
-                    if (text.includes('Expired')) {
+                    const textLower = text.toLowerCase();
+                    if (textLower.includes('expired')) {
                         if (window.Swal) {
                             Swal.fire({ icon: 'error', title: 'Code Expired', text: 'Please request a new one.', confirmButtonColor: '#FF7B54' });
                         }
-                    } else if (text.includes('Invalid')) {
+                    } else if (textLower.includes('invalid')) {
                         if (window.Swal) {
                             Swal.fire({ icon: 'error', title: 'Invalid Code', text: 'Please check and try again.', confirmButtonColor: '#FF7B54' });
                         }
@@ -185,3 +186,5 @@ document.addEventListener('DOMContentLoaded', () => {
 // Export for global use
 window.startTimer = startTimer;
 window.resendCode = resendCode;
+window.initVerifyPolling = initVerifyPolling;
+
