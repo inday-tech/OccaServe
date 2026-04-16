@@ -228,7 +228,7 @@
                     </div>
                     <div class="occ-form-group">
                         <label class="occ-form-label">Contact Number</label>
-                        <input type="text" id="manCustContact" name="customer_contact" class="occ-form-input" placeholder="e.g. 09123456789">
+                        <input type="text" id="manCustContact" name="customer_contact" class="occ-form-input" maxlength="11" placeholder="e.g. 09123456789">
                         <div class="invalid-feedback"></div>
                     </div>
 
@@ -280,9 +280,9 @@
                         <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:1rem; padding:1.25rem;">
                             <label class="occ-form-label">Select Package (Optional)</label>
                             <select id="manPackage" class="filter-select-pro w-100">
-                                <option value="" data-price="0" data-menus="[]">-- Custom / No Package --</option>
+                                <option value="" data-price="0" data-unit="fixed" data-min="1" data-menus="[]">-- Custom / No Package --</option>
                                 {% for pkg in packages %}
-                                <option value="{{ pkg.id }}" data-price="{{ pkg.price }}" data-menus='{{ pkg.menu_items | map(attribute="id") | list | tojson }}'>{{ pkg.name }} (₱{{ '{:,.2f}'.format(pkg.price) }})</option>
+                                <option value="{{ pkg.id }}" data-price="{{ pkg.price or 0 }}" data-unit="{{ pkg.price_unit or 'per_guest' }}" data-min="{{ pkg.min_guests or 1 }}" data-menus='{{ pkg.menu_items | map(attribute="id") | list | tojson }}'>{{ pkg.name }} (₱{{ '{:,.2f}'.format(pkg.price or 0) }}{{ '/pax' if pkg.price_unit == 'per_guest' else '' }})</option>
                                 {% endfor %}
                             </select>
                             
@@ -291,8 +291,8 @@
                                 {% if menu_items %}
                                     {% for mi in menu_items %}
                                     <label class="matrix-item">
-                                        <input type="checkbox" value="{{ mi.id }}" data-price="{{ mi.price }}" class="man-menu-checkbox">
-                                        <span>{{ mi.name }} <small>(₱{{ '{:,.0f}'.format(mi.price) }})</small></span>
+                                        <input type="checkbox" value="{{ mi.id }}" data-price="{{ mi.addon_price or mi.price or 0 }}" class="man-menu-checkbox">
+                                        <span>{{ mi.name }} <small>(₱{{ '{:,.0f}'.format(mi.addon_price or mi.price or 0) }})</small></span>
                                     </label>
                                     {% endfor %}
                                 {% else %}

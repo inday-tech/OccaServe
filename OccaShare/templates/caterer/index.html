@@ -3,299 +3,243 @@
 {% block title %}Overview - Caterer Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/index.css') }}?v=1.4">
-<style>
-    .revenue-analytics-card {
-        background: var(--white);
-        border-radius: 1.25rem;
-        padding: 2rem;
-        border: 1px solid rgba(var(--primary-color-rgb), 0.08);
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-        margin-top: 2rem;
-        margin-bottom: 2rem;
-    }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/index.css') }}?v=1.5">
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>Welcome back, {{ user.first_name }}!</h1>
-    <p>Monitor your performance and manage your upcoming events.</p>
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 2rem;">
+    <div>
+        <h1 style="font-weight: 800; letter-spacing: -0.02em;">Welcome back, {{ user.first_name }}! 👋</h1>
+        <p style="color: #64748b; font-size: 1.1rem; margin-top: 0.25rem;">Here's how your business is performing.</p>
+    </div>
+    
+    <div class="timeframe-selector" id="dashboard-timeframe">
+        <button class="timeframe-btn" data-timeframe="day">Daily</button>
+        <button class="timeframe-btn" data-timeframe="week">Weekly</button>
+        <button class="timeframe-btn active" data-timeframe="month">Monthly</button>
+        <button class="timeframe-btn" data-timeframe="year">Yearly</button>
+    </div>
 </div>
 
-<!-- Stats Dashboard -->
+<!-- Quick Stats Summary -->
 <div class="stats-grid-dashboard">
-    <!-- Revenue Card -->
-    <div class="stat-card-premium c-card-premium stat-card-revenue animate-up" style="border: none !important;">
+    <div class="stat-card-premium c-card-premium stat-card-revenue animate-up">
         <div class="stat-icon-bg"><i class="fas fa-coins"></i></div>
         <div class="stat-label-dashboard">Gross Revenue</div>
-        <div class="stat-value-dashboard" id="stat-revenue">₱{{ "{:,.2f}".format(total_revenue if total_revenue is defined else 0.0) }}
+        <div class="stat-value-dashboard" id="stat-revenue">₱{{ "{:,.2f}".format(total_revenue|default(0.0)) }}</div>
+        <div class="stat-hint-dashboard">Total cash collected</div>
+    </div>
+
+    <div class="stat-card-premium c-card-premium stat-card-white animate-up stat-roi-card" style="border-left: 4px solid #10b981 !important;">
+        <div class="stat-icon-bg" style="color: #10b981;"><i class="fas fa-chart-line"></i></div>
+        <div class="stat-label-dashboard">
+            Business ROI
+            <span class="roi-tooltip">
+                <i class="fas fa-info-circle roi-help-icon"></i>
+                <span class="tooltip-text">Calculated as: ((Revenue - Expenses) / Expenses) × 100</span>
+            </span>
         </div>
-        <div class="stat-hint-dashboard">Successfully collected</div>
-    </div>
-
-    <!-- ROI Card -->
-    <div class="stat-card-premium c-card-premium stat-card-white animate-up"
-        style="animation-delay: 0.1s; border-left: 4px solid #10b981 !important;">
-        <div class="stat-icon-bg" style="color: #10b981;"><i class="fas fa-percentage"></i></div>
-        <div class="stat-label-dashboard">Current ROI (Realized)</div>
         <div class="stat-value-dashboard" id="stat-roi" style="color: #10b981;">{{ roi_percentage|default(0) }}%</div>
-        <div class="stat-hint-dashboard">Projected: <span id="stat-projected-roi" style="font-weight:700;">{{ projected_roi|default(0) }}%</span> <i class="fas fa-info-circle" title="Projected ROI includes ALL confirmed bookings even if not fully paid yet."></i></div>
+        <div class="stat-hint-dashboard">
+            <span id="stat-margin-text">{{ ((net_profit / total_revenue * 100)|round if total_revenue and total_revenue > 0 else 0)|int }}% Net Margin</span>
+        </div>
     </div>
 
-    <!-- Net Profit Card -->
-    <div class="stat-card-premium c-card-premium stat-card-white animate-up" style="animation-delay: 0.2s;">
+    <div class="stat-card-premium c-card-premium stat-card-white animate-up">
         <div class="stat-icon-bg" style="color: #059669;"><i class="fas fa-hand-holding-usd"></i></div>
         <div class="stat-label-dashboard">Net Profit</div>
         <div class="stat-value-dashboard" id="stat-profit">₱{{ "{:,.2f}".format(net_profit|default(0.0)) }}</div>
-        <div class="stat-hint-dashboard">Projected Profit: <span id="stat-projected-profit" style="font-weight:700;">₱{{ "{:,.2f}".format(projected_profit|default(0.0)) }}</span></div>
+        <div class="stat-hint-dashboard">Earnings after costs</div>
     </div>
 
-    <!-- Total Customers Card -->
-    <div class="stat-card-premium c-card-premium stat-card-white animate-up" style="animation-delay: 0.3s;">
+    <div class="stat-card-premium c-card-premium stat-card-white animate-up">
         <div class="stat-icon-bg" style="color: #7c3aed;"><i class="fas fa-users"></i></div>
         <div class="stat-label-dashboard">Total Customers</div>
         <div class="stat-value-dashboard" id="stat-customers">{{ total_customers|default(0) }}</div>
-        <div class="stat-hint-dashboard">Unique clients served</div>
+        <div class="stat-hint-dashboard">Unique client base</div>
     </div>
 </div>
 
-<!-- Professional Profitability Tracking -->
-<div class="revenue-analytics-card c-card-premium animate-up" style="animation-delay: 0.4s; margin-top: 1.5rem;">
-    <div class="card-header-flex">
-        <div>
-            <h3 style="margin:0; font-weight: 700; color: var(--secondary-color);"><i class="fas fa-analytics"></i> Financial Health Monitor</h3>
-            <p class="stat-hint-dashboard" style="margin-top: 0.5rem;">Real-time comparison of Total Budget vs Actual Expenses</p>
+<div class="dashboard-main-layout">
+    <!-- Main Content Area: Analytics and Performance -->
+    <div class="dashboard-analytics-area">
+        <!-- ROI Deep Dive Section -->
+        <div class="roi-breakdown-card c-card-premium animate-up">
+            <div class="roi-header">
+                <div>
+                    <h3 style="margin:0; font-weight: 800; color: var(--secondary-color); font-size: 1.15rem;"><i class="fas fa-wallet" style="margin-right: 0.5rem; color: var(--primary-color);"></i> Financial Performance</h3>
+                    <p style="font-size: 0.85rem; color: #64748b; margin-top: 0.25rem;">Breakdown of realized and projected profitability</p>
+                </div>
+                <div id="roi-status-badge" class="roi-badge-premium"
+                    style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 0.5rem 1rem; border-radius: 2rem; font-weight: 800; font-size: 0.75rem; letter-spacing: 0.02em;">
+                    <i class="fas fa-check-circle"></i> PROFITABLE
+                </div>
+            </div>
+
+            <div class="roi-metric-grid">
+                <div class="roi-metric-item">
+                    <div class="roi-metric-label">Realized Revenue</div>
+                    <div class="roi-metric-value" id="roi-breakdown-revenue" style="color: var(--secondary-color);">₱{{ "{:,.2f}".format(total_revenue|default(0.0)) }}</div>
+                </div>
+                <div class="roi-metric-item">
+                    <div class="roi-metric-label">Operating Expenses</div>
+                    <div class="roi-metric-value" id="roi-breakdown-expenses" style="color: #e11d48;">₱{{ "{:,.2f}".format(actual_expenses|default(0.0)) }}</div>
+                </div>
+                <div class="roi-metric-item">
+                    <div class="roi-metric-label">Actual Net Profit</div>
+                    <div class="roi-metric-value" id="roi-breakdown-profit" style="color: #059669;">₱{{ "{:,.2f}".format(net_profit|default(0.0)) }}</div>
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.5rem;">
+                    <div>
+                        <h4 style="margin:0; font-size: 1rem; font-weight: 800;">ROI Trend Analysis %</h4>
+                        <p style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.25rem;">Performance over the selected timeframe</p>
+                    </div>
+                    <div class="chart-legend-custom">
+                        <div class="legend-item"><span class="legend-dot" style="background: #10b981;"></span> ROI %</div>
+                        <div class="legend-item"><span class="legend-dot" style="background: var(--primary-color);"></span> Revenue</div>
+                    </div>
+                </div>
+                <div style="height: 320px; position: relative;">
+                    <canvas id="roiTrendChart"></canvas>
+                </div>
+            </div>
         </div>
-        <div id="roi-status-badge" class="roi-badge-premium"
-            style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 0.5rem 1rem; border-radius: 2rem; font-weight: 700; font-size: 0.8rem;">
-            <i class="fas fa-check-circle"></i> PROFITABLE
+
+        <!-- Secondary Analytics Row -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <!-- Bookings Chart Card -->
+            <div class="roi-breakdown-card c-card-premium animate-up">
+                <h3 style="margin:0 0 1.5rem 0; font-weight: 800; color: var(--secondary-color); font-size: 1rem;"><i class="fas fa-calendar-check" style="margin-right: 0.5rem;"></i> Bookings Volume</h3>
+                <div style="height: 250px; position: relative;">
+                    <canvas id="bookingsChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Most Profitable Packages -->
+            <div class="roi-breakdown-card c-card-premium animate-up">
+                <h3 style="margin:0 0 1rem 0; font-weight: 800; color: var(--secondary-color); font-size: 1rem;"><i class="fas fa-fire" style="margin-right: 0.5rem; color: #f59e0b;"></i> Efficiency by Package</h3>
+                <div id="profitable-packages-list">
+                    {% if popular_packages %}
+                        {% for p in popular_packages %}
+                        <div class="profitability-row">
+                            <div>
+                                <div style="font-weight: 700; color: var(--secondary-color); font-size: 0.9rem;">{{ p.name }}</div>
+                                <div style="font-size: 0.75rem; color: #94a3b8;">{{ p.orders }} orders</div>
+                            </div>
+                            <div class="profitability-details">
+                                <div style="font-weight: 800; color: var(--secondary-color); font-size: 1rem;">{{ p.roi }}%</div>
+                                <div class="profit-indicator {{ 'indicator-positive' if p.roi > 15 else 'indicator-negative' }}">
+                                    {{ 'High Margin' if p.roi > 15 else 'Low Margin' }}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p style="text-align:center; padding: 2rem; color: #94a3b8;">No package data available.</p>
+                    {% endif %}
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="profit-breakdown-grid"
-        style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 2rem; margin-top: 1.5rem;">
-        <div class="breakdown-left">
-            <div class="mb-4">
-                <div class="flex justify-between mb-1"
-                    style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                    <span style="font-size: 0.85rem; font-weight: 600; color: var(--secondary-color);">Projected Expenses vs. Total Contract Value</span>
-                    <span id="margin-percentage-text" style="font-size: 0.85rem; font-weight: 700; color: #10b981;">{{ ((projected_profit / projected_revenue * 100)|round if projected_revenue and projected_revenue > 0 else 0)|int }}% Margin</span>
-                </div>
-                <div style="height: 16px; background: #f1f5f9; border-radius: 8px; overflow: hidden; display: flex;">
-                    {% set expense_pct = (estimated_expenses / projected_revenue * 100)|int if projected_revenue and projected_revenue > 0 else 60 %}
-                    <div id="expense-bar" style="width:{{ expense_pct }}%; background: #94a3b8; height: 100%; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);" title="Expenses"></div>
-                    <div id="profit-bar" style="width:{{ 100 - expense_pct }}%; background: #10b981; height: 100%; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);" title="Net Profit"></div>
-                </div>
-                <div style="display: flex; gap: 1.5rem; margin-top: 0.75rem;">
-                    <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: #64748b;">
-                        <span style="width: 10px; height: 10px; background: #94a3b8; border-radius: 3px;"></span> Total Expenses (Logged + Est.)
+    <!-- Sidebar Area: Operations and Messaging -->
+    <div class="dashboard-sidebar-area">
+        <!-- Upcoming Events -->
+        <div class="sidebar-card-dashboard upcoming-events-card c-card-premium animate-up" style="border-radius: 1.25rem;">
+            <h3 class="sidebar-card-title" style="font-weight: 800; font-size: 1.1rem; padding: 1.5rem 1.5rem 0 1.5rem; color: var(--secondary-color);">Upcoming Events</h3>
+            <div style="padding: 0 1.5rem 1.5rem 1.5rem;">
+                {% if upcoming_events %}
+                <div class="event-list-dashboard" id="upcoming-events-container">
+                    {% for event in upcoming_events %}
+                    <div class="upcoming-item-row" style="padding: 1rem 0; border-bottom: 1px solid #f1f5f9;">
+                        <div class="event-date-box" style="width: 50px; height: 50px; background: #fff; border: 1px solid #f1f5f9; box-shadow: none;">
+                            <span class="month" style="font-size: 0.7rem; font-weight: 800;">{{ event.event_date.strftime('%b') if event.event_date else '???' }}</span>
+                            <span class="day" style="font-size: 1.1rem; font-weight: 800; color: var(--primary-color);">{{ event.event_date.strftime('%d') if event.event_date else '??' }}</span>
+                        </div>
+                        <div class="event-details-box" style="padding-left: 0.75rem;">
+                            <div class="event-head-box">
+                                <span class="event-title-text" style="font-weight: 700; font-size: 0.95rem;">{{ event.event_name or 'Event Title' }}</span>
+                                <span class="event-status status-badge-dashboard status-{{ event.status }}" style="font-size: 0.65rem; padding: 0.2rem 0.5rem; background: #f1f5f9; border: none;">{{ event.status|replace('_', ' ')|capitalize }}</span>
+                            </div>
+                            <div class="event-meta-text" style="font-size: 0.75rem; color: #94a3b8;">
+                                <span><i class="far fa-clock"></i> {{ event.event_time.strftime('%I:%M %p') if event.event_time else 'TBD' }}</span>
+                            </div>
+                        </div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: #64748b;">
-                        <span style="width: 10px; height: 10px; background: #10b981; border-radius: 3px;"></span> Projected Profit
-                    </div>
+                    {% endfor %}
                 </div>
+                {% else %}
+                <p style="color: #94a3b8; font-size: 0.85rem; padding: 1rem 0;">No upcoming events.</p>
+                {% endif %}
             </div>
         </div>
-        <div class="breakdown-right"
-            style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; border-left: 1px solid #f1f5f9; padding-left: 2rem;">
-            <div>
-                <div style="font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; font-weight:800; letter-spacing: 0.05em;">Total Expenses</div>
-                <div id="stat-total-expenses" style="font-size: 1.1rem; font-weight: 700; color: #e11d48;">- ₱{{ "{:,.2f}".format(estimated_expenses|default(0.0)) }}</div>
+
+        <!-- Messages Widget -->
+        <div class="c-card-premium animate-up" style="border-radius: 1.25rem; overflow: hidden;">
+            {% include "shared/dashboard_messages_widget.html" %}
+        </div>
+
+        <!-- Popular Packages Summary -->
+        <div class="sidebar-card-dashboard c-card-premium animate-up" style="border-radius: 1.25rem; padding: 1.5rem;">
+            <h3 class="sidebar-card-title" style="font-weight: 800; font-size: 1.1rem; margin-bottom: 1rem; color: var(--secondary-color);">Bookings by Package</h3>
+            {% if popular_packages %}
+            <div id="popular-packages-container">
+                {% for p in popular_packages %}
+                {% set pct = [((p.orders / popular_packages[0].orders) * 100), 100]|min if popular_packages[0].orders > 0 else 0 %}
+                <div class="popular-item-row" style="margin-bottom: 1rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem; font-size: 0.85rem;">
+                        <span style="font-weight: 600;">{{ p.name }}</span>
+                        <span style="color: #64748b;">{{ p.orders }} orders</span>
+                    </div>
+                    <div class="progress-bar-container" style="height: 6px; background: #f1f5f9; border-radius: 10px;">
+                        <div class="progress-bar-fill" style="width: {{ pct }}%; height: 100%; border-radius: 10px; background: var(--primary-color);"></div>
+                    </div>
+                </div>
+                {% endfor %}
             </div>
-            <div>
-                <div style="font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; font-weight:800; letter-spacing: 0.05em;">Projected Earnings</div>
-                <div id="stat-projected-earnings" style="font-size: 1.1rem; font-weight: 700; color: #059669;">+ ₱{{ "{:,.2f}".format(projected_profit|default(0.0)) }}</div>
-            </div>
-            <div style="grid-column: span 2; padding-top: 0.5rem; border-top: 1px dashed #e2e8f0; margin-top: 0.5rem;">
-                <p style="font-size: 0.75rem; color: #64748b; margin: 0; line-height: 1.4;">
-                    <i class="fas fa-info-circle"></i> Expenses include <strong>₱{{ "{:,.2f}".format(actual_expenses|default(0.0)) }}</strong> in manually tracked costs and baseline estimates for untracked events.
-                </p>
-            </div>
+            {% endif %}
         </div>
     </div>
 </div>
 
-<div class="charts-grid-dashboard" style="margin-top: 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
-    <!-- Revenue Analytics Chart -->
-    <div class="revenue-analytics-card c-card-premium" style="margin-top: 0; margin-bottom: 0;">
-        <div class="card-header-flex">
-            <div>
-                <h3 style="margin:0; font-weight: 700; color: var(--secondary-color);"><i class="fas fa-chart-line"></i>
-                    Revenue Overview</h3>
-                <p class="stat-hint-dashboard" style="margin-top: 0.5rem;">Monthly revenue performance for the year</p>
-            </div>
-        </div>
-        <div class="chart-canvas-wrapper" style="height: 250px; position: relative;">
-            <canvas id="revenueChart"></canvas>
-        </div>
-    </div>
-
-    <!-- Monthly Bookings Chart -->
-    <div class="revenue-analytics-card c-card-premium" style="margin-top: 0; margin-bottom: 0;">
-        <div class="card-header-flex">
-            <div>
-                <h3 style="margin:0; font-weight: 700; color: var(--secondary-color);"><i class="fas fa-chart-bar"></i>
-                    Monthly Bookings</h3>
-                <p class="stat-hint-dashboard" style="margin-top: 0.5rem;">Completed vs pending bookings this year</p>
-            </div>
-        </div>
-        <div class="chart-canvas-wrapper" style="height: 250px; position: relative;">
-            <canvas id="bookingsChart"></canvas>
-        </div>
-    </div>
-    
-    <!-- ROI Cost Comparison Chart -->
-    <div class="revenue-analytics-card c-card-premium" style="margin-top: 0; margin-bottom: 0;">
-        <div class="card-header-flex">
-            <div>
-                <h3 style="margin:0; font-weight: 700; color: var(--secondary-color);"><i class="fas fa-balance-scale"></i> Projected vs Actual Costs</h3>
-                <p class="stat-hint-dashboard" style="margin-top: 0.5rem;">Expense tracking for completed bookings</p>
-            </div>
-        </div>
-        <div class="chart-canvas-wrapper" style="height: 250px; position: relative;">
-            <canvas id="roiAnalyticsChart"></canvas>
-        </div>
-    </div>
-</div>
-
-<div class="dashboard-three-col-grid">
-    <!-- Upcoming Events -->
-    <div class="sidebar-card-dashboard upcoming-events-card">
-        <h3 class="sidebar-card-title">Upcoming Events</h3>
-        {% if upcoming_events %}
-        <div class="event-list-dashboard" id="upcoming-events-container">
-            {% for event in upcoming_events %}
-            <div class="upcoming-item-row">
-                <div class="event-date-box">
-                    <span class="month">{{ event.event_date.strftime('%b') if event.event_date else '???' }}</span>
-                    <span class="day">{{ event.event_date.strftime('%d') if event.event_date else '??' }}</span>
-                </div>
-                <div class="event-details-box">
-                    <div class="event-head-box">
-                        <span class="event-title-text">{{ event.event_name or 'Event Title' }}</span>
-                        {% set status_class = event.status %}
-                        {% set status_label = event.status|replace('_', ' ')|capitalize %}
-                        
-                        {% if event.status == 'pending' and event.payment_status == 'proof_submitted' %}
-                            {% set status_class = 'verifying' %}
-                            {% set status_label = 'Verification' %}
-                        {% elif event.status == 'awaiting_caterer' %}
-                            {% set status_class = 'to-sign' %}
-                            {% set status_label = 'To Sign' %}
-                        {% endif %}
-                        
-                        <span class="event-status status-badge-dashboard status-{{ status_class }}">{{ status_label }}</span>
-                    </div>
-                    <div class="event-subtitle-text">{{ event.package.name if event.package else event.event_type }}
-                    </div>
-                    <div class="event-meta-text">
-                        <span><i class="far fa-clock"></i> {{ event.event_time.strftime('%I:%M %p') if event.event_time
-                            else 'TBD' }}</span>
-                        <span><i class="fas fa-map-marker-alt"></i> {{ event.venue_address or 'TBD' }}</span>
-                        <span><i class="fas fa-user-friends"></i> {{ event.guest_count }} guests</span>
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-        {% else %}
-        <p class="no-packages-dashboard">No upcoming events found.</p>
-        {% endif %}
-    </div>
-
-    <!-- Live Messages Widget -->
-    <div class="sidebar-card-dashboard messages-widget-container">
-        {% include "shared/dashboard_messages_widget.html" %}
-    </div>
-
-    <!-- Popular Packages -->
-    <div class="sidebar-card-dashboard popular-packages-card">
-        <h3 class="sidebar-card-title">Popular Packages</h3>
-        {% if popular_packages %}
-        <div class="popular-list-dashboard" id="popular-packages-container">
-            {% for p in popular_packages %}
-            {% set pct = [((p.orders / popular_packages[0].orders) * 100), 100]|min if popular_packages[0].orders > 0
-            else 0 %}
-            <div class="popular-item-row">
-                <div class="popular-head-box">
-                    <span class="popular-name-text">{{ p.name }}</span>
-                    <span class="popular-price-text">₱{{ "{:,.2f}".format(p.price) }}</span>
-                </div>
-                <div class="popular-orders-text">{{ p.orders }} orders</div>
-                <div class="progress-bar-container">
-                    <div class="progress-bar-fill" style="width: {{ pct }}%;"></div>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-        {% else %}
-        <p class="no-packages-dashboard">No popular packages.</p>
-        {% endif %}
-    </div>
-</div>
-
-<!-- Recent Orders Card -->
-<div class="recent-requests-card c-card-premium" style="margin-top: 1.5rem;">
-    <div class="card-header-flex">
-        <h3 style="margin:0; font-weight: 700; color: var(--secondary-color);">Recent Orders</h3>
+<!-- Recent Transactions / Orders Focus Section -->
+<div class="recent-requests-card c-card-premium animate-up" style="margin-top: 1.5rem; border-radius: 1.25rem; padding: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h3 style="margin:0; font-weight: 800; color: var(--secondary-color); font-size: 1.3rem;"><i class="fas fa-history" style="margin-right: 0.75rem; color: #94a3b8;"></i> Recent Orders History</h3>
+        <a href="{{ url_for('manage_bookings') }}" style="font-size: 0.85rem; font-weight: 700; color: var(--primary-color);">View All Contracts <i class="fas fa-arrow-right"></i></a>
     </div>
     {% if recent_orders %}
     <div class="recent-orders-list" id="recent-orders-container">
         {% for booking in recent_orders %}
-        <div class="recent-order-row">
-            <div class="ro-avatar">
+        <div class="recent-order-row" style="padding: 1.25rem; margin-bottom: 0.75rem; border: 1px solid #f1f5f9; border-radius: 1rem; transition: transform 0.2s ease;">
+            <div class="ro-avatar" style="width: 45px; height: 45px; background: #eff6ff; color: #3b82f6; font-weight: 800; font-size: 0.9rem;">
                 {% if booking.user %}
                 {{ booking.user.first_name[0] | upper }}{{ booking.user.last_name[0] | upper }}
-                {% else %}
-                WI
-                {% endif %}
+                {% else %}WI{% endif %}
             </div>
             <div class="ro-details">
-                <div class="ro-name">
-                    {% if booking.user %}
-                    {{ booking.user.first_name }} {{ booking.user.last_name }}
-                    {% else %}
-                    Walk-in Customer
-                    {% endif %}
+                <div class="ro-name" style="font-weight: 700; color: var(--secondary-color);">
+                    {% if booking.user %}{{ booking.user.first_name }} {{ booking.user.last_name }}{% else %}Walk-in Customer{% endif %}
                 </div>
-                <div class="ro-event">{{ booking.event_type }}</div>
+                <div class="ro-event" style="color: #64748b; font-size: 0.8rem;">{{ booking.event_type }} • {{ booking.package.name if booking.package else 'Custom' }}</div>
             </div>
-            <div class="ro-price-date">
-                <div class="ro-amount">₱{{ "{:,.2f}".format(booking.total_amount) if booking.total_amount else 'TBD' }}
-                </div>
-                <div class="ro-date">{{ booking.event_date.strftime('%b %d, %Y') if booking.event_date else '' }}</div>
+            <div class="ro-price-date" style="text-align: right; padding-right: 2rem;">
+                <div class="ro-amount" style="font-weight: 800; color: var(--secondary-color); font-size: 1.1rem;">₱{{ "{:,.2f}".format(booking.total_amount) if booking.total_amount else 'TBD' }}</div>
+                <div class="ro-date" style="font-size: 0.75rem; color: #94a3b8;">{{ booking.event_date.strftime('%b %d, %Y') if booking.event_date else '' }}</div>
             </div>
             <div class="ro-status">
-                {% set status_class = 'ro-status-default' %}
-                {% set status_label = booking.status|replace('_', ' ')|capitalize %}
-                
-                {% if booking.status == 'confirmed' %}
-                    {% set status_class = 'ro-status-confirmed' %}
-                {% elif booking.status == 'completed' %}
-                    {% set status_class = 'ro-status-completed' %}
-                {% elif booking.status == 'cancelled' %}
-                    {% set status_class = 'ro-status-cancelled' %}
-                {% elif booking.status == 'pending' %}
-                    {% if booking.payment_status == 'proof_submitted' %}
-                        {% set status_class = 'ro-status-inprogress pulse-update' %}
-                        {% set status_label = 'Verifying' %}
-                    {% else %}
-                        {% set status_class = 'ro-status-pending' %}
-                        {% set status_label = 'Pending Pay' %}
-                    {% endif %}
-                {% elif booking.status == 'in_progress' %}
-                    {% set status_class = 'ro-status-inprogress' %}
-                {% endif %}
-                
-                <span class="ro-badge {{ status_class }}">{{ status_label }}</span>
+                <span class="ro-badge ro-status-{{ booking.status }}" style="font-weight: 800; padding: 0.5rem 1rem; border-radius: 2rem;">{{ booking.status|replace('_', ' ')|capitalize }}</span>
             </div>
         </div>
         {% endfor %}
     </div>
     {% else %}
-    <div class="empty-state-dashboard">
-        <p>No recent orders found.</p>
+    <div style="text-align:center; padding: 4rem 0;">
+        <i class="fas fa-clipboard-list" style="font-size: 3rem; color: #f1f5f9; margin-bottom: 1rem;"></i>
+        <p style="color: #94a3b8;">No orders recorded yet.</p>
     </div>
     {% endif %}
 </div>
@@ -304,49 +248,126 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    let revenueChart = null;
+    let roiTrendChart = null;
     let bookingsChart = null;
-    let roiAnalyticsChart = null;
+    let currentTimeframe = 'month';
 
-    function refreshDashboardData() {
-        fetch('/caterer/api/dashboard-overview', {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        })
+    function initCharts(data) {
+        const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#FF7B54';
+        const highlightColor = getComputedStyle(document.documentElement).getPropertyValue('--highlight-color').trim() || '#10b981';
+
+        // 1. ROI Trend Chart (Combined ROI % and Revenue)
+        const ctxRoi = document.getElementById('roiTrendChart').getContext('2d');
+        const gradientRev = ctxRoi.createLinearGradient(0, 0, 0, 300);
+        gradientRev.addColorStop(0, 'rgba(255, 123, 84, 0.2)'); 
+        gradientRev.addColorStop(1, 'rgba(255, 123, 84, 0.0)');
+
+        roiTrendChart = new Chart(ctxRoi, {
+            type: 'line',
+            data: {
+                labels: data.roi_trend_data.map(d => d.date),
+                datasets: [
+                    {
+                        label: 'ROI %',
+                        data: data.roi_trend_data.map(d => d.roi),
+                        borderColor: '#10b981',
+                        backgroundColor: 'transparent',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        yAxisID: 'yROI',
+                        pointBackgroundColor: '#10b981',
+                        pointBorderColor: '#fff',
+                        pointHoverRadius: 6
+                    },
+                    {
+                        label: 'Gross Revenue (₱)',
+                        data: data.chart_data.map(d => d.revenue),
+                        borderColor: primaryColor,
+                        backgroundColor: gradientRev,
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        yAxisID: 'yRev',
+                        pointBackgroundColor: primaryColor,
+                        pointBorderColor: '#fff'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    yROI: {
+                        type: 'linear',
+                        position: 'left',
+                        title: { display: true, text: 'ROI (%)', font: { size: 10, weight: 'bold' } },
+                        grid: { color: 'rgba(0,0,0,0.03)' },
+                        ticks: { callback: v => v + '%' }
+                    },
+                    yRev: {
+                        type: 'linear',
+                        position: 'right',
+                        title: { display: true, text: 'Revenue (₱)', font: { size: 10, weight: 'bold' } },
+                        grid: { display: false },
+                        ticks: { callback: v => '₱' + (v >= 1000 ? v / 1000 + 'k' : v) }
+                    },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // 2. Bookings vs Revenue Chart
+        const ctxBook = document.getElementById('bookingsChart').getContext('2d');
+        bookingsChart = new Chart(ctxBook, {
+            type: 'bar',
+            data: {
+                labels: data.bookings_chart_data.map(d => d.date),
+                datasets: [
+                    { label: 'Completed', data: data.bookings_chart_data.map(d => d.completed), backgroundColor: highlightColor, borderRadius: 6, barThickness: 12 },
+                    { label: 'Pending', data: data.bookings_chart_data.map(d => d.pending), backgroundColor: '#94a3b8', borderRadius: 6, barThickness: 12 }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    function refreshDashboardData(timeframe) {
+        currentTimeframe = timeframe || currentTimeframe;
+        
+        // Show loading state if needed
+        const url = `/caterer/api/dashboard-overview?timeframe=${currentTimeframe}`;
+        
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
         .then(response => response.json())
         .then(data => {
-            // 1. Update Stats with pulse animation
-            updateStatValue('stat-revenue', '₱' + data.total_revenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
-            updateStatValue('stat-profit', '₱' + data.net_profit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+            // 1. Update Top Stats
+            updateStatValue('stat-revenue', formatCurrency(data.total_revenue));
+            updateStatValue('stat-profit', formatCurrency(data.net_profit));
             updateStatValue('stat-roi', data.roi_percentage + '%');
             updateStatValue('stat-customers', data.total_customers);
             
-            // NEW: Projected Values
-            updateStatValue('stat-projected-roi', data.projected_roi + '%');
-            updateStatValue('stat-projected-profit', '₱' + data.projected_profit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
-            updateStatValue('stat-total-expenses', '- ₱' + data.estimated_expenses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
-            updateStatValue('stat-projected-earnings', '+ ₱' + data.projected_profit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
-
-            // 2. Update Progress Bars
-            const expensePct = data.projected_revenue > 0 ? (data.estimated_expenses / data.projected_revenue * 100) : 60;
-            const eb = document.getElementById('expense-bar');
-            const pb = document.getElementById('profit-bar');
-            const mt = document.getElementById('margin-percentage-text');
+            // 2. Update Multi-Metric ROI Breakdown
+            updateStatValue('roi-breakdown-revenue', formatCurrency(data.total_revenue));
+            updateStatValue('roi-breakdown-expenses', '₱' + data.actual_expenses.toLocaleString(undefined, {minimumFractionDigits: 2}));
+            updateStatValue('roi-breakdown-profit', formatCurrency(data.net_profit));
+            
+            // 3. Update Status Badge
             const sb = document.getElementById('roi-status-badge');
-
-            if (eb) eb.style.width = expensePct + '%';
-            if (pb) pb.style.width = (100 - expensePct) + '%';
-            if (mt) {
-                const margin = data.projected_revenue > 0 ? Math.round((data.projected_profit / data.projected_revenue) * 100) : 0;
-                mt.innerText = margin + '% Margin';
-                mt.style.color = margin >= 20 ? '#10b981' : (margin >= 10 ? '#f59e0b' : '#ef4444');
-            }
-
             if (sb) {
-                if (data.projected_profit < 0) {
+                if (data.net_profit < 0) {
                     sb.innerHTML = '<i class="fas fa-exclamation-triangle"></i> AT LOSS';
                     sb.style.background = 'rgba(239, 68, 68, 0.1)';
                     sb.style.color = '#ef4444';
-                } else if (data.projected_roi < 15) {
+                } else if (data.roi_percentage < 15) {
                     sb.innerHTML = '<i class="fas fa-info-circle"></i> LOW MARGIN';
                     sb.style.background = 'rgba(245, 158, 11, 0.1)';
                     sb.style.color = '#f59e0b';
@@ -357,23 +378,32 @@
                 }
             }
 
-            // 3. Update Charts
-            if (revenueChart) {
-                revenueChart.data.labels = data.chart_data.map(d => d.label);
-                revenueChart.data.datasets[0].data = data.chart_data.map(d => d.revenue);
-                revenueChart.update();
+            // 4. Update ROI Trend Chart
+            if (roiTrendChart) {
+                roiTrendChart.data.labels = data.roi_trend_data.map(d => d.date);
+                roiTrendChart.data.datasets[0].data = data.roi_trend_data.map(d => d.roi);
+                roiTrendChart.data.datasets[1].data = data.chart_data.map(d => d.revenue);
+                roiTrendChart.update();
             }
+
+            // 5. Update Bookings Chart
             if (bookingsChart) {
-                bookingsChart.data.labels = data.bookings_chart_data.map(d => d.label.split(" ")[0]);
+                bookingsChart.data.labels = data.bookings_chart_data.map(d => d.date);
                 bookingsChart.data.datasets[0].data = data.bookings_chart_data.map(d => d.completed);
                 bookingsChart.data.datasets[1].data = data.bookings_chart_data.map(d => d.pending);
                 bookingsChart.update();
             }
 
+            // 6. Update Lists
+            updateProfitablePackages(data.popular_packages);
             updateUpcomingEvents(data.upcoming_events);
             updateRecentOrders(data.recent_orders);
         })
-        .catch(err => console.error("Dashboard Refresh Error:", err));
+        .catch(err => console.error("Filter Refresh Error:", err));
+    }
+
+    function formatCurrency(val) {
+        return '₱' + (val || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
     }
 
     function updateStatValue(id, value) {
@@ -385,31 +415,52 @@
         }
     }
 
-    function updateUpcomingEvents(events) {
-        const container = document.getElementById('upcoming-events-container');
+    function updateProfitablePackages(packages) {
+        const container = document.getElementById('profitable-packages-list');
         if (!container) return;
         
-        if (events.length === 0) {
-            container.innerHTML = '<p class="no-packages-dashboard">No upcoming events found.</p>';
+        if (!packages || packages.length === 0) {
+            container.innerHTML = '<p style="text-align:center; padding: 2rem; color: #94a3b8;">No package data available.</p>';
             return;
         }
 
-        const html = events.map(event => `
-            <div class="upcoming-item-row animate-in">
-                <div class="event-date-box">
-                    <span class="month">${event.month_short}</span>
-                    <span class="day">${event.day}</span>
+        const html = packages.map(p => `
+            <div class="profitability-row animate-in">
+                <div>
+                    <div style="font-weight: 700; color: var(--secondary-color); font-size: 0.9rem;">${p.name}</div>
+                    <div style="font-size: 0.75rem; color: #94a3b8;">${p.orders} orders</div>
                 </div>
-                <div class="event-details-box">
-                    <div class="event-head-box">
-                        <span class="event-title-text">${event.event_name}</span>
-                        <span class="event-status status-badge-dashboard status-${event.status}">${event.status.charAt(0).toUpperCase() + event.status.slice(1).replace('_', ' ')}</span>
+                <div class="profitability-details">
+                    <div style="font-weight: 800; color: var(--secondary-color); font-size: 1rem;">${p.roi}%</div>
+                    <div class="profit-indicator ${p.roi > 15 ? 'indicator-positive' : 'indicator-negative'}">
+                        ${p.roi > 15 ? 'High Margin' : 'Low Margin'}
                     </div>
-                    <div class="event-subtitle-text">${event.package_name}</div>
-                    <div class="event-meta-text">
+                </div>
+            </div>
+        `).join('');
+        container.innerHTML = html;
+    }
+
+    function updateUpcomingEvents(events) {
+        const container = document.getElementById('upcoming-events-container');
+        if (!container) return;
+        if (events.length === 0) {
+            container.innerHTML = '<p style="color: #94a3b8; font-size: 0.85rem; padding: 1rem 0;">No upcoming events.</p>';
+            return;
+        }
+        const html = events.map(event => `
+            <div class="upcoming-item-row animate-in" style="padding: 1rem 0; border-bottom: 1px solid #f1f5f9;">
+                <div class="event-date-box" style="width: 50px; height: 50px; background: #fff; border: 1px solid #f1f5f9; box-shadow: none;">
+                    <span class="month" style="font-size: 0.7rem; font-weight: 800;">${event.month_short}</span>
+                    <span class="day" style="font-size: 1.1rem; font-weight: 800; color: var(--primary-color);">${event.day}</span>
+                </div>
+                <div class="event-details-box" style="padding-left: 0.75rem;">
+                    <div class="event-head-box">
+                        <span class="event-title-text" style="font-weight: 700; font-size: 0.95rem;">${event.event_name}</span>
+                        <span class="event-status status-badge-dashboard status-${event.status}" style="font-size: 0.65rem; padding: 0.2rem 0.5rem; background: #f1f5f9; border: none;">${event.status.charAt(0).toUpperCase() + event.status.slice(1).replace('_', ' ')}</span>
+                    </div>
+                    <div class="event-meta-text" style="font-size: 0.75rem; color: #94a3b8;">
                         <span><i class="far fa-clock"></i> ${event.event_time || 'TBD'}</span>
-                        <span><i class="fas fa-map-marker-alt"></i> ${event.venue_address || 'TBD'}</span>
-                        <span><i class="fas fa-user-friends"></i> ${event.guest_count} guests</span>
                     </div>
                 </div>
             </div>
@@ -420,153 +471,50 @@
     function updateRecentOrders(orders) {
         const container = document.getElementById('recent-orders-container');
         if (!container) return;
-
         if (orders.length === 0) {
-            container.innerHTML = '<div class="empty-state-dashboard"><p>No recent orders found.</p></div>';
+            container.innerHTML = '<div style="text-align:center; padding: 4rem 0;"><p style="color: #94a3b8;">No orders recorded yet.</p></div>';
             return;
         }
-
         const html = orders.map(order => `
-            <div class="recent-order-row animate-in">
-                <div class="ro-avatar">${order.customer_initials}</div>
+            <div class="recent-order-row animate-in" style="padding: 1.25rem; margin-bottom: 0.75rem; border: 1px solid #f1f5f9; border-radius: 1rem; transition: transform 0.2s ease;">
+                <div class="ro-avatar" style="width: 45px; height: 45px; background: #eff6ff; color: #3b82f6; font-weight: 800; font-size: 0.9rem;">${order.customer_initials}</div>
                 <div class="ro-details">
-                    <div class="ro-name">${order.customer_name}</div>
-                    <div class="ro-event">${order.event_type}</div>
+                    <div class="ro-name" style="font-weight: 700; color: var(--secondary-color);">${order.customer_name}</div>
+                    <div class="ro-event" style="color: #64748b; font-size: 0.8rem;">${order.event_type}</div>
                 </div>
-                <div class="ro-price-date">
-                    <div class="ro-amount">₱${order.total_amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
-                    <div class="ro-date">${order.event_date}</div>
+                <div class="ro-price-date" style="text-align: right; padding-right: 2rem;">
+                    <div class="ro-amount" style="font-weight: 800; color: var(--secondary-color); font-size: 1.1rem;">${formatCurrency(order.total_amount)}</div>
+                    <div class="ro-date" style="font-size: 0.75rem; color: #94a3b8;">${order.event_date}</div>
                 </div>
                 <div class="ro-status">
-                    <span class="ro-badge ro-status-${order.status}">${order.status.charAt(0).toUpperCase() + order.status.slice(1).replace('_', ' ')}</span>
+                    <span class="ro-badge ro-status-${order.status}" style="font-weight: 800; padding: 0.5rem 1rem; border-radius: 2rem;">${order.status.charAt(0).toUpperCase() + order.status.slice(1).replace('_', ' ')}</span>
                 </div>
             </div>
         `).join('');
         container.innerHTML = html;
     }
 
-    window.refreshDashboardData = refreshDashboardData;
-
     document.addEventListener('DOMContentLoaded', function () {
-        const chartData = {{ chart_data | tojson if chart_data is defined else '[]' }};
-        const bookingsChartData = {{ bookings_chart_data | tojson if bookings_chart_data is defined else '[]' }};
+        // Initial Data from Template
+        const initialData = {
+            roi_trend_data: {{ roi_trend_data | tojson if roi_trend_data is defined else '[]' }},
+            chart_data: {{ chart_data | tojson if chart_data is defined else '[]' }},
+            bookings_chart_data: {{ bookings_chart_data | tojson if bookings_chart_data is defined else '[]' }}
+        };
 
-        const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#FF7B54';
-        const highlightColor = getComputedStyle(document.documentElement).getPropertyValue('--highlight-color').trim() || '#48BB78';
+        initCharts(initialData);
 
-        if (chartData && chartData.length > 0) {
-            const ctxRev = document.getElementById('revenueChart').getContext('2d');
-            const gradientRev = ctxRev.createLinearGradient(0, 0, 0, 300);
-            gradientRev.addColorStop(0, 'rgba(255, 123, 84, 0.4)'); 
-            gradientRev.addColorStop(1, 'rgba(255, 123, 84, 0.0)');
-
-            revenueChart = new Chart(ctxRev, {
-                type: 'line',
-                data: {
-                    labels: chartData.map(d => d.label),
-                    datasets: [{
-                        label: 'Gross Revenue (₱)',
-                        data: chartData.map(d => d.revenue),
-                        borderColor: primaryColor,
-                        backgroundColor: gradientRev,
-                        borderWidth: 3,
-                        fill: true,
-                        tension: 0.4,
-                        pointBackgroundColor: primaryColor,
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 2,
-                        pointRadius: 4,
-                        pointHoverRadius: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false },
-                            ticks: { callback: value => '₱' + (value >= 1000 ? value / 1000 + 'k' : value) }
-                        },
-                        x: { grid: { display: false } }
-                    }
-                }
+        // Timeframe selector interaction
+        const filterBtns = document.querySelectorAll('.timeframe-btn');
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                filterBtns.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                refreshDashboardData(this.dataset.timeframe);
             });
-        }
-
-        if (bookingsChartData && bookingsChartData.length > 0) {
-            const ctxBook = document.getElementById('bookingsChart').getContext('2d');
-            bookingsChart = new Chart(ctxBook, {
-                type: 'bar',
-                data: {
-                    labels: bookingsChartData.map(d => d.label.split(" ")[0]),
-                    datasets: [
-                        { label: 'Completed', data: bookingsChartData.map(d => d.completed), backgroundColor: highlightColor, borderRadius: 6, barThickness: 15 },
-                        { label: 'Pending', data: bookingsChartData.map(d => d.pending), backgroundColor: primaryColor, borderRadius: 6, barThickness: 15 }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false }, ticks: { stepSize: 3 } },
-                        x: { grid: { display: false } }
-                    }
-                }
-            });
-        }
-        // Fetch and initialize ROI Analytics Chart
-        fetch('/caterer/api/roi-analytics')
-            .then(res => res.json())
-            .then(data => {
-                const ctxRoi = document.getElementById('roiAnalyticsChart').getContext('2d');
-                roiAnalyticsChart = new Chart(ctxRoi, {
-                    type: 'bar',
-                    data: {
-                        labels: data.labels,
-                        datasets: [
-                            {
-                                label: 'Projected Costs',
-                                data: data.projected_costs,
-                                backgroundColor: 'rgba(148, 163, 184, 0.7)',
-                                borderRadius: 4,
-                                barThickness: 12
-                            },
-                            {
-                                label: 'Actual Expenses',
-                                data: data.actual_costs,
-                                backgroundColor: 'rgba(245, 158, 11, 0.9)',
-                                borderRadius: 4,
-                                barThickness: 12
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'bottom',
-                                labels: {
-                                    usePointStyle: true,
-                                    boxWidth: 8
-                                }
-                            }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false },
-                                ticks: { callback: value => '₱' + (value >= 1000 ? value / 1000 + 'k' : value) }
-                            },
-                            x: { grid: { display: false } }
-                        }
-                    }
-                });
-            })
-            .catch(err => console.error("Error loading ROI Analytics:", err));
+        });
     });
+    
+    window.refreshDashboardData = () => refreshDashboardData(currentTimeframe);
 </script>
 {% endblock %}

@@ -245,8 +245,8 @@ async def update_booking_status(
 
     return {"status": "success", "new_status": new_status}
 
-def _get_caterer_stats(profile, bookings):
-    from datetime import datetime, date
+def _get_caterer_stats(profile, bookings, timeframe='month'):
+    from datetime import datetime, date, timedelta
     from dateutil.relativedelta import relativedelta
     
     # NEW ROI Logic: Realized (Cash in Hand) vs Projected (Total Contract)
@@ -260,15 +260,29 @@ def _get_caterer_stats(profile, bookings):
     six_months_ago = six_months_ago.replace(day=1)
     
     unique_customers = set()
-    package_counts = {}
-    chart_months = []
-    curr = six_months_ago
-    while curr <= today:
-        chart_months.append(curr.strftime("%Y-%m"))
-        curr += relativedelta(months=1)
+    package_stats = {} # {id: {revenue: 0, expenses: 0, orders: 0}}
     
-    monthly_revenue = {m: 0.0 for m in chart_months}
-    monthly_bookings_data = {m: {'completed': 0, 'pending': 0} for m in chart_months}
+    # Initialize Timeframe
+    if timeframe == 'day':
+        start_date = today
+        chart_points = [today.strftime("%Y-%m-%d")]
+    elif timeframe == 'week':
+        start_date = today - timedelta(days=6)
+        chart_points = [(start_date + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
+    elif timeframe == 'year':
+        start_date = today.replace(month=1, day=1)
+        chart_points = [(start_date + relativedelta(months=i)).strftime("%Y-%m") for i in range(12)]
+    else: # Default: 6 Months
+        start_date = (today - relativedelta(months=5)).replace(day=1)
+        chart_points = []
+        curr = start_date
+        while curr <= today:
+            chart_points.append(curr.strftime("%Y-%m"))
+            curr += relativedelta(months=1)
+    
+    monthly_revenue = {p: 0.0 for p in chart_points}
+    monthly_expenses = {p: 0.0 for p in chart_points}
+    monthly_bookings_data = {p: {'completed': 0, 'pending': 0} for p in chart_points}
 
     active_bookings = 0
     
@@ -309,19 +323,31 @@ def _get_caterer_stats(profile, bookings):
         
         total_realized_revenue += cleared_amount
 
-        # 4. Monthly Chart Data
+        # 4. Chart Data Aggregation
         if b.event_date:
-            month_key = b.event_date.strftime("%Y-%m")
-            if month_key in monthly_revenue:
-                monthly_revenue[month_key] += cleared_amount
-            if month_key in monthly_bookings_data:
+            date_key = ""
+            if timeframe in ['day', 'week']:
+                date_key = b.event_date.strftime("%Y-%m-%d")
+            else:
+                date_key = b.event_date.strftime("%Y-%m")
+                
+            if date_key in monthly_revenue:
+                monthly_revenue[date_key] += cleared_amount
+                monthly_expenses[date_key] += (b.actual_cost if b.actual_cost and b.actual_cost > 0 else base_cost_price)
+                
+            if date_key in monthly_bookings_data:
                 if b.status in ['completed', 'confirmed', 'in_progress']:
-                    monthly_bookings_data[month_key]['completed'] += 1
+                    monthly_bookings_data[date_key]['completed'] += 1
                 elif b.status != 'cancelled':
-                    monthly_bookings_data[month_key]['pending'] += 1
+                    monthly_bookings_data[date_key]['pending'] += 1
 
         if b.package_id:
-            package_counts[b.package_id] = package_counts.get(b.package_id, 0) + 1
+            if b.package_id not in package_stats:
+                package_stats[b.package_id] = {'revenue': 0, 'expenses': 0, 'orders': 0}
+            package_stats[b.package_id]['orders'] += 1
+            if b.status in ['confirmed', 'completed']:
+                package_stats[b.package_id]['revenue'] += amount
+                package_stats[b.package_id]['expenses'] += (b.actual_cost if b.actual_cost and b.actual_cost > 0 else base_cost_price)
 
     # Calculation Summary
     projected_net_profit = total_projected_revenue - total_projected_expenses
@@ -340,9 +366,24 @@ def _get_caterer_stats(profile, bookings):
     
     popular_packages = []
     for pkg in profile.packages:
-        if pkg.id in package_counts:
-            popular_packages.append({"id": pkg.id, "name": pkg.name, "price": float(pkg.price_per_head or pkg.price or 0), "orders": package_counts[pkg.id]})
+        if pkg.id in package_stats:
+            stats = package_stats[pkg.id]
+            pkg_roi = ((stats['revenue'] - stats['expenses']) / stats['expenses'] * 100) if stats['expenses'] > 0 else 0
+            popular_packages.append({
+                "id": pkg.id, 
+                "name": pkg.name, 
+                "price": float(pkg.price_per_head or pkg.price or 0), 
+                "orders": stats['orders'],
+                "roi": round(pkg_roi, 1)
+            })
     popular_packages.sort(key=lambda x: x['orders'], reverse=True)
+
+    roi_trend_data = []
+    for p in chart_points:
+        rev = monthly_revenue[p]
+        exp = monthly_expenses[p]
+        roi = ((rev - exp) / exp * 100) if exp > 0 else 0
+        roi_trend_data.append({"date": p, "roi": round(roi, 1)})
     
     return {
         "total_revenue": total_realized_revenue, 
@@ -355,10 +396,12 @@ def _get_caterer_stats(profile, bookings):
         "projected_roi": round(projected_roi, 1),
         "total_customers": len(unique_customers),
         "chart_data": chart_data,
+        "roi_trend_data": roi_trend_data,
         "bookings_chart_data": bookings_chart_data,
         "upcoming_events": upcoming_events,
         "popular_packages": popular_packages[:4],
-        "recent_orders": sorted(bookings, key=lambda x: x.id, reverse=True)[:5]
+        "recent_orders": sorted(bookings, key=lambda x: x.id, reverse=True)[:5],
+        "timeframe": timeframe
     }
 
 @router.get("/dashboard", response_class=HTMLResponse)
@@ -370,7 +413,8 @@ async def caterer_dashboard(
     profile = user.caterer_profile
     bookings = [b for b in profile.bookings if b.status != 'draft' and not b.is_archived]
     
-    stats = _get_caterer_stats(profile, bookings)
+    timeframe = request.query_params.get('timeframe', 'month')
+    stats = _get_caterer_stats(profile, bookings, timeframe=timeframe)
     
     return templates.TemplateResponse("caterer/index.html", {
         "request": request,
@@ -382,6 +426,7 @@ async def caterer_dashboard(
 
 @router.get("/api/dashboard-overview")
 async def dashboard_overview_api(
+    request: Request,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
@@ -389,7 +434,8 @@ async def dashboard_overview_api(
     profile = user.caterer_profile
     bookings = [b for b in profile.bookings if b.status != 'draft' and not b.is_archived]
     
-    stats = _get_caterer_stats(profile, bookings)
+    timeframe = request.query_params.get('timeframe', 'month')
+    stats = _get_caterer_stats(profile, bookings, timeframe=timeframe)
     
     # Process complex objects for JSON
     serializable_upcoming = []
@@ -425,6 +471,7 @@ async def dashboard_overview_api(
         "net_profit": stats['net_profit'],
         "estimated_expenses": stats['estimated_expenses'],
         "roi_percentage": stats['roi_percentage'],
+        "roi_trend_data": stats['roi_trend_data'],
         "total_customers": stats['total_customers'],
         "chart_data": stats['chart_data'],
         "bookings_chart_data": stats['bookings_chart_data'],

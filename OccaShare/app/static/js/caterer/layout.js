@@ -352,8 +352,19 @@ window.ValidationManager = class ValidationManager {
         this.form.querySelectorAll('input, select, textarea').forEach(input => {
             const rules = this.config[input.name];
             if (rules) {
+                // Reactive Validation
                 input.addEventListener('input', () => this.validateField(input, rules));
                 input.addEventListener('blur', () => this.validateField(input, rules, true));
+
+                // Proactive Blocking (Hard Stop)
+                if (rules.maxLength) {
+                    input.addEventListener('keydown', (e) => {
+                        const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter'];
+                        if (input.value.length >= rules.maxLength && !allowedKeys.includes(e.key) && !e.ctrlKey) {
+                            e.preventDefault();
+                        }
+                    });
+                }
             }
         });
         this.updateSubmitButton();
@@ -405,6 +416,17 @@ window.ValidationManager = class ValidationManager {
             return;
         }
 
+
+        if (rules.noSameParts && value.includes(' ')) {
+            const parts = value.trim().split(/\s+/);
+            if (parts.length >= 2) {
+                const first = parts[0].toLowerCase();
+                const last = parts[parts.length - 1].toLowerCase();
+                if (first === last && first.length > 2) {
+                    error = 'First name and surname cannot be identical.';
+                }
+            }
+        }
 
         if (!error && !input.checkValidity()) {
             error = input.validationMessage;

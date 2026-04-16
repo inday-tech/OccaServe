@@ -13,7 +13,6 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             events: '/caterer/api/events',
             eventContent: function(arg) {
-                // Custom render for the event banners to ensure they look premium
                 const props = arg.event.extendedProps;
                 const isBlocked = props.type === 'BLOCKED';
                 const iconClass = isBlocked ? 'fas fa-ban' : 'fas fa-calendar-check';
@@ -38,7 +37,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const today = new Date();
                 today.setHours(0,0,0,0);
                 if (info.event.start < today) {
-                    return; // Prevent clicking on any past event or blocked date natively
+                    return;
                 }
 
                 if (info.event.extendedProps.type === 'BLOCKED') {
@@ -53,11 +52,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 const clickedDate = new Date(info.dateStr);
                 
                 if (clickedDate < today) {
-                    // Modern clean way: just don't do anything or show a very subtle log
                     return; 
                 }
                 
-                // Pre-fill date in manual booking and blocking form
                 const blockInput = document.getElementById('blockDate');
                 const manInput = document.getElementById('manDate');
                 if (blockInput) blockInput.value = info.dateStr;
@@ -80,36 +77,140 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Initialize Manual Booking Validation
     if (window.ValidationManager) {
-        new window.ValidationManager('manualBookingForm', {
-            'customer_name': { label: 'customer name' },
+        window.manualBookingValidation = new window.ValidationManager('manualBookingForm', {
+            'customer_name': { label: 'customer name', noSameParts: true },
+            'customer_contact': { numericOnly: true, maxLength: 11 },
             'event_name': { label: 'event name' },
-            'guest_count': { numericOnly: true, max: 100000, autoStop: true },
-            'total_amount': { numericOnly: true, max: 10000000, autoStop: true }
+            'guest_count': { numericOnly: true, min: 1, max: 100000, autoStop: true },
+            'total_amount': { numericOnly: true, max: 10000000, autoStop: true },
+            'event_date': { label: 'event date' }
         });
     }
+
+    // Proactive Numeric Blocking for Contact
+    const contactInput = document.getElementById('manCustContact');
+    if (contactInput) {
+        contactInput.addEventListener('keydown', (e) => {
+            const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter'];
+            if (!allowedKeys.includes(e.key) && !/[0-9]/.test(e.key) && !e.ctrlKey) {
+                e.preventDefault();
+            }
+        });
+    }
+
+    // Initialize Listeners
+    attachPackageListeners();
 });
 
 function attachPackageListeners() {
     const pkgSelect = document.getElementById('manPackage');
+    const guestInput = document.getElementById('manGuests');
     const amountInput = document.getElementById('manAmount');
-    if (!pkgSelect || !amountInput) return;
+    if (!pkgSelect || !guestInput || !amountInput) return;
 
-    pkgSelect.addEventListener('change', function () {
-        const option = this.options[this.selectedIndex];
-        const price = parseFloat(option.dataset.price) || 0;
-        if (price > 0) {
-            amountInput.value = price.toLocaleString();
-            // Trigger validation check
-            amountInput.dispatchEvent(new Event('input', { bubbles: true }));
+    // Listen to changes that affect price
+    pkgSelect.addEventListener('change', () => {
+        syncPackageMenus();
+        recalculateTotal();
+    });
+    guestInput.addEventListener('input', recalculateTotal);
+    
+    document.querySelectorAll('.man-menu-checkbox').forEach(cb => {
+        cb.addEventListener('change', recalculateTotal);
+    });
+
+    // Initial calculation
+    recalculateTotal();
+}
+
+/**
+ * Synchronize checkboxes based on package menu items
+ */
+function syncPackageMenus() {
+    const pkgSelect = document.getElementById('manPackage');
+    if (!pkgSelect) return;
+    
+    const option = pkgSelect.options[pkgSelect.selectedIndex];
+    if (!option.dataset.menus) return;
+
+    try {
+        const menuIds = JSON.parse(option.dataset.menus);
+        // Clear all first
+        document.querySelectorAll('.man-menu-checkbox').forEach(cb => cb.checked = false);
+        
+        // Check associated ones
+        if (menuIds.length > 0) {
+            menuIds.forEach(id => {
+                const cb = document.querySelector(`.man-menu-checkbox[value="${id}"]`);
+                if (cb) cb.checked = true;
+            });
+        }
+    } catch (e) {
+        console.error("Error syncing menus:", e);
+    }
+}
+
+/**
+ * Real-time Accurate Pricing Calculation
+ */
+function recalculateTotal() {
+    const pkgSelect = document.getElementById('manPackage');
+    const guestInput = document.getElementById('manGuests');
+    const amountInput = document.getElementById('manAmount');
+    
+    if (!pkgSelect || !guestInput || !amountInput) return;
+
+    const guests = parseInt(guestInput.value) || 0;
+    const option = pkgSelect.options[pkgSelect.selectedIndex];
+    const basePrice = parseFloat(option.dataset.price) || 0;
+    const unit = option.dataset.unit || 'fixed';
+    const minGuests = parseInt(option.dataset.min) || 1;
+
+    let total = 0;
+
+    // 1. Calculate Package Price
+    if (unit === 'per_guest') {
+        total = basePrice * guests;
+    } else {
+        total = basePrice;
+    }
+
+    // 2. Add Extra Menu Add-ons Price
+    // Get list of included menu IDs from the selected package
+    let includedMenuIds = [];
+    if (option.dataset.menus) {
+        try {
+            includedMenuIds = JSON.parse(option.dataset.menus).map(id => id.toString());
+        } catch (e) {}
+    }
+
+    document.querySelectorAll('.man-menu-checkbox:checked').forEach(cb => {
+        // Only add price if it's NOT part of the package inclusions
+        if (!includedMenuIds.includes(cb.value.toString())) {
+            total += parseFloat(cb.dataset.price) || 0;
         }
     });
 
-    // Handle menu checkboxes
-    document.querySelectorAll('.man-menu-checkbox').forEach(cb => {
-        cb.addEventListener('change', () => {
-            // Optional: Auto-recalculate total if needed, but usually manual bookings are manual
-        });
+    // 3. Update UI
+    amountInput.value = total.toLocaleString('en-PH', { 
+        style: 'currency', 
+        currency: 'PHP',
+        minimumFractionDigits: 2 
     });
+    
+    // 4. Smart Validation: Min Guests Enforcement
+    if (pkgSelect.value && guests < minGuests) {
+        if (window.manualBookingValidation) {
+            window.manualBookingValidation.markInvalid(guestInput, `Min ${minGuests} pax required`);
+        }
+    } else {
+        if (window.manualBookingValidation) {
+            window.manualBookingValidation.clearInvalid(guestInput);
+        }
+    }
+
+    // Trigger validation update
+    amountInput.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
 function showEventDetails(event) {
@@ -156,7 +257,6 @@ function showBlockedDetails(event) {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     });
     
-    // YYYY-MM-DD format for unblocking
     currentBlockedDate = event.startStr.split('T')[0];
     
     document.getElementById('blockedDateModal').style.display = 'flex';
@@ -173,21 +273,27 @@ function openManualBookingModal(slotStr = null) {
     document.getElementById('manualBookingForm').reset();
     document.getElementById('manualBookingError').style.display = 'none';
     
-    // Default to proper date if slot provided
     if (slotStr) {
         document.getElementById('manDate').value = slotStr;
     }
     
-    // Clear formatted fields
-    if(document.getElementById('manAmount')) {
+    if (document.getElementById('manAmount')) {
         document.getElementById('manAmount').style.borderColor = '';
         document.getElementById('manAmount').style.backgroundColor = '';
+        document.getElementById('manAmount').value = '0.00';
     }
+    
     document.getElementById('btnSubmitManual').disabled = true;
     document.getElementById('btnSubmitManual').style.opacity = '0.5';
 
+    // Reset checkmarks
+    document.querySelectorAll('.man-menu-checkbox').forEach(cb => cb.checked = false);
+
     // Initial validation check
-    document.getElementById('manualBookingForm').dispatchEvent(new Event('input', { bubbles: true }));
+    setTimeout(() => {
+        recalculateTotal();
+        document.getElementById('manualBookingForm').dispatchEvent(new Event('input', { bubbles: true }));
+    }, 50);
 
     modal.style.display = 'flex';
     requestAnimationFrame(() => {
@@ -210,8 +316,7 @@ function showErrorInDrawer(message) {
     if (drawer) {
         drawer.innerHTML = `<i class="fas fa-exclamation-circle"></i> <span>${message}</span>`;
         drawer.style.display = 'flex';
-        // Scroll to top of modal to see error
-        document.querySelector('#manualBookingModal .calendar-modal-content').scrollTop = 0;
+        document.querySelector('#manualBookingModal .occ-modal-body').scrollTop = 0;
     }
 }
 
@@ -237,10 +342,9 @@ async function submitManualEvent(e) {
     e.preventDefault();
     clearErrorDrawer();
     
-    // Validate inputs
-    const guests = parseInt(document.getElementById('manGuests').value);
-    const amountInputString = document.getElementById('manAmount').value;
-    const amount = parseCurrency(amountInputString);
+    const guests = parseInt(document.getElementById('manGuests').value) || 0;
+    const amountInputString = document.getElementById('manAmount').value || '0.00';
+    const amount = parseFloat(amountInputString.replace(/,/g, '').replace('₱', '').trim()) || 0;
     
     if (guests < 1) {
         showErrorInDrawer('Oops! Guest count must be at least 1 pax.');
@@ -252,6 +356,7 @@ async function submitManualEvent(e) {
         return;
     }
 
+    const eventDateStr = document.getElementById('manDate').value;
     if (!eventDateStr) {
         showErrorInDrawer('Please select a valid date for the event.');
         return;
@@ -261,7 +366,7 @@ async function submitManualEvent(e) {
     const today = new Date();
     today.setHours(0,0,0,0);
     if (selectedDate < today) {
-        showErrorInDrawer('Blocking Error: You cannot create bookings for past dates.');
+        showErrorInDrawer('Booking Error: You cannot create bookings for past dates.');
         return;
     }
 
@@ -287,7 +392,7 @@ async function submitManualEvent(e) {
         customer_contact: document.getElementById('manCustContact').value.trim() || null,
         event_name: document.getElementById('manEventName').value,
         event_type: eventType,
-        event_date: document.getElementById('manDate').value,
+        event_date: eventDateStr,
         event_time: document.getElementById('manTime').value || null,
         venue_address: document.getElementById('manVenue').value || null,
         guest_count: guests,
@@ -326,7 +431,6 @@ async function setReminder() {
     if (!btn) return;
 
     const originalText = btn.textContent;
-
     btn.disabled = true;
     btn.textContent = 'Setting...';
 
@@ -339,7 +443,7 @@ async function setReminder() {
         if (data.status === 'success') {
             window.showSuccess('Reminder set! You will see it in your notifications.');
             closeModal();
-            setTimeout(() => location.reload(), 2000); // To update notification count
+            setTimeout(() => location.reload(), 2000);
         } else {
             window.showError(data.message || 'Failed to set reminder.');
         }
@@ -377,7 +481,6 @@ async function toggleDateAvailability(isAvailable) {
         return;
     }
 
-    // Validation to prevent blocking past dates unless we're unblocking
     if (!isAvailable) {
         const selectedDate = new Date(date);
         const today = new Date();
@@ -422,12 +525,10 @@ function toggleOtherEventType() {
     }
 }
 
-// Close on escape
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeModal();
 });
 
-// Global exposure
 window.showEventDetails = showEventDetails;
 window.showBlockedDetails = showBlockedDetails;
 window.setReminder = setReminder;
@@ -452,7 +553,6 @@ window.openSidebarEventModal = function(elem) {
 
     const reminderBtn = document.querySelector('#eventModal .btn-primary');
     if (reminderBtn) {
-        // Just keep it enabled since upcoming list doesn't show past events anyway
         reminderBtn.style.display = 'block';
     }
 
