@@ -81,6 +81,13 @@
                     </a>
                 </li>
                 <li>
+                    <a href="/admin/notifications" class="{{ 'active' if active_page == 'notifications' }}" id="adminNotifLink"
+                        onclick="closeSidebar()">
+                        <i class="fas fa-bell"></i> <span>Notifications</span>
+                        <span class="badge" id="adminNotifBadge" style="display: none; background: #ef4444; color: white; padding: 0.1rem 0.4rem; border-radius: 99px; font-size: 0.7rem; margin-left: auto;">0</span>
+                    </a>
+                </li>
+                <li>
                     <a href="/admin/caterers" class="{{ 'active' if active_page == 'caterers' }}"
                         onclick="closeSidebar()">
                         <i class="fas fa-utensils"></i> <span>Manage Caterers</span>
@@ -110,15 +117,9 @@
                     </a>
                 </li>
                 <li>
-                    <a href="/admin/payouts" class="{{ 'active' if active_page == 'payouts' }}"
+                    <a href="/admin/feedback" class="{{ 'active' if active_page == 'feedback' }}"
                         onclick="closeSidebar()">
-                        <i class="fas fa-hand-holding-dollar"></i> <span>Payouts</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/admin/reviews" class="{{ 'active' if active_page == 'reviews' }}"
-                        onclick="closeSidebar()">
-                        <i class="fas fa-star"></i> <span>Reviews</span>
+                        <i class="fas fa-comment-dots"></i> <span>Platform Feedback</span>
                     </a>
                 </li>
                 <li>
@@ -175,6 +176,73 @@
     </div>
 
     {% block extra_js %}{% endblock %}
-</body>
 
+    <script>
+        // Real-Time Admin Notifications
+        (function() {
+            const adminId = "{{ user.id }}";
+            const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/user_${adminId}`;
+            let socket;
+            let reconnectAttempts = 0;
+            const maxAttempts = 5;
+
+            function updateBadge(count) {
+                const badge = document.getElementById('adminNotifBadge');
+                if (badge) {
+                    badge.textContent = count > 99 ? '99+' : count;
+                    badge.style.display = count > 0 ? 'inline-block' : 'none';
+                }
+            }
+
+            function connectWebSocket() {
+                if(reconnectAttempts >= maxAttempts) return;
+                socket = new WebSocket(wsUrl);
+
+                socket.onopen = function() {
+                    console.log("Admin WebSocket connected.");
+                    reconnectAttempts = 0;
+                    // Fetch initial unread count
+                    fetch('/admin/api/notifications/unread')
+                        .then(r => r.json())
+                        .then(data => data.success && updateBadge(data.unread_count))
+                        .catch(e => console.error("Error fetching initial notif count", e));
+                };
+
+                socket.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        if(data.type === 'new_notification') {
+                            updateBadge(data.count);
+                            // Show toast alert
+                            if(typeof window.showSuccess === 'function') {
+                                window.showSuccess(data.message, "New Notification");
+                            } else if (typeof Swal !== 'undefined') {
+                                Swal.fire({
+                                    toast: true,
+                                    position: 'top-end',
+                                    icon: 'info',
+                                    title: "New Notification",
+                                    text: data.message,
+                                    showConfirmButton: false,
+                                    timer: 4000
+                                });
+                            }
+                        }
+                    } catch(e) {
+                        console.error('Failed to parse WebSocket message:', e);
+                    }
+                };
+
+                socket.onclose = function() {
+                    reconnectAttempts++;
+                    setTimeout(connectWebSocket, 3000 * Math.min(reconnectAttempts, 5));
+                };
+            }
+
+            if(adminId && adminId !== "None") {
+                connectWebSocket();
+            }
+        })();
+    </script>
+</body>
 </html>

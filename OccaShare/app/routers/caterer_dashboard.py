@@ -22,6 +22,42 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 # Standard dependency for caterer access
 caterer_only = auth.RoleChecker(["caterer"])
 
+@router.post("/platform-feedback")
+async def submit_platform_feedback_caterer(
+    rating: int = Form(...),
+    comment: str = Form(...),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    if rating < 1 or rating > 5:
+        return RedirectResponse(url="/caterer/dashboard?error_msg=Invalid+rating", status_code=303)
+    if not comment or len(comment.strip()) < 10:
+        return RedirectResponse(url="/caterer/dashboard?error_msg=Feedback+too+short", status_code=303)
+
+    fb = models.PlatformFeedback(
+        user_id=user.id,
+        rating=rating,
+        comment=comment.strip(),
+        role="caterer"
+    )
+    db.add(fb)
+    db.commit()
+    db.refresh(fb)
+
+    # Broadcast real-time update to all connected admins
+    await manager.broadcast_to_role("admin", {
+        "type": "new_platform_feedback",
+        "id": fb.id,
+        "rating": fb.rating,
+        "comment": fb.comment,
+        "role": "caterer",
+        "user_name": (user.caterer_profile.business_name if user.caterer_profile else None) or f"{user.first_name or ''} {user.last_name or ''}".strip() or user.email,
+        "user_email": user.email,
+        "created_at": fb.created_at.strftime('%b %d, %Y') if fb.created_at else 'Just now'
+    })
+
+    return RedirectResponse(url="/caterer/dashboard?success_msg=Thank+you+for+your+feedback!", status_code=303)
+
 @router.post("/api/validate-package-name")
 async def validate_package_name(
     request: Request,
@@ -80,7 +116,8 @@ async def create_manual_booking(
 ):
     try:
         data = await request.json()
-        customer_email = data.get("customer_contact", "").strip()
+        customer_email = data.get("customer_email", "").strip()
+        customer_contact = data.get("customer_contact", "").strip()
         customer_name = data.get("customer_name", "").strip()
         
         if not customer_name:
@@ -99,6 +136,7 @@ async def create_manual_booking(
             target_user = models.User(
                 email=customer_email if "@" in customer_email else f"walkin_{uuid.uuid4().hex[:8]}@guest.occashare.com",
                 first_name=customer_name,
+                phone_number=customer_contact,
                 password_hash=temp_pass,
                 role="customer",
                 status="active"
@@ -249,105 +287,107 @@ def _get_caterer_stats(profile, bookings, timeframe='month'):
     from datetime import datetime, date, timedelta
     from dateutil.relativedelta import relativedelta
     
-    # NEW ROI Logic: Realized (Cash in Hand) vs Projected (Total Contract)
-    total_realized_revenue = 0    # Money actually paid (verified)
-    total_projected_revenue = 0   # Total value of confirmed contract bookings
-    total_actual_expenses = 0     # Actual costs recorded by caterer
-    total_projected_expenses = 0  # Expected costs (Actual or Estimate baseline)
-    
     today = date.today()
-    six_months_ago = today - relativedelta(months=5)
-    six_months_ago = six_months_ago.replace(day=1)
     
-    unique_customers = set()
-    package_stats = {} # {id: {revenue: 0, expenses: 0, orders: 0}}
-    
-    # Initialize Timeframe
+    # 1. Define Timeframe Bounds for TOP STATS
     if timeframe == 'day':
-        start_date = today
-        chart_points = [today.strftime("%Y-%m-%d")]
+        stats_start = today
+        chart_points = [(today - timedelta(days=i)) for i in range(6, -1, -1)] # Last 7 days for trend
+        date_format = "%Y-%m-%d"
     elif timeframe == 'week':
-        start_date = today - timedelta(days=6)
-        chart_points = [(start_date + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
+        stats_start = today - timedelta(days=today.weekday()) # Current Week start (Monday)
+        chart_points = [(today - timedelta(days=i)) for i in range(13, -1, -1)] # Last 14 days for trend
+        date_format = "%Y-%m-%d"
     elif timeframe == 'year':
-        start_date = today.replace(month=1, day=1)
-        chart_points = [(start_date + relativedelta(months=i)).strftime("%Y-%m") for i in range(12)]
-    else: # Default: 6 Months
-        start_date = (today - relativedelta(months=5)).replace(day=1)
-        chart_points = []
-        curr = start_date
-        while curr <= today:
-            chart_points.append(curr.strftime("%Y-%m"))
-            curr += relativedelta(months=1)
-    
-    monthly_revenue = {p: 0.0 for p in chart_points}
-    monthly_expenses = {p: 0.0 for p in chart_points}
-    monthly_bookings_data = {p: {'completed': 0, 'pending': 0} for p in chart_points}
+        stats_start = today.replace(month=1, day=1) # Current Year start
+        chart_points = [today.replace(month=1, day=1) + relativedelta(months=i) for i in range(12)] # All months of the year
+        date_format = "%Y-%m"
+    else: # Default: Monthly
+        stats_start = today.replace(day=1) # Current Month start
+        chart_points = [(today - relativedelta(months=5)).replace(day=1) + relativedelta(months=i) for i in range(6)]
+        date_format = "%Y-%m"
 
+    chart_keys = [d.strftime(date_format) for d in chart_points]
+    
+    # Stats Counters (FOR TOP CARDS - FILTERED)
+    total_realized_revenue = 0
+    total_projected_revenue = 0
+    total_actual_expenses = 0
+    total_projected_expenses = 0
+    unique_customers = set()
     active_bookings = 0
     
+    # Chart Data Pools (FOR TREND)
+    period_revenue = {k: 0.0 for k in chart_keys}
+    period_expenses = {k: 0.0 for k in chart_keys}
+    period_bookings = {k: {'completed': 0, 'pending': 0} for k in chart_keys}
+    
+    package_stats = {} # {id: {revenue: 0, expenses: 0, orders: 0}}
+    
     for b in bookings:
+        if not b.event_date: continue
+        
         amount = float(b.total_amount or b.total_price or 0)
-        unique_customers.add(b.user_id)
         
-        if b.status in ['confirmed', 'preparing', 'on_the_way', 'in_progress', 'completed']:
-            total_projected_revenue += amount
-            
-            # 1. Deterministic Cost Baseline
-            base_cost_price = 0
-            if b.package and b.package.cost_price:
-                if b.package.price_unit == "per_guest":
-                    base_cost_price = (b.package.cost_price) * (b.guest_count or 1)
-                else:
-                    base_cost_price = b.package.cost_price
+        # Determine Cost Baseline
+        base_cost_price = 0
+        if b.package and b.package.cost_price:
+            if b.package.price_unit == "per_guest":
+                base_cost_price = (b.package.cost_price) * (b.guest_count or 1)
             else:
-                base_cost_price = amount * 0.60 # Standard 60% fallback
-            
-            # 2. Use Actual Cost if caterer has started tracking it
-            if b.actual_cost and b.actual_cost > 0:
-                total_projected_expenses += b.actual_cost
-                total_actual_expenses += b.actual_cost
-            else:
-                total_projected_expenses += base_cost_price
-                
-            if b.status != 'completed': active_bookings += 1
-
-        # 3. Realized Revenue (Cleard Cash)
-        cleared_amount = 0
-        if b.payment_status == 'paid':
-            cleared_amount = amount
-        elif b.payment_status == 'deposit_paid':
-            dep_pct = 20
-            if b.quotation: dep_pct = b.quotation.downpayment_percent
-            cleared_amount = amount * (dep_pct / 100)
+                base_cost_price = b.package.cost_price
+        else:
+            base_cost_price = amount * 0.60 # Standard 60% fallback
         
-        total_realized_revenue += cleared_amount
+        actual_cost = b.actual_cost if b.actual_cost and b.actual_cost > 0 else base_cost_price
+        
+        # --- A. TOP STATS FILTERING ---
+        if b.event_date >= stats_start:
+            unique_customers.add(b.user_id)
+            
+            if b.status in ['confirmed', 'preparing', 'on_the_way', 'in_progress', 'completed']:
+                total_projected_revenue += amount
+                total_projected_expenses += actual_cost
+                if b.status != 'completed': active_bookings += 1
 
-        # 4. Chart Data Aggregation
-        if b.event_date:
-            date_key = ""
-            if timeframe in ['day', 'week']:
-                date_key = b.event_date.strftime("%Y-%m-%d")
-            else:
-                date_key = b.event_date.strftime("%Y-%m")
-                
-            if date_key in monthly_revenue:
-                monthly_revenue[date_key] += cleared_amount
-                monthly_expenses[date_key] += (b.actual_cost if b.actual_cost and b.actual_cost > 0 else base_cost_price)
-                
-            if date_key in monthly_bookings_data:
-                if b.status in ['completed', 'confirmed', 'in_progress']:
-                    monthly_bookings_data[date_key]['completed'] += 1
-                elif b.status != 'cancelled':
-                    monthly_bookings_data[date_key]['pending'] += 1
+            # Realized Revenue Computation
+            cleared_amount = 0
+            if b.payment_status == 'paid':
+                cleared_amount = amount
+            elif b.payment_status == 'deposit_paid':
+                dep_pct = 20
+                if b.quotation: dep_pct = b.quotation.downpayment_percent
+                cleared_amount = amount * (dep_pct / 100)
+            
+            total_realized_revenue += cleared_amount
+            total_actual_expenses += actual_cost if b.status in ['confirmed', 'completed', 'in_progress'] else 0
 
-        if b.package_id:
+        # --- B. TREND CHART AGGREGATION ---
+        date_key = b.event_date.strftime(date_format)
+        if date_key in period_revenue:
+            cleared_chart = 0
+            if b.payment_status == 'paid': cleared_chart = amount
+            elif b.payment_status == 'deposit_paid':
+                dep_pct = 20
+                if b.quotation: dep_pct = b.quotation.downpayment_percent
+                cleared_chart = amount * (dep_pct / 100)
+                
+            period_revenue[date_key] += cleared_chart
+            period_expenses[date_key] += actual_cost
+            
+            if b.status in ['completed', 'confirmed', 'in_progress']:
+                period_bookings[date_key]['completed'] += 1
+            elif b.status != 'cancelled':
+                period_bookings[date_key]['pending'] += 1
+
+        # --- C. PACKAGE EFFICIENCY ---
+        if b.package_id and b.event_date >= stats_start:
             if b.package_id not in package_stats:
                 package_stats[b.package_id] = {'revenue': 0, 'expenses': 0, 'orders': 0}
             package_stats[b.package_id]['orders'] += 1
             if b.status in ['confirmed', 'completed']:
                 package_stats[b.package_id]['revenue'] += amount
-                package_stats[b.package_id]['expenses'] += (b.actual_cost if b.actual_cost and b.actual_cost > 0 else base_cost_price)
+                package_stats[b.package_id]['expenses'] += actual_cost
 
     # Calculation Summary
     projected_net_profit = total_projected_revenue - total_projected_expenses
@@ -356,11 +396,29 @@ def _get_caterer_stats(profile, bookings, timeframe='month'):
     realized_net_profit = total_realized_revenue - total_actual_expenses
     realized_roi = ((realized_net_profit / total_actual_expenses) * 100) if total_actual_expenses > 0 else 0
 
-    chart_data = [{"date": k, "revenue": v, "label": datetime.strptime(k, "%Y-%m").strftime("%b %Y")} for k, v in monthly_revenue.items()]
-    chart_data.sort(key=lambda x: x['date'])
+    # Format Chart Data
+    chart_data = []
+    roi_trend_data = []
+    bookings_chart_data = []
     
-    bookings_chart_data = [{"date": k, "completed": v['completed'], "pending": v['pending'], "label": datetime.strptime(k, "%Y-%m").strftime("%b %Y")} for k, v in monthly_bookings_data.items()]
-    bookings_chart_data.sort(key=lambda x: x['date'])
+    for k in chart_keys:
+        rev = period_revenue[k]
+        exp = period_expenses[k]
+        roi = ((rev - exp) / exp * 100) if exp > 0 else 0
+        
+        try:
+            if date_format == "%Y-%m-%d":
+                label = datetime.strptime(k, date_format).strftime("%b %d")
+            else:
+                label = datetime.strptime(k, date_format).strftime("%b %Y")
+        except:
+            label = k
+
+        chart_data.append({"date": k, "revenue": rev, "label": label})
+        roi_trend_data.append({"date": k, "roi": round(roi, 1), "label": label})
+        bookings_chart_data.append({
+            "date": k, "completed": period_bookings[k]['completed'], "pending": period_bookings[k]['pending'], "label": label
+        })
     
     upcoming_events = sorted([b for b in bookings if b.status == 'confirmed' and b.event_date and b.event_date >= today], key=lambda x: x.event_date)[:4]
     
@@ -370,21 +428,11 @@ def _get_caterer_stats(profile, bookings, timeframe='month'):
             stats = package_stats[pkg.id]
             pkg_roi = ((stats['revenue'] - stats['expenses']) / stats['expenses'] * 100) if stats['expenses'] > 0 else 0
             popular_packages.append({
-                "id": pkg.id, 
-                "name": pkg.name, 
-                "price": float(pkg.price_per_head or pkg.price or 0), 
-                "orders": stats['orders'],
-                "roi": round(pkg_roi, 1)
+                "id": pkg.id, "name": pkg.name, "price": float(pkg.price_per_head or pkg.price or 0), 
+                "orders": stats['orders'], "roi": round(pkg_roi, 1)
             })
     popular_packages.sort(key=lambda x: x['orders'], reverse=True)
 
-    roi_trend_data = []
-    for p in chart_points:
-        rev = monthly_revenue[p]
-        exp = monthly_expenses[p]
-        roi = ((rev - exp) / exp * 100) if exp > 0 else 0
-        roi_trend_data.append({"date": p, "roi": round(roi, 1)})
-    
     return {
         "total_revenue": total_realized_revenue, 
         "projected_revenue": total_projected_revenue,
@@ -400,7 +448,7 @@ def _get_caterer_stats(profile, bookings, timeframe='month'):
         "bookings_chart_data": bookings_chart_data,
         "upcoming_events": upcoming_events,
         "popular_packages": popular_packages[:4],
-        "recent_orders": sorted(bookings, key=lambda x: x.id, reverse=True)[:5],
+        "recent_orders": sorted([b for b in bookings if b.event_date and b.event_date >= stats_start], key=lambda x: x.id, reverse=True)[:5],
         "timeframe": timeframe
     }
 
@@ -416,12 +464,15 @@ async def caterer_dashboard(
     timeframe = request.query_params.get('timeframe', 'month')
     stats = _get_caterer_stats(profile, bookings, timeframe=timeframe)
     
+    has_submitted_feedback = db.query(models.PlatformFeedback).filter_by(user_id=user.id).first() is not None
+    
     return templates.TemplateResponse("caterer/index.html", {
         "request": request,
         "user": user,
         "profile": profile,
         **stats,
-        "active_page": "dashboard"
+        "active_page": "dashboard",
+        "has_submitted_feedback": has_submitted_feedback
     })
 
 @router.get("/api/dashboard-overview")
@@ -468,8 +519,11 @@ async def dashboard_overview_api(
 
     return JSONResponse({
         "total_revenue": stats['total_revenue'],
+        "projected_revenue": stats['projected_revenue'],
         "net_profit": stats['net_profit'],
+        "projected_profit": stats['projected_profit'],
         "estimated_expenses": stats['estimated_expenses'],
+        "actual_expenses": stats['actual_expenses'],
         "roi_percentage": stats['roi_percentage'],
         "roi_trend_data": stats['roi_trend_data'],
         "total_customers": stats['total_customers'],
@@ -1943,9 +1997,51 @@ class ManualBookingCreate(BaseModel):
     guest_count: int
     total_amount: float
     customer_name: str
+    customer_email: Optional[str] = None
     customer_contact: Optional[str] = None
     package_id: Optional[int] = None
     menu_items: Optional[list[int]] = []
+
+class CustomerCheck(BaseModel):
+    name: str
+    email: Optional[str] = None
+
+@router.post("/api/check-customer")
+async def check_customer(
+    data: CustomerCheck,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(auth.get_current_user_optional)
+):
+    if not user or user.role != 'caterer':
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    query = db.query(models.User).filter(models.User.role == 'customer')
+    
+    customer = None
+    if data.email:
+        customer = query.filter(models.User.email == data.email).first()
+
+    # If not found by email, try fuzzy searching by name
+    if not customer and data.name:
+        parts = data.name.split()
+        if len(parts) >= 2:
+            first = parts[0]
+            last = parts[-1]
+            customer = query.filter(
+                models.User.first_name.ilike(f"%{first}%"),
+                models.User.last_name.ilike(f"%{last}%")
+            ).first()
+        else:
+            customer = query.filter(
+                (models.User.first_name.ilike(f"%{data.name}%")) | 
+                (models.User.last_name.ilike(f"%{data.name}%"))
+            ).first()
+        
+    if customer:
+        full_name = f"{customer.first_name or ''} {customer.last_name or ''}".strip()
+        return {"exists": True, "name": full_name or customer.email, "email": customer.email, "contact": customer.phone_number}
+    
+    return {"exists": False}
 
 @router.post("/api/bookings/manual")
 async def create_manual_booking(
@@ -2388,3 +2484,94 @@ async def caterer_messages(
         "user": user,
         "active_page": "messages"
     })
+
+@router.post("/api/check-customer")
+async def check_customer(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    data = await request.json()
+    email = data.get("email", "").strip()
+    name = data.get("name", "").strip()
+
+    # Search for an existing user
+    # Priority is exact email match
+    if email and "@" in email:
+        target = db.query(models.User).filter(models.User.email.ilike(email)).first()
+        if target:
+            return {
+                "exists": True, 
+                "match_type": "email",
+                "name": f"{target.first_name} {target.last_name}".strip() if target.first_name else "Unknown",
+                "email": target.email,
+                "contact": target.phone_number
+            }
+            
+    # Then by name using ilike if email is missing or not found
+    if name and len(name) > 2:
+        target = db.query(models.User).filter(
+            models.User.first_name.ilike(f"%{name.split()[0]}%") |
+            models.User.last_name.ilike(f"%{name.split()[-1]}%")
+        ).first()
+        
+        if target:
+            return {
+                "exists": True,
+                "match_type": "name",
+                "name": f"{target.first_name} {target.last_name}".strip(),
+                "email": target.email,
+                "contact": target.phone_number
+            }
+
+    return {"exists": False}
+
+@router.get("/reviews", response_class=HTMLResponse)
+async def manage_reviews_page(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    profile = user.caterer_profile
+    reviews = db.query(models.Review).filter(models.Review.caterer_id == profile.id).order_by(models.Review.created_at.desc()).all()
+    
+    return templates.TemplateResponse("caterer/manage_reviews.html", {
+        "request": request,
+        "user": user,
+        "profile": profile,
+        "reviews": reviews,
+        "active_page": "reviews"
+    })
+
+@router.post("/reviews/{review_id}/highlight")
+async def toggle_review_highlight(
+    review_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    profile = user.caterer_profile
+    review = db.query(models.Review).filter(models.Review.id == review_id, models.Review.caterer_id == profile.id).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+    
+    review.is_highlighted = not review.is_highlighted
+    db.commit()
+    
+    return {"success": True, "is_highlighted": review.is_highlighted}
+
+@router.post("/reviews/{review_id}/reply")
+async def reply_to_review(
+    review_id: int,
+    reply_text: str = Form(...),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    profile = user.caterer_profile
+    review = db.query(models.Review).filter(models.Review.id == review_id, models.Review.caterer_id == profile.id).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+    
+    review.caterer_reply = reply_text.strip()
+    db.commit()
+    
+    return RedirectResponse(url="/caterer/reviews?success_msg=Reply+submitted!", status_code=303)

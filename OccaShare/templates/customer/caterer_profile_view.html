@@ -569,6 +569,83 @@
                 <div style="font-size: 0.8rem; color: #64748b; line-height: 1.5;">Please coordinate with the
                     caterer regarding cancellations and refund eligibility.</div>
             </div>
+
+            <!-- Customer Reviews Section -->
+            {% if reviews %}
+            <div class="c-card-premium" style="padding: 1.5rem;" id="reviews-section">
+                <div class="section-title-wrapper">
+                    <i class="fas fa-star"></i>
+                    <h2 class="section-title">Customer Reviews</h2>
+                    <span style="margin-left:auto; font-size: 0.8rem; font-weight: 700; color: #f97316; background: #fff7ed; padding: 0.3rem 0.8rem; border-radius: 2rem;">
+                        {{ reviews|length }} Review{{ 's' if reviews|length != 1 else '' }}
+                    </span>
+                </div>
+
+                <!-- Average Rating Bar -->
+                {% set avg = (reviews | map(attribute='rating') | sum) / (reviews | length) %}
+                <div style="display:flex; align-items:center; gap:1.25rem; padding:1rem 1.25rem; background:#fff7ed; border-radius:14px; margin-bottom:1.5rem; border:1px solid #fed7aa;">
+                    <div style="text-align:center; flex-shrink:0;">
+                        <div style="font-size:2.5rem; font-weight:900; color:#f97316; line-height:1;">{{ "%.1f"|format(avg) }}</div>
+                        <div style="color:#f59e0b; font-size:0.85rem; margin-top:2px;">
+                            {% for i in range(avg|int) %}<i class="fas fa-star"></i>{% endfor %}
+                            {% if avg % 1 >= 0.5 %}<i class="fas fa-star-half-alt"></i>{% endif %}
+                        </div>
+                        <div style="font-size:0.72rem; color:#94a3b8; font-weight:600; margin-top:4px;">Out of 5.0</div>
+                    </div>
+                    <div style="flex:1; font-size:0.82rem; color:#64748b; font-weight:500;">
+                        Based on <strong style="color:#0f172a;">{{ reviews|length }}</strong> verified booking review{{ 's' if reviews|length != 1 else '' }}
+                    </div>
+                </div>
+
+                <!-- Review Cards -->
+                <div style="display:flex; flex-direction:column; gap:1.25rem;">
+                    {% for review in reviews|sort(attribute='is_highlighted', reverse=True) %}
+                    <div style="padding:1.5rem; background:#fafafa; border-radius:18px; border:1px solid {% if review.is_highlighted %}#fed7aa{% else %}#f1f5f9{% endif %}; position:relative; {% if review.is_highlighted %}box-shadow: 0 4px 20px rgba(249,115,22,0.05);{% endif %}">
+                        {% if review.is_highlighted %}
+                        <div style="position:absolute; top:0; right:0; background:#f97316; color:white; padding:4px 12px; font-size:0.65rem; font-weight:800; border-bottom-left-radius:12px; display:flex; align-items:center; gap:4px; text-transform:uppercase;">
+                            <i class="fas fa-thumbtack" style="font-size:0.6rem;"></i> Featured Review
+                        </div>
+                        {% endif %}
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                            <div style="display:flex; align-items:center; gap:0.75rem;">
+                                <div style="width:38px; height:38px; border-radius:50%; background:#f97316; color:white; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.9rem; flex-shrink:0;">
+                                    {{ review.user.first_name[0] if review.user and review.user.first_name else '?' }}{{ review.user.last_name[0] if review.user and review.user.last_name else '' }}
+                                </div>
+                                <div>
+                                    <div style="font-weight:700; font-size:0.9rem; color:#0f172a;">
+                                        {{ review.user.first_name if review.user else 'Anonymous' }} {{ review.user.last_name[0] if review.user and review.user.last_name else '' }}.
+                                    </div>
+                                    <div style="font-size:0.72rem; color:#94a3b8;">{{ review.created_at.strftime('%B %Y') if review.created_at else '' }}</div>
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:2px; color:#f59e0b; font-size:0.78rem;">
+                                {% for i in range(review.rating or 0) %}<i class="fas fa-star"></i>{% endfor %}
+                                {% for i in range(5 - (review.rating or 0)) %}<i class="far fa-star" style="color:#e2e8f0;"></i>{% endfor %}
+                            </div>
+                        </div>
+                        <p style="margin:0; font-size:0.9rem; color:#475569; line-height:1.65; font-style:italic;">"{{ review.comment }}"</p>
+                        {% if review.recommend %}
+                        <div style="margin-top:0.65rem; font-size:0.75rem; color:#16a34a; font-weight:700;"><i class="fas fa-thumbs-up" style="margin-right:4px;"></i>Recommends this caterer</div>
+                        {% endif %}
+
+                        {% if review.caterer_reply %}
+                        <div style="margin-top:1.25rem; padding:1rem; background:#fff7ed; border-radius:12px; border-left:3px solid #f97316;">
+                            <div style="font-size:0.75rem; font-weight:800; color:#f97316; margin-bottom:0.4rem; text-transform:uppercase; letter-spacing:0.025em;">Caterer's Response</div>
+                            <p style="margin:0; font-size:0.88rem; color:#475569; line-height:1.5;">{{ review.caterer_reply }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+
+                    {% if reviews|length > 5 %}
+                    <div style="text-align:center; padding:0.75rem; font-size:0.82rem; color:#64748b;">
+                        + {{ reviews|length - 5 }} more review{{ 's' if reviews|length - 5 != 1 else '' }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
         </div>
 
         <!-- Sidebar -->

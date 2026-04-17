@@ -701,6 +701,12 @@ async def submit_review(
     if not booking or booking.user_id != user.id:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
+    if booking.status != 'completed':
+        return RedirectResponse(url="/customer/dashboard?error_msg=Only+completed+bookings+can+be+reviewed.", status_code=303)
+
+    if booking.review:
+        return RedirectResponse(url="/customer/dashboard?error_msg=You+have+already+reviewed+this+booking.", status_code=303)
+
     new_review = models.Review(
         booking_id=booking_id,
         user_id=user.id,

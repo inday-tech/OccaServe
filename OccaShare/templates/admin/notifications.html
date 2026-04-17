@@ -1,0 +1,158 @@
+{% set active_page = 'notifications' %}
+{% extends "admin/layout.html" %}
+
+{% block title %}Notifications - Admin Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/notifications.css') }}?v=2.0">
+{% endblock %}
+
+{% block content %}
+<div class="notif-page">
+    <!-- Header -->
+    <div class="page-header">
+        <div>
+            <h1>Notifications</h1>
+            <p>System alerts and administrative notifications</p>
+        </div>
+        <div class="notif-header-actions">
+            <!-- Currently no mark-all-as-read endpoint, but can be added later -->
+        </div>
+    </div>
+
+    <!-- Filter Tabs -->
+    <div class="notif-filter-bar">
+        <div class="notif-tabs">
+            <button class="notif-tab active" data-filter="all" onclick="filterNotifications('all', this)">
+                All <span class="notif-tab-count">{{ notifications|length }}</span>
+            </button>
+            <button class="notif-tab" data-filter="unread" onclick="filterNotifications('unread', this)">
+                Unread <span class="notif-tab-count">{{ notifications|selectattr('is_read', 'equalto', False)|list|length }}</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Notifications List -->
+    {% if notifications %}
+    <div class="notif-list-card c-card-premium" style="padding: 0 !important;">
+        <div class="notif-section-label" style="padding: 1.25rem 2rem 0.75rem; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">All Notifications</div>
+
+        <div class="notif-list" id="notifList">
+            {% for notif in notifications %}
+            <div class="notif-item {{ 'notif-unread' if not notif.is_read }}"
+                 id="notif-{{ notif.id }}"
+                 data-type="{{ notif.type }}"
+                 data-read="{{ 'true' if notif.is_read else 'false' }}"
+                 onclick="handleNotificationClick({{ notif.id }}, '{{ notif.link or '' }}')">
+
+                <!-- Icon -->
+                <div class="notif-icon notif-icon-{{ notif.type if notif.type in ['info', 'warning', 'success', 'error'] else 'default' }}">
+                    {% if notif.type == 'info' %}<i class="fas fa-info-circle"></i>
+                    {% elif notif.type == 'warning' %}<i class="fas fa-exclamation-triangle"></i>
+                    {% elif notif.type == 'success' %}<i class="fas fa-check-circle"></i>
+                    {% elif notif.type == 'error' %}<i class="fas fa-exclamation-circle"></i>
+                    {% else %}<i class="fas fa-bell"></i>{% endif %}
+                </div>
+
+                <!-- Content -->
+                <div class="notif-content">
+                    <div class="notif-title">{{ notif.title }}</div>
+                    <div class="notif-message">{{ notif.message }}</div>
+                    <div class="notif-time"><i class="far fa-clock"></i> {{ notif.created_at.strftime('%b %d, %Y • %I:%M %p') }}</div>
+                </div>
+
+                <!-- Unread dot -->
+                {% if not notif.is_read %}
+                <div class="notif-unread-dot" title="Unread"></div>
+                {% endif %}
+
+                <!-- Actions -->
+                <div class="notif-actions" onclick="event.stopPropagation();">
+                    {% if not notif.is_read %}
+                    <button class="notif-action-btn notif-btn-read" onclick="markAsRead({{ notif.id }})" title="Mark as read">
+                        <i class="fas fa-check"></i>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="notif-empty-state c-card-premium">
+        <div class="notif-empty-icon"><i class="fas fa-bell-slash"></i></div>
+        <h2>All Caught Up!</h2>
+        <p>No new system notifications at the moment.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentFilter = 'all';
+
+    // ── Filter tabs ──
+    function filterNotifications(filter, btn) {
+        currentFilter = filter;
+        document.querySelectorAll('.notif-tab').forEach(t => t.classList.remove('active'));
+        btn.classList.add('active');
+
+        document.querySelectorAll('.notif-item').forEach(item => applyFilterToItem(item));
+    }
+
+    function applyFilterToItem(item) {
+        if (currentFilter === 'all') {
+            item.style.display = '';
+        } else if (currentFilter === 'unread') {
+            item.style.display = item.dataset.read === 'false' ? '' : 'none';
+        }
+    }
+
+    // ── Update tab counts ──
+    function updateTabCounts() {
+        const items = document.querySelectorAll('.notif-item');
+        const total = items.length;
+        let unread = 0;
+        items.forEach(i => { if (i.dataset.read === 'false') unread++; });
+
+        const allCount = document.querySelector('[data-filter="all"] .notif-tab-count');
+        const unreadCount = document.querySelector('[data-filter="unread"] .notif-tab-count');
+        if (allCount) allCount.textContent = total;
+        if (unreadCount) unreadCount.textContent = unread;
+    }
+
+    // ── Mark single as read ──
+    async function markAsRead(id) {
+        try {
+            const response = await fetch(`/admin/api/notifications/${id}/mark-read`, { method: 'POST' });
+            if (response.ok) {
+                const card = document.getElementById(`notif-${id}`);
+                if (!card) return;
+                card.classList.remove('notif-unread');
+                card.dataset.read = 'true';
+                const dot = card.querySelector('.notif-unread-dot');
+                if (dot) dot.remove();
+                const btnRead = card.querySelector('.notif-btn-read');
+                if (btnRead) btnRead.remove();
+                updateTabCounts();
+                return true;
+            }
+        } catch (e) {
+            console.error('Failed to mark as read', e);
+        }
+        return false;
+    }
+
+    // ── Handle click → mark read + navigate ──
+    async function handleNotificationClick(id, link) {
+        const card = document.getElementById(`notif-${id}`);
+        if (card && card.classList.contains('notif-unread')) {
+            await markAsRead(id);
+        }
+        if (link) {
+            window.location.href = link;
+        }
+    }
+</script>
+{% endblock %}

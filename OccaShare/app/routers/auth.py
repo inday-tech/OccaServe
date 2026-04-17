@@ -383,8 +383,32 @@ async def register(
                     db.add(verification)
 
         db.commit()
+        
+        if role == "caterer":
+            from ..services.realtime import manager
+            import asyncio
+            admins = db.query(models.User).filter(models.User.role == "admin").all()
+            for admin in admins:
+                new_notif = models.Notification(
+                    user_id=admin.id,
+                    title="New Caterer Application",
+                    message=f"{business_name} has registered and submitted documents for verification.",
+                    link="/admin/kyc",
+                    type="info"
+                )
+                db.add(new_notif)
+            db.commit()
+            
+            for admin in admins:
+                count = db.query(models.Notification).filter(models.Notification.user_id == admin.id, models.Notification.is_read == False).count()
+                asyncio.create_task(manager.broadcast_to_user(admin.id, {
+                    "type": "new_notification",
+                    "message": f"New Caterer Application: {business_name}",
+                    "count": count
+                }))
     
     # Only send verification email if it's a new email/password user
+
     if not is_upgrade:
         try:
             from ..services.email import EmailService

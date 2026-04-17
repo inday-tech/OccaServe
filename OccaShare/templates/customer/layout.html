@@ -167,6 +167,13 @@
                     </a>
                 </li>
                 <li class="menu-divider"></li>
+                {% if not has_submitted_feedback %}
+                <li>
+                    <a href="#" onclick="document.getElementById('platformFeedbackModal').style.display='flex'; event.preventDefault();" style="color: var(--primary-color, #FF7B54); font-weight: 600;">
+                        <i class="fas fa-comment-dots"></i> <span>Leave Feedback</span>
+                    </a>
+                </li>
+                {% endif %}
                 <li>
                     <a href="#" class="logout-link" onclick="confirmLogout(event)">
                         <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
@@ -223,6 +230,109 @@
     {% if user %}
     {% include "shared/floating_chat.html" %}
     {% endif %}
+
+    <!-- Platform Feedback Modal -->
+    <div id="platformFeedbackModal" style="display:none; position:fixed; z-index:9999; inset:0; background:rgba(15,23,42,0.55); backdrop-filter:blur(6px); align-items:center; justify-content:center;">
+        <div style="background:white; border-radius:20px; padding:2rem; width:90%; max-width:480px; box-shadow:0 25px 60px rgba(0,0,0,0.2); position:relative;">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem;">
+                <div>
+                    <h3 style="margin:0; font-size:1.15rem; font-weight:800; color:#0f172a;"><i class="fas fa-comment-dots" style="color:#FF7B54; margin-right:8px;"></i>Share Your Experience</h3>
+                    <p style="margin:4px 0 0; font-size:0.82rem; color:#64748b;">Tell us about using OccaServe</p>
+                </div>
+                <button type="button" onclick="closeCustomerFeedbackModal()" style="background:none; border:none; cursor:pointer; font-size:1.4rem; color:#94a3b8; line-height:1;">&times;</button>
+            </div>
+            <form method="POST" action="/customer/platform-feedback" id="customerFeedbackForm">
+                <input type="hidden" name="rating" id="customerRatingInput" value="5">
+                <div style="margin-bottom:1.5rem;">
+                    <label style="font-size:0.82rem; font-weight:700; color:#475569; display:block; margin-bottom:0.75rem;">Your Rating</label>
+                    <div style="display:flex; gap:6px; align-items:center;" id="customerStarRow">
+                        <i class="fas fa-star cust-fb-star" data-val="1" style="font-size:2rem; cursor:pointer; color:#f59e0b; transition:transform 0.1s, color 0.1s;"></i>
+                        <i class="fas fa-star cust-fb-star" data-val="2" style="font-size:2rem; cursor:pointer; color:#f59e0b; transition:transform 0.1s, color 0.1s;"></i>
+                        <i class="fas fa-star cust-fb-star" data-val="3" style="font-size:2rem; cursor:pointer; color:#f59e0b; transition:transform 0.1s, color 0.1s;"></i>
+                        <i class="fas fa-star cust-fb-star" data-val="4" style="font-size:2rem; cursor:pointer; color:#f59e0b; transition:transform 0.1s, color 0.1s;"></i>
+                        <i class="fas fa-star cust-fb-star" data-val="5" style="font-size:2rem; cursor:pointer; color:#f59e0b; transition:transform 0.1s, color 0.1s;"></i>
+                    </div>
+                    <p id="customerRatingLabel" style="margin:6px 0 0; font-size:0.78rem; color:#64748b; font-weight:600;">5 stars — Excellent</p>
+                </div>
+                <div style="margin-bottom:1.5rem;">
+                    <label style="font-size:0.82rem; font-weight:700; color:#475569; display:block; margin-bottom:0.5rem;">Your Feedback <span style="color:#ef4444;">*</span></label>
+                    <textarea name="comment" rows="4" required minlength="10"
+                        placeholder="Share your experience with OccaServe..."
+                        style="width:100%; box-sizing:border-box; padding:0.85rem 1rem; border:1.5px solid #e2e8f0; border-radius:12px; font-family:inherit; font-size:0.9rem; color:#334155; resize:none; outline:none; transition:border-color 0.2s;"
+                        onfocus="this.style.borderColor='#FF7B54'" onblur="this.style.borderColor='#e2e8f0'"></textarea>
+                    <p style="margin:4px 0 0; font-size:0.75rem; color:#94a3b8;">Minimum 10 characters</p>
+                </div>
+                <div style="display:flex; gap:12px; margin-top:0.5rem;">
+                    <button type="button" onclick="snoozePlatformFeedback()" style="flex:1; padding:0.95rem; background:#f1f5f9; color:#475569; border:none; border-radius:12px; font-weight:700; font-size:0.95rem; cursor:pointer; transition:background 0.2s;">
+                        Maybe Later
+                    </button>
+                    <button type="submit" style="width:100%; padding:0.95rem; background:linear-gradient(135deg, #FF7B54, #e85d3a); color:white; border:none; border-radius:12px; font-weight:700; font-size:0.95rem; cursor:pointer; transition:opacity 0.2s;">
+                        <i class="fas fa-paper-plane" style="margin-right:6px;"></i>Submit Feedback
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const custRatingLabels = ['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent'];
+        const custStars = document.querySelectorAll('.cust-fb-star');
+        const custRatingInput = document.getElementById('customerRatingInput');
+        const custRatingLabel = document.getElementById('customerRatingLabel');
+
+        function setCustStars(val) {
+            custStars.forEach(s => {
+                const sv = parseInt(s.dataset.val);
+                s.style.color = sv <= val ? '#f59e0b' : '#e2e8f0';
+                s.style.transform = sv <= val ? 'scale(1.15)' : 'scale(1)';
+            });
+            custRatingInput.value = val;
+            custRatingLabel.textContent = val + ' star' + (val > 1 ? 's' : '') + ' — ' + custRatingLabels[val];
+        }
+
+        custStars.forEach(s => {
+            s.addEventListener('click', () => setCustStars(parseInt(s.dataset.val)));
+            s.addEventListener('mouseenter', () => {
+                custStars.forEach(st => {
+                    st.style.color = parseInt(st.dataset.val) <= parseInt(s.dataset.val) ? '#fbbf24' : '#e2e8f0';
+                });
+            });
+            s.addEventListener('mouseleave', () => setCustStars(parseInt(custRatingInput.value)));
+        });
+
+        function closeCustomerFeedbackModal() {
+            document.getElementById('platformFeedbackModal').style.display = 'none';
+        }
+
+        function snoozePlatformFeedback() {
+            const nextShow = Date.now() + (24 * 60 * 60 * 1000); // 24 hours
+            localStorage.setItem('feedbackNudgeSnooze', nextShow);
+            closeCustomerFeedbackModal();
+        }
+
+        document.getElementById('platformFeedbackModal').addEventListener('click', function(e) {
+            if (e.target === this) closeCustomerFeedbackModal();
+        });
+
+        // Proactive Nudge Logic
+        {% if not has_submitted_feedback %}
+        window.addEventListener('load', function() {
+            const snoozeUntil = localStorage.getItem('feedbackNudgeSnooze');
+            const now = Date.now();
+
+            if (!snoozeUntil || now > parseInt(snoozeUntil)) {
+                setTimeout(() => {
+                    const modal = document.getElementById('platformFeedbackModal');
+                    if (modal && modal.style.display === 'none') {
+                        modal.style.display = 'flex';
+                    }
+                }, 20000); // 20 seconds delay
+            }
+        });
+        {% endif %}
+
+        setCustStars(5);
+    </script>
 
     {% block extra_js %}{% endblock %}
 </body>

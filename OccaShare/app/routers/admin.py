@@ -12,6 +12,7 @@ from ..services.email import EmailService
 from datetime import datetime, timedelta
 from sqlalchemy import func
 import json, re
+from ..services.realtime import manager
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -483,6 +484,44 @@ def delete_caterer(caterer_id: int, db: Session = Depends(database.get_db), user
     db.commit()
     return RedirectResponse(url="/admin/caterers?success_msg=Caterer+deleted+successfully", status_code=status.HTTP_303_SEE_OTHER)
 
+@router.post("/api/caterers/{caterer_id}/edit")
+async def edit_caterer(
+    caterer_id: int,
+    business_name: str = Form(...),
+    full_name: str = Form(...),
+    email: str = Form(...),
+    phone: str = Form(...),
+    city: str = Form(...),
+    db: Session = Depends(database.get_db),
+    admin: models.User = Depends(admin_only)
+):
+    caterer = db.query(models.CatererProfile).get(caterer_id)
+    if not caterer:
+         return {"success": False, "message": "Caterer not found."}
+    
+    parts = full_name.strip().split(None, 1)
+    if len(parts) > 1:
+        first_name, last_name = parts[0], parts[1]
+    else:
+        first_name, last_name = parts[0], ""
+        
+    existing_user = db.query(models.User).filter(models.User.email == email.strip().lower(), models.User.id != caterer.user_id).first()
+    if existing_user:
+        return {"success": False, "message": "This email is already in use by another account."}
+        
+    caterer.business_name = business_name
+    caterer.city = city
+    caterer.contact_phone = phone
+    
+    if caterer.user:
+        caterer.user.first_name = first_name
+        caterer.user.last_name = last_name
+        caterer.user.email = email.strip().lower()
+        caterer.user.phone_number = phone
+        
+    db.commit()
+    return {"success": True, "message": "Caterer details updated successfully."}
+
 @router.get("/caterers/check-availability")
 async def check_caterer_availability(
     email: Optional[str] = None,
@@ -614,6 +653,43 @@ async def add_caterer(
     except Exception as e:
         db.rollback()
         return {"success": False, "message": f"Error creating account: {str(e)}"}
+
+@router.post("/api/customers/{customer_id}/edit")
+async def edit_customer(
+    customer_id: int,
+    first_name: str = Form(...),
+    last_name: str = Form(...),
+    email: str = Form(...),
+    phone: Optional[str] = Form(None),
+    address: Optional[str] = Form(None),
+    db: Session = Depends(database.get_db),
+    admin: models.User = Depends(admin_only)
+):
+    customer = db.query(models.User).filter(
+        models.User.id == customer_id,
+        models.User.role == "customer"
+    ).first()
+    if not customer:
+        return {"success": False, "message": "Customer not found."}
+
+    # Check email not taken by someone else
+    existing = db.query(models.User).filter(
+        models.User.email == email.strip().lower(),
+        models.User.id != customer_id
+    ).first()
+    if existing:
+        return {"success": False, "message": "This email is already in use by another account."}
+
+    customer.first_name = first_name.strip()
+    customer.last_name = last_name.strip()
+    customer.email = email.strip().lower()
+    if phone:
+        customer.phone_number = phone.strip()
+    if address:
+        customer.address = address.strip()
+
+    db.commit()
+    return {"success": True, "message": "Customer details updated successfully."}
 
 @router.post("/customers/{customer_id}/status")
 def toggle_customer_status(customer_id: int, db: Session = Depends(database.get_db), user: models.User = Depends(admin_only)):
@@ -832,47 +908,62 @@ async def flag_booking(
     db.commit()
     return RedirectResponse(url=f"/admin/bookings/{booking_id}/kyc?success_msg=Booking+flagged+successfully", status_code=303)
 
-@router.get("/reviews", response_class=HTMLResponse)
-async def admin_reviews(
+# Redirect old /reviews URL to the new /feedback page for backward compatibility
+@router.get("/reviews")
+async def redirect_reviews_to_feedback():
+    return RedirectResponse(url="/admin/feedback", status_code=301)
+
+@router.get("/feedback", response_class=HTMLResponse)
+async def admin_feedback(
     request: Request,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
-    reviews = db.query(models.Review).filter(models.Review.is_archived == False).order_by(models.Review.created_at.desc()).all()
-    return templates.TemplateResponse("admin/reviews.html", {
+    feedbacks = db.query(models.PlatformFeedback).filter(
+        models.PlatformFeedback.is_archived == False
+    ).order_by(models.PlatformFeedback.created_at.desc()).all()
+
+    total_count = len(feedbacks)
+    highlighted_count = sum(1 for f in feedbacks if f.is_highlighted)
+    high_rated_count = sum(1 for f in feedbacks if f.rating and f.rating >= 4)
+    avg_rating = round(sum(f.rating for f in feedbacks if f.rating) / total_count, 1) if total_count else 0.0
+
+    return templates.TemplateResponse("admin/feedback.html", {
         "request": request,
         "user": user,
-        "reviews": reviews,
-        "active_page": "reviews"
+        "feedbacks": feedbacks,
+        "total_count": total_count,
+        "highlighted_count": highlighted_count,
+        "high_rated_count": high_rated_count,
+        "avg_rating": avg_rating,
+        "active_page": "feedback"
     })
 
-@router.post("/reviews/{review_id}/highlight")
-async def toggle_review_highlight(
-    review_id: int,
+@router.post("/feedback/{feedback_id}/highlight")
+async def toggle_feedback_highlight(
+    feedback_id: int,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
-    review = db.query(models.Review).get(review_id)
-    if not review:
-        raise HTTPException(status_code=404, detail="Review not found")
-    
-    review.is_highlighted = not review.is_highlighted
+    fb = db.query(models.PlatformFeedback).get(feedback_id)
+    if not fb:
+        raise HTTPException(status_code=404, detail="Feedback not found")
+    fb.is_highlighted = not fb.is_highlighted
     db.commit()
-    return RedirectResponse(url="/admin/reviews?success_msg=Review+status+updated", status_code=303)
+    return RedirectResponse(url="/admin/feedback?success_msg=Feedback+updated", status_code=303)
 
-@router.post("/reviews/{review_id}/delete")
-async def delete_review(
-    review_id: int,
+@router.post("/feedback/{feedback_id}/archive")
+async def archive_feedback(
+    feedback_id: int,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
-    review = db.query(models.Review).get(review_id)
-    if not review:
-        raise HTTPException(status_code=404, detail="Review not found")
-    
-    db.delete(review)
+    fb = db.query(models.PlatformFeedback).get(feedback_id)
+    if not fb:
+        raise HTTPException(status_code=404, detail="Feedback not found")
+    fb.is_archived = True
     db.commit()
-    return RedirectResponse(url="/admin/reviews?success_msg=Review+deleted", status_code=303)
+    return RedirectResponse(url="/admin/feedback?success_msg=Feedback+archived", status_code=303)
 
 @router.get("/payments", response_class=HTMLResponse)
 async def admin_payments(
@@ -887,26 +978,17 @@ async def admin_payments(
     config = db.query(models.WebsiteConfig).first()
     commission_rate = (config.commission_rate / 100.0) if config and config.commission_rate else 0.10
 
+    total_gross = sum((b.total_amount or 0.0) for b in bookings)
+    total_commission = total_gross * commission_rate
+
     return templates.TemplateResponse("admin/payments.html", {
         "request": request,
         "user": user,
         "bookings": bookings,
         "commission_rate": commission_rate,
+        "total_gross": total_gross,
+        "total_commission": total_commission,
         "active_page": "payments"
-    })
-
-@router.get("/payouts", response_class=HTMLResponse)
-async def admin_payouts(
-    request: Request,
-    db: Session = Depends(database.get_db),
-    user: models.User = Depends(admin_only)
-):
-    payouts = db.query(models.Payout).filter(models.Payout.is_archived == False).order_by(models.Payout.created_at.desc()).all()
-    return templates.TemplateResponse("admin/payouts.html", {
-        "request": request,
-        "user": user,
-        "payouts": payouts,
-        "active_page": "payouts"
     })
 
 # --- REPORTS / ANALYTICS ---
@@ -1135,3 +1217,51 @@ async def delete_item_permanent(
     db.commit()
     
     return RedirectResponse(url="/admin/archives?success_msg=Item+deleted+permanently", status_code=303)
+
+
+# ─── Notifications ────────────────────────────────────────────────────────────
+
+@router.get("/notifications", response_class=HTMLResponse)
+async def admin_notifications(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(admin_only)
+):
+    notifications = db.query(models.Notification).filter(
+        models.Notification.user_id == user.id
+    ).order_by(models.Notification.created_at.desc()).all()
+    
+    return templates.TemplateResponse("admin/notifications.html", {
+        "request": request,
+        "user": user,
+        "active_page": "notifications",
+        "notifications": notifications
+    })
+
+@router.get("/api/notifications/unread")
+async def get_unread_notifications(
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(admin_only)
+):
+    count = db.query(models.Notification).filter(
+        models.Notification.user_id == user.id,
+        models.Notification.is_read == False
+    ).count()
+    return {"success": True, "unread_count": count}
+
+@router.post("/api/notifications/{notif_id}/mark-read")
+async def mark_notification_read(
+    notif_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(admin_only)
+):
+    notif = db.query(models.Notification).filter(
+        models.Notification.id == notif_id,
+        models.Notification.user_id == user.id
+    ).first()
+    
+    if notif and not notif.is_read:
+        notif.is_read = True
+        db.commit()
+        
+    return {"success": True}

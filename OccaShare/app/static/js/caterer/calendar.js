@@ -79,6 +79,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (window.ValidationManager) {
         window.manualBookingValidation = new window.ValidationManager('manualBookingForm', {
             'customer_name': { label: 'customer name', noSameParts: true },
+            'customer_email': { label: 'email address' },
             'customer_contact': { numericOnly: true, maxLength: 11 },
             'event_name': { label: 'event name' },
             'guest_count': { numericOnly: true, min: 1, max: 100000, autoStop: true },
@@ -86,6 +87,8 @@ document.addEventListener('DOMContentLoaded', function () {
             'event_date': { label: 'event date' }
         });
     }
+    
+    initCustomerDetection();
 
     // Proactive Numeric Blocking for Contact
     const contactInput = document.getElementById('manCustContact');
@@ -111,6 +114,14 @@ function attachPackageListeners() {
     // Listen to changes that affect price
     pkgSelect.addEventListener('change', () => {
         syncPackageMenus();
+        
+        const option = pkgSelect.options[pkgSelect.selectedIndex];
+        const minGuests = parseInt(option.dataset.min) || 1;
+        guestInput.min = minGuests;
+        if (!guestInput.value || parseInt(guestInput.value) < minGuests) {
+            guestInput.value = minGuests;
+        }
+        
         recalculateTotal();
     });
     guestInput.addEventListener('input', recalculateTotal);
@@ -389,6 +400,7 @@ async function submitManualEvent(e) {
 
     const payload = {
         customer_name: document.getElementById('manCustName').value.trim(),
+        customer_email: document.getElementById('manCustEmail').value.trim() || null,
         customer_contact: document.getElementById('manCustContact').value.trim() || null,
         event_name: document.getElementById('manEventName').value,
         event_type: eventType,
@@ -538,6 +550,61 @@ window.openManualBookingModal = openManualBookingModal;
 window.submitManualEvent = submitManualEvent;
 window.unblockSelectedDate = unblockSelectedDate;
 window.toggleOtherEventType = toggleOtherEventType;
+
+function initCustomerDetection() {
+    let timeoutId;
+    const nameInput = document.getElementById('manCustName');
+    const emailInput = document.getElementById('manCustEmail');
+    const contactInput = document.getElementById('manCustContact');
+    const badge = document.getElementById('userDetectionBadge');
+    
+    if (!nameInput || !emailInput || !badge) return;
+
+    function checkUser() {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(async () => {
+            const name = nameInput.value.trim();
+            const email = emailInput.value.trim();
+            
+            if (!name && !email) {
+                badge.style.display = 'none';
+                return;
+            }
+
+            try {
+                const response = await fetch('/caterer/api/check-customer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.exists) {
+                        badge.style.display = 'flex';
+                        badge.style.background = '#eff6ff';
+                        badge.style.color = '#3b82f6';
+                        badge.innerHTML = `<i class="fas fa-check-circle"></i> <span>Existing User: <b>${data.name}</b></span>`;
+                        
+                        // Mild auto-fill if empty
+                        if (!emailInput.value && data.email) emailInput.value = data.email;
+                        if (!contactInput.value && data.contact) contactInput.value = data.contact;
+                    } else {
+                        badge.style.display = 'flex';
+                        badge.style.background = '#f0fdf4';
+                        badge.style.color = '#16a34a';
+                        badge.innerHTML = `<i class="fas fa-user-plus"></i> <span style="font-weight: 500;">New Customer Registration</span>`;
+                    }
+                }
+            } catch (err) {
+                badge.style.display = 'none';
+            }
+        }, 600); // 600ms debounce
+    }
+
+    nameInput.addEventListener('input', checkUser);
+    emailInput.addEventListener('input', checkUser);
+}
 
 window.openSidebarEventModal = function(elem) {
     const ds = elem.dataset;

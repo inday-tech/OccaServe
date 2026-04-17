@@ -74,6 +74,40 @@
         padding: 0.7rem 1rem 0.7rem 2.5rem !important;
         font-size: 0.9rem !important;
     }
+
+    .btn-view-caterer {
+        background: #eff6ff;
+        color: #3b82f6;
+        border: 1px solid #bfdbfe;
+        border-radius: 0.5rem;
+        padding: 0.45rem 0.65rem;
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: background 0.15s;
+    }
+    .btn-view-caterer:hover { background: #dbeafe; }
+
+    .view-detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 0.6rem 0;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 0.875rem;
+    }
+    .view-detail-row:last-child { border-bottom: none; }
+    .view-detail-label { font-weight: 600; color: #64748b; min-width: 140px; }
+    .view-detail-value { color: #1e293b; text-align: right; flex: 1; }
+    .view-section-title {
+        font-size: 0.7rem;
+        font-weight: 800;
+        color: var(--primary-color);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin: 1rem 0 0.25rem;
+        padding-bottom: 0.25rem;
+        border-bottom: 1px solid #f1f5f9;
+    }
 </style>
 {% endblock %}
 
@@ -188,19 +222,37 @@
                     </td>
                     <td>
                         <div class="actions-cell-flex">
-                            <form action="/admin/caterers/{{ caterer.id }}/status?success_msg=Caterer+status+updated+successfully" method="POST"
-                                style="display: inline;"
-                                onsubmit="event.preventDefault(); window.showConfirm('Are you sure you want to {{ 'activate' if caterer.user and caterer.user.status == 'suspended' else 'suspend' }} this caterer account?', () => this.submit(), 'Account Status', 'Yes, Continue');">
-                                {% if caterer.user and caterer.user.status == 'suspended' %}
-                                <button type="submit" class="btn-status-toggle activate" title="Activate Account">
-                                    <i class="fas fa-user-check"></i>
-                                </button>
-                                {% else %}
-                                <button type="submit" class="btn-status-toggle suspend" title="Suspend Account">
-                                    <i class="fas fa-user-slash"></i>
-                                </button>
-                                {% endif %}
-                            </form>
+                            <!-- View Button -->
+                            <button type="button" class="btn-view-caterer" title="View Details"
+                                 data-id="{{ caterer.id }}"
+                                 data-business="{{ caterer.business_name | e }}"
+                                 data-owner="{{ caterer.user.first_name }} {{ caterer.user.last_name }}"
+                                 data-email="{{ caterer.user.email }}"
+                                 data-phone="{{ caterer.user.phone_number if caterer.user.phone_number else 'N/A' }}"
+                                 data-city="{{ caterer.city if caterer.city else 'N/A' }}"
+                                 data-status="{{ caterer.verification_status }}"
+                                 data-userstatus="{{ caterer.user.status }}"
+                                 data-verified="{{ 'Yes' if caterer.is_verified else 'No' }}"
+                                 data-joined="{{ caterer.created_at.strftime('%b %d, %Y') if caterer.created_at else 'N/A' }}"
+                                 data-minpax="{{ caterer.min_pax if caterer.min_pax else 'N/A' }}"
+                                 data-startprice="{{ '%.2f'|format(caterer.starting_price) if caterer.starting_price else 'N/A' }}"
+                                 onclick="openViewCatererModal(this)">
+                                <i class="fas fa-eye"></i>
+                            </button>
+
+                            <!-- Edit Button -->
+                            <button type="button" class="btn-status-toggle" title="Edit Account"
+                                data-id="{{ caterer.id }}"
+                                data-business="{{ caterer.business_name }}"
+                                data-first="{{ caterer.user.first_name }}"
+                                data-last="{{ caterer.user.last_name }}"
+                                data-email="{{ caterer.user.email }}"
+                                data-phone="{{ caterer.user.phone_number }}"
+                                data-city="{{ caterer.city }}"
+                                onclick="openEditCatererModal(this)"
+                                style="background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; cursor:pointer;">
+                                <i class="fas fa-edit"></i>
+                            </button>
 
                             <form action="/admin/caterers/{{ caterer.id }}/archive?success_msg=Caterer+archived+successfully" method="POST"
                                 style="display: inline;"
@@ -235,6 +287,27 @@
         <p style="color: #64748b; font-size: 0.95rem;">There are currently no caterer applications to display.</p>
     </div>
     {% endif %}
+</div>
+
+<!-- View Caterer Modal -->
+<div id="viewCatererModal" class="admin-modal-overlay">
+    <div class="admin-modal-card" style="max-width: 500px;">
+        <div class="modal-header-pro">
+            <div class="header-content">
+                <h3><i class="fas fa-store" style="color: var(--primary-color);"></i> Caterer Details</h3>
+            </div>
+            <button class="modal-close-btn" onclick="closeViewCatererModal()">&times;</button>
+        </div>
+        <div class="admin-form-pro">
+            <div id="viewCatererBody" style="padding: 0.25rem 0;"></div>
+            <div style="margin-top:1.5rem; display:flex; justify-content:flex-end;">
+                <button type="button" onclick="closeViewCatererModal()"
+                    style="background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; padding:0.7rem 1.5rem; border-radius:0.75rem; font-weight:600; cursor:pointer;">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Onboard Caterer Modal -->
@@ -312,6 +385,70 @@
                     style="background: white; color: #64748b; border: 1px solid #e2e8f0; padding: 0.8rem 1.5rem; border-radius: 0.75rem; font-weight: 600; cursor: pointer;"
                     onclick="closeAddCatererModal()">Cancel</button>
                 <button type="submit" class="btn-submit-pro" id="submitAddCaterer">Create Account</button>
+            </div>
+        </form>
+    </div>
+</div>
+<!-- Edit Caterer Modal -->
+<div id="editCatererModal" class="admin-modal-overlay">
+    <div class="admin-modal-card">
+        <div class="modal-header-pro">
+            <div class="header-content">
+                <h3><i class="fas fa-edit" style="color: var(--primary-color);"></i> Edit Caterer Profile</h3>
+            </div>
+            <button class="modal-close-btn" onclick="closeEditCatererModal()">&times;</button>
+        </div>
+
+        <form id="editCatererForm" class="admin-form-pro">
+            <input type="hidden" id="editCatererId" name="caterer_id">
+            <div class="error-drawer" id="editFormErrorDrawer" style="display: none;">
+                <div class="error-content-p">
+                    <i class="fas fa-exclamation-circle" style="margin-top: 5px;"></i>
+                    <ul class="error-list-p" id="editErrorList"></ul>
+                </div>
+            </div>
+
+            <div class="form-grid-pro">
+                <div class="form-group-pro" style="grid-column: span 2;">
+                    <label>Business Name</label>
+                    <div class="input-wrapper" style="position: relative;">
+                        <i class="fas fa-store" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                        <input type="text" name="business_name" id="editBusinessNameInput" placeholder="Business Name" required>
+                    </div>
+                </div>
+                <div class="form-group-pro" style="grid-column: span 2;">
+                    <label>Full Name (Owner)</label>
+                    <div class="input-wrapper" style="position: relative;">
+                        <i class="fas fa-user" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                        <input type="text" name="full_name" id="editFullNameInput" placeholder="First and Last Name" required>
+                    </div>
+                </div>
+                <div class="form-group-pro">
+                    <label>Email Address</label>
+                    <div class="input-wrapper" style="position: relative;">
+                        <i class="fas fa-envelope" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                        <input type="email" name="email" id="editEmailInput" placeholder="Email" required>
+                    </div>
+                </div>
+                <div class="form-group-pro">
+                    <label>Contact Phone</label>
+                    <div class="input-wrapper" style="position: relative;">
+                        <i class="fas fa-phone" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                        <input type="text" name="phone" id="editPhoneInput" placeholder="09123456789" required maxlength="11">
+                    </div>
+                </div>
+                <div class="form-group-pro" style="grid-column: span 2;">
+                    <label>City / Service Area</label>
+                    <div class="input-wrapper" style="position: relative;">
+                        <i class="fas fa-map-marker-alt" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                        <input type="text" name="city" id="editCityInput" placeholder="City" required>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 2.5rem; display: flex; justify-content: flex-end; gap: 1rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9;">
+                <button type="button" class="btn-cancel-pro" style="background: white; color: #64748b; border: 1px solid #e2e8f0; padding: 0.8rem 1.5rem; border-radius: 0.75rem; font-weight: 600; cursor: pointer;" onclick="closeEditCatererModal()">Cancel</button>
+                <button type="submit" class="btn-submit-pro" id="submitEditCaterer">Save Changes</button>
             </div>
         </form>
     </div>
@@ -618,6 +755,126 @@
             btn.innerHTML = 'Create Account';
         }
     });
+
+    function openEditCatererModal(btn) {
+        document.getElementById('editCatererId').value = btn.dataset.id;
+        document.getElementById('editBusinessNameInput').value = btn.dataset.business;
+        document.getElementById('editFullNameInput').value = btn.dataset.first + " " + btn.dataset.last;
+        document.getElementById('editEmailInput').value = btn.dataset.email;
+        document.getElementById('editPhoneInput').value = btn.dataset.phone;
+        document.getElementById('editCityInput').value = btn.dataset.city;
+        
+        const modal = document.getElementById('editCatererModal');
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeEditCatererModal() {
+        const modal = document.getElementById('editCatererModal');
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+        document.getElementById('editCatererForm').reset();
+    }
+
+    document.getElementById('editCatererForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const id = document.getElementById('editCatererId').value;
+        const btn = document.getElementById('submitEditCaterer');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Saving...';
+
+        const formData = new FormData(this);
+        try {
+            const response = await fetch(`/admin/api/caterers/${id}/edit`, {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                closeEditCatererModal();
+                window.location.href = "/admin/caterers?success_msg=" + encodeURIComponent(result.message);
+            } else {
+                if (window.showError) {
+                    window.showError(result.message || 'Failed to update caterer', 'Error');
+                } else {
+                    alert(result.message || 'Failed to update caterer');
+                }
+                btn.disabled = false;
+                btn.innerHTML = 'Save Changes';
+            }
+        } catch (error) {
+            if (window.showError) {
+                window.showError('System error.', 'Error');
+            }
+            btn.disabled = false;
+            btn.innerHTML = 'Save Changes';
+        }
+    });
+
+    // ─── View Caterer Modal ────────────────────────────────────────────────
+    function openViewCatererModal(btn) {
+        const vstatus = btn.dataset.status;
+        const vstyle = vstatus === 'Verified' ? 'color:#10b981;font-weight:700;'
+            : vstatus === 'Pending' ? 'color:#f59e0b;font-weight:700;'
+            : 'color:#ef4444;font-weight:700;';
+
+        const userStatus = btn.dataset.userstatus || 'active';
+        const userStatusStyle = userStatus === 'active' ? 'color:#10b981;font-weight:700;' : 'color:#ef4444;font-weight:700;';
+
+        const verifiedBadge = btn.dataset.verified === 'Yes'
+            ? '<span style="color:#10b981;font-weight:600;"><i class="fas fa-check-circle"></i> Yes</span>'
+            : '<span style="color:#ef4444;font-weight:600;"><i class="fas fa-times-circle"></i> No</span>';
+
+        const sections = [
+            {
+                title: 'Business Info',
+                rows: [
+                    ['Business Name', btn.dataset.business],
+                    ['City / Service Area', btn.dataset.city],
+                    ['Min. Guests (Pax)', btn.dataset.minpax],
+                    ['Starting Price', btn.dataset.startprice !== 'N/A' ? '₱' + parseFloat(btn.dataset.startprice).toLocaleString('en-PH', {minimumFractionDigits:2}) : 'N/A'],
+                ]
+            },
+            {
+                title: 'Owner Info',
+                rows: [
+                    ['Owner Name', btn.dataset.owner],
+                    ['Email Address', btn.dataset.email],
+                    ['Phone Number', btn.dataset.phone],
+                ]
+            },
+            {
+                title: 'Account Status',
+                rows: [
+                    ['Verification', `<span style="${vstyle}">${vstatus}</span>`],
+                    ['Account Status', `<span style="${userStatusStyle};text-transform:capitalize;">${userStatus}</span>`],
+                    ['Platform Verified', verifiedBadge],
+                    ['Date Joined', btn.dataset.joined],
+                ]
+            }
+        ];
+
+        let html = '';
+        sections.forEach(sec => {
+            html += `<div class="view-section-title">${sec.title}</div>`;
+            sec.rows.forEach(([label, value]) => {
+                html += `<div class="view-detail-row">
+                    <span class="view-detail-label">${label}</span>
+                    <span class="view-detail-value">${value}</span>
+                </div>`;
+            });
+        });
+
+        document.getElementById('viewCatererBody').innerHTML = html;
+        document.getElementById('viewCatererModal').classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeViewCatererModal() {
+        document.getElementById('viewCatererModal').classList.remove('active');
+        document.body.style.overflow = '';
+    }
 
     window.onload = initPagination;
 </script>

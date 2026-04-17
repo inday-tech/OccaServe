@@ -100,8 +100,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (window.ValidationManager) {
             console.log('[BookingsJS] Initializing ValidationManager for walkinBookingForm...');
             new window.ValidationManager('walkinBookingForm', {
-                'customer_name': { label: 'customer name' },
-                'customer_contact': { label: 'contact details' },
+                'customer_name': { label: 'customer name', noSameParts: true },
+                'customer_email': { label: 'email address' },
+                'customer_contact': { label: 'contact number', numericOnly: true, maxLength: 11 },
                 'event_name':    { label: 'event name' },
                 'event_type':    { label: 'event type' },
                 'event_date':    { label: 'event date' },
@@ -112,6 +113,9 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             console.warn('[BookingsJS] window.ValidationManager not found! Validation will be limited.');
         }
+
+        initWalkinDetection();
+        attachBookingPackageListeners();
 
         // 4. Pagination
         const allRows = Array.from(document.querySelectorAll('.bookings-list-table tbody tr.booking-row-item'));
@@ -251,12 +255,32 @@ function closeWalkinModal() {
 
 async function submitWalkinBooking(e) {
     e.preventDefault();
+    const form = e.target;
+
+    // 1. Strict HTML5 Check
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    // 2. Custom validation for guests minimum check
+    const guestInput = document.getElementById('bookGuests');
+    const pkgSelect = document.getElementById('bookPackage');
+    if (pkgSelect && guestInput && pkgSelect.value !== "") {
+        const option = pkgSelect.options[pkgSelect.selectedIndex];
+        const minGuests = parseInt(option.dataset.min) || 1;
+        if (parseInt(guestInput.value) < minGuests) {
+            window.showError(`Dapat hindi bababa sa ${minGuests} ang guests para sa package na ito.`);
+            guestInput.classList.add('is-invalid');
+            return;
+        }
+    }
+
     const btn = document.getElementById('walkinSubmitBtn');
     if (!btn) return;
     btn.disabled = true;
     btn.innerText = 'Creating...';
 
-    const form = e.target;
     const formData = new FormData(form);
     const data = {};
     for (let [key, value] of formData.entries()) { data[key] = value; }
@@ -266,6 +290,14 @@ async function submitWalkinBooking(e) {
     else data.package_id = parseInt(data.package_id);
     if (!data.event_time) data.event_time = null;
     data.menu_items = [];
+
+    // Additional Validation for Amount
+    if (isNaN(data.total_amount) || data.total_amount <= 0) {
+        window.showError('Invalid total amount.');
+        btn.disabled = false;
+        btn.innerText = 'Create Booking';
+        return;
+    }
 
     try {
         const res = await fetch('/caterer/api/bookings/manual', {
@@ -283,8 +315,10 @@ async function submitWalkinBooking(e) {
     } catch (err) {
         window.showError('An error occurred. Please try again.');
     } finally {
-        btn.disabled = false;
-        btn.innerText = 'Create Booking';
+        if(btn) {
+            btn.disabled = false;
+            btn.innerText = 'Create Booking';
+        }
     }
 }
 
@@ -867,3 +901,126 @@ window.confirmCompleteBooking = confirmCompleteBooking;
 window.updateBookingStage = updateBookingStage;
 window.requestNewProof = requestNewProof;
 window.confirmArchiveBooking = confirmArchiveBooking;
+
+function initWalkinDetection() {
+    let timeoutId;
+    const nameInput = document.getElementById('bookCustName');
+    const emailInput = document.getElementById('bookCustEmail');
+    const contactInput = document.getElementById('bookCustContact');
+    const badge = document.getElementById('bookUserDetectionBadge');
+    
+    if (!nameInput || !emailInput || !badge) return;
+
+    function checkUser() {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(async () => {
+            const name = nameInput.value.trim();
+            const email = emailInput.value.trim();
+            
+            if (!name && !email) {
+                badge.style.display = 'none';
+                return;
+            }
+
+            try {
+                const response = await fetch('/caterer/api/check-customer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.exists) {
+                        badge.style.display = 'flex';
+                        badge.style.background = '#eff6ff';
+                        badge.style.color = '#3b82f6';
+                        badge.innerHTML = `<i class="fas fa-check-circle"></i> <span>Existing User: <b>${data.name}</b></span>`;
+                        
+                        if (!emailInput.value && data.email) emailInput.value = data.email;
+                        if (!contactInput.value && data.contact) contactInput.value = data.contact;
+                    } else {
+                        badge.style.display = 'flex';
+                        badge.style.background = '#f0fdf4';
+                        badge.style.color = '#16a34a';
+                        badge.innerHTML = `<i class="fas fa-user-plus"></i> <span style="font-weight: 500;">New Customer</span>`;
+                    }
+                }
+            } catch (err) {
+                badge.style.display = 'none';
+            }
+        }, 600);
+    }
+
+    nameInput.addEventListener('input', checkUser);
+    emailInput.addEventListener('input', checkUser);
+}
+
+function attachBookingPackageListeners() {
+    const pkgSelect = document.getElementById('bookPackage');
+    const guestInput = document.getElementById('bookGuests');
+    const amountInput = document.getElementById('bookTotalAmount');
+    if (!pkgSelect || !guestInput || !amountInput) return;
+
+    pkgSelect.addEventListener('change', () => {
+        const option = pkgSelect.options[pkgSelect.selectedIndex];
+        const minGuests = parseInt(option.dataset.min) || 1;
+        guestInput.min = minGuests;
+        if (!guestInput.value || parseInt(guestInput.value) < minGuests) {
+            guestInput.value = minGuests;
+        }
+        recalculateBookingTotal();
+        guestInput.classList.remove('is-invalid');
+    });
+    
+    guestInput.addEventListener('input', () => {
+        const option = pkgSelect.options[pkgSelect.selectedIndex];
+        const minGuests = parseInt(option.dataset.min) || 1;
+        if (pkgSelect.value !== "" && parseInt(guestInput.value) < minGuests) {
+            guestInput.classList.add('is-invalid');
+            let feedback = guestInput.parentElement.querySelector('.invalid-feedback');
+            if (feedback) {
+                feedback.innerText = 'Min. guests needed: ' + minGuests;
+                feedback.style.display = 'block';
+            }
+        } else {
+            guestInput.classList.remove('is-invalid');
+            let feedback = guestInput.parentElement.querySelector('.invalid-feedback');
+            if (feedback) feedback.style.display = 'none';
+        }
+        recalculateBookingTotal();
+    });
+}
+
+function recalculateBookingTotal() {
+    const pkgSelect = document.getElementById('bookPackage');
+    const guestInput = document.getElementById('bookGuests');
+    const amountInput = document.getElementById('bookTotalAmount');
+    
+    if (!pkgSelect || !guestInput || !amountInput) return;
+
+    let total = 0;
+    const option = pkgSelect.options[pkgSelect.selectedIndex];
+    const price = parseFloat(option.dataset.price) || 0;
+    const unit = option.dataset.unit || 'fixed';
+    
+    let guests = parseInt(guestInput.value) || 0;
+
+    if (pkgSelect.value !== "") {
+        amountInput.readOnly = true;
+        amountInput.style.backgroundColor = '#f8fafc';
+        amountInput.style.cursor = 'not-allowed';
+        if (unit === 'per_guest') {
+            total = price * guests;
+        } else {
+            total = price;
+        }
+        amountInput.value = total > 0 ? total.toFixed(2) : '';
+        // Force ValidationManager to see the auto amount update
+        amountInput.dispatchEvent(new Event('input', { bubbles: true }));
+    } else {
+        amountInput.readOnly = false;
+        amountInput.style.backgroundColor = '';
+        amountInput.style.cursor = 'text';
+    }
+}

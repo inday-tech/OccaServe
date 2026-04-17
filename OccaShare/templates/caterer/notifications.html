@@ -29,7 +29,7 @@
                 All <span class="notif-tab-count">{{ total_notifications }}</span>
             </button>
             <button class="notif-tab" data-filter="unread" onclick="filterNotifications('unread', this)">
-                Unread <span class="notif-tab-count">{{ notifications|selectattr('is_read', 'false')|list|length }}</span>
+                Unread <span class="notif-tab-count">{{ notifications|selectattr('is_read', 'equalto', False)|list|length }}</span>
             </button>
             <button class="notif-tab" data-filter="Booking" onclick="filterNotifications('Booking', this)">
                 Bookings

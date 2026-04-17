@@ -507,29 +507,44 @@
 
         <div class="occ-modal-body">
             <form id="walkinBookingForm" onsubmit="submitWalkinBooking(event)">
-                <div class="occ-form-grid">
+                <div class="occ-form-grid" style="gap: 0.85rem;">
                     <!-- Customer Group -->
-                    <div class="occ-form-group full-width" style="margin-bottom:0.5rem;">
+                    <div class="occ-form-group full-width" style="margin-bottom:0.25rem;">
                         <span style="font-size:0.75rem; font-weight:800; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.05em;">Customer Details</span>
                     </div>
-                    <div class="occ-form-group">
-                        <label class="occ-form-label">Full Name *</label>
-                        <input type="text" name="customer_name" required class="occ-form-input" placeholder="e.g. Juan Dela Cruz">
-                        <div class="invalid-feedback"></div>
+                    
+                    <div class="occ-form-group full-width" style="margin-bottom: -0.25rem;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem;">
+                            <div>
+                                <label class="occ-form-label">Customer Name *</label>
+                                <input type="text" id="bookCustName" name="customer_name" class="occ-form-input" required placeholder="e.g. Juan Dela Cruz">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            <div>
+                                <label class="occ-form-label">Email Address *</label>
+                                <input type="email" id="bookCustEmail" name="customer_email" class="occ-form-input" required placeholder="e.g. email@example.com">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div id="bookUserDetectionBadge" style="display: none; align-items: center; gap: 0.35rem; font-size: 0.75rem; margin-top: 0.5rem; padding: 0.4rem 0.6rem; border-radius: 6px; width: fit-content; line-height: 1.2;">
+                            <i class="fas fa-info-circle"></i> <span id="bookUserDetectionText"></span>
+                        </div>
                     </div>
+
                     <div class="occ-form-group">
-                        <label class="occ-form-label">Contact / Email *</label>
-                        <input type="text" name="customer_contact" required class="occ-form-input" placeholder="Phone or Email">
+                        <label class="occ-form-label">Contact Number *</label>
+                        <input type="text" id="bookCustContact" name="customer_contact" class="occ-form-input" maxlength="11" required placeholder="e.g. 09123456789">
                         <div class="invalid-feedback"></div>
                     </div>
 
                     <!-- Event Group -->
-                    <div class="occ-form-group full-width" style="margin-top:1rem; margin-bottom:0.5rem; border-top:1px solid #f1f5f9; padding-top:1rem;">
+                    <div class="occ-form-group full-width" style="margin-top:0.75rem; margin-bottom:-0.25rem; border-top:1px solid #f1f5f9; padding-top:1rem;">
                         <span style="font-size:0.75rem; font-weight:800; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.05em;">Event Logistics</span>
                     </div>
+
                     <div class="occ-form-group">
                         <label class="occ-form-label">Event Name *</label>
-                        <input type="text" name="event_name" required class="occ-form-input" placeholder="e.g. 18th Birthday Party">
+                        <input type="text" id="bookEventName" name="event_name" required class="occ-form-input" placeholder="e.g. 18th Birthday Party">
                         <div class="invalid-feedback"></div>
                     </div>
                     <div class="occ-form-group">
@@ -544,6 +559,7 @@
                         </select>
                         <div class="invalid-feedback"></div>
                     </div>
+                    
                     <div class="occ-form-group">
                         <label class="occ-form-label">Event Date *</label>
                         <input type="date" name="event_date" id="walkin_event_date" required class="occ-form-input">
@@ -553,33 +569,37 @@
                         <label class="occ-form-label">Event Time</label>
                         <input type="time" name="event_time" class="occ-form-input">
                     </div>
-                    <div class="occ-form-group">
-                        <label class="occ-form-label">Guest Count *</label>
-                        <input type="number" name="guest_count" required min="1" class="occ-form-input">
-                        <div class="invalid-feedback"></div>
+
+                    <div class="occ-form-group full-width">
+                        <label class="occ-form-label">Venue Address</label>
+                        <textarea name="venue_address" rows="1" class="occ-form-input" style="height:auto; min-height:46px;" placeholder="Full location details"></textarea>
                     </div>
 
                     <!-- Menu Group -->
-                    <div class="occ-form-group full-width" style="margin-top:1rem; margin-bottom:0.5rem; border-top:1px solid #f1f5f9; padding-top:1rem;">
+                    <div class="occ-form-group full-width" style="margin-top:0.75rem; margin-bottom:-0.25rem; border-top:1px solid #f1f5f9; padding-top:1rem;">
                         <span style="font-size:0.75rem; font-weight:800; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.05em;">Menu & Pricing</span>
                     </div>
+                    
                     <div class="occ-form-group">
-                        <label class="occ-form-label">Select Package</label>
-                        <select name="package_id" class="filter-select-pro">
-                            <option value="">None / Custom</option>
-                            {% for pkg in packages %}
-                            <option value="{{ pkg.id }}">{{ pkg.name }} (₱{{ '{:,.2f}'.format(pkg.price) }})</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="occ-form-group">
-                        <label class="occ-form-label">Total Amount (₱) *</label>
-                        <input type="text" name="total_amount" required class="occ-form-input js-format-comma" placeholder="₱ 0.00">
+                        <label class="occ-form-label">Number of Guests *</label>
+                        <input type="number" id="bookGuests" name="guest_count" required min="1" max="100000" class="occ-form-input" placeholder="e.g. 100">
                         <div class="invalid-feedback"></div>
                     </div>
+
+                    <div class="occ-form-group">
+                        <label class="occ-form-label">Total Amount (₱) *</label>
+                        <input type="text" id="bookTotalAmount" name="total_amount" required class="occ-form-input" placeholder="₱ 0.00">
+                        <div class="invalid-feedback"></div>
+                    </div>
+
                     <div class="occ-form-group full-width">
-                        <label class="occ-form-label">Venue Address</label>
-                        <textarea name="venue_address" rows="2" class="occ-form-input" style="height:auto; min-height:80px;" placeholder="Full location details"></textarea>
+                        <label class="occ-form-label">Select Package (Optional)</label>
+                        <select id="bookPackage" name="package_id" class="filter-select-pro">
+                            <option value="" data-price="0" data-unit="fixed" data-min="1">None / Custom</option>
+                            {% for pkg in packages %}
+                            <option value="{{ pkg.id }}" data-price="{{ pkg.price or 0 }}" data-unit="{{ pkg.price_unit or 'per_guest' }}" data-min="{{ pkg.min_guests or 1 }}">{{ pkg.name }} (₱{{ '{:,.2f}'.format(pkg.price) }}{{ '/pax' if pkg.price_unit == 'per_guest' else '' }})</option>
+                            {% endfor %}
+                        </select>
                     </div>
                 </div>
             </form>

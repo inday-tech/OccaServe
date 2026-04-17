@@ -12,14 +12,6 @@
     <p>Monitor your platform revenue and track historical commission inflows from all catering transactions.</p>
 </div>
 
-{% set total_gross = 0 %}
-{% set total_commission = 0 %}
-{% for b in bookings %}
-{% set total_gross = total_gross + (b.total_amount or 0) %}
-{% set total_commission = total_commission + ((b.total_amount or 0) * (commission_rate if commission_rate is defined
-else 0.10)) %}
-{% endfor %}
-
 <div class="payments-summary-grid">
     <div class="summary-card-premium gradient">
         <span class="summary-card-label">Total Commission Earned</span>
@@ -27,8 +19,7 @@ else 0.10)) %}
     </div>
     <div class="summary-card-premium standard">
         <span class="summary-card-label">Gross Transaction Volume</span>
-        <span class="summary-card-value" style="color: #64748b; font-size: 1.5rem;">₱{{ "{:,.2f}".format(total_gross)
-            }}</span>
+        <span class="summary-card-value" style="color: #64748b; font-size: 1.5rem;">₱{{ "{:,.2f}".format(total_gross) }}</span>
     </div>
     <div class="summary-card-premium standard">
         <span class="summary-card-label">Total Successful Bookings</span>

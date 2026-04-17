@@ -4,6 +4,261 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/admin/customers.css') }}">
+<style>
+    /* ── Inline Modal Overlay (cannot be overridden by external CSS) ── */
+    .cust-modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.55);
+        backdrop-filter: blur(4px);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+    .cust-modal-overlay.open {
+        display: flex;
+        animation: custFadeIn 0.22s ease;
+    }
+    @keyframes custFadeIn {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
+    .cust-modal-card {
+        background: #fff;
+        border-radius: 1.25rem;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+        width: 100%;
+        max-width: 520px;
+        max-height: 90vh;
+        overflow-y: auto;
+        animation: custSlideUp 0.22s ease;
+    }
+    @keyframes custSlideUp {
+        from { transform: translateY(24px); opacity: 0; }
+        to   { transform: translateY(0);   opacity: 1; }
+    }
+    .cust-modal-header {
+        padding: 1.25rem 1.5rem 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: sticky;
+        top: 0;
+        background: #fff;
+        z-index: 1;
+    }
+    .cust-modal-header h3 {
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: #1e293b;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .cust-modal-body {
+        padding: 1.25rem 1.5rem;
+    }
+    .cust-close-btn {
+        background: #f1f5f9;
+        border: none;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        font-size: 1.1rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #64748b;
+        transition: background 0.15s;
+        flex-shrink: 0;
+    }
+    .cust-close-btn:hover { background: #e2e8f0; }
+    .view-detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 0.6rem 0;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 0.875rem;
+    }
+    .view-detail-row:last-child { border-bottom: none; }
+    .view-detail-label { font-weight: 600; color: #64748b; min-width: 130px; flex-shrink:0; }
+    .view-detail-value { color: #1e293b; text-align: right; }
+    .cust-form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.85rem;
+    }
+    .cust-form-group {
+        margin-bottom: 0;
+    }
+    .cust-form-group.full { grid-column: span 2; }
+    .cust-form-group label {
+        display: block;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.3rem;
+    }
+    .cust-input-wrap {
+        position: relative;
+    }
+    .cust-input-wrap i {
+        position: absolute;
+        left: 0.85rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+        font-size: 0.85rem;
+    }
+    .cust-input-wrap input {
+        width: 100%;
+        padding: 0.65rem 0.85rem 0.65rem 2.3rem;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 0.6rem;
+        font-size: 0.875rem;
+        outline: none;
+        box-sizing: border-box;
+        transition: border-color 0.2s;
+    }
+    .cust-input-wrap input:focus { border-color: var(--primary-color, #f97316); }
+    .cust-modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        margin-top: 1.25rem;
+        padding-top: 1rem;
+        border-top: 1px solid #f1f5f9;
+    }
+    .cust-btn-cancel {
+        background: #f8fafc;
+        color: #64748b;
+        border: 1px solid #e2e8f0;
+        padding: 0.7rem 1.3rem;
+        border-radius: 0.65rem;
+        font-weight: 600;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+    .cust-btn-cancel:hover { background: #f1f5f9; }
+    .cust-btn-save {
+        background: var(--primary-color, #f97316);
+        color: #fff;
+        border: none;
+        padding: 0.7rem 1.5rem;
+        border-radius: 0.65rem;
+        font-weight: 700;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: filter 0.15s;
+    }
+    .cust-btn-save:hover:not(:disabled) { filter: brightness(1.08); }
+    .cust-btn-save:disabled { opacity: 0.7; cursor: not-allowed; }
+    .btn-view-customer {
+        background: #eff6ff;
+        color: #3b82f6;
+        border: 1px solid #bfdbfe;
+        border-radius: 0.5rem;
+        padding: 0.4rem 0.6rem;
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: background 0.15s;
+    }
+    .btn-view-customer:hover { background: #dbeafe; }
+    .btn-edit-customer {
+        background: #f1f5f9;
+        color: #64748b;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        padding: 0.4rem 0.6rem;
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: background 0.15s;
+    }
+    .btn-edit-customer:hover { background: #e2e8f0; }
+
+    /* ── Enhanced Search Box ── */
+    .search-box-enhanced {
+        position: relative;
+        display: flex;
+        align-items: center;
+        min-width: 280px;
+    }
+    .search-box-enhanced .search-icon {
+        position: absolute;
+        left: 0.9rem;
+        color: #94a3b8;
+        font-size: 0.85rem;
+        pointer-events: none;
+        transition: color 0.2s;
+    }
+    .search-box-enhanced input {
+        width: 100%;
+        padding: 0.65rem 2.5rem 0.65rem 2.5rem;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 0.75rem;
+        font-size: 0.875rem;
+        outline: none;
+        background: #f8fafc;
+        transition: all 0.2s ease;
+        color: #1e293b;
+    }
+    .search-box-enhanced input:focus {
+        border-color: var(--primary-color, #f97316);
+        background: #fff;
+        box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.08);
+    }
+    .search-box-enhanced input:focus + .search-icon,
+    .search-box-enhanced:focus-within .search-icon { color: var(--primary-color, #f97316); }
+    .search-clear-btn {
+        position: absolute;
+        right: 0.75rem;
+        background: #e2e8f0;
+        border: none;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        font-size: 0.7rem;
+        cursor: pointer;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        color: #64748b;
+        transition: background 0.15s;
+        line-height: 1;
+    }
+    .search-clear-btn:hover { background: #cbd5e1; }
+    .search-clear-btn.visible { display: flex; }
+    .search-result-count {
+        font-size: 0.75rem;
+        color: #94a3b8;
+        margin-top: 0.4rem;
+        text-align: right;
+        min-height: 1rem;
+        transition: all 0.2s;
+    }
+    .no-results-row td {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #94a3b8;
+        font-size: 0.9rem;
+    }
+    mark.search-highlight {
+        background: rgba(249, 115, 22, 0.15);
+        color: var(--primary-color, #f97316);
+        border-radius: 2px;
+        padding: 0 1px;
+        font-weight: 700;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -15,10 +270,16 @@
 <div class="customers-management-wrapper">
     <div class="management-header-flex">
         <h3 class="management-title"><i class="fas fa-user-friends"></i> Platform Users</h3>
-        <div class="search-box-pro">
-            <i class="fas fa-search"></i>
-            <input type="text" id="customerSearchInput" placeholder="Search by name or email..."
-                onkeyup="filterCustomers()">
+        <div style="display:flex; flex-direction:column; align-items:flex-end;">
+            <div class="search-box-enhanced">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" id="customerSearchInput"
+                    placeholder="Search by name, email, or phone..."
+                    oninput="filterCustomers(this.value)"
+                    autocomplete="off">
+                <button class="search-clear-btn" id="searchClearBtn" onclick="clearSearch()" title="Clear">✕</button>
+            </div>
+            <div class="search-result-count" id="searchResultCount"></div>
         </div>
     </div>
 
@@ -39,6 +300,9 @@
                 <tr class="customer-row">
                     <td>
                         <div class="customer-name-identity">{{ customer.first_name }} {{ customer.last_name }}</div>
+                        {% if customer.phone_number %}
+                        <div style="font-size:0.75rem; color:#94a3b8;">{{ customer.phone_number }}</div>
+                        {% endif %}
                     </td>
                     <td><span style="font-size: 0.9rem; color: #64748b;">{{ customer.email }}</span></td>
                     <td class="customer-join-date">{{ customer.created_at.strftime('%b %d, %Y') if customer.created_at
@@ -56,19 +320,34 @@
                     </td>
                     <td>
                         <div class="actions-cell-flex">
-                            <form action="/admin/customers/{{ customer.id }}/status" method="POST"
-                                style="display: inline;">
-                                {% if customer.status == 'suspended' %}
-                                <button type="submit" class="btn-status-toggle activate" title="Restore Account">
-                                    <i class="fas fa-user-check"></i>
-                                </button>
-                                {% else %}
-                                <button type="submit" class="btn-status-toggle suspend" title="Suspend Account">
-                                    <i class="fas fa-user-slash"></i>
-                                </button>
-                                {% endif %}
-                            </form>
+                            <!-- View Button -->
+                            <button type="button" class="btn-view-customer" title="View Details"
+                                data-id="{{ customer.id }}"
+                                data-name="{{ customer.first_name }} {{ customer.last_name }}"
+                                data-email="{{ customer.email }}"
+                                data-phone="{{ customer.phone_number or 'N/A' }}"
+                                data-address="{{ customer.address or 'N/A' }}"
+                                data-status="{{ customer.status }}"
+                                data-verified="{{ 'Yes' if customer.is_verified else 'No' }}"
+                                data-kyc="{{ 'Complete' if customer.is_kyc_complete else 'Incomplete' }}"
+                                data-joined="{{ customer.created_at.strftime('%b %d, %Y') if customer.created_at else 'N/A' }}"
+                                onclick="openViewCustomerModal(this)">
+                                <i class="fas fa-eye"></i>
+                            </button>
 
+                            <!-- Edit Button -->
+                            <button type="button" class="btn-edit-customer" title="Edit Customer"
+                                data-id="{{ customer.id }}"
+                                data-first="{{ customer.first_name }}"
+                                data-last="{{ customer.last_name }}"
+                                data-email="{{ customer.email }}"
+                                data-phone="{{ customer.phone_number or '' }}"
+                                data-address="{{ customer.address or '' }}"
+                                onclick="openEditCustomerModal(this)">
+                                <i class="fas fa-edit"></i>
+                            </button>
+
+                            <!-- Archive Button -->
                             <form action="/admin/customers/{{ customer.id }}/archive" method="POST"
                                 style="display: inline;"
                                 onsubmit="event.preventDefault(); showConfirm('Are you sure you want to archive this customer?', () => this.submit(), 'Confirm Archive', 'Yes, Archive');">
@@ -105,6 +384,76 @@
     </div>
     {% endif %}
 </div>
+
+<!-- ─── View Customer Modal ─────────────────────────────────────── -->
+<div id="viewCustomerModal" class="cust-modal-overlay" onclick="handleOverlayClick(event, 'viewCustomerModal')">
+    <div class="cust-modal-card">
+        <div class="cust-modal-header">
+            <h3><i class="fas fa-user-circle" style="color:var(--primary-color,#f97316);"></i> Customer Details</h3>
+            <button class="cust-close-btn" onclick="closeViewCustomerModal()">&times;</button>
+        </div>
+        <div class="cust-modal-body">
+            <div id="viewCustomerBody"></div>
+            <div style="margin-top:1.25rem; display:flex; justify-content:flex-end;">
+                <button class="cust-btn-cancel" onclick="closeViewCustomerModal()">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── Edit Customer Modal ─────────────────────────────────────── -->
+<div id="editCustomerModal" class="cust-modal-overlay" onclick="handleOverlayClick(event, 'editCustomerModal')">
+    <div class="cust-modal-card">
+        <div class="cust-modal-header">
+            <h3><i class="fas fa-user-edit" style="color:var(--primary-color,#f97316);"></i> Edit Customer</h3>
+            <button class="cust-close-btn" onclick="closeEditCustomerModal()">&times;</button>
+        </div>
+        <form id="editCustomerForm" class="cust-modal-body">
+            <input type="hidden" id="editCustomerId">
+            <div class="cust-form-grid">
+                <div class="cust-form-group">
+                    <label>First Name</label>
+                    <div class="cust-input-wrap">
+                        <i class="fas fa-user"></i>
+                        <input type="text" id="editCustFirst" name="first_name" required placeholder="First Name">
+                    </div>
+                </div>
+                <div class="cust-form-group">
+                    <label>Last Name</label>
+                    <div class="cust-input-wrap">
+                        <i class="fas fa-user"></i>
+                        <input type="text" id="editCustLast" name="last_name" required placeholder="Last Name">
+                    </div>
+                </div>
+                <div class="cust-form-group full">
+                    <label>Email Address</label>
+                    <div class="cust-input-wrap">
+                        <i class="fas fa-envelope"></i>
+                        <input type="email" id="editCustEmail" name="email" required placeholder="email@example.com">
+                    </div>
+                </div>
+                <div class="cust-form-group full">
+                    <label>Phone Number</label>
+                    <div class="cust-input-wrap">
+                        <i class="fas fa-phone"></i>
+                        <input type="text" id="editCustPhone" name="phone" placeholder="09123456789" maxlength="11">
+                    </div>
+                </div>
+                <div class="cust-form-group full">
+                    <label>Address</label>
+                    <div class="cust-input-wrap">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <input type="text" id="editCustAddress" name="address" placeholder="Full address">
+                    </div>
+                </div>
+            </div>
+            <div class="cust-modal-footer">
+                <button type="button" class="cust-btn-cancel" onclick="closeEditCustomerModal()">Cancel</button>
+                <button type="submit" class="cust-btn-save" id="submitEditCustomer">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -119,6 +468,7 @@
         if (!table) return;
 
         const rows = Array.from(table.querySelectorAll('tbody tr'));
+        allRows = rows;       // store all rows for search
         filteredRows = rows;
         updateTableDisplay();
     }
@@ -195,21 +545,138 @@
         info.innerText = `Showing ${start} to ${end} of ${totalEntries} entries`;
     }
 
-    function filterCustomers() {
-        const input = document.getElementById('customerSearchInput');
-        const filter = input.value.toLowerCase();
-        const table = document.getElementById('customersTable');
-        const rows = Array.from(table.querySelectorAll('tbody tr'));
+    // All rows reference (never paginated) stored after init
+    let allRows = [];
 
-        filteredRows = rows.filter(row => {
-            const textContent = row.textContent.toLowerCase();
-            return textContent.includes(filter);
-        });
+    function filterCustomers(query) {
+        const filter = (query || '').trim().toLowerCase();
+        const clearBtn = document.getElementById('searchClearBtn');
+        const countEl  = document.getElementById('searchResultCount');
+
+        // Show/hide clear button
+        if (clearBtn) clearBtn.classList.toggle('visible', filter.length > 0);
+
+        // Filter across ALL rows
+        filteredRows = allRows.filter(row => row.textContent.toLowerCase().includes(filter));
+
+        // Update result count display
+        if (countEl) {
+            if (filter) {
+                const total = allRows.length;
+                const found = filteredRows.length;
+                countEl.textContent = found === 0
+                    ? 'No results found'
+                    : `Showing ${found} of ${total} customers`;
+                countEl.style.color = found === 0 ? '#ef4444' : '#94a3b8';
+            } else {
+                countEl.textContent = '';
+            }
+        }
 
         currentPage = 1;
         updateTableDisplay();
     }
 
+    function clearSearch() {
+        const input = document.getElementById('customerSearchInput');
+        if (input) { input.value = ''; input.focus(); }
+        filterCustomers('');
+    }
+
+    // ─── View Customer Modal ───────────────────────────────────────────────
+    function openViewCustomerModal(btn) {
+        const statusColor = btn.dataset.status === 'active' ? '#10b981' : '#ef4444';
+        const verifiedBadge = btn.dataset.verified === 'Yes'
+            ? '<span style="color:#10b981;font-weight:600;"><i class="fas fa-check-circle"></i> Yes</span>'
+            : '<span style="color:#ef4444;font-weight:600;"><i class="fas fa-times-circle"></i> No</span>';
+
+        const rows = [
+            ['Full Name', btn.dataset.name],
+            ['Email Address', btn.dataset.email],
+            ['Phone Number', btn.dataset.phone],
+            ['Address', btn.dataset.address],
+            ['Account Status', `<span style="color:${statusColor};font-weight:600;text-transform:capitalize;">${btn.dataset.status}</span>`],
+            ['Email Verified', verifiedBadge],
+            ['KYC Status', btn.dataset.kyc],
+            ['Date Joined', btn.dataset.joined],
+        ];
+
+        document.getElementById('viewCustomerBody').innerHTML = rows.map(([label, value]) => `
+            <div class="view-detail-row">
+                <span class="view-detail-label">${label}</span>
+                <span class="view-detail-value">${value}</span>
+            </div>
+        `).join('');
+
+        document.getElementById('viewCustomerModal').classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeViewCustomerModal() {
+        document.getElementById('viewCustomerModal').classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    // ─── Edit Customer Modal ───────────────────────────────────────────────
+    function openEditCustomerModal(btn) {
+        document.getElementById('editCustomerId').value = btn.dataset.id;
+        document.getElementById('editCustFirst').value = btn.dataset.first;
+        document.getElementById('editCustLast').value = btn.dataset.last;
+        document.getElementById('editCustEmail').value = btn.dataset.email;
+        document.getElementById('editCustPhone').value = btn.dataset.phone;
+        document.getElementById('editCustAddress').value = btn.dataset.address;
+
+        document.getElementById('editCustomerModal').classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeEditCustomerModal() {
+        document.getElementById('editCustomerModal').classList.remove('open');
+        document.body.style.overflow = '';
+        document.getElementById('editCustomerForm').reset();
+    }
+
+    function handleOverlayClick(e, modalId) {
+        if (e.target.id === modalId) {
+            document.getElementById(modalId).classList.remove('open');
+            document.body.style.overflow = '';
+        }
+    }
+
+    document.getElementById('editCustomerForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const id = document.getElementById('editCustomerId').value;
+        const btn = document.getElementById('submitEditCustomer');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Saving...';
+
+        const formData = new FormData(this);
+        try {
+            const response = await fetch(`/admin/api/customers/${id}/edit`, {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                closeEditCustomerModal();
+                window.location.href = '/admin/customers?success_msg=' + encodeURIComponent(result.message);
+            } else {
+                if (window.showError) {
+                    window.showError(result.message || 'Failed to update customer.', 'Error');
+                } else {
+                    alert(result.message || 'Failed to update customer.');
+                }
+                btn.disabled = false;
+                btn.innerHTML = 'Save Changes';
+            }
+        } catch (err) {
+            if (window.showError) window.showError('System error. Please try again.', 'Error');
+            btn.disabled = false;
+            btn.innerHTML = 'Save Changes';
+        }
+    });
+
     window.onload = initPagination;
 </script>
-{% endblock %}
+{% endblock %}

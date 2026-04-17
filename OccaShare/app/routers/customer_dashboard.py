@@ -126,6 +126,8 @@ async def customer_dashboard(
                 }
     conversations_list = list(conversations_dict.values())[:4]
 
+    has_submitted_feedback = db.query(models.PlatformFeedback).filter_by(user_id=user.id).first() is not None
+
     return templates.TemplateResponse("customer/dashboard.html", {
         "request": request,
         "user": user,
@@ -136,7 +138,8 @@ async def customer_dashboard(
         "total_pages": total_pages,
         "active_page": "overview",
         "conversations": conversations_list,
-        "client_id": f"dashboard_{user.id}"
+        "client_id": f"dashboard_{user.id}",
+        "has_submitted_feedback": has_submitted_feedback
     })
 
 @router.get("/feedback/{booking_id}", response_class=HTMLResponse)
@@ -161,6 +164,43 @@ async def feedback_page(
         "user": user,
         "booking": booking
     })
+
+@router.post("/platform-feedback")
+async def submit_platform_feedback(
+    rating: int = Form(...),
+    comment: str = Form(...),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(customer_only)
+):
+    if rating < 1 or rating > 5:
+        return RedirectResponse(url="/customer/dashboard?error_msg=Invalid+rating", status_code=303)
+    if not comment or len(comment.strip()) < 10:
+        return RedirectResponse(url="/customer/dashboard?error_msg=Feedback+too+short", status_code=303)
+
+    fb = models.PlatformFeedback(
+        user_id=user.id,
+        rating=rating,
+        comment=comment.strip(),
+        role="customer"
+    )
+    db.add(fb)
+    db.commit()
+    db.refresh(fb)
+
+    # Broadcast real-time update to all connected admins
+    from ..services.realtime import manager
+    await manager.broadcast_to_role("admin", {
+        "type": "new_platform_feedback",
+        "id": fb.id,
+        "rating": fb.rating,
+        "comment": fb.comment,
+        "role": "customer",
+        "user_name": f"{user.first_name or ''} {user.last_name or ''}".strip() or user.email,
+        "user_email": user.email,
+        "created_at": fb.created_at.strftime('%b %d, %Y') if fb.created_at else 'Just now'
+    })
+
+    return RedirectResponse(url="/customer/dashboard?success_msg=Thank+you+for+your+feedback!", status_code=303)
 
 @router.get("/bookings", response_class=HTMLResponse)
 async def customer_bookings(

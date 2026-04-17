@@ -220,21 +220,44 @@
             <div class="occ-modal-body">
                 <div id="manualBookingError" class="error-drawer"></div>
                 
-                <div class="occ-form-grid">
-                    <div class="occ-form-group">
-                        <label class="occ-form-label">Customer Name *</label>
-                        <input type="text" id="manCustName" name="customer_name" class="occ-form-input" required placeholder="e.g. John Doe">
-                        <div class="invalid-feedback"></div>
+                <div class="occ-form-grid" style="gap: 0.85rem;">
+                    <!-- Customer Group -->
+                    <div class="occ-form-group full-width" style="margin-bottom:0.25rem;">
+                        <span style="font-size:0.75rem; font-weight:800; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.05em;">Customer Details</span>
                     </div>
+                    
+                    <div class="occ-form-group full-width" style="margin-bottom: -0.25rem;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem;">
+                            <div>
+                                <label class="occ-form-label">Customer Name *</label>
+                                <input type="text" id="manCustName" name="customer_name" class="occ-form-input" required placeholder="e.g. John Doe">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            <div>
+                                <label class="occ-form-label">Email Address *</label>
+                                <input type="email" id="manCustEmail" name="customer_email" class="occ-form-input" required placeholder="e.g. email@example.com">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div id="userDetectionBadge" style="display: none; align-items: center; gap: 0.35rem; font-size: 0.75rem; margin-top: 0.5rem; padding: 0.4rem 0.6rem; border-radius: 6px; width: fit-content; line-height: 1.2;">
+                            <i class="fas fa-info-circle"></i> <span id="userDetectionText"></span>
+                        </div>
+                    </div>
+
                     <div class="occ-form-group">
-                        <label class="occ-form-label">Contact Number</label>
-                        <input type="text" id="manCustContact" name="customer_contact" class="occ-form-input" maxlength="11" placeholder="e.g. 09123456789">
+                        <label class="occ-form-label">Contact Number *</label>
+                        <input type="text" id="manCustContact" name="customer_contact" class="occ-form-input" maxlength="11" required placeholder="e.g. 09123456789">
                         <div class="invalid-feedback"></div>
                     </div>
 
-                    <div class="occ-form-group full-width">
+                    <!-- Event Group -->
+                    <div class="occ-form-group full-width" style="margin-top:0.75rem; margin-bottom:-0.25rem; border-top:1px solid #f1f5f9; padding-top:1rem;">
+                        <span style="font-size:0.75rem; font-weight:800; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.05em;">Event Logistics</span>
+                    </div>
+
+                    <div class="occ-form-group">
                         <label class="occ-form-label">Event Name *</label>
-                        <input type="text" id="manEventName" name="event_name" class="occ-form-input" required placeholder="e.g. Garcia Wedding Anniversary">
+                        <input type="text" id="manEventName" name="event_name" class="occ-form-input" required placeholder="e.g. Garcia Wedding">
                         <div class="invalid-feedback"></div>
                     </div>
 
@@ -274,6 +297,11 @@
                         <label class="occ-form-label">Venue Address</label>
                         <input type="text" id="manVenue" name="venue_address" class="occ-form-input" placeholder="e.g. 123 Sky Garden, Metro Manila">
                         <div class="invalid-feedback"></div>
+                    </div>
+
+                    <!-- Menu Group -->
+                    <div class="occ-form-group full-width" style="margin-top:0.75rem; margin-bottom:-0.25rem; border-top:1px solid #f1f5f9; padding-top:1rem;">
+                        <span style="font-size:0.75rem; font-weight:800; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.05em;">Menu & Pricing</span>
                     </div>
 
                     <div class="occ-form-group full-width">
