@@ -22,20 +22,20 @@
     .kyc-header-icon {
         display: flex;
         justify-content: center;
-        margin-bottom: 2rem;
+        margin-bottom: 1.5rem;
     }
 
     .shield-icon-container {
-        width: 70px;
-        height: 70px;
+        width: 60px;
+        height: 60px;
         background: var(--kyc-accent);
-        border-radius: 18px;
+        border-radius: 14px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 2rem;
+        font-size: 1.5rem;
         color: white;
-        box-shadow: 0 10px 25px rgba(249, 115, 22, 0.25);
+        box-shadow: 0 10px 25px rgba(249, 115, 22, 0.2), 0 4px 10px rgba(0,0,0,0.05);
         transform: rotate(-10deg);
         transition: all 0.3s ease;
     }
@@ -45,8 +45,8 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-top: 2rem;
-        padding-top: 2rem;
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
         border-top: 1px solid #f1f5f9;
         background: white;
     }
@@ -61,25 +61,25 @@
 
     /* Checkout Container & Card Layout */
     .checkout-container {
-        max-width: 1000px;
-        margin: 2rem auto;
+        max-width: 900px;
+        margin: 1.5rem auto;
         padding: 0 1rem;
     }
 
     .checkout-grid {
         display: grid;
         grid-template-columns: 1fr 350px;
-        gap: 2rem;
+        gap: 1.5rem;
         align-items: start;
     }
 
     .checkout-card {
         background: white;
-        border-radius: 1.5rem;
+        border-radius: 1.25rem;
         border: 1px solid #e2e8f0;
-        padding: 3rem;
+        padding: 2.25rem;
         box-shadow: 0 10px 30px rgba(0,0,0,0.04);
-        margin-bottom: 2rem;
+        margin-bottom: 1.5rem;
         position: relative;
     }
 
@@ -88,8 +88,8 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        gap: 2.5rem;
-        margin-bottom: 3.5rem;
+        gap: 1.5rem;
+        margin-bottom: 2.5rem;
         padding: 0 1rem;
     }
 
@@ -97,7 +97,7 @@
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
-        gap: 0.75rem !important;
+        gap: 0.5rem !important;
         position: relative !important;
         opacity: 0.3;
         transition: all 0.4s ease;
@@ -109,8 +109,8 @@
     }
 
     .ms-icon {
-        width: 48px;
-        height: 48px;
+        width: 38px;
+        height: 38px;
         border-radius: 50%;
         background: white;
         border: 2px solid var(--kyc-slate-200);
@@ -118,7 +118,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1rem;
+        font-size: 0.9rem;
         transition: all 0.3s ease;
         box-shadow: 0 4px 6px rgba(0,0,0,0.02);
     }
@@ -127,7 +127,7 @@
         background: var(--checkout-primary);
         border-color: var(--checkout-primary);
         color: white;
-        box-shadow: 0 8px 20px rgba(249, 115, 22, 0.3);
+        box-shadow: 0 8px 20px rgba(249, 115, 22, 0.2);
         transform: scale(1.1);
     }
 
@@ -138,7 +138,7 @@
     }
 
     .ms-label {
-        font-size: 0.7rem;
+        font-size: 0.65rem;
         font-weight: 800;
         color: var(--kyc-slate-400);
         text-transform: uppercase;
@@ -150,10 +150,10 @@
     }
 
     .section-title {
-        font-size: 1.8rem;
+        font-size: 1.35rem;
         font-weight: 800;
         color: var(--kyc-slate-700);
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.4rem;
         display: flex;
         align-items: center;
         gap: 0.75rem;
@@ -161,8 +161,8 @@
 
     .section-subtitle {
         color: var(--kyc-slate-400);
-        font-size: 1rem;
-        margin-bottom: 2.5rem;
+        font-size: 0.9rem;
+        margin-bottom: 2rem;
     }
 
     /* Internal KYC Stepper */
@@ -170,10 +170,10 @@
         display: flex !important;
         justify-content: center !important;
         gap: 1.5rem !important;
-        margin-bottom: 2.5rem !important;
-        padding: 1rem !important;
+        margin-bottom: 2rem !important;
+        padding: 0.75rem 1rem !important;
         background: var(--kyc-slate-50);
-        border-radius: 1rem;
+        border-radius: 0.75rem;
     }
 
     .sub-step {
@@ -191,11 +191,11 @@
     }
 
     .sub-step i {
-        font-size: 0.9rem;
+        font-size: 0.8rem;
     }
 
     .sub-step span {
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         text-transform: uppercase;
         letter-spacing: 0.05em;
     }
@@ -204,8 +204,8 @@
     .qc-list {
         display: flex;
         flex-direction: column;
-        gap: 1rem;
-        margin-top: 2rem;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
     }
 
     .qc-item {
@@ -214,7 +214,7 @@
         gap: 1rem;
         color: var(--kyc-slate-400);
         font-weight: 600;
-        font-size: 0.85rem;
+        font-size: 0.8rem;
     }
 
     .qc-item i {
@@ -230,6 +230,106 @@
         color: #10b981;
     }
 
+    /* Shield Icon Header Redefinition (merged for consistency) */
+    .shield-icon-container {
+        width: 60px;
+        height: 60px;
+        background: var(--kyc-accent);
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.75rem;
+        color: white;
+        box-shadow: 0 10px 25px rgba(249, 115, 22, 0.2);
+        transform: rotate(-10deg);
+        transition: all 0.3s ease;
+    }
+
+    /* MINIMALIST HORIZONTAL STEPPER WITH ICONS */
+    .kyc-stepper-minimal {
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: center !important;
+        align-items: center !important;
+        gap: 2rem !important;
+        margin-bottom: 3rem !important;
+        padding: 0 1rem !important;
+    }
+
+    .step-node {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 0.5rem !important;
+        position: relative !important;
+        opacity: 0.3;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .step-node.active, .step-node.completed { opacity: 1 !important; }
+
+    .node-icon {
+        width: 40px !important;
+        height: 40px !important;
+        border-radius: 50% !important;
+        background: white !important;
+        border: 2px solid var(--kyc-slate-200) !important;
+        color: var(--kyc-slate-400) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 0.9rem !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+    }
+
+    .step-node.active .node-icon {
+        background: var(--kyc-accent) !important;
+        border-color: var(--kyc-accent) !important;
+        color: white !important;
+        box-shadow: 0 8px 20px rgba(249, 115, 22, 0.2) !important;
+        transform: scale(1.1);
+    }
+
+    .step-node.completed .node-icon {
+        background: var(--kyc-accent-soft) !important;
+        border-color: var(--kyc-accent) !important;
+        color: var(--kyc-accent) !important;
+    }
+
+    .node-label {
+        font-size: 0.65rem !important;
+        font-weight: 800 !important;
+        color: var(--kyc-slate-400) !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.08em !important;
+    }
+
+    .step-node.active .node-label { color: var(--kyc-accent) !important; }
+
+    /* OCR Loading Quality Indicators */
+    #quality-indicators {
+        margin-top: 1.25rem;
+        font-size: 0.75rem;
+        color: var(--kyc-slate-400);
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+    }
+
+    .ocr-loader {
+        width: 40px;
+        height: 40px;
+        border: 3px solid var(--kyc-slate-200);
+        border-radius: 50%;
+        border-top-color: var(--kyc-accent);
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1.25rem;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
     @media (max-width: 900px) {
         .checkout-grid, .details-grid {
             grid-template-columns: 1fr !important;
@@ -239,7 +339,7 @@
     .details-grid {
         display: grid !important;
         grid-template-columns: 1fr 350px !important;
-        gap: 2.5rem !important;
+        gap: 2rem !important;
         align-items: start !important;
     }
 
@@ -289,14 +389,14 @@
     .option-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 1.25rem;
-        margin-bottom: 2rem;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
     }
 
     .option-card {
         border: 2px solid #e2e8f0;
-        border-radius: 1.25rem;
-        padding: 1.5rem;
+        border-radius: 1rem;
+        padding: 1.25rem;
         cursor: pointer;
         transition: all 0.2s ease;
         position: relative;
@@ -317,31 +417,76 @@
         opacity: 0;
     }
 
+    /* KYC Specific Action Cards */
+    .action-card {
+        background: #fff !important;
+        border: 2px solid var(--kyc-slate-200) !important;
+        border-radius: 1.25rem !important;
+        padding: 2.25rem 1.5rem !important;
+        text-align: center !important;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+        cursor: pointer !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 1rem !important;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.02) !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+    }
+
+    .action-card:hover:not(.disabled) {
+        border-color: var(--kyc-accent) !important;
+        transform: translateY(-6px) !important;
+        box-shadow: 0 15px 30px rgba(249, 115, 22, 0.1) !important;
+    }
+
+    .action-card.disabled {
+        opacity: 0.3 !important;
+        cursor: not-allowed !important;
+        pointer-events: none !important;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+
+    .card-icon {
+        width: 52px;
+        height: 52px;
+        background: var(--kyc-accent-soft);
+        color: var(--kyc-accent);
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+
     .oc-icon {
-        font-size: 1.5rem;
-        margin-bottom: 1rem;
+        font-size: 1.25rem;
+        margin-bottom: 0.75rem;
         color: var(--checkout-primary);
     }
 
     .oc-title {
         font-weight: 800;
         color: #1e293b;
-        margin-bottom: 0.25rem;
+        margin-bottom: 0.2rem;
+        font-size: 0.9rem;
     }
 
     .oc-desc {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         color: #64748b;
     }
 
     /* Webcam integrated */
     .webcam-box {
         width: 100%;
-        max-width: 400px;
+        max-width: 360px;
         aspect-ratio: 4/3;
         background: #000;
-        border-radius: 1.25rem;
-        margin: 0 auto 1.5rem;
+        border-radius: 1rem;
+        margin: 0 auto 1.25rem;
         overflow: hidden;
         position: relative;
     }
@@ -358,8 +503,8 @@
         left: 0;
         right: 0;
         bottom: 0;
-        border: 2px dashed rgba(255,255,255,0.5);
-        border-radius: 1.25rem;
+        border: 2px dashed rgba(255,255,255,0.3);
+        border-radius: 1rem;
         pointer-events: none;
         display: flex;
         align-items: center;
@@ -367,8 +512,8 @@
     }
 
     .face-guide {
-        width: 180px;
-        height: 240px;
+        width: 160px;
+        height: 220px;
         border: 3px solid #f97316;
         border-radius: 50%;
         box-shadow: 0 0 0 1000px rgba(0,0,0,0.5);
@@ -377,8 +522,8 @@
     /* Summary Side Panel */
     .summary-box {
         background: #f8fafc;
-        border-radius: 1.25rem;
-        padding: 1.5rem;
+        border-radius: 1rem;
+        padding: 1.25rem;
         position: sticky;
         top: 2rem;
     }
@@ -386,19 +531,19 @@
     .sum-row {
         display: flex;
         justify-content: space-between;
-        margin-bottom: 0.75rem;
-        font-size: 0.9rem;
+        margin-bottom: 0.6rem;
+        font-size: 0.85rem;
         color: #64748b;
     }
 
     .sum-total {
         display: flex;
         justify-content: space-between;
-        margin-top: 1.5rem;
-        padding-top: 1.5rem;
+        margin-top: 1.25rem;
+        padding-top: 1.25rem;
         border-top: 1px solid #e2e8f0;
         font-weight: 800;
-        font-size: 1.25rem;
+        font-size: 1.15rem;
         color: #1e293b;
     }
 
@@ -409,21 +554,22 @@
     /* Success States */
     .success-animation {
         text-align: center;
-        padding: 3rem 0;
+        padding: 2.5rem 0;
     }
 
     .success-icon {
-        width: 80px;
-        height: 80px;
+        width: 70px;
+        height: 70px;
         background: var(--checkout-success);
         color: white;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 2.5rem;
-        margin: 0 auto 2rem;
-        box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+        font-size: 2.25rem;
+        margin: 0 auto 1.5rem;
+        box-shadow: 0 10px 25px rgba(16, 185, 129, 0.2);
+    }
     /* Internal KYC Stepper */
     .kyc-sub-stepper {
         display: flex !important;
@@ -566,7 +712,7 @@
                     </div>
                 </div>
 
-                <!-- SCREEN 2: IDENTITY (FULL KYC LOGIC PORT) -->
+                <!-- SCREEN 2: IDENTITY (1:1 PARITY WITH PACKAGE KYC) -->
                 <div class="checkout-screen" id="screen-2">
                     <div class="checkout-card">
                         <!-- Shield Header -->
@@ -576,140 +722,138 @@
                             </div>
                         </div>
 
-                        <!-- Internal Sub-Stepper -->
-                        <div class="kyc-sub-stepper">
-                            <div class="sub-step active" id="sub-node-1">
-                                <i class="fas fa-id-card"></i>
-                                <span>Details</span>
+                        <div style="text-align: center; margin-bottom: 2rem;">
+                            <h2 class="section-title" style="justify-content: center;">Identity Verification</h2>
+                            <p class="section-subtitle">Redefining trust through secure, real-time identity checks</p>
+                        </div>
+
+                        <!-- Minimalist Stepper Nodes -->
+                        <div class="kyc-stepper-minimal">
+                            <div class="step-node active" id="node-1">
+                                <div class="node-icon"><i class="fas fa-id-card"></i></div>
+                                <span class="node-label">ID Details</span>
                             </div>
-                            <div class="sub-step" id="sub-node-2">
-                                <i class="fas fa-camera"></i>
-                                <span>Document</span>
+                            <div class="step-node" id="node-2">
+                                <div class="node-icon"><i class="fas fa-file-import"></i></div>
+                                <span class="node-label">Extraction</span>
                             </div>
-                            <div class="sub-step" id="sub-node-3">
-                                <i class="fas fa-face-smile"></i>
-                                <span>Biometrics</span>
+                            <div class="step-node" id="node-3">
+                                <div class="node-icon"><i class="fas fa-face-smile"></i></div>
+                                <span class="node-label">Biometrics</span>
                             </div>
-                            <div class="sub-step" id="sub-node-4">
-                                <i class="fas fa-sync"></i>
-                                <span>Process</span>
+                            <div class="step-node" id="node-4">
+                                <div class="node-icon"><i class="fas fa-clipboard-check"></i></div>
+                                <span class="node-label">Review</span>
                             </div>
                         </div>
 
-                        <!-- PHASE 1: ID DETAILS -->
-                        <div id="kyc-phase-1" class="kyc-phase">
-                            <div style="text-align: center; margin-bottom: 2rem;">
-                                <h2 class="section-title" style="justify-content: center;">Identity Verification</h2>
-                                <p class="section-subtitle">Select your ID type and enter the number to unlock scanning.</p>
-                            </div>
-                            
-                            <div class="grid-2-col" style="margin-bottom: 2rem;">
+                        <!-- SUB-STEP 1: DETAILS -->
+                        <div id="kyc-step-1" class="kyc-phase">
+                            <div class="grid-2-col" style="margin-bottom: 2.5rem;">
                                 <div class="form-group">
                                     <label class="form-label">ID Type</label>
-                                    <select id="id_type" name="id_type" class="form-input" onchange="validateIdSelection()">
-                                        <option value="">Select ID Type</option>
+                                    <select id="id_type" name="id_type" class="form-input" onchange="validateIdSelection()" style="height: 3.5rem; font-weight: 600;">
+                                        <option value="">-- Choose ID Type --</option>
                                         <option value="PhilSys / PhilID">PhilSys / PhilID</option>
-                                        <option value="Driver's License">Driver's License</option>
-                                        <option value="Passport">Passport</option>
+                                        <option value="Driver's License">Philippine Driver's License</option>
+                                        <option value="Passport">Philippine Passport</option>
                                         <option value="UMID">UMID</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">ID Number</label>
-                                    <input type="text" id="id_number" name="id_number" class="form-input" placeholder="Enter ID number" oninput="validateIdSelection()">
-                                    <p id="id-validation-msg" style="font-size: 0.7rem; margin-top: 0.4rem; font-weight: 700;"></p>
+                                    <input type="text" id="id_number" name="id_number" class="form-input" placeholder="Enter ID number" oninput="validateIdSelection()" style="height: 3.5rem; font-weight: 600;">
+                                    <p id="alc-id-validation-msg" style="font-size: 0.75rem; margin-top: 0.4rem; font-weight: 700; min-height: 1rem;"></p>
                                 </div>
                             </div>
 
-                            <div class="kyc-action-cards" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom:2rem;">
-                                <div class="action-card disabled" id="option-upload" onclick="handleKycAction('upload')" style="border-radius: 1.5rem; border: 2px dashed var(--kyc-slate-200); padding: 2rem; cursor: not-allowed; opacity: 0.5;">
-                                    <div class="card-icon" style="width: 50px; height: 50px; background: var(--kyc-accent-soft); color: var(--kyc-accent); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; margin-bottom: 1rem;"><i class="fas fa-file-upload"></i></div>
-                                    <h3 class="card-title" style="font-size: 1rem; font-weight: 800; margin-bottom: 0.5rem;">Upload Document</h3>
-                                    <p class="card-desc" style="font-size: 0.75rem; color: #64748b;">PDF or Image</p>
+                            <div class="kyc-action-cards" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 0.75rem;">
+                                <div class="action-card disabled" id="alc-option-scan" onclick="startIdScanner()">
+                                    <div class="card-icon"><i class="fas fa-camera"></i></div>
+                                    <h3 style="font-size: 1rem; font-weight: 800; margin-bottom: 0.5rem;">Scan Live</h3>
+                                    <p style="font-size: 0.75rem; color: var(--kyc-slate-400);">Quickest way to verify</p>
                                 </div>
-                                <div class="action-card disabled" id="option-scan" onclick="handleKycAction('scan')" style="border-radius: 1.5rem; border: 2px dashed var(--kyc-slate-200); padding: 2rem; cursor: not-allowed; opacity: 0.5;">
-                                    <div class="card-icon" style="width: 50px; height: 50px; background: var(--kyc-accent-soft); color: var(--kyc-accent); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; margin-bottom: 1rem;"><i class="fas fa-expand"></i></div>
-                                    <h3 class="card-title" style="font-size: 1rem; font-weight: 800; margin-bottom: 0.5rem;">Scan Live</h3>
-                                    <p class="card-desc" style="font-size: 0.75rem; color: #64748b;">Use device camera</p>
+                                <div class="action-card disabled" id="alc-option-upload" onclick="handleUploadClick()">
+                                    <div class="card-icon"><i class="fas fa-upload"></i></div>
+                                    <h3 style="font-size: 1rem; font-weight: 800; margin-bottom: 0.5rem;">Upload File</h3>
+                                    <p style="font-size: 0.75rem; color: var(--kyc-slate-400);">Use existing photo</p>
                                 </div>
-                                <input type="file" id="id_document_input" name="id_file" style="display: none;" accept="image/*" onchange="previewKycId(this)">
                             </div>
+                            <p id="alc-action-hint" style="font-size: 0.8rem; color: var(--kyc-slate-400); margin-bottom: 1.5rem;">Enter a valid ID type and ID number to unlock Scan Live and Upload File.</p>
+                            <input type="file" id="id_document_input" name="id_file" style="display: none;" accept="image/*" onchange="previewKycId(this)">
                         </div>
 
-                        <!-- PHASE 1.5: ID SCANNER (LIVE) -->
-                        <div id="kyc-phase-scan" class="kyc-phase" style="display: none; text-align: center;">
-                            <div class="webcam-box" style="aspect-ratio: 16/9; background: #000; border-radius: 1rem; position: relative;">
+                        <!-- SUB-STEP 1.5: LIVE ID SCANNER (ID guide frame included) -->
+                        <div id="kyc-step-scanner" class="kyc-phase" style="display: none; text-align: center;">
+                            <div class="webcam-box" style="aspect-ratio: 4/3; background: #000; border-radius: 1.5rem; position: relative; overflow: hidden; margin-bottom: 1.5rem; box-shadow: 0 20px 40px rgba(0,0,0,0.1);">
                                 <video id="id-scanner-webcam" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
-                                <div style="position: absolute; top: 10%; left: 10%; right: 10%; bottom: 10%; border: 2px dashed rgba(255,255,255,0.5); border-radius: 1rem; pointer-events: none;"></div>
-                            </div>
-                            <div style="margin-top: 1.5rem;">
-                                <button type="button" class="btn-wizard-next" onclick="captureIdPhoto()">Capture ID Photo <i class="fas fa-camera"></i></button>
-                                <button type="button" class="btn-wizard-back" onclick="resetKycStep(1)">Cancel</button>
-                            </div>
-                        </div>
-
-                        <!-- PHASE 2: DOCUMENT PREVIEW/SCAN -->
-                        <div id="kyc-phase-2" class="kyc-phase" style="display: none;">
-                             <div id="id-preview-container" style="text-align: center;">
-                                <img id="id-image-preview" style="max-width: 100%; border-radius: 1.5rem; border: 1px solid var(--kyc-slate-200); margin-bottom: 1.5rem;">
-                                <div style="display: flex; gap: 1rem; justify-content: center;">
-                                    <button type="button" class="btn-wizard-back" onclick="resetKycStep(1)">Retake</button>
-                                    <button type="button" class="btn-wizard-next" onclick="proceedToOcr()">Process ID <i class="fas fa-bolt"></i></button>
-                                </div>
-                             </div>
-                        </div>
-
-                        <!-- PHASE 3: OCR PROCESSING -->
-                        <div id="kyc-phase-3" class="kyc-phase" style="display: none; text-align: center; padding: 2rem;">
-                            <i class="fas fa-circle-notch fa-spin" style="font-size: 3rem; color: var(--kyc-accent); margin-bottom: 2rem;"></i>
-                            <h3 style="font-weight: 800; font-size: 1.5rem; margin-bottom: 0.5rem;">Processing Document</h3>
-                            <p class="section-subtitle">Extracting data via Secure Identity Engine...</p>
-                            
-                            <div class="qc-list">
-                                <div class="qc-item" id="qc-res"><i class="fas fa-circle-notch fa-spin"></i> Analyzing Quality</div>
-                                <div class="qc-item" id="qc-align"><i class="fas fa-circle-notch fa-spin"></i> Aligning Fields</div>
-                                <div class="qc-item" id="qc-ocr"><i class="fas fa-circle-notch fa-spin"></i> Reading ID Number</div>
-                            </div>
-                        </div>
-
-                        <!-- PHASE 4: BIOMETRICS/WEBCAM -->
-                        <div id="kyc-phase-4" class="kyc-phase" style="display: none;">
-                            <div style="text-align: center; margin-bottom: 2rem;">
-                                <h3 style="font-weight: 800; font-size: 1.5rem; margin-bottom: 0.5rem;">Face Verification</h3>
-                                <p class="section-subtitle">Stay still and look at the camera.</p>
-                            </div>
-                            
-                            <div id="webcam-section">
-                                <div class="webcam-box" style="box-shadow: 0 20px 40px rgba(0,0,0,0.1); border: 2px solid var(--checkout-primary);">
-                                    <video id="webcam" autoplay playsinline></video>
-                                    <div class="webcam-overlay"><div class="face-guide"></div></div>
-                                </div>
-                                <div style="text-align: center;">
-                                    <button type="button" id="capture-btn" class="btn-wizard-next" onclick="captureSelfie()" style="margin: 0 auto;">
-                                        Capture Face <i class="fas fa-camera" style="margin-left: 0.5rem;"></i>
-                                    </button>
+                                <div style="position: absolute; top: 15%; left: 10%; right: 10%; bottom: 15%; border: 3px dashed rgba(255,255,255,0.4); border-radius: 1rem; pointer-events: none; box-shadow: 0 0 0 500px rgba(0,0,0,0.4);">
+                                    <div style="position: absolute; bottom: -40px; left: 50%; transform: translateX(-50%); width: 100%; color: white; font-size: 0.8rem; font-weight: 600;">ALIGN ID WITHIN FRAME</div>
                                 </div>
                             </div>
-
-                            <div id="selfie-preview-container" style="display: none; text-align: center;">
-                                <img id="selfie-preview" style="max-width: 180px; border-radius: 50%; border: 4px solid var(--checkout-success); margin-bottom: 1.5rem;">
-                                <p style="color: var(--checkout-success); font-weight: 800; margin-bottom: 1.5rem;"><i class="fas fa-check-circle"></i> Biometrics Captured</p>
-                                <button type="button" class="btn-wizard-back" onclick="retrySelfie()">Retake Face Scan</button>
+                            <div style="display: flex; gap: 1rem; justify-content: center;">
+                                <button type="button" class="btn-wizard-back" onclick="resetKycStep(1)">Back</button>
+                                <button type="button" class="btn-wizard-next" onclick="captureIdPhoto()">Capture <i class="fas fa-camera"></i></button>
                             </div>
                         </div>
 
-                        <!-- Footer Security Lock -->
-                        <div class="security-notice" style="background: #f0f9ff; border: 1px solid #bfdbfe; border-radius: 1rem; padding: 1rem; display: flex; align-items: center; gap: 1rem; color: #0369a1; font-size: 0.8rem; justify-content: center; margin-top: 2rem;">
-                            <i class="fas fa-lock" style="font-size: 1rem;"></i>
+                        <!-- SUB-STEP 2: PREVIEW -->
+                        <div id="kyc-step-2" class="kyc-phase" style="display: none; text-align: center;">
+                            <img id="id-image-preview" style="max-width: 100%; border-radius: 1.5rem; border: 1px solid var(--kyc-slate-200); margin-bottom: 2rem; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+                            <div style="display: flex; gap: 1rem; justify-content: center;">
+                                <button type="button" class="btn-wizard-back" onclick="resetKycStep(1)">Retake</button>
+                                <button type="button" class="btn-wizard-next" onclick="proceedToOcr()">Confirm ID <i class="fas fa-check-circle"></i></button>
+                            </div>
+                        </div>
+
+                        <!-- SUB-STEP 3: EXTRACTION (OCR Anim) -->
+                        <div id="kyc-step-3" class="kyc-phase" style="display: none; text-align: center; padding: 3rem 0;">
+                            <div class="ocr-loader"></div>
+                            <h3 style="font-weight: 800; font-size: 1.5rem; margin-bottom: 0.5rem;">Processing Data</h3>
+                            <p style="color: var(--kyc-slate-400); font-weight: 600;">Scanning ID for key information...</p>
+                            <div id="quality-indicators">
+                                <span id="qc-resolution" style="display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-circle-notch fa-spin"></i> Resolution</span>
+                                <span id="qc-focus" style="display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-circle-notch fa-spin"></i> Focus</span>
+                                <span id="qc-ocr" style="display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-circle-notch fa-spin"></i> Extraction</span>
+                            </div>
+                        </div>
+
+                        <!-- SUB-STEP 4: BIOMETRICS -->
+                        <div id="kyc-step-4" class="kyc-phase" style="display: none; text-align: center;">
+                            <div class="webcam-box" style="aspect-ratio: 1/1; max-width: 400px; margin: 0 auto 1.5rem; border-radius: 50%; overflow: hidden; position: relative; border: 4px solid var(--checkout-primary); box-shadow: 0 20px 40px rgba(0,0,0,0.1);">
+                                <video id="webcam" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+                                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; border: 4px solid white; border-radius: 50%; pointer-events: none;"></div>
+                                <div id="selfie-countdown" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 5rem; font-weight: 900; color: white; display: none; z-index: 100;">3</div>
+                            </div>
+                            <p id="liveness-feedback" style="font-weight: 700; color: var(--kyc-accent); margin-bottom: 1.5rem;">Look into the camera</p>
+                            <button type="button" class="btn-wizard-next" id="btn-begin-capture" onclick="beginLivenessSequence()" style="margin: 0 auto;">I'm Ready</button>
+                        </div>
+
+                        <!-- SUB-STEP 5: REVIEW (Tiled Selfies) -->
+                        <div id="kyc-step-5" class="kyc-phase" style="display: none; text-align: center;">
+                            <h3 style="font-weight: 800; font-size: 1.3rem; margin-bottom: 1.5rem;">Review Captured Frames</h3>
+                            <div id="selfie-gallery" style="display: flex; gap: 0.75rem; justify-content: center; margin-bottom: 2rem; overflow-x: auto; padding: 0.5rem;">
+                                <!-- Thumbnails -->
+                            </div>
+                            <p style="color: var(--checkout-success); font-weight: 800; margin-bottom: 1.5rem;"><i class="fas fa-check-circle"></i> Biometrics Verified</p>
+                            <div style="display: flex; gap: 1rem; justify-content: center;">
+                                <button type="button" class="btn-wizard-back" onclick="retryLiveness()">Retake All</button>
+                                <button type="button" class="btn-wizard-next" onclick="confirmIdentityReview()">Confirm & Continue <i class="fas fa-lock"></i></button>
+                            </div>
+                        </div>
+
+                        <!-- Footer Security Notice -->
+                        <div class="security-notice" style="margin-top: 3rem; background: #f0f9ff; border: 1px solid #bfdbfe; border-radius: 1rem; padding: 1.25rem; display: flex; align-items: center; justify-content: center; gap: 1rem; color: #0369a1; font-weight: 600; font-size: 0.85rem;">
+                            <i class="fas fa-lock"></i>
                             <span>Protected by OccaServe Secure Identity Engine</span>
                         </div>
                     </div>
 
                     <div class="checkout-nav-box">
-                        <button type="button" class="btn-wizard-back" onclick="nextScreen(1)"><i class="fas fa-arrow-left" style="margin-right: 0.5rem;"></i> Back</button>
+                        <button type="button" class="btn-wizard-back" onclick="nextScreen(1)"><i class="fas fa-arrow-left"></i> Back</button>
                         <div class="nav-right">
                             <button type="button" class="btn-wizard-next" id="id-next-btn" onclick="nextScreen(3)" disabled>
-                                Next: Fulfillment <i class="fas fa-arrow-right" style="margin-left: 0.5rem;"></i>
+                                Next: Fulfillment <i class="fas fa-arrow-right"></i>
                             </button>
                         </div>
                     </div>
@@ -801,7 +945,7 @@
                             </button>
                         </div>
                     </div>
-                </div>v>
+                </div>
 
                 <!-- SCREEN 5: SUCCESS -->
                 <div class="checkout-screen" id="screen-5">
