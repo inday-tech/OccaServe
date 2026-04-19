@@ -19,17 +19,16 @@ def get_current_user_from_session(request: Request, db: Session):
     except:
         return None
 
-@router.get("/{package_id}", response_class=HTMLResponse)
-async def get_package_details(
+
+@router.get("/{package_id}/modal", response_class=HTMLResponse)
+async def get_package_details_modal(
     package_id: int, 
     request: Request, 
     db: Session = Depends(database.get_db)
 ):
     package = db.query(models.CateringPackage).get(package_id)
-    if not package or not package.is_active:
-        raise HTTPException(status_code=404, detail="Package not found")
-    
-    user = get_current_user_from_session(request, db)
+    if not package:
+        return HTMLResponse("Package not found", status_code=404)
     
     # Categorise menu items
     categorised_menu = {}
@@ -42,12 +41,11 @@ async def get_package_details(
     
     addons = [item for item in package.menu_items if item.is_addon]
     
-    return templates.TemplateResponse("customer/package_details.html", {
+    return templates.TemplateResponse("customer/package_details_modal.html", {
         "request": request,
         "package": package,
         "categorised_menu": categorised_menu,
-        "addons": addons,
-        "user": user
+        "addons": addons
     })
 
 @router.get("/api/check-availability")

@@ -18,7 +18,37 @@
     <input type="hidden" name="booking_id" value="{{ booking.id }}">
     <input type="hidden" name="payment_method" id="selected-method" value="">
 
-    <div class="direct-payment-container">
+        <!-- Payment Plan Selector -->
+        <div class="checkout-section-header" style="margin-top: 0;">
+            <div class="section-icon-badge"><i class="fas fa-hand-holding-usd"></i></div>
+            <h3>Choose Payment Plan</h3>
+            <p>Select how much you want to pay today</p>
+        </div>
+
+        <div class="payment-plan-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem;">
+            <div class="plan-card active" onclick="handlePlanSelect('downpayment', this, {{ booking.reservation_fee or 0 }})" style="border: 2px solid var(--primary-color); padding: 1.5rem; border-radius: 1rem; cursor: pointer; background: #f0f9ff; transition: all 0.2s;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.75rem; font-weight: 800; color: var(--primary-color); text-transform: uppercase;">Partial</span>
+                    <i class="fas fa-check-circle" style="color: var(--primary-color);"></i>
+                </div>
+                <h4 style="margin: 0; font-weight: 800; color: #1e293b;">Downpayment</h4>
+                <p style="margin: 0.25rem 0 0; font-size: 0.8rem; color: #64748b;">Secure your event date</p>
+                <div style="margin-top: 1rem; font-size: 1.1rem; font-weight: 800; color: #1e293b;">₱{{ "{:,.2f}".format(booking.reservation_fee or 0) }}</div>
+            </div>
+
+            <div class="plan-card" onclick="handlePlanSelect('full', this, {{ booking.total_amount or 0 }})" style="border: 2px solid #e2e8f0; padding: 1.5rem; border-radius: 1rem; cursor: pointer; transition: all 0.2s;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Total</span>
+                    <i class="far fa-circle" style="color: #cbd5e1;"></i>
+                </div>
+                <h4 style="margin: 0; font-weight: 800; color: #1e293b;">Full Payment</h4>
+                <p style="margin: 0.25rem 0 0; font-size: 0.8rem; color: #64748b;">Settle everything now</p>
+                <div style="margin-top: 1rem; font-size: 1.1rem; font-weight: 800; color: #1e293b;">₱{{ "{:,.2f}".format(booking.total_amount or 0) }}</div>
+            </div>
+        </div>
+
+        <input type="hidden" name="payment_plan" id="selected-plan" value="downpayment">
+
         <!-- Amount Summary -->
         <div class="payment-amount-summary checkout-card animate-up">
             <div class="checkout-brand">
@@ -32,8 +62,8 @@
             </div>
             <div class="checkout-divider"></div>
             <div class="amount-row">
-                <span class="label">Reservation Deposit</span>
-                <span class="value main-total">₱{{ "{:,.2f}".format(booking.reservation_fee or 0) }}</span>
+                <span class="label" id="summary-amount-label">Reservation Deposit</span>
+                <span class="value main-total" id="summary-amount-value">₱{{ "{:,.2f}".format(booking.reservation_fee or 0) }}</span>
             </div>
         </div>
 
@@ -226,6 +256,36 @@
 </form>
 
 <script>
+    function handlePlanSelect(plan, element, amount) {
+        // Update Plans UI
+        document.querySelectorAll('.plan-card').forEach(p => {
+            p.classList.remove('active');
+            p.style.border = '2px solid #e2e8f0';
+            p.style.background = 'white';
+            p.querySelector('.fas, .far').className = 'far fa-circle';
+            p.querySelector('.fas, .far').style.color = '#cbd5e1';
+            p.querySelector('span').style.color = '#64748b';
+        });
+
+        element.classList.add('active');
+        element.style.border = '2px solid var(--primary-color)';
+        element.style.background = '#f0f9ff';
+        element.querySelector('.far, .fas').className = 'fas fa-check-circle';
+        element.querySelector('.far, .fas').style.color = 'var(--primary-color)';
+        element.querySelector('span').style.color = 'var(--primary-color)';
+
+        // Update Hidden Input
+        document.getElementById('selected-plan').value = plan;
+
+        // Update Summary
+        const label = document.getElementById('summary-amount-label');
+        const value = document.getElementById('summary-amount-value');
+        label.innerText = plan === 'full' ? 'Full Payment Amount' : 'Reservation Deposit';
+        value.innerText = '₱' + amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        
+        console.log('[StepPayment] Plan selected:', plan, 'Amount:', amount);
+    }
+
     function handleMethodSelect(method, element) {
         // Toggle Active Classes
         document.querySelectorAll('.method-icon-card').forEach(c => c.classList.remove('active'));

@@ -139,7 +139,7 @@
             </thead>
             <tbody>
                 {% for booking in bookings %}
-                <tr class="booking-row-item" data-status="{{ booking.status }}"
+                <tr id="booking-row-{{ booking.id }}" class="booking-row-item" data-status="{{ booking.status }}"
                     style="border-bottom: 1px solid #f8fafc; transition: all 0.2s ease;">
                     <!-- ID -->
                     <td style="padding: 1.5rem; font-weight: 600; color: #64748b; font-size: 0.95rem;">BK-{{ "%03d" |
@@ -166,8 +166,15 @@
                     <!-- EVENT -->
                     <td style="padding: 1.5rem;">
                         <div style="font-weight: 700; color: #0f172a; font-size: 1rem;">{{ booking.event_type }}</div>
-                        <div style="font-size: 0.85rem; color: #94a3b8; font-weight: 500; margin-top: 0.1rem;">{{
-                            booking.package.name if booking.package else 'Custom Menu' }}</div>
+                        <div style="font-size: 0.85rem; color: #94a3b8; font-weight: 500; margin-top: 0.1rem;">
+                            {% if booking.package %}
+                                {{ booking.package.name }}
+                            {% elif booking.event_type == 'Ala Carte Order' %}
+                                <span style="color: var(--primary-color);">Itemized Food Order</span>
+                            {% else %}
+                                Custom Menu
+                            {% endif %}
+                        </div>
                     </td>
 
                     <!-- DATE -->
@@ -236,11 +243,6 @@
                         {% endif %}
                         
                         <span class="premium-status-badge {{ badge_class }}">{{ status_label }}</span>
-                        {% if booking.fraud_flags and (booking.payment_proof_url or booking.balance_proof_url) %}
-                        <div class="risk-indicator-pill" title="AI detected high risk patterns in payment proof.">
-                            <i class="fas fa-exclamation-triangle"></i> HIGH RISK
-                        </div>
-                        {% endif %}
                     </td>
                     <td class="action-dropdown-container" style="padding: 1.25rem 1.5rem; text-align: right; position: relative;">
                         <button class="btn-action-trigger" onclick="toggleActionMenuBookings('{{ booking.id }}', event)" style="background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 1.1rem; padding: 0.4rem; transition: color 0.2s;">
@@ -265,6 +267,8 @@
                                 data-booked-on="{{ booking.created_at.strftime('%B %d, %Y %H:%M') }}"
                                 data-guest-count="{{ booking.guest_count }}"
                                 data-balance-due="{{ booking.balance_due_date.strftime('%Y-%m-%d') if booking.balance_due_date else '' }}"
+                                data-payment-plan="{{ booking.payment_plan or 'downpayment' }}"
+                                data-is-package="{{ 'true' if booking.package_id else 'false' }}"
                                 data-has-contract="{{ 'true' if booking.quotation else 'false' }}">
                                 <i class="far fa-eye" style="color: #64748b;"></i> View Details
                             </button>
@@ -288,6 +292,28 @@
                                 <i class="fas fa-receipt"></i> Track Expenses
                             </button>
                             {% endif %}
+                        </div>
+
+                        <!-- Hidden Menu Info for Modal -->
+                        <div id="booking-items-{{ booking.id }}" style="display: none;">
+                            <div class="modal-menu-grid">
+                                {% if booking.package %}
+                                    <div class="menu-pkg-badge">
+                                        <i class="fas fa-box-open"></i> {{ booking.package.name }}
+                                    </div>
+                                {% endif %}
+                                
+                                {% for item in booking.selected_items %}
+                                    <div class="menu-item-row-p">
+                                        <div class="mi-name">{{ item.menu_item.name }}</div>
+                                        <div class="mi-qty">x{{ booking.guest_count if not item.is_add_on else 1 }}</div>
+                                    </div>
+                                {% endfor %}
+                                
+                                {% if not booking.package and not booking.selected_items %}
+                                    <p class="text-muted italic small">No itemized data available.</p>
+                                {% endif %}
+                            </div>
                         </div>
                     </td>
                 </tr>

@@ -255,8 +255,9 @@ class Booking(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     expires_at = Column(DateTime(timezone=True), nullable=True)
-    balance_due_date = Column(DateTime(timezone=True), nullable=True) # Limit for customer outstanding balance
-    event_location = Column(Text, nullable=True) # Alias for venue_address
+    balance_due_date = Column(DateTime(timezone=True), nullable=True) 
+    payment_plan = Column(String, default='downpayment') # 'downpayment' or 'full'
+    event_location = Column(Text, nullable=True) 
 
     user = relationship("User", back_populates="bookings")
     caterer = relationship("CatererProfile", back_populates="bookings")

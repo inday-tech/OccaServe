@@ -362,6 +362,14 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             const res = await fetch(`/api/bookings/${bookingId}/verify-full`, { method: 'POST', body: formData });
             if (res.ok) {
+                // Success: Switch to Waiting Screen
+                document.getElementById('step-processing').style.display = 'none';
+                document.getElementById('kyc-waiting-approval').style.display = 'block';
+                
+                // Start Real-time listener
+                initKycWebSocket();
+                
+                // Fallback polling
                 startPolling();
             } else {
                 const data = await res.json();
@@ -371,6 +379,41 @@ document.addEventListener('DOMContentLoaded', function () {
             handleRejection("Connection lost.");
         }
     };
+
+    function initKycWebSocket() {
+        if (ws) return;
+        
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const clientId = `kyc_pkg_${bookingId}_${Date.now()}`;
+        ws = new WebSocket(`${protocol}//${window.location.host}/verification/ws/${clientId}`);
+        
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            console.log("[KYC WS] Received update:", data);
+            if (data.type === 'kyc_update') {
+                if (data.status === 'approved' || data.status === 'manual_review_approved') {
+                    stopPolling();
+                    if (ws) ws.close();
+                    handleApproval(data);
+                } else if (data.status === 'rejected') {
+                    stopPolling();
+                    if (ws) ws.close();
+                    handleRejection(data.reason || "Verification rejected by caterer");
+                }
+            }
+        };
+        
+        ws.onclose = () => {
+            console.log("[KYC WS] Connection closed. Falling back to primary polling.");
+            ws = null;
+        };
+        
+        ws.onerror = (err) => {
+            console.error("[KYC WS] Error:", err);
+            ws = null;
+        };
+    }
+
 
     function startPolling() {
         pollingInterval = setInterval(async () => {
@@ -385,7 +428,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     // Stay in polling/waiting mode, but update UI
                     document.getElementById('status-text').innerText = "Pending Review";
                     document.getElementById('status-text').style.color = "#f59e0b";
-                    document.getElementById('status-subtext').innerText = "Our admin needs to perform a quick manual check of your ID.";
+                    document.getElementById('status-subtext').innerText = "The caterer needs to perform a quick manual check of your identity documents.";
                     
                     // Initialize WebSocket if not already connected
                     if (!ws) {
@@ -405,38 +448,18 @@ document.addEventListener('DOMContentLoaded', function () {
         if (pollingInterval) clearInterval(pollingInterval);
     }
 
-    function initWebSocket(userId) {
-        if (ws) return;
-        
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.host;
-        ws = new WebSocket(`${protocol}//${host}/ws/user_${userId}`);
-        
-        ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            console.log("[KYC WS] Received update:", data);
-            if (data.type === 'kyc_update' && data.status === 'approved') {
-                stopPolling();
-                if (ws) ws.close();
-                handleApproval(data);
-            }
-        };
-        
-        ws.onclose = () => {
-            console.log("[KYC WS] Connection closed. Falling back to polling.");
-            ws = null;
-        };
-        
-        ws.onerror = (err) => {
-            console.error("[KYC WS] Error:", err);
-            ws = null;
-        };
-    }
+    // Deprecated in favor of initKycWebSocket
+    function initWebSocket(userId) { }
+
 
     function handleApproval(data) {
+        document.getElementById('kyc-waiting-approval').style.display = 'none';
+        document.getElementById('step-processing').style.display = 'block';
+        
         document.getElementById('status-text').innerText = "Identity Verified!";
         document.getElementById('status-text').style.color = "var(--kyc-accent)";
         document.getElementById('status-subtext').innerText = "Success! Continuing...";
+
 
         document.getElementById('node-4').classList.add('completed');
         document.getElementById('node-4').classList.remove('active');

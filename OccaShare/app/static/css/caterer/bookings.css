@@ -1619,6 +1619,60 @@
     font-weight: 700;
 }
 
+/* ─── Itemized Menu Styling ─── */
+.modal-menu-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.menu-pkg-badge {
+    background: #f1f5f9;
+    color: #475569;
+    padding: 0.4rem 0.85rem;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    width: fit-content;
+}
+
+.menu-item-row-p {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid #f1f5f9;
+    transition: all 0.2s;
+}
+
+.menu-item-row-p:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.mi-name {
+    font-weight: 700;
+    color: #1e293b;
+    font-size: 0.9rem;
+}
+
+.mi-qty {
+    background: #f8fafc;
+    color: var(--primary-color);
+    padding: 0.2rem 0.6rem;
+    border-radius: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 800;
+}
+
+
 /* =============================
    RESPONSIVE — Bookings Page
    ============================= */

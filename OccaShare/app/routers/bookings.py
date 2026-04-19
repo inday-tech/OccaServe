@@ -93,6 +93,58 @@ async def alacarte_checkout_page(request: Request, caterer_id: int, menu_id: int
         "current_step": 1
     })
 
+@router.post("/alacarte/checkout/draft")
+async def alacarte_checkout_draft(
+    request: Request,
+    caterer_id: int = Form(...),
+    menu_id: int = Form(...),
+    full_name: str = Form(...),
+    contact_number: str = Form(...),
+    delivery_date: str = Form(...),
+    delivery_time: str = Form(...),
+    address: Optional[str] = Form(""),
+    quantity: int = Form(1),
+    total_amount: float = Form(...),
+    db: Session = Depends(database.get_db)
+):
+    user = get_current_user_from_session(request, db)
+    if not user: return {"success": False, "message": "Unauthorized"}
+    
+    try:
+        event_date_obj = date.fromisoformat(delivery_date)
+        event_time_obj = datetime.strptime(delivery_time, "%H:%M").time()
+        
+        # Create Draft Booking
+        new_booking = models.Booking(
+            user_id=user.id,
+            caterer_id=caterer_id,
+            event_name=f"Food Order (Draft): {full_name}",
+            event_type="Ala Carte Order",
+            event_date=event_date_obj,
+            event_time=event_time_obj,
+            venue_address=address,
+            guest_count=quantity,
+            total_amount=total_amount,
+            total_price=total_amount,
+            status="draft" 
+        )
+        db.add(new_booking)
+        db.flush()
+
+        # Add Menu Item to Draft
+        booking_item = models.BookingMenuItem(
+            booking_id=new_booking.id,
+            menu_item_id=menu_id,
+            price=total_amount / quantity if quantity > 0 else 0
+        )
+        db.add(booking_item)
+        db.commit()
+
+        return {"success": True, "booking_id": new_booking.id}
+    except Exception as e:
+        db.rollback()
+        return {"success": False, "message": str(e)}
+
 @router.post("/alacarte/checkout/submit")
 async def alacarte_checkout_submit(
     request: Request,
@@ -102,12 +154,13 @@ async def alacarte_checkout_submit(
     contact_number: str = Form(...),
     delivery_date: str = Form(...),
     delivery_time: str = Form(...),
-    address: str = Form(...),
+    address: Optional[str] = Form(""),
     quantity: int = Form(1),
     fulfillment: str = Form(...),
     payment_method: str = Form(...),
     total_amount: float = Form(...),
     landmark: Optional[str] = Form(None),
+    booking_id: Optional[int] = Form(None),
     id_file: Optional[UploadFile] = File(None),
     selfie_base64: Optional[str] = Form(None),
     db: Session = Depends(database.get_db)
@@ -126,63 +179,74 @@ async def alacarte_checkout_submit(
         if selfie_base64:
             selfie_url = save_base64_file(selfie_base64)
 
-        # 2. Create Booking
+        # 2. Update or Create Booking
         event_date_obj = date.fromisoformat(delivery_date)
         event_time_obj = datetime.strptime(delivery_time, "%H:%M").time()
-        
-        # Determine status
-        # For A La Carte - COD is confirmed immediately after identity verification
         status = "pending_payment" if payment_method == "GCASH" else "confirmed"
         
-        new_booking = models.Booking(
-            user_id=user.id,
-            caterer_id=caterer_id,
-            event_name=f"Food Order: {full_name}",
-            event_type="Food Delivery",
-            event_date=event_date_obj,
-            event_time=event_time_obj,
-            venue_address=address if fulfillment == "delivery" else "PICKUP",
-            guest_count=quantity,
-            total_amount=total_amount,
-            total_price=total_amount,
-            status=status,
-            payment_method=payment_method,
-            special_requests=landmark
-        )
-        db.add(new_booking)
-        db.flush() # Get ID
-
-        # 3. Add Menu Item
-        menu_item = db.query(models.MenuItem).get(menu_id)
-        booking_item = models.BookingMenuItem(
-            booking_id=new_booking.id,
-            menu_item_id=menu_id,
-            price=menu_item.price if menu_item else 0
-        )
-        db.add(booking_item)
-
-        # 4. Save Identity Data
-        if id_url or selfie_url:
-            ocr_verify = models.OCRVerification(
-                booking_id=new_booking.id,
+        booking = None
+        if booking_id:
+            booking = db.query(models.Booking).get(booking_id)
+            if booking and booking.user_id == user.id:
+                booking.status = status
+                booking.event_name = f"Food Order: {full_name}"
+                booking.payment_method = payment_method
+                booking.venue_address = address if fulfillment == "delivery" else "PICKUP"
+                booking.special_requests = landmark
+                booking.total_amount = total_amount
+        
+        if not booking:
+            booking = models.Booking(
                 user_id=user.id,
-                document_url=id_url,
-                selfie_url=selfie_url,
-                status="verified", # We assume client-side liveness for this direct flow
-                ocr_data={"full_name_provided": full_name}
+                caterer_id=caterer_id,
+                event_name=f"Food Order: {full_name}",
+                event_type="Ala Carte Order",
+                event_date=event_date_obj,
+                event_time=event_time_obj,
+                venue_address=address if fulfillment == "delivery" else "PICKUP",
+                guest_count=quantity,
+                total_amount=total_amount,
+                total_price=total_amount,
+                status=status,
+                payment_method=payment_method,
+                special_requests=landmark
             )
-            db.add(ocr_verify)
+            db.add(booking)
+            db.flush()
+
+            # Add Menu Item if core record was created here
+            menu_item = db.query(models.MenuItem).get(menu_id)
+            booking_item = models.BookingMenuItem(
+                booking_id=booking.id,
+                menu_item_id=menu_id,
+                price=menu_item.price if menu_item else 0
+            )
+            db.add(booking_item)
+
+        # 3. Save Identity Data
+        if id_url or selfie_url:
+            # Check for existing OCR record
+            ocr_verify = db.query(models.OCRVerification).filter(models.OCRVerification.booking_id == booking.id).first()
+            if not ocr_verify:
+                ocr_verify = models.OCRVerification(
+                    booking_id=booking.id,
+                    user_id=user.id,
+                    status="verified",
+                    ocr_data={"full_name_provided": full_name}
+                )
+                db.add(ocr_verify)
+            
+            if id_url: ocr_verify.document_url = id_url
+            if selfie_url: ocr_verify.selfie_url = selfie_url
+            ocr_verify.status = "verified"
 
         db.commit()
-        
-        # 5. Send Notification (Optional logic)
-        # NotificationService.send(...)
-
-        return {"success": True, "booking_id": new_booking.id}
+        return {"success": True, "booking_id": booking.id}
     except Exception as e:
         db.rollback()
         print(f"Error in alacarte submit: {e}")
         return {"success": False, "message": str(e)}
+
 
 # Step 1: Initialize/Select Caterer (from Profile Page)
 @router.get("/start/{caterer_id}")
@@ -497,6 +561,7 @@ async def step_payment_submit(
     path_booking_id: Optional[int] = None,
     booking_id: Optional[int] = Form(None),
     payment_method: str = Form("GCash"),
+    payment_plan: str = Form("downpayment"),
     payment_proof: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db)
 ):
@@ -513,6 +578,9 @@ async def step_payment_submit(
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
 
+    # Save payment plan
+    booking.payment_plan = payment_plan
+
     user = get_current_user_from_session(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -526,7 +594,7 @@ async def step_payment_submit(
             raise HTTPException(status_code=400, detail="Invalid file type. Only JPG, PNG, WEBP, and PDF are allowed.")
             
         ext = os.path.splitext(payment_proof.filename)[1]
-        filename = f"{booking.id}_down_{uuid.uuid4().hex}{ext}"
+        filename = f"{booking.id}_{payment_plan}_{uuid.uuid4().hex}{ext}"
         filepath = os.path.join(PROOF_UPLOAD_DIR, filename)
         
         with open(filepath, "wb") as buffer:
@@ -545,7 +613,7 @@ async def step_payment_submit(
         history = models.BookingHistory(
             booking_id=booking.id,
             status="pending",
-            notes=f"Downpayment committed via Cash. Proof: {'Uploaded' if proof_url else 'None'}"
+            notes=f"{payment_plan.capitalize()} committed via Cash. Proof: {'Uploaded' if proof_url else 'None'}"
         )
         db.add(history)
         db.commit()
@@ -553,7 +621,8 @@ async def step_payment_submit(
         # --- Trigger Notification (In-App, Email, SMS) ---
         await NotificationService.notify_new_booking(db, booking)
         if proof_url:
-            await NotificationService.notify_payment_received(db, booking, float(booking.reservation_fee or 0), "Downpayment Proof")
+            pay_amount = booking.total_amount if payment_plan == 'full' else (booking.reservation_fee or 0)
+            await NotificationService.notify_payment_received(db, booking, float(pay_amount), f"{payment_plan.capitalize()} Proof")
 
         return RedirectResponse(url=f"/bookings/success/{booking.id}", status_code=303)
 
@@ -629,8 +698,8 @@ async def pay_balance_submit(
     if not booking or booking.user_id != user.id:
         raise HTTPException(status_code=404, detail="Booking not found")
         
-    if booking.status != 'confirmed':
-        raise HTTPException(status_code=400, detail="Only confirmed bookings can have balances paid.")
+    if booking.status in ['completed', 'cancelled', 'draft']:
+        raise HTTPException(status_code=400, detail=f"Booking status '{booking.status}' does not allow balance payments.")
 
     outstanding_balance = float(booking.total_amount or 0) - float(booking.reservation_fee or 0)
     

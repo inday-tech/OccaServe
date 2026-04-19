@@ -776,30 +776,6 @@ async def view_kyc_queue(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
-    # Fetch all customers who are unverified OR recently verified
-    # Limit verified history to recent 50 to keep things fast
-    unverified_users = db.query(models.User).filter(
-        models.User.role == "customer",
-        models.User.is_verified == False,
-        models.User.is_archived == False
-    ).order_by(models.User.created_at.desc()).all()
-
-    verified_users = db.query(models.User).filter(
-        models.User.role == "customer",
-        models.User.is_verified == True,
-        models.User.is_archived == False
-    ).order_by(models.User.updated_at.desc()).limit(50).all()
-
-    # Create a unified customer list
-    # Note: We put unverified at top, then verified
-    customers = unverified_users + verified_users
-    
-    # KYC records for status mapping
-    kyc_requests = db.query(models.IdentityVerification).filter(
-        models.IdentityVerification.is_archived == False
-    ).all()
-    kyc_map = {k.user_id: k for k in kyc_requests}
-    
     # Fetch all caterers (Pending + Recent Verified)
     pending_caterers = db.query(models.CatererProfile).filter(
         models.CatererProfile.verification_status == "Pending"
@@ -814,8 +790,6 @@ async def view_kyc_queue(
     return templates.TemplateResponse("admin/kyc_logs.html", {
         "request": request,
         "user": user,
-        "customers": customers,
-        "kyc_map": kyc_map,
         "caterers": caterers,
         "active_page": "kyc"
     })

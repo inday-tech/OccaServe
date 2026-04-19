@@ -522,8 +522,8 @@
                                 <li><i class="far fa-clock"></i> {{ pkg.service_duration or 4 }} Hours Serivce</li>
                                 <li><i class="fas fa-utensils"></i> Wedding Food</li>
                             </ul>
-                            <button onclick="showPkgModal('pkg-modal-{{ pkg.id }}')" class="btn-outline-full"
-                                style="margin-top: auto;">View Details</button>
+                            <button onclick="viewPackageDetails({{ pkg.id }})" class="btn-outline-full"
+                                style="margin-top: auto; text-align: center; text-decoration: none;">View Details</button>
                         </div>
                     </div>
                     {% endfor %}
@@ -698,26 +698,6 @@
 </div>
 </div>
 
-{% for pkg in packages %}
-<div id="pkg-modal-{{ pkg.id }}" class="modal-overlay">
-    <div class="modal-box">
-        <button class="modal-close" onclick="closePkgModal('pkg-modal-{{ pkg.id }}')"><i
-                class="fas fa-times"></i></button>
-        <h2 style="font-size: 1.5rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem;">{{ pkg.name }}</h2>
-        <p style="color: #64748b; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem;">{{ pkg.description if
-            pkg.description else 'Signature package options are available with professional catering services to make
-            your event unforgettable.' }}</p>
-        <div
-            style="display: flex; gap: 1.5rem; margin-bottom: 1.5rem; color: #64748b; font-size: 0.9rem; font-weight: 600;">
-            <div><i class="fas fa-users" style="color: #f97316;"></i> {{ pkg.min_guests or '50' }}-{{ pkg.max_guests or
-                '100' }} guests</div>
-            <div><i class="far fa-clock" style="color: #f97316;"></i> {{ pkg.service_duration or '4' }}h service</div>
-        </div>
-        <button onclick="window.location.href='/bookings/start/{{ caterer.id }}?package_id={{ pkg.id }}'"
-            class="btn-orange-full" style="margin-bottom: 0;">Book Package Now</button>
-    </div>
-</div>
-{% endfor %}
 
 {% if caterer.menu_items %}
 {% for item in caterer.menu_items %}
@@ -762,6 +742,24 @@
     </div>
 </div>
 
+
+<!-- Package Details Modal (Dynamic) -->
+<div id="pkg-details-modal" class="modal-overlay" style="z-index: 1100;">
+    <div class="modal-box" style="padding: 0; max-width: 600px; overflow: hidden; border: none;">
+        <button class="modal-close" onclick="closePkgModal('pkg-details-modal')" style="z-index: 10; background: white; width: 32px; height: 32px; border-radius: 50%; top: 1rem; right: 1rem; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <i class="fas fa-times"></i>
+        </button>
+        <div id="pkg-modal-body">
+            <div style="padding: 4rem 2rem; text-align: center;">
+                <div class="spinner-border text-orange" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p style="margin-top: 1rem; color: #64748b; font-weight: 600;">Loading package details...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     function showPkgModal(id) {
         var m = document.getElementById(id);
@@ -771,6 +769,30 @@
         var m = document.getElementById(id);
         if (m) { m.style.display = 'none'; document.body.style.overflow = ''; }
     }
+    
+    async function viewPackageDetails(packageId) {
+        showPkgModal('pkg-details-modal');
+        const body = document.getElementById('pkg-modal-body');
+        body.innerHTML = `
+            <div style="padding: 4rem 2rem; text-align: center;">
+                <i class="fas fa-circle-notch fa-spin fa-2x" style="color: #f97316;"></i>
+                <p style="margin-top: 1rem; color: #64748b; font-weight: 600;">Loading package details...</p>
+            </div>
+        `;
+        
+        try {
+            const response = await fetch(`/packages/${packageId}/modal`);
+            if (response.ok) {
+                const html = await response.text();
+                body.innerHTML = html;
+            } else {
+                body.innerHTML = '<div style="padding: 4rem 2rem; text-align: center; color: #ef4444;">Failed to load details. Please try again.</div>';
+            }
+        } catch (e) {
+            body.innerHTML = '<div style="padding: 4rem 2rem; text-align: center; color: #ef4444;">An error occurred while fetching package information.</div>';
+        }
+    }
+
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             document.querySelectorAll('.modal-overlay').forEach(modal => modal.style.display = 'none');
@@ -779,6 +801,7 @@
     });
 
     async function submitContactInquiry(event, catererId, catererName) {
+        // ... (previous function implementation remains same)
         event.preventDefault();
         const form = event.target;
         const submitBtn = form.querySelector('button[type="submit"]');

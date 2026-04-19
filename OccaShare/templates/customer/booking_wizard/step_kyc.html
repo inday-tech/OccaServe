@@ -388,9 +388,23 @@
                 </div>
                 <div style="display: flex; gap: 1rem; justify-content: center;">
                     <button type="button" class="btn btn-secondary" onclick="retryLiveness()">Retake All</button>
-                    <button type="button" class="btn btn-primary" onclick="submitLiveness()">Submit & Verify</button>
+                    <button type="button" class="btn btn-primary" onclick="submitLiveness()">Securely Upload & Verify</button>
                 </div>
             </div>
+
+            <!-- WAITING FOR CATERER APPROVAL -->
+            <div id="kyc-waiting-approval" style="display: none; text-align: center; padding: 2rem 0;">
+                <div class="ocr-loader" style="width: 60px; height: 60px; margin: 0 auto 2rem; border-top-color: var(--primary-color);"></div>
+                <h2 style="font-weight: 800; font-size: 1.5rem; color: #1e293b; margin-bottom: 1rem;">Waiting for Caterer Approval</h2>
+                <p style="color: #64748b; font-weight: 600; line-height: 1.6; max-width: 400px; margin: 0 auto 2.5rem;">
+                    Aming sinisiguro ang iyong seguridad. Kasalukuyang bine-verify ng caterer ang iyong pagkakakilanlan upang maprotektahan ang inyong transaksyon.
+                </p>
+                <div style="background: #eff6ff; color: #1d4ed8; padding: 1rem; border-radius: 1rem; font-size: 0.85rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.75rem;">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Real-time Update: Automatic kaming lilipat sa susunod na step kapag na-approve na.</span>
+                </div>
+            </div>
+
 
             <!-- Final Process -->
             <div id="step-processing" style="display: none; text-align: center; padding: 2rem 0;">

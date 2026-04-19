@@ -194,10 +194,10 @@ def process_kyc_background(user_id, booking_id, id_path, selfie_paths, full_name
         print(f"[KYC BACKGROUND] Verification Service result: {result.get('status')}")
         
         # Override 'approved' to 'manual_review' as per user requirement: 
-        # "pending muna yan pagkatpos dahil kailangan muna icheck ni admin yun at iaapprove"
+        # "this should be pending after because it needs to be checked and approved by the caterer first"
         if result["status"] == "approved":
             kyc_record.verification_status = "manual_review"
-            print(f"[KYC BACKGROUND] Result was 'approved', setting to 'manual_review' for admin approval.")
+            print(f"[KYC BACKGROUND] Result was 'approved', setting to 'manual_review' for caterer approval.")
         else:
             kyc_record.verification_status = result["status"]
 
@@ -259,11 +259,26 @@ async def view_kyc_document(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     """Secure proxy to decrypt and view KYC documents."""
-    # RBAC: Only admin or the document owner can view
+    # RBAC: Only admin, the document owner, or their caterer can view
     is_admin = current_user.role == "admin"
+    is_owner = filename.startswith(f"user_{current_user.id}")
     
-    # Safety Check: Filename must be in the upload dir and look like a kyc file
-    if not (filename.startswith(f"user_{current_user.id}") or is_admin):
+    is_caterer_authorized = False
+    if current_user.role == "caterer":
+        # Check if this caterer has a booking with the user whose ID this is
+        # Extract user_id from filename like "user_123_id_..."
+        try:
+            target_user_id = int(filename.split("_")[1])
+            booking = db.query(models.Booking).filter(
+                models.Booking.caterer_id == current_user.caterer_profile.id,
+                models.Booking.user_id == target_user_id
+            ).first()
+            if booking:
+                is_caterer_authorized = True
+        except:
+            pass
+
+    if not (is_owner or is_admin or is_caterer_authorized):
         raise HTTPException(status_code=403, detail="Unauthorized access to this document.")
 
     path = os.path.join(UPLOAD_DIR, filename)

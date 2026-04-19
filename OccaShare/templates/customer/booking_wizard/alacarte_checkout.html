@@ -4,8 +4,9 @@
 
 {% block step_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_details.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_kyc.css') }}">
 <style>
-    /* Premium KYC Consistency Variables */
+    /* Premium Consistency Overrides */
     :root {
         --kyc-accent: #f97316;
         --kyc-accent-soft: rgba(249, 115, 22, 0.1);
@@ -16,28 +17,6 @@
         --checkout-primary: #f97316;
         --checkout-primary-soft: rgba(249, 115, 22, 0.1);
         --checkout-success: #10b981;
-    }
-
-    /* Shield Icon Header (Consistent with Package KYC) */
-    .kyc-header-icon {
-        display: flex;
-        justify-content: center;
-        margin-bottom: 1.5rem;
-    }
-
-    .shield-icon-container {
-        width: 60px;
-        height: 60px;
-        background: var(--kyc-accent);
-        border-radius: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        color: white;
-        box-shadow: 0 10px 25px rgba(249, 115, 22, 0.2), 0 4px 10px rgba(0,0,0,0.05);
-        transform: rotate(-10deg);
-        transition: all 0.3s ease;
     }
 
     /* Fixed Wizard Action Alignment */
@@ -55,11 +34,12 @@
         margin-left: auto;
     }
 
+    /* Hide standard package stepper as we use our own mini-stepper */
     .progress-stepper-premium {
         display: none !important;
     }
 
-    /* Checkout Container & Card Layout */
+    /* Layout */
     .checkout-container {
         max-width: 900px;
         margin: 1.5rem auto;
@@ -69,27 +49,27 @@
     .checkout-grid {
         display: grid;
         grid-template-columns: 1fr 350px;
-        gap: 1.5rem;
+        gap: 2rem;
         align-items: start;
     }
 
     .checkout-card {
         background: white;
-        border-radius: 1.25rem;
+        border-radius: 1.5rem;
         border: 1px solid #e2e8f0;
-        padding: 2.25rem;
+        padding: 2.5rem;
         box-shadow: 0 10px 30px rgba(0,0,0,0.04);
-        margin-bottom: 1.5rem;
+        margin-bottom: 2rem;
         position: relative;
     }
 
-    /* Mini-Stepper (Horizontal Stepper Nodes) */
+    /* 3-Step Mini Stepper (Reference: Diamond Standard) */
     .mini-stepper {
         display: flex;
         justify-content: center;
         align-items: center;
-        gap: 1.5rem;
-        margin-bottom: 2.5rem;
+        gap: 3rem;
+        margin-bottom: 3.5rem;
         padding: 0 1rem;
     }
 
@@ -97,7 +77,7 @@
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
-        gap: 0.5rem !important;
+        gap: 0.75rem !important;
         position: relative !important;
         opacity: 0.3;
         transition: all 0.4s ease;
@@ -109,8 +89,8 @@
     }
 
     .ms-icon {
-        width: 38px;
-        height: 38px;
+        width: 48px;
+        height: 48px;
         border-radius: 50%;
         background: white;
         border: 2px solid var(--kyc-slate-200);
@@ -118,7 +98,8 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.9rem;
+        font-size: 1rem;
+        font-weight: 700;
         transition: all 0.3s ease;
         box-shadow: 0 4px 6px rgba(0,0,0,0.02);
     }
@@ -127,7 +108,7 @@
         background: var(--checkout-primary);
         border-color: var(--checkout-primary);
         color: white;
-        box-shadow: 0 8px 20px rgba(249, 115, 22, 0.2);
+        box-shadow: 0 8px 20px rgba(249, 115, 22, 0.25);
         transform: scale(1.1);
     }
 
@@ -138,11 +119,11 @@
     }
 
     .ms-label {
-        font-size: 0.65rem;
+        font-size: 0.7rem;
         font-weight: 800;
         color: var(--kyc-slate-400);
         text-transform: uppercase;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.1em;
     }
 
     .mini-step.active .ms-label {
@@ -150,10 +131,10 @@
     }
 
     .section-title {
-        font-size: 1.35rem;
+        font-size: 1.5rem;
         font-weight: 800;
         color: var(--kyc-slate-700);
-        margin-bottom: 0.4rem;
+        margin-bottom: 0.5rem;
         display: flex;
         align-items: center;
         gap: 0.75rem;
@@ -161,558 +142,245 @@
 
     .section-subtitle {
         color: var(--kyc-slate-400);
-        font-size: 0.9rem;
-        margin-bottom: 2rem;
+        font-size: 0.95rem;
+        margin-bottom: 2.5rem;
     }
 
-    /* Internal KYC Stepper */
-    .kyc-sub-stepper {
-        display: flex !important;
-        justify-content: center !important;
-        gap: 1.5rem !important;
-        margin-bottom: 2rem !important;
-        padding: 0.75rem 1rem !important;
-        background: var(--kyc-slate-50);
-        border-radius: 0.75rem;
-    }
-
-    .sub-step {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        opacity: 0.4;
-        transition: all 0.3s ease;
-    }
-
-    .sub-step.active {
-        opacity: 1;
-        color: var(--kyc-accent);
-        font-weight: 700;
-    }
-
-    .sub-step i {
+    /* Form Overrides */
+    .form-group label {
+        font-weight: 800;
         font-size: 0.8rem;
-    }
-
-    .sub-step span {
-        font-size: 0.7rem;
+        color: #64748b;
         text-transform: uppercase;
         letter-spacing: 0.05em;
+        margin-bottom: 0.75rem;
     }
 
-    /* OCR Quality Indicators */
-    .qc-list {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-        margin-top: 1.5rem;
-    }
-
-    .qc-item {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        color: var(--kyc-slate-400);
+    .form-input {
+        height: 3.5rem;
+        border-radius: 1rem;
+        background: var(--kyc-slate-50);
+        border: 1.5px solid var(--kyc-slate-200);
         font-weight: 600;
-        font-size: 0.8rem;
+        transition: all 0.2s;
     }
 
-    .qc-item i {
-        width: 20px;
-        text-align: center;
+    .form-input:focus {
+        background: #fff;
+        border-color: var(--checkout-primary);
+        box-shadow: 0 0 0 4px var(--checkout-primary-soft);
     }
 
-    .qc-item.success {
-        color: #10b981;
-    }
-
-    .qc-item.success i {
-        color: #10b981;
-    }
-
-    /* Shield Icon Header Redefinition (merged for consistency) */
-    .shield-icon-container {
-        width: 60px;
-        height: 60px;
-        background: var(--kyc-accent);
-        border-radius: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.75rem;
-        color: white;
-        box-shadow: 0 10px 25px rgba(249, 115, 22, 0.2);
-        transform: rotate(-10deg);
-        transition: all 0.3s ease;
-    }
-
-    /* MINIMALIST HORIZONTAL STEPPER WITH ICONS */
-    .kyc-stepper-minimal {
-        display: flex !important;
-        flex-direction: row !important;
-        justify-content: center !important;
-        align-items: center !important;
-        gap: 2rem !important;
-        margin-bottom: 3rem !important;
-        padding: 0 1rem !important;
-    }
-
-    .step-node {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        gap: 0.5rem !important;
-        position: relative !important;
-        opacity: 0.3;
-        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-
-    .step-node.active, .step-node.completed { opacity: 1 !important; }
-
-    .node-icon {
-        width: 40px !important;
-        height: 40px !important;
-        border-radius: 50% !important;
-        background: white !important;
-        border: 2px solid var(--kyc-slate-200) !important;
-        color: var(--kyc-slate-400) !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        font-size: 0.9rem !important;
-        transition: all 0.3s ease !important;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
-    }
-
-    .step-node.active .node-icon {
-        background: var(--kyc-accent) !important;
-        border-color: var(--kyc-accent) !important;
-        color: white !important;
-        box-shadow: 0 8px 20px rgba(249, 115, 22, 0.2) !important;
-        transform: scale(1.1);
-    }
-
-    .step-node.completed .node-icon {
-        background: var(--kyc-accent-soft) !important;
-        border-color: var(--kyc-accent) !important;
-        color: var(--kyc-accent) !important;
-    }
-
-    .node-label {
-        font-size: 0.65rem !important;
-        font-weight: 800 !important;
-        color: var(--kyc-slate-400) !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.08em !important;
-    }
-
-    .step-node.active .node-label { color: var(--kyc-accent) !important; }
-
-    /* OCR Loading Quality Indicators */
-    #quality-indicators {
-        margin-top: 1.25rem;
-        font-size: 0.75rem;
-        color: var(--kyc-slate-400);
-        display: flex;
-        justify-content: center;
-        gap: 1rem;
-    }
-
-    .ocr-loader {
-        width: 40px;
-        height: 40px;
-        border: 3px solid var(--kyc-slate-200);
-        border-radius: 50%;
-        border-top-color: var(--kyc-accent);
-        animation: spin 1s linear infinite;
-        margin: 0 auto 1.25rem;
-    }
-
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    @media (max-width: 900px) {
-        .checkout-grid, .details-grid {
-            grid-template-columns: 1fr !important;
-        }
-    }
-
-    .details-grid {
-        display: grid !important;
-        grid-template-columns: 1fr 350px !important;
-        gap: 2rem !important;
-        align-items: start !important;
-    }
-
-    .form-area {
-        min-width: 0;
-    }
-
-    .form-input.error {
-        border-color: #ef4444 !important;
-        background: #fffafa !important;
-    }
-
-    .field-error {
-        color: #ef4444;
-        font-size: 0.78rem;
-        margin-top: 0.4rem;
-        display: none;
-        font-weight: 600;
-        animation: shake 0.3s ease;
-    }
-
-    .field-error.show {
-        display: block;
-    }
-
-    @keyframes shake {
-        0%, 100% { transform: translateX(0); }
-        25% { transform: translateX(-5px); }
-        75% { transform: translateX(5px); }
-    }
-
+    /* Screen Transitions */
     .checkout-screen {
         display: none;
     }
 
     .checkout-screen.active {
         display: block;
-        animation: fadeIn 0.4s ease forwards;
+        animation: slideUpFade 0.5s ease-out forwards;
     }
 
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
+    @keyframes slideUpFade {
+        from { opacity: 0; transform: translateY(15px); }
         to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Option Cards */
-    .option-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-    }
-
-    .option-card {
-        border: 2px solid #e2e8f0;
-        border-radius: 1rem;
-        padding: 1.25rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        position: relative;
-    }
-
-    .option-card:hover {
-        border-color: var(--checkout-primary);
-        background: var(--checkout-primary-soft);
-    }
-
-    .option-card.selected {
-        border-color: var(--checkout-primary);
-        background: var(--checkout-primary-soft);
-    }
-
-    .option-card input {
-        position: absolute;
-        opacity: 0;
-    }
-
-    /* KYC Specific Action Cards */
-    .action-card {
-        background: #fff !important;
-        border: 2px solid var(--kyc-slate-200) !important;
-        border-radius: 1.25rem !important;
-        padding: 2.25rem 1.5rem !important;
-        text-align: center !important;
-        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
-        cursor: pointer !important;
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        gap: 1rem !important;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.02) !important;
-        opacity: 1 !important;
-        pointer-events: auto !important;
-    }
-
-    .action-card:hover:not(.disabled) {
-        border-color: var(--kyc-accent) !important;
-        transform: translateY(-6px) !important;
-        box-shadow: 0 15px 30px rgba(249, 115, 22, 0.1) !important;
-    }
-
-    .action-card.disabled {
-        opacity: 0.3 !important;
-        cursor: not-allowed !important;
-        pointer-events: none !important;
-        transform: none !important;
-        box-shadow: none !important;
-    }
-
-    .card-icon {
-        width: 52px;
-        height: 52px;
-        background: var(--kyc-accent-soft);
-        color: var(--kyc-accent);
-        border-radius: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.25rem;
-    }
-
-    .oc-icon {
-        font-size: 1.25rem;
-        margin-bottom: 0.75rem;
-        color: var(--checkout-primary);
-    }
-
-    .oc-title {
-        font-weight: 800;
-        color: #1e293b;
-        margin-bottom: 0.2rem;
-        font-size: 0.9rem;
-    }
-
-    .oc-desc {
-        font-size: 0.75rem;
-        color: #64748b;
-    }
-
-    /* Webcam integrated */
-    .webcam-box {
-        width: 100%;
-        max-width: 360px;
-        aspect-ratio: 4/3;
-        background: #000;
-        border-radius: 1rem;
-        margin: 0 auto 1.25rem;
-        overflow: hidden;
-        position: relative;
-    }
-
-    #webcam {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
-    .webcam-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        border: 2px dashed rgba(255,255,255,0.3);
-        border-radius: 1rem;
-        pointer-events: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .face-guide {
-        width: 160px;
-        height: 220px;
-        border: 3px solid #f97316;
-        border-radius: 50%;
-        box-shadow: 0 0 0 1000px rgba(0,0,0,0.5);
-    }
-
-    /* Summary Side Panel */
-    .summary-box {
-        background: #f8fafc;
-        border-radius: 1rem;
-        padding: 1.25rem;
+    /* Sidebar Summary */
+    .calculator-sidebar {
         position: sticky;
         top: 2rem;
+    }
+
+    .summary-box {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 1.5rem;
+        padding: 1.75rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.02);
     }
 
     .sum-row {
         display: flex;
         justify-content: space-between;
-        margin-bottom: 0.6rem;
+        margin-bottom: 0.75rem;
         font-size: 0.85rem;
         color: #64748b;
+        font-weight: 500;
     }
 
     .sum-total {
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px dashed #e2e8f0;
         display: flex;
         justify-content: space-between;
-        margin-top: 1.25rem;
-        padding-top: 1.25rem;
-        border-top: 1px solid #e2e8f0;
+        font-size: 1.25rem;
         font-weight: 800;
-        font-size: 1.15rem;
-        color: #1e293b;
+        color: var(--kyc-slate-700);
     }
 
     .total-price-orange {
         color: var(--checkout-primary);
     }
 
-    /* Success States */
-    .success-animation {
-        text-align: center;
-        padding: 2.5rem 0;
-    }
-
-    .success-icon {
-        width: 70px;
-        height: 70px;
-        background: var(--checkout-success);
-        color: white;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2.25rem;
-        margin: 0 auto 1.5rem;
-        box-shadow: 0 10px 25px rgba(16, 185, 129, 0.2);
-    }
-    /* Internal KYC Stepper */
-    .kyc-sub-stepper {
-        display: flex !important;
-        justify-content: center !important;
-        gap: 1.5rem !important;
-        margin-bottom: 2.5rem !important;
-        padding: 1rem !important;
-        background: var(--kyc-slate-50);
-        border-radius: 1rem;
-    }
-
-    .sub-step {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        opacity: 0.4;
-        transition: all 0.3s ease;
-    }
-
-    .sub-step.active {
+    /* Dynamic Address Transition */
+    #address-section {
+        overflow: hidden;
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        max-height: 500px;
         opacity: 1;
-        color: var(--kyc-accent);
-        font-weight: 700;
+        transform: translateY(0);
+        margin-top: 1rem;
     }
 
-    .sub-step i {
-        font-size: 0.9rem;
+    #address-section.hidden-address {
+        max-height: 0;
+        opacity: 0;
+        transform: translateY(-20px);
+        margin-top: 0;
+        pointer-events: none;
     }
 
-    .sub-step span {
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
+    .option-card {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
     }
 
-    /* OCR Quality Indicators */
-    .qc-list {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        margin-top: 2rem;
+    .option-card:hover {
+        border-color: var(--checkout-primary) !important;
+        background: var(--checkout-primary-soft);
+        transform: translateY(-2px);
     }
 
-    .qc-item {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        color: var(--kyc-slate-400);
-        font-weight: 600;
+    .option-card.selected {
+        border-color: var(--checkout-primary) !important;
+        background: var(--checkout-primary-soft);
+        box-shadow: 0 4px 15px rgba(249, 115, 22, 0.1);
     }
 
-    .qc-item i {
-        width: 20px;
+    .option-card.selected::after {
+        content: '\f058';
+        font-family: 'Font Awesome 6 Free';
+        font-weight: 900;
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        color: var(--checkout-primary);
+        font-size: 1.1rem;
     }
 
-    .qc-item.success {
-        color: var(--kyc-accent);
+    @media (max-width: 900px) {
+        .checkout-grid {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 {% endblock %}
 
 {% block wizard_content %}
 <div class="checkout-container">
+    <!-- Stepper (3 Clear Operations) -->
     <div class="mini-stepper">
         <div class="mini-step active" id="m-step-1">
             <div class="ms-icon">1</div>
-            <span class="ms-label">Logistics</span>
+            <span class="ms-label">Delivery</span>
         </div>
-        <div class="mini-step" id="m-step-2">
-            <div class="ms-icon">2</div>
+        <div class="mini-step {% if user.is_verified %}completed{% endif %}" id="m-step-2">
+            <div class="ms-icon">{% if user.is_verified %}<i class="fas fa-check"></i>{% else %}2{% endif %}</div>
             <span class="ms-label">Identity</span>
         </div>
         <div class="mini-step" id="m-step-3">
             <div class="ms-icon">3</div>
             <span class="ms-label">Payment</span>
         </div>
-        <div class="mini-step" id="m-step-4">
-            <div class="ms-icon">4</div>
-            <span class="ms-label">Confirm</span>
-        </div>
     </div>
 
-    <div class="details-grid">
+    <div class="checkout-grid">
         <div class="form-area">
             <form id="checkoutForm">
-                <!-- SCREEN 1: DELIVERY INFO -->
+                <!-- STEP 1: DELIVERY INFORMATION -->
                 <div class="checkout-screen active" id="screen-1">
                     <div class="checkout-card">
-                        <h2 class="section-title"><i class="fas fa-truck" style="color: var(--checkout-primary);"></i> Delivery Information</h2>
-                        <p class="section-subtitle">Please provide where we should deliver your food.</p>
+                        <h2 class="section-title">
+                            <i class="fas fa-truck" style="color: var(--checkout-primary);"></i>
+                            Delivery Information
+                        </h2>
+                        <p class="section-subtitle">Please tell us how you want to receive your order.</p>
 
                         <div class="form-group">
-                            <label class="form-label">Full Name</label>
+                            <label>Fulfillment Method</label>
+                            <div class="option-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem;">
+                                <label class="option-card selected" style="border: 2px solid #e2e8f0; border-radius: 1rem; padding: 1.25rem; display: block; cursor: pointer; text-align: center;">
+                                    <input type="radio" name="fulfillment" value="delivery" checked onchange="updateFulfillment(this)" style="display: none;">
+                                    <i class="fas fa-bicycle" style="font-size: 1.25rem; color: var(--checkout-primary); margin-bottom: 0.5rem; display: block;"></i>
+                                    <div style="font-weight: 800; font-size: 0.9rem;">Delivery</div>
+                                    <div style="font-size: 0.75rem; color: #94a3b8;">+₱150 Fee</div>
+                                </label>
+                                <label class="option-card" style="border: 2px solid #e2e8f0; border-radius: 1rem; padding: 1.25rem; display: block; cursor: pointer; text-align: center;">
+                                    <input type="radio" name="fulfillment" value="pickup" onchange="updateFulfillment(this)" style="display: none;">
+                                    <i class="fas fa-store" style="font-size: 1.25rem; color: var(--checkout-primary); margin-bottom: 0.5rem; display: block;"></i>
+                                    <div style="font-weight: 800; font-size: 0.9rem;">Pickup</div>
+                                    <div style="font-size: 0.75rem; color: #94a3b8;">Self-collect (Free)</div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Full Name</label>
                             <input type="text" name="full_name" id="full_name" class="form-input" value="{{ user.first_name }} {{ user.last_name }}" required>
-                            <span class="field-error" id="err-full_name">Please enter your full name.</span>
+                            <span class="field-error" id="err-full_name">Full name is required.</span>
                         </div>
 
-                        <div class="form-group">
-                            <label class="form-label">Contact Number</label>
-                            <input type="tel" name="contact_number" id="contact_number" class="form-input" placeholder="09XX XXX XXXX" required>
-                            <span class="field-error" id="err-contact_number">Valid 11-digit phone number required.</span>
-                        </div>
-
-                        <div class="grid-2-col">
+                        <div class="grid-2-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                             <div class="form-group">
-                                <label class="form-label">Delivery Date</label>
+                                <label>Contact Number</label>
+                                <input type="tel" name="contact_number" id="contact_number" class="form-input" placeholder="09XX XXX XXXX" required>
+                                <span class="field-error" id="err-contact_number">11-digit mobile required.</span>
+                            </div>
+                            <div class="form-group">
+                                <label>Order Quantity</label>
+                                <input type="number" name="quantity" id="quantity_input" class="form-input" value="1" min="1" max="100" oninput="updateCheckoutSummary()">
+                            </div>
+                        </div>
+
+                        <div class="grid-2-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-group">
+                                <label>Delivery Date</label>
                                 <input type="date" name="delivery_date" id="delivery_date" class="form-input" required>
-                                <span class="field-error" id="err-delivery_date">Please select a future date.</span>
+                                <span class="field-error" id="err-delivery_date">Please select a date.</span>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Delivery Time</label>
+                                <label>Delivery Time</label>
                                 <input type="time" name="delivery_time" id="delivery_time" class="form-input" required>
-                                <span class="field-error" id="err-delivery_time">Time selection required.</span>
+                                <span class="field-error" id="err-delivery_time">Please select a time.</span>
+                            </div>
+                        </div>
+
+                        <div id="address-section">
+                            <div class="form-group" style="padding-top: 1rem; border-top: 1px dashed #e2e8f0; margin-top: 0.5rem;">
+                                <label>Delivery Address</label>
+                                <textarea name="address" id="address" class="form-input" style="height: auto; padding: 1rem;" rows="3" placeholder="Exact Street, Brgy, City, Province"></textarea>
+                                <span class="field-error" id="err-address">Complete address required.</span>
                             </div>
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label">Delivery Address</label>
-                            <textarea name="address" id="address" class="form-input" rows="3" placeholder="Street, Barangay, City, Province" required></textarea>
-                            <span class="field-error" id="err-address">Please provide a complete address for delivery.</span>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Landmark / Waze Pin <small>(Optional)</small></label>
-                            <input type="text" name="landmark" class="form-input" placeholder="e.g. Near Brgy Hall / Blue Gate">
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Quantity (Trays / Sets)</label>
-                            <input type="number" name="quantity" id="quantity_input" class="form-input" value="1" min="1" max="100" oninput="updateCheckoutSummary()">
-                            <span class="field-error" id="err-quantity">Maximum 100 trays per order.</span>
+                            <label>Landmark / Special Instructions (Optional)</label>
+                            <input type="text" name="landmark" class="form-input" placeholder="e.g. Near Blue Mall / White Gate">
                         </div>
                     </div>
+
                     <div class="checkout-nav-box">
                         <div class="nav-right">
-                            <button type="button" class="btn-wizard-next" onclick="nextScreen(2)">
-                                Next: Verify Identity <i class="fas fa-arrow-right" style="margin-left: 0.5rem;"></i>
+                            <button type="button" class="btn-wizard-next" onclick="nextScreen({% if user.is_verified %}3{% else %}2{% endif %})">
+                                Next Step: {% if user.is_verified %}Payment{% else %}Verification{% endif %} <i class="fas fa-chevron-right" style="margin-left: 0.5rem;"></i>
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- SCREEN 2: IDENTITY (1:1 PARITY WITH PACKAGE KYC) -->
+                <!-- STEP 2: IDENTITY VERIFICATION (EXACT PORT FROM PACKAGE KYC) -->
                 <div class="checkout-screen" id="screen-2">
                     <div class="checkout-card">
                         <!-- Shield Header -->
@@ -722,12 +390,12 @@
                             </div>
                         </div>
 
-                        <div style="text-align: center; margin-bottom: 2rem;">
+                        <div style="text-align: center; margin-bottom: 2.5rem;">
                             <h2 class="section-title" style="justify-content: center;">Identity Verification</h2>
-                            <p class="section-subtitle">Redefining trust through secure, real-time identity checks</p>
+                            <p class="section-subtitle">Securing your order through automated identity checks</p>
                         </div>
 
-                        <!-- Minimalist Stepper Nodes -->
+                        <!-- Internal Sub-Stepper for KYC -->
                         <div class="kyc-stepper-minimal">
                             <div class="step-node active" id="node-1">
                                 <div class="node-icon"><i class="fas fa-id-card"></i></div>
@@ -747,12 +415,12 @@
                             </div>
                         </div>
 
-                        <!-- SUB-STEP 1: DETAILS -->
+                        <!-- SUB-STEP 1: ID FORM -->
                         <div id="kyc-step-1" class="kyc-phase">
-                            <div class="grid-2-col" style="margin-bottom: 2.5rem;">
+                            <div class="kyc-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
                                 <div class="form-group">
-                                    <label class="form-label">ID Type</label>
-                                    <select id="id_type" name="id_type" class="form-input" onchange="validateIdSelection()" style="height: 3.5rem; font-weight: 600;">
+                                    <label>ID Type</label>
+                                    <select id="id_type" name="id_type" class="form-input" onchange="validateIdSelection()">
                                         <option value="">-- Choose ID Type --</option>
                                         <option value="PhilSys / PhilID">PhilSys / PhilID</option>
                                         <option value="Driver's License">Philippine Driver's License</option>
@@ -761,184 +429,163 @@
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">ID Number</label>
-                                    <input type="text" id="id_number" name="id_number" class="form-input" placeholder="Enter ID number" oninput="validateIdSelection()" style="height: 3.5rem; font-weight: 600;">
-                                    <p id="alc-id-validation-msg" style="font-size: 0.75rem; margin-top: 0.4rem; font-weight: 700; min-height: 1rem;"></p>
+                                    <label>ID Number</label>
+                                    <input type="text" id="id_number" name="id_number" class="form-input" placeholder="Enter ID number" oninput="validateIdSelection()">
+                                    <div id="alc-id-validation-msg" style="font-size: 0.75rem; color: #94a3b8; font-weight: 700; margin-top: 0.4rem; min-height: 1rem;"></div>
                                 </div>
                             </div>
 
-                            <div class="kyc-action-cards" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 0.75rem;">
+                            <div class="kyc-action-cards" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
                                 <div class="action-card disabled" id="alc-option-scan" onclick="startIdScanner()">
                                     <div class="card-icon"><i class="fas fa-camera"></i></div>
-                                    <h3 style="font-size: 1rem; font-weight: 800; margin-bottom: 0.5rem;">Scan Live</h3>
-                                    <p style="font-size: 0.75rem; color: var(--kyc-slate-400);">Quickest way to verify</p>
+                                    <h3 style="font-weight: 800; font-size: 1rem; margin-bottom: 0.25rem;">Scan Live</h3>
+                                    <p style="font-size: 0.75rem; color: #94a3b8;">Use your webcam to scan</p>
                                 </div>
                                 <div class="action-card disabled" id="alc-option-upload" onclick="handleUploadClick()">
                                     <div class="card-icon"><i class="fas fa-upload"></i></div>
-                                    <h3 style="font-size: 1rem; font-weight: 800; margin-bottom: 0.5rem;">Upload File</h3>
-                                    <p style="font-size: 0.75rem; color: var(--kyc-slate-400);">Use existing photo</p>
+                                    <h3 style="font-weight: 800; font-size: 1rem; margin-bottom: 0.25rem;">Upload ID</h3>
+                                    <p style="font-size: 0.75rem; color: #94a3b8;">Attach a photo of your ID</p>
                                 </div>
                             </div>
-                            <p id="alc-action-hint" style="font-size: 0.8rem; color: var(--kyc-slate-400); margin-bottom: 1.5rem;">Enter a valid ID type and ID number to unlock Scan Live and Upload File.</p>
-                            <input type="file" id="id_document_input" name="id_file" style="display: none;" accept="image/*" onchange="previewKycId(this)">
+                            <input type="file" id="id_document_input" style="display: none;" accept="image/*" onchange="previewKycId(this)">
                         </div>
 
-                        <!-- SUB-STEP 1.5: LIVE ID SCANNER (ID guide frame included) -->
+                        <!-- ID SCANNER VIEWPORT -->
                         <div id="kyc-step-scanner" class="kyc-phase" style="display: none; text-align: center;">
-                            <div class="webcam-box" style="aspect-ratio: 4/3; background: #000; border-radius: 1.5rem; position: relative; overflow: hidden; margin-bottom: 1.5rem; box-shadow: 0 20px 40px rgba(0,0,0,0.1);">
+                            <div class="webcam-box" style="width: 100%; max-width: 480px; aspect-ratio: 4/3; margin: 0 auto 2rem; position: relative; border-radius: 1.5rem; overflow: hidden; background: #000; box-shadow: 0 20px 50px rgba(0,0,0,0.2);">
                                 <video id="id-scanner-webcam" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
                                 <div style="position: absolute; top: 15%; left: 10%; right: 10%; bottom: 15%; border: 3px dashed rgba(255,255,255,0.4); border-radius: 1rem; pointer-events: none; box-shadow: 0 0 0 500px rgba(0,0,0,0.4);">
-                                    <div style="position: absolute; bottom: -40px; left: 50%; transform: translateX(-50%); width: 100%; color: white; font-size: 0.8rem; font-weight: 600;">ALIGN ID WITHIN FRAME</div>
+                                    <div style="position: absolute; bottom: -35px; width: 100%; color: white; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.1em; text-align: center;">ALIGN ID WITHIN FRAME</div>
                                 </div>
                             </div>
                             <div style="display: flex; gap: 1rem; justify-content: center;">
-                                <button type="button" class="btn-wizard-back" onclick="resetKycStep(1)">Back</button>
-                                <button type="button" class="btn-wizard-next" onclick="captureIdPhoto()">Capture <i class="fas fa-camera"></i></button>
+                                <button type="button" class="btn btn-secondary" onclick="resetKycStep(1)">Back</button>
+                                <button type="button" class="btn-wizard-next" onclick="captureIdPhoto()" style="padding: 0.75rem 2rem;">Capture <i class="fas fa-camera"></i></button>
                             </div>
                         </div>
 
-                        <!-- SUB-STEP 2: PREVIEW -->
+                        <!-- ID PREVIEW -->
                         <div id="kyc-step-2" class="kyc-phase" style="display: none; text-align: center;">
-                            <img id="id-image-preview" style="max-width: 100%; border-radius: 1.5rem; border: 1px solid var(--kyc-slate-200); margin-bottom: 2rem; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+                            <img id="id-image-preview" src="" style="width: 100%; max-width: 480px; border-radius: 1.5rem; margin-bottom: 2rem; border: 1px solid #e2e8f0; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
                             <div style="display: flex; gap: 1rem; justify-content: center;">
-                                <button type="button" class="btn-wizard-back" onclick="resetKycStep(1)">Retake</button>
-                                <button type="button" class="btn-wizard-next" onclick="proceedToOcr()">Confirm ID <i class="fas fa-check-circle"></i></button>
+                                <button type="button" class="btn btn-secondary" onclick="resetKycStep(1)">Retake</button>
+                                <button type="button" class="btn-wizard-next" onclick="proceedToOcr()" style="padding: 0.75rem 2rem;">Confirm ID <i class="fas fa-check-circle"></i></button>
                             </div>
                         </div>
 
-                        <!-- SUB-STEP 3: EXTRACTION (OCR Anim) -->
-                        <div id="kyc-step-3" class="kyc-phase" style="display: none; text-align: center; padding: 3rem 0;">
-                            <div class="ocr-loader"></div>
-                            <h3 style="font-weight: 800; font-size: 1.5rem; margin-bottom: 0.5rem;">Processing Data</h3>
-                            <p style="color: var(--kyc-slate-400); font-weight: 600;">Scanning ID for key information...</p>
-                            <div id="quality-indicators">
-                                <span id="qc-resolution" style="display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-circle-notch fa-spin"></i> Resolution</span>
-                                <span id="qc-focus" style="display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-circle-notch fa-spin"></i> Focus</span>
-                                <span id="qc-ocr" style="display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-circle-notch fa-spin"></i> Extraction</span>
+                        <!-- EXTRACTION (OCR ANIM) -->
+                        <div id="kyc-step-3" class="kyc-phase" style="display: none; text-align: center; padding: 2rem 0;">
+                            <div class="ocr-loader" style="width: 50px; height: 50px; border: 4px solid #f1f5f9; border-top-color: var(--kyc-accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1.5rem;"></div>
+                            <h3 style="font-weight: 800; margin-bottom: 0.5rem;">Processing Data</h3>
+                            <p style="color: #94a3b8; font-weight: 600; font-size: 0.9rem;">Extracting information for secure checkout...</p>
+                            <div id="quality-indicators" style="display: flex; justify-content: center; gap: 1.5rem; margin-top: 2rem; font-size: 0.8rem; color: #94a3b8; font-weight: 700;">
+                                <span id="qc-resolution"><i class="fas fa-circle-notch fa-spin"></i> <span>Quality</span></span>
+                                <span id="qc-focus"><i class="fas fa-circle-notch fa-spin"></i> <span>Focus</span></span>
+                                <span id="qc-ocr"><i class="fas fa-circle-notch fa-spin"></i> <span>Extraction</span></span>
                             </div>
                         </div>
 
-                        <!-- SUB-STEP 4: BIOMETRICS -->
+                        <!-- BIOMETRICS (LIVENESS) -->
                         <div id="kyc-step-4" class="kyc-phase" style="display: none; text-align: center;">
-                            <div class="webcam-box" style="aspect-ratio: 1/1; max-width: 400px; margin: 0 auto 1.5rem; border-radius: 50%; overflow: hidden; position: relative; border: 4px solid var(--checkout-primary); box-shadow: 0 20px 40px rgba(0,0,0,0.1);">
+                            <div class="webcam-box" style="width: 320px; height: 320px; border-radius: 50%; overflow: hidden; margin: 0 auto 1.5rem; border: 4px solid var(--kyc-accent); position: relative; box-shadow: 0 15px 40px rgba(0,0,0,0.15);">
                                 <video id="webcam" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
-                                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; border: 4px solid white; border-radius: 50%; pointer-events: none;"></div>
-                                <div id="selfie-countdown" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 5rem; font-weight: 900; color: white; display: none; z-index: 100;">3</div>
+                                <div id="selfie-countdown" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 5rem; font-weight: 900; color: white; display: none; z-index: 100; text-shadow: 0 4px 10px rgba(0,0,0,0.3);">3</div>
                             </div>
-                            <p id="liveness-feedback" style="font-weight: 700; color: var(--kyc-accent); margin-bottom: 1.5rem;">Look into the camera</p>
-                            <button type="button" class="btn-wizard-next" id="btn-begin-capture" onclick="beginLivenessSequence()" style="margin: 0 auto;">I'm Ready</button>
+                            <p id="liveness-feedback" style="font-weight: 800; color: var(--kyc-accent); margin-bottom: 2rem;">Position your face in the center</p>
+                            <button type="button" class="btn-wizard-next" id="btn-begin-capture" onclick="beginLivenessSequence()" style="margin: 0 auto; padding: 0.85rem 3rem;">I'm Ready</button>
                         </div>
 
-                        <!-- SUB-STEP 5: REVIEW (Tiled Selfies) -->
+                        <!-- BIOMETRIC REVIEW -->
                         <div id="kyc-step-5" class="kyc-phase" style="display: none; text-align: center;">
-                            <h3 style="font-weight: 800; font-size: 1.3rem; margin-bottom: 1.5rem;">Review Captured Frames</h3>
-                            <div id="selfie-gallery" style="display: flex; gap: 0.75rem; justify-content: center; margin-bottom: 2rem; overflow-x: auto; padding: 0.5rem;">
-                                <!-- Thumbnails -->
-                            </div>
-                            <p style="color: var(--checkout-success); font-weight: 800; margin-bottom: 1.5rem;"><i class="fas fa-check-circle"></i> Biometrics Verified</p>
-                            <div style="display: flex; gap: 1rem; justify-content: center;">
-                                <button type="button" class="btn-wizard-back" onclick="retryLiveness()">Retake All</button>
-                                <button type="button" class="btn-wizard-next" onclick="confirmIdentityReview()">Confirm & Continue <i class="fas fa-lock"></i></button>
+                             <h3 style="font-weight: 800; margin-bottom: 1.5rem;">Liveness Assessment</h3>
+                             <div id="selfie-gallery" style="display: flex; justify-content: center; gap: 0.75rem; margin-bottom: 2rem;">
+                                 <!-- Frames -->
+                             </div>
+                             <p style="color: #10b981; font-weight: 800; margin-bottom: 2rem;"><i class="fas fa-check-double" style="margin-right: 0.5rem;"></i> Verified Real Human</p>
+                             <div style="display: flex; gap: 1rem; justify-content: center;">
+                                <button type="button" class="btn btn-secondary" onclick="retryLiveness()">Retake</button>
+                                <button type="button" class="btn-wizard-next" onclick="confirmIdentityReview()" style="padding: 0.85rem 2rem;">Securely Upload <i class="fas fa-cloud-upload-alt" style="margin-left: 0.5rem;"></i></button>
+                             </div>
+                        </div>
+
+                        <!-- WAITING FOR CATERER APPROVAL -->
+                        <div id="kyc-step-waiting" class="kyc-phase" style="display: none; text-align: center; padding: 2rem 0;">
+                            <div class="ocr-loader" style="width: 60px; height: 60px; border: 4px solid #f1f5f9; border-top-color: var(--checkout-primary); border-radius: 50%; animation: spin 1.2s linear infinite; margin: 0 auto 2rem;"></div>
+                            <h2 style="font-weight: 800; font-size: 1.5rem; color: #1e293b; margin-bottom: 1rem;">Waiting for Caterer Approval</h2>
+                            <p style="color: #64748b; font-weight: 600; line-height: 1.6; max-width: 400px; margin: 0 auto 2.5rem;">
+                                Aming sinisiguro ang iyong seguridad. Kasalukuyang bine-verify ng caterer ang iyong pagkakakilanlan upang maprotektahan ang inyong transaksyon.
+                            </p>
+                            <div style="background: #eff6ff; color: #1d4ed8; padding: 1rem; border-radius: 1rem; font-size: 0.85rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.75rem;">
+                                <i class="fas fa-info-circle"></i>
+                                <span>Real-time Update: Automatic kaming lilipat sa Payment kapag na-approve na.</span>
                             </div>
                         </div>
 
-                        <!-- Footer Security Notice -->
-                        <div class="security-notice" style="margin-top: 3rem; background: #f0f9ff; border: 1px solid #bfdbfe; border-radius: 1rem; padding: 1.25rem; display: flex; align-items: center; justify-content: center; gap: 1rem; color: #0369a1; font-weight: 600; font-size: 0.85rem;">
-                            <i class="fas fa-lock"></i>
-                            <span>Protected by OccaServe Secure Identity Engine</span>
+
+                        <!-- Security Notice Footer -->
+                        <div class="security-notice" style="background: #f8fafc; border-color: #e2e8f0; color: #64748b; margin-top: 3.5rem;">
+                            <i class="fas fa-shield-halved"></i>
+                            <span>End-to-End Encrypted Identity Engine</span>
                         </div>
                     </div>
 
                     <div class="checkout-nav-box">
-                        <button type="button" class="btn-wizard-back" onclick="nextScreen(1)"><i class="fas fa-arrow-left"></i> Back</button>
+                        <button type="button" class="btn-wizard-back" onclick="nextScreen(1)"><i class="fas fa-chevron-left"></i> Back</button>
                         <div class="nav-right">
-                            <button type="button" class="btn-wizard-next" id="id-next-btn" onclick="nextScreen(3)" disabled>
-                                Next: Fulfillment <i class="fas fa-arrow-right"></i>
+                            <button type="button" class="btn-wizard-next" id="id-next-btn" onclick="nextScreen(3)" disabled style="display: none;">
+                                Next Step: Payment <i class="fas fa-chevron-right"></i>
                             </button>
+
                         </div>
                     </div>
                 </div>
 
-                <!-- SCREEN 3: PAYMENT -->
+                <!-- STEP 3: PAYMENT & CONFIRMATION -->
                 <div class="checkout-screen" id="screen-3">
                     <div class="checkout-card">
-                        <h2 class="section-title"><i class="fas fa-wallet" style="color: var(--checkout-primary);"></i> Fulfillment & Payment</h2>
-                        <p class="section-subtitle">Choose how you want to receive and pay for your order.</p>
-                        
-                        <!-- existing fulfillment options -->
+                        <h2 class="section-title">
+                            <i class="fas fa-wallet" style="color: var(--checkout-primary);"></i>
+                            Payment & Confirmation
+                        </h2>
+                        <p class="section-subtitle">Choose your payment method and confirm your order.</p>
+
+
                         <div class="form-group">
-                            <label class="form-label">Fulfillment Method</label>
-                            <div class="option-grid">
-                                <label class="option-card selected">
-                                    <input type="radio" name="fulfillment" value="delivery" checked onchange="updateFulfillment(this)">
-                                    <div class="oc-icon"><i class="fas fa-truck"></i></div>
-                                    <div class="oc-title">Delivery</div>
-                                    <div class="oc-desc">+₱150 Delivery Fee</div>
+                            <label>Payment Method</label>
+                            <div class="option-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <label class="option-card selected" style="border: 2px solid #e2e8f0; border-radius: 1rem; padding: 1.25rem; display: block; cursor: pointer; text-align: center;">
+                                    <input type="radio" name="payment_method" value="COD" checked style="display: none;">
+                                    <i class="fas fa-hand-holding-dollar" style="font-size: 1.25rem; color: var(--checkout-primary); margin-bottom: 0.5rem; display: block;"></i>
+                                    <div style="font-weight: 800; font-size: 0.9rem;">COD</div>
+                                    <div style="font-size: 0.75rem; color: #94a3b8;">Pay on delivery</div>
                                 </label>
-                                <label class="option-card">
-                                    <input type="radio" name="fulfillment" value="pickup" onchange="updateFulfillment(this)">
-                                    <div class="oc-icon"><i class="fas fa-store"></i></div>
-                                    <div class="oc-title">Pickup</div>
-                                    <div class="oc-desc">No additional fee</div>
+                                <label class="option-card" style="border: 2px solid #e2e8f0; border-radius: 1rem; padding: 1.25rem; display: block; cursor: pointer; text-align: center;">
+                                    <input type="radio" name="payment_method" value="GCASH" style="display: none;">
+                                    <i class="fas fa-mobile-screen" style="font-size: 1.25rem; color: var(--checkout-primary); margin-bottom: 0.5rem; display: block;"></i>
+                                    <div style="font-weight: 800; font-size: 0.9rem;">GCash</div>
+                                    <div style="font-size: 0.75rem; color: #94a3b8;">Online Transfer</div>
                                 </label>
                             </div>
                         </div>
 
-                        <div class="form-group">
-                            <label class="form-label">Payment Method</label>
-                            <div class="option-grid">
-                                <label class="option-card selected">
-                                    <input type="radio" name="payment_method" value="COD" checked>
-                                    <div class="oc-icon"><i class="fas fa-money-bill-wave"></i></div>
-                                    <div class="oc-title">COD</div>
-                                    <div class="oc-desc">Cash on Delivery</div>
-                                </label>
-                                <label class="option-card">
-                                    <input type="radio" name="payment_method" value="GCASH">
-                                    <div class="oc-icon"><i class="fas fa-mobile-alt"></i></div>
-                                    <div class="oc-title">GCash / Online</div>
-                                    <div class="oc-desc">Pay via PayMongo</div>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="checkout-nav-box">
-                        <button type="button" class="btn-wizard-back" onclick="nextScreen(2)"><i class="fas fa-arrow-left" style="margin-right: 0.5rem;"></i> Back</button>
-                        <div class="nav-right">
-                            <button type="button" class="btn-wizard-next" onclick="nextScreen(4)">
-                                Next: Final Review <i class="fas fa-arrow-right" style="margin-left: 0.5rem;"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                        <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 2.5rem 0;">
 
-                <!-- SCREEN 4: REVIEW -->
-                <div class="checkout-screen" id="screen-4">
-                    <div class="checkout-card">
-                        <h2 class="section-title"><i class="fas fa-clipboard-check" style="color: var(--checkout-primary);"></i> Final Confirmation</h2>
-                        <p class="section-subtitle">Review your order details carefully before placing it.</p>
-
-                        <div style="background: #f8fafc; padding: 1.5rem; border-radius: 1.25rem; margin-bottom: 2rem; border: 1px solid #e2e8f0;">
-                            <div class="sum-row"><strong>Item:</strong> <span>{{ menu_item.name }}</span></div>
+                        <div class="booking-summary-panel" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 1.25rem; padding: 1.5rem;">
+                            <h3 style="font-weight: 800; font-size: 1rem; margin-bottom: 1rem;">Final Review</h3>
                             <div class="sum-row"><strong>Recipient:</strong> <span id="rev-name">-</span></div>
-                            <div class="sum-row"><strong>Date/Time:</strong> <span id="rev-datetime">-</span></div>
-                            <div class="sum-row"><strong>Location:</strong> <span id="rev-location">-</span></div>
-                            <div class="sum-row"><strong>Payment:</strong> <span id="rev-paymode">COD</span></div>
-                        </div>
-
-                        <div class="security-notice" style="margin-top: 0; background: #fffbeb; border-color: #fef3c7; color: #92400e;">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <span>You are making a binding food order. Bogus bookings are punishable by account suspension.</span>
+                            <div class="sum-row"><strong>Contact:</strong> <span id="rev-phone">-</span></div>
+                            <div class="sum-row"><strong>When:</strong> <span id="rev-datetime">-</span></div>
+                            <div class="sum-row"><strong>Address:</strong> <span id="rev-location">-</span></div>
                         </div>
                     </div>
 
-                    <div id="place-order-loading" style="display: none; text-align: center; margin-bottom: 2rem;">
-                        <i class="fas fa-circle-notch fa-spin" style="font-size: 2.5rem; color: var(--checkout-primary);"></i>
-                        <p style="margin-top: 1rem; font-weight: 700;">Finalizing your order...</p>
+                    <div id="place-order-loading" style="display: none; text-align: center; margin-bottom: 2.5rem;">
+                         <div class="ocr-loader" style="width: 32px; height: 32px; border: 3px solid #f1f5f9; border-top-color: var(--kyc-accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 0.75rem;"></div>
+                         <p style="font-weight: 700; font-size: 0.85rem; color: #64748b;">Broadcasting order to caterer...</p>
                     </div>
 
                     <div class="checkout-nav-box">
-                        <button type="button" class="btn-wizard-back" onclick="nextScreen(3)"><i class="fas fa-arrow-left" style="margin-right: 0.5rem;"></i> Back</button>
+                        <button type="button" class="btn-wizard-back" onclick="nextScreen(2)"><i class="fas fa-chevron-left"></i> Back</button>
                         <div class="nav-right">
                             <button type="button" class="btn-wizard-next" id="final-submit-btn" onclick="submitAtaCarteOrder()" style="background: var(--checkout-primary); padding: 1rem 3.5rem;">
                                 PLACE ORDER NOW <i class="fas fa-check" style="margin-left: 0.75rem;"></i>
@@ -947,49 +594,51 @@
                     </div>
                 </div>
 
-                <!-- SCREEN 5: SUCCESS -->
+                <!-- SUCCESS SCREEN -->
                 <div class="checkout-screen" id="screen-5">
-                    <div class="checkout-card success-animation">
-                        <div class="success-icon"><i class="fas fa-check"></i></div>
-                        <h1 class="wizard-title">Order Placed Successfully!</h1>
-                        <p class="wizard-subtitle">Your order has been sent to {{ caterer.business_name }}.</p>
+                    <div class="checkout-card" style="text-align: center; padding: 4rem 2rem;">
+                        <div style="width: 80px; height: 80px; background: #10b981; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin: 0 auto 2rem; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.25);">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <h1 class="wizard-title" style="font-size: 2rem;">Order Received!</h1>
+                        <p class="wizard-subtitle" style="margin-bottom: 3rem;">Your food order has been sent to {{ caterer.business_name }}.</p>
                         
-                        <div style="margin: 2rem 0; padding: 1.5rem; background: #f0fdf4; border-radius: 1rem; color: #166534; text-align: left;">
-                            <p><strong><i class="fas fa-envelope"></i> Confirmation Sent:</strong> An SMS and Email summary has been sent to your registered contacts.</p>
-                            <p style="margin-top: 0.5rem;"><strong><i class="far fa-clock"></i> Next Step:</strong> The caterer will prepare your order. You can track this in your Dashboard.</p>
+                        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 1.25rem; padding: 1.5rem; text-align: left; margin-bottom: 3rem;">
+                            <p style="color: #166534; font-weight: 700; margin-bottom: 0.5rem;"><i class="fas fa-clipboard-check" style="margin-right: 0.5rem;"></i> Track Order</p>
+                            <p style="color: #4b6351; font-size: 0.9rem;">You can monitor the status of your order in the "My Bookings" section of your dashboard.</p>
                         </div>
 
-                        <a href="/customer/bookings" class="btn-wizard-next" style="display: block; text-align: center;">
-                            GO TO MY BOOKINGS
+                        <a href="/customer/bookings" class="btn-wizard-next" style="display: block; text-align: center; max-width: 320px; margin: 0 auto;">
+                            VIEW MY ORDERS <i class="fas fa-arrow-right" style="margin-left: 0.75rem;"></i>
                         </a>
                     </div>
                 </div>
             </form>
         </div>
 
-        <!-- Sidebar Summary -->
+        <!-- Sidebar Summary Box -->
         <aside class="calculator-sidebar">
             <div class="summary-box">
-                <h3 style="font-weight: 800; margin-bottom: 1.5rem; font-size: 1.1rem; color: #1e293b;">Order Summary</h3>
+                <h3 style="font-weight: 800; margin-bottom: 1.5rem; font-size: 1.1rem; color: #1e293b;">Bill Summary</h3>
                 <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
-                    <div style="width: 60px; height: 60px; background: #fff; border-radius: 0.75rem; overflow: hidden; border: 1px solid #e2e8f0;">
+                    <div style="width: 65px; height: 65px; background: #f8fafc; border-radius: 1rem; overflow: hidden; border: 1px solid #e2e8f0;">
                          <img src="{{ menu_item.image_url if menu_item.image_url else '/static/images/placeholder_dish.jpg' }}" style="width: 100%; height: 100%; object-fit: cover;">
                     </div>
-                    <div>
-                        <div style="font-weight: 700; font-size: 0.9rem;">{{ menu_item.name }}</div>
-                        <div style="font-size: 0.8rem; color: #64748b;">₱{{ "{:,.2f}".format(menu_item.price) }} / unit</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 800; font-size: 0.9rem; color: #1e293b; text-transform: uppercase; line-height: 1.2;">{{ menu_item.name }}</div>
+                        <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 600;">₱{{ "{:,.0f}".format(menu_item.price) }} / Tray</div>
                     </div>
                 </div>
 
                 <div class="sum-row">
-                    <span>Base Price</span>
+                    <span>Base Total</span>
                     <span id="sum-base-price">₱{{ "{:,.2f}".format(menu_item.price) }}</span>
                 </div>
                 <div class="sum-row">
                     <span>Quantity</span>
                     <span id="sum-qty">x1</span>
                 </div>
-                <div class="sum-row">
+                <div class="sum-row" id="delivery-row">
                     <span>Delivery Fee</span>
                     <span id="sum-delivery-fee">₱150.00</span>
                 </div>
@@ -999,9 +648,9 @@
                     <span class="total-price-orange" id="sum-grand-total">₱{{ "{:,.2f}".format(menu_item.price + 150) }}</span>
                 </div>
 
-                <div style="margin-top: 1.5rem; font-size: 0.75rem; color: #94a3b8; display: flex; gap: 0.5rem;">
-                    <i class="fas fa-shield-alt"></i>
-                    <span>Secure Checkout powered by OccaServe</span>
+                <div style="margin-top: 2rem; font-size: 0.7rem; color: #94a3b8; font-weight: 700; display: flex; align-items: center; gap: 0.6rem; background: #f8fafc; padding: 0.75rem 1rem; border-radius: 0.75rem;">
+                    <i class="fas fa-shield-alt" style="color: #64748b;"></i>
+                    <span>OCCASERVE SECURE CHECKOUT</span>
                 </div>
             </div>
         </aside>
@@ -1014,6 +663,7 @@
     window.itemPrice = parseFloat("{{ menu_item.price }}") || 0;
     window.catererId = "{{ caterer.id }}";
     window.menuId = "{{ menu_item.id }}";
+    window.isVerified = {% if user.is_verified %}true{% else %}false{% endif %};
 </script>
-<script src="{{ url_for('static', path='/js/customer/alacarte_checkout.js') }}"></script>
+<script src="{{ url_for('static', path='/js/customer/alacarte_checkout.js') }}?v=1.1"></script>
 {% endblock %}

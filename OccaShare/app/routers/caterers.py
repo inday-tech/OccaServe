@@ -47,7 +47,7 @@ def get_caterer_profile(request: Request, caterer_id: int, db: Session = Depends
         return templates.TemplateResponse("customer/caterer_profile_view.html", {
             "request": request, 
             "caterer": caterer,
-            "packages": caterer.packages,
+            "packages": [p for p in caterer.packages if p.is_active and p.status == 'active'],
             "gallery_items": caterer.gallery_items,
             "reviews": caterer.reviews,
             "user": user,

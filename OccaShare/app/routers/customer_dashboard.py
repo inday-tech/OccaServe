@@ -227,29 +227,58 @@ async def manage_booking(
         raise HTTPException(status_code=404, detail="Booking not found")
     
     # Calculate status progress for timeline
-    status_steps = ["draft", "pending", "confirmed", "completed"]
     current_status = (booking.status or "pending").lower()
+    is_food_order = booking.package_id is None
     
-    if current_status == "draft":
-        if user.is_kyc_complete:
-            current_step_idx = 2 # KYC is done, next step is Quotation
+    if is_food_order:
+        # 8-Step Food Order Flow
+        if current_status in ["pending", "pending_quotation", "awaiting_caterer", "draft"]:
+            current_step_idx = 1 # Pending
+        elif current_status in ["confirmed", "pending_payment", "awaiting_payment", "deposit_paid"]:
+            current_step_idx = 2 # Confirmed
+        elif current_status == "preparing":
+            current_step_idx = 3 # Preparing Food
+        elif current_status == "ready_for_delivery":
+            current_step_idx = 4 # Ready for Delivery
+        elif current_status == "on_the_way":
+            current_step_idx = 5 # Out for Delivery
+        elif current_status == "arrived":
+            current_step_idx = 6 # Arrived
+        elif current_status in ["setup_ongoing", "in_progress"]:
+            current_step_idx = 7 # Setup Ongoing
+        elif current_status in ["completed", "paid"]:
+            current_step_idx = 8 # Completed
         else:
-            current_step_idx = 1 # User is on Draft/KYC step
-    elif current_status in ["pending", "pending_quotation"]:
-        current_step_idx = 3 # Quotation phase
-    elif current_status in ["pending_payment", "awaiting_payment", "confirmed", "balance_proof_submitted"]:
-        current_step_idx = 4 # Payment phase
-    elif current_status in ["paid", "completed"]:
-        current_step_idx = 5 # All steps complete
+            current_step_idx = 1
     else:
-        current_step_idx = 4 if current_status == "cancelled" else 1 # Fallback
+        # Standard 6-Step Package Flow
+        if current_status == "draft":
+            current_step_idx = 2 if user.is_kyc_complete else 1
+        elif current_status in ["pending", "pending_quotation", "awaiting_caterer"]:
+            current_step_idx = 3 # Quotation phase
+        elif current_status in ["pending_payment", "awaiting_payment", "confirmed"]:
+            # If confirmed but not even a deposit is paid, they are in Payment phase (Step 4)
+            if booking.payment_status in ["pending", "proof_submitted", "reupload_requested"]:
+                current_step_idx = 4
+            else:
+                # If deposit_paid or paid, they move to Prep (Step 5)
+                current_step_idx = 5
+        elif current_status in ["confirmed", "preparing", "ready_for_delivery", "on_the_way", "arrived", "setup_ongoing", "in_progress"]:
+            current_step_idx = 5 # Prep & Service phase
+        elif current_status in ["completed", "paid"]:
+            current_step_idx = 6 # Done phase (Can still have balance payment in UI)
+        else:
+            current_step_idx = 1 # Fallback
         
+    # Decide which template to use
+    template_name = "customer/booking_manage_alacarte.html" if is_food_order else "customer/booking_manage_package.html"
+
     from datetime import date as date_cls, datetime as datetime_cls
-    return templates.TemplateResponse("customer/booking_manage.html", {
+    return templates.TemplateResponse(template_name, {
         "request": request,
         "user": user,
         "booking": booking,
-        "status_steps": status_steps,
+        "is_food_order": is_food_order,
         "current_step_idx": current_step_idx,
         "active_page": "bookings",
         "today": date_cls.today(),
@@ -731,11 +760,20 @@ async def run_customer_verification_bg(user_id: int, client_id: str, id_path: st
         db.close()
 
 @router.websocket("/verification/ws/{client_id}")
-async def verification_ws(websocket: WebSocket, client_id: str):
-    await manager.connect(client_id, websocket)
+async def verification_ws(
+    websocket: WebSocket, 
+    client_id: str,
+    db: Session = Depends(database.get_db)
+):
+    # We attempt to get user from session/cookies
+    user = auth.get_current_user_from_session_ws(websocket, db)
+    user_id = user.id if user else None
+    
+    await manager.connect(client_id, websocket, user_id=user_id)
     try:
         while True:
             # Keep connection alive
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(client_id)
+

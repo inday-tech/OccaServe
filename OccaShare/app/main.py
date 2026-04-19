@@ -32,6 +32,7 @@ try:
             ("reservation_fee", "DECIMAL"),
             ("expires_at", "TIMESTAMP WITH TIME ZONE"),
             ("payout_id", "INTEGER"),
+            ("payment_plan", "VARCHAR DEFAULT 'downpayment'"),
             ("ocr_verified", "BOOLEAN DEFAULT FALSE"),
             ("liveness_verified", "BOOLEAN DEFAULT FALSE")
         ]

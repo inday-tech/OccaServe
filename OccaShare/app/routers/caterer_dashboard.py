@@ -203,14 +203,14 @@ async def update_booking_status(
         raise HTTPException(status_code=404, detail="Booking not found")
 
     new_status = data.status
-    allowed_statuses = ["preparing", "on_the_way", "in_progress", "completed", "cancelled"]
+    allowed_statuses = ["preparing", "ready_for_delivery", "on_the_way", "arrived", "setup_ongoing", "completed", "cancelled"]
     
     if new_status not in allowed_statuses:
         raise HTTPException(status_code=400, detail="Invalid status")
 
-    # Business Logic Checks
-    if new_status == "completed" and booking.payment_status != "paid":
-        raise HTTPException(status_code=400, detail="Maaari lamang i-mark as Completed kung Fully Paid na ang booking.")
+    # Business Logic Checks: Allow completion if plan is FULL or status is PAID
+    if new_status == "completed" and booking.payment_status != "paid" and booking.payment_plan != "full":
+        raise HTTPException(status_code=400, detail="You can only mark this as Completed once the booking is Fully Paid.")
 
     old_status = booking.status
     booking.status = new_status
@@ -230,17 +230,23 @@ async def update_booking_status(
     message = ""
     
     if new_status == "preparing":
-        title = "Nagsimula na ang Paghahanda!"
-        message = f"Ang caterer na {user.caterer_profile.business_name} ay nagsimula na sa paghahanda para sa iyong event '{booking.event_name}'."
+        title = "Preparation Started! 🍳"
+        message = f"The caterer {user.caterer_profile.business_name} has started preparing for your food order '{booking.event_name}'."
+    elif new_status == "ready_for_delivery":
+        title = "Ready for Delivery! 🍱"
+        message = f"Cooking is complete! Your order is packed and ready for dispatch."
     elif new_status == "on_the_way":
-        title = "Papunta na ang Caterer!"
-        message = f"Ang team ay on the way na para sa iyong event '{booking.event_name}'. Maghanda na para sa setup!"
-    elif new_status == "in_progress":
-        title = "Live na ang iyong Event!"
-        message = f"Kasalukuyang ginaganap ang iyong event '{booking.event_name}'. Enjoy the catering service!"
+        title = "Order is in Transit! 🚚"
+        message = f"Our delivery team is on the way to your location for '{booking.event_name}'. Get those tables ready!"
+    elif new_status == "arrived":
+        title = "Caterer has Arrived! 📍"
+        message = f"Our team has arrived at your location. Please coordinate with our staff for turnover."
+    elif new_status == "setup_ongoing":
+        title = "Dining Setup Ongoing 🍽️"
+        message = f"Your food service is currently being set up. We are almost ready to serve!"
     elif new_status == "completed":
-        title = "Event Finished & Completed"
-        message = f"Matagumpay na natapos ang iyong event '{booking.event_name}'. Salamat sa pagtitiwala sa {user.caterer_profile.business_name}!"
+        title = "Transaction Completed! ✨"
+        message = f"Successfully delivered and served for your event '{booking.event_name}'. Thank you for choosing us!"
 
     if title and message:
         await NotificationService.notify_status_update(
@@ -259,8 +265,10 @@ async def update_booking_status(
         'pending': 'ps-badge-pending',
         'confirmed': 'ps-badge-confirmed',
         'preparing': 'ps-badge-preparing',
+        'ready_for_delivery': 'ps-badge-ready',
         'on_the_way': 'ps-badge-transit',
-        'in_progress': 'ps-badge-ongoing',
+        'arrived': 'ps-badge-arrived',
+        'setup_ongoing': 'ps-badge-ongoing',
         'completed': 'ps-badge-completed',
         'cancelled': 'ps-badge-cancelled'
     }
@@ -268,15 +276,17 @@ async def update_booking_status(
         'pending_quotation': 'Draft',
         'awaiting_caterer': 'To Sign',
         'awaiting_payment': 'Payment',
+        'ready_for_delivery': 'Ready',
         'on_the_way': 'In Transit',
-        'in_progress': 'Ongoing',
+        'arrived': 'Arrived',
+        'setup_ongoing': 'Fixing Setup',
     }
     
     await manager.broadcast_to_user(user.id, {
         "type": "booking_update",
         "booking_id": booking.id,
         "new_status": new_status,
-        "status_label": status_label_map.get(new_status, new_status.capitalize()),
+        "status_label": status_label_map.get(new_status, new_status.replace('_', ' ').capitalize()),
         "status_class": status_class_map.get(new_status, 'ps-badge-draft'),
         "message": f"Status updated to {new_status}"
     })
@@ -672,7 +682,10 @@ async def _confirm_booking_logic(db: Session, booking: models.Booking, caterer_u
     
     # CASE 1: Downpayment Verification or Initial Acceptance
     if booking.payment_status in ['proof_submitted', 'reupload_requested', 'pending'] or booking.status == 'pending':
-        booking.payment_status = 'deposit_paid'
+        if booking.payment_plan == 'full':
+            booking.payment_status = 'paid'
+        else:
+            booking.payment_status = 'deposit_paid'
         booking.status = 'confirmed'
         
         # Calculate Initial Actual Cost (Baseline)
@@ -906,6 +919,40 @@ async def request_new_proof(
 
     return {"status": "success", "message": "Customer notified to re-upload proof."}
 
+class DueDateRequest(BaseModel):
+    due_date: str
+
+@router.post("/api/bookings/{booking_id}/set-due-date")
+async def set_balance_due_date(
+    booking_id: int,
+    req: DueDateRequest,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking or (user.caterer_profile and booking.caterer_id != user.caterer_profile.id):
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    try:
+        from datetime import datetime
+        # Validate format
+        new_date = datetime.strptime(req.due_date, '%Y-%m-%d').date()
+        booking.balance_due_date = new_date
+        
+        # Add History
+        history = models.BookingHistory(
+            booking_id=booking.id,
+            status=booking.status,
+            notes=f"Balance Due Date set to {req.due_date} by Caterer."
+        )
+        db.add(history)
+        db.commit()
+        
+        return {"status": "success", "message": "Due date updated"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Invalid date format: {e}")
+
 @router.post("/api/bookings/{booking_id}/verify-proof")
 async def verify_booking_proof(
     booking_id: int,
@@ -960,7 +1007,8 @@ async def get_booking_details_api(
             "first_name": booking.user.first_name,
             "last_name": booking.user.last_name,
             "email": booking.user.email
-        }
+        },
+        "is_package": booking.package_id is not None
     }
 
 
@@ -2575,3 +2623,171 @@ async def reply_to_review(
     db.commit()
     
     return RedirectResponse(url="/caterer/reviews?success_msg=Reply+submitted!", status_code=303)
+
+@router.get("/compliance", response_class=HTMLResponse)
+async def view_compliance_queue(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    profile = user.caterer_profile
+    # Fetch all customers who have booked with this caterer
+    customers = db.query(models.User).join(models.Booking).filter(
+        models.Booking.caterer_id == profile.id,
+        models.User.role == "customer",
+        models.User.is_archived == False
+    ).distinct().all()
+
+    # KYC records & Bookings mapping
+    user_ids = [c.id for c in customers]
+    kyc_requests = db.query(models.IdentityVerification).filter(
+        models.IdentityVerification.user_id.in_(user_ids) if user_ids else False,
+        models.IdentityVerification.is_archived == False
+    ).all()
+    kyc_map = {k.user_id: k for k in kyc_requests}
+
+    # Categorization and Labels
+    package_customers = []
+    alacarte_customers = []
+    package_map = {}
+    alacarte_map = {}
+
+    for customer in customers:
+        # Get all relevant bookings for this customer with this caterer
+        user_bookings = db.query(models.Booking).filter(
+            models.Booking.user_id == customer.id, 
+            models.Booking.caterer_id == profile.id
+        ).order_by(models.Booking.created_at.desc()).all()
+        
+        if not user_bookings:
+            continue
+
+        # Split by type
+        pkgs = [b for b in user_bookings if b.event_type != "Ala Carte Order"]
+        alcs = [b for b in user_bookings if b.event_type == "Ala Carte Order"]
+
+        if pkgs:
+            package_customers.append(customer)
+            latest = pkgs[0]
+            package_map[customer.id] = latest.event_type if len(pkgs) == 1 else f"{latest.event_type} (+{len(pkgs)-1} more)"
+            
+        if alcs:
+            alacarte_customers.append(customer)
+            latest = alcs[0]
+            alacarte_map[customer.id] = "Ala Carte Order" if len(alcs) == 1 else f"Ala Carte (+{len(alcs)-1} more)"
+            
+        # Flag for the Multi-Order badge UI
+        customer.has_multiple_orders = (len(user_bookings) > 1)
+
+
+    # Final count mapping for badges
+    counts = {
+        "packages": len(package_customers),
+        "alacarte": len(alacarte_customers)
+    }
+
+    return templates.TemplateResponse("caterer/compliance.html", {
+        "request": request,
+        "user": user,
+        "package_customers": package_customers,
+        "alacarte_customers": alacarte_customers,
+        "kyc_map": kyc_map,
+        "package_map": package_map,       # Renamed
+        "alacarte_map": alacarte_map,     # New
+        "counts": counts,
+        "active_page": "compliance"
+    })
+
+
+
+@router.get("/compliance/view/{user_id}", response_class=HTMLResponse)
+async def view_customer_verification(
+    user_id: int,
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    profile = user.caterer_profile
+    # Verify this customer has a booking with this caterer
+    booking = db.query(models.Booking).filter(
+        models.Booking.caterer_id == profile.id,
+        models.Booking.user_id == user_id
+    ).first()
+    
+    if not booking:
+        raise HTTPException(status_code=403, detail="You do not have access to this user's verification data.")
+
+    target_user = db.query(models.User).get(user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    verification = target_user.identity_verification
+    if not verification:
+        return RedirectResponse(url="/caterer/compliance?error_msg=No+verification+data+found+for+this+user.")
+
+    return templates.TemplateResponse("caterer/compliance_verify.html", {
+        "request": request,
+        "user": user,
+        "target_user": target_user,
+        "verification": verification,
+        "active_page": "compliance"
+    })
+
+@router.post("/compliance/{user_id}/verify")
+async def verify_customer_compliance(
+    user_id: int,
+    action: str = Form(...),
+    reason: Optional[str] = Form(None),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    profile = user.caterer_profile
+    # Verify this customer has a booking with this caterer
+    booking = db.query(models.Booking).filter(
+        models.Booking.caterer_id == profile.id,
+        models.Booking.user_id == user_id
+    ).first()
+    
+    if not booking:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    target_user = db.query(models.User).get(user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    kyc_record = target_user.identity_verification
+    
+    if action == "approve":
+        target_user.is_verified = True
+        target_user.is_kyc_complete = True
+        if kyc_record:
+            kyc_record.verification_status = "approved"
+            kyc_record.verified_at = func.now()
+        
+        # Also update all bookings for this user with this caterer
+        db.query(models.Booking).filter(
+            models.Booking.user_id == user_id,
+            models.Booking.caterer_id == profile.id
+        ).update({"ocr_verified": True, "liveness_verified": True})
+            
+    elif action == "reject":
+        if kyc_record:
+            kyc_record.verification_status = "rejected"
+            kyc_record.failure_reason = reason
+        target_user.is_verified = False
+        
+    db.commit()
+
+    # --- Real-time WebSocket Notification ---
+    # Notify the customer that their verification state has changed
+    try:
+        await manager.broadcast_to_user(target_user.id, {
+            "type": "kyc_update",
+            "status": "approved" if action == "approve" else "rejected",
+            "reason": reason if action == "reject" else None
+        })
+    except Exception as e:
+        print(f"[KYC WS] Failed to notify user {user_id}: {e}")
+
+    return RedirectResponse(url=f"/caterer/compliance?success_msg=Customer+{action}d+successfully", status_code=303)
+

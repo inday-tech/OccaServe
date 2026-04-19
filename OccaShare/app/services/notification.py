@@ -108,6 +108,14 @@ class NotificationService:
         user = db.query(models.User).get(user_id)
         if not user: return
 
+        # 1. In-App
+        notif = models.Notification(
+            user_id=user_id,
+            title=title,
+            message=message,
+            type="info",
+            link=link
+        )
         db.add(notif)
         db.commit()
 

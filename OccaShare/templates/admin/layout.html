@@ -81,13 +81,6 @@
                     </a>
                 </li>
                 <li>
-                    <a href="/admin/notifications" class="{{ 'active' if active_page == 'notifications' }}" id="adminNotifLink"
-                        onclick="closeSidebar()">
-                        <i class="fas fa-bell"></i> <span>Notifications</span>
-                        <span class="badge" id="adminNotifBadge" style="display: none; background: #ef4444; color: white; padding: 0.1rem 0.4rem; border-radius: 99px; font-size: 0.7rem; margin-left: auto;">0</span>
-                    </a>
-                </li>
-                <li>
                     <a href="/admin/caterers" class="{{ 'active' if active_page == 'caterers' }}"
                         onclick="closeSidebar()">
                         <i class="fas fa-utensils"></i> <span>Manage Caterers</span>
@@ -112,6 +105,11 @@
                     </a>
                 </li>
                 <li>
+                    <a href="/admin/kyc" class="{{ 'active' if active_page == 'kyc' }}" onclick="closeSidebar()">
+                        <i class="fas fa-shield-halved"></i> <span>Compliance</span>
+                    </a>
+                </li>
+                <li>
                     <a href="/admin/inquiries" class="{{ 'active' if active_page == 'inquiries' }}">
                         <i class="fas fa-envelope-open-text"></i> <span>Visitor Inquiries</span>
                     </a>
@@ -122,21 +120,23 @@
                         <i class="fas fa-comment-dots"></i> <span>Platform Feedback</span>
                     </a>
                 </li>
-                <li>
-                    <a href="/admin/kyc" class="{{ 'active' if active_page == 'kyc' }}" onclick="closeSidebar()">
-                        <i class="fas fa-shield-halved"></i> <span>Compliance</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/admin/archives" class="{{ 'active' if active_page == 'archives' }}"
+                <li style="position: relative;">
+                    <a href="/admin/notifications" class="{{ 'active' if active_page == 'notifications' }}" id="adminNotifLink"
                         onclick="closeSidebar()">
-                        <i class="fas fa-archive"></i> <span>Archives</span>
+                        <i class="fas fa-bell"></i> <span>Notifications</span>
+                        <span class="badge" id="adminNotifBadge" style="display: none; background: #ef4444; color: white; padding: 0.1rem 0.4rem; border-radius: 99px; font-size: 0.7rem; margin-left: auto;">0</span>
                     </a>
                 </li>
                 <li>
                     <a href="/admin/settings" class="{{ 'active' if active_page == 'settings' }}"
                         onclick="closeSidebar()">
                         <i class="fas fa-sliders"></i> <span>Site Settings</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/admin/archives" class="{{ 'active' if active_page == 'archives' }}"
+                        onclick="closeSidebar()">
+                        <i class="fas fa-archive"></i> <span>Archives</span>
                     </a>
                 </li>
                 <li class="menu-divider"></li>

@@ -110,3 +110,23 @@ class RoleChecker:
                 detail="Operation not permitted"
             )
         return user
+
+def get_current_user_from_session_ws(websocket: "WebSocket", db: Session):
+    """Helper to get user from WebSocket cookies."""
+    token = websocket.cookies.get("access_token")
+    if token and token.startswith("Bearer "):
+        token = token.split(" ")[1]
+    
+    if not token:
+        return None
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            return None
+        user = db.query(models.User).filter(models.User.email == email).first()
+        return user
+    except JWTError:
+        return None
+

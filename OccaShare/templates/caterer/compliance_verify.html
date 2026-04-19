@@ -1,0 +1,266 @@
+{% extends "caterer/layout.html" %}
+
+{% block title %}Audit Terminal: {{ target_user.first_name }} - OccaServe{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/verification_detail.css') }}">
+<style>
+    /* Scoped overrides for caterer dashboard */
+    .verification-header-card {
+        background: var(--secondary-color);
+        border-left: 6px solid var(--primary-color);
+    }
+    .header-title-group .stat-label {
+        color: var(--primary-color);
+    }
+    .status-indicator-pill.badge-manual_review { background: #f59e0b; color: #fff; }
+    .status-indicator-pill.badge-approved { background: #10b981; color: #fff; }
+    .status-indicator-pill.badge-rejected { background: #ef4444; color: #fff; }
+    .status-indicator-pill.badge-pending { background: #64748b; color: #fff; }
+    
+    .gauge-fill { stroke: var(--primary-color); }
+    .btn-primary-action { background: var(--primary-color); box-shadow: 0 8px 20px rgba(var(--primary-color-rgb), 0.2); }
+    .btn-primary-action:hover:not(:disabled) { background: var(--primary-color); opacity: 0.9; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- High-Tech Biometric Comparison Terminal -->
+<div class="comparison-terminal-overlay" id="biometric-terminal">
+    <div class="terminal-header">
+        <div class="terminal-badge"><i class="fas fa-microchip"></i> ADVANCED BIOMETRIC ANALYSIS</div>
+        <button class="btn-close-terminal"><i class="fas fa-times"></i></button>
+    </div>
+
+    <div class="terminal-workspace">
+        <div class="terminal-viewport side-by-side" id="terminal-viewport">
+            <div class="view-container id-view">
+                <div class="view-label">IDENTITY DOCUMENT</div>
+                <div class="img-wrapper">
+                    <img src="{{ verification.document_url }}" id="terminal-id-img">
+                </div>
+            </div>
+
+            <div class="view-container selfie-view">
+                <div class="view-label">LIVE SELFIE</div>
+                <div class="img-wrapper">
+                    <img src="{{ verification.selfie_url }}" id="terminal-selfie-img">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="terminal-controls">
+        <div class="ctrl-group">
+            <label><i class="fas fa-adjust"></i> OVERLAY OPACITY</label>
+            <input type="range" id="opacity-slider" min="0" max="100" value="0">
+        </div>
+        <div class="ctrl-group">
+            <label><i class="fas fa-search-plus"></i> ANALYSIS SCALE</label>
+            <input type="range" id="scale-slider" min="100" max="300" value="100">
+        </div>
+        <div class="ctrl-group buttons">
+            <button class="btn-terminal-action" id="btn-toggle-layout">
+                <i class="fas fa-columns"></i> TOGGLE VIEW
+            </button>
+            <button class="btn-terminal-action" id="btn-reset-terminal">
+                <i class="fas fa-undo"></i> RESET
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Comparison Backdrop -->
+<div class="comparison-overlay-backdrop"></div>
+
+<div class="verification-page-container">
+    <div class="container-fluid" id="main-content-layout">
+        <header class="verification-header-card reveal-card">
+            <div class="header-title-group">
+                <span class="stat-label"><i class="fas fa-user-check mr-1"></i> CUSTOMER VERIFICATION</span>
+                <h1>{{ target_user.first_name }} {{ target_user.last_name }}</h1>
+                <p>Identity Validation & Biometric Review Terminal</p>
+            </div>
+
+            <div class="header-status-zone">
+                {% set status = verification.verification_status if verification else 'PENDING' %}
+                <div class="status-indicator-pill badge-{{ status|lower if status else 'pending' }}">
+                    <i class="fas fa-circle mr-2" style="font-size: 0.5rem;"></i> {{ status|replace('_', ' ')|upper }}
+                </div>
+            </div>
+        </header>
+
+        <div class="verification-review-grid">
+            <div class="verification-main">
+                <div class="ai-confidence-banner reveal-card">
+                    <div class="confidence-score-circle">
+                        <svg width="80" height="80" viewBox="0 0 80 80">
+                            <circle class="gauge-bg" cx="40" cy="40" r="35"></circle>
+                            <circle class="gauge-fill" cx="40" cy="40" r="35"
+                                data-score="{{ verification.fraud_score if verification else 0 }}">
+                            </circle>
+                        </svg>
+                        <div class="score-text">{{ verification.fraud_score if verification else 0 }}%</div>
+                    </div>
+                    <div class="confidence-info">
+                        <h3>Identity Trust Score</h3>
+                        <p>Our algorithms suggest a <strong>{{ 'high' if (verification.fraud_score or 0) >= 80 else 'medium' if (verification.fraud_score or 0) >= 60 else 'low' }} confidence</strong> match between the document and liveness check.</p>
+                    </div>
+                </div>
+
+                <div class="review-card reveal-card">
+                    <div class="d-flex justify-content-between align-items-center mb-5">
+                        <h3 class="audit-section-title mb-0">
+                            <i class="fas fa-id-card"></i> Biometric Analysis
+                        </h3>
+                        <button type="button" class="btn-toggle-compare" id="launch-compare-btn">
+                            <i class="fas fa-expand-arrows-alt"></i> LAUNCH TERMINAL
+                        </button>
+                    </div>
+
+                    <div class="biometric-grid">
+                        <div class="comparison-box id-box">
+                            <label class="d-block mb-3 font-weight-bold text-muted small uppercase">UPLOADED CREDENTIAL</label>
+                            <div class="img-preview-box">
+                                <div class="scan-line"></div>
+                                <div class="img-controls">
+                                    <button type="button" class="btn-ctrl btn-bright" title="Enhance"><i class="fas fa-sun"></i></button>
+                                    <a href="{{ verification.document_url }}" target="_blank" class="btn-ctrl"><i class="fas fa-expand-alt"></i></a>
+                                </div>
+                                <img src="{{ verification.document_url }}" class="img-fluid-fit">
+                            </div>
+                        </div>
+
+                        <div class="comparison-box selfie-box">
+                            <label class="d-block mb-3 font-weight-bold text-muted small uppercase">PROOFS OF LIFE (SELFIE)</label>
+                            <div class="img-preview-box">
+                                <div class="scan-line"></div>
+                                <div class="img-controls">
+                                    <button type="button" class="btn-ctrl btn-bright" title="Enhance"><i class="fas fa-sun"></i></button>
+                                    <a href="{{ verification.selfie_url }}" target="_blank" class="btn-ctrl"><i class="fas fa-expand-alt"></i></a>
+                                </div>
+                                <img src="{{ verification.selfie_url }}" class="img-fluid-fit">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="comparison-board mt-5 reveal-card">
+                        <div class="data-group ai-group">
+                            <div class="group-header">
+                                <i class="fas fa-microchip"></i>
+                                <span>AI OCR EXTRACTION</span>
+                                <div class="live-sync-indicator">
+                                    <span class="pulse"></span> LIVE
+                                </div>
+                            </div>
+                            <div class="data-rows">
+                                <div class="data-row">
+                                    <span class="label">FULL NAME ON ID</span>
+                                    <span class="value">{{ verification.ocr_data.full_name if verification and verification.ocr_data else 'N/A' }}</span>
+                                </div>
+                                <div class="data-row">
+                                    <span class="label">ID NUMBER</span>
+                                    <span class="value mono">{{ verification.ocr_data.id_number if verification and verification.ocr_data else 'N/A' }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="data-group system-group">
+                            <div class="group-header">
+                                <i class="fas fa-server"></i>
+                                <span>SYSTEM PROFILE</span>
+                            </div>
+                            <div class="data-rows">
+                                <div class="data-row">
+                                    <span class="label">REGISTERED NAME</span>
+                                    <span class="value">{{ target_user.first_name }} {{ target_user.last_name }}</span>
+                                </div>
+                                <div class="data-row">
+                                    <span class="label">ACCOUNT STATUS</span>
+                                    <span class="value">
+                                        <span class="badge-role">{{ 'VERIFIED' if target_user.is_verified else 'PENDING' }}</span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="verification-sidebar">
+                <!-- Cross-Reference Section -->
+                <div class="review-card reveal-card mb-4">
+                    <h3 class="audit-section-title mb-4">
+                        <i class="fas fa-history"></i> Related Activity & Bookings
+                    </h3>
+                    <div class="booking-cross-reference-list">
+                        {% for b in bookings %}
+                        <div class="reference-item mb-3 p-3" style="background: #f8fafc; border-radius: 10px; border-left: 4px solid {% if b.event_type == 'Ala Carte Order' %}#64748b{% else %}var(--primary-color){% endif %};">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div style="flex: 1;">
+                                    <h5 class="mb-1" style="font-size: 0.85rem; font-weight: 700; color: var(--secondary-color); line-height: 1.2;">
+                                        {{ b.event_name or b.event_type }}
+                                    </h5>
+                                    <p class="mb-1 text-muted small" style="font-size: 0.75rem;">
+                                        <i class="fas fa-calendar-alt mr-1"></i> {{ b.event_date.strftime('%b %d, %Y') if b.event_date else 'N/A' }}
+                                    </p>
+                                    <p class="mb-0 text-muted small" style="font-size: 0.7rem; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;">
+                                        <i class="fas fa-map-marker-alt mr-1"></i> {{ b.venue_address or 'No Address Specified' }}
+                                    </p>
+                                </div>
+                                <div class="text-right ml-2">
+                                    <span class="badge" style="font-size: 0.6rem; padding: 0.2rem 0.4rem; background: {% if b.status == 'confirmed' %}#d1fae5; color: #065f46{% else %}#e2e8f0; color: #475569{% endif %}; border-radius: 4px;">
+                                        {{ b.status|upper }}
+                                    </span>
+                                    <div class="mt-1 font-weight-bold" style="color: var(--secondary-color); font-size: 0.8rem;">₱{{ "{:,.2f}".format(b.total_amount or 0) }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="review-card reveal-card" style="position: sticky; top: 2rem;">
+                    <h3 class="audit-section-title mb-4">
+                        <i class="fas fa-gavel"></i> Auditor Action
+                    </h3>
+
+                    <form action="/caterer/compliance/{{ target_user.id }}/verify" method="POST">
+                        <div class="form-group mb-5">
+                            <label class="text-muted font-weight-bold small uppercase d-block mb-3">INTERNAL NOTES</label>
+                            <textarea name="reason" class="decision-textarea" style="min-height: 120px;" placeholder="Optional: Reason for decision..."></textarea>
+                        </div>
+
+                        <div class="decision-automation-area mb-5">
+                            <span class="d-block text-muted small font-weight-bold mb-3 uppercase">TEMPLATES</span>
+                            <div class="d-flex flex-column gap-2 mb-4">
+                                <button type="button" class="btn-template" data-template="Identity confirmed. The document matches the customer profile perfectly."><i class="fas fa-check"></i> Match Confirmed</button>
+                                <button type="button" class="btn-template text-danger" data-template="The ID document is blurry. Please upload a clearer photo."><i class="fas fa-exclamation-circle"></i> Blurry Document</button>
+                                <button type="button" class="btn-template text-danger" data-template="The selfie does not match the person on the identity document."><i class="fas fa-user-times"></i> Persona Mismatch</button>
+                            </div>
+                        </div>
+
+                        <div class="decision-actions d-flex flex-column gap-3">
+                            <button type="submit" name="action" value="approve" class="btn-primary-action"
+                                onclick="return confirm('APPROVE this customer? This will allow them to complete the booking.')">
+                                <i class="fas fa-check-circle mr-2"></i> APPROVE IDENTITY
+                            </button>
+                            <button type="submit" name="action" value="reject" class="btn-secondary-action"
+                                onclick="return confirm('REJECT this identification? The customer will need to resubmit.')">
+                                <i class="fas fa-times-circle mr-2"></i> REJECT IDENTITY
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', path='/js/admin/verification_detail.js') }}"></script>
+<script>
+    // Adjust selector for caterer dashboard if needed, but existing JS uses generic selectors
+</script>
+{% endblock %}

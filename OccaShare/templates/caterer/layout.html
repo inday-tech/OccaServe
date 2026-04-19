@@ -342,21 +342,34 @@
                         <i class="fas fa-th-large"></i> <span>Overview</span>
                     </a>
                 </li>
-                <li style="position: relative;">
-                    <a href="/caterer/notifications" class="{{ 'active' if active_page == 'notifications' }}"
-                        onclick="closeSidebar()">
-                        <i class="fas fa-bell"></i> <span class="sidebar-text">Notifications</span>
-                        {% set unread_count = user.notifications|selectattr('is_read', 'equalto', false)|list|count if
-                        user and user.notifications else 0 %}
-                        <span id="nav-notif-badge"
-                            style="background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.65rem; display: {{ 'flex' if unread_count > 0 else 'none' }}; align-items: center; justify-content: center; margin-left: auto;">{{
-                            unread_count }}</span>
-                    </a>
-                </li>
                 <li>
                     <a href="/caterer/bookings" class="{{ 'active' if active_page == 'bookings' }}"
                         onclick="closeSidebar()">
                         <i class="fas fa-tasks"></i> <span>Manage Bookings</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/caterer/calendar" class="{{ 'active' if active_page == 'calendar' }}"
+                        onclick="closeSidebar()">
+                        <i class="fas fa-calendar-alt"></i> <span>Calendar</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/caterer/compliance" class="{{ 'active' if active_page == 'compliance' }}"
+                        onclick="closeSidebar()">
+                        <i class="fas fa-shield-alt"></i> <span>Compliance</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/caterer/payments" class="{{ 'active' if active_page == 'payments' }}"
+                        onclick="closeSidebar()">
+                        <i class="fas fa-wallet"></i> <span>Payments</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/caterer/customers" class="{{ 'active' if active_page == 'customers' }}"
+                        onclick="closeSidebar()">
+                        <i class="fas fa-users"></i> <span>Customers</span>
                     </a>
                 </li>
                 <li>
@@ -371,28 +384,20 @@
                     </a>
                 </li>
                 <li>
-                    <a href="/caterer/payments" class="{{ 'active' if active_page == 'payments' }}"
-                        onclick="closeSidebar()">
-                        <i class="fas fa-wallet"></i> <span>Payments</span>
-                    </a>
-                </li>
-
-                <li>
-                    <a href="/caterer/customers" class="{{ 'active' if active_page == 'customers' }}"
-                        onclick="closeSidebar()">
-                        <i class="fas fa-users"></i> <span>Customers</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/caterer/calendar" class="{{ 'active' if active_page == 'calendar' }}"
-                        onclick="closeSidebar()">
-                        <i class="fas fa-calendar-alt"></i> <span>Calendar</span>
-                    </a>
-                </li>
-                <li>
                     <a href="/caterer/reviews" class="{{ 'active' if active_page == 'reviews' }}"
                         onclick="closeSidebar()">
                         <i class="fas fa-star"></i> <span>Customer Reviews</span>
+                    </a>
+                </li>
+                <li style="position: relative;">
+                    <a href="/caterer/notifications" class="{{ 'active' if active_page == 'notifications' }}"
+                        onclick="closeSidebar()">
+                        <i class="fas fa-bell"></i> <span class="sidebar-text">Notifications</span>
+                        {% set unread_count = user.notifications|selectattr('is_read', 'equalto', false)|list|count if
+                        user and user.notifications else 0 %}
+                        <span id="nav-notif-badge"
+                            style="background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.65rem; display: {{ 'flex' if unread_count > 0 else 'none' }}; align-items: center; justify-content: center; margin-left: auto;">{{
+                            unread_count }}</span>
                     </a>
                 </li>
                 <li>

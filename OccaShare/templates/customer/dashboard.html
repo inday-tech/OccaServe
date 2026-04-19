@@ -237,22 +237,57 @@
                             <div style="font-size: 0.75rem; color: #94a3b8;">{{ booking.payment_method }}</div>
                         </td>
                         <td class="premium-cell">
-                            <span class="p-badge"
-                                style="display: inline-flex; padding: 0.35rem 0.85rem; border-radius: 2rem; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; background: rgba(var(--primary-color-rgb), 0.1); color: var(--primary-color);">
-                                {{ (booking.status or 'pending')|replace('_', ' ') }}
+                            {% set is_pkg = booking.id|string in user.bookings|selectattr('package_id', 'ne', None)|map(attribute='id')|map('string')|list %}
+                            {# Note: In a real app we'd pass is_package in the b_data from Python. For now we use the status labels logic. #}
+                            
+                            {% set raw_status = booking.status or 'pending' %}
+                            {% set display_status = raw_status|replace('_', ' ') %}
+                            {% set badge_style = "background: rgba(var(--primary-color-rgb), 0.1); color: var(--primary-color);" %}
+                            
+                            {# Bifurcation Logic #}
+                            {% if booking.package_id or 'BK' in booking.id|string %}
+                                {# Package Milestone Mapping #}
+                                {% if raw_status == 'draft' %}{% set display_status = "Step 1: Draft" %}
+                                {% elif raw_status == 'identity' %}{% set display_status = "Step 2: Identity" %}
+                                {% elif raw_status == 'quotation' %}{% set display_status = "Step 3: Quotation" %}
+                                {% elif raw_status == 'pending' %}{% set display_status = "Step 4: Payment" %}
+                                {% elif raw_status in ['confirmed', 'preparing', 'ready_for_delivery', 'on_the_way', 'arrived', 'setup_ongoing'] %}
+                                    {% set display_status = "Step 5: Prep" %}
+                                    {% set badge_style = "background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0;" %}
+                                {% elif raw_status == 'completed' %}
+                                    {% set display_status = "Step 6: Done" %}
+                                    {% set badge_style = "background: #f8fafc; color: #64748b;" %}
+                                {% endif %}
+                            {% endif %}
+
+                            <span class="p-badge" style="display: inline-flex; padding: 0.35rem 0.85rem; border-radius: 2rem; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; {{ badge_style }}">
+                                {{ display_status }}
                             </span>
-                            {% if booking.payment_status == 'paid' or booking.has_proof %}
-                            <div
-                                style="display: flex; align-items: center; gap: 4px; font-size: 0.7rem; font-weight: 700; color: #059669; margin-top: 4px;">
+                            {% if booking.payment_status == 'paid' %}
+                            <div style="display: flex; align-items: center; gap: 4px; font-size: 0.7rem; font-weight: 700; color: #059669; margin-top: 4px;">
                                 <i class="fas fa-check-circle" style="font-size: 0.6rem;"></i> Paid
+                            </div>
+                            {% elif booking.payment_status in ['proof_submitted', 'balance_proof_submitted'] %}
+                            <div style="display: flex; align-items: center; gap: 4px; font-size: 0.7rem; font-weight: 700; color: #f59e0b; margin-top: 4px;">
+                                <i class="fas fa-hourglass-half" style="font-size: 0.6rem;"></i> Verifying
                             </div>
                             {% endif %}
                         </td>
                         <td class="premium-cell" style="text-align: right;">
-                            <button class="btn-pagination"
-                                style="border-radius: 0.5rem; padding: 0.4rem 0.8rem; font-size: 0.75rem; border-color: var(--primary-color); color: var(--primary-color);">
-                                Manage <i class="fas fa-arrow-right" style="font-size: 0.7rem;"></i>
-                            </button>
+                            <div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;">
+                                <button class="btn-pagination"
+                                    style="border-radius: 0.5rem; padding: 0.4rem 0.8rem; font-size: 0.75rem; border-color: var(--primary-color); color: var(--primary-color); width: 100%; transition: all 0.2s;"
+                                    onclick="window.location.href='/customer/bookings/manage/{{ booking.id }}'">
+                                    Manage <i class="fas fa-arrow-right" style="font-size: 0.7rem;"></i>
+                                </button>
+                                
+                                {% if raw_status == 'completed' and not booking.has_review %}
+                                <a href="/customer/feedback/{{ booking.id }}" class="btn-primary"
+                                    style="padding: 0.4rem 0.8rem; font-size: 0.75rem; border-radius: 0.5rem; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 0.4rem; background: #f59e0b; color: white; width: 100%; border: none;">
+                                    <i class="fas fa-star"></i> Review
+                                </a>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}

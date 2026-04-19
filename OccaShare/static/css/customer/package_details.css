@@ -1,0 +1,399 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+
+#pkg-details-premium {
+    font-family: 'Outfit', sans-serif;
+    background-color: #F8FAFC;
+    color: #1E293B;
+    min-height: 100vh;
+    padding-bottom: 5rem;
+}
+
+/* Explicit Resets for OccaServe global theme conflicts */
+#pkg-details-premium button {
+    border: none !important;
+    background: none !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    transform: none !important;
+    cursor: pointer;
+}
+
+#pkg-details-premium .container {
+    max-width: 1200px !important;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+/* Breadcrumbs */
+.pkg-breadcrumb {
+    padding: 1.5rem 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    color: #64748B;
+}
+
+.pkg-breadcrumb a {
+    color: #64748B;
+    transition: color 0.2s;
+}
+
+.pkg-breadcrumb a:hover {
+    color: #FF6B00;
+}
+
+/* Hero Section - Mirror UI */
+.pkg-hero-section {
+    position: relative;
+    height: 480px;
+    border-radius: 2rem;
+    overflow: hidden;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+}
+
+.pkg-hero-bg {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+}
+
+.pkg-hero-bg img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: brightness(0.6) blur(2px); /* Blurred look from UI */
+    transform: scale(1.05); /* Prevent blur edges */
+}
+
+.pkg-hero-overlay {
+    position: relative;
+    z-index: 2;
+    padding: 0 4rem;
+    width: 60%;
+    color: white;
+}
+
+.pkg-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    padding: 0.5rem 1rem;
+    border-radius: 100px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.pkg-hero-title {
+    font-size: 3.5rem;
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 1rem;
+    letter-spacing: -0.03em;
+}
+
+.pkg-hero-subtitle {
+    font-size: 1.25rem;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 2rem;
+    font-weight: 500;
+}
+
+.pkg-hero-meta {
+    display: flex;
+    gap: 2rem;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.pkg-hero-meta span {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* Floating Hero Card - Mirror UI */
+.hero-floating-card {
+    position: absolute;
+    top: 50%;
+    right: 4rem;
+    transform: translateY(-50%);
+    z-index: 10;
+    background: white;
+    width: 320px;
+    padding: 2.5rem;
+    border-radius: 2rem;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+    text-align: center;
+}
+
+.f-card-price {
+    font-size: 2.25rem;
+    font-weight: 900;
+    color: #1E293B;
+    margin-bottom: 0.25rem;
+}
+
+.f-card-price span {
+    font-size: 1.1rem;
+    color: #64748B;
+    font-weight: 600;
+}
+
+.btn-book-now {
+    display: block;
+    width: 100%;
+    background: #FF6B00 !important;
+    color: white !important;
+    padding: 1.125rem !important;
+    border-radius: 1rem !important;
+    font-weight: 800 !important;
+    font-size: 1.1rem !important;
+    text-align: center;
+    margin-top: 1.5rem !important;
+    transition: all 0.3s !important;
+}
+
+.btn-book-now:hover {
+    background: #E85F00 !important;
+    transform: translateY(-3px) !important;
+    box-shadow: 0 10px 20px rgba(255, 107, 0, 0.3) !important;
+}
+
+.btn-customize {
+    display: block;
+    width: 100%;
+    background: #F1F5F9 !important;
+    color: #1E293B !important;
+    padding: 1rem !important;
+    border-radius: 1rem !important;
+    font-weight: 700 !important;
+    font-size: 0.95rem !important;
+    margin-top: 1rem !important;
+    border: 1px solid #E2E8F0 !important;
+}
+
+/* Centered Tabs - Mirror UI */
+.pkg-tabs-nav {
+    display: flex;
+    justify-content: center;
+    gap: 3rem;
+    border-bottom: 1px solid #E2E8F0;
+    margin-bottom: 3rem;
+    padding-bottom: 0.5rem;
+}
+
+.pkg-tab-link {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #64748B;
+    padding: 1rem 0;
+    position: relative;
+    transition: color 0.3s;
+}
+
+.pkg-tab-link.active {
+    color: #1E293B;
+}
+
+.pkg-tab-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: #FF6B00;
+    border-radius: 100px;
+}
+
+/* Content Layout */
+.pkg-main-grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 3rem;
+    align-items: start;
+}
+
+.pkg-section {
+    margin-bottom: 4rem;
+    animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.pkg-section-title {
+    font-size: 1.75rem;
+    font-weight: 900;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.pkg-section-title i {
+    color: #FF6B00;
+}
+
+/* Sidebar Cards - Mirror UI */
+.pkg-sidebar-card {
+    background: white;
+    border-radius: 2rem;
+    padding: 2.5rem;
+    border: 1px solid #F1F5F9;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+    margin-bottom: 2rem;
+}
+
+.summary-price-line {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px dashed #E2E8F0;
+}
+
+/* Inclusions Grid - Mirror UI */
+.inclusions-grid-pro {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.inclusion-pro-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 1.5rem;
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    border: 1px solid #F1F5F9;
+    transition: all 0.3s;
+}
+
+.inclusion-pro-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.05);
+    border-color: #FF6B00;
+}
+
+.inclusion-icon-box {
+    width: 64px;
+    height: 64px;
+    background: #F8FAFC;
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: #1E293B;
+}
+
+.inclusion-info h4 {
+    font-size: 1.1rem;
+    font-weight: 800;
+    margin-bottom: 0.25rem;
+}
+
+.inclusion-info p {
+    font-size: 0.9rem;
+    color: #64748B;
+    margin: 0;
+}
+
+/* Formalities Split Grid - Mirror UI */
+.formalities-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
+
+.formality-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 1.5rem;
+    border: 1px solid #F1F5F9;
+}
+
+.formality-card h4 {
+    font-size: 1rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.formality-card ul {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.formality-card li {
+    font-size: 0.95rem;
+    color: #475569;
+    display: flex;
+    gap: 1rem;
+}
+
+.formality-card li::before {
+    content: "•";
+    color: #FF6B00;
+    font-weight: 900;
+}
+
+/* Bottom CTA Mirror */
+.pkg-bottom-cta {
+    margin-top: 5rem;
+    background: white;
+    padding: 5rem 2rem;
+    border-radius: 3rem;
+    text-align: center;
+    border: 1px solid #F1F5F9;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.04);
+}
+
+.pkg-bottom-cta h2 {
+    font-size: 2.5rem;
+    font-weight: 900;
+    margin-bottom: 2.5rem;
+    letter-spacing: -0.02em;
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+    .pkg-main-grid {
+        grid-template-columns: 1fr;
+    }
+    .hero-floating-card {
+        position: relative;
+        right: auto;
+        top: auto;
+        transform: none;
+        margin: -4rem auto 3rem;
+        width: 100%;
+        max-width: 400px;
+    }
+    .pkg-hero-overlay {
+        width: 100%;
+        text-align: center;
+        padding: 2rem;
+    }
+    .pkg-hero-meta {
+        justify-content: center;
+    }
+}
