@@ -170,7 +170,7 @@
                 </a>
             </li>
             <li class="menu-divider"></li>
-            {% if not has_submitted_feedback %}
+            {% if user and user.role == 'customer' and not user.platform_feedback %}
             <li>
                 <a href="#"
                     onclick="document.getElementById('platformFeedbackModal').style.display='flex'; event.preventDefault();"
@@ -336,7 +336,7 @@
     });
 
     // Proactive Nudge Logic
-    {% if not has_submitted_feedback %}
+    {% if user and user.role == 'customer' and not user.platform_feedback %}
     window.addEventListener('load', function () {
         const snoozeUntil = localStorage.getItem('feedbackNudgeSnooze');
         const now = Date.now();

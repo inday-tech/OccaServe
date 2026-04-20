@@ -242,6 +242,8 @@ class Booking(Base):
     payment_reference = Column(String, nullable=True)
     payment_proof_url = Column(String, nullable=True)
     balance_proof_url = Column(String, nullable=True)
+    paymongo_link_id = Column(String, nullable=True)
+    paymongo_link_url = Column(String, nullable=True)
     payout_id = Column(Integer, ForeignKey("payouts.id"), nullable=True)
     ocr_verification = relationship("OCRVerification", back_populates="booking", uselist=False, cascade="all, delete-orphan")
 
@@ -519,6 +521,8 @@ class PayoutItem(Base):
     payout_id = Column(Integer, ForeignKey("payouts.id"))
     booking_id = Column(Integer, ForeignKey("bookings.id"))
     amount = Column(Float)
+    status = Column(String, default="pending") # pending, escrowed, ready, released
+    release_trigger = Column(String, default="on_completion") # immediate, on_completion
     
     payout = relationship("Payout", back_populates="items")
     booking = relationship("Booking")
@@ -542,6 +546,7 @@ class WebsiteConfig(Base):
     
     # System Constraints
     commission_rate = Column(Float, default=10.0)
+    commission_fixed_amount = Column(Float, default=20.0)
     max_file_size_mb = Column(Integer, default=5)
     
     # Maintenance

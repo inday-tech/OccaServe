@@ -35,4 +35,8 @@ class Settings:
     # KYC CONFIG
     KYC_ENCRYPTION_KEY = os.getenv("KYC_ENCRYPTION_KEY", "")
 
+    # PAYMONGO CONFIG
+    PAYMONGO_SECRET_KEY = os.getenv("PAYMONGO_SECRET_KEY", "")
+    PAYMONGO_WEBHOOK_SIG_KEY = os.getenv("PAYMONGO_WEBHOOK_SIG_KEY", "")
+
 settings = Settings()

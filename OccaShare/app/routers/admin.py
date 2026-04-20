@@ -201,6 +201,58 @@ async def all_bookings(
         "active_page": "bookings"
     })
 
+@router.get("/payouts", response_class=HTMLResponse)
+async def manage_payouts(
+    request: Request, 
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(admin_only)
+):
+    # Fetch payout items that are 'ready' for release
+    ready_payouts = db.query(models.PayoutItem).filter(
+        models.PayoutItem.status == 'ready'
+    ).order_by(models.PayoutItem.id.desc()).all()
+
+    # Fetch recently released payouts
+    recent_released = db.query(models.PayoutItem).filter(
+        models.PayoutItem.status == 'released'
+    ).order_by(models.PayoutItem.id.desc()).limit(20).all()
+
+    # Calculate pending total
+    pending_release_total = float(sum(p.amount for p in ready_payouts) or 0.0)
+
+    return templates.TemplateResponse("admin/payouts.html", {
+        "request": request,
+        "user": user,
+        "ready_payouts": ready_payouts,
+        "recent_released": recent_released,
+        "pending_release_total": pending_release_total,
+        "active_page": "payouts"
+    })
+
+@router.post("/payouts/{item_id}/release")
+async def release_payout(
+    item_id: int,
+    reference: str = Form(...),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(admin_only)
+):
+    item = db.query(models.PayoutItem).get(item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Payout item not found")
+    
+    item.status = "released"
+    # item.payout_reference = reference # If I add field, else log in history
+    
+    # Check if all items in the parent Payout are released
+    parent_payout = item.payout
+    all_released = all(i.status == "released" for i in parent_payout.items)
+    if all_released:
+        parent_payout.status = "completed"
+        parent_payout.completed_at = datetime.now()
+
+    db.commit()
+    return RedirectResponse(url="/admin/payouts?success_msg=Payout+released+successfully", status_code=303)
+
 
 @router.get("/settings", response_class=HTMLResponse)
 async def website_settings(
@@ -233,6 +285,7 @@ async def update_website_settings(
     ig_link: Optional[str] = Form(None),
     tw_link: Optional[str] = Form(None),
     commission: Optional[float] = Form(None),
+    commission_fixed: Optional[float] = Form(None),
     max_upload: Optional[int] = Form(None),
     maintenance_mode: str = Form("off"),
     maint_msg: str = Form(...),
@@ -254,6 +307,8 @@ async def update_website_settings(
     config.twitter_link = tw_link
     if commission is not None:
         config.commission_rate = commission
+    if commission_fixed is not None:
+        config.commission_fixed_amount = commission_fixed
     if max_upload is not None:
         config.max_file_size_mb = max_upload
     config.maintenance_mode = True if maintenance_mode == "on" else False

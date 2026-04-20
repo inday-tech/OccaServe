@@ -126,7 +126,6 @@ async def customer_dashboard(
                 }
     conversations_list = list(conversations_dict.values())[:4]
 
-    has_submitted_feedback = db.query(models.PlatformFeedback).filter_by(user_id=user.id).first() is not None
 
     return templates.TemplateResponse("customer/dashboard.html", {
         "request": request,
@@ -138,8 +137,7 @@ async def customer_dashboard(
         "total_pages": total_pages,
         "active_page": "overview",
         "conversations": conversations_list,
-        "client_id": f"dashboard_{user.id}",
-        "has_submitted_feedback": has_submitted_feedback
+        "client_id": f"dashboard_{user.id}"
     })
 
 @router.get("/feedback/{booking_id}", response_class=HTMLResponse)
@@ -172,6 +170,12 @@ async def submit_platform_feedback(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
+    # Prevent duplicate submissions
+    existing_fb = db.query(models.PlatformFeedback).filter_by(user_id=user.id).first()
+    if existing_fb:
+        error_msg = "You have already submitted feedback. Thank you!"
+        return RedirectResponse(url=f"/customer/dashboard?error_msg={error_msg}", status_code=303)
+
     if rating < 1 or rating > 5:
         return RedirectResponse(url="/customer/dashboard?error_msg=Invalid+rating", status_code=303)
     if not comment or len(comment.strip()) < 10:

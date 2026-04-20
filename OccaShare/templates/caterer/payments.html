@@ -41,33 +41,33 @@
 {% endfor %}
 
 <!-- Stats Cards -->
-<div class="stats-grid-dashboard" style="margin-bottom: 3rem;">
-    <div class="stat-card-premium c-card-premium stat-card-white">
-        <div class="stat-icon-bg halo-green"><i class="fas fa-wallet"></i></div>
-        <div class="stat-label-dashboard">Total Received</div>
-        <div class="stat-value-dashboard" style="color: #10b981;">₱{{ "{:,.2f}".format(ns.received) }}</div>
-        <div class="stat-hint-dashboard">Successfully collected</div>
+<div class="stats-grid-dashboard" style="margin-bottom: 3rem; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem;">
+    <div class="stat-card-premium c-card-premium stat-card-white" style="border-left: 5px solid #10b981;">
+        <div class="stat-icon-bg halo-green"><i class="fas fa-hand-holding-usd"></i></div>
+        <div class="stat-label-dashboard">Released Capital</div>
+        <div class="stat-value-dashboard" style="color: #059669;">₱{{ "{:,.2f}".format(released_total) }}</div>
+        <div class="stat-hint-dashboard">Already in your pockets</div>
     </div>
 
-    <div class="stat-card-premium c-card-premium stat-card-white">
-        <div class="stat-icon-bg halo-amber"><i class="fas fa-clock"></i></div>
-        <div class="stat-label-dashboard">Pending Payments</div>
-        <div class="stat-value-dashboard" style="color: #f59e0b;">₱{{ "{:,.2f}".format(ns.pending) }}</div>
-        <div class="stat-hint-dashboard">{{ bookings|selectattr('payment_status', 'ne', 'paid')|list|length }} transactions</div>
+    <div class="stat-card-premium c-card-premium stat-card-white" style="border-left: 5px solid #6366f1;">
+        <div class="stat-icon-bg halo-purple"><i class="fas fa-shipping-fast"></i></div>
+        <div class="stat-label-dashboard">Ready for Payout</div>
+        <div class="stat-value-dashboard" style="color: #4f46e5;">₱{{ "{:,.2f}".format(ready_total) }}</div>
+        <div class="stat-hint-dashboard">Prep funds / Due for release</div>
     </div>
 
-    <div class="stat-card-premium c-card-premium stat-card-white">
-        <div class="stat-icon-bg halo-purple"><i class="fas fa-chart-line"></i></div>
-        <div class="stat-label-dashboard">This Month</div>
-        <div class="stat-value-dashboard">₱{{ "{:,.2f}".format(ns.this_month) }}</div>
-        <div class="stat-hint-dashboard">Current period revenue</div>
+    <div class="stat-card-premium c-card-premium stat-card-white" style="border-left: 5px solid #f59e0b;">
+        <div class="stat-icon-bg halo-amber"><i class="fas fa-user-lock"></i></div>
+        <div class="stat-label-dashboard">Held in Escrow</div>
+        <div class="stat-value-dashboard" style="color: #d97706;">₱{{ "{:,.2f}".format(escrow_total) }}</div>
+        <div class="stat-hint-dashboard">Released after event complete</div>
     </div>
 
-    <div class="stat-card-premium c-card-premium stat-card-white">
-        <div class="stat-icon-bg halo-red"><i class="fas fa-calendar-check"></i></div>
+    <div class="stat-card-premium c-card-premium stat-card-white" style="border-left: 5px solid #94a3b8;">
+        <div class="stat-icon-bg halo-gray"><i class="fas fa-calendar-check"></i></div>
         <div class="stat-label-dashboard">Active Bookings</div>
         <div class="stat-value-dashboard">{{ ns.active_count }}</div>
-        <div class="stat-hint-dashboard">Total confirmed events</div>
+        <div class="stat-hint-dashboard">Ongoing event contracts</div>
     </div>
 </div>
 

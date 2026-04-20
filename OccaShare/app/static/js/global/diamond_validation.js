@@ -51,6 +51,41 @@
         input.setSelectionRange(newCursorPos, newCursorPos);
     };
 
+    const getStringSimilarity = (s1, s2) => {
+        let longer = s1;
+        let shorter = s2;
+        if (s1.length < s2.length) {
+            longer = s2;
+            shorter = s1;
+        }
+        const longerLength = longer.length;
+        if (longerLength === 0) return 1.0;
+        return (longerLength - editDistance(longer, shorter)) / parseFloat(longerLength);
+    };
+
+    const editDistance = (s1, s2) => {
+        s1 = s1.toLowerCase();
+        s2 = s2.toLowerCase();
+        const costs = [];
+        for (let i = 0; i <= s1.length; i++) {
+            let lastValue = i;
+            for (let j = 0; j <= s2.length; j++) {
+                if (i === 0) costs[j] = j;
+                else {
+                    if (j > 0) {
+                        let newValue = costs[j - 1];
+                        if (s1.charAt(i - 1) !== s2.charAt(j - 1))
+                            newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+                        costs[j - 1] = lastValue;
+                        lastValue = newValue;
+                    }
+                }
+            }
+            if (i > 0) costs[s2.length] = lastValue;
+        }
+        return costs[s2.length];
+    };
+
     // --- UI HELPERS ---
     window.setDiamondError = function(fieldId, message, isError = true) {
         const wrapper = document.getElementById(fieldId + 'Wrapper');
@@ -76,6 +111,24 @@
             if (name.length < 2) return { valid: false, message: "Too short" };
             if (!nameRegex.test(name)) return { valid: false, message: "Letters/spaces only" };
             if (dummyNames.includes(lowerName)) return { valid: false, message: "Use your real name" };
+            
+            // Smart similarity and repetition check
+            const parts = lowerName.split(/\s+/).filter(p => p.length > 0);
+            if (parts.length >= 2) {
+                for (let i = 0; i < parts.length; i++) {
+                    for (let j = i + 1; j < parts.length; j++) {
+                        const p1 = parts[i];
+                        const p2 = parts[j];
+                        if (p1 === p2) {
+                            return { valid: false, message: "Avoid repetitive names (e.g. Pepito Pepito)" };
+                        }
+                        if (p1.length > 3 && p2.length > 3 && getStringSimilarity(p1, p2) > 0.8) {
+                            return { valid: false, message: "Names appear repetitive or contain typos" };
+                        }
+                    }
+                }
+            }
+            
             return { valid: true };
         },
         email: (email) => {

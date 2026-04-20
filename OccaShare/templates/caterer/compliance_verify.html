@@ -4,24 +4,6 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/admin/verification_detail.css') }}">
-<style>
-    /* Scoped overrides for caterer dashboard */
-    .verification-header-card {
-        background: var(--secondary-color);
-        border-left: 6px solid var(--primary-color);
-    }
-    .header-title-group .stat-label {
-        color: var(--primary-color);
-    }
-    .status-indicator-pill.badge-manual_review { background: #f59e0b; color: #fff; }
-    .status-indicator-pill.badge-approved { background: #10b981; color: #fff; }
-    .status-indicator-pill.badge-rejected { background: #ef4444; color: #fff; }
-    .status-indicator-pill.badge-pending { background: #64748b; color: #fff; }
-    
-    .gauge-fill { stroke: var(--primary-color); }
-    .btn-primary-action { background: var(--primary-color); box-shadow: 0 8px 20px rgba(var(--primary-color-rgb), 0.2); }
-    .btn-primary-action:hover:not(:disabled) { background: var(--primary-color); opacity: 0.9; }
-</style>
 {% endblock %}
 
 {% block content %}
@@ -231,16 +213,16 @@
                             <textarea name="reason" class="decision-textarea" style="min-height: 120px;" placeholder="Optional: Reason for decision..."></textarea>
                         </div>
 
-                        <div class="decision-automation-area mb-5">
-                            <span class="d-block text-muted small font-weight-bold mb-3 uppercase">TEMPLATES</span>
-                            <div class="d-flex flex-column gap-2 mb-4">
+                        <div class="decision-automation-area mt-5 mb-5">
+                            <span class="d-block text-muted small font-weight-bold mb-4 uppercase" style="letter-spacing: 0.15em;">QUICK TEMPLATES</span>
+                            <div class="d-flex flex-column gap-3 mb-5">
                                 <button type="button" class="btn-template" data-template="Identity confirmed. The document matches the customer profile perfectly."><i class="fas fa-check"></i> Match Confirmed</button>
                                 <button type="button" class="btn-template text-danger" data-template="The ID document is blurry. Please upload a clearer photo."><i class="fas fa-exclamation-circle"></i> Blurry Document</button>
                                 <button type="button" class="btn-template text-danger" data-template="The selfie does not match the person on the identity document."><i class="fas fa-user-times"></i> Persona Mismatch</button>
                             </div>
                         </div>
 
-                        <div class="decision-actions d-flex flex-column gap-3">
+                        <div class="decision-actions d-grid pt-4" style="grid-template-columns: 1fr 1fr; gap: 1.5rem; border-top: 1px solid var(--v-border); margin-top: 3rem;">
                             <button type="submit" name="action" value="approve" class="btn-primary-action"
                                 onclick="return confirm('APPROVE this customer? This will allow them to complete the booking.')">
                                 <i class="fas fa-check-circle mr-2"></i> APPROVE IDENTITY

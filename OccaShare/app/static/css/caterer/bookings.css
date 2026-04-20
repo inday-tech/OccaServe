@@ -147,19 +147,20 @@
 /* ─── Premium Action Banner (Glassmorphism) ─── */
 .action-banner-premium {
     position: relative;
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(12px) saturate(160%);
-    -webkit-backdrop-filter: blur(12px) saturate(160%);
-    border: 1px solid rgba(255, 255, 255, 0.4);
+    background: linear-gradient(135deg, #fffbf0 0%, #fffbeb 100%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid #fef3c7;
+    border-left: 5px solid #f59e0b;
     border-radius: 1.5rem;
-    padding: 1.75rem;
-    margin-bottom: 2.5rem;
+    padding: 1.75rem 2rem;
+    margin-bottom: 3rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
     box-shadow: 
-        0 4px 24px -1px rgba(0, 0, 0, 0.06),
-        inset 0 0 20px rgba(255, 255, 255, 0.2);
+        0 10px 25px -5px rgba(245, 158, 11, 0.1),
+        0 8px 10px -6px rgba(245, 158, 11, 0.05);
     overflow: hidden;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -171,10 +172,10 @@
     left: -50%;
     width: 200%;
     height: 200%;
-    background: radial-gradient(circle, rgba(245, 158, 11, 0.08) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(245, 158, 11, 0.12) 0%, transparent 70%);
     z-index: 0;
     pointer-events: none;
-    animation: slow-glow 8s infinite alternate;
+    animation: slow-glow 10s infinite alternate;
 }
 
 @keyframes slow-glow {
@@ -191,16 +192,22 @@
 }
 
 .action-banner-icon {
-    width: 56px;
-    height: 56px;
-    background: var(--primary-gradient);
+    width: 60px;
+    height: 60px;
+    background: #f59e0b;
     color: white;
-    border-radius: 1rem;
+    border-radius: 1.25rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
-    box-shadow: 0 8px 16px rgba(var(--primary-color-rgb), 0.25);
+    font-size: 1.6rem;
+    box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.3);
+    animation: action-icon-pulse 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes action-icon-pulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.3); }
+    50% { transform: scale(1.1); box-shadow: 0 15px 25px -5px rgba(245, 158, 11, 0.4); }
 }
 
 .action-banner-text h3 {
@@ -229,25 +236,60 @@
 .btn-banner-action {
     position: relative;
     z-index: 1;
-    background: var(--secondary-color);
+    background: #1e293b;
     color: white;
-    padding: 0.75rem 1.5rem;
-    border-radius: 0.85rem;
-    font-weight: 700;
-    font-size: 0.9rem;
+    padding: 0.85rem 1.75rem;
+    border-radius: 1rem;
+    font-weight: 800;
+    font-size: 0.95rem;
     border: none;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+    gap: 0.75rem;
+    box-shadow: 0 10px 20px -5px rgba(15, 23, 42, 0.3);
 }
 
 .btn-banner-action:hover {
     background: #0f172a;
-    transform: translateY(-2px);
-    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.2);
+    transform: translateX(5px);
+    box-shadow: 0 15px 30px -8px rgba(15, 23, 42, 0.4);
+}
+
+/* New Booking Button Standard Class */
+.btn-bookings-new {
+    height: 48px;
+    background: var(--primary-color) !important;
+    color: white !important;
+    padding: 0 1.75rem;
+    border-radius: 0.85rem;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border: none;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 8px 16px rgba(var(--primary-color-rgb), 0.2);
+}
+
+.btn-bookings-new:hover {
+    transform: translateY(-3px);
+    background: var(--accent-color) !important;
+    color: white !important;
+    box-shadow: 0 12px 24px rgba(var(--primary-color-rgb), 0.3);
+}
+
+.btn-bookings-new i {
+    font-size: 1rem;
+    color: white !important;
+}
+
+.btn-bookings-new .btn-text {
+    color: white !important;
 }
 
 /* Action Buttons for Dashboard */

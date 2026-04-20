@@ -208,6 +208,11 @@
                     window.showToast(data.message || "New notification received", "info");
                 }
             } else if (data.type === 'booking_update') {
+                // If on dashboard, refresh stats
+                if (typeof window.refreshDashboardData === 'function') {
+                    window.refreshDashboardData();
+                }
+
                 if (window.location.pathname.includes('/caterer/bookings')) {
                     const row = document.getElementById(`booking-row-${data.booking_id}`);
                     if (row) {

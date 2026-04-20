@@ -32,6 +32,7 @@ let filteredRows = [];
     window.requestNewProof = requestNewProof;
     window.confirmArchiveBooking = confirmArchiveBooking;
     window.bk_closeModal = bk_closeModal; // New exposure
+    window.scrollToActionTable = filterBySignature; // Link Attend Now button
     console.log('[BookingsJS] Global functions exposed to window.');
 })();
 
@@ -102,7 +103,18 @@ document.addEventListener('DOMContentLoaded', function () {
             new window.ValidationManager('walkinBookingForm', {
                 'customer_name': { label: 'customer name', noSameParts: true },
                 'customer_email': { label: 'email address' },
-                'customer_contact': { label: 'contact number', numericOnly: true, maxLength: 11 },
+                'customer_contact': { 
+                    label: 'contact number', 
+                    numericOnly: true, 
+                    maxLength: 11,
+                    custom: (val) => {
+                        const repetitve = /(.)\1{4,}/; // Matches 5 or more same digits
+                        if (!val.startsWith('09')) return 'Must start with 09';
+                        if (val.length !== 11) return 'Must be exactly 11 digits';
+                        if (repetitve.test(val)) return 'Invalid repetitive contact number';
+                        return true;
+                    }
+                },
                 'event_name':    { label: 'event name' },
                 'event_type':    { label: 'event type' },
                 'event_date':    { label: 'event date' },
@@ -110,6 +122,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 'total_amount':  { numericOnly: true, max: 10000000, autoStop: true }
             });
             console.log('[BookingsJS] ValidationManager ready.');
+            
+            // Real-time Email Existence Check
+            initEmailExistenceCheck();
         } else {
             console.warn('[BookingsJS] window.ValidationManager not found! Validation will be limited.');
         }
@@ -161,6 +176,37 @@ function initDetailListeners() {
     });
 }
 
+function initEmailExistenceCheck() {
+    const emailInput = document.getElementById('bookCustEmail');
+    if (!emailInput) return;
+
+    let timeout = null;
+    emailInput.addEventListener('input', function() {
+        const email = this.value.trim();
+        const feedback = this.parentElement.querySelector('.invalid-feedback');
+        
+        clearTimeout(timeout);
+        if (email.length < 5 || !email.includes('@')) return;
+
+        timeout = setTimeout(async () => {
+            try {
+                const res = await fetch(`/auth/check-email?email=${encodeURIComponent(email)}`);
+                const data = await res.json();
+                if (!data.available) {
+                    emailInput.classList.add('is-invalid');
+                    if (feedback) feedback.innerText = 'This email is already registered in the system.';
+                    // If ValidationManager is active, we might need to trigger it
+                    emailInput.setCustomValidity('Already registered');
+                } else {
+                    emailInput.classList.remove('is-invalid');
+                    if (feedback) feedback.innerText = '';
+                    emailInput.setCustomValidity('');
+                }
+            } catch (err) { console.error('Email check failed:', err); }
+        }, 500);
+    });
+}
+
 // ─── FILTERING & PAGINATION ──────────────────────────────────────────────────
 
 function filterBookings() {
@@ -170,9 +216,26 @@ function filterBookings() {
 
     filteredRows = allRows.filter(function(row) {
         const rawStatus = row.dataset.status || '';
+        const payStatus = row.dataset.paymentStatus || '';
         const rowText = row.innerText.toLowerCase();
+        
         const matchesSearch = rowText.indexOf(searchInput) > -1;
-        const matchesStatus = statusFilter === '' || rawStatus === statusFilter;
+        
+        let matchesStatus = false;
+        if (statusFilter === '') {
+            matchesStatus = true;
+        } else if (statusFilter === 'action_required') {
+            // Smart Action Required Logic:
+            // 1. Needs signature (Draft or To Sign)
+            const needsSignature = ['pending_quotation', 'awaiting_caterer'].includes(rawStatus);
+            // 2. Has pending payment proof to verify
+            const needsPaymentVerify = ['proof_submitted', 'balance_proof_submitted'].includes(payStatus);
+            
+            matchesStatus = needsSignature || needsPaymentVerify;
+        } else {
+            matchesStatus = rawStatus === statusFilter;
+        }
+        
         return matchesSearch && matchesStatus;
     });
 
@@ -231,7 +294,10 @@ function renderPaginationControls(totalPages) {
 
 function filterBySignature() {
     var sf = document.getElementById('statusFilter');
-    if (sf) { sf.value = 'awaiting_caterer'; filterBookings(); }
+    if (sf) { 
+        sf.value = 'action_required'; 
+        filterBookings(); 
+    }
     var tc = document.querySelector('.b-table-container');
     if (tc) tc.scrollIntoView({ behavior: 'smooth' });
 }

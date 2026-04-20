@@ -650,6 +650,16 @@
     margin-top: 1.5rem;
 }
 
+@media (max-width: 1024px) {
+    .dashboard-main-layout {
+        grid-template-columns: 1fr;
+    }
+    
+    .dashboard-analytics-area, .dashboard-sidebar-area {
+        width: 100%;
+    }
+}
+
 .dashboard-analytics-area {
     display: flex;
     flex-direction: column;
@@ -701,6 +711,21 @@
 .roi-metric-value {
     font-size: 1.3rem;
     font-weight: 700;
+}
+
+@media (max-width: 768px) {
+    .roi-metric-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    
+    .roi-metric-item {
+        padding: 1rem;
+    }
+    
+    #roiTrendChart, #bookingsChart {
+        height: 250px !important;
+    }
 }
 
 .roi-help-icon {

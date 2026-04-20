@@ -13,6 +13,7 @@ import shutil
 import uuid
 from ..services.realtime import manager
 from ..services.payment_verification import payment_verification_service
+from ..services.notification import NotificationService
 
 router = APIRouter(prefix="/caterer", tags=["caterer"])
 
@@ -29,6 +30,12 @@ async def submit_platform_feedback_caterer(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    # Prevent duplicate submissions
+    existing_fb = db.query(models.PlatformFeedback).filter_by(user_id=user.id).first()
+    if existing_fb:
+        error_msg = "You have already submitted feedback. Thank you!"
+        return RedirectResponse(url="/caterer/dashboard?error_msg=" + error_msg, status_code=303)
+
     if rating < 1 or rating > 5:
         return RedirectResponse(url="/caterer/dashboard?error_msg=Invalid+rating", status_code=303)
     if not comment or len(comment.strip()) < 10:
@@ -222,6 +229,17 @@ async def update_booking_status(
         notes=f"Status changed from {old_status} to {new_status} by caterer."
     )
     db.add(history)
+
+    # SECURE PAYOUT: Release Escrowed Funds to 'Ready' status
+    if new_status == "completed":
+        escrow_items = db.query(models.PayoutItem).filter(
+            models.PayoutItem.booking_id == booking.id,
+            models.PayoutItem.status == 'escrowed'
+        ).all()
+        for item in escrow_items:
+            item.status = 'ready'
+            # Optional: Add history or notification for admin to check payouts
+            
     db.commit()
 
     # Trigger Notifications
@@ -474,15 +492,13 @@ async def caterer_dashboard(
     timeframe = request.query_params.get('timeframe', 'month')
     stats = _get_caterer_stats(profile, bookings, timeframe=timeframe)
     
-    has_submitted_feedback = db.query(models.PlatformFeedback).filter_by(user_id=user.id).first() is not None
     
     return templates.TemplateResponse("caterer/index.html", {
         "request": request,
         "user": user,
         "profile": profile,
         **stats,
-        "active_page": "dashboard",
-        "has_submitted_feedback": has_submitted_feedback
+        "active_page": "dashboard"
     })
 
 @router.get("/api/dashboard-overview")
@@ -654,11 +670,36 @@ async def caterer_payments(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    profile = user.caterer_profile
+    bookings = [b for b in profile.bookings if b.status != 'draft' and not b.is_archived]
+    
+    # Calculate Escrow and Capital
+    # 1. Total Released (Capital already sent to caterer)
+    released_total = db.query(func.sum(models.PayoutItem.amount)).join(models.Payout).filter(
+        models.Payout.caterer_id == profile.id,
+        models.PayoutItem.status == 'released'
+    ).scalar() or 0.0
+
+    # 2. Total Ready (Processable by admin - e.g. DP prep funds)
+    ready_total = db.query(func.sum(models.PayoutItem.amount)).join(models.Payout).filter(
+        models.Payout.caterer_id == profile.id,
+        models.PayoutItem.status == 'ready'
+    ).scalar() or 0.0
+
+    # 3. Total Escrowed (Held until completion)
+    escrow_total = db.query(func.sum(models.PayoutItem.amount)).join(models.Payout).filter(
+        models.Payout.caterer_id == profile.id,
+        models.PayoutItem.status == 'escrowed'
+    ).scalar() or 0.0
     
     return templates.TemplateResponse("caterer/payments.html", {
         "request": request,
         "user": user,
-        "bookings": [b for b in user.caterer_profile.bookings if b.status != 'draft' and not b.is_archived],
+        "bookings": bookings,
+        "released_total": released_total,
+        "ready_total": ready_total,
+        "escrow_total": escrow_total,
+        "capital_total": released_total + ready_total,
         "active_page": "payments"
     })
 
@@ -2769,12 +2810,30 @@ async def verify_customer_compliance(
             models.Booking.user_id == user_id,
             models.Booking.caterer_id == profile.id
         ).update({"ocr_verified": True, "liveness_verified": True})
+
+        # NOTIFY: Real-time update for customer
+        await NotificationService.notify_status_update(
+            db, user_id, 
+            "Identity Approved!", 
+            f"Your identity has been verified by {profile.business_name}. You may now proceed with your booking.",
+            f"/bookings/step/quotation/{booking.id}",
+            "kyc_update"
+        )
             
     elif action == "reject":
         if kyc_record:
             kyc_record.verification_status = "rejected"
             kyc_record.failure_reason = reason
         target_user.is_verified = False
+
+        # NOTIFY: Failure alert for customer
+        await NotificationService.notify_status_update(
+            db, user_id, 
+            "Identity Action Required", 
+            f"Your identity verification was rejected by {profile.business_name}. Reason: {reason}",
+            f"/bookings/step/kyc/{booking.id}",
+            "kyc_update"
+        )
         
     db.commit()
 

@@ -1,141 +1,274 @@
 {% extends "admin/layout.html" %}
 
-{% block title %}Payouts & Financials - Admin Dashboard{% endblock %}
+{% block title %}Payout Management - OccaShare Admin{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/payouts.css') }}">
+<style>
+    .payouts-container {
+        padding: 1rem 0;
+    }
+    .payout-card {
+        background: white;
+        border-radius: 1.25rem;
+        padding: 1.5rem;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+        margin-bottom: 2rem;
+        border: 1px solid #f1f5f9;
+        transition: transform 0.2s ease;
+    }
+    .payout-card:hover {
+        transform: translateY(-2px);
+    }
+    .payout-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+    .payout-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    .p-stat-box {
+        background: #f8fafc;
+        padding: 1.5rem;
+        border-radius: 1rem;
+        border: 1px solid #e2e8f0;
+    }
+    .p-stat-label {
+        font-size: 0.85rem;
+        color: #64748b;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+    }
+    .p-stat-value {
+        font-size: 1.75rem;
+        font-weight: 800;
+        color: #1e293b;
+        margin-top: 0.5rem;
+    }
+    .status-badge-ready { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+    .status-badge-escrow { background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; }
+    .status-badge-released { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+
+    .payout-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    .payout-table th {
+        text-align: left;
+        padding: 1rem;
+        background: #f8fafc;
+        color: #64748b;
+        font-weight: 600;
+        font-size: 0.85rem;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .payout-table td {
+        padding: 1.25rem 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 0.9rem;
+        color: #334155;
+    }
+    .caterer-info {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .payout-method-badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.375rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+    .bg-gcash { background: #eff6ff; color: #2563eb; }
+    .bg-maya { background: #fdf2f8; color: #db2777; }
+    .bg-bank { background: #f0fdf4; color: #15803d; }
+
+    .btn-release {
+        background: #1e293b;
+        color: white;
+        border: none;
+        padding: 0.6rem 1.25rem;
+        border-radius: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+    }
+    .btn-release:hover {
+        background: #0f172a;
+        transform: scale(1.02);
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="page-header" style="margin-bottom: 2rem;">
-    <h1>Financials & Payouts</h1>
-    <p>Manage platform holdings and disburse funds to your catering partners.</p>
+<div class="payout-header">
+    <div>
+        <h1 style="font-weight: 800; font-size: 2rem; color: #1e293b;">Payout Management</h1>
+        <p style="color: #64748b;">Review and release escrowed payments to caterers.</p>
+    </div>
 </div>
 
-<div class="payout-sections-container">
-
-    <!-- SECTION 1: Pending Payouts (Holdings) -->
-    <div class="payout-admin-card">
-        <h3 class="payout-card-title"><i class="fas fa-vault"></i> Funds Held for Caterers</h3>
-
-        {% if caterer_holdings %}
-        <div style="overflow-x: auto;">
-            <table class="payout-data-table auto-paginate">
-                <thead>
-                    <tr>
-                        <th>Catering Partner</th>
-                        <th>Pending Bookings</th>
-                        <th>Total Net Amount</th>
-                        <th style="text-align: right;">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in caterer_holdings %}
-                    <tr class="payout-txn-row">
-                        <td>
-                            <div class="caterer-business-identity">{{ item.caterer.business_name }}</div>
-                            <div class="caterer-contact-small">{{ item.caterer.contact_phone or 'No contact' }}</div>
-                        </td>
-                        <td>
-                            <span class="event-count-badge">{{ item.booking_count }} events</span>
-                        </td>
-                        <td class="net-due-amount">₱{{ "{:,.2f}".format(item.total_held) }}</td>
-                        <td style="text-align: right;">
-                            <form action="/admin/payouts/create" method="POST"
-                                onsubmit="event.preventDefault(); showConfirm('Generate this payout request?', () => this.submit(), 'Confirm Payout', 'Yes, Generate');">
-                                <input type="hidden" name="caterer_id" value="{{ item.caterer.id }}">
-                                <button type="submit" class="btn-generate-payout">
-                                    <i class="fas fa-file-invoice-dollar"></i> Generate Payout
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <div class="empty-state-container">
-            <i class="fas fa-circle-check empty-state-icon" style="color: #10b981; opacity: 1;"></i>
-            <h3 style="color: var(--secondary-color); font-weight: 700; margin-bottom: 0.5rem;">All Clear!</h3>
-            <p style="color: #64748b; font-size: 0.95rem;">All completed bookings have been successfully grouped into
-                payouts.</p>
-        </div>
-        {% endif %}
+<div class="payout-stats-grid">
+    <div class="p-stat-box" style="border-left: 4px solid #ef4444;">
+        <div class="p-stat-label">Ready for Release</div>
+        <div class="p-stat-value">₱{{ "{:,.2f}".format(pending_release_total) }}</div>
+        <div class="p-stat-label" style="margin-top: 0.25rem; font-size: 0.75rem;">{{ ready_payouts|length }} pending transfers</div>
     </div>
-
-    <!-- SECTION 2: Payout History & Processing -->
-    <div class="payout-admin-card">
-        <h3 class="payout-card-title"><i class="fas fa-history"></i> Payout Queue & History</h3>
-
-        {% if payout_history %}
-        <div style="overflow-x: auto;">
-            <table class="payout-data-table auto-paginate">
-                <thead>
-                    <tr>
-                        <th>Payout ID / Partner</th>
-                        <th>Date Generated</th>
-                        <th>Amount</th>
-                        <th>Status</th>
-                        <th>Transfer Details / Ref #</th>
-                        <th style="text-align: right;">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for payout in payout_history %}
-                    <tr class="payout-txn-row">
-                        <td>
-                            <div class="caterer-business-identity">#{{ payout.id }} - {{ payout.caterer.business_name }}
-                            </div>
-                            <div class="caterer-contact-small">{{ payout.items|length }} bookings included</div>
-                        </td>
-                        <td><span style="font-size: 0.9rem; color: #64748b;">{{ payout.created_at.strftime('%b %d, %Y')
-                                }}</span></td>
-                        <td class="payout-amount-bold">₱{{ "{:,.2f}".format(payout.amount) }}</td>
-                        <td>
-                            {% if payout.status == 'completed' %}
-                            <span class="status-pill-payout paid">COMPLETED</span>
-                            {% else %}
-                            <span class="status-pill-payout processing">PENDING RELEASE</span>
-                            {% endif %}
-                        </td>
-                        <td style="text-align: right;">
-                            {% if payout.status == 'completed' %}
-                            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem;">
-                                <span class="txn-ref-ref-text">Ref: {{ payout.reference_number }}</span>
-                                <span style="font-size: 0.75rem; color: #64748b; font-weight: 500;">Sent on {{
-                                    payout.completed_at.strftime('%b %d, %Y') }}</span>
-                            </div>
-                            {% else %}
-                            <form action="/admin/payouts/{{ payout.id }}/mark_paid" method="POST"
-                                class="mark-paid-form-flex"
-                                onsubmit="event.preventDefault(); showConfirm('Mark this payout as paid?', () => this.submit(), 'Confirm Payment', 'Yes, Mark Paid');">
-                                <input type="text" name="reference_number" placeholder="Reference #" required
-                                    class="ref-input-fancy">
-                                <button type="submit" class="btn-mark-sent">Confirm Sent</button>
-                            </form>
-                            {% endif %}
-                        </td>
-                        <td style="text-align: right;">
-                            <form action="/admin/payouts/{{ payout.id }}/archive" method="POST" style="display: inline;"
-                                onsubmit="event.preventDefault(); showConfirm('Are you sure you want to archive this payout?', () => this.submit(), 'Confirm Archive', 'Yes, Archive');">
-                                <button type="submit" class="stat-icon-container" title="Archive Payout"
-                                    style="background: none; border: none; cursor: pointer; color: #64748b; font-size: 1.1rem;">
-                                    <i class="fas fa-archive"></i>
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <div style="text-align: center; padding: 3rem;">
-            <p style="color: #64748b; font-size: 0.95rem;">No payout records found in the history.</p>
-        </div>
-        {% endif %}
+    <div class="p-stat-box" style="border-left: 4px solid #10b981;">
+        <div class="p-stat-label">Service Fee Earnings (Admin)</div>
+        <div class="p-stat-value">₱{{ "{:,.2f}".format(ready_payouts|length * 20) }}</div>
+        <div class="p-stat-label" style="margin-top: 0.25rem; font-size: 0.75rem;">From pending items only</div>
     </div>
-
 </div>
+
+<div class="payout-card">
+    <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem;"><i class="fas fa-hourglass-start" style="color: #f59e0b;"></i> Pending Releases</h2>
+    
+    {% if ready_payouts %}
+    <div style="overflow-x: auto;">
+        <table class="payout-table">
+            <thead>
+                <tr>
+                    <th>Item ID</th>
+                    <th>Caterer</th>
+                    <th>Booking</th>
+                    <th>Payout Amount</th>
+                    <th>Payment Method</th>
+                    <th>Details</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in ready_payouts %}
+                <tr>
+                    <td><strong>#{{ item.id }}</strong></td>
+                    <td>
+                        <div class="caterer-info">
+                            <div style="font-weight: 700;">{{ item.payout.caterer.business_name }}</div>
+                        </div>
+                    </td>
+                    <td>
+                        <div style="font-weight: 600;">BK-{{ item.booking_id }}</div>
+                        <div style="font-size: 0.8rem; color: #94a3b8;">{{ item.release_trigger.replace('_', ' ').capitalize() }} trigger</div>
+                    </td>
+                    <td><span style="font-weight: 800; color: #1e293b;">₱{{ "{:,.2f}".format(item.amount) }}</span></td>
+                    <td>
+                        {% if item.payout.caterer.gcash_number %}<span class="payout-method-badge bg-gcash">GCash</span>
+                        {% elif item.payout.caterer.maya_number %}<span class="payout-method-badge bg-maya">Maya</span>
+                        {% else %}<span class="payout-method-badge bg-bank">Bank</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div style="font-size: 0.8rem;">
+                            {% if item.payout.caterer.gcash_number %} {{ item.payout.caterer.gcash_number }}
+                            {% elif item.payout.caterer.maya_number %} {{ item.payout.caterer.maya_number }}
+                            {% else %} {{ item.payout.caterer.bank_name }}: {{ item.payout.caterer.bank_account_number }}
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        <button class="btn-release" onclick="openReleaseModal({{ item.id }}, {{ item.amount }}, '{{ item.payout.caterer.business_name }}')">
+                            <i class="fas fa-check-circle"></i> Mark Released
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 3rem; color: #94a3b8;">
+        <i class="fas fa-check-double fa-3x" style="margin-bottom: 1rem; opacity: 0.5;"></i>
+        <p>No pending payouts discovered. All caterers are settled!</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="payout-card" style="opacity: 0.85;">
+    <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem;"><i class="fas fa-history"></i> Recently Released</h2>
+    <div style="overflow-x: auto;">
+        <table class="payout-table">
+            <thead>
+                <tr>
+                    <th>Item ID</th>
+                    <th>Caterer</th>
+                    <th>Booking</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in recent_released %}
+                <tr>
+                    <td>#{{ item.id }}</td>
+                    <td>{{ item.payout.caterer.business_name }}</td>
+                    <td>BK-{{ item.booking_id }}</td>
+                    <td>₱{{ "{:,.2f}".format(item.amount) }}</td>
+                    <td><span class="payout-method-badge status-badge-released">Released</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Release Modal -->
+<div id="releaseModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div style="background: white; width: 440px; padding: 2rem; border-radius: 1.5rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+        <h3 style="font-weight: 800; font-size: 1.5rem; color: #1e293b; margin-bottom: 0.5rem;">Confirm Payout</h3>
+        <p style="color: #64748b; font-size: 0.95rem; margin-bottom: 1.5rem;">Mark as released ONLY if you have already transferred the funds to <span id="modalCaterer" style="font-weight: 700; color: #1e293b;"></span>.</p>
+        
+        <form id="releaseForm" method="POST" action="">
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.5rem; color: #475569;">Reference / Notes</label>
+                <input type="text" name="reference" placeholder="e.g. GCash Ref #123456" required 
+                       style="width: 100%; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 0.75rem 1rem; box-sizing: border-box; font-size: 0.95rem;">
+            </div>
+            
+            <div style="background: #f0fdf4; padding: 1rem; border-radius: 1rem; margin-bottom: 2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #166534; font-weight: 600; font-size: 0.9rem;">Amount to Caterer</span>
+                    <span id="modalAmount" style="color: #166534; font-weight: 800; font-size: 1.1rem;"></span>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <button type="button" onclick="closeReleaseModal()" style="background: #f1f5f9; border: none; padding: 0.75rem; border-radius: 0.75rem; font-weight: 600; cursor: pointer; color: #475569;">Cancel</button>
+                <button type="submit" style="background: #1e293b; color: white; border: none; padding: 0.75rem; border-radius: 0.75rem; font-weight: 600; cursor: pointer;">Finalize Release</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openReleaseModal(itemId, amount, caterer) {
+        const modal = document.getElementById('releaseModal');
+        const form = document.getElementById('releaseForm');
+        
+        document.getElementById('modalCaterer').innerText = caterer;
+        document.getElementById('modalAmount').innerText = '₱' + amount.toLocaleString();
+        form.action = '/admin/payouts/' + itemId + '/release';
+        
+        modal.style.display = 'flex';
+    }
+
+    function closeReleaseModal() {
+        document.getElementById('releaseModal').style.display = 'none';
+    }
+
+    // Close modal on click outside
+    window.onclick = (e) => {
+        if(e.target == document.getElementById('releaseModal')) closeReleaseModal();
+    }
+</script>
 {% endblock %}

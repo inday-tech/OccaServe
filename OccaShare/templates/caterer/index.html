@@ -492,7 +492,7 @@
                     <div style="font-size: 0.75rem; color: #94a3b8;">${p.orders} orders</div>
                 </div>
                 <div class="profitability-details">
-                    <div style="font-weight: 800; color: var(--secondary-color); font-size: 1rem;">${p.roi}%</div>
+                    <div style="font-weight: 800; color: var(--secondary-color); font-size: 1rem;">${parseFloat(p.roi).toFixed(1)}%</div>
                     <div class="profit-indicator ${p.roi > 15 ? 'indicator-positive' : 'indicator-negative'}">
                         ${p.roi > 15 ? 'High Margin' : 'Low Margin'}
                     </div>
@@ -558,10 +558,9 @@
     document.addEventListener('DOMContentLoaded', function () {
         // Initial Data from Template
         const initialData = {
-            roi_trend_data: {{ roi_trend_data | tojson if roi_trend_data is defined else '[]'
-    }},
-        chart_data: {{ chart_data | tojson if chart_data is defined else '[]' }},
-    bookings_chart_data: { { bookings_chart_data | tojson if bookings_chart_data is defined else '[]' } }
+            roi_trend_data: {{ roi_trend_data | tojson if roi_trend_data is defined else '[]' }},
+            chart_data: {{ chart_data | tojson if chart_data is defined else '[]' }},
+            bookings_chart_data: {{ bookings_chart_data | tojson if bookings_chart_data is defined else '[]' }}
         };
 
     initCharts(initialData);

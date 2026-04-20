@@ -49,6 +49,18 @@
                         required>
                 </div>
             </div>
+            <div class="settings-grid-2">
+                <div class="settings-group">
+                    <label class="settings-label">Platform Commission (%)</label>
+                    <input type="number" step="0.1" name="commission" class="settings-control" value="{{ config.commission_rate }}">
+                    <span class="file-hint">Standard percentage commission for older bookings.</span>
+                </div>
+                <div class="settings-group">
+                    <label class="settings-label">Fixed Escrow Fee (₱)</label>
+                    <input type="number" step="1" name="commission_fixed" class="settings-control" value="{{ config.commission_fixed_amount }}">
+                    <span class="file-hint">The new fixed fee deducted per booking (e.g. ₱20).</span>
+                </div>
+            </div>
             <div class="settings-group">
                 <label class="settings-label">SEO Meta Description</label>
                 <textarea name="seo_desc" class="settings-control" rows="3"

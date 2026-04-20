@@ -247,6 +247,29 @@
                         <i class="fas fa-times-circle" style="margin-right: 0.5rem;"></i> This order was cancelled.
                     </div>
                     {% endif %}
+
+                    {# NEW: Paymongo Integration #}
+                    {% if booking.status != 'cancelled' and booking.status != 'draft' and booking.payment_status != 'paid' %}
+                    <div class="paymongo-action-box" style="margin-top: 1.5rem; padding: 1.5rem; background: #fff; border-radius: 1rem; border: 2px dashed #e2e8f0; text-align: center;">
+                        <img src="https://static.paymongo.com/images/paymongo-logo.png" alt="Paymongo" style="height: 24px; margin-bottom: 1rem; opacity: 0.8;">
+                        
+                        {% if booking.payment_status == 'pending' %}
+                            <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 1rem;">Securely pay the reservation fee to confirm your order.</p>
+                            <button onclick="initiatePaymongo('dp')" class="btn-primary-premium" id="payBtn" style="width: 100%; justify-content: center; background: #4f46e5;">
+                                <i class="fas fa-shield-check" style="margin-right: 0.5rem;"></i> Pay Downpayment (₱{{ "{:,.2f}".format(booking.reservation_fee or 0) }})
+                            </button>
+                        {% elif booking.payment_status == 'deposit_paid' %}
+                            <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 1rem;">Pay the remaining balance for your order.</p>
+                            <button onclick="initiatePaymongo('balance')" class="btn-primary-premium" id="payBtn" style="width: 100%; justify-content: center; background: #4f46e5;">
+                                <i class="fas fa-wallet" style="margin-right: 0.5rem;"></i> Pay Balance (₱{{ "{:,.2f}".format(booking.total_amount - (booking.reservation_fee or 0)) }})
+                            </button>
+                        {% endif %}
+                        
+                        <div id="payLoading" style="display: none; margin-top: 1rem; color: #6366f1;">
+                            <i class="fas fa-spinner fa-spin"></i> Generating secure link...
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -272,4 +295,40 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function initiatePaymongo(type) {
+    const btn = document.getElementById('payBtn');
+    const loading = document.getElementById('payLoading');
+    
+    btn.disabled = true;
+    loading.style.display = 'block';
+    
+    const formData = new FormData();
+    formData.append('payment_type', type);
+    
+    try {
+        const response = await fetch(`/api/bookings/{{ booking.id }}/pay`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        if (data.success && data.checkout_url) {
+            window.location.href = data.checkout_url;
+        } else {
+            alert(data.message || 'Failed to generate payment link. Please try again.');
+            btn.disabled = false;
+            loading.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('A connection error occurred. Please check your internet.');
+        btn.disabled = false;
+        loading.style.display = 'none';
+    }
+}
+</script>
 {% endblock %}

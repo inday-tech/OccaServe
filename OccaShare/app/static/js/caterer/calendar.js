@@ -442,6 +442,16 @@ async function setReminder() {
     const btn = document.querySelector('#eventModal .btn-primary');
     if (!btn) return;
 
+    // Request Notification Permission
+    if ("Notification" in window) {
+        if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+            const permission = await Notification.requestPermission();
+            if (permission !== "granted") {
+                window.showError('Notification permission denied. Alarms will not sound.');
+            }
+        }
+    }
+
     const originalText = btn.textContent;
     btn.disabled = true;
     btn.textContent = 'Setting...';
@@ -454,6 +464,22 @@ async function setReminder() {
 
         if (data.status === 'success') {
             window.showSuccess('Reminder set! You will see it in your notifications.');
+            
+            // Trigger Local "Alarm" Preview
+            if ("Notification" in window && Notification.permission === "granted") {
+                const eventName = document.getElementById('calModalTitle').textContent;
+                const eventDate = document.getElementById('detDateTime').textContent;
+                
+                // Play notification sound
+                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+                audio.play().catch(e => console.log("Audio play failed, needs user interaction first."));
+
+                new Notification("OccaServe Reminder Set! 🔔", {
+                    body: `Alarm active for: ${eventName}\nScheduled for: ${eventDate}`,
+                    icon: '/static/img/logo.png' // Fallback to icon if available
+                });
+            }
+
             closeModal();
             setTimeout(() => location.reload(), 2000);
         } else {

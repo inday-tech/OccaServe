@@ -516,6 +516,10 @@ async def step_quotation_page(booking_id: int, request: Request, db: Session = D
     booking = db.query(models.Booking).get(booking_id)
     if not booking: raise HTTPException(status_code=404)
     
+    # STRICT GATE: Ensure user is verified before seeing quotation/contract
+    if not user.is_verified:
+        return RedirectResponse(url=f"/bookings/step/kyc/{booking.id}?auth_needed=1", status_code=303)
+
     # NEW: Transition status from draft to pending_quotation so it's visible to caterer
     if booking.status == 'draft':
         booking.status = 'pending_quotation'
@@ -541,6 +545,10 @@ async def step_quotation_page(booking_id: int, request: Request, db: Session = D
 # Phase 4: Downpayment
 @router.get("/step/payment/{booking_id}", response_class=HTMLResponse)
 async def step_payment_v2_page(booking_id: int, request: Request, db: Session = Depends(database.get_db)):
+    # STRICT GATE: Ensure user is verified before payment
+    if not user.is_verified:
+        return RedirectResponse(url=f"/bookings/step/kyc/{booking.id}?auth_needed=1", status_code=303)
+
     booking = db.query(models.Booking).get(booking_id)
     if not booking: raise HTTPException(status_code=404)
     user = get_current_user_from_session(request, db)

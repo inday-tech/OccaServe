@@ -414,7 +414,7 @@
                         <i class="fas fa-store"></i> <span>Business Profile</span>
                     </a>
                 </li>
-                {% if user.platform_feedback|length == 0 %}
+                {% if user and user.role == 'caterer' and not user.platform_feedback %}
                 <li>
                     <a href="#" onclick="document.getElementById('platformFeedbackModal').style.display='flex'; event.preventDefault(); closeSidebar();" style="color: var(--primary-color); font-weight: 600;">
                         <i class="fas fa-comment-dots"></i> <span>Leave Feedback</span>
@@ -567,7 +567,7 @@
         });
 
         // Proactive Nudge Logic
-        {% if not has_submitted_feedback %}
+        {% if user and user.role == 'caterer' and not user.platform_feedback %}
         window.addEventListener('load', function() {
             const snoozeUntil = localStorage.getItem('feedbackNudgeSnooze');
             const now = Date.now();

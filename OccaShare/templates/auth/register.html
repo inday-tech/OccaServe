@@ -136,7 +136,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', path='/js/auth/register.js') }}"></script>
+<script src="{{ url_for('static', path='/js/auth/register.js') }}?v={{ range(1, 10000) | random }}"></script>
 {% if field_errors %}
 <script>
     document.addEventListener('DOMContentLoaded', () => {

@@ -593,5 +593,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     window.validateIdSelection();
     initDefaultMethod();
+
+    // Re-initialize listeners if already in waiting state
+    if (document.getElementById('kyc-waiting-approval').style.display === 'block') {
+        console.log("[KYC] Page loaded in waiting state. Initializing real-time listeners...");
+        initKycWebSocket();
+        startPolling();
+    }
 });
 

@@ -57,7 +57,7 @@
             <i class="fas fa-bell"></i>
         </div>
         <div class="action-banner-text">
-            <h3>ACTION REQUIRED <span style="font-size:0.7rem; font-weight:700; background:rgba(239,68,68,0.1); color:#ef4444; padding:0.2rem 0.6rem; border-radius:1rem; margin-left:0.5rem; border:1px solid rgba(239,68,68,0.2);">{{ total_alerts }} ALERTS</span></h3>
+            <h3 style="color: #92400e;">ACTION REQUIRED <span style="font-size:0.7rem; font-weight:800; background:#fef3c7; color:#92400e; padding:0.25rem 0.75rem; border-radius:1rem; margin-left:0.5rem; border:1px solid #fde68a;">{{ total_alerts }} ALERTS</span></h3>
             <p>
                 {% if payments_to_verify %} <strong>{{ payments_to_verify|length }}</strong> internal payments to verify. {% endif %}
                 {% if contracts_to_sign %} <strong>{{ contracts_to_sign|length }}</strong> contracts waiting for your signature. {% endif %}
@@ -87,6 +87,7 @@
             <div class="filter-wrapper" style="position: relative; display: flex; align-items: center;">
                 <select class="filter-select-pro" id="statusFilter" onchange="filterBookings()">
                     <option value="">All Status</option>
+                    <option value="action_required" style="font-weight:800; color:var(--primary-color);">🔥 Action Required</option>
                     <option value="pending">Pending</option>
                     <option value="pending_quotation">Draft</option>
                     <option value="awaiting_caterer">To Sign</option>
@@ -99,8 +100,7 @@
                     <option value="cancelled">Cancelled</option>
                 </select>
             </div>
-            <button onclick="openWalkinModal()"
-                style="height: 46px; background: var(--primary-color); color: white; padding: 0 1.5rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; border: none; font-size: 0.95rem; white-space: nowrap; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.25);">
+            <button onclick="openWalkinModal()" class="btn-bookings-new">
                 <i class="fas fa-plus"></i><span class="btn-text">New Booking</span>
             </button>
         </div>
@@ -139,7 +139,9 @@
             </thead>
             <tbody>
                 {% for booking in bookings %}
-                <tr id="booking-row-{{ booking.id }}" class="booking-row-item" data-status="{{ booking.status }}"
+                <tr id="booking-row-{{ booking.id }}" class="booking-row-item" 
+                    data-status="{{ booking.status }}" 
+                    data-payment-status="{{ booking.payment_status }}"
                     style="border-bottom: 1px solid #f8fafc; transition: all 0.2s ease;">
                     <!-- ID -->
                     <td style="padding: 1.5rem; font-weight: 600; color: #64748b; font-size: 0.95rem;">BK-{{ "%03d" |
@@ -623,7 +625,8 @@
                         <select id="bookPackage" name="package_id" class="filter-select-pro">
                             <option value="" data-price="0" data-unit="fixed" data-min="1">None / Custom</option>
                             {% for pkg in packages %}
-                            <option value="{{ pkg.id }}" data-price="{{ pkg.price or 0 }}" data-unit="{{ pkg.price_unit or 'per_guest' }}" data-min="{{ pkg.min_guests or 1 }}">{{ pkg.name }} (₱{{ '{:,.2f}'.format(pkg.price) }}{{ '/pax' if pkg.price_unit == 'per_guest' else '' }})</option>
+                            {% set display_price = pkg.price if (pkg.price and pkg.price > 0) else (pkg.price_per_head or 0) %}
+                            <option value="{{ pkg.id }}" data-price="{{ display_price }}" data-unit="{{ pkg.price_unit or 'per_guest' }}" data-min="{{ pkg.min_guests or 1 }}">{{ pkg.name }} (₱{{ '{:,.2f}'.format(display_price) }}{{ '/pax' if pkg.price_unit == 'per_guest' else '' }})</option>
                             {% endfor %}
                         </select>
                     </div>

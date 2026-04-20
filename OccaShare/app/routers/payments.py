@@ -10,7 +10,7 @@ router = APIRouter(prefix="/api", tags=["payments"])
 @router.post("/bookings/{booking_id}/pay")
 async def process_payment(
     booking_id: int,
-    payment_method: str = Form(...),
+    payment_type: str = Form("dp"), # "dp" or "balance"
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
@@ -18,69 +18,137 @@ async def process_payment(
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
     
-    # In a real app, integrate with a payment gateway (GCash, PayMaya, etc.)
-    # Here we simulate starting the payment process
-    return {
-        "success": True, 
-        "checkout_url": f"https://mock-gateway.com/pay/{booking_id}",
-        "message": "Payment initialized"
-    }
+    amount = float(booking.reservation_fee) if payment_type == "dp" else float((booking.total_amount or 0) - (booking.reservation_fee or 0))
+    
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Invalid payment amount")
+
+    from ..services.paymongo import paymongo_service
+    description = f"Payment for {booking.event_name or 'Event'} ({payment_type.upper()})"
+    remarks = f"booking_id:{booking.id}:type:{payment_type}"
+    
+    try:
+        link_data = paymongo_service.create_payment_link(amount, description, remarks)
+        
+        booking.paymongo_link_id = link_data["id"]
+        booking.paymongo_link_url = link_data["url"]
+        db.commit()
+
+        return {
+            "success": True, 
+            "checkout_url": link_data["url"],
+            "message": "Payment link generated"
+        }
+    except Exception as e:
+        print(f"FAILED TO GENERATE PAYMONGO LINK: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/webhooks/payment")
 async def payment_webhook(
     request: Request,
     db: Session = Depends(database.get_db)
 ):
-    # This endpoint receives callbacks from the payment gateway (Paymongo or Mock)
+    """
+    Official Paymongo Webhook Handler
+    """
     try:
-        payload = await request.json()
+        body = await request.body()
+        signature = request.headers.get("paymongo-signature", "")
+        # For simplicity in this demo environment, we extract signature components if needed
+        # but the specific signature verification logic is in PaymongoService
         
-        # Determine if it's Paymongo format
+        payload = json.loads(body)
+        
         if "data" in payload and "attributes" in payload["data"]:
-            pm_attrs = payload["data"]["attributes"]
-            if pm_attrs.get("type") == "link.payment.paid":
-                payment_data = pm_attrs.get("data", {}).get("attributes", {})
-                status = payment_data.get("status")
+            event_type = payload["data"]["attributes"].get("type")
+            
+            if event_type == "link.payment.paid":
+                payment_data = payload["data"]["attributes"].get("data", {}).get("attributes", {})
                 remarks = payment_data.get("remarks", "")
+                external_ref = payment_data.get("reference_number")
+                amount_paid = payment_data.get("amount", 0) / 100.0 # convert cents to pesos
                 
-                # Extract booking ID from remarks e.g. "booking_id:15"
-                if remarks.startswith("booking_id:"):
-                    try:
-                        booking_id = int(remarks.split(":", 1)[1])
-                    except ValueError:
-                        booking_id = None
-                else:
-                    booking_id = None
-            else:
-                return {"status": "ignored"}
-        else:
-            # Mock Fallback
-            booking_id = payload.get("booking_id")
-            status = payload.get("status") # 'success', 'failed'
-        
-        booking = db.query(models.Booking).get(booking_id)
-        if not booking:
-             return {"error": "Booking not found"}
+                # Parse remarks e.g. "booking_id:15:type:dp"
+                parts = remarks.split(":")
+                booking_id = None
+                pay_type = "dp"
+                
+                if len(parts) >= 2 and parts[0] == "booking_id":
+                    booking_id = int(parts[1])
+                if len(parts) >= 4 and parts[2] == "type":
+                    pay_type = parts[3]
+                
+                if not booking_id:
+                     return {"error": "Booking ID missing in remarks"}
 
-        if status in ["success", "paid"]:
-            booking.status = "confirmed"
-            booking.payment_status = "paid"
+                booking = db.query(models.Booking).get(booking_id)
+                if not booking:
+                     return {"error": "Booking not found"}
+
+                # 1. Update Booking Status
+                if pay_type == "dp":
+                    booking.payment_status = "deposit_paid"
+                    booking.status = "confirmed"
+                else:
+                    booking.payment_status = "paid"
+                
+                booking.payment_reference = external_ref
+
+                # 2. Logic for Escrow / Payout
+                config = db.query(models.WebsiteConfig).first()
+                commission = config.commission_fixed_amount if pay_type == "dp" else 0.0
+                net_amount = amount_paid - commission
+                
+                # Check if a Payout record exists for this caterer/booking
+                payout = db.query(models.Payout).filter(
+                    models.Payout.caterer_id == booking.caterer_id,
+                    models.Payout.status == "pending"
+                ).first()
+                
+                if not payout:
+                    payout = models.Payout(
+                        caterer_id=booking.caterer_id,
+                        amount=0,
+                        status="pending"
+                    )
+                    db.add(payout)
+                    db.flush()
+
+                # Create Payout Item
+                # DP is released 'immediate' (Prep Funds), Balance is released 'on_completion' (Escrow)
+                trigger = "immediate" if pay_type == "dp" else "on_completion"
+                status = "ready" if trigger == "immediate" else "escrowed"
+                
+                payout_item = models.PayoutItem(
+                    payout_id=payout.id,
+                    booking_id=booking.id,
+                    amount=net_amount,
+                    status=status,
+                    release_trigger=trigger
+                )
+                db.add(payout_item)
+                
+                # Update total payout amount
+                payout.amount += net_amount
+
+                # 3. Log history
+                history = models.BookingHistory(
+                    booking_id=booking_id,
+                    status=booking.status,
+                    notes=f"Payment of ₱{amount_paid:,.2f} ({pay_type.upper()}) received via Paymongo."
+                )
+                db.add(history)
+                
+                # 4. Trigger Notification
+                from ..services.notification import NotificationService
+                await NotificationService.notify_payment_received(db, booking, amount_paid, "Paymongo Online")
+                
+                db.commit()
+                return {"status": "success", "booking_id": booking_id}
             
-            # Log history
-            history = models.BookingHistory(
-                booking_id=booking_id,
-                status="confirmed",
-                notes=f"Payment received via {payload.get('method')}"
-            )
-            db.add(history)
-            
-            # --- Trigger Notification (In-App, Email, SMS) ---
-            from ..services.notification import NotificationService
-            await NotificationService.notify_payment_received(db, booking, float(booking.reservation_fee or 0), "Online Payment")
-        
-        db.commit()
-        return {"status": "received"}
+        return {"status": "ignored", "event": payload.get("data", {}).get("attributes", {}).get("type")}
     except Exception as e:
+        db.rollback()
         return {"error": str(e)}
 
 @router.post("/bookings/{booking_id}/expire")

@@ -85,11 +85,24 @@ def is_dummy_name(name: str) -> Optional[str]:
     if re.search(r"(.)\1\1", name_str):
         return "Names cannot contain repetitive characters"
         
+    import difflib
     parts = name_str.split()
     if len(parts) < 2:
         return "Please enter full name (at least 2 words)"
-    if len(parts) != len(set(parts)):
-        return "Names cannot contain repetitive words (e.g. Pepito Pepito)"
+    
+    # Check for identical or highly similar words
+    for i in range(len(parts)):
+        for j in range(i + 1, len(parts)):
+            p1, p2 = parts[i], parts[j]
+            # Identical check
+            if p1 == p2:
+                return f"Names cannot contain repetitive words (e.g. {p1.capitalize()} {p2.capitalize()})"
+            
+            # Similarity check (e.g. John vs Joohn)
+            similarity = difflib.SequenceMatcher(None, p1, p2).ratio()
+            if similarity > 0.8 and len(p1) > 3 and len(p2) > 3:
+                return f"Names appear repetitive or contain typos (e.g. {p1.capitalize()} {p2.capitalize()})"
+    
     return None
 
 def is_dummy_phone(phone: str) -> Optional[str]:

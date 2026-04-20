@@ -103,7 +103,7 @@ class NotificationService:
         )
 
     @staticmethod
-    async def notify_status_update(db: Session, user_id: int, title: str, message: str, link: str):
+    async def notify_status_update(db: Session, user_id: int, title: str, message: str, link: str, notif_type: str = "info"):
         """Generic status update notification (In-app + Email + Optimized SMS)."""
         user = db.query(models.User).get(user_id)
         if not user: return
@@ -113,7 +113,7 @@ class NotificationService:
             user_id=user_id,
             title=title,
             message=message,
-            type="info",
+            type=notif_type,
             link=link
         )
         db.add(notif)
@@ -123,7 +123,12 @@ class NotificationService:
         EmailService._send_email(user.email, f"OccaShare Update: {title}", message)
 
         # 3. Real-time (Always try to broadcast)
-        await manager.broadcast_to_user(user_id, {"type": "new_notification", "message": f"{title}: {message}"})
+        await manager.broadcast_to_user(user_id, {
+            "type": notif_type if notif_type != "info" else "new_notification", 
+            "message": f"{title}: {message}",
+            "title": title,
+            "status": "approved" if "Approved" in title else "rejected" if "Rejected" in title or "Action Required" in title else "info"
+        })
 
         # 4. Optimized SMS (Only if user is OFFLINE)
         is_online = user_id in manager.user_connections
