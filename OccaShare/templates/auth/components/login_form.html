@@ -10,11 +10,10 @@
     <h2 class="auth-title">Welcome Back</h2>
     <p class="auth-subtitle">Join us again and book the finest catering services for your next unforgettable event.</p>
 
-    {% if error %}
-    <div class="alert-error">
-        <i class="fas fa-exclamation-circle"></i> {{ error }}
+    <div id="loginErrorContainer" class="alert-error" style="{% if not error %}display: none;{% endif %} margin-bottom: 1.5rem;">
+        <i class="fas fa-exclamation-circle"></i> 
+        <span class="error-message">{{ error if error else '' }}</span>
     </div>
-    {% endif %}
 
     <form action="/auth/login" method="post" class="auth-form" id="loginForm">
         {% if next_url %}

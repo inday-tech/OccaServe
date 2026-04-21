@@ -1,0 +1,41 @@
+{% for caterer in caterers %}
+<div class="caterer-elite-card animate-on-scroll visible">
+    <div class="elite-card-image">
+        <div class="elite-badge-verified">Verified</div>
+        <img src="{{ caterer.logo_url if (caterer.logo_url and 'http' in caterer.logo_url) else 'https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=800&auto=format&fit=crop' }}"
+            alt="{{ caterer.business_name }}">
+    </div>
+    <div class="elite-card-body">
+        <h3>{{ caterer.business_name }}</h3>
+        <div class="elite-card-rating">
+            <i class="fas fa-star"></i>
+            {{ caterer.rating if caterer.rating else '4.9' }}
+            <span>(0 reviews)</span>
+        </div>
+        <p class="elite-card-desc">
+            {{ (caterer.description or 'Catering services provide exceptional food and beverage
+            preparation, delivery, and presentation for all your special events.')[:120] }}...
+        </p>
+        <div class="elite-card-price">
+            ₱300 <span>starting</span>
+        </div>
+        <div class="elite-card-footer">
+            <div class="elite-footer-item">
+                <i class="fas fa-map-marker-alt"></i> {{ caterer.city if caterer.city else 'Santa Cruz' }}
+            </div>
+            <div class="elite-footer-item">
+                <i class="fas fa-users"></i> 50+ guests
+            </div>
+        </div>
+        <a href="/caterers/{{ caterer.id }}" class="elite-view-btn">
+            <i class="far fa-eye"></i> View Profile
+        </a>
+    </div>
+</div>
+{% else %}
+<div style="grid-column: 1 / -1; text-align: center; padding: 4rem 2rem;">
+    <div style="font-size: 3rem; color: #cbd5e1; margin-bottom: 1rem;">🍽️</div>
+    <p style="color: var(--lp-text-muted); font-size: 1.1rem; font-weight: 600;">No caterers found for this category.</p>
+    <p style="color: var(--lp-text-muted); font-size: 0.95rem; margin-top: 0.5rem;">Try browsing all caterers to find the perfect match for your event.</p>
+</div>
+{% endfor %}

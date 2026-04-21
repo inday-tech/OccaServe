@@ -90,7 +90,28 @@ def get_caterer_by_slug(request: Request, slug: str, db: Session = Depends(datab
         "caterer": caterer,
         "packages": caterer.packages,
         "gallery_items": caterer.gallery_items,
-        "reviews": caterer.reviews,
-        "user": user,
         "nav_page": "caterers"
+    })
+
+@router.get("/api/filter", response_class=HTMLResponse)
+def filter_caterers_api(request: Request, type: str = None, q: str = None, location: str = None, db: Session = Depends(database.get_db)):
+    query = db.query(models.CatererProfile)
+    
+    if type and type.strip():
+        query = query.filter(models.CatererProfile.service_type.ilike(f"%{type}%"))
+    
+    if q and q.strip():
+        query = query.filter(
+            (models.CatererProfile.business_name.ilike(f"%{q}%")) | 
+            (models.CatererProfile.description.ilike(f"%{q}%"))
+        )
+        
+    if location and location.strip():
+        query = query.filter(models.CatererProfile.city.ilike(f"%{location}%"))
+    
+    caterers = query.order_by(models.CatererProfile.rating.desc()).all()
+    
+    return templates.TemplateResponse("caterer/components/caterer_card_grid.html", {
+        "request": request,
+        "caterers": caterers
     })

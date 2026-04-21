@@ -1,0 +1,42 @@
+{% for i in range(3) %}
+<div class="caterer-elite-card skeleton-card">
+    <div class="elite-card-image skeleton-shimmer"></div>
+    <div class="elite-card-body">
+        <div class="skeleton-shimmer skeleton-title"></div>
+        <div class="skeleton-shimmer skeleton-rating"></div>
+        <div class="skeleton-shimmer skeleton-text"></div>
+        <div class="skeleton-shimmer skeleton-price"></div>
+        <div class="skeleton-footer">
+            <div class="skeleton-shimmer skeleton-icon"></div>
+            <div class="skeleton-shimmer skeleton-icon"></div>
+        </div>
+        <div class="skeleton-shimmer skeleton-button"></div>
+    </div>
+</div>
+{% endfor %}
+
+<style>
+.skeleton-card {
+    pointer-events: none;
+    border-color: #f1f5f9;
+}
+
+.skeleton-shimmer {
+    background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite linear;
+}
+
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.skeleton-title { height: 24px; width: 80%; border-radius: 4px; margin-bottom: 12px; }
+.skeleton-rating { height: 16px; width: 40%; border-radius: 4px; margin-bottom: 20px; }
+.skeleton-text { height: 40px; width: 100%; border-radius: 4px; margin-bottom: 20px; }
+.skeleton-price { height: 30px; width: 50%; border-radius: 4px; margin-bottom: 20px; }
+.skeleton-footer { display: flex; gap: 1rem; margin-bottom: 20px; padding-top: 15px; border-top: 1px solid #f1f5f9; }
+.skeleton-icon { height: 16px; width: 30%; border-radius: 4px; }
+.skeleton-button { height: 45px; width: 100%; border-radius: 12px; }
+</style>
