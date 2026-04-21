@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Form, Request, File, UploadFile
 from jose import JWTError, jwt
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from ..core.templates import templates
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
@@ -557,8 +557,13 @@ def login(
     next_url: Optional[str] = Form(None),
     db: Session = Depends(database.get_db)
 ):
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest" or \
+              "application/json" in request.headers.get("Accept", "")
+
     # basic validation
     if not email or not password:
+        if is_ajax:
+            return JSONResponse(status_code=400, content={"success": False, "error": "Email and password are required"})
         return templates.TemplateResponse("auth/login.html", {
             "request": request,
             "error": "Email and password are required",
@@ -568,6 +573,8 @@ def login(
         from pydantic import TypeAdapter
         TypeAdapter(EmailStr).validate_python(email)
     except ValidationError:
+        if is_ajax:
+            return JSONResponse(status_code=400, content={"success": False, "error": "Invalid email address"})
         return templates.TemplateResponse("auth/login.html", {
             "request": request,
             "error": "Invalid email address",
@@ -581,6 +588,8 @@ def login(
     user = db.query(models.User).filter(func.lower(models.User.email) == search_email.lower().strip()).first()
 
     if not user or not security_auth.verify_password(password, user.password_hash):
+        if is_ajax:
+            return JSONResponse(status_code=401, content={"success": False, "error": "Invalid credentials"})
         return templates.TemplateResponse("auth/login.html", {
             "request": request,
             "error": "Invalid credentials",
@@ -589,17 +598,22 @@ def login(
     
     if user.status != "active":
          if user.role == "caterer" and user.status == "pending_approval":
+             if is_ajax:
+                 return JSONResponse(content={"success": True, "redirect_url": f"/auth/pending?email={user.email}&uid={user.id}"})
              return RedirectResponse(url=f"/auth/pending?email={user.email}&uid={user.id}", status_code=status.HTTP_303_SEE_OTHER)
          
          error_msg = "Please follow the email link to verify your account." if user.status == "pending_verification" else "Account is inactive or pending approval."
+         if is_ajax:
+            return JSONResponse(status_code=403, content={"success": False, "error": error_msg})
          return templates.TemplateResponse("auth/login.html", {
             "request": request,
             "error": error_msg
         })
         
     if not user.is_email_verified and user.role != "admin":
-        # Check if auth provider is email, if social it should be verified
         if user.auth_provider == 'email':
+             if is_ajax:
+                return JSONResponse(status_code=403, content={"success": False, "error": "Please verify your email address.", "verification_needed": True})
              return templates.TemplateResponse("auth/login.html", {
                 "request": request,
                 "error": "Please verify your email address before logging in.",
@@ -614,14 +628,12 @@ def login(
 
     access_token_expires = timedelta(minutes=security_auth.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = security_auth.create_access_token(
-        data={"sub": user.email, "role": user.role}, # Include role in token
+        data={"sub": user.email, "role": user.role}, 
         expires_delta=access_token_expires
     )
     
-    # Issue Refresh Token
     refresh_token = security_auth.create_refresh_token(user_id=user.id, db=db)
     
-    # Audit Log
     new_log = models.AuditLog(
         user_id=user.id,
         action="login",
@@ -638,7 +650,11 @@ def login(
     else:
         redirect_url += "?login=success"
 
-    response = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+    if is_ajax:
+        response = JSONResponse(content={"success": True, "redirect_url": redirect_url})
+    else:
+        response = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+    
     response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
     response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, max_age=security_auth.REFRESH_TOKEN_EXPIRE_DAYS * 86400)
     return response

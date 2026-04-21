@@ -25,7 +25,8 @@
     {% block head %}{% endblock %}
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v=12.1">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}?v=10.0">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/diamond_auth_modals.css') }}?v=10.0">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/diamond_auth_modals.css') }}?v=11.2">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/mobile_app.css') }}?v=1.0">
 </head>
 
 <body data-nav-page="{{ nav_page | default('') }}">
@@ -42,12 +43,29 @@
             </a>
             <div class="nav-menu">
                 <ul class="nav-links">
-                    <li><a href="/#home" data-nav="home">Home</a></li>
+                    <li><a href="/#home" class="active" data-nav="home">Home</a></li>
                     <li><a href="/#caterers" data-nav="caterers">Browse Caterers</a></li>
                     <li><a href="/#categories" data-nav="categories">Event Categories</a></li>
                     <li><a href="/#how-it-works" data-nav="how-it-works">How It Works</a></li>
                     <li><a href="/#about" data-nav="about">About Us</a></li>
                     <li><a href="/#contact" data-nav="contact">Contact Us</a></li>
+                    
+                    {# Mobile Only Auth Links #}
+                    <li class="nav-auth-mobile">
+                        {% if user %}
+                            {% if user.role == 'admin' %}
+                                <a href="/admin/dashboard" class="btn-primary">Admin Panel</a>
+                            {% elif user.role == 'caterer' %}
+                                <a href="/caterer/dashboard" class="btn-primary">Caterer Dashboard</a>
+                            {% else %}
+                                <a href="/customer/dashboard" class="btn-primary">My Dashboard</a>
+                            {% endif %}
+                            <a href="/auth/logout" class="btn-secondary" style="margin-top: 0.5rem; color: #fff !important;">Logout</a>
+                        {% else %}
+                            <a href="javascript:void(0);" onclick="openAuthModal('login'); document.querySelector('.hamburger').click();" class="btn-primary">Login</a>
+                            <a href="javascript:void(0);" onclick="openAuthModal('signup'); document.querySelector('.hamburger').click();" class="btn-secondary" style="margin-top: 0.5rem; color: #fff !important;">Sign Up</a>
+                        {% endif %}
+                    </li>
                 </ul>
                 <div class="nav-auth">
                     {% if user %}
@@ -135,11 +153,12 @@
     {% include "shared/auth_modals.html" %}
     <script src="{{ url_for('static', path='/js/main.js') }}?v=30.0"></script>
     <script src="{{ url_for('static', path='/js/landing_base.js') }}?v=30.0"></script>
-    <script src="{{ url_for('static', path='/js/global/diamond_auth_modals.js') }}?v=30.0"></script>
+    <script src="{{ url_for('static', path='/js/global/diamond_auth_modals.js') }}?v=31.1"></script>
     <script src="{{ url_for('static', path='/js/global/diamond_validation.js') }}?v=30.0"></script>
     <script src="{{ url_for('static', path='/js/global/diamond_caterer_auth.js') }}?v=30.0"></script>
     <script src="{{ url_for('static', path='/js/auth/register.js') }}?v=30.0"></script>
     <script src="{{ url_for('static', path='/js/auth/verify_email.js') }}?v=30.0"></script>
+    <script src="{{ url_for('static', path='/js/global/dynamic_landing.js') }}?v=1.1"></script>
 
     {% block scripts %}{% endblock %}
 </body>

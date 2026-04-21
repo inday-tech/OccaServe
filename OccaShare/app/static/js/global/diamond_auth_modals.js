@@ -147,7 +147,80 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Initialize all interceptors
+    // --- AJAX LOGIN HANDLER (Event Delegation) ---
+    document.addEventListener('submit', async (e) => {
+        // Find if the submission is from a login form
+        const loginForm = e.target.closest('#loginForm');
+        if (!loginForm) return;
+
+        // Prevent normal form submission
+        e.preventDefault();
+
+        const submitBtn = loginForm.querySelector('.btn-primary-action');
+        const errorContainer = document.getElementById('loginErrorContainer');
+        const errorText = errorContainer ? errorContainer.querySelector('.error-message') : null;
+
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            const originalContent = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> <span>Logging in...</span>';
+            submitBtn.dataset.originalContent = originalContent;
+        }
+
+        if (errorContainer) errorContainer.style.display = 'none';
+
+        const formData = new FormData(loginForm);
+        
+        try {
+            const response = await fetch('/auth/login', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            });
+
+            // Handle non-JSON responses (security/server errors)
+            const contentType = response.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                throw new Error("Server returned non-JSON response");
+            }
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                // Success! Redirect to the dashboard
+                window.location.href = result.redirect_url;
+            } else {
+                // Error! Show in modal
+                if (errorContainer && errorText) {
+                    errorText.textContent = result.error || 'An unexpected error occurred.';
+                    errorContainer.style.display = 'block';
+                    
+                    // Simple show/hide for cleaner UX
+                    errorContainer.style.animation = 'none';
+                    errorContainer.offsetHeight; // trigger reflow
+                    errorContainer.style.animation = 'fadeInError 0.3s ease';
+                } else {
+                    alert(result.error || 'Login failed');
+                }
+            }
+        } catch (err) {
+            console.error('Login error:', err);
+            if (errorContainer && errorText) {
+                errorText.textContent = 'Connection error or server issue. Please try again.';
+                errorContainer.style.display = 'block';
+            }
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = submitBtn.dataset.originalContent || 'Login';
+            }
+        }
+    });
+
+    // Initialize Global interceptors
     attachGlobalAuthInterceptors();
     attachModalInternalInterceptors();
 

@@ -4,103 +4,33 @@
 {% block title %}Login - OccaServe{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/auth/login.css') }}">
-
+<style>
+    .main-content-wrap {
+        padding: 5rem 0;
+        background: #f8fafc;
+        min-height: 80vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .auth-container {
+        width: 100%;
+        max-width: 480px;
+        padding: 20px;
+    }
+    /* standalone page specifics */
+    .auth-container .professional-card {
+        background: #fff !important;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+        border: 1px solid #e2e8f0 !important;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="main-content-wrap">
     <div class="auth-container">
-        <div class="professional-card">
-            <h2>Welcome Back</h2>
-            <p class="auth-subtitle">Login to manage your bookings</p>
-
-            {% if request.query_params.get('error') == 'config_missing' %}
-            <div class="alert-error"
-                style="margin-bottom: 1.5rem; background: #fff7ed; border-color: #ffedd5; color: #9a3412;">
-                <i class="fas fa-exclamation-triangle"></i>
-                <strong>{{ request.query_params.get('provider') | capitalize }} not configured.</strong>
-                <p style="font-size: 0.8rem; margin-top: 5px;">Please add your Client ID and Secret to the .env file to
-                    enable this login method.</p>
-            </div>
-            {% endif %}
-
-            {% if request.query_params.get('error') == 'oauth_failed' %}
-            <div class="alert-error" style="background: #fff1f2; border-color: #fecaca; color: #991b1b;">
-                <i class="fas fa-times-circle"></i>
-                <strong>Facebook Login Failed.</strong>
-                <p style="font-size: 0.8rem; margin-top: 5px;">There was a problem: {{
-                    request.query_params.get('details', 'verifying your identity') }}.</p>
-                <p style="font-size: 0.8rem; margin-top: 5px;">Please try again or use your email to log in.</p>
-            </div>
-            {% endif %}
-
-            {% if error %}
-            <div class="alert-error">
-                <i class="fas fa-exclamation-circle"></i> {{ error }}
-            </div>
-            {% endif %}
-
-            <form action="/auth/login" method="post" class="auth-form">
-                {% if next_url %}
-                <input type="hidden" name="next_url" value="{{ next_url }}">
-                {% endif %}
-                <div class="form-group">
-                    <label for="email">Email Address or Username</label>
-                    <input type="text" id="email" name="email" class="minimal-input" required
-                        placeholder="you@example.com">
-                </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <div class="input-wrapper">
-                        <div class="password-field-wrapper">
-                            <input type="password" id="password" name="password" class="minimal-input has-toggle" required
-                                placeholder="••••••••">
-                            <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility(this)" tabindex="-1">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div style="text-align: right; margin-top: 8px;">
-                        <a href="/auth/forgot-password"
-                            style="font-size: 0.85rem; color: var(--primary); font-weight: 500; text-decoration: none;">Forgot
-                            password?</a>
-                    </div>
-                </div>
-                <button type="submit" class="btn-primary-action">Login</button>
-            </form>
-
-            <div class="auth-divider">
-                <span>or continue with</span>
-            </div>
-
-            <div class="social-auth-grid">
-                <a href="javascript:void(0)" onclick="handleSocialLogin('facebook')" class="btn-social btn-facebook"
-                    title="Continue with Facebook">
-                    <i class="fab fa-facebook-f"></i>
-                </a>
-                <a href="javascript:void(0)" onclick="handleSocialLogin('google')" class="btn-social btn-google"
-                    title="Continue with Google">
-                    <i class="fab fa-google"></i>
-                </a>
-                <a href="javascript:void(0)" onclick="handleSocialLogin('instagram')" class="btn-social btn-instagram"
-                    title="Continue with Instagram">
-                    <i class="fab fa-instagram"></i>
-                </a>
-            </div>
-
-            <p class="auth-footer">
-                Don't have an account? <a href="/auth/register{% if next_url %}?next={{ next_url }}{% endif %}">Create
-                    one</a>
-            </p>
-        </div>
+        {% include "auth/components/login_form.html" %}
     </div>
 </div>
-
-{% endblock %}
-
-{% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="{{ url_for('static', path='/js/auth/login.js') }}"></script>
-
 {% endblock %}

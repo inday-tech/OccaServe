@@ -54,29 +54,11 @@
         border-color: var(--lp-primary, #f97316);
     }
 
-    @media (max-width: 768px) {
-        .search-filter-bar {
-            grid-template-columns: 1fr;
-        }
-    }
-
     /* Event Categories Clickable Cards */
     .event-cards-grid {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
         gap: 1.5rem;
-    }
-
-    @media (max-width: 1024px) {
-        .event-cards-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-    }
-
-    @media (max-width: 640px) {
-        .event-cards-grid {
-            grid-template-columns: 1fr;
-        }
     }
 
     .event-card {
@@ -267,61 +249,6 @@
         }
     }
 
-    /* Split Hero CSS */
-    .hero-split-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 4rem;
-        align-items: center;
-    }
-
-    @keyframes morph {
-
-        0%,
-        100% {
-            border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
-        }
-
-        34% {
-            border-radius: 70% 30% 50% 50% / 30% 30% 70% 70%;
-        }
-
-        67% {
-            border-radius: 100% 60% 60% 100% / 100% 100% 60% 60%;
-        }
-    }
-
-    @media (max-width: 992px) {
-        .hero-split-grid {
-            grid-template-columns: 1fr;
-            text-align: center;
-        }
-
-        .hero-split-grid .hero-content {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .hero-split-grid h1 {
-            font-size: 3rem !important;
-        }
-
-        .hero-split-grid p {
-            margin: 0 auto 2.5rem !important;
-        }
-
-        .hero-split-grid .hero-buttons {
-            justify-content: center;
-        }
-
-        .hero-image-wrapper img {
-            height: 350px !important;
-        }
-
-        #home {
-            padding: 8rem 0 4rem !important;
-        }
     }
 </style>
 {% endblock %}
@@ -346,6 +273,28 @@
             </div>
         </div>
     </header>
+    
+    {# ======= 1.5 TRUST COUNTERS ======= #}
+    <section class="section-stats-bar">
+        <div class="container">
+            <div class="stats-grid-horizontal animate-on-scroll">
+                <div class="stat-item">
+                    <span class="stat-number" data-target="{{ stats.caterers }}">0</span>
+                    <span class="stat-label">Caterers</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <span class="stat-number" data-target="{{ stats.events }}">0</span>
+                    <span class="stat-label">Events Managed</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <span class="stat-number" data-target="{{ stats.hosts }}">0</span>
+                    <span class="stat-label">Happy Hosts</span>
+                </div>
+            </div>
+        </div>
+    </section>
 
     {# ======= 2. BROWSE CATERERS ======= #}
     <section id="caterers" class="section-clean section-white" style="padding: 6rem 0;">
@@ -356,77 +305,41 @@
                     trusted by hundreds of clients.</p>
             </div>
 
+            {# DYNAMIC SEARCH BAR #}
+            <div class="search-filter-bar animate-on-scroll">
+                <div class="search-filter-item">
+                    <label>Keyword</label>
+                    <input type="text" id="catererSearchInput" placeholder="Search by name or specialty...">
+                </div>
+                <div class="search-filter-item">
+                    <label>Location</label>
+                    <input type="text" id="locationSearchInput" placeholder="Enter city (e.g. Santa Cruz)">
+                </div>
+                <div class="search-filter-item">
+                    <label>Event Type</label>
+                    <select id="eventTypeSelect">
+                        <option value="">All Categories</option>
+                        <option value="wedding">Wedding</option>
+                        <option value="birthday">Birthday</option>
+                        <option value="corporate">Corporate</option>
+                        <option value="debut">Debut</option>
+                        <option value="baptism">Baptism</option>
+                        <option value="private">Private Party</option>
+                        <option value="fiesta">Fiesta</option>
+                        <option value="holiday">Holiday</option>
+                    </select>
+                </div>
+                <div class="search-filter-item">
+                    <label>&nbsp;</label>
+                    <button class="btn-cta-main" style="padding: 0.75rem 1.5rem;" onclick="performDeepSearch()">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+
 
             <div class="caterer-grid-new">
-                {% for caterer in caterers[:3] %}
-                <div class="caterer-elite-card animate-on-scroll">
-                    <div class="elite-card-image">
-                        <div class="elite-badge-verified">Verified</div>
-                        <img src="{{ caterer.logo_url if (caterer.logo_url and 'http' in caterer.logo_url) else 'https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=800&auto=format&fit=crop' }}"
-                            alt="{{ caterer.business_name }}">
-                    </div>
-                    <div class="elite-card-body">
-                        <h3>{{ caterer.business_name }}</h3>
-                        <div class="elite-card-rating">
-                            <i class="fas fa-star"></i>
-                            {{ caterer.rating if caterer.rating else '4.9' }}
-                            <span>(0 reviews)</span>
-                        </div>
-                        <p class="elite-card-desc">
-                            {{ (caterer.description or 'Catering services provide exceptional food and beverage
-                            preparation, delivery, and presentation for all your special events.')[:120] }}...
-                        </p>
-                        <div class="elite-card-price">
-                            ₱300 <span>starting</span>
-                        </div>
-                        <div class="elite-card-footer">
-                            <div class="elite-footer-item">
-                                <i class="fas fa-map-marker-alt"></i> {{ caterer.city if caterer.city else 'Santa Cruz'
-                                }}
-                            </div>
-                            <div class="elite-footer-item">
-                                <i class="fas fa-users"></i> 50+ guests
-                            </div>
-                        </div>
-                        <a href="/caterers/{{ caterer.id }}" class="elite-view-btn">
-                            <i class="far fa-eye"></i> View Profile
-                        </a>
-                    </div>
-                </div>
-                {% else %}
-                {# If no caterers in DB, show the "Darwin's" example to satisfy the user request #}
-                <div class="caterer-elite-card animate-on-scroll">
-                    <div class="elite-card-image">
-                        <div class="elite-badge-verified">Verified</div>
-                        <img src="https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=800&auto=format&fit=crop"
-                            alt="Darwin's Catering Services">
-                    </div>
-                    <div class="elite-card-body">
-                        <h3>Darwin's Catering Services</h3>
-                        <div class="elite-card-rating">
-                            <i class="fas fa-star"></i> 4.9 <span>(0 reviews)</span>
-                        </div>
-                        <p class="elite-card-desc">
-                            Catering services provide food and beverage preparation, delivery, and presentation for
-                            events such as weddings, corporate parties, and more.
-                        </p>
-                        <div class="elite-card-price">
-                            ₱300 <span>starting</span>
-                        </div>
-                        <div class="elite-card-footer">
-                            <div class="elite-footer-item">
-                                <i class="fas fa-map-marker-alt"></i> Santa Cruz
-                            </div>
-                            <div class="elite-footer-item">
-                                <i class="fas fa-users"></i> 50+ guests
-                            </div>
-                        </div>
-                        <a href="/caterers" class="elite-view-btn">
-                            <i class="far fa-eye"></i> View Profile
-                        </a>
-                    </div>
-                </div>
-                {% endfor %}
+                {% include "caterer/components/caterer_card_grid.html" %}
             </div>
 
             {# 'View All' button removed as requested #}
@@ -542,7 +455,8 @@
                 <p style="color: var(--lp-text-muted); font-size: 1.1rem;">Real reviews from our community.</p>
             </div>
 
-            <div class="testimonial-grid animate-on-scroll">
+            <div class="testimonial-slider-container">
+                <div class="testimonial-grid animate-on-scroll slider-track">
                 {% if highlighted_reviews %}
                 {% for review in highlighted_reviews %}
                 {% set initials = (review.user.first_name[0] if review.user.first_name else '?') ~
@@ -582,6 +496,7 @@
                         and share your experience with our community.</p>
                 </div>
                 {% endif %}
+                </div>
             </div>
         </div>
     </section>
@@ -675,75 +590,6 @@
                 <a href="#caterers" class="btn-cta-main">Browse Caterers Now</a>
             </div>
         </div>
-    </section>
-
+    </section><!-- Scripts are now managed via dynamic_landing.js -->
 </div>
-
-<!-- Intersection Observer for scroll animations -->
-<script>
-    document.addEventListener("DOMContentLoaded", () => {
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('visible');
-                }
-            });
-        }, {
-            threshold: 0.1
-        });
-
-        document.querySelectorAll('.animate-on-scroll').forEach((el) => {
-            observer.observe(el);
-        });
-    });
-
-    async function submitContactForm(event) {
-        event.preventDefault();
-        const form = event.target;
-        const formData = new FormData(form);
-        const submitBtn = form.querySelector('button[type="submit"]');
-        const originalText = submitBtn.innerHTML;
-
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-        submitBtn.disabled = true;
-
-        try {
-            const response = await fetch('/contact/api', {
-                method: 'POST',
-                body: formData
-            });
-
-            if (response.ok) {
-                // If SweetAlert is available, use it (common in this app)
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Message Sent!',
-                        text: 'Thank you for reaching out. Our team will get back to you soon.',
-                        confirmButtonColor: 'var(--lp-primary)'
-                    });
-                } else {
-                    alert('Message sent successfully! Our team will get back to you soon.');
-                }
-                form.reset();
-            } else {
-                throw new Error('Failed to send message');
-            }
-        } catch (error) {
-            console.error('Error submitting form:', error);
-            if (typeof Swal !== 'undefined') {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Oops...',
-                    text: 'Something went wrong. Please try again later.'
-                });
-            } else {
-                alert('Error sending message. Please try again.');
-            }
-        } finally {
-            submitBtn.innerHTML = originalText;
-            submitBtn.disabled = false;
-        }
-    }
-</script>
 {% endblock %}

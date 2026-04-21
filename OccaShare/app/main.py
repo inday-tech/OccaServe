@@ -19,7 +19,7 @@ try:
     with engine.begin() as conn:
         print("Checking bookings table...")
         cols = [
-            ("end_time", "TIME"),
+            ("event_end_time", "TIME"),
             ("venue_province", "VARCHAR"),
             ("venue_city", "VARCHAR"),
             ("venue_barangay", "VARCHAR"),
@@ -34,7 +34,11 @@ try:
             ("payout_id", "INTEGER"),
             ("payment_plan", "VARCHAR DEFAULT 'downpayment'"),
             ("ocr_verified", "BOOLEAN DEFAULT FALSE"),
-            ("liveness_verified", "BOOLEAN DEFAULT FALSE")
+            ("liveness_verified", "BOOLEAN DEFAULT FALSE"),
+            ("paymongo_link_id", "VARCHAR"),
+            ("paymongo_link_url", "VARCHAR"),
+            ("payment_verification_data", "JSONB"),
+            ("proof_image_hash", "VARCHAR")
         ]
         for col_name, col_type in cols:
             try:
@@ -152,6 +156,83 @@ try:
                 conn.execute(text(f"ALTER TABLE caterer_gallery ADD COLUMN IF NOT EXISTS {col_name} {col_type}"))
             except Exception as e:
                 print(f"  Warning: Could not add column '{col_name}' to 'caterer_gallery': {e}")
+
+        print("Checking website_config table...")
+        config_cols = [
+            ("commission_rate", "FLOAT DEFAULT 10.0"),
+            ("commission_fixed_amount", "FLOAT DEFAULT 20.0"),
+            ("max_file_size_mb", "INTEGER DEFAULT 5"),
+            ("maintenance_mode", "BOOLEAN DEFAULT FALSE"),
+            ("maintenance_message", "TEXT")
+        ]
+        for col_name, col_type in config_cols:
+            try:
+                conn.execute(text(f"ALTER TABLE website_config ADD COLUMN IF NOT EXISTS {col_name} {col_type}"))
+            except Exception as e:
+                print(f"  Warning: Could not add column '{col_name}' to 'website_config': {e}")
+
+        print("Checking payouts table...")
+        payout_cols = [
+            ("is_archived", "BOOLEAN DEFAULT FALSE"),
+            ("notes", "TEXT"),
+            ("completed_at", "TIMESTAMP WITH TIME ZONE")
+        ]
+        for col_name, col_type in payout_cols:
+            try:
+                conn.execute(text(f"ALTER TABLE payouts ADD COLUMN IF NOT EXISTS {col_name} {col_type}"))
+            except Exception as e:
+                print(f"  Warning: Could not add column '{col_name}' to 'payouts': {e}")
+
+        print("Checking payout_items table...")
+        payout_item_cols = [
+            ("status", "VARCHAR DEFAULT 'pending'"),
+            ("release_trigger", "VARCHAR DEFAULT 'on_completion'")
+        ]
+        for col_name, col_type in payout_item_cols:
+            try:
+                conn.execute(text(f"ALTER TABLE payout_items ADD COLUMN IF NOT EXISTS {col_name} {col_type}"))
+            except Exception as e:
+                print(f"  Warning: Could not add column '{col_name}' to 'payout_items': {e}")
+
+        print("Checking quotations table...")
+        quotation_cols = [
+            ("contract_url", "VARCHAR"),
+            ("status", "VARCHAR(20) DEFAULT 'draft'"),
+            ("caterer_signature", "TEXT"),
+            ("customer_signature", "TEXT"),
+            ("caterer_signed_at", "TIMESTAMP WITH TIME ZONE"),
+            ("customer_signed_at", "TIMESTAMP WITH TIME ZONE")
+        ]
+        for col_name, col_type in quotation_cols:
+            try:
+                conn.execute(text(f"ALTER TABLE quotations ADD COLUMN IF NOT EXISTS {col_name} {col_type}"))
+            except Exception as e:
+                print(f"  Warning: Could not add column '{col_name}' to 'quotations': {e}")
+
+        print("Checking identity_verifications table...")
+        id_ver_cols = [
+            ("is_archived", "BOOLEAN DEFAULT FALSE"),
+            ("fraud_score", "INTEGER DEFAULT 0"),
+            ("ip_address", "VARCHAR"),
+            ("device_info", "JSONB"),
+            ("liveness_status", "VARCHAR"),
+            ("verified_at", "TIMESTAMP WITH TIME ZONE")
+        ]
+        for col_name, col_type in id_ver_cols:
+            try:
+                conn.execute(text(f"ALTER TABLE identity_verifications ADD COLUMN IF NOT EXISTS {col_name} {col_type}"))
+            except Exception as e:
+                print(f"  Warning: Could not add column '{col_name}' to 'identity_verifications': {e}")
+
+        print("Checking users table (additional)...")
+        user_add_cols = [
+            ("is_archived", "BOOLEAN DEFAULT FALSE")
+        ]
+        for col_name, col_type in user_add_cols:
+            try:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {col_name} {col_type}"))
+            except Exception as e:
+                print(f"  Warning: Could not add column '{col_name}' to 'users': {e}")
                 
     print("Manual migrations section finished.")
 except Exception as e:

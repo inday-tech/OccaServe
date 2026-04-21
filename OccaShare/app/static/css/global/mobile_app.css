@@ -1,0 +1,440 @@
+/* ===== MOBILE WEB APP ENHANCEMENTS ===== */
+:root {
+    /* Fluid Design Tokens for Mobile */
+    --mob-px: clamp(1rem, 5vw, 1.5rem);
+    --mob-h1: clamp(1.8rem, 8vw, 2.75rem);
+    --mob-h2: clamp(1.5rem, 6vw, 2.25rem);
+    --mob-h3: clamp(1.2rem, 5vw, 1.5rem);
+    --mob-p: clamp(0.9rem, 2.5vw, 1.05rem);
+    --mob-radius: 1.25rem;
+    --mob-gap: 1.25rem;
+    --mob-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+/* Global Mobile Consistency Fixes */
+@media (max-width: 768px) {
+    .container {
+        padding-left: var(--mob-px) !important;
+        padding-right: var(--mob-px) !important;
+    }
+
+    /* Standardizing Section Spacing */
+    section, .section-clean, header[id="home"] {
+        padding-top: 3.5rem !important;
+        padding-bottom: 3.5rem !important;
+    }
+
+    /* Fluid Typography Scaling */
+    .hero-title-main, .cta-banner h2 {
+        font-size: var(--mob-h1) !important;
+        line-height: 1.15 !important;
+        letter-spacing: -0.01em !important;
+    }
+
+    .section-title h2, .section-clean h2 {
+        font-size: var(--mob-h2) !important;
+        letter-spacing: -0.01em !important;
+    }
+
+    .hero-subtitle-main, .cta-banner p, .section-subtitle {
+        font-size: var(--mob-p) !important;
+        line-height: 1.6 !important;
+        margin-bottom: 2rem !important;
+    }
+
+    /* Harmonized Card Design System */
+    .caterer-elite-card, .event-card, .testimonial-card-new, .step-card-new, .search-filter-bar {
+        border-radius: var(--mob-radius) !important;
+        box-shadow: var(--mob-shadow) !important;
+        border: 1px solid rgba(0,0,0,0.04) !important;
+        background: #ffffff !important;
+        transition: transform 0.2s ease !important;
+    }
+
+    /* Grid Optimization for Fit */
+    .event-cards-grid, .caterer-grid-new, .process-grid, .testimonial-slider-container {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: var(--mob-gap) !important;
+        padding: 0 0.1rem !important;
+    }
+
+    /* Elite Caterer Card Mobile Refinement */
+    .caterer-elite-card {
+        max-width: 100% !important;
+        margin-bottom: 0.5rem !important;
+    }
+
+    .elite-card-image {
+        height: 160px !important;
+    }
+
+    .elite-card-body {
+        padding: 1.25rem !important;
+    }
+
+    .elite-card-body h3 {
+        font-size: 1.2rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+
+    .elite-card-desc {
+        font-size: 0.85rem !important;
+        margin-bottom: 1rem !important;
+        line-height: 1.5 !important;
+    }
+
+    .elite-card-price {
+        font-size: 1.1rem !important;
+        margin-bottom: 1rem !important;
+    }
+
+    .elite-card-footer {
+        gap: 0.75rem !important;
+        padding-top: 1rem !important;
+        margin-bottom: 1.25rem !important;
+    }
+
+    .elite-footer-item {
+        font-size: 0.8rem !important;
+    }
+
+    /* Event Category Cards Mobile Refinement */
+    .event-card {
+        padding: 1.5rem 1rem !important;
+        flex-direction: row !important;
+        text-align: left !important;
+        align-items: center !important;
+        gap: 1rem !important;
+    }
+
+    .event-card i {
+        font-size: 1.75rem !important;
+        margin-bottom: 0 !important;
+    }
+
+    .event-card h3 {
+        font-size: 1.1rem !important;
+        margin-bottom: 0 !important;
+    }
+
+    /* Step Cards (How it Works) Refinement */
+    .step-card-new {
+        padding: 2rem 1.5rem !important;
+        text-align: center !important;
+    }
+
+    .step-icon-new {
+        width: 60px !important;
+        height: 60px !important;
+        font-size: 1.5rem !important;
+        margin-bottom: 1rem !important;
+    }
+
+    /* Search Bar Mobile Fit */
+    .search-filter-bar {
+        grid-template-columns: 1fr !important;
+        padding: 1.25rem !important;
+        gap: 0.75rem !important;
+    }
+
+    .search-filter-item label {
+        font-size: 0.75rem !important;
+    }
+
+    .search-filter-item input, .search-filter-item select {
+        padding: 0.75rem !important;
+        font-size: 0.95rem !important;
+    }
+
+    /* CTA Banner Mobile Fit */
+    .cta-banner {
+        padding: 3rem 1.5rem !important;
+    }
+
+    .cta-banner h2 {
+        font-size: var(--mob-h2) !important;
+        margin-bottom: 1rem !important;
+    }
+
+    .cta-banner p {
+        font-size: 0.95rem !important;
+        margin-bottom: 2rem !important;
+    }
+
+    .cta-btns {
+        flex-direction: column !important;
+        gap: 1rem !important;
+        width: 100% !important;
+    }
+
+    .cta-btns .btn-cta-main, .cta-btns .btn-secondary-hero {
+        width: 100% !important;
+        justify-content: center !important;
+        padding: 1rem !important;
+    }
+
+    /* Footer Mobile Consistency */
+    footer {
+        padding: 4rem 0 2rem !important;
+    }
+
+    .footer-grid {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 2.5rem !important;
+        text-align: center !important;
+    }
+
+    .footer-section {
+        align-items: center !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    .footer-links {
+        align-items: center !important;
+    }
+
+    /* Standard Button Fixes for Mobile */
+    .btn-cta-main, .btn-secondary-hero, .elite-view-btn, .btn-primary, .btn-secondary {
+        border-radius: 50px !important; /* Premium rounded look */
+        padding: 0.9rem 1.5rem !important;
+        font-size: 0.95rem !important;
+    }
+}
+
+/* Glassmorphic Header (Shrinking on scroll) */
+.navbar {
+    transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+    backdrop-filter: blur(0px);
+}
+
+.navbar.scrolled {
+    height: 70px;
+    background: rgba(255, 255, 255, 0.8) !important;
+    backdrop-filter: blur(15px) saturate(180%);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Hamburger Toggle Animation */
+.hamburger.active .bar:nth-child(2) {
+    opacity: 0;
+}
+
+.hamburger.active .bar:nth-child(1) {
+    transform: translateY(8px) rotate(45deg);
+}
+
+.hamburger.active .bar:nth-child(3) {
+    transform: translateY(-8px) rotate(-45deg);
+}
+
+/* Mobile Auth Links (Hidden on Desktop) */
+.nav-auth-mobile {
+    display: none;
+}
+
+/* Premium Mobile Menu Expansion */
+@media (max-width: 768px) {
+    .nav-menu {
+        position: fixed;
+        left: -100%;
+        top: 0;
+        flex-direction: column;
+        background: rgba(15, 23, 42, 0.95); /* Darker Slate for better contrast */
+        backdrop-filter: blur(20px) saturate(180%);
+        width: 100%;
+        height: 100vh;
+        border-radius: 0;
+        text-align: center;
+        transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        box-shadow: 0 10px 27px rgba(0, 0, 0, 0.2);
+        justify-content: center;
+        gap: 2rem;
+        z-index: 999;
+    }
+
+    .nav-menu.active {
+        left: 0;
+    }
+
+    /* Force visibility of nav-links inside mobile menu */
+    .nav-menu.active .nav-links {
+        display: flex !important;
+        flex-direction: column;
+        width: 100%;
+        align-items: center;
+        gap: 1.5rem;
+    }
+
+    .nav-menu li {
+        margin: 0.4rem 0;
+        opacity: 0;
+        transform: translateY(20px);
+        transition: all 0.4s ease;
+    }
+
+    .nav-menu.active li {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    /* Staggered entrance for menu items */
+    .nav-menu.active li:nth-child(1) { transition-delay: 0.05s; }
+    .nav-menu.active li:nth-child(2) { transition-delay: 0.1s; }
+    .nav-menu.active li:nth-child(3) { transition-delay: 0.15s; }
+    .nav-menu.active li:nth-child(4) { transition-delay: 0.2s; }
+    .nav-menu.active li:nth-child(5) { transition-delay: 0.25s; }
+    .nav-menu.active li:nth-child(6) { transition-delay: 0.3s; }
+    .nav-menu.active li:nth-child(7) { transition-delay: 0.35s; }
+
+    .nav-menu a {
+        font-size: 1.25rem !important;
+        font-weight: 600;
+        color: #ffffff !important;
+        padding: 0.4rem 0 !important;
+    }
+
+    /* Show Auth Buttons inside menu on mobile */
+    .nav-auth-mobile {
+        display: flex !important;
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 0 2.5rem;
+        width: 100%;
+        margin-top: 1.5rem;
+    }
+
+    .nav-auth-mobile .btn-primary {
+        width: 100%;
+        padding: 0.85rem !important;
+        font-size: 1rem !important;
+        color: #fff !important;
+        background: var(--primary-color, #f97316) !important;
+        border-radius: 50px !important;
+        text-align: center !important;
+        display: block !important;
+        text-decoration: none !important;
+    }
+
+    .nav-auth-mobile .btn-secondary {
+        width: 100%;
+        padding: 0.85rem !important;
+        font-size: 1rem !important;
+        color: #ffffff !important;
+        background: transparent !important;
+        border: 2px solid rgba(255,255,255,0.3) !important;
+        border-radius: 50px !important;
+        text-align: center !important;
+        display: block !important;
+        text-decoration: none !important;
+    }
+
+    /* Ensure hamburger is visible when menu is open */
+    .hamburger.active .bar {
+        background-color: #ffffff !important;
+    }
+}
+
+/* Better "App" Buttons */
+.btn-app-accent {
+    border-radius: 12px;
+    padding: 12px 20px;
+    font-weight: 600;
+    transition: all 0.2s active;
+}
+
+/* Stats Bar */
+.section-stats-bar {
+    background: #0f172a;
+    padding: 3rem 0;
+    color: #fff;
+    margin-top: -1rem;
+    position: relative;
+    z-index: 10;
+}
+
+.stats-grid-horizontal {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    gap: 2rem;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #f97316;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 600;
+}
+
+.stat-divider {
+    width: 1px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 768px) {
+    .stats-grid-horizontal {
+        flex-direction: column;
+        gap: 2.5rem;
+    }
+    .stat-divider {
+        display: none;
+    }
+}
+
+/* Testimonial Slider */
+.testimonial-slider-container {
+    overflow: hidden;
+    padding: 1rem 0;
+}
+
+@media (max-width: 768px) {
+    .slider-track {
+        display: flex !important;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        gap: 1.5rem;
+        padding-bottom: 2rem;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none; /* Hide scrollbar Firefox */
+    }
+    .slider-track::-webkit-scrollbar {
+        display: none; /* Hide scrollbar Chrome/Safari */
+    }
+    .slider-track > .testimonial-card {
+        flex: 0 0 85vw;
+        scroll-snap-align: center;
+    }
+}
+
+/* Entrance Animations */
+.animate-on-scroll {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-on-scroll.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Shimmer is already in the inline style of the component, 
+   but we can globalize it here if needed. */
