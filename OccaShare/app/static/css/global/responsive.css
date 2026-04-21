@@ -137,4 +137,42 @@
     .form-input {
         padding: 0.6rem 0.8rem !important;
     }
+
+    /* --- SweetAlert2 Toast Mobile Refinement --- */
+    .swal2-container.swal2-bottom-end,
+    .swal2-container.swal2-center,
+    .swal2-container.swal2-top-end {
+        padding: 10px !important;
+    }
+
+    .swal2-popup.swal2-toast {
+        padding: 0.75rem 1rem !important;
+        width: calc(100% - 20px) !important; /* Almost full width with margins */
+        max-width: none !important;
+        border-radius: 12px !important;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important;
+    }
+
+    .swal2-popup.swal2-toast .swal2-title {
+        font-size: 0.9rem !important;
+        font-weight: 600 !important;
+        line-height: 1.4 !important;
+        margin: 0 0.5rem !important;
+    }
+
+    .swal2-popup.swal2-toast .swal2-icon {
+        width: 1.5rem !important;
+        height: 1.5rem !important;
+        min-width: 1.5rem !important;
+        margin: 0 !important;
+    }
+
+    .swal2-popup.swal2-toast .swal2-icon .swal2-icon-content {
+        font-size: 1rem !important;
+    }
+
+    .swal2-popup.swal2-toast .swal2-success-ring {
+        width: 1.5rem !important;
+        height: 1.5rem !important;
+    }
 }

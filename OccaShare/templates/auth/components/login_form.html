@@ -1,10 +1,10 @@
 <div class="professional-card">
-    <div class="icon-header" style="background: transparent; box-shadow: none; width: auto; height: auto; display: flex; align-items: center; justify-content: center; margin-bottom: 2rem;">
+    <div class="icon-header" style="background: transparent; box-shadow: none; width: auto; height: auto; display: flex; align-items: center; justify-content: center; margin-bottom: clamp(1rem, 5vw, 2rem);">
         {% set wconfig = website_config() %}
         {% if wconfig and wconfig.logo_url %}
-        <img src="{{ wconfig.logo_url }}" alt="Logo" style="height: 65px; object-fit: contain;">
+        <img src="{{ wconfig.logo_url }}" alt="Logo" style="height: clamp(50px, 10vw, 65px); object-fit: contain;">
         {% else %}
-        <span style="font-size: 2.2rem; font-weight: 800; color: var(--auth-primary); letter-spacing: -0.02em;">OccaServe</span>
+        <span style="font-size: clamp(1.8rem, 8vw, 2.2rem); font-weight: 800; color: var(--auth-primary); letter-spacing: -0.02em;">OccaServe</span>
         {% endif %}
     </div>
     <h2 class="auth-title">Welcome Back</h2>

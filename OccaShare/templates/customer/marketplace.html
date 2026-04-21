@@ -82,23 +82,67 @@
 
 <div class="mkt-body-bg">
     <div class="container py-4">
-        <!-- Skeleton loaders shown during fetch -->
-        <div id="skeletonContainer" class="mkt-grid-premium" style="display: none;">
-            {% for i in range(8) %}
-            <div class="skeleton-card">
-                <div class="skeleton-banner"></div>
-                <div class="skeleton-info">
-                    <div class="skeleton-line" style="width: 40%"></div>
-                    <div class="skeleton-line" style="height: 40px; width: 80%"></div>
-                    <div class="skeleton-line" style="width: 60%"></div>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
+        <div class="mkt-layout-main">
+            <!-- Filter Sidebar -->
+            <aside class="mkt-sidebar">
+                <div class="filter-card-premium">
+                    <div style="margin-bottom: 1.5rem;">
+                        <label class="filter-label">Keyword</label>
+                        <div class="input-wrapper-pro">
+                            <input type="text" id="searchInput" placeholder="Search by name or specialty..." 
+                                value="{{ filters.q }}" oninput="debounceRunFilters()">
+                        </div>
+                    </div>
 
-        <!-- Real caterer cards -->
-        <div id="catererResults" class="mkt-grid-premium">
-            {% include "customer/marketplace_partial.html" %}
+                    <div style="margin-bottom: 1.5rem;">
+                        <label class="filter-label">Location</label>
+                        <div class="input-wrapper-pro highlight">
+                            <input type="text" id="cityInput" placeholder="Enter city (e.g. Santa Cruz)" 
+                                list="cityList" value="{{ filters.city }}" oninput="debounceRunFilters()">
+                            <datalist id="cityList">
+                                {% for city in cities %}
+                                <option value="{{ city }}">
+                                {% endfor %}
+                            </datalist>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 2rem;">
+                        <label class="filter-label">Event Type</label>
+                        <div class="input-wrapper-pro">
+                            <select id="typeSelect" onchange="runFilters()">
+                                <option value="">All Categories</option>
+                                {% for type in types %}
+                                <option value="{{ type }}" {% if filters.event_type == type %}selected{% endif %}>{{ type }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Results Content -->
+            <main class="mkt-content">
+                <!-- Skeleton loaders shown during fetch -->
+                <div id="skeletonContainer" class="mkt-grid-premium" style="display: none;">
+                    {% for i in range(8) %}
+                    <div class="skeleton-card">
+                        <div class="skeleton-banner"></div>
+                        <div class="skeleton-info">
+                            <div class="skeleton-line" style="width: 40%"></div>
+                            <div class="skeleton-line" style="height: 40px; width: 80%"></div>
+                            <div class="skeleton-line" style="width: 60%"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Real caterer cards -->
+                <div id="catererResults" class="mkt-grid-premium">
+                    {% include "customer/marketplace_partial.html" %}
+                </div>
+            </main>
+
         </div>
     </div>
 </div>
@@ -121,8 +165,13 @@
 
     async function runFilters() {
         const query = document.getElementById('searchInput').value;
+        const city = document.getElementById('cityInput').value;
+        const type = document.getElementById('typeSelect').value;
+        
         const params = new URLSearchParams();
         if (query) params.append('q', query);
+        if (city) params.append('city', city);
+        if (type) params.append('event_type', type);
 
         const resultsContainer = document.getElementById('catererResults');
         const skeletonContainer = document.getElementById('skeletonContainer');
