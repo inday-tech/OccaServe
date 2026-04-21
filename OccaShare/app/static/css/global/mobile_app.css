@@ -204,7 +204,79 @@
     }
 }
 
-/* Glassmorphic Header (Shrinking on scroll) */
+/* ===================================================
+   GLOBAL CUSTOMER DASHBOARD — MOBILE PAGE HEADERS
+   Applied to ALL dashboard pages via layout.html
+   =================================================== */
+@media (max-width: 768px) {
+    /* All page headers: consistent size + burger spacing */
+    .page-header {
+        padding-top: 3.5rem;
+        margin-bottom: 1.25rem !important;
+    }
+    .page-header h1 {
+        font-size: 1.6rem !important;
+        margin-bottom: 0.15rem !important;
+        letter-spacing: -0.02em;
+    }
+    .page-header p {
+        font-size: 0.88rem !important;
+        margin-top: 0.15rem !important;
+    }
+
+    /* notif-page wrapper spacing */
+    .notif-page {
+        padding-top: 0 !important;
+    }
+
+    /* Notifications: filter tabs scroll horizontally */
+    .notif-filter-bar {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+    .notif-tabs {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        gap: 0.5rem !important;
+        width: max-content;
+        padding-bottom: 0.5rem;
+    }
+    .notif-tab {
+        flex-shrink: 0;
+        padding: 0.5rem 1rem !important;
+        font-size: 0.82rem !important;
+        white-space: nowrap;
+    }
+
+    /* Notifications: header stack */
+    .notif-page .page-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.75rem !important;
+    }
+    .notif-header-actions {
+        width: 100%;
+    }
+    .notif-btn-action {
+        width: 100% !important;
+        justify-content: center !important;
+        font-size: 0.9rem !important;
+    }
+
+    /* Payments: Transaction History header + search stack */
+    .c-card-premium > div[style*="space-between"] {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.75rem !important;
+    }
+    .c-card-premium .search-box-pro {
+        width: 100% !important;
+    }
+}
+
+/* ===================================================
+   GLASSMORPHIC HEADER (Shrinking on scroll)
+   =================================================== */
 .navbar {
     transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
     backdrop-filter: blur(0px);

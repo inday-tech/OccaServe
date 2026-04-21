@@ -418,12 +418,49 @@ h3,
         margin: 2rem auto;
     }
 
-    .hero-content h1 {
-        font-size: 2.25rem;
+    /* Caterer grid: single column on mobile */
+    .mkt-grid-premium {
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+        margin-bottom: 2rem;
     }
 
-    .marketplace-grid-pro {
-        grid-template-columns: 1fr;
-        gap: 2rem;
+    /* Compact card image on mobile */
+    .card-image-wrapper {
+        height: 150px !important;
     }
-}
+
+    /* Card body: reduced padding */
+    .card-body-premium {
+        padding: 1rem !important;
+    }
+
+    /* Typography adjustments */
+    .card-title {
+        font-size: 1.1rem !important;
+    }
+
+    .card-description {
+        font-size: 0.85rem !important;
+        margin-bottom: 0.75rem !important;
+    }
+
+    .price-pill .price-val {
+        font-size: 1.25rem !important;
+    }
+
+    /* View Profile button on mobile */
+    .btn-edit-full {
+        padding: 0.75rem !important;
+        font-size: 1rem !important;
+    }
+
+    /* Card meta items */
+    .card-meta-grid {
+        gap: 0.75rem !important;
+    }
+
+    .meta-item-box {
+        font-size: 0.85rem !important;
+    }
+}

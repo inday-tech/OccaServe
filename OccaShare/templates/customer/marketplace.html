@@ -5,6 +5,59 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/marketplace.css') }}?v=1.4">
+<style>
+    @media (max-width: 768px) {
+        /* Stack header + search vertically on mobile */
+        .page-header {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 1rem !important;
+            margin-bottom: 1.25rem !important;
+            padding-top: 3.5rem; /* space for floating burger */
+        }
+
+        /* Smaller title on mobile */
+        .page-header h1 {
+            font-size: 1.5rem !important;
+            margin-bottom: 0.25rem !important;
+        }
+
+        .page-header p {
+            font-size: 0.88rem !important;
+        }
+
+        /* Search bar: full width, remove fixed width */
+        .header-actions {
+            width: 100% !important;
+        }
+        .search-box-pro {
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        /* Caterer grid: single column on mobile */
+        .mkt-grid-premium {
+            grid-template-columns: 1fr !important;
+            gap: 1rem !important;
+        }
+
+        /* Caterer card: compact image on mobile */
+        .card-image-wrapper {
+            height: 145px !important;
+        }
+
+        /* Main content padding */
+        .main-content {
+            padding: 1rem !important;
+        }
+
+        /* mkt-body-bg: no extra bg bloat */
+        .mkt-body-bg .container {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -18,7 +71,7 @@
     <div class="header-actions" style="display: flex; gap: 1rem; align-items: center;">
         <div class="search-box-pro"
             style="display: flex; align-items: center; gap: 0.75rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0 1.25rem; height: 48px; box-sizing: border-box; width: 340px; transition: all 0.2s ease;">
-            <i class="fas fa-search" style="color: #94a3b8; font-size: 1.1rem;"></i>
+            <i class="fas fa-search" style="color: #94a3b8; font-size: 1.1rem; flex-shrink: 0;"></i>
             <input type="text" id="searchInput" placeholder="Search by name, cuisine, or city..."
                 style="border: none; outline: none; background: transparent; height: 100%; width: 100%; font-size: 0.95rem; color: #1e293b; font-weight: 400;"
                 value="{{ filters.q }}" oninput="debounceRunFilters()">

@@ -4,6 +4,119 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/bookings.css') }}?v=1.1">
+<style>
+    @media (max-width: 768px) {
+        /* Stack header vertically on mobile */
+        .page-header {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 0.75rem !important;
+            padding-top: 3.5rem !important;
+            margin-bottom: 1.25rem !important;
+        }
+        .page-header h1 {
+            font-size: 1.6rem !important;
+            margin-bottom: 0.15rem !important;
+        }
+        .page-header p {
+            font-size: 0.88rem !important;
+            margin: 0 !important;
+        }
+        /* New Booking button: full width, smaller */
+        .page-header .btn-primary {
+            width: 100% !important;
+            justify-content: center !important;
+            padding: 0.75rem !important;
+            font-size: 0.9rem !important;
+            border-radius: 50px !important;
+        }
+
+        /* Card: tighter padding */
+        .c-card-premium {
+            padding: 1.25rem !important;
+        }
+
+        /* Search bar: full width */
+        .search-box-pro {
+            width: 100% !important;
+        }
+
+        /* Hide desktop table on mobile */
+        .premium-table-wrapper { display: none !important; }
+
+        /* Show mobile booking cards */
+        .bookings-mobile-list {
+            display: flex !important;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-bottom: 1.25rem;
+        }
+
+        /* Individual booking card */
+        .mob-bk-card {
+            background: #f8fafc;
+            border-radius: 1rem;
+            padding: 1rem 1.1rem;
+            border: 1px solid #f1f5f9;
+            cursor: pointer;
+            transition: box-shadow 0.2s;
+            text-decoration: none;
+            color: inherit;
+            display: flex !important;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+        .mob-bk-card:active { box-shadow: 0 4px 15px rgba(249,115,22,0.12); }
+
+        .mob-bk-top {
+            display: flex !important;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .mob-bk-icon {
+            width: 40px; height: 40px;
+            background: rgba(249,115,22,0.1);
+            color: #f97316;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem; flex-shrink: 0;
+        }
+        .mob-bk-title {
+            font-weight: 800; font-size: 0.9rem;
+            color: #0f172a;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            display: block;
+        }
+        .mob-bk-id {
+            font-size: 0.72rem; color: #94a3b8; font-weight: 600; display: block;
+        }
+
+        .mob-bk-bottom {
+            display: flex !important;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 0.5rem;
+            border-top: 1px solid #eef2f8;
+        }
+        .mob-bk-meta { font-size: 0.75rem; color: #64748b; font-weight: 600; display: block; }
+        .mob-bk-meta i { margin-right: 3px; }
+        .mob-bk-amount { font-size: 0.95rem; font-weight: 800; color: #0f172a; }
+        .mob-bk-arrow { font-size: 0.8rem; color: #cbd5e1; }
+
+        /* Pagination on mobile */
+        .pagination-container-p {
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        .pagination-info { width: 100%; text-align: center; font-size: 0.82rem; }
+    }
+
+    /* Hide mobile cards on desktop */
+    @media (min-width: 769px) {
+        .bookings-mobile-list { display: none !important; }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -109,6 +222,52 @@
                 {% endfor %}
             </tbody>
         </table>
+    </div>
+
+    {# ===== MOBILE BOOKING CARDS ===== #}
+    <div class="bookings-mobile-list">
+        {% for booking in bookings %}
+        {% set status_label = {
+            'pending_quotation': 'Reviewing',
+            'awaiting_caterer': 'Pending',
+            'awaiting_payment': 'Payment Due',
+            'draft': 'Draft',
+            'confirmed': 'Confirmed',
+            'completed': 'Done',
+            'cancelled': 'Cancelled'
+        }.get(booking.status, booking.status|capitalize|replace('_',' ')) %}
+        {% set badge_bg = '#fff7ed' %}
+        {% set badge_color = '#ea580c' %}
+        {% if booking.status in ['confirmed','completed'] %}
+            {% set badge_bg = '#f0fdf4' %}{% set badge_color = '#16a34a' %}
+        {% elif booking.status == 'cancelled' %}
+            {% set badge_bg = '#fef2f2' %}{% set badge_color = '#dc2626' %}
+        {% elif booking.status == 'draft' %}
+            {% set badge_bg = '#f8fafc' %}{% set badge_color = '#64748b' %}
+        {% endif %}
+
+        <a class="mob-bk-card"
+           href="{% if booking.status == 'draft' %}/bookings/continue/{{ booking.id }}{% else %}/customer/bookings/manage/{{ booking.id }}{% endif %}">
+            <div class="mob-bk-top">
+                <div class="mob-bk-icon"><i class="fas fa-utensils"></i></div>
+                <div style="min-width:0; flex:1;">
+                    <span class="mob-bk-title">{{ booking.event_name or 'N/A' }}</span>
+                    <span class="mob-bk-id">BK-{{ "%03d" | format(booking.id) }} &nbsp;·&nbsp; {{ booking.caterer.business_name if booking.caterer else 'Unknown' }}</span>
+                </div>
+                <i class="fas fa-chevron-right mob-bk-arrow"></i>
+            </div>
+            <div class="mob-bk-bottom">
+                <div>
+                    <span class="mob-bk-meta"><i class="fas fa-calendar-alt"></i>{{ booking.event_date.strftime('%b %d, %Y') }}</span>
+                    <span class="mob-bk-meta" style="margin-top:2px;"><i class="fas fa-users"></i>{{ booking.guest_count }} guests</span>
+                </div>
+                <div style="text-align:right;">
+                    <span class="mob-bk-amount">₱{{ "{:,.0f}".format(booking.total_amount) if booking.total_amount else '0' }}</span>
+                    <span style="display:block; font-size:0.65rem; font-weight:800; text-transform:uppercase; padding:0.2rem 0.6rem; border-radius:2rem; margin-top:3px; background:{{ badge_bg }}; color:{{ badge_color }};">{{ status_label }}</span>
+                </div>
+            </div>
+        </a>
+        {% endfor %}
     </div>
 
     <!-- Pagination -->
