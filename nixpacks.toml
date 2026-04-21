@@ -1,0 +1,15 @@
+[phases.setup]
+nixPkgs = ["python312", "libGL", "libglvnd", "glib", "zlib"]
+
+[phases.install]
+cmds = [
+    "python -m venv .venv",
+    ".venv/bin/pip install --upgrade pip",
+    ".venv/bin/pip install -r requirements.txt",
+    ".venv/bin/pip uninstall -y opencv-python opencv-contrib-python",
+    ".venv/bin/pip install opencv-python-headless==4.10.0.84"
+]
+
+[phases.deploy]
+# Using gunicorn with uvicorn workers for production stability
+run = "PYTHONPATH=. .venv/bin/python OccaShare/scripts/migrations/seed_data.py && .venv/bin/gunicorn OccaShare.app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT"
