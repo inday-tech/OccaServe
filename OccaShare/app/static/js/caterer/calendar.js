@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', function () {
         window.manualBookingValidation = new window.ValidationManager('manualBookingForm', {
             'customer_name': { label: 'customer name', noSameParts: true },
             'customer_email': { label: 'email address' },
-            'customer_contact': { numericOnly: true, maxLength: 11 },
+            'customer_contact': { phMobile: true, noRepetitive: true, maxLength: 11 },
             'event_name': { label: 'event name' },
             'guest_count': { numericOnly: true, min: 1, max: 100000, autoStop: true },
             'total_amount': { numericOnly: true, max: 10000000, autoStop: true },
@@ -187,7 +187,6 @@ function recalculateTotal() {
     }
 
     // 2. Add Extra Menu Add-ons Price
-    // Get list of included menu IDs from the selected package
     let includedMenuIds = [];
     if (option.dataset.menus) {
         try {
@@ -202,21 +201,17 @@ function recalculateTotal() {
         }
     });
 
-    // 3. Update UI
-    amountInput.value = total.toLocaleString('en-PH', { 
-        style: 'currency', 
-        currency: 'PHP',
-        minimumFractionDigits: 2 
-    });
+    // 3. Update UI - Fixed Formatting to match js-format-comma expectation
+    amountInput.value = total.toLocaleString('en-US', { minimumFractionDigits: 2 });
     
     // 4. Smart Validation: Min Guests Enforcement
     if (pkgSelect.value && guests < minGuests) {
         if (window.manualBookingValidation) {
-            window.manualBookingValidation.markInvalid(guestInput, `Min ${minGuests} pax required`);
+            window.manualBookingValidation.setError(guestInput, `Minimum of ${minGuests} guests required for this package.`);
         }
     } else {
         if (window.manualBookingValidation) {
-            window.manualBookingValidation.clearInvalid(guestInput);
+            window.manualBookingValidation.clearError(guestInput);
         }
     }
 
@@ -597,6 +592,11 @@ function initCustomerDetection() {
                 return;
             }
 
+            badge.style.display = 'flex';
+            badge.style.background = '#f1f5f9';
+            badge.style.color = '#64748b';
+            badge.innerHTML = `<i class="fas fa-spinner fa-spin"></i> <span>Checking records...</span>`;
+
             try {
                 const response = await fetch('/caterer/api/check-customer', {
                     method: 'POST',
@@ -608,24 +608,39 @@ function initCustomerDetection() {
                     const data = await response.json();
                     if (data.exists) {
                         badge.style.display = 'flex';
-                        badge.style.background = '#eff6ff';
-                        badge.style.color = '#3b82f6';
-                        badge.innerHTML = `<i class="fas fa-check-circle"></i> <span>Existing User: <b>${data.name}</b></span>`;
+                        if (data.is_taken) {
+                            badge.style.background = '#fef2f2';
+                            badge.style.color = '#dc2626';
+                            badge.style.border = '1px solid #fecaca';
+                            badge.innerHTML = `<i class="fas fa-id-card"></i> <span><b>Email Taken:</b> Registered to ${data.name}</span>`;
+                        } else {
+                            badge.style.background = '#eff6ff';
+                            badge.style.color = '#3b82f6';
+                            badge.style.border = '1px solid #bfdbfe';
+                            badge.innerHTML = `<i class="fas fa-check-circle"></i> <span><b>Existing User:</b> ${data.name} (Auto-link Active)</span>`;
+                        }
                         
-                        // Mild auto-fill if empty
-                        if (!emailInput.value && data.email) emailInput.value = data.email;
-                        if (!contactInput.value && data.contact) contactInput.value = data.contact;
+                        // Smart Auto-fill (only if currently empty or being typed)
+                        if (data.is_taken) {
+                             if (!nameInput.value || nameInput.value.length < 3) nameInput.value = data.name;
+                             if (!contactInput.value) contactInput.value = data.contact;
+                             
+                             // Trigger validation to clear/set state
+                             nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+                             contactInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
                     } else {
                         badge.style.display = 'flex';
                         badge.style.background = '#f0fdf4';
                         badge.style.color = '#16a34a';
-                        badge.innerHTML = `<i class="fas fa-user-plus"></i> <span style="font-weight: 500;">New Customer Registration</span>`;
+                        badge.style.border = '1px solid #bbf7d0';
+                        badge.innerHTML = `<i class="fas fa-user-plus"></i> <span style="font-weight: 600;">New Customer Registration</span>`;
                     }
                 }
             } catch (err) {
                 badge.style.display = 'none';
             }
-        }, 600); // 600ms debounce
+        }, 800); // Debounce
     }
 
     nameInput.addEventListener('input', checkUser);

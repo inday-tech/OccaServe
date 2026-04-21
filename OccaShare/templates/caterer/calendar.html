@@ -218,51 +218,62 @@
         </div>
         <form id="manualBookingForm" onsubmit="submitManualEvent(event)">
             <div class="occ-modal-body">
-                <div id="manualBookingError" class="error-drawer"></div>
-                
-                <div class="occ-form-grid" style="gap: 0.85rem;">
-                    <!-- Customer Group -->
-                    <div class="occ-form-group full-width" style="margin-bottom:0.25rem;">
-                        <span style="font-size:0.75rem; font-weight:800; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.05em;">Customer Details</span>
+                <div class="occ-form-grid" style="gap: 1rem;">
+                    <!-- Customer Section -->
+                    <div class="occ-form-group full-width" style="margin-bottom: 0.5rem;">
+                        <h4 style="font-size: 0.85rem; font-weight: 800; color: var(--primary-color); text-transform: uppercase; letter-spacing: 0.05em; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-user-circle"></i> Customer Information
+                        </h4>
                     </div>
                     
-                    <div class="occ-form-group full-width" style="margin-bottom: -0.25rem;">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem;">
-                            <div>
-                                <label class="occ-form-label">Customer Name *</label>
-                                <input type="text" id="manCustName" name="customer_name" class="occ-form-input" required placeholder="e.g. John Doe">
-                                <div class="invalid-feedback"></div>
-                            </div>
-                            <div>
-                                <label class="occ-form-label">Email Address *</label>
-                                <input type="email" id="manCustEmail" name="customer_email" class="occ-form-input" required placeholder="e.g. email@example.com">
-                                <div class="invalid-feedback"></div>
-                            </div>
+                    <div class="occ-form-group">
+                        <label class="occ-form-label">Customer Name <span style="color: #ef4444;">*</span></label>
+                        <div class="occ-input-has-icon">
+                            <i class="fas fa-user"></i>
+                            <input type="text" id="manCustName" name="customer_name" class="occ-form-input" required placeholder="e.g. Juan dela Cruz">
                         </div>
-                        <div id="userDetectionBadge" style="display: none; align-items: center; gap: 0.35rem; font-size: 0.75rem; margin-top: 0.5rem; padding: 0.4rem 0.6rem; border-radius: 6px; width: fit-content; line-height: 1.2;">
-                            <i class="fas fa-info-circle"></i> <span id="userDetectionText"></span>
-                        </div>
+                        <div class="invalid-feedback" style="font-size: 0.75rem; color: #ef4444; margin-top: 0.35rem; font-weight: 500;"></div>
                     </div>
 
                     <div class="occ-form-group">
-                        <label class="occ-form-label">Contact Number *</label>
-                        <input type="text" id="manCustContact" name="customer_contact" class="occ-form-input" maxlength="11" required placeholder="e.g. 09123456789">
+                        <label class="occ-form-label">Email Address <span style="color: #ef4444;">*</span></label>
+                        <div class="occ-input-has-icon">
+                            <i class="fas fa-envelope"></i>
+                            <input type="email" id="manCustEmail" name="customer_email" class="occ-form-input" required placeholder="name@example.com">
+                        </div>
+                        <div class="invalid-feedback" style="font-size: 0.75rem; color: #ef4444; margin-top: 0.35rem; font-weight: 500;"></div>
+                    </div>
+
+                    <div class="occ-form-group full-width" style="margin-top: -0.5rem;">
+                        <div id="userDetectionBadge" style="display: none; align-items: center; gap: 0.5rem; font-size: 0.75rem; padding: 0.65rem 1rem; border-radius: 10px; transition: all 0.3s ease;">
+                            <!-- Content injected via JS -->
+                        </div>
+                    </div>
+
+                    <div class="occ-form-group full-width">
+                        <label class="occ-form-label">Contact Number <span style="color: #ef4444;">*</span></label>
+                        <div class="occ-input-has-icon">
+                            <i class="fas fa-phone-alt"></i>
+                            <input type="text" id="manCustContact" name="customer_contact" class="occ-form-input" maxlength="11" required placeholder="e.g. 09123456789">
+                        </div>
+                        <div class="invalid-feedback" style="font-size: 0.75rem; color: #ef4444; margin-top: 0.35rem; font-weight: 500;"></div>
+                    </div>
+
+                    <!-- Event Section -->
+                    <div class="occ-form-group full-width" style="margin-top: 1rem; margin-bottom: 0.5rem; border-top: 1px solid #f1f5f9; padding-top: 1.25rem;">
+                        <h4 style="font-size: 0.85rem; font-weight: 800; color: var(--primary-color); text-transform: uppercase; letter-spacing: 0.05em; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-calendar-alt"></i> Event Logistics
+                        </h4>
+                    </div>
+
+                    <div class="occ-form-group full-width">
+                        <label class="occ-form-label">Event Name <span style="color: #ef4444;">*</span></label>
+                        <input type="text" id="manEventName" name="event_name" class="occ-form-input" required placeholder="e.g. 25th Wedding Anniversary">
                         <div class="invalid-feedback"></div>
                     </div>
 
-                    <!-- Event Group -->
-                    <div class="occ-form-group full-width" style="margin-top:0.75rem; margin-bottom:-0.25rem; border-top:1px solid #f1f5f9; padding-top:1rem;">
-                        <span style="font-size:0.75rem; font-weight:800; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.05em;">Event Logistics</span>
-                    </div>
-
                     <div class="occ-form-group">
-                        <label class="occ-form-label">Event Name *</label>
-                        <input type="text" id="manEventName" name="event_name" class="occ-form-input" required placeholder="e.g. Garcia Wedding">
-                        <div class="invalid-feedback"></div>
-                    </div>
-
-                    <div class="occ-form-group">
-                        <label class="occ-form-label">Event Type *</label>
+                        <label class="occ-form-label">Event Type <span style="color: #ef4444;">*</span></label>
                         <select id="manEventType" class="filter-select-pro w-100" required onchange="toggleOtherEventType()">
                             <option value="Wedding">Wedding</option>
                             <option value="Birthday">Birthday</option>
@@ -272,22 +283,24 @@
                         </select>
                         <div class="invalid-feedback"></div>
                     </div>
+
                     <div class="occ-form-group">
-                        <label class="occ-form-label">Number of Guests *</label>
-                        <input type="number" id="manGuests" name="guest_count" class="occ-form-input" required min="1" max="100000" placeholder="e.g. 100">
+                        <label class="occ-form-label">Number of Guests <span style="color: #ef4444;">*</span></label>
+                        <input type="number" id="manGuests" name="guest_count" class="occ-form-input" required min="1" max="100000" placeholder="0">
                         <div class="invalid-feedback"></div>
                     </div>
 
                     <div id="otherEventTypeDiv" class="occ-form-group full-width" style="display: none;">
-                        <label class="occ-form-label">Specify Event Type *</label>
-                        <input type="text" id="manOtherType" class="occ-form-input" placeholder="e.g. Anniversary">
+                        <label class="occ-form-label">Specify Event Type <span style="color: #ef4444;">*</span></label>
+                        <input type="text" id="manOtherType" class="occ-form-input" placeholder="e.g. Baptismal">
                     </div>
 
                     <div class="occ-form-group">
-                        <label class="occ-form-label">Event Date *</label>
+                        <label class="occ-form-label">Event Date <span style="color: #ef4444;">*</span></label>
                         <input type="date" id="manDate" name="event_date" class="occ-form-input" required min="{{ current_date.strftime('%Y-%m-%d') }}">
                         <div class="invalid-feedback"></div>
                     </div>
+
                     <div class="occ-form-group">
                         <label class="occ-form-label">Event Time</label>
                         <input type="time" id="manTime" class="occ-form-input">
@@ -295,59 +308,82 @@
 
                     <div class="occ-form-group full-width">
                         <label class="occ-form-label">Venue Address</label>
-                        <input type="text" id="manVenue" name="venue_address" class="occ-form-input" placeholder="e.g. 123 Sky Garden, Metro Manila">
+                        <div class="occ-input-has-icon">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <input type="text" id="manVenue" name="venue_address" class="occ-form-input" placeholder="e.g. 123 Sky Garden, Taguig">
+                        </div>
                         <div class="invalid-feedback"></div>
                     </div>
 
-                    <!-- Menu Group -->
-                    <div class="occ-form-group full-width" style="margin-top:0.75rem; margin-bottom:-0.25rem; border-top:1px solid #f1f5f9; padding-top:1rem;">
-                        <span style="font-size:0.75rem; font-weight:800; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.05em;">Menu & Pricing</span>
+                    <!-- Pricing Section -->
+                    <div class="occ-form-group full-width" style="margin-top: 1rem; margin-bottom: 0.5rem; border-top: 1px solid #f1f5f9; padding-top: 1.25rem;">
+                        <h4 style="font-size: 0.85rem; font-weight: 800; color: var(--primary-color); text-transform: uppercase; letter-spacing: 0.05em; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-tags"></i> Menu & Pricing
+                        </h4>
                     </div>
 
                     <div class="occ-form-group full-width">
-                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:1rem; padding:1.25rem;">
-                            <label class="occ-form-label">Select Package (Optional)</label>
-                            <select id="manPackage" class="filter-select-pro w-100">
+                        <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 1.25rem; padding: 1.5rem; transition: all 0.3s ease;">
+                            <label class="occ-form-label" style="font-weight: 700;">Select Catering Package</label>
+                            <select id="manPackage" class="filter-select-pro w-100" style="padding: 0.85rem; font-weight: 600;">
                                 <option value="" data-price="0" data-unit="fixed" data-min="1" data-menus="[]">-- Custom / No Package --</option>
                                 {% for pkg in packages %}
-                                <option value="{{ pkg.id }}" data-price="{{ pkg.price or 0 }}" data-unit="{{ pkg.price_unit or 'per_guest' }}" data-min="{{ pkg.min_guests or 1 }}" data-menus='{{ pkg.menu_items | map(attribute="id") | list | tojson }}'>{{ pkg.name }} (₱{{ '{:,.2f}'.format(pkg.price or 0) }}{{ '/pax' if pkg.price_unit == 'per_guest' else '' }})</option>
+                                <option value="{{ pkg.id }}" data-price="{{ pkg.price or 0 }}" data-unit="{{ pkg.price_unit or 'per_guest' }}" data-min="{{ pkg.min_guests or 1 }}" data-menus='{{ pkg.menu_items | map(attribute="id") | list | tojson }}'>
+                                    {{ pkg.name }} (₱{{ '{:,.0f}'.format(pkg.price or 0) }}{{ '/pax' if pkg.price_unit == 'per_guest' else '' }})
+                                </option>
                                 {% endfor %}
                             </select>
                             
-                            <label class="occ-form-label mt-3">Included Menus</label>
-                            <div class="inclusion-matrix" style="max-height: 200px; overflow-y: auto; background: white; border-radius: 0.75rem;">
+                            <label class="occ-form-label mt-4" style="font-weight: 700; display: flex; justify-content: space-between; align-items: center;">
+                                Included Menus 
+                                <span style="font-size: 0.7rem; font-weight: 500; color: #64748b;">(Check for add-ons)</span>
+                            </label>
+                            <div class="inclusion-matrix" style="max-height: 240px; overflow-y: auto; background: white; border: 1.5px solid #f1f5f9; border-radius: 1rem; padding: 0.5rem;">
                                 {% if menu_items %}
                                     {% for mi in menu_items %}
-                                    <label class="matrix-item">
-                                        <input type="checkbox" value="{{ mi.id }}" data-price="{{ mi.addon_price or mi.price or 0 }}" class="man-menu-checkbox">
-                                        <span>{{ mi.name }} <small>(₱{{ '{:,.0f}'.format(mi.addon_price or mi.price or 0) }})</small></span>
+                                    <label class="matrix-item" style="display: flex; align-items: center; padding: 0.75rem 1rem; border-radius: 0.75rem; transition: background 0.2s; cursor: pointer; border-bottom: 1px solid #f8fafc;">
+                                        <input type="checkbox" value="{{ mi.id }}" data-price="{{ mi.addon_price or mi.price or 0 }}" class="man-menu-checkbox" style="width: 18px; height: 18px; margin-right: 12px; accent-color: var(--primary-color);">
+                                        <div style="flex: 1;">
+                                            <span style="font-weight: 600; font-size: 0.9rem; color: #1e293b;">{{ mi.name }}</span>
+                                            <div style="font-size: 0.7rem; color: #94a3b8;">{{ mi.category }}</div>
+                                        </div>
+                                        <span style="font-weight: 800; color: var(--primary-color); font-size: 0.9rem;">+₱{{ '{:,.0f}'.format(mi.addon_price or mi.price or 0) }}</span>
                                     </label>
                                     {% endfor %}
                                 {% else %}
-                                    <div style="grid-column: 1/-1; text-align: center; padding: 1rem; color: #94a3b8;">No menu items found.</div>
+                                    <div style="text-align: center; padding: 2rem; color: #94a3b8;">No menu items found.</div>
                                 {% endif %}
                             </div>
                         </div>
                     </div>
 
                     <div class="occ-form-group full-width">
-                        <div style="background: var(--primary-color); padding: 1.5rem; border-radius: 1rem; display: flex; justify-content: space-between; align-items: center; color: white; box-shadow: 0 10px 15px -3px rgba(30, 41, 59, 0.2);">
-                            <div>
-                                <div style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase; opacity: 0.8; letter-spacing: 0.05em;">Draft Quotation</div>
-                                <div style="font-size: 0.85rem; font-weight: 600;">Total Amount Matched</div>
+                        <div style="background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%); padding: 1.75rem; border-radius: 1.5rem; display: flex; justify-content: space-between; align-items: center; color: white; box-shadow: 0 12px 25px -10px rgba(79, 70, 229, 0.4); overflow: hidden; position: relative;">
+                            <div style="position: absolute; top: -20px; right: -20px; font-size: 8rem; color: white; opacity: 0.05;">
+                                <i class="fas fa-file-invoice-dollar"></i>
                             </div>
-                            <div style="text-align: right;">
-                                <input type="text" id="manAmount" name="total_amount" class="js-format-comma" required 
-                                       style="background: transparent; border: none; color: white; font-size: 1.75rem; font-weight: 800; text-align: right; width: 220px; outline: none;" 
-                                       placeholder="₱ 0.00">
+                            <div style="z-index: 1;">
+                                <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; opacity: 0.9; letter-spacing: 0.1em; margin-bottom: 0.25rem;">Draft Quotation</div>
+                                <div style="font-size: 1rem; font-weight: 600;">Automated Total Amount</div>
+                            </div>
+                            <div style="text-align: right; z-index: 1;">
+                                <div style="display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem;">
+                                    <span style="font-size: 1.25rem; font-weight: 500; opacity: 0.8;">₱</span>
+                                    <input type="text" id="manAmount" name="total_amount" class="js-format-comma" required 
+                                           style="background: transparent; border: none; color: white; font-size: 2.25rem; font-weight: 900; text-align: right; width: 100%; outline: none; padding: 0;" 
+                                           placeholder="0.00">
+                                </div>
+                                <div class="invalid-feedback" style="color: #fee2e2; font-size: 0.7rem; font-weight: 600;"></div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="occ-modal-footer" style="padding: 1.25rem 1.5rem; border-top: 1px solid #f1f5f9;">
-                <button type="button" onclick="closeModal()" class="btn-sm-outline" style="min-width:100px;">Cancel</button>
-                <button type="submit" id="btnSubmitManual" class="btn-primary" style="height:44px; padding:0 2rem;">Confirm & Create Booking</button>
+            <div class="occ-modal-footer" style="padding: 1.5rem 2rem; border-top: 1px solid #f1f5f9; background: #fcfcfd; border-radius: 0 0 2rem 2rem;">
+                <button type="button" onclick="closeModal()" class="btn-sm-outline" style="min-width: 120px; height: 48px; border-radius: 12px;">Cancel</button>
+                <button type="submit" id="btnSubmitManual" class="btn-primary" style="height: 48px; padding: 0 2.5rem; border-radius: 12px; font-weight: 700; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);">
+                    <i class="fas fa-check-circle mr-2"></i> Confirm & Create Booking
+                </button>
             </div>
         </form>
     </div>
