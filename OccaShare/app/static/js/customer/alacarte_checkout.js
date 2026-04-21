@@ -548,9 +548,10 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     window.updateFulfillment = function(el) {
-        const cards = el.closest('.option-grid').querySelectorAll('.option-card');
-        cards.forEach(c => c.classList.remove('selected'));
-        el.parentElement.classList.add('selected');
+        const selector = el.closest('.fulfillment-selector');
+        const opts = selector.querySelectorAll('.fulfillment-opt');
+        opts.forEach(o => o.classList.remove('active'));
+        el.parentElement.classList.add('active');
         
         const addressSection = document.getElementById('address-section');
         if (el.value === 'pickup') {

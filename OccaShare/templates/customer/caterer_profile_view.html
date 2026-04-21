@@ -16,84 +16,139 @@
     .profile-header {
         text-align: center;
         margin-bottom: 2.5rem;
-        background: transparent;
+        background: white;
+        padding: 2.5rem 1.5rem;
+        border-radius: 1.25rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+        border: 1px solid #f1f5f9;
+        position: relative;
     }
 
     .profile-title-row {
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
         gap: 0.75rem;
-        margin-bottom: 0.5rem;
+        margin-bottom: 1.25rem;
     }
 
     .profile-title {
-        font-size: 2rem;
+        font-size: 2.25rem;
         font-weight: 800;
-        color: var(--secondary-slate, #1e293b);
+        color: #0f172a;
         margin: 0;
-        letter-spacing: -0.02em;
+        letter-spacing: -0.03em;
+        line-height: 1.1;
+        max-width: 800px;
     }
 
     .verified-badge {
         background: #f97316;
         color: white;
-        padding: 0.3rem 0.7rem;
+        padding: 0.35rem 0.85rem;
         border-radius: 2rem;
         font-size: 0.7rem;
-        font-weight: 700;
+        font-weight: 800;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.05em;
         display: inline-flex;
         align-items: center;
-        gap: 0.3rem;
+        gap: 0.4rem;
+        box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
     }
 
     .profile-meta-row {
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
         justify-content: center;
-        gap: 1.5rem;
-        color: var(--text-muted, #94a3b8);
-        font-size: 0.9rem;
-        font-weight: 500;
-        margin-bottom: 1rem;
+        gap: 1rem 2rem;
+        color: #64748b;
+        font-size: 0.92rem;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
     }
 
     .profile-meta-item {
         display: flex;
         align-items: center;
-        gap: 0.4rem;
+        gap: 0.5rem;
+        white-space: nowrap;
     }
 
     .profile-meta-item i {
         color: #f97316;
+        font-size: 1rem;
     }
 
     .profile-desc {
-        color: var(--text-muted, #94a3b8);
-        font-size: 1rem;
-        line-height: 1.6;
-        max-width: 600px;
-        margin: 0 auto 1.5rem;
+        color: #475569;
+        font-size: 1.05rem;
+        line-height: 1.7;
+        max-width: 720px;
+        margin: 0 auto 2rem;
+        padding: 0 1rem;
+        font-weight: 400;
     }
 
     .profile-tags {
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
-        gap: 0.5rem;
+        gap: 0.75rem;
     }
 
     .profile-tag {
-        background: white;
-        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        border: 1px solid #f1f5f9;
         color: #64748b;
-        padding: 0.4rem 1rem;
-        border-radius: 2rem;
-        font-size: 0.75rem;
+        height: 44px;
+        padding: 0 1.25rem;
+        border-radius: 0.75rem;
+        font-size: 0.78rem;
         font-weight: 700;
         text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        letter-spacing: 0.025em;
+    }
+
+    .profile-tag:hover {
+        background: #fff;
+        border-color: #f97316;
+        color: #f97316;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(249, 115, 22, 0.05);
+    }
+
+    @media (max-width: 480px) {
+        .profile-header {
+            padding: 2.25rem 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .profile-title {
+            font-size: 1.85rem;
+        }
+
+        .profile-meta-row {
+            gap: 0.75rem 1rem;
+            font-size: 0.85rem;
+        }
+
+        .profile-desc {
+            font-size: 0.95rem;
+            padding: 0 0.25rem;
+        }
+
+        .profile-tag {
+            height: 40px;
+            padding: 0 1rem;
+            font-size: 0.72rem;
+        }
     }
 
     .profile-grid {
@@ -407,17 +462,30 @@
 <div class="profile-container">
     <div class="profile-header">
         <div class="profile-title-row">
-            <h1 class="profile-title">{{ caterer.business_name or 'Thatatlicious' }}</h1>
+            <h1 class="profile-title">{{ caterer.business_name or 'Darwin\'s Catering Services' }}</h1>
             <span class="verified-badge"><i class="fas fa-check-circle"></i> VERIFIED</span>
         </div>
+
         <div class="profile-meta-row">
-            <div class="profile-meta-item"><i class="fas fa-map-marker-alt"></i> {{ caterer.city or 'Magdalena' }}</div>
-            <div class="profile-meta-item"><i class="fas fa-users"></i> {{ caterer.min_pax or 50 }}-{{ caterer.max_pax
-                or 100 }} pax</div>
-            <div class="profile-meta-item"><i class="fas fa-star"></i> New Partnership</div>
+            <div class="profile-meta-item">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>{{ caterer.city or 'Santa Cruz' }}</span>
+            </div>
+            <div class="profile-meta-item">
+                <i class="fas fa-users"></i>
+                <span>{{ caterer.min_pax or 50 }}-{{ caterer.max_pax or 100 }} pax</span>
+            </div>
+            <div class="profile-meta-item">
+                <i class="fas fa-star"></i>
+                <span>New Partnership</span>
+            </div>
         </div>
-        <p class="profile-desc">{{ caterer.description if caterer.description else 'Signature package options are
-            available with professional catering services to make your event unforgettable.' }}</p>
+
+        <p class="profile-desc">
+            {{ caterer.description if caterer.description else 'Caterer specialized in providing premium food and
+            beverage preparation, delivery, and presentation for events to ensure a smooth and enjoyable dining
+            experience for guests.' }}
+        </p>
 
         <div class="profile-tags">
             <span class="profile-tag">PREMIUM SERVICES</span>
@@ -469,7 +537,9 @@
                 <div class="section-title-wrapper">
                     <i class="fas fa-concierge-bell"></i>
                     <h2 class="section-title">A La Carte Options</h2>
-                    <span style="margin-left:auto; font-size: 0.8rem; font-weight: 600; color: #f97316; background: #fff7ed; padding: 0.3rem 0.8rem; border-radius: 2rem;">Food Only Booking</span>
+                    <span
+                        style="margin-left:auto; font-size: 0.8rem; font-weight: 600; color: #f97316; background: #fff7ed; padding: 0.3rem 0.8rem; border-radius: 2rem;">Food
+                        Only Booking</span>
                 </div>
                 <div class="item-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
                     {% for item in caterer.menu_items %}
@@ -478,17 +548,22 @@
                             {% if item.image_url %}
                             <img src="{{ item.image_url }}" class="item-img">
                             {% else %}
-                            <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #cbd5e1; background: #f8fafc;">
+                            <div
+                                style="display: flex; align-items: center; justify-content: center; height: 100%; color: #cbd5e1; background: #f8fafc;">
                                 <i class="fas fa-utensils fa-3x"></i>
                             </div>
                             {% endif %}
                             <span class="item-badge" style="background: #10b981;">A LA CARTE</span>
                         </div>
                         <div class="item-body">
-                            <div style="font-size: 0.7rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Menu Item</div>
+                            <div
+                                style="font-size: 0.7rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">
+                                Menu Item</div>
                             <h3 class="item-title">{{ item.name }}</h3>
-                            <div class="item-price" style="margin-bottom: 1rem;">₱{{ "{:,.0f}".format(item.price) if item.price else '1,500' }}</div>
-                            <button onclick="showPkgModal('menu-modal-{{ item.id }}')" class="btn-outline-full" style="margin-top: auto; padding: 0.6rem; font-size: 0.8rem;">Select A La Carte</button>
+                            <div class="item-price" style="margin-bottom: 1rem;">₱{{ "{:,.0f}".format(item.price) if
+                                item.price else '1,500' }}</div>
+                            <button onclick="showPkgModal('menu-modal-{{ item.id }}')" class="btn-outline-full"
+                                style="margin-top: auto; padding: 0.6rem; font-size: 0.8rem;">Select A La Carte</button>
                         </div>
                     </div>
                     {% endfor %}
@@ -523,7 +598,8 @@
                                 <li><i class="fas fa-utensils"></i> Wedding Food</li>
                             </ul>
                             <button onclick="viewPackageDetails({{ pkg.id }})" class="btn-outline-full"
-                                style="margin-top: auto; text-align: center; text-decoration: none;">View Details</button>
+                                style="margin-top: auto; text-align: center; text-decoration: none;">View
+                                Details</button>
                         </div>
                     </div>
                     {% endfor %}
@@ -576,16 +652,19 @@
                 <div class="section-title-wrapper">
                     <i class="fas fa-star"></i>
                     <h2 class="section-title">Customer Reviews</h2>
-                    <span style="margin-left:auto; font-size: 0.8rem; font-weight: 700; color: #f97316; background: #fff7ed; padding: 0.3rem 0.8rem; border-radius: 2rem;">
+                    <span
+                        style="margin-left:auto; font-size: 0.8rem; font-weight: 700; color: #f97316; background: #fff7ed; padding: 0.3rem 0.8rem; border-radius: 2rem;">
                         {{ reviews|length }} Review{{ 's' if reviews|length != 1 else '' }}
                     </span>
                 </div>
 
                 <!-- Average Rating Bar -->
                 {% set avg = (reviews | map(attribute='rating') | sum) / (reviews | length) %}
-                <div style="display:flex; align-items:center; gap:1.25rem; padding:1rem 1.25rem; background:#fff7ed; border-radius:14px; margin-bottom:1.5rem; border:1px solid #fed7aa;">
+                <div
+                    style="display:flex; align-items:center; gap:1.25rem; padding:1rem 1.25rem; background:#fff7ed; border-radius:14px; margin-bottom:1.5rem; border:1px solid #fed7aa;">
                     <div style="text-align:center; flex-shrink:0;">
-                        <div style="font-size:2.5rem; font-weight:900; color:#f97316; line-height:1;">{{ "%.1f"|format(avg) }}</div>
+                        <div style="font-size:2.5rem; font-weight:900; color:#f97316; line-height:1;">{{
+                            "%.1f"|format(avg) }}</div>
                         <div style="color:#f59e0b; font-size:0.85rem; margin-top:2px;">
                             {% for i in range(avg|int) %}<i class="fas fa-star"></i>{% endfor %}
                             {% if avg % 1 >= 0.5 %}<i class="fas fa-star-half-alt"></i>{% endif %}
@@ -593,45 +672,60 @@
                         <div style="font-size:0.72rem; color:#94a3b8; font-weight:600; margin-top:4px;">Out of 5.0</div>
                     </div>
                     <div style="flex:1; font-size:0.82rem; color:#64748b; font-weight:500;">
-                        Based on <strong style="color:#0f172a;">{{ reviews|length }}</strong> verified booking review{{ 's' if reviews|length != 1 else '' }}
+                        Based on <strong style="color:#0f172a;">{{ reviews|length }}</strong> verified booking review{{
+                        's' if reviews|length != 1 else '' }}
                     </div>
                 </div>
 
                 <!-- Review Cards -->
                 <div style="display:flex; flex-direction:column; gap:1.25rem;">
                     {% for review in reviews|sort(attribute='is_highlighted', reverse=True) %}
-                    <div style="padding:1.5rem; background:#fafafa; border-radius:18px; border:1px solid {% if review.is_highlighted %}#fed7aa{% else %}#f1f5f9{% endif %}; position:relative; {% if review.is_highlighted %}box-shadow: 0 4px 20px rgba(249,115,22,0.05);{% endif %}">
+                    <div
+                        style="padding:1.5rem; background:#fafafa; border-radius:18px; border:1px solid {% if review.is_highlighted %}#fed7aa{% else %}#f1f5f9{% endif %}; position:relative; {% if review.is_highlighted %}box-shadow: 0 4px 20px rgba(249,115,22,0.05);{% endif %}">
                         {% if review.is_highlighted %}
-                        <div style="position:absolute; top:0; right:0; background:#f97316; color:white; padding:4px 12px; font-size:0.65rem; font-weight:800; border-bottom-left-radius:12px; display:flex; align-items:center; gap:4px; text-transform:uppercase;">
+                        <div
+                            style="position:absolute; top:0; right:0; background:#f97316; color:white; padding:4px 12px; font-size:0.65rem; font-weight:800; border-bottom-left-radius:12px; display:flex; align-items:center; gap:4px; text-transform:uppercase;">
                             <i class="fas fa-thumbtack" style="font-size:0.6rem;"></i> Featured Review
                         </div>
                         {% endif %}
-                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                        <div
+                            style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
                             <div style="display:flex; align-items:center; gap:0.75rem;">
-                                <div style="width:38px; height:38px; border-radius:50%; background:#f97316; color:white; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.9rem; flex-shrink:0;">
-                                    {{ review.user.first_name[0] if review.user and review.user.first_name else '?' }}{{ review.user.last_name[0] if review.user and review.user.last_name else '' }}
+                                <div
+                                    style="width:38px; height:38px; border-radius:50%; background:#f97316; color:white; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.9rem; flex-shrink:0;">
+                                    {{ review.user.first_name[0] if review.user and review.user.first_name else '?' }}{{
+                                    review.user.last_name[0] if review.user and review.user.last_name else '' }}
                                 </div>
                                 <div>
                                     <div style="font-weight:700; font-size:0.9rem; color:#0f172a;">
-                                        {{ review.user.first_name if review.user else 'Anonymous' }} {{ review.user.last_name[0] if review.user and review.user.last_name else '' }}.
+                                        {{ review.user.first_name if review.user else 'Anonymous' }} {{
+                                        review.user.last_name[0] if review.user and review.user.last_name else '' }}.
                                     </div>
-                                    <div style="font-size:0.72rem; color:#94a3b8;">{{ review.created_at.strftime('%B %Y') if review.created_at else '' }}</div>
+                                    <div style="font-size:0.72rem; color:#94a3b8;">{{ review.created_at.strftime('%B
+                                        %Y') if review.created_at else '' }}</div>
                                 </div>
                             </div>
                             <div style="display:flex; gap:2px; color:#f59e0b; font-size:0.78rem;">
                                 {% for i in range(review.rating or 0) %}<i class="fas fa-star"></i>{% endfor %}
-                                {% for i in range(5 - (review.rating or 0)) %}<i class="far fa-star" style="color:#e2e8f0;"></i>{% endfor %}
+                                {% for i in range(5 - (review.rating or 0)) %}<i class="far fa-star"
+                                    style="color:#e2e8f0;"></i>{% endfor %}
                             </div>
                         </div>
-                        <p style="margin:0; font-size:0.9rem; color:#475569; line-height:1.65; font-style:italic;">"{{ review.comment }}"</p>
+                        <p style="margin:0; font-size:0.9rem; color:#475569; line-height:1.65; font-style:italic;">"{{
+                            review.comment }}"</p>
                         {% if review.recommend %}
-                        <div style="margin-top:0.65rem; font-size:0.75rem; color:#16a34a; font-weight:700;"><i class="fas fa-thumbs-up" style="margin-right:4px;"></i>Recommends this caterer</div>
+                        <div style="margin-top:0.65rem; font-size:0.75rem; color:#16a34a; font-weight:700;"><i
+                                class="fas fa-thumbs-up" style="margin-right:4px;"></i>Recommends this caterer</div>
                         {% endif %}
 
                         {% if review.caterer_reply %}
-                        <div style="margin-top:1.25rem; padding:1rem; background:#fff7ed; border-radius:12px; border-left:3px solid #f97316;">
-                            <div style="font-size:0.75rem; font-weight:800; color:#f97316; margin-bottom:0.4rem; text-transform:uppercase; letter-spacing:0.025em;">Caterer's Response</div>
-                            <p style="margin:0; font-size:0.88rem; color:#475569; line-height:1.5;">{{ review.caterer_reply }}</p>
+                        <div
+                            style="margin-top:1.25rem; padding:1rem; background:#fff7ed; border-radius:12px; border-left:3px solid #f97316;">
+                            <div
+                                style="font-size:0.75rem; font-weight:800; color:#f97316; margin-bottom:0.4rem; text-transform:uppercase; letter-spacing:0.025em;">
+                                Caterer's Response</div>
+                            <p style="margin:0; font-size:0.88rem; color:#475569; line-height:1.5;">{{
+                                review.caterer_reply }}</p>
                         </div>
                         {% endif %}
                     </div>
@@ -650,52 +744,53 @@
 
         <!-- Sidebar -->
         <div class="sidebar-widget">
-    <div class="sidebar-inner-card">
-        <div class="stat-label" style="margin-bottom: 0.5rem;">Starting Price</div>
-        <div class="price-large">₱{{ "{:,.0f}".format(caterer.starting_price or 15000) }}</div>
+            <div class="sidebar-inner-card">
+                <div class="stat-label" style="margin-bottom: 0.5rem;">Starting Price</div>
+                <div class="price-large">₱{{ "{:,.0f}".format(caterer.starting_price or 15000) }}</div>
 
-        <div class="perks-list">
-            <div class="perk-item">
-                <div class="perk-icon"><i class="fas fa-bolt"></i></div>
-                <div>
-                    <div class="perk-title">Rapid Response</div>
-                    <div class="perk-desc">Typically replies within 1 hour</div>
+                <div class="perks-list">
+                    <div class="perk-item">
+                        <div class="perk-icon"><i class="fas fa-bolt"></i></div>
+                        <div>
+                            <div class="perk-title">Rapid Response</div>
+                            <div class="perk-desc">Typically replies within 1 hour</div>
+                        </div>
+                    </div>
+                    <div class="perk-item">
+                        <div class="perk-icon"><i class="fas fa-check-circle"></i></div>
+                        <div>
+                            <div class="perk-title">Verified</div>
+                            <div class="perk-desc">Identity & Business Checked</div>
+                        </div>
+                    </div>
+                    <div class="perk-item">
+                        <div class="perk-icon"><i class="far fa-star"></i></div>
+                        <div>
+                            <div class="perk-title">Top Rated</div>
+                            <div class="perk-desc">5.0 Stars</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 1.5rem;">
+                    <button onclick="window.location.href='/bookings/start/{{ caterer.id }}'"
+                        class="btn-orange-full">Book
+                        Now</button>
+                    <button onclick="showPkgModal('contact-modal-{{ caterer.id }}')" class="btn-outline-full"><i
+                            class="far fa-comment-dots"></i> Contact Us</button>
+                </div>
+
+                <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 1.5rem;">
+                    <button
+                        style="background: none; border: none; font-size: 0.8rem; font-weight: 700; color: #94a3b8; cursor: pointer;"><i
+                            class="far fa-heart"></i> Save</button>
+                    <button
+                        style="background: none; border: none; font-size: 0.8rem; font-weight: 700; color: #94a3b8; cursor: pointer;"><i
+                            class="fas fa-share-alt"></i> Share</button>
                 </div>
             </div>
-            <div class="perk-item">
-                <div class="perk-icon"><i class="fas fa-check-circle"></i></div>
-                <div>
-                    <div class="perk-title">Verified</div>
-                    <div class="perk-desc">Identity & Business Checked</div>
-                </div>
-            </div>
-            <div class="perk-item">
-                <div class="perk-icon"><i class="far fa-star"></i></div>
-                <div>
-                    <div class="perk-title">Top Rated</div>
-                    <div class="perk-desc">5.0 Stars</div>
-                </div>
-            </div>
-        </div>
-
-        <div style="margin-top: 1.5rem;">
-            <button onclick="window.location.href='/bookings/start/{{ caterer.id }}'" class="btn-orange-full">Book
-                Now</button>
-            <button onclick="showPkgModal('contact-modal-{{ caterer.id }}')" class="btn-outline-full"><i
-                    class="far fa-comment-dots"></i> Contact Us</button>
-        </div>
-
-        <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 1.5rem;">
-            <button
-                style="background: none; border: none; font-size: 0.8rem; font-weight: 700; color: #94a3b8; cursor: pointer;"><i
-                    class="far fa-heart"></i> Save</button>
-            <button
-                style="background: none; border: none; font-size: 0.8rem; font-weight: 700; color: #94a3b8; cursor: pointer;"><i
-                    class="fas fa-share-alt"></i> Share</button>
         </div>
     </div>
-</div>
-</div>
 </div>
 
 
@@ -707,15 +802,19 @@
                 class="fas fa-times"></i></button>
         <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
             <h2 style="font-size: 1.5rem; font-weight: 800; color: #1e293b; margin: 0;">{{ item.name }}</h2>
-            <span style="background: #10b981; color: white; padding: 0.2rem 0.6rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700;">A LA CARTE</span>
+            <span
+                style="background: #10b981; color: white; padding: 0.2rem 0.6rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700;">A
+                LA CARTE</span>
         </div>
         <p style="color: #64748b; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem;">{{ item.description if
-            item.description else 'Special a la carte selection prepared fresh for your attendees. Book this specifically if you only need food without the full service packages.' }}</p>
+            item.description else 'Special a la carte selection prepared fresh for your attendees. Book this
+            specifically if you only need food without the full service packages.' }}</p>
         <div style="font-size: 1.5rem; font-weight: 800; color: #f97316; margin-bottom: 2rem;">
             ₱{{ "{:,.0f}".format(item.price) if item.price else '1,500' }}
         </div>
         <button onclick="window.location.href='/bookings/alacarte/checkout/{{ caterer.id }}?menu_id={{ item.id }}'"
-            class="btn-orange-full" style="margin-bottom: 0;"><i class="fas fa-shopping-basket"></i> Order Food Only</button>
+            class="btn-orange-full" style="margin-bottom: 0;"><i class="fas fa-shopping-basket"></i> Order Food
+            Only</button>
     </div>
 </div>
 {% endfor %}
@@ -746,7 +845,8 @@
 <!-- Package Details Modal (Dynamic) -->
 <div id="pkg-details-modal" class="modal-overlay" style="z-index: 1100;">
     <div class="modal-box" style="padding: 0; max-width: 600px; overflow: hidden; border: none;">
-        <button class="modal-close" onclick="closePkgModal('pkg-details-modal')" style="z-index: 10; background: white; width: 32px; height: 32px; border-radius: 50%; top: 1rem; right: 1rem; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <button class="modal-close" onclick="closePkgModal('pkg-details-modal')"
+            style="z-index: 10; background: white; width: 32px; height: 32px; border-radius: 50%; top: 1rem; right: 1rem; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             <i class="fas fa-times"></i>
         </button>
         <div id="pkg-modal-body">
@@ -769,7 +869,7 @@
         var m = document.getElementById(id);
         if (m) { m.style.display = 'none'; document.body.style.overflow = ''; }
     }
-    
+
     async function viewPackageDetails(packageId) {
         showPkgModal('pkg-details-modal');
         const body = document.getElementById('pkg-modal-body');
@@ -779,7 +879,7 @@
                 <p style="margin-top: 1rem; color: #64748b; font-weight: 600;">Loading package details...</p>
             </div>
         `;
-        
+
         try {
             const response = await fetch(`/packages/${packageId}/modal`);
             if (response.ok) {

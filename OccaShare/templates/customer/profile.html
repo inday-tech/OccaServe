@@ -4,7 +4,172 @@
 {% block title %}My Profile - OccaShare{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/profile.css') }}?v=1.2">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/profile.css') }}?v=1.4">
+<style>
+    /* ============================================
+       PROFILE — DIAMOND STANDARD REFINEMENTS
+       ============================================ */
+    
+    /* ── Global Page Padding ── */
+    .main-content {
+        padding: 2rem 2rem 6rem !important; /* Bottom padding for FAB safety */
+    }
+
+    @media (max-width: 768px) {
+        .main-content {
+            padding: 4rem 1rem 7rem !important; /* Extra bottom for mobile FAB */
+        }
+    }
+
+    /* ── Page Header ── */
+    .page-header {
+        margin-bottom: 2.5rem !important;
+    }
+    @media (max-width: 768px) {
+        .page-header { text-align: center; margin-bottom: 1.5rem !important; }
+    }
+
+    /* ── Profile Layout Grid ── */
+    .profile-layout-grid {
+        display: grid;
+        grid-template-columns: 340px 1fr;
+        gap: 2rem;
+        align-items: flex-start;
+    }
+
+    @media (max-width: 1024px) {
+        .profile-layout-grid {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+    }
+
+    /* ── Card Styling ── */
+    .card-premium {
+        background: #ffffff;
+        border-radius: 1.5rem !important;
+        border: 1px solid #f1f5f9 !important;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03) !important;
+        padding: 2rem !important;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    /* ── Avatar Section ── */
+    .avatar-view-large {
+        width: 140px !important;
+        height: 140px !important;
+        border-radius: 2rem !important;
+        background: #f8fafc;
+        border: 4px solid #ffffff;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .avatar-view-large img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .avatar-initials-large {
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #f97316, #ea580c);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        font-weight: 800;
+    }
+
+    /* ── Verified Pill ── */
+    .security-status.verified {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1.25rem;
+        background: #f0fdf4 !important;
+        color: #166534 !important;
+        border: 1px solid #dcfce7 !important;
+        border-radius: 2rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        margin-top: 1rem;
+    }
+
+    /* ── Form Groups ── */
+    .form-group-premium {
+        margin-bottom: 1.5rem;
+    }
+    .form-group-premium label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: #64748b;
+        margin-bottom: 0.625rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .form-group-premium input {
+        width: 100%;
+        height: 52px;
+        background: #f8fafc;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 0.875rem;
+        padding: 0 1.25rem;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #0f172a;
+        transition: all 0.2s;
+    }
+    .form-group-premium input:focus {
+        background: #ffffff;
+        border-color: #f97316;
+        box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.08);
+        outline: none;
+    }
+
+    .form-group-premium input:disabled {
+        background: #f1f5f9;
+        color: #94a3b8;
+        cursor: not-allowed;
+    }
+
+    /* ── Logout Button (Consistent Premium Card) ── */
+    .logout-card {
+        margin-top: 1rem;
+    }
+    .btn-logout-premium {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        width: 100%;
+        height: 52px;
+        background: #ffffff;
+        border: 1.5px solid #fee2e2;
+        border-radius: 1rem;
+        color: #ef4444;
+        font-weight: 800;
+        font-size: 0.95rem;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    .btn-logout-premium:hover {
+        background: #fef2f2;
+        border-color: #fca5a5;
+    }
+    .btn-logout-premium:active {
+        transform: scale(0.98);
+    }
+
+    /* ── Modal ── */
+    .modal-overlay {
+        backdrop-filter: blur(8px) !important;
+    }
+</style>
 {% endblock %}
 
 {% block extra_js %}
@@ -17,19 +182,14 @@
     <p>Manage your personal information and account preferences.</p>
 </div>
 
-
-{% if request.query_params.get('success') %}
-<!-- Legacy alert removed, handled by main.js toasts -->
-{% endif %}
-
 <div class="profile-layout-grid">
     <!-- Sidebar: Photo & Security -->
     <div class="profile-aside">
-        <div class="card-premium avatar-card-center">
-            <div class="avatar-upload-group">
+        <div class="card-premium avatar-card-center" style="text-align: center;">
+            <div class="avatar-upload-group" style="position: relative; display: inline-block; margin-bottom: 1.5rem;">
                 <div class="avatar-view-large">
                     {% if user.profile_image_url %}
-                    <img src="{{ user.profile_image_url }}" alt="Avatar" id="avatarPreview">
+                    <img src="{{ user.profile_image_url }}" alt="Avatar" id="avatarPreview" onerror="this.onerror=null; this.parentNode.innerHTML='<div class=&quot;avatar-initials-large&quot;>{{ user.first_name[0] if user.first_name else "" }}{{ user.last_name[0] if user.last_name else "" }}</div>';">
                     {% else %}
                     <div class="avatar-initials-large">
                         {{ user.first_name[0] if user.first_name else '?' }}{{ user.last_name[0] if user.last_name else '' }}
@@ -37,84 +197,90 @@
                     {% endif %}
                 </div>
                 <form action="/customer/profile/photo?success_msg=Profile+photo+updated+successfully" method="POST" enctype="multipart/form-data" id="photoForm">
-                    <label for="photoInput" class="btn-icon-float">
+                    <label for="photoInput" class="btn-icon-float" style="position: absolute; bottom: 0; right: 0; width: 44px; height: 44px; background: #f97316; border: 3px solid #ffffff; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
                         <i class="fas fa-camera"></i>
                         <input type="file" id="photoInput" name="file" onchange="this.form.submit()" hidden>
                     </label>
                 </form>
             </div>
-            <h3>{{ user.first_name }} {{ user.last_name }}</h3>
-            <p class="text-muted text-sm">Customer since {{ user.created_at.strftime('%Y') }}</p>
+            <h3 style="margin: 0; font-size: 1.5rem; font-weight: 800; color: #0f172a;">{{ user.first_name }} {{ user.last_name }}</h3>
+            <p style="margin: 0.25rem 0 0; color: #64748b; font-size: 0.85rem; font-weight: 600;">Customer since {{ user.created_at.strftime('%Y') }}</p>
 
-            <div class="security-mini-card">
-                <div class="security-status verified">
-                    <i class="fas fa-check-shield"></i>
-                    <span>Account Verified</span>
-                </div>
+            <div class="security-status verified">
+                <i class="fas fa-check-circle"></i>
+                <span>Account Verified</span>
             </div>
         </div>
 
-        <div class="card-premium mt-2">
-            <h4 class="card-title-sm">
-                <i class="fas fa-lock"></i> Security
+        <div class="card-premium" style="margin-top: 1.5rem;">
+            <h4 style="margin: 0 0 0.75rem; font-size: 1.1rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 0.75rem;">
+                <i class="fas fa-lock" style="color: #f97316;"></i> Security
             </h4>
-            <p class="text-muted text-sm">Maintain a strong password to keep your account safe.</p>
-            <button type="button" class="btn-primary w-100" onclick="openPasswordModal()">Change Password</button>
+            <p style="margin: 0 0 1.5rem; color: #64748b; font-size: 0.85rem; line-height: 1.6; font-weight: 500;">Maintain a strong password to keep your account safe from unauthorized access.</p>
+            <button type="button" class="btn-primary w-100" onclick="openPasswordModal()" style="height: 48px; border-radius: 0.75rem; font-weight: 800;">Change Password</button>
         </div>
     </div>
 
     <!-- Main Form -->
     <div class="profile-main-form">
         <div class="card-premium">
-            <h3 class="card-title-md">
-                <i class="fas fa-id-card"></i> Personal Information
+            <h3 style="margin: 0 0 2rem; font-size: 1.25rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 0.75rem;">
+                <i class="fas fa-id-card" style="color: #64748b;"></i> Personal Information
             </h3>
             <form action="/customer/profile/update?success_msg=Profile+information+updated+successfully" method="POST">
-                <div class="form-row-grid">
+                <div class="form-row-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem;">
                     <div class="form-group-premium">
                         <label>First Name</label>
-                        <input type="text" name="first_name" value="{{ user.first_name }}" required>
+                        <input type="text" name="first_name" value="{{ user.first_name }}" required placeholder="First name">
                     </div>
                     <div class="form-group-premium">
                         <label>Last Name</label>
-                        <input type="text" name="last_name" value="{{ user.last_name }}" required>
+                        <input type="text" name="last_name" value="{{ user.last_name }}" required placeholder="Last name">
                     </div>
                 </div>
 
                 <div class="form-group-premium">
-                    <label>Email Address (Primary)</label>
-                    <div class="input-readonly">
-                        <input type="email" value="{{ user.email }}" disabled>
-                        <i class="fas fa-lock"></i>
+                    <label>Email Address</label>
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <input type="email" value="{{ user.email }}" disabled style="padding-right: 3rem;">
+                        <i class="fas fa-lock" style="position: absolute; right: 1.25rem; color: #94a3b8; font-size: 0.85rem;"></i>
                     </div>
-                    <small>Contact support to change your email.</small>
+                    <small style="display: block; margin-top: 0.625rem; font-size: 0.75rem; color: #94a3b8; font-weight: 500;">Primary account email cannot be changed.</small>
                 </div>
 
-                <div class="form-group-premium">
+                <div class="form-group-premium" style="margin-bottom: 2.5rem;">
                     <label>Phone Number</label>
                     <input type="text" name="phone_number" value="{{ user.phone_number or '' }}" placeholder="+63 9XX XXX XXXX">
                 </div>
 
                 <div class="form-actions-premium">
-                    <button type="submit" class="btn-primary">Update Profile</button>
+                    <button type="submit" class="btn-primary" style="height: 52px; padding: 0 2rem; border-radius: 0.875rem; font-weight: 800; font-size: 0.95rem;">Update Profile Information</button>
                 </div>
             </form>
         </div>
+
+        <!-- Optional: Sign Out Card -->
+        <div class="logout-card">
+            <a href="/logout" class="btn-logout-premium">
+                <i class="fas fa-sign-out-alt"></i> Sign Out
+            </a>
+        </div>
     </div>
+</div>
+
 <!-- Change Password Modal -->
-<div id="passwordModal" class="modal-overlay" style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index: 9999; backdrop-filter: blur(4px); align-items: center; justify-content: center;">
+<div id="passwordModal" class="modal-overlay" style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index: 9999; backdrop-filter: blur(8px); align-items: center; justify-content: center;">
     <div class="card-premium modal-content" style="width: 100%; max-width: 450px; margin: 0; padding: 0; overflow: hidden; animation: modalSlideUp 0.3s ease-out; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
         
-        <div class="modal-header" style="padding: 1.5rem 2rem; border-bottom: 1.5px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; background: var(--background-soft);">
-            <h3 class="card-title-sm" style="margin: 0; font-size: 1.25rem;">
-                <i class="fas fa-key" style="color: var(--primary-color);"></i>
+        <div class="modal-header" style="padding: 1.5rem 2rem; border-bottom: 1.5px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; background: #f8fafc;">
+            <h3 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: #0f172a;">
+                <i class="fas fa-key" style="color: #f97316; margin-right: 0.5rem;"></i>
                 Update Password
             </h3>
-            <button type="button" onclick="closePasswordModal()" style="background: none; border: none; font-size: 1.75rem; color: var(--text-light); cursor: pointer; line-height: 1; padding: 0; margin-top: -0.25rem;">&times;</button>
+            <button type="button" onclick="closePasswordModal()" style="background: none; border: none; font-size: 1.75rem; color: #94a3b8; cursor: pointer; line-height: 1; padding: 0;">&times;</button>
         </div>
         
         <form id="changePasswordForm" onsubmit="handlePasswordChange(event)" style="padding: 2rem;" novalidate>
-            
             <div id="passwordFormError" style="display: none; background: #fef2f2; color: #b91c1c; padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem; font-size: 0.85rem; font-weight: 600; border: 1px solid #fecaca; align-items: flex-start; gap: 0.75rem;">
                 <i class="fas fa-exclamation-circle" style="margin-top: 0.2rem;"></i>
                 <span id="passwordFormErrorText"></span>
@@ -128,7 +294,7 @@
             <div class="form-group-premium">
                 <label>New Password</label>
                 <input type="password" name="new_password" id="new_password" required placeholder="e.g. Abc123!@" minlength="8">
-                <span style="display: block; font-size: 0.75rem; color: var(--text-light); margin-top: 0.5rem; line-height: 1.4;">Must be at least 8 chars, and include uppercase, lowercase, number, & special character.</span>
+                <span style="display: block; font-size: 0.75rem; color: #94a3b8; margin-top: 0.625rem; line-height: 1.4; font-weight: 500;">Password must be at least 8 characters with letters, numbers and special symbols.</span>
             </div>
             
             <div class="form-group-premium" style="margin-bottom: 2rem;">
@@ -137,9 +303,9 @@
             </div>
             
             <div style="display: flex; gap: 1rem;">
-                <button type="button" onclick="closePasswordModal()" style="flex: 1; padding: 0.8rem 1.5rem; border-radius: 0.75rem; font-weight: 800; color: var(--text-light); background: #f1f5f9; border: none; cursor: pointer; text-transform: uppercase; transition: background 0.2s;">Cancel</button>
-                <button type="submit" id="submitPasswordBtn" class="btn-primary" style="flex: 2; color: white !important;">
-                    <span class="btn-text" style="color: white !important;">Save Changes</span>
+                <button type="button" onclick="closePasswordModal()" style="flex: 1; height: 48px; border-radius: 0.75rem; font-weight: 800; color: #64748b; background: #f1f5f9; border: none; cursor: pointer; text-transform: uppercase;">Cancel</button>
+                <button type="submit" id="submitPasswordBtn" class="btn-primary" style="flex: 2; height: 48px; border-radius: 0.75rem;">
+                    <span class="btn-text" style="color: white !important;">Save New Password</span>
                 </button>
             </div>
         </form>
@@ -150,13 +316,6 @@
 @keyframes modalSlideUp {
     from { transform: translateY(20px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
-}
-
-#submitPasswordBtn {
-    color: white !important;
-}
-#submitPasswordBtn span {
-    color: white !important;
 }
 </style>
 

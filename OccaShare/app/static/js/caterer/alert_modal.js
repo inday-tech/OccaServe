@@ -75,7 +75,7 @@ const PremiumAlert = {
 
         // Actions Setup
         this.actionsEL.innerHTML = '';
-        
+
         if (type === 'confirm') {
             const cancelBtn = document.createElement('button');
             cancelBtn.className = 'modal-btn btn-cancel-secondary';
@@ -120,13 +120,13 @@ window.showAlert = (options) => {
 // Also support simple calling for quick success/error
 window.showSuccess = (message, title = "Success!") => window.showAlert({ type: 'success', title, message });
 window.showError = (message, title = "Oops!") => window.showAlert({ type: 'error', title, message });
-window.showConfirm = function(message, onConfirm, title = "Are you sure?", confirmText = "Confirm") {
+window.showConfirm = function (message, onConfirm, title = "Are you sure?", confirmText = "Confirm") {
     // Explicitly set the type as confirm to ensure double buttons and correct labels
-    PremiumAlert.show({ 
-        type: 'confirm', 
-        title: title, 
-        message: message, 
-        onConfirm: onConfirm, 
+    PremiumAlert.show({
+        type: 'confirm',
+        title: title,
+        message: message,
+        onConfirm: onConfirm,
         confirmText: confirmText || "Confirm"
     });
 };
@@ -135,11 +135,11 @@ window.showPrompt = (message, onConfirm, title = "Input Required", placeholder =
     PremiumAlert.init();
     const inputWrapper = document.getElementById('modalInputWrapper');
     const input = document.getElementById('modalPromptInput');
-    
+
     inputWrapper.style.display = 'block';
     input.placeholder = placeholder;
     input.value = '';
-    
+
     window.showAlert({
         type: 'confirm',
         title,

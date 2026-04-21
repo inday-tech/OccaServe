@@ -91,7 +91,7 @@
         justify-content: center !important;
         font-size: 1rem !important;
         transition: all 0.3s ease !important;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
     }
 
     .step-node.active .node-icon {
@@ -178,7 +178,7 @@
         flex-direction: column !important;
         align-items: center !important;
         gap: 1rem !important;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.02) !important;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02) !important;
     }
 
     .action-card:hover:not(.disabled) {
@@ -222,6 +222,7 @@
     }
 
     @media (max-width: 768px) {
+
         .kyc-form-grid,
         .kyc-action-cards {
             grid-template-columns: 1fr !important;
@@ -252,25 +253,33 @@
     </div>
 
     <div class="wizard-header-content">
-        <h1 class="wizard-title" style="font-family: var(--font-heading); font-size: 2.5rem; margin-bottom: 0.5rem; color: var(--kyc-slate-700);">Identity Verification</h1>
-        <p class="wizard-subtitle" style="font-family: var(--font-body); font-size: 1.1rem; margin-bottom: 2rem; color: var(--kyc-slate-400);">Redefining trust through secure, real-time identity checks</p>
+        <h1 class="wizard-title"
+            style="font-family: var(--font-heading); font-size: 2.5rem; margin-bottom: 0.5rem; color: var(--kyc-slate-700);">
+            Identity Verification</h1>
+        <p class="wizard-subtitle"
+            style="font-family: var(--font-body); font-size: 1.1rem; margin-bottom: 2rem; color: var(--kyc-slate-400);">
+            Redefining trust through secure, real-time identity checks</p>
 
         {% if request.query_params.get('auth_needed') %}
-        <div class="alert alert-warning mb-4 py-3" style="border-radius: 1rem; background: #fffbeb; border: 1px solid #fde68a; color: #92400e; font-weight: 600; display: flex; align-items: center; gap: 1rem; justify-content: center;">
+        <div class="alert alert-warning mb-4 py-3"
+            style="border-radius: 1rem; background: #fffbeb; border: 1px solid #fde68a; color: #92400e; font-weight: 600; display: flex; align-items: center; gap: 1rem; justify-content: center;">
             <i class="fas fa-exclamation-triangle"></i>
             <span>Action Required: Please complete identity verification before proceeding to the next step.</span>
         </div>
         {% endif %}
-        
+
         {% set kyc = user.identity_verification %}
         {% if kyc and kyc.verification_status == 'rejected' %}
-        <div class="alert alert-danger mb-4 py-3" style="border-radius: 1rem; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; font-weight: 600; display: flex; align-items: center; gap: 1rem; justify-content: center; flex-direction: column;">
+        <div class="alert alert-danger mb-4 py-3"
+            style="border-radius: 1rem; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; font-weight: 600; display: flex; align-items: center; gap: 1rem; justify-content: center; flex-direction: column;">
             <div class="d-flex align-items: center; gap: 0.75rem;">
                 <i class="fas fa-times-circle"></i>
                 <span>Verification Rejected</span>
             </div>
-            <p class="mb-0 small" style="opacity: 0.8;">Reason: {{ kyc.failure_reason or "Suspicious activity detected." }}</p>
-            <button class="btn btn-sm btn-danger mt-2" onclick="location.reload()" style="font-size: 0.7rem; border-radius: 0.5rem; padding: 0.25rem 1rem;">Retry Verification</button>
+            <p class="mb-0 small" style="opacity: 0.8;">Reason: {{ kyc.failure_reason or "Suspicious activity detected."
+                }}</p>
+            <button class="btn btn-sm btn-danger mt-2" onclick="location.reload()"
+                style="font-size: 0.7rem; border-radius: 0.5rem; padding: 0.25rem 1rem;">Retry Verification</button>
         </div>
         {% endif %}
     </div>
@@ -298,9 +307,11 @@
 
         <div id="kyc-main-content">
             <!-- Phase 1: Form & Options -->
-            {% set kyc_status = user.identity_verification.verification_status if user.identity_verification else 'pending' %}
-            <div id="step-id-form" class="kyc-substep {% if kyc_status in ['pending', 'failed', 'rejected'] %}active{% endif %}" 
-                 style="display: {% if kyc_status in ['pending', 'failed', 'rejected'] %}block{% else %}none{% endif %};">
+            {% set kyc_status = user.identity_verification.verification_status if user.identity_verification else
+            'pending' %}
+            <div id="step-id-form"
+                class="kyc-substep {% if kyc_status in ['pending', 'failed', 'rejected'] %}active{% endif %}"
+                style="display: {% if kyc_status in ['pending', 'failed', 'rejected'] %}block{% else %}none{% endif %};">
                 <div class="kyc-form-grid">
                     <div class="field-group">
                         <label>Select ID Type</label>
@@ -355,7 +366,8 @@
             </div>
 
             <div id="id-preview" style="display: none; text-align: center; padding: 1rem;">
-                <img id="id-image" src="" style="max-width: 480px; width: 100%; border-radius: 1rem; margin: 0 auto 2rem; display: block; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid var(--kyc-slate-200);">
+                <img id="id-image" src=""
+                    style="max-width: 480px; width: 100%; border-radius: 1rem; margin: 0 auto 2rem; display: block; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid var(--kyc-slate-200);">
                 <div style="display: flex; gap: 0.75rem; justify-content: center;">
                     <button type="button" class="btn btn-secondary" onclick="resetIdUpload()">Retake</button>
                     <button type="button" class="btn btn-primary" onclick="proceedToCamera()">Confirm ID</button>
@@ -367,7 +379,8 @@
                 <div class="ocr-loader"></div>
                 <h3 style="margin-bottom: 0.5rem;" id="extraction-title">Processing Data</h3>
                 <p id="extraction-status" class="card-desc">Scanning ID for key information...</p>
-                <div id="quality-indicators" style="margin-top: 1.5rem; font-size: 0.8rem; color: var(--kyc-slate-400); display: flex; justify-content: center; gap: 1rem;">
+                <div id="quality-indicators"
+                    style="margin-top: 1.5rem; font-size: 0.8rem; color: var(--kyc-slate-400); display: flex; justify-content: center; gap: 1rem;">
                     <span id="qc-resolution"><i class="fas fa-check-circle"></i> Resolution</span>
                     <span id="qc-focus"><i class="fas fa-check-circle"></i> Focus</span>
                     <span id="qc-ocr"><i class="fas fa-check-circle"></i> Extraction</span>
@@ -409,18 +422,25 @@
                 </div>
                 <div style="display: flex; gap: 1rem; justify-content: center;">
                     <button type="button" class="btn btn-secondary" onclick="retryLiveness()">Retake All</button>
-                    <button type="button" class="btn btn-primary" onclick="submitLiveness()">Securely Upload & Verify</button>
+                    <button type="button" class="btn btn-primary" onclick="submitLiveness()">Securely Upload &
+                        Verify</button>
                 </div>
             </div>
 
             <!-- WAITING FOR CATERER APPROVAL -->
-            <div id="kyc-waiting-approval" style="display: {% if user.identity_verification and user.identity_verification.verification_status == 'manual_review' %}block{% else %}none{% endif %}; text-align: center; padding: 2rem 0;">
-                <div class="ocr-loader" style="width: 60px; height: 60px; margin: 0 auto 2rem; border-top-color: var(--primary-color);"></div>
-                <h2 style="font-weight: 800; font-size: 1.5rem; color: #1e293b; margin-bottom: 1rem;">Waiting for Caterer Approval</h2>
+            <div id="kyc-waiting-approval"
+                style="display: {% if user.identity_verification and user.identity_verification.verification_status == 'manual_review' %}block{% else %}none{% endif %}; text-align: center; padding: 2rem 0;">
+                <div class="ocr-loader"
+                    style="width: 60px; height: 60px; margin: 0 auto 2rem; border-top-color: var(--primary-color);">
+                </div>
+                <h2 style="font-weight: 800; font-size: 1.5rem; color: #1e293b; margin-bottom: 1rem;">Waiting for
+                    Caterer Approval</h2>
                 <p style="color: #64748b; font-weight: 600; line-height: 1.6; max-width: 400px; margin: 0 auto 2.5rem;">
-                    Aming sinisiguro ang iyong seguridad. Kasalukuyang bine-verify ng caterer ang iyong pagkakakilanlan upang maprotektahan ang inyong transaksyon.
+                    Aming sinisiguro ang iyong seguridad. Kasalukuyang bine-verify ng caterer ang iyong pagkakakilanlan
+                    upang maprotektahan ang inyong transaksyon.
                 </p>
-                <div style="background: #eff6ff; color: #1d4ed8; padding: 1rem; border-radius: 1rem; font-size: 0.85rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.75rem;">
+                <div
+                    style="background: #eff6ff; color: #1d4ed8; padding: 1rem; border-radius: 1rem; font-size: 0.85rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.75rem;">
                     <i class="fas fa-info-circle"></i>
                     <span>Real-time Update: Automatic kaming lilipat sa susunod na step kapag na-approve na.</span>
                 </div>

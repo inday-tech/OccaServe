@@ -52,10 +52,25 @@
 }
 
 /* Types */
-.modal-type-success .modal-icon-wrapper { background: #ecfdf5; color: #10b981; }
-.modal-type-error .modal-icon-wrapper { background: #fef2f2; color: #ef4444; }
-.modal-type-warning .modal-icon-wrapper { background: #fffbeb; color: #f59e0b; }
-.modal-type-confirm .modal-icon-wrapper { background: #eff6ff; color: #3b82f6; }
+.modal-type-success .modal-icon-wrapper {
+    background: #ecfdf5;
+    color: #10b981;
+}
+
+.modal-type-error .modal-icon-wrapper {
+    background: #fef2f2;
+    color: #ef4444;
+}
+
+.modal-type-warning .modal-icon-wrapper {
+    background: #fffbeb;
+    color: #f59e0b;
+}
+
+.modal-type-confirm .modal-icon-wrapper {
+    background: #eff6ff;
+    color: #3b82f6;
+}
 
 .modal-title {
     font-size: 1.5rem;
@@ -113,9 +128,19 @@
 
 /* Success Animation */
 @keyframes checkmark {
-    0% { transform: scale(0); opacity: 0; }
-    50% { transform: scale(1.2); }
-    100% { transform: scale(1); opacity: 1; }
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+
+    50% {
+        transform: scale(1.2);
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
 .modal-type-success .modal-icon-wrapper i {

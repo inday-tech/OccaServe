@@ -3,7 +3,8 @@
 {% block wizard_title %}Event Details - Phase 1{% endblock %}
 
 {% block step_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_details.css') }}?v={{ range(1, 9999) | random }}">
+<link rel="stylesheet"
+    href="{{ url_for('static', path='/css/customer/booking_wizard/step_details.css') }}?v={{ range(1, 9999) | random }}">
 <style>
     /* --- Other event type reveal --- */
     #other-event-wrap {
@@ -59,8 +60,8 @@
 
                 <div class="form-group">
                     <label class="form-label">Event Name</label>
-                    <input type="text" name="event_name" class="form-input" placeholder="e.g., Rodriguez Wedding" 
-                           value="{{ booking.event_name if booking else '' }}" required>
+                    <input type="text" name="event_name" class="form-input" placeholder="e.g., Rodriguez Wedding"
+                        value="{{ booking.event_name if booking else '' }}" required>
                     <span class="field-error" id="err-name">Please enter a descriptive event name.</span>
                 </div>
 
@@ -69,15 +70,29 @@
                         <label class="form-label">Event Type</label>
                         <select name="event_type" id="event_type_select" class="filter-select-pro" required>
                             <option value="">-- Select Event Type --</option>
-                            <option value="Wedding" {% if booking and booking.event_type == 'Wedding' %}selected{% endif %}>Wedding</option>
-                            <option value="Birthday" {% if booking and booking.event_type == 'Birthday' %}selected{% endif %}>Birthday</option>
-                            <option value="Corporate Event" {% if booking and booking.event_type == 'Corporate Event' %}selected{% endif %}>Corporate Event</option>
-                            <option value="Debut / Milestone" {% if booking and booking.event_type == 'Debut / Milestone' %}selected{% endif %}>Debut / Milestone</option>
-                            <option value="Baptism / Family Event" {% if booking and booking.event_type == 'Baptism / Family Event' %}selected{% endif %}>Baptism / Family Event</option>
-                            <option value="Private Party" {% if booking and booking.event_type == 'Private Party' %}selected{% endif %}>Private Party</option>
-                            <option value="Fiesta / Large Event" {% if booking and booking.event_type == 'Fiesta / Large Event' %}selected{% endif %}>Fiesta / Large Event</option>
-                            <option value="Holiday Celebration" {% if booking and booking.event_type == 'Holiday Celebration' %}selected{% endif %}>Holiday Celebration</option>
-                            <option value="Other" {% if booking and (booking.event_type not in ['Wedding','Birthday','Corporate Event','Debut / Milestone','Baptism / Family Event','Private Party','Fiesta / Large Event','Holiday Celebration']) and booking.event_type %}selected{% endif %}>Other (specify below)</option>
+                            <option value="Wedding" {% if booking and booking.event_type=='Wedding' %}selected{% endif
+                                %}>Wedding</option>
+                            <option value="Birthday" {% if booking and booking.event_type=='Birthday' %}selected{% endif
+                                %}>Birthday</option>
+                            <option value="Corporate Event" {% if booking and booking.event_type=='Corporate Event'
+                                %}selected{% endif %}>Corporate Event</option>
+                            <option value="Debut / Milestone" {% if booking and booking.event_type=='Debut / Milestone'
+                                %}selected{% endif %}>Debut / Milestone</option>
+                            <option value="Baptism / Family Event" {% if booking and
+                                booking.event_type=='Baptism / Family Event' %}selected{% endif %}>Baptism / Family
+                                Event</option>
+                            <option value="Private Party" {% if booking and booking.event_type=='Private Party'
+                                %}selected{% endif %}>Private Party</option>
+                            <option value="Fiesta / Large Event" {% if booking and
+                                booking.event_type=='Fiesta / Large Event' %}selected{% endif %}>Fiesta / Large Event
+                            </option>
+                            <option value="Holiday Celebration" {% if booking and
+                                booking.event_type=='Holiday Celebration' %}selected{% endif %}>Holiday Celebration
+                            </option>
+                            <option value="Other" {% if booking and (booking.event_type not in
+                                ['Wedding','Birthday','Corporate Event','Debut / Milestone','Baptism / Family
+                                Event','Private Party','Fiesta / Large Event','Holiday Celebration']) and
+                                booking.event_type %}selected{% endif %}>Other (specify below)</option>
                         </select>
                         <span class="field-error" id="err-type">Selection required.</span>
                     </div>
@@ -87,16 +102,19 @@
                         <div class="input-with-icon">
                             <i class="fas fa-users"></i>
                             <input type="text" inputmode="numeric" id="guest_count_display" class="form-input"
-                                value="{{ "{:,}".format(booking.guest_count if booking else (caterer.min_pax or package.min_guests or 50)) }}"
-                                oninput="formatGuestCount(this); updateCalculator()" required>
+                                value="{{ " {:,}".format(booking.guest_count if booking else (caterer.min_pax or
+                                package.min_guests or 50)) }}" oninput="formatGuestCount(this); updateCalculator()"
+                                required>
                             <input type="hidden" name="guest_count" id="guest_count"
                                 value="{{ booking.guest_count if booking else (caterer.min_pax or package.min_guests or 50) }}">
                         </div>
-                        <span class="field-error" id="err-guests">Allowed guests: {{ caterer.min_pax or package.min_guests or 1 }} to 1000.</span>
+                        <span class="field-error" id="err-guests">Allowed guests: {{ caterer.min_pax or
+                            package.min_guests or 1 }} to 1000.</span>
                     </div>
                 </div>
 
-                <div id="other-event-wrap" class="{% if booking and (booking.event_type not in ['Wedding','Birthday','Corporate Event','Debut / Milestone','Baptism / Family Event','Private Party','Fiesta / Large Event','Holiday Celebration']) and booking.event_type %}visible{% endif %}">
+                <div id="other-event-wrap"
+                    class="{% if booking and (booking.event_type not in ['Wedding','Birthday','Corporate Event','Debut / Milestone','Baptism / Family Event','Private Party','Fiesta / Large Event','Holiday Celebration']) and booking.event_type %}visible{% endif %}">
                     <div class="form-group">
                         <label class="form-label">Specify Event Type</label>
                         <input type="text" name="other_event_type" id="other_event_type" class="form-input"
@@ -111,9 +129,9 @@
                         <label class="form-label">Event Date</label>
                         <div class="input-with-icon">
                             <i class="fas fa-calendar"></i>
-                            <input type="date" name="event_date" id="event_date" class="form-input" 
-                                value="{{ booking.event_date.isoformat() if booking and booking.event_date else '' }}" required
-                                onchange="checkAvailability()">
+                            <input type="date" name="event_date" id="event_date" class="form-input"
+                                value="{{ booking.event_date.isoformat() if booking and booking.event_date else '' }}"
+                                required onchange="checkAvailability()">
                         </div>
                         <span class="field-error" id="err-date">Please select a future date.</span>
                         <div id="availability-chip" class="availability-chip"></div>
@@ -124,7 +142,7 @@
                                 <label class="form-label">Start Time <span style="color:red">*</span></label>
                                 <div class="input-with-icon">
                                     <i class="fas fa-clock"></i>
-                                    <input type="time" name="event_time" id="event_time" class="form-input" 
+                                    <input type="time" name="event_time" id="event_time" class="form-input"
                                         value="{{ booking.event_time.strftime('%H:%M') if booking and booking.event_time else '' }}"
                                         required>
                                 </div>
@@ -134,7 +152,7 @@
                                 <label class="form-label">End Time</label>
                                 <div class="input-with-icon">
                                     <i class="fas fa-clock"></i>
-                                    <input type="time" name="event_end_time" id="event_end_time" class="form-input" 
+                                    <input type="time" name="event_end_time" id="event_end_time" class="form-input"
                                         value="{{ booking.event_end_time.strftime('%H:%M') if booking and booking.event_end_time else '' }}">
                                 </div>
                             </div>
@@ -150,7 +168,7 @@
                     <h3 class="form-section-title">Menu Personalization</h3>
                 </div>
                 <p class="form-subtitle">Enhance your experience with premium add-ons</p>
-                
+
                 <div class="menu-item-cards">
                     <!-- Included Items -->
                     {% for item in package.menu_items %}
@@ -168,9 +186,9 @@
                     {% if addon_items %}
                     {% for item in addon_items %}
                     <label class="menu-item-card {% if item.id in selected_addon_ids %}selected{% endif %}">
-                        <input type="checkbox" name="selected_addons" value="{{ item.id }}" 
-                               {% if item.id in selected_addon_ids %}checked{% endif %}
-                               data-price="{{ item.addon_price or 0 }}" onchange="handleMenuCardToggle(this)">
+                        <input type="checkbox" name="selected_addons" value="{{ item.id }}" {% if item.id in
+                            selected_addon_ids %}checked{% endif %} data-price="{{ item.addon_price or 0 }}"
+                            onchange="handleMenuCardToggle(this)">
                         <div class="indicator-circle"></div>
                         <div class="mic-info">
                             <span class="mic-name">{{ item.name }}</span>
@@ -220,8 +238,9 @@
                         <span class="field-error" id="err-barangay">Required.</span>
                     </div>
                 </div>
-                
-                <input type="hidden" name="venue_address" id="venue_address_hidden" value="{{ booking.venue_address if booking else '' }}">
+
+                <input type="hidden" name="venue_address" id="venue_address_hidden"
+                    value="{{ booking.venue_address if booking else '' }}">
 
                 <div class="form-group">
                     <label class="form-label">Special Requests <small>(Optional)</small></label>
@@ -238,7 +257,8 @@
 
                 <div class="calc-row">
                     <span class="calc-label">Package Price</span>
-                    <span class="calc-val">₱{{ "{:,.2f}".format(package.price_per_head or package.price or 0) }}/pax</span>
+                    <span class="calc-val">₱{{ "{:,.2f}".format(package.price_per_head or package.price or 0)
+                        }}/pax</span>
                 </div>
                 <div class="calc-row">
                     <span class="calc-label">Estimated Guests</span>
@@ -248,7 +268,7 @@
                     <span class="calc-label">Add-ons (<span id="calc-addons-count">0</span>)</span>
                     <span class="calc-val" id="calc-addons-total">+₱0.00</span>
                 </div>
-                
+
                 <div class="calc-divider"></div>
 
                 <div class="calc-total">
@@ -258,7 +278,8 @@
 
                 <div class="calc-info-box">
                     <i class="fas fa-exclamation-circle"></i>
-                    <span>This is an initial estimate. Final pricing may be adjusted based on menu selections and add-ons in the next steps.</span>
+                    <span>This is an initial estimate. Final pricing may be adjusted based on menu selections and
+                        add-ons in the next steps.</span>
                 </div>
             </div>
         </aside>
@@ -281,5 +302,6 @@
     window.catererId = "{{ caterer.id }}";
     window.minGuests = parseInt("{{ caterer.min_pax or package.min_guests or 1 }}") || 1;
 </script>
-<script src="{{ url_for('static', path='/js/customer/booking_wizard/step_details.js') }}?v={{ range(1, 9999) | random }}"></script>
+<script
+    src="{{ url_for('static', path='/js/customer/booking_wizard/step_details.js') }}?v={{ range(1, 9999) | random }}"></script>
 {% endblock %}

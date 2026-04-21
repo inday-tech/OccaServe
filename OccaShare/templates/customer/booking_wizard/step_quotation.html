@@ -147,7 +147,8 @@
                 </div>
 
                 <!-- Hidden inputs for JS -->
-                <input type="hidden" id="dp-percent-input" value="{{ quotation.downpayment_percent if quotation.customer_signature else '' }}">
+                <input type="hidden" id="dp-percent-input"
+                    value="{{ quotation.downpayment_percent if quotation.customer_signature else '' }}">
                 <input type="hidden" id="signed-input"
                     value="{{ 'true' if quotation.customer_signature else 'false' }}">
             </section>
@@ -156,9 +157,10 @@
             <div id="contract-section" class="section-divider">
                 <span class="divider-text">Digital Service Agreement</span>
             </div>
-            
+
             <p class="step-guide-text animate-up">
-                <i class="fas fa-info-circle"></i> After selecting your deposit, please read the terms below and sign to authorize this agreement.
+                <i class="fas fa-info-circle"></i> After selecting your deposit, please read the terms below and sign to
+                authorize this agreement.
             </p>
 
             <section class="up-card contract-portrait animate-up" style="animation-delay: 0.4s;">
@@ -166,7 +168,8 @@
                     <div class="doc-badge">Official Document</div>
                     <h3 class="doc-title">Catering Service Agreement</h3>
                     <p class="doc-subtitle">Official Agreement between <strong>{{ booking.caterer.business_name
-                            }}</strong> (Service Provider) and <strong>{{ booking.user.first_name }} {{ booking.user.last_name }}</strong> (Client).
+                            }}</strong> (Service Provider) and <strong>{{ booking.user.first_name }} {{
+                            booking.user.last_name }}</strong> (Client).
                     </p>
                 </div>
 
@@ -209,7 +212,8 @@
                                 <button type="button" class="btn-clear" onclick="clearSignature()">
                                     <i class="fas fa-eraser"></i> Clear Pad
                                 </button>
-                                <button type="button" id="btn-apply-sig" class="btn-primary-sm" disabled onclick="applySignatureLocal()">
+                                <button type="button" id="btn-apply-sig" class="btn-primary-sm" disabled
+                                    onclick="applySignatureLocal()">
                                     <i class="fas fa-check"></i> Apply to Contract
                                 </button>
                                 <label class="check-box-pro">
@@ -226,10 +230,12 @@
             <!-- SECTION 3: FINAL ACTIONS -->
             <div class="q-page-footer-actions animate-up" style="animation-delay: 0.5s;">
                 {% if not quotation.customer_signature %}
-                <button type="button" id="btn-sign" class="btn-confirm-up-main js-loading" style="display: none;" onclick="submitSignature()">
+                <button type="button" id="btn-sign" class="btn-confirm-up-main js-loading" style="display: none;"
+                    onclick="submitSignature()">
                     <i class="fas fa-file-signature"></i> Finalize &amp; Confirm Contract
                 </button>
-                <div id="apply-prompt" class="status-waiting-pill" style="background: #f8fafc; color: #64748b; border: 1px dashed #cbd5e1;">
+                <div id="apply-prompt" class="status-waiting-pill"
+                    style="background: #f8fafc; color: #64748b; border: 1px dashed #cbd5e1;">
                     <i class="fas fa-info-circle"></i> Please apply your signature above to finalize
                 </div>
                 {% elif not quotation.caterer_signature %}

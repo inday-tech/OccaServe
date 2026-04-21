@@ -75,16 +75,17 @@
     }
 
     /* ── 4. STAT CARDS — Overview & Payments ── */
-    /* Stats scroll horizontally on mobile */
+    /* Stats stack vertically on mobile */
     .stats-grid-standard,
     .stats-grid-dashboard {
         display: flex !important;
+        flex-direction: column !important;
         flex-wrap: nowrap !important;
-        overflow-x: auto !important;
-        gap: 0.65rem !important;
-        padding: 0.1rem 0 0.85rem !important;
-        scroll-snap-type: x mandatory;
-        -webkit-overflow-scrolling: touch;
+        overflow-x: visible !important;
+        gap: 0.5rem !important;
+        padding: 0 0 0.75rem !important;
+        scroll-snap-type: none;
+        -webkit-overflow-scrolling: auto;
         scrollbar-width: none;
         grid-template-columns: none !important;
     }
@@ -92,26 +93,34 @@
     .stats-grid-dashboard::-webkit-scrollbar { display: none; }
 
     .stat-card-premium {
-        flex: 0 0 145px !important;
-        min-width: 145px !important;
-        max-width: 145px !important;
-        scroll-snap-align: start;
-        padding: 0.9rem !important;
+        flex: none !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        padding: 0.875rem 1rem !important;
         border-radius: 0.875rem !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+        border: 1px solid #f0f2f5 !important;
+        position: relative !important;
         overflow: hidden;
     }
 
     .stat-icon-bg {
-        width: 32px !important;
-        height: 32px !important;
-        font-size: 0.8rem !important;
-        top: 0.75rem !important;
-        right: 0.75rem !important;
+        position: absolute !important;
+        top: 50% !important;
+        right: 1rem !important;
+        transform: translateY(-50%) !important;
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 0.85rem !important;
+        float: none !important;
+        margin: 0 !important;
+        border-radius: 10px !important;
     }
 
     .stat-label-dashboard {
-        font-size: 0.6rem !important;
-        letter-spacing: 0.04em !important;
+        font-size: 0.65rem !important;
+        letter-spacing: 0.05em !important;
     }
 
     .stat-value-dashboard {
@@ -120,7 +129,7 @@
     }
 
     .stat-hint-dashboard {
-        font-size: 0.62rem !important;
+        font-size: 0.65rem !important;
     }
 
     /* ── 5. SECTION TITLES inside cards ── */
@@ -316,5 +325,136 @@
     .booking-card-mobile-list,
     .bookings-mobile-list {
         display: none !important;
+    }
+}
+
+/* ============================================================
+   PHONE-FIRST GLOBAL OVERRIDES — ≤ 480px
+   Applied to ALL customer dashboard pages
+   ============================================================ */
+@media (max-width: 480px) {
+
+    /* ── Main Content: FAB clearance ── */
+    .main-content {
+        padding-bottom: 5rem !important;
+    }
+
+    /* ── Cards: Tighter on phones ── */
+    .c-card-premium {
+        padding: 0.875rem !important;
+        border-radius: 0.875rem !important;
+        margin-bottom: 0.75rem !important;
+    }
+
+    /* ── Page Headers: Compact ── */
+    .page-header h1,
+    .page-header-standard h1,
+    .dashboard-hero h1 {
+        font-size: 1.3rem !important;
+    }
+
+    .page-header p,
+    .page-header-standard p,
+    .dashboard-hero p {
+        font-size: 0.78rem !important;
+    }
+
+    /* ── Section Titles ── */
+    .c-card-premium h3,
+    .activity-title {
+        font-size: 0.95rem !important;
+    }
+
+    /* ── Touch Targets: min 44px ── */
+    .bk-mobile-card,
+    .conv-item-std,
+    .premium-row,
+    .notif-item,
+    .btn-pagination,
+    .review-card a,
+    .notif-tab {
+        min-height: 44px !important;
+    }
+
+    /* ── Stats Grid: Always vertical on phone ── */
+    .stats-grid-standard,
+    .stats-grid-dashboard {
+        flex-direction: column !important;
+        overflow-x: visible !important;
+        overflow: visible !important;
+        scroll-snap-type: none !important;
+    }
+    .stat-card-premium {
+        flex: none !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+
+    /* ── Booking Card Lists: smooth scroll ── */
+    .booking-card-mobile-list,
+    .bookings-mobile-list {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0.5rem !important;
+    }
+
+    /* ── Notifications: Compact ── */
+    .notif-tab {
+        padding: 0.375rem 0.75rem !important;
+        font-size: 0.72rem !important;
+    }
+
+    .notif-item {
+        padding: 0.75rem 0.875rem !important;
+    }
+
+    .notif-title {
+        font-size: 0.8rem !important;
+    }
+
+    .notif-message {
+        font-size: 0.72rem !important;
+    }
+
+    .notif-time {
+        font-size: 0.65rem !important;
+    }
+
+    /* ── Pagination: compact touch ── */
+    .btn-pagination {
+        padding: 0.375rem 0.5rem !important;
+        font-size: 0.7rem !important;
+    }
+
+    .page-num-btn {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 0.72rem !important;
+    }
+
+    /* ── Platform Feedback Modal ── */
+    #platformFeedbackModal > div {
+        width: 96% !important;
+        padding: 1.25rem !important;
+        border-radius: 1rem !important;
+    }
+
+    /* ── Profile: tighter ── */
+    .profile-avatar-section {
+        padding: 1rem !important;
+    }
+
+    /* ── Marketplace: consistent ── */
+    .card-body-premium {
+        padding: 0.75rem !important;
+    }
+
+    .card-title {
+        font-size: 0.95rem !important;
+    }
+
+    .card-description {
+        font-size: 0.75rem !important;
     }
 }

@@ -21,7 +21,7 @@
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/mobile_app.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/customer_mobile.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/customer_mobile.css') }}?v=2.1">
 
     {% if wconfig and wconfig.favicon_url %}
     <link rel="icon" href="{{ wconfig.favicon_url }}">
@@ -57,18 +57,23 @@
         border-radius: 12px;
         width: 44px;
         height: 44px;
-        display: none; /* Hidden on desktop */
+        display: none;
+        /* Hidden on desktop */
         align-items: center;
         justify-content: center;
         font-size: 1.1rem;
         color: #0f172a;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         cursor: pointer;
         transition: background 0.2s;
     }
+
     @media (max-width: 1024px) {
-        .floating-burger { display: flex !important; }
+        .floating-burger {
+            display: flex !important;
+        }
     }
+
     .floating-burger.burger-open {
         background: var(--primary-color, #f97316);
         color: #fff;
@@ -267,57 +272,237 @@
 {% endif %}
 
 <!-- Platform Feedback Modal -->
-<div id="platformFeedbackModal"
-    style="display:none; position:fixed; z-index:9999; inset:0; background:rgba(15,23,42,0.55); backdrop-filter:blur(6px); align-items:center; justify-content:center;">
-    <div
-        style="background:white; border-radius:20px; padding:2rem; width:90%; max-width:480px; box-shadow:0 25px 60px rgba(0,0,0,0.2); position:relative;">
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem;">
+<style>
+    /* Platform Feedback Modal Styles */
+    .feedback-modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: rgba(15, 23, 42, 0.55);
+        backdrop-filter: blur(8px);
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+
+    .feedback-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        width: 100%;
+        max-width: 480px;
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.15);
+        position: relative;
+        animation: feedbackSlideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes feedbackSlideIn {
+        from {
+            opacity: 0;
+            transform: scale(0.9) translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+    }
+
+    .feedback-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+    }
+
+    .feedback-header-title {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .feedback-header-title i {
+        color: var(--primary-color, #FF7B54);
+    }
+
+    .feedback-close {
+        width: 44px;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1.5rem;
+        color: #94a3b8;
+        border-radius: 12px;
+        transition: background 0.2s;
+        margin-right: -0.75rem;
+    }
+
+    .feedback-close:hover {
+        background: #f1f5f9;
+        color: #0f172a;
+    }
+
+    .feedback-label {
+        font-size: 0.82rem;
+        font-weight: 800;
+        color: #475569;
+        display: block;
+        margin-bottom: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+    }
+
+    .star-rating-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .cust-fb-star {
+        font-size: 2.25rem;
+        cursor: pointer;
+        color: #e2e8f0;
+        transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .cust-fb-star.active {
+        color: #f59e0b;
+        transform: scale(1.15);
+    }
+
+    .feedback-textarea {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 1rem;
+        border: 2px solid #f1f5f9;
+        border-radius: 1rem;
+        font-family: inherit;
+        font-size: 0.95rem;
+        color: #334155;
+        resize: none;
+        outline: none;
+        transition: all 0.2s;
+        background: #f8fafc;
+        margin-bottom: 0.5rem;
+    }
+
+    .feedback-textarea:focus {
+        border-color: var(--primary-color, #FF7B54);
+        background: white;
+        box-shadow: 0 4px 12px rgba(255, 123, 84, 0.05);
+    }
+
+    .feedback-footer {
+        display: flex;
+        gap: 12px;
+        margin-top: 2rem;
+    }
+
+    .btn-feedback-snooze {
+        flex: 1;
+        padding: 0.85rem;
+        background: #f1f5f9;
+        color: #475569;
+        border: none;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .btn-feedback-submit {
+        flex: 2;
+        padding: 0.85rem;
+        background: linear-gradient(135deg, #FF7B54, #e85d3a);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: transform 0.2s, opacity 0.2s;
+        box-shadow: 0 4px 12px rgba(255, 123, 84, 0.25);
+    }
+
+    .btn-feedback-submit:active {
+        transform: scale(0.98);
+    }
+
+    @media (max-width: 480px) {
+        .feedback-card {
+            padding: 1.5rem;
+            max-width: calc(100% - 16px);
+        }
+
+        .feedback-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .feedback-footer {
+            flex-direction: column-reverse;
+            gap: 8px;
+        }
+
+        .btn-feedback-submit,
+        .btn-feedback-snooze {
+            width: 100%;
+        }
+    }
+</style>
+
+<!-- Platform Feedback Modal -->
+<div id="platformFeedbackModal" class="feedback-modal-overlay">
+    <div class="feedback-card">
+        <div class="feedback-header">
             <div>
-                <h3 style="margin:0; font-size:1.15rem; font-weight:800; color:#0f172a;"><i class="fas fa-comment-dots"
-                        style="color:#FF7B54; margin-right:8px;"></i>Share Your Experience</h3>
-                <p style="margin:4px 0 0; font-size:0.82rem; color:#64748b;">Tell us about using OccaServe</p>
+                <h3 class="feedback-header-title">
+                    <i class="fas fa-comment-dots"></i>Share Your Experience
+                </h3>
+                <p style="margin:4px 0 0; font-size:0.85rem; color:#64748b; font-weight: 500;">Help us improve OccaServe
+                </p>
             </div>
-            <button type="button" onclick="closeCustomerFeedbackModal()"
-                style="background:none; border:none; cursor:pointer; font-size:1.4rem; color:#94a3b8; line-height:1;">&times;</button>
+            <button type="button" class="feedback-close" onclick="closeCustomerFeedbackModal()">&times;</button>
         </div>
+
         <form method="POST" action="/customer/platform-feedback" id="customerFeedbackForm">
             <input type="hidden" name="rating" id="customerRatingInput" value="5">
+
             <div style="margin-bottom:1.5rem;">
-                <label
-                    style="font-size:0.82rem; font-weight:700; color:#475569; display:block; margin-bottom:0.75rem;">Your
-                    Rating</label>
-                <div style="display:flex; gap:6px; align-items:center;" id="customerStarRow">
-                    <i class="fas fa-star cust-fb-star" data-val="1"
-                        style="font-size:2rem; cursor:pointer; color:#f59e0b; transition:transform 0.1s, color 0.1s;"></i>
-                    <i class="fas fa-star cust-fb-star" data-val="2"
-                        style="font-size:2rem; cursor:pointer; color:#f59e0b; transition:transform 0.1s, color 0.1s;"></i>
-                    <i class="fas fa-star cust-fb-star" data-val="3"
-                        style="font-size:2rem; cursor:pointer; color:#f59e0b; transition:transform 0.1s, color 0.1s;"></i>
-                    <i class="fas fa-star cust-fb-star" data-val="4"
-                        style="font-size:2rem; cursor:pointer; color:#f59e0b; transition:transform 0.1s, color 0.1s;"></i>
-                    <i class="fas fa-star cust-fb-star" data-val="5"
-                        style="font-size:2rem; cursor:pointer; color:#f59e0b; transition:transform 0.1s, color 0.1s;"></i>
+                <label class="feedback-label">Your Rating</label>
+                <div class="star-rating-row" id="customerStarRow">
+                    <i class="fas fa-star cust-fb-star active" data-val="1"></i>
+                    <i class="fas fa-star cust-fb-star active" data-val="2"></i>
+                    <i class="fas fa-star cust-fb-star active" data-val="3"></i>
+                    <i class="fas fa-star cust-fb-star active" data-val="4"></i>
+                    <i class="fas fa-star cust-fb-star active" data-val="5"></i>
                 </div>
-                <p id="customerRatingLabel" style="margin:6px 0 0; font-size:0.78rem; color:#64748b; font-weight:600;">5
+                <p id="customerRatingLabel" style="margin:4px 0 0; font-size:0.8rem; color:#f59e0b; font-weight:700;">5
                     stars — Excellent</p>
             </div>
-            <div style="margin-bottom:1.5rem;">
-                <label
-                    style="font-size:0.82rem; font-weight:700; color:#475569; display:block; margin-bottom:0.5rem;">Your
-                    Feedback <span style="color:#ef4444;">*</span></label>
-                <textarea name="comment" rows="4" required minlength="10"
-                    placeholder="Share your experience with OccaServe..."
-                    style="width:100%; box-sizing:border-box; padding:0.85rem 1rem; border:1.5px solid #e2e8f0; border-radius:12px; font-family:inherit; font-size:0.9rem; color:#334155; resize:none; outline:none; transition:border-color 0.2s;"
-                    onfocus="this.style.borderColor='#FF7B54'" onblur="this.style.borderColor='#e2e8f0'"></textarea>
-                <p style="margin:4px 0 0; font-size:0.75rem; color:#94a3b8;">Minimum 10 characters</p>
+
+            <div style="margin-bottom:1rem;">
+                <label class="feedback-label">Your Feedback <span style="color:#ef4444;">*</span></label>
+                <textarea name="comment" rows="4" required minlength="10" class="feedback-textarea"
+                    placeholder="Tell us what you like or how we can improve..."></textarea>
+                <p style="margin:0; font-size:0.75rem; color:#94a3b8; font-weight: 500;">Minimum 10 characters</p>
             </div>
-            <div style="display:flex; gap:12px; margin-top:0.5rem;">
-                <button type="button" onclick="snoozePlatformFeedback()"
-                    style="flex:1; padding:0.95rem; background:#f1f5f9; color:#475569; border:none; border-radius:12px; font-weight:700; font-size:0.95rem; cursor:pointer; transition:background 0.2s;">
+
+            <div class="feedback-footer">
+                <button type="button" class="btn-feedback-snooze" onclick="snoozePlatformFeedback()">
                     Maybe Later
                 </button>
-                <button type="submit"
-                    style="width:100%; padding:0.95rem; background:linear-gradient(135deg, #FF7B54, #e85d3a); color:white; border:none; border-radius:12px; font-weight:700; font-size:0.95rem; cursor:pointer; transition:opacity 0.2s;">
+                <button type="submit" class="btn-feedback-submit">
                     <i class="fas fa-paper-plane" style="margin-right:6px;"></i>Submit Feedback
                 </button>
             </div>
@@ -334,8 +519,11 @@
     function setCustStars(val) {
         custStars.forEach(s => {
             const sv = parseInt(s.dataset.val);
-            s.style.color = sv <= val ? '#f59e0b' : '#e2e8f0';
-            s.style.transform = sv <= val ? 'scale(1.15)' : 'scale(1)';
+            if (sv <= val) {
+                s.classList.add('active');
+            } else {
+                s.classList.remove('active');
+            }
         });
         custRatingInput.value = val;
         custRatingLabel.textContent = val + ' star' + (val > 1 ? 's' : '') + ' — ' + custRatingLabels[val];
@@ -344,15 +532,30 @@
     custStars.forEach(s => {
         s.addEventListener('click', () => setCustStars(parseInt(s.dataset.val)));
         s.addEventListener('mouseenter', () => {
+            const hoverVal = parseInt(s.dataset.val);
             custStars.forEach(st => {
-                st.style.color = parseInt(st.dataset.val) <= parseInt(s.dataset.val) ? '#fbbf24' : '#e2e8f0';
+                const sv = parseInt(st.dataset.val);
+                if (sv <= hoverVal) {
+                    st.style.color = '#fbbf24';
+                    st.style.transform = 'scale(1.15)';
+                } else {
+                    st.style.color = '#e2e8f0';
+                    st.style.transform = 'scale(1)';
+                }
             });
         });
-        s.addEventListener('mouseleave', () => setCustStars(parseInt(custRatingInput.value)));
+        s.addEventListener('mouseleave', () => {
+            custStars.forEach(st => {
+                st.style.color = ''; // Reset to class color
+                st.style.transform = '';
+            });
+            setCustStars(parseInt(custRatingInput.value));
+        });
     });
 
     function closeCustomerFeedbackModal() {
         document.getElementById('platformFeedbackModal').style.display = 'none';
+        document.body.style.overflow = '';
     }
 
     function snoozePlatformFeedback() {
@@ -376,6 +579,7 @@
                 const modal = document.getElementById('platformFeedbackModal');
                 if (modal && modal.style.display === 'none') {
                     modal.style.display = 'flex';
+                    document.body.style.overflow = 'hidden';
                 }
             }, 20000); // 20 seconds delay
         }

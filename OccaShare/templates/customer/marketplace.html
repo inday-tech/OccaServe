@@ -4,57 +4,223 @@
 {% block title %}Discover Catering Partners - OccaServe{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/marketplace.css') }}?v=1.4">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/marketplace.css') }}?v=1.5">
 <style>
+    /* ============================================
+       MARKETPLACE — MOBILE-FIRST REDESIGN
+       ============================================ */
     @media (max-width: 768px) {
-        /* Stack header + search vertically on mobile */
+
+        /* ── Main content: burger clearance + FAB safe area ── */
+        .main-content {
+            padding: 4rem 0.875rem 5rem !important;
+        }
+
+        /* ── Page Header ── */
         .page-header {
             flex-direction: column !important;
             align-items: stretch !important;
-            gap: 1rem !important;
-            margin-bottom: 1.25rem !important;
-            padding-top: 3.5rem; /* space for floating burger */
+            gap: 0.75rem !important;
+            margin-bottom: 1rem !important;
+            padding-top: 0 !important;
         }
-
-        /* Smaller title on mobile */
         .page-header h1 {
-            font-size: 1.5rem !important;
-            margin-bottom: 0.25rem !important;
+            font-size: 1.4rem !important;
+            margin-bottom: 0.125rem !important;
         }
-
         .page-header p {
-            font-size: 0.88rem !important;
+            font-size: 0.82rem !important;
+            color: #64748b !important;
         }
 
-        /* Search bar: full width, remove fixed width */
+        /* ── Hero Search Bar: Full width ── */
         .header-actions {
             width: 100% !important;
         }
         .search-box-pro {
             width: 100% !important;
             box-sizing: border-box !important;
+            border-radius: 0.75rem !important;
+            height: 48px !important;
+            padding: 0 1rem !important;
+            background: #ffffff !important;
+            border: 1.5px solid #e2e8f0 !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+            transition: border-color 0.2s, box-shadow 0.2s !important;
+        }
+        .search-box-pro:focus-within {
+            border-color: #f97316 !important;
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.08) !important;
         }
 
-        /* Caterer grid: single column on mobile */
+        /* ── Filter Layout: Single Column ── */
+        .mkt-layout-main {
+            grid-template-columns: 1fr !important;
+            gap: 0.75rem !important;
+        }
+        .mkt-sidebar {
+            position: static !important;
+            margin-bottom: 0 !important;
+        }
+
+        /* ── Filter Card: Reduced padding ── */
+        .filter-card-premium {
+            padding: 1rem 1rem 0.75rem !important;
+            border-radius: 0.875rem !important;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03) !important;
+            border: 1px solid #f0f2f5 !important;
+            gap: 0 !important;
+        }
+
+        /* ── Filter Sections: Consistent spacing ── */
+        .filter-card-premium > div[style*="margin-bottom"] {
+            margin-bottom: 0.75rem !important;
+        }
+
+        /* ── Filter Labels ── */
+        .filter-label {
+            font-size: 0.65rem !important;
+            letter-spacing: 0.06em !important;
+            margin-bottom: 0.375rem !important;
+            color: #64748b !important;
+        }
+
+        /* ── ALL Inputs: Uniform styling ── */
+        .input-wrapper-pro input,
+        .input-wrapper-pro select {
+            height: 48px !important;
+            min-height: 44px !important;
+            font-size: 0.88rem !important;
+            border-radius: 0.75rem !important;
+            padding: 0 0.875rem !important;
+            border: 1.5px solid #e2e8f0 !important;
+            background: #f8fafc !important;
+            color: #1e293b !important;
+            box-sizing: border-box !important;
+            transition: border-color 0.2s, box-shadow 0.2s, background 0.2s !important;
+        }
+
+        /* Remove the orange highlight border on Location */
+        .input-wrapper-pro.highlight input {
+            border: 1.5px solid #e2e8f0 !important;
+        }
+
+        /* Focus state: consistent for all */
+        .input-wrapper-pro input:focus,
+        .input-wrapper-pro select:focus,
+        .input-wrapper-pro.highlight input:focus {
+            border-color: #f97316 !important;
+            background: #ffffff !important;
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.08) !important;
+        }
+
+        /* Select dropdown arrow positioning */
+        .input-wrapper-pro select {
+            padding-right: 2.25rem !important;
+            background-position: right 0.875rem center !important;
+        }
+
+        /* ── Caterer Grid ── */
         .mkt-grid-premium {
             grid-template-columns: 1fr !important;
-            gap: 1rem !important;
+            gap: 0.75rem !important;
+            margin-bottom: 2rem !important;
+            margin-top: 0 !important;
         }
 
-        /* Caterer card: compact image on mobile */
+        /* ── Caterer Cards ── */
+        .caterer-card-premium {
+            border-radius: 0.875rem !important;
+            border: 1px solid #f0f2f5 !important;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03) !important;
+        }
         .card-image-wrapper {
-            height: 145px !important;
+            height: 140px !important;
+        }
+        .card-body-premium {
+            padding: 0.875rem !important;
+        }
+        .card-title {
+            font-size: 1rem !important;
+        }
+        .card-description {
+            font-size: 0.8rem !important;
+            margin-bottom: 0.75rem !important;
+            -webkit-line-clamp: 2 !important;
+        }
+        .price-pill .price-val {
+            font-size: 1.15rem !important;
+        }
+        .card-meta-grid {
+            gap: 0.75rem !important;
+            padding-top: 0.75rem !important;
+            margin-bottom: 0.75rem !important;
+        }
+        .meta-item-box {
+            font-size: 0.8rem !important;
+        }
+        .btn-edit-full {
+            padding: 0.65rem !important;
+            font-size: 0.92rem !important;
+            border-radius: 0.625rem !important;
+            min-height: 44px !important;
         }
 
-        /* Main content padding */
-        .main-content {
-            padding: 1rem !important;
-        }
-
-        /* mkt-body-bg: no extra bg bloat */
+        /* ── MKT Body spacing ── */
         .mkt-body-bg .container {
             padding-left: 0 !important;
             padding-right: 0 !important;
+        }
+        .container.py-4 {
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+        }
+
+        /* ── Skeleton compact ── */
+        .skeleton-card {
+            height: 320px !important;
+            border-radius: 0.875rem !important;
+        }
+        .skeleton-banner {
+            height: 140px !important;
+        }
+    }
+
+    /* ── Phone: ≤ 480px refinements ── */
+    @media (max-width: 480px) {
+        .main-content {
+            padding: 3.75rem 0.75rem 5rem !important;
+        }
+        .page-header h1 {
+            font-size: 1.25rem !important;
+        }
+        .page-header p {
+            font-size: 0.78rem !important;
+        }
+        .filter-card-premium {
+            padding: 0.875rem 0.875rem 0.625rem !important;
+        }
+        .input-wrapper-pro input,
+        .input-wrapper-pro select {
+            height: 44px !important;
+            font-size: 0.85rem !important;
+            padding: 0 0.75rem !important;
+        }
+        .input-wrapper-pro select {
+            padding-right: 2rem !important;
+        }
+        .filter-label {
+            font-size: 0.6rem !important;
+            margin-bottom: 0.25rem !important;
+        }
+        .card-image-wrapper {
+            height: 130px !important;
+        }
+        .card-body-premium {
+            padding: 0.75rem !important;
+        }
+        .card-title {
+            font-size: 0.95rem !important;
         }
     }
 </style>
@@ -83,46 +249,8 @@
 <div class="mkt-body-bg">
     <div class="container py-4">
         <div class="mkt-layout-main">
-            <!-- Filter Sidebar -->
-            <aside class="mkt-sidebar">
-                <div class="filter-card-premium">
-                    <div style="margin-bottom: 1.5rem;">
-                        <label class="filter-label">Keyword</label>
-                        <div class="input-wrapper-pro">
-                            <input type="text" id="searchInput" placeholder="Search by name or specialty..." 
-                                value="{{ filters.q }}" oninput="debounceRunFilters()">
-                        </div>
-                    </div>
-
-                    <div style="margin-bottom: 1.5rem;">
-                        <label class="filter-label">Location</label>
-                        <div class="input-wrapper-pro highlight">
-                            <input type="text" id="cityInput" placeholder="Enter city (e.g. Santa Cruz)" 
-                                list="cityList" value="{{ filters.city }}" oninput="debounceRunFilters()">
-                            <datalist id="cityList">
-                                {% for city in cities %}
-                                <option value="{{ city }}">
-                                {% endfor %}
-                            </datalist>
-                        </div>
-                    </div>
-
-                    <div style="margin-bottom: 2rem;">
-                        <label class="filter-label">Event Type</label>
-                        <div class="input-wrapper-pro">
-                            <select id="typeSelect" onchange="runFilters()">
-                                <option value="">All Categories</option>
-                                {% for type in types %}
-                                <option value="{{ type }}" {% if filters.event_type == type %}selected{% endif %}>{{ type }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            </aside>
-
-            <!-- Results Content -->
-            <main class="mkt-content">
+            <!-- Results Content (Full Width) -->
+            <main class="mkt-content" style="grid-column: 1 / -1;">
                 <!-- Skeleton loaders shown during fetch -->
                 <div id="skeletonContainer" class="mkt-grid-premium" style="display: none;">
                     {% for i in range(8) %}
@@ -164,9 +292,9 @@
     }
 
     async function runFilters() {
-        const query = document.getElementById('searchInput').value;
-        const city = document.getElementById('cityInput').value;
-        const type = document.getElementById('typeSelect').value;
+        const query = document.getElementById('searchInput')?.value || '';
+        const city = document.getElementById('cityInput')?.value || '';
+        const type = document.getElementById('typeSelect')?.value || '';
         
         const params = new URLSearchParams();
         if (query) params.append('q', query);

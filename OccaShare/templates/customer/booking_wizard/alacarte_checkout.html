@@ -6,69 +6,55 @@
 <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_details.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_kyc.css') }}">
 <style>
-    /* Premium Consistency Overrides */
+    /* Diamond Standard: Core Checkout Framework */
     :root {
-        --kyc-accent: #f97316;
-        --kyc-accent-soft: rgba(249, 115, 22, 0.1);
-        --kyc-slate-50: #f8fafc;
+        --checkout-primary: #FF6B00;
+        --checkout-primary-hover: #E66000;
+        --checkout-primary-soft: rgba(255, 107, 0, 0.1);
+        --checkout-bg: #f8fafc;
+        --card-shadow: 0 10px 40px rgba(0,0,0,0.04);
+        --border-light: #f1f5f9;
+        --text-slate: #1e293b;
+        --text-muted: #64748b;
         --kyc-slate-200: #e2e8f0;
         --kyc-slate-400: #94a3b8;
         --kyc-slate-700: #1e293b;
-        --checkout-primary: #f97316;
-        --checkout-primary-soft: rgba(249, 115, 22, 0.1);
-        --checkout-success: #10b981;
     }
 
-    /* Fixed Wizard Action Alignment */
-    .checkout-nav-box {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: 1.5rem;
-        padding-top: 1.5rem;
-        border-top: 1px solid #f1f5f9;
-        background: white;
-    }
-
-    .nav-right {
-        margin-left: auto;
-    }
-
-    /* Hide standard package stepper as we use our own mini-stepper */
+    /* Hide standard package stepper - A La Carte uses its own mini-stepper */
     .progress-stepper-premium {
         display: none !important;
     }
 
-    /* Layout */
     .checkout-container {
-        max-width: 900px;
+        max-width: 1100px;
         margin: 1.5rem auto;
         padding: 0 1rem;
     }
 
     .checkout-grid {
         display: grid;
-        grid-template-columns: 1fr 350px;
-        gap: 2rem;
+        grid-template-columns: 1fr 380px;
+        gap: 2.5rem;
         align-items: start;
     }
 
     .checkout-card {
         background: white;
         border-radius: 1.5rem;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--border-light);
         padding: 2.5rem;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+        box-shadow: var(--card-shadow);
         margin-bottom: 2rem;
         position: relative;
     }
 
-    /* 3-Step Mini Stepper (Reference: Diamond Standard) */
+    /* 3-Step Mini Stepper */
     .mini-stepper {
         display: flex;
         justify-content: center;
         align-items: center;
-        gap: 3rem;
+        gap: 2.5rem;
         margin-bottom: 3.5rem;
         padding: 0 1rem;
     }
@@ -78,19 +64,17 @@
         flex-direction: column !important;
         align-items: center !important;
         gap: 0.75rem !important;
-        position: relative !important;
-        opacity: 0.3;
+        opacity: 0.4;
         transition: all 0.4s ease;
         flex: 1;
+        max-width: 120px;
     }
 
-    .mini-step.active, .mini-step.completed {
-        opacity: 1;
-    }
+    .mini-step.active, .mini-step.completed { opacity: 1; }
 
     .ms-icon {
-        width: 48px;
-        height: 48px;
+        width: 44px;
+        height: 44px;
         border-radius: 50%;
         background: white;
         border: 2px solid var(--kyc-slate-200);
@@ -98,17 +82,15 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1rem;
         font-weight: 700;
         transition: all 0.3s ease;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
     }
 
     .mini-step.active .ms-icon {
         background: var(--checkout-primary);
         border-color: var(--checkout-primary);
         color: white;
-        box-shadow: 0 8px 20px rgba(249, 115, 22, 0.25);
+        box-shadow: 0 8px 20px rgba(255, 107, 0, 0.2);
         transform: scale(1.1);
     }
 
@@ -124,156 +106,127 @@
         color: var(--kyc-slate-400);
         text-transform: uppercase;
         letter-spacing: 0.1em;
+        text-align: center;
     }
 
-    .mini-step.active .ms-label {
-        color: var(--checkout-primary);
+    .mini-step.active .ms-label { color: var(--checkout-primary); }
+
+    /* Modern Fulfillment Selector */
+    .fulfillment-selector {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-bottom: 2rem;
     }
 
-    .section-title {
-        font-size: 1.5rem;
-        font-weight: 800;
-        color: var(--kyc-slate-700);
-        margin-bottom: 0.5rem;
+    .fulfillment-opt {
+        background: #ffffff;
+        border: 2px solid #e2e8f0;
+        border-radius: 1rem;
+        padding: 1.25rem 1.5rem;
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-    }
-
-    .section-subtitle {
-        color: var(--kyc-slate-400);
-        font-size: 0.95rem;
-        margin-bottom: 2.5rem;
-    }
-
-    /* Form Overrides */
-    .form-group label {
-        font-weight: 800;
-        font-size: 0.8rem;
-        color: #64748b;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-bottom: 0.75rem;
-    }
-
-    .form-input {
-        height: 3.5rem;
-        border-radius: 1rem;
-        background: var(--kyc-slate-50);
-        border: 1.5px solid var(--kyc-slate-200);
-        font-weight: 600;
-        transition: all 0.2s;
-    }
-
-    .form-input:focus {
-        background: #fff;
-        border-color: var(--checkout-primary);
-        box-shadow: 0 0 0 4px var(--checkout-primary-soft);
-    }
-
-    /* Screen Transitions */
-    .checkout-screen {
-        display: none;
-    }
-
-    .checkout-screen.active {
-        display: block;
-        animation: slideUpFade 0.5s ease-out forwards;
-    }
-
-    @keyframes slideUpFade {
-        from { opacity: 0; transform: translateY(15px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* Sidebar Summary */
-    .calculator-sidebar {
-        position: sticky;
-        top: 2rem;
-    }
-
-    .summary-box {
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 1.5rem;
-        padding: 1.75rem;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.02);
-    }
-
-    .sum-row {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 0.75rem;
-        font-size: 0.85rem;
-        color: #64748b;
-        font-weight: 500;
-    }
-
-    .sum-total {
-        margin-top: 1.5rem;
-        padding-top: 1.5rem;
-        border-top: 1px dashed #e2e8f0;
-        display: flex;
-        justify-content: space-between;
-        font-size: 1.25rem;
-        font-weight: 800;
-        color: var(--kyc-slate-700);
-    }
-
-    .total-price-orange {
-        color: var(--checkout-primary);
-    }
-
-    /* Dynamic Address Transition */
-    #address-section {
-        overflow: hidden;
-        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-        max-height: 500px;
-        opacity: 1;
-        transform: translateY(0);
-        margin-top: 1rem;
-    }
-
-    #address-section.hidden-address {
-        max-height: 0;
-        opacity: 0;
-        transform: translateY(-20px);
-        margin-top: 0;
-        pointer-events: none;
-    }
-
-    .option-card {
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        gap: 1.25rem;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         position: relative;
     }
 
-    .option-card:hover {
-        border-color: var(--checkout-primary) !important;
-        background: var(--checkout-primary-soft);
-        transform: translateY(-2px);
+    .fulfillment-opt:hover { border-color: #cbd5e1; transform: translateY(-2px); }
+    .fulfillment-opt.active {
+        border-color: var(--checkout-primary);
+        background: rgba(255, 107, 0, 0.03);
+        box-shadow: 0 8px 24px rgba(255, 107, 0, 0.08);
     }
 
-    .option-card.selected {
-        border-color: var(--checkout-primary) !important;
-        background: var(--checkout-primary-soft);
-        box-shadow: 0 4px 15px rgba(249, 115, 22, 0.1);
+    .fulfillment-icon {
+        width: 44px; height: 44px;
+        background: #f8fafc; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--text-muted); font-size: 1.2rem; transition: all 0.3s;
     }
 
-    .option-card.selected::after {
-        content: '\f058';
-        font-family: 'Font Awesome 6 Free';
-        font-weight: 900;
-        position: absolute;
-        top: 0.5rem;
-        right: 0.5rem;
-        color: var(--checkout-primary);
-        font-size: 1.1rem;
+    .fulfillment-opt.active .fulfillment-icon { background: var(--checkout-primary); color: #ffffff; }
+    .fulfillment-details { flex: 1; }
+    .fulfillment-name { font-weight: 800; font-size: 0.95rem; color: var(--text-slate); margin-bottom: 0.15rem; }
+    .fulfillment-hint { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
+    .fulfillment-check {
+        width: 24px; height: 24px; border: 2px solid #e2e8f0; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center; color: #ffffff; font-size: 0.7rem; transition: all 0.2s;
+    }
+    .fulfillment-opt.active .fulfillment-check { background: var(--checkout-primary); border-color: var(--checkout-primary); }
+
+    /* Form & Sections */
+    .section-title {
+        font-size: 1.4rem; font-weight: 850; color: var(--text-slate); margin-bottom: 0.5rem;
+        display: flex; align-items: center; gap: 0.75rem;
     }
 
-    @media (max-width: 900px) {
-        .checkout-grid {
-            grid-template-columns: 1fr;
-        }
+    .section-subtitle { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 2.5rem; }
+
+    .form-group label {
+        font-weight: 800; font-size: 0.8rem; color: var(--text-muted);
+        text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; display: block;
+    }
+
+    .form-input {
+        width: 100%; height: 3.5rem; border-radius: 1rem; padding: 0 1.25rem;
+        background: #f8fafc; border: 1.5px solid #e2e8f0; font-weight: 600; transition: all 0.2s;
+    }
+
+    .form-input:focus { border-color: var(--checkout-primary); background: #fff; outline: none; }
+
+    /* Bill Summary Sidebar */
+    .bill-card-premium {
+        background: #ffffff; border: 1px solid #e2e8f0; border-radius: 1.5rem;
+        padding: 2rem; box-shadow: var(--card-shadow); position: sticky; top: 2rem;
+    }
+
+    .bill-title { font-size: 1.1rem; font-weight: 800; color: var(--text-slate); margin-bottom: 1.75rem; }
+    .bill-item-wrap {
+        display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1.5rem;
+        padding-bottom: 1.5rem; border-bottom: 1px dashed var(--border-light);
+    }
+
+    .bill-item-thumb { width: 64px; height: 64px; border-radius: 1rem; overflow: hidden; border: 1px solid #e2e8f0; }
+    .bill-item-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .bill-item-info h4 { font-size: 0.9rem; font-weight: 800; color: var(--text-slate); margin: 0 0 0.25rem; text-transform: uppercase; }
+    .bill-item-info p { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin: 0; }
+
+    .bill-row { display: flex; justify-content: space-between; margin-bottom: 0.85rem; font-size: 0.9rem; font-weight: 600; color: var(--text-muted); }
+    .bill-divider { height: 1px; background: var(--border-light); margin: 1.5rem 0; }
+    .bill-total-impact { text-align: right; margin-bottom: 2rem; }
+    .bill-total-label { font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem; display: block; }
+    .bill-total-value { font-size: 2.25rem; font-weight: 950; color: var(--checkout-primary); letter-spacing: -0.04em; line-height: 1; }
+
+    .btn-secure-checkout {
+        width: 100%; background: var(--text-slate); padding: 1rem; border-radius: 1rem;
+        display: flex; align-items: center; justify-content: center; gap: 0.75rem;
+        color: #ffffff; font-weight: 800; font-size: 0.85rem; text-transform: uppercase; border: none; cursor: pointer;
+    }
+
+    /* KYC Phase Styles */
+    .kyc-stepper-minimal { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 3rem; }
+    .step-node { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; opacity: 0.4; }
+    .step-node.active, .step-node.completed { opacity: 1; }
+    .node-icon { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; }
+    .step-node.active .node-icon { border-color: var(--checkout-primary); color: var(--checkout-primary); }
+    .step-node.completed .node-icon { background: #10b981; border-color: #10b981; color: white; }
+    .node-label { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; color: var(--text-muted); }
+
+    .checkout-nav-box {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9; background: white;
+    }
+
+    .checkout-screen { display: none; }
+    .checkout-screen.active { display: block; animation: slideUpFade 0.5s ease-out forwards; }
+    @keyframes slideUpFade { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+    @media (max-width: 1024px) {
+        .checkout-grid { grid-template-columns: 1fr; }
+        .bill-card-premium { position: static; order: -1; }
+        .mini-stepper { gap: 1rem; }
     }
 </style>
 {% endblock %}
@@ -310,18 +263,24 @@
 
                         <div class="form-group">
                             <label>Fulfillment Method</label>
-                            <div class="option-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem;">
-                                <label class="option-card selected" style="border: 2px solid #e2e8f0; border-radius: 1rem; padding: 1.25rem; display: block; cursor: pointer; text-align: center;">
+                            <div class="fulfillment-selector">
+                                <label class="fulfillment-opt active">
                                     <input type="radio" name="fulfillment" value="delivery" checked onchange="updateFulfillment(this)" style="display: none;">
-                                    <i class="fas fa-bicycle" style="font-size: 1.25rem; color: var(--checkout-primary); margin-bottom: 0.5rem; display: block;"></i>
-                                    <div style="font-weight: 800; font-size: 0.9rem;">Delivery</div>
-                                    <div style="font-size: 0.75rem; color: #94a3b8;">+₱150 Fee</div>
+                                    <div class="fulfillment-icon"><i class="fas fa-bicycle"></i></div>
+                                    <div class="fulfillment-details">
+                                        <div class="fulfillment-name">Delivery</div>
+                                        <div class="fulfillment-hint">+₱150 Fee</div>
+                                    </div>
+                                    <div class="fulfillment-check"><i class="fas fa-check"></i></div>
                                 </label>
-                                <label class="option-card" style="border: 2px solid #e2e8f0; border-radius: 1rem; padding: 1.25rem; display: block; cursor: pointer; text-align: center;">
+                                <label class="fulfillment-opt">
                                     <input type="radio" name="fulfillment" value="pickup" onchange="updateFulfillment(this)" style="display: none;">
-                                    <i class="fas fa-store" style="font-size: 1.25rem; color: var(--checkout-primary); margin-bottom: 0.5rem; display: block;"></i>
-                                    <div style="font-weight: 800; font-size: 0.9rem;">Pickup</div>
-                                    <div style="font-size: 0.75rem; color: #94a3b8;">Self-collect (Free)</div>
+                                    <div class="fulfillment-icon"><i class="fas fa-store"></i></div>
+                                    <div class="fulfillment-details">
+                                        <div class="fulfillment-name">Pickup</div>
+                                        <div class="fulfillment-hint">Self-collect (Free)</div>
+                                    </div>
+                                    <div class="fulfillment-check"><i class="fas fa-check"></i></div>
                                 </label>
                             </div>
                         </div>
@@ -618,40 +577,43 @@
 
         <!-- Sidebar Summary Box -->
         <aside class="calculator-sidebar">
-            <div class="summary-box">
-                <h3 style="font-weight: 800; margin-bottom: 1.5rem; font-size: 1.1rem; color: #1e293b;">Bill Summary</h3>
-                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
-                    <div style="width: 65px; height: 65px; background: #f8fafc; border-radius: 1rem; overflow: hidden; border: 1px solid #e2e8f0;">
-                         <img src="{{ menu_item.image_url if menu_item.image_url else '/static/images/placeholder_dish.jpg' }}" style="width: 100%; height: 100%; object-fit: cover;">
+            <div class="bill-card-premium">
+                <h3 class="bill-title">Bill Summary</h3>
+                
+                <div class="bill-item-wrap">
+                    <div class="bill-item-thumb">
+                         <img src="{{ menu_item.image_url if menu_item.image_url else '/static/images/placeholder_dish.jpg' }}" alt="{{ menu_item.name }}">
                     </div>
-                    <div style="flex: 1;">
-                        <div style="font-weight: 800; font-size: 0.9rem; color: #1e293b; text-transform: uppercase; line-height: 1.2;">{{ menu_item.name }}</div>
-                        <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 600;">₱{{ "{:,.0f}".format(menu_item.price) }} / Tray</div>
+                    <div class="bill-item-info">
+                        <h4>{{ menu_item.name }}</h4>
+                        <p>₱{{ "{:,.0f}".format(menu_item.price) }} / Tray</p>
                     </div>
                 </div>
 
-                <div class="sum-row">
+                <div class="bill-row">
                     <span>Base Total</span>
                     <span id="sum-base-price">₱{{ "{:,.2f}".format(menu_item.price) }}</span>
                 </div>
-                <div class="sum-row">
+                <div class="bill-row">
                     <span>Quantity</span>
                     <span id="sum-qty">x1</span>
                 </div>
-                <div class="sum-row" id="delivery-row">
+                <div class="bill-row" id="delivery-row">
                     <span>Delivery Fee</span>
                     <span id="sum-delivery-fee">₱150.00</span>
                 </div>
 
-                <div class="sum-total">
-                    <span>Grand Total</span>
-                    <span class="total-price-orange" id="sum-grand-total">₱{{ "{:,.2f}".format(menu_item.price + 150) }}</span>
+                <div class="bill-divider"></div>
+
+                <div class="bill-total-impact">
+                    <span class="bill-total-label">Grand Total</span>
+                    <span class="bill-total-value" id="sum-grand-total">₱{{ "{:,.2f}".format(menu_item.price + 150) }}</span>
                 </div>
 
-                <div style="margin-top: 2rem; font-size: 0.7rem; color: #94a3b8; font-weight: 700; display: flex; align-items: center; gap: 0.6rem; background: #f8fafc; padding: 0.75rem 1rem; border-radius: 0.75rem;">
-                    <i class="fas fa-shield-alt" style="color: #64748b;"></i>
-                    <span>OCCASERVE SECURE CHECKOUT</span>
-                </div>
+                <button type="button" class="btn-secure-checkout" onclick="nextScreen(currentScreen + 1)">
+                    <i class="fas fa-shield-alt"></i>
+                    SECURE CHECKOUT
+                </button>
             </div>
         </aside>
     </div>
