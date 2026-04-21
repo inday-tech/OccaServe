@@ -23,6 +23,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
 
     {% block head %}{% endblock %}
+    {% block extra_css %}{% endblock %}
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v=12.1">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}?v=10.0">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/diamond_auth_modals.css') }}?v=11.2">

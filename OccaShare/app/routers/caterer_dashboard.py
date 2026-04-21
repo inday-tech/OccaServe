@@ -2128,7 +2128,19 @@ async def check_customer(
         
     if customer:
         full_name = f"{customer.first_name or ''} {customer.last_name or ''}".strip()
-        return {"exists": True, "name": full_name or customer.email, "email": customer.email, "contact": customer.phone_number}
+        # Explicit check if email matches exactly for "taken" detection
+        email_taken = False
+        if data.email and customer.email and data.email.lower() == customer.email.lower():
+            email_taken = True
+            
+        return {
+            "exists": True, 
+            "is_taken": email_taken,
+            "name": full_name or customer.email, 
+            "email": customer.email, 
+            "contact": customer.phone_number,
+            "message": "Existing customer found." if email_taken else "Similar name found."
+        }
     
     return {"exists": False}
 

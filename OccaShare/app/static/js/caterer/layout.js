@@ -402,6 +402,20 @@ window.ValidationManager = class ValidationManager {
             }
         }
 
+        if (rules.phMobile && value && !error) {
+            const valClean = value.replace(/\D/g, '');
+            if (!/^09\d{9}$/.test(valClean)) {
+                error = 'Mobile number must be 11 digits starting with 09';
+            }
+        }
+
+        if (rules.noRepetitive && value && !error) {
+            const valClean = value.replace(/\D/g, '');
+            if (/(\d)\1{4,}/.test(valClean)) {
+                error = 'Invalid number: Too many repetitive digits.';
+            }
+        }
+
         if (input.name === 'service_duration' && value) {
             if (numericValue < 8 || numericValue > 12) {
                 error = 'Service duration must be between 8 and 12 hours';
