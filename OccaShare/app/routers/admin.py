@@ -24,9 +24,12 @@ logger = logging.getLogger(__name__)
 
 def _send_caterer_welcome_email(email: str, temp_password: str, business_name: str) -> None:
     """Send the caterer account-created email, logging any failure without raising."""
+    print(f"[CATERER EMAIL] Starting to send welcome email to {email}")
     try:
         EmailService.send_caterer_account_created_email(email, temp_password, business_name)
+        print(f"[CATERER EMAIL] Successfully sent welcome email to {email}")
     except Exception as exc:
+        print(f"[CATERER EMAIL] FAILED to send welcome email to {email}: {exc}")
         logger.error(
             "[admin] Failed to send caterer account-created email to %s (%s): %s",
             email, business_name, exc, exc_info=True
