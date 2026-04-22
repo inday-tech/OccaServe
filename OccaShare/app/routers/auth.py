@@ -30,20 +30,19 @@ from ..core.utils import (
 async def scan_document(
     document: UploadFile = File(...),
     doc_type: str = Form("id"), # "id" or "permit"
-    user_name: str = Form(...), # Full Name or Business Name
-    id_type: Optional[str] = Form(None), # e.g. "Passport"
+    user_name: str = Form(...), # Business Name or Full Name
+    owner_name: Optional[str] = Form(None), # Added for Permit owners
+    id_type: Optional[str] = Form(None),
+    reference_doc: Optional[str] = Form(None), # URL of previously uploaded ID for comparison
     db: Session = Depends(database.get_db)
 ):
     """AJAX endpoint for real-time document scanning."""
     try:
         content = await document.read()
-        # Temporary save for OCR
         temp_id = str(uuid.uuid4())
         filename = f"temp_{temp_id}_{document.filename}"
         path = os.path.join(UPLOAD_DIR, filename)
         
-        # We encrypt it for security even in temp storage if VerificationService expects it
-        # Actually, VerificationService._prepare_image expects encrypted files in the verification dir
         encrypted_content = encrypt_data(content)
         with open(path, "wb") as f:
             f.write(encrypted_content)
@@ -51,13 +50,52 @@ async def scan_document(
         doc_url = f"/static/uploads/verification/{filename}"
         
         if doc_type == "permit":
-            result = verification_service.verify_business_permit(doc_url, user_name)
+            result = verification_service.verify_business_permit(
+                doc_url, user_name, owner_name=owner_name or user_name
+            )
+        elif doc_type == "selfie":
+            img = verification_service._prepare_image(doc_url)
+            liveness = verification_service._check_liveness_mediapipe([img])
+            
+            if liveness.get("occlusion_detected"):
+                return {
+                    "status": "rejected",
+                    "failure_reason": f"Face Occluded: {liveness['failure_reason']}",
+                    "occlusion": True
+                }
+
+            # If reference ID provided, compare faces
+            comparison = {"match": True, "confidence": 1.0}
+            if reference_doc:
+                try:
+                    id_img = verification_service._prepare_image(reference_doc)
+                    comparison = verification_service.compare_faces(id_img, img)
+                except Exception as comp_err:
+                    print(f"[KYC DEBUG] Comparison error: {comp_err}")
+
+            if liveness["score"] >= 0.4 and comparison["match"]:
+                result = {
+                    "status": "approved",
+                    "confidence": comparison["confidence"],
+                    "ocr_match": True
+                }
+            else:
+                reason = "Face mismatch or poor quality."
+                if not comparison["match"]:
+                    reason = "Face does not match the provided ID."
+                elif liveness["score"] < 0.4:
+                    reason = "Liveness check failed. Please blink or move slightly."
+                
+                result = {
+                    "status": "rejected",
+                    "failure_reason": reason,
+                    "ocr_match": False
+                }
         else:
             result = verification_service.verify_id_document(doc_url, user_name, "", id_type or "Passport")
+            # Return path to be used as reference
+            result["doc_path"] = doc_url
             
-        # Clean up temp file immediately? 
-        # Actually, let's keep it for a bit or rely on a cleanup script
-        
         return result
     except Exception as e:
         print(f"[AUTH OCR ERROR] {e}")
@@ -110,16 +148,17 @@ async def register(
     payout_method: str = Form(None),
     payout_account_name: Optional[str] = Form(None),
     account_number: Optional[str] = Form(None),
-    event_types: Optional[str] = Form(None),
-    min_pax: int = Form(0),
-    starting_price: float = Form(0.0),
-    city: str = Form(None),
-    # Verification Files & Logo
-    logo: UploadFile = File(None),
-    gov_id: UploadFile = File(None),
-    permit: UploadFile = File(None),
-    id_type: Optional[str] = Form(None), # Added for OCR
-    sample_menu: UploadFile = File(None),
+    event_types: Optional[str] = Form(None), # RESTORED
+    pax_range: Optional[str] = Form(None),
+    city: Optional[str] = Form(None), # RESTORED
+    min_pax: Optional[int] = Form(None),
+    starting_price: Optional[float] = Form(None),
+    sample_menu: Optional[UploadFile] = File(None),
+    logo: Optional[UploadFile] = File(None), # RESTORED
+    permit: Optional[UploadFile] = File(None),
+    gov_id: Optional[UploadFile] = File(None),
+    selfie: Optional[UploadFile] = File(None), # NEW: Added Selfie
+    id_type: Optional[str] = Form(None),
     next_url: Optional[str] = Form(None),
     db: Session = Depends(database.get_db)
 ):
@@ -193,10 +232,10 @@ async def register(
         if years_of_operation < 0 or years_of_operation > 100:
             errors["years_of_operation"] = "Years of operation must be between 0 and 100"
             
-        if min_pax < 1 or min_pax > 10000:
+        if min_pax is None or min_pax < 1 or min_pax > 10000:
             errors["min_pax"] = "Minimum Pax must be between 1 and 10000"
             
-        if starting_price < 0 or starting_price > 10000000:
+        if starting_price is None or starting_price < 0 or starting_price > 10000000:
             errors["starting_price"] = "Starting Price must be between 0 and 10000000"
         # Removed coverage_area requirement per user request
 
@@ -248,7 +287,22 @@ async def register(
         sample_menu_url = ""
         
         if role == "caterer":
-            import uuid
+            # --- ENHANCED SECURITY: Check if registration is from a blocked dummy ---
+            if is_gibberish(full_name) or is_dummy_name(full_name):
+                return templates.TemplateResponse("auth/register_caterer.html", {
+                    "request": request, "error": "Please provide a valid legal name."
+                })
+
+            # Process Selfie Upload
+            selfie_url = None
+            if selfie:
+                content = await selfie.read()
+                filename = f"selfie_{uuid.uuid4().hex}_{selfie.filename}"
+                path = os.path.join(UPLOAD_DIR, filename)
+                with open(path, "wb") as f:
+                    f.write(encrypt_data(content))
+                selfie_url = f"/static/uploads/verification/{filename}"
+
             temp_id = str(uuid.uuid4())
             
             # Ensure upload directory for profiles
@@ -264,21 +318,24 @@ async def register(
                 logo_url = f"/static/uploads/profiles/{file_name}"
 
             if gov_id and gov_id.filename:
+                content = await gov_id.read()
                 file_path = os.path.join(UPLOAD_DIR, f"{temp_id}_gov_id_{gov_id.filename}")
                 with open(file_path, "wb") as buffer:
-                    buffer.write(await gov_id.read())
+                    buffer.write(encrypt_data(content))
                 gov_id_url = f"/static/uploads/verification/{temp_id}_gov_id_{gov_id.filename}"
                 
             if permit and permit.filename:
+                content = await permit.read()
                 file_path = os.path.join(UPLOAD_DIR, f"{temp_id}_permit_{permit.filename}")
                 with open(file_path, "wb") as buffer:
-                    buffer.write(await permit.read())
+                    buffer.write(encrypt_data(content))
                 permit_url = f"/static/uploads/verification/{temp_id}_permit_{permit.filename}"
 
             if sample_menu and sample_menu.filename:
+                content = await sample_menu.read()
                 file_path = os.path.join(UPLOAD_DIR, f"{temp_id}_menu_{sample_menu.filename}")
                 with open(file_path, "wb") as buffer:
-                    buffer.write(await sample_menu.read())
+                    buffer.write(encrypt_data(content))
                 sample_menu_url = f"/static/uploads/verification/{temp_id}_menu_{sample_menu.filename}"
 
         event_list = []
@@ -340,47 +397,55 @@ async def register(
                     
                     # 2. OCR for Permit
                     permit_res = verification_service.verify_business_permit(
-                        permit_url, business_name
+                        permit_url, business_name, owner_name=full_name
                     )
                     
+                    # 3. Face Match (If selfie provided)
+                    face_res = {"status": "skipped"}
+                    if selfie_url:
+                        face_res = verification_service.verify_identity_v2(
+                            gov_id_url, [selfie_url], full_name, "", id_type or "Passport", db, new_user.id
+                        )
+
+                    # --- BLOCKING LOGIC ---
+                    if id_res["status"] != "matched" or permit_res["status"] != "matched":
+                        # If mismatched and blocking is enabled
+                        db.rollback()
+                        error_msg = "Security Check Failed: "
+                        if id_res["status"] != "matched": error_msg += f"ID Validation Error ({id_res.get('failure_reason')}). "
+                        if permit_res["status"] != "matched": error_msg += f"Permit Validation Error ({permit_res.get('failure_reason', 'Owner Name Mismatch')}). "
+                        
+                        return templates.TemplateResponse("auth/register_caterer.html", {
+                            "request": request, 
+                            "error": error_msg,
+                            "user": new_user,
+                            "business_name": business_name
+                        })
+
                     # Store results in ocr_data
                     ocr_payload = {
                         "id_verification": id_res,
                         "permit_verification": permit_res,
+                        "face_verification": face_res,
                         "extracted_at": datetime.now().isoformat()
                     }
                     
                     verification = models.IdentityVerification(
                         user_id=new_user.id,
                         document_url=gov_id_url,
-                        selfie_url=permit_url,
+                        selfie_url=selfie_url or permit_url,
                         ocr_data=ocr_payload,
-                        verification_status="pending" # Default to pending for admin
+                        verification_status="approved" if face_res.get("status") == "approved" else "pending"
                     )
                     
-                    # Determine final status (Fine-tune status based on match)
-                    if id_res["status"] == "matched" and permit_res["status"] == "matched":
-                        verification.verification_status = "pending"
-                    else:
-                        verification.verification_status = "manual_review"
-                        reasons = []
-                        if id_res["status"] != "matched": reasons.append("ID mismatch")
-                        if permit_res["status"] != "matched": reasons.append("Permit mismatch")
-                        verification.failure_reason = "OCR Flags: " + ", ".join(reasons)
-                        
                     db.add(verification)
                 except Exception as ocr_err:
                     print(f"[AUTH OCR ERROR] Registration OCR failed: {ocr_err}")
-                    # Fallback to a basic record so registration doesn't crash
-                    verification = models.IdentityVerification(
-                        user_id=new_user.id,
-                        document_url=gov_id_url,
-                        selfie_url=permit_url,
-                        ocr_data={"error": str(ocr_err)},
-                        verification_status="manual_review",
-                        failure_reason="System error during OCR scan."
-                    )
-                    db.add(verification)
+                    # If system error happens, we might still want to manual review or block
+                    db.rollback()
+                    return templates.TemplateResponse("auth/register_caterer.html", {
+                        "request": request, "error": f"Verification system error: {str(ocr_err)}"
+                    })
 
         db.commit()
         

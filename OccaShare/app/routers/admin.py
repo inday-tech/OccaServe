@@ -4,7 +4,7 @@ from fastapi.requests import Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from ..core.templates import templates
 from sqlalchemy.orm import Session
-import os, secrets, string
+import os, secrets, string, logging
 from ..db import database, models
 from ..core import security as auth
 from ..core.utils import is_dummy_email, is_dummy_name, is_dummy_phone, is_dummy_address
@@ -18,6 +18,22 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 
 # Standard dependency for admin access
 admin_only = auth.RoleChecker(["admin"])
+
+logger = logging.getLogger(__name__)
+
+
+def _send_caterer_welcome_email(email: str, temp_password: str, business_name: str) -> None:
+    """Send the caterer account-created email, logging any failure without raising."""
+    print(f"[CATERER EMAIL] Starting to send welcome email to {email}")
+    try:
+        EmailService.send_caterer_account_created_email(email, temp_password, business_name)
+        print(f"[CATERER EMAIL] Successfully sent welcome email to {email}")
+    except Exception as exc:
+        print(f"[CATERER EMAIL] FAILED to send welcome email to {email}: {exc}")
+        logger.error(
+            "[admin] Failed to send caterer account-created email to %s (%s): %s",
+            email, business_name, exc, exc_info=True
+        )
 
 UPLOAD_DIR_SITE = "app/static/uploads/website"
 os.makedirs(UPLOAD_DIR_SITE, exist_ok=True)
@@ -736,8 +752,8 @@ async def add_caterer(
         db.add(new_profile)
         db.commit()
 
-        # 5. Send Email in Background
-        background_tasks.add_task(EmailService.send_caterer_account_created_email, email, temp_password, business_name)
+        # 5. Send welcome email in background; failures are logged and never block account creation
+        background_tasks.add_task(_send_caterer_welcome_email, email, temp_password, business_name)
 
         return {"success": True, "message": "Caterer account created! The credentials have been sent to their email."}
 

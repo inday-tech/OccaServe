@@ -1,11 +1,18 @@
 import smtplib
+import logging
+import traceback
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from ..core.config import settings
 
+logger = logging.getLogger(__name__)
+
 class EmailService:
     @staticmethod
     def _send_email(to_email: str, subject: str, body: str):
+        logger.info(f"[EMAIL SERVICE] Preparing to send email to {to_email} | subject: '{subject}'")
+        logger.info(f"[EMAIL SERVICE] MAIL_SERVER={settings.MAIL_SERVER}, MAIL_PORT={settings.MAIL_PORT}, MAIL_USERNAME={settings.MAIL_USERNAME}, MAIL_PASSWORD_SET={bool(settings.MAIL_PASSWORD)}")
+        logger.debug(f"[EMAIL SERVICE] Email body:\n{body}")
         try:
             msg = MIMEMultipart()
             msg['From'] = settings.MAIL_FROM
@@ -14,17 +21,20 @@ class EmailService:
 
             msg.attach(MIMEText(body, 'plain'))
 
+            logger.info(f"[EMAIL SERVICE] Connecting to SMTP server {settings.MAIL_SERVER}:{settings.MAIL_PORT}")
             server = smtplib.SMTP(settings.MAIL_SERVER, settings.MAIL_PORT)
             server.starttls()
             clean_password = settings.MAIL_PASSWORD.replace(" ", "").strip() if settings.MAIL_PASSWORD else ""
             server.login(settings.MAIL_USERNAME, clean_password)
+            logger.info(f"[EMAIL SERVICE] Successfully logged in to SMTP as {settings.MAIL_USERNAME}")
             text = msg.as_string()
             server.sendmail(settings.MAIL_FROM, to_email, text)
             server.quit()
-            print(f"[EMAIL SERVICE] Sent to {to_email}")
+            logger.info(f"[EMAIL SERVICE] Email successfully sent to {to_email}")
             return True
         except Exception as e:
-            print(f"[EMAIL SERVICE ERROR] Failed to send email: {e}")
+            logger.error(f"[EMAIL SERVICE ERROR] Failed to send email to {to_email}: {e}")
+            logger.error(f"[EMAIL SERVICE ERROR] Full traceback:\n{traceback.format_exc()}")
             return False
 
     @staticmethod
