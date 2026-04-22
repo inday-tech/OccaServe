@@ -188,7 +188,7 @@
             <h2>Verify Account</h2>
             <p class="auth-subtitle">
                 Enter the 6-digit code sent to<br>
-                <strong id="email-display" style="color: var(--slate-900);">{{ email }}</strong>
+                <strong id="email-display" style="color: var(--slate-900);">{{ email if email else 'tototmalan25@gmail.com' }}</strong>
             </p>
 
             {% if error %}
@@ -203,9 +203,16 @@
                 {% if next_url %}
                 <input type="hidden" name="next_url" value="{{ next_url }}">
                 {% endif %}
-                <div class="form-group">
-                    <input type="text" id="code" name="code" class="minimal-input-large" required placeholder="000000"
-                        maxlength="6" autocomplete="off" inputmode="numeric">
+                <div class="form-group" style="margin: 2rem 0;">
+                    <div class="otp-input-container" style="display: flex; justify-content: center; gap: 0.5rem;">
+                        <input type="text" class="otp-box" maxlength="1" inputmode="numeric" autocomplete="one-time-code" style="width: 3.5rem; height: 4rem; text-align: center; font-size: 1.5rem; font-weight: 700; border: 2px solid var(--slate-200); border-radius: 0.75rem; background: var(--slate-50); color: var(--slate-900); transition: all 0.2s ease; outline: none;">
+                        <input type="text" class="otp-box" maxlength="1" inputmode="numeric" style="width: 3.5rem; height: 4rem; text-align: center; font-size: 1.5rem; font-weight: 700; border: 2px solid var(--slate-200); border-radius: 0.75rem; background: var(--slate-50); color: var(--slate-900); transition: all 0.2s ease; outline: none;">
+                        <input type="text" class="otp-box" maxlength="1" inputmode="numeric" style="width: 3.5rem; height: 4rem; text-align: center; font-size: 1.5rem; font-weight: 700; border: 2px solid var(--slate-200); border-radius: 0.75rem; background: var(--slate-50); color: var(--slate-900); transition: all 0.2s ease; outline: none;">
+                        <input type="text" class="otp-box" maxlength="1" inputmode="numeric" style="width: 3.5rem; height: 4rem; text-align: center; font-size: 1.5rem; font-weight: 700; border: 2px solid var(--slate-200); border-radius: 0.75rem; background: var(--slate-50); color: var(--slate-900); transition: all 0.2s ease; outline: none;">
+                        <input type="text" class="otp-box" maxlength="1" inputmode="numeric" style="width: 3.5rem; height: 4rem; text-align: center; font-size: 1.5rem; font-weight: 700; border: 2px solid var(--slate-200); border-radius: 0.75rem; background: var(--slate-50); color: var(--slate-900); transition: all 0.2s ease; outline: none;">
+                        <input type="text" class="otp-box" maxlength="1" inputmode="numeric" style="width: 3.5rem; height: 4rem; text-align: center; font-size: 1.5rem; font-weight: 700; border: 2px solid var(--slate-200); border-radius: 0.75rem; background: var(--slate-50); color: var(--slate-900); transition: all 0.2s ease; outline: none;">
+                    </div>
+                    <input type="hidden" id="code" name="code" required>
                 </div>
                 <button type="submit" class="btn-primary-action">Verify Now</button>
             </form>
@@ -218,6 +225,50 @@
     </div>
 
     <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const otpBoxes = document.querySelectorAll('.otp-box');
+            const hiddenCode = document.getElementById('code');
+
+            if (otpBoxes.length > 0) {
+                otpBoxes[0].focus();
+
+                otpBoxes.forEach((box, index) => {
+                    box.addEventListener('input', (e) => {
+                        const val = e.target.value;
+                        if (val.length === 1 && index < otpBoxes.length - 1) {
+                            otpBoxes[index + 1].focus();
+                        }
+                        updateHiddenCode();
+                    });
+
+                    box.addEventListener('keydown', (e) => {
+                        if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                            otpBoxes[index - 1].focus();
+                        }
+                    });
+
+                    box.addEventListener('paste', (e) => {
+                        e.preventDefault();
+                        const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+                        if (pastedData) {
+                            pastedData.split('').forEach((char, i) => {
+                                if (otpBoxes[i]) {
+                                    otpBoxes[i].value = char;
+                                    if (i < otpBoxes.length - 1) otpBoxes[i + 1].focus();
+                                }
+                            });
+                            updateHiddenCode();
+                        }
+                    });
+                });
+
+                function updateHiddenCode() {
+                    let code = '';
+                    otpBoxes.forEach(b => code += b.value);
+                    hiddenCode.value = code;
+                }
+            }
+        });
         // Countdown Timer Logic
         let timeLeft = 180; // 3 minutes
         const timerElement = document.getElementById('timer');

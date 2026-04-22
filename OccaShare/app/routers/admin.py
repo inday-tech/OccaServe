@@ -356,6 +356,42 @@ async def update_website_settings(
     db.commit()
     return RedirectResponse(url="/admin/settings?success_msg=Website+settings+updated+successfully", status_code=303)
 
+@router.post("/profile/change-password")
+async def admin_change_password(
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    confirm_password: str = Form(...),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(admin_only)
+):
+    import re
+    if new_password != confirm_password:
+        return {"success": False, "message": "New passwords do not match."}
+    
+    if len(new_password) < 8:
+        return {"success": False, "message": "Password must be at least 8 characters long."}
+        
+    if not re.search(r"[A-Z]", new_password):
+        return {"success": False, "message": "Password must contain at least one uppercase letter."}
+
+    if not re.search(r"[a-z]", new_password):
+        return {"success": False, "message": "Password must contain at least one lowercase letter."}
+
+    if not re.search(r"[0-9]", new_password):
+        return {"success": False, "message": "Password must contain at least one number."}
+
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", new_password):
+        return {"success": False, "message": "Password must contain at least one special character."}
+        
+    if not auth.verify_password(current_password, user.password_hash):
+        return {"success": False, "message": "Current password is incorrect."}
+    
+    # Update password
+    user.password_hash = auth.get_password_hash(new_password)
+    db.commit()
+    
+    return {"success": True, "message": "Password updated successfully."}
+
 # --- Inquiries Management ---
 @router.get("/inquiries", response_class=HTMLResponse)
 async def list_inquiries(

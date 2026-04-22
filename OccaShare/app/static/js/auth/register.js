@@ -340,15 +340,15 @@
         };
     }
 
-    const regForm = document.getElementById('regForm');
+    const regForm = document.getElementById('regForm') || document.querySelector('form[action="/auth/register"]');
     if (regForm) {
         regForm.onsubmit = async function (e) {
             e.preventDefault();
-            const fullNameEl = document.getElementById('full_name');
-            const emailEl = document.getElementById('email');
-            const passEl = document.getElementById('password');
-            const confirmEl = document.getElementById('confirm_password');
-            const mobileEl = document.getElementById('mobile_number');
+            const fullNameEl = regForm.querySelector('input[name="full_name"]');
+            const emailEl = regForm.querySelector('input[name="email"]');
+            const passEl = regForm.querySelector('input[name="password"]');
+            const confirmEl = regForm.querySelector('input[name="confirm_password"]');
+            const mobileEl = regForm.querySelector('input[name="mobile_number"]');
 
             const pass = passEl ? passEl.value : "social_login_auto";
             const confirm = confirmEl ? confirmEl.value : "social_login_auto";
