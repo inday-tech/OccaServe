@@ -5,29 +5,51 @@ import os
 import io
 import difflib
 import numpy as np
-import cv2
-import pytesseract
-import mediapipe as mp
+import traceback
 from typing import List, Dict, Any
 from ..core.encryption import decrypt_data
 from PIL import Image, ImageOps
 from sqlalchemy.orm import Session
-import traceback
 
-# Configure Tesseract Path for Windows
-TESSERACT_PATHS = [
-    r"C:\Program Files\Tesseract-OCR\tesseract.exe",
-    r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
-    os.path.join(os.environ.get("LOCALAPPDATA", ""), r"Programs\Tesseract-OCR\tesseract.exe")
-]
+# Graceful imports for heavy dependencies (may not be available on all cloud platforms)
+try:
+    import cv2
+    CV2_AVAILABLE = True
+except ImportError:
+    print("[KYC WARNING] OpenCV (cv2) not available. KYC verification will be limited.")
+    CV2_AVAILABLE = False
 
-for path in TESSERACT_PATHS:
-    if os.path.exists(path):
-        pytesseract.pytesseract.tesseract_cmd = path
-        print(f"[KYC DEBUG] Tesseract found at: {path}")
-        break
-else:
-    print("[KYC DEBUG] Tesseract NOT found in common paths. OCR may fail.")
+try:
+    import pytesseract
+    PYTESSERACT_AVAILABLE = True
+except ImportError:
+    print("[KYC WARNING] pytesseract not available. OCR verification will be limited.")
+    PYTESSERACT_AVAILABLE = False
+    pytesseract = None
+
+try:
+    import mediapipe as mp
+    MEDIAPIPE_AVAILABLE = True
+except ImportError:
+    print("[KYC WARNING] mediapipe not available. Liveness detection will be limited.")
+    MEDIAPIPE_AVAILABLE = False
+    mp = None
+
+# Configure Tesseract Path for Windows (only if available)
+if PYTESSERACT_AVAILABLE:
+    TESSERACT_PATHS = [
+        r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+        r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+        os.path.join(os.environ.get("LOCALAPPDATA", ""), r"Programs\Tesseract-OCR\tesseract.exe")
+    ]
+
+    for path in TESSERACT_PATHS:
+        if os.path.exists(path):
+            pytesseract.pytesseract.tesseract_cmd = path
+            print(f"[KYC DEBUG] Tesseract found at: {path}")
+            break
+    else:
+        print("[KYC DEBUG] Tesseract NOT found in common Windows paths. Using system default.")
 
 class VerificationService:
     # ID Patterns (Regular Expressions)
@@ -57,52 +79,60 @@ class VerificationService:
     ]
 
     def __init__(self):
+        self.landmarker = None
+        
+        if not MEDIAPIPE_AVAILABLE:
+            print("[KYC DEBUG] MediaPipe not available. Liveness detection disabled.")
+            return
+            
         # MediaPipe Tasks API Setup (Preferred for newer versions like 0.10.x)
-        from mediapipe.tasks import python
-        from mediapipe.tasks.python import vision
-        import urllib.request
-        
-        model_paths = [
-            os.path.join(os.getcwd(), "app/models/face_landmarker.task"),
-            os.path.join(os.getcwd(), "face_landmarker.task"),
-            "/app/app/models/face_landmarker.task" # Docker/Linux fallback
-        ]
-        
-        model_path = None
-        for p in model_paths:
-            if os.path.exists(p):
-                model_path = p
-                print(f"[KYC DEBUG] MediaPipe model found at: {p}")
-                break
+        try:
+            from mediapipe.tasks import python
+            from mediapipe.tasks.python import vision
+            import urllib.request
+            
+            model_paths = [
+                os.path.join(os.getcwd(), "app/models/face_landmarker.task"),
+                os.path.join(os.getcwd(), "face_landmarker.task"),
+                "/app/app/models/face_landmarker.task", # Docker/Linux fallback
+                "/app/OccaShare/face_landmarker.task" # Railway fallback
+            ]
+            
+            model_path = None
+            for p in model_paths:
+                if os.path.exists(p):
+                    model_path = p
+                    print(f"[KYC DEBUG] MediaPipe model found at: {p}")
+                    break
 
-        # Auto-download model if missing
-        if not model_path:
-            try:
-                model_dir = os.path.join(os.getcwd(), "app/models")
-                if not os.path.exists(model_dir):
-                    os.makedirs(model_dir)
-                model_path = os.path.join(model_dir, "face_landmarker.task")
-                print(f"[KYC DEBUG] Downloading MediaPipe model to {model_path}...")
-                model_url = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task"
-                urllib.request.urlretrieve(model_url, model_path)
-                print(f"[KYC DEBUG] Successfully downloaded model.")
-            except Exception as dl_err:
-                print(f"[KYC DEBUG] Failed to download model: {dl_err}")
-                model_path = None
+            # Auto-download model if missing
+            if not model_path:
+                try:
+                    model_dir = os.path.join(os.getcwd(), "app/models")
+                    if not os.path.exists(model_dir):
+                        os.makedirs(model_dir)
+                    model_path = os.path.join(model_dir, "face_landmarker.task")
+                    print(f"[KYC DEBUG] Downloading MediaPipe model to {model_path}...")
+                    model_url = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task"
+                    urllib.request.urlretrieve(model_url, model_path)
+                    print(f"[KYC DEBUG] Successfully downloaded model.")
+                except Exception as dl_err:
+                    print(f"[KYC DEBUG] Failed to download model: {dl_err}")
+                    model_path = None
 
-        if not model_path:
-            print(f"[KYC DEBUG] MediaPipe model not found. Liveness might fail.")
-            self.landmarker = None
-        else:
-            try:
-                base_options = python.BaseOptions(model_asset_path=model_path)
-                options = vision.FaceLandmarkerOptions(
-                    base_options=base_options,
-                    num_faces=1)
-                self.landmarker = vision.FaceLandmarker.create_from_options(options)
-            except Exception as init_err:
-                print(f"[KYC DEBUG] Failed to initialize landmarker: {init_err}")
-                self.landmarker = None
+            if model_path:
+                try:
+                    base_options = python.BaseOptions(model_asset_path=model_path)
+                    options = vision.FaceLandmarkerOptions(
+                        base_options=base_options,
+                        num_faces=1)
+                    self.landmarker = vision.FaceLandmarker.create_from_options(options)
+                except Exception as init_err:
+                    print(f"[KYC DEBUG] Failed to initialize landmarker: {init_err}")
+            else:
+                print(f"[KYC DEBUG] MediaPipe model not found. Liveness might fail.")
+        except Exception as e:
+            print(f"[KYC DEBUG] MediaPipe setup failed: {e}")
 
     def validate_id_pattern(self, id_type: str, id_number: str) -> bool:
         """Checks if the ID number matches the expected pattern for the ID type."""

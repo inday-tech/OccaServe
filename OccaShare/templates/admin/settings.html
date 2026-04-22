@@ -4,6 +4,27 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/admin/settings.css') }}">
+<style>
+    @keyframes shake {
+
+        0%,
+        100% {
+            transform: translateX(0);
+        }
+
+        25% {
+            transform: translateX(-5px);
+        }
+
+        75% {
+            transform: translateX(5px);
+        }
+    }
+
+    .error-shake.active {
+        animation: shake 0.2s ease-in-out 0s 2;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -26,6 +47,9 @@
         </button>
         <button class="settings-tab-btn" onclick="switchTab(event, 'maintenance')">
             <i class="fas fa-screwdriver-wrench"></i> <span>Maintenance</span>
+        </button>
+        <button class="settings-tab-btn" onclick="switchTab(event, 'security')">
+            <i class="fas fa-shield-halved"></i> <span>Security</span>
         </button>
     </aside>
 
@@ -152,11 +176,126 @@
             </div>
         </div>
 
+        <!-- Security Panel -->
+        <div id="security" class="settings-panel">
+            <div class="panel-header">
+                <h2>Security & Account</h2>
+                <p>Manage your administrative access and credentials.</p>
+            </div>
+            <div class="dm-standard-card" style="padding: 2rem; display: block !important;">
+                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+                    <div
+                        style="width: 50px; height: 50px; border-radius: 12px; background: #fff7ed; color: #FF6B00; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    <div>
+                        <h4 style="margin: 0; font-weight: 800; color: var(--dm-navy);">Account Password</h4>
+                        <p style="margin: 0; font-size: 0.85rem; color: var(--dm-muted);">Protect your admin account by
+                            regularly updating your password.</p>
+                    </div>
+                </div>
+                <button type="button" onclick="openPasswordModal()"
+                    style="background: #ffffff; border: 1.5px solid #e2e8f0; color: var(--dm-navy); padding: 0.75rem 1.5rem; border-radius: 12px; font-weight: 800; font-size: 0.9rem; display: flex; align-items: center; gap: 0.75rem; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+                    <div
+                        style="width: 32px; height: 32px; border-radius: 8px; background: #fff7ed; color: #FF6B00; display: flex; align-items: center; justify-content: center; font-size: 0.85rem;">
+                        <i class="fas fa-key"></i>
+                    </div>
+                    Change Admin Password
+                </button>
+            </div>
+        </div>
+
         <div class="settings-footer">
             <button type="reset" class="btn-outline">Reset Changes</button>
             <button type="submit" class="btn-premium-save shadow-orange">Save Configurations</button>
         </div>
     </form>
+</div>
+
+<!-- Admin Password Change Modal -->
+<div id="passwordModal" class="admin-modal-overlay">
+    <div class="admin-modal-card" style="max-width: 450px;">
+        <div class="modal-header-pro">
+            <h3><i class="fas fa-key" style="color: #FF6B00; margin-right: 0.5rem;"></i> Update Admin Password</h3>
+            <button type="button" class="modal-close-btn" onclick="closePasswordModal()">&times;</button>
+        </div>
+
+        <form id="changePasswordForm" onsubmit="handlePasswordChange(event)" style="padding: 2rem;">
+            <!-- Global Error -->
+            <div id="passwordFormError" class="error-shake"
+                style="display: none; background: #fff1f2; color: #e11d48; padding: 1rem 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; font-size: 0.85rem; font-weight: 700; border: 1.5px solid #ffe4e6; align-items: center; gap: 0.75rem; box-shadow: 0 4px 12px rgba(225, 29, 72, 0.08);">
+                <div
+                    style="width: 24px; height: 24px; border-radius: 50%; background: #fb7185; color: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.75rem;">
+                    <i class="fas fa-exclamation"></i>
+                </div>
+                <span id="passwordFormErrorText"></span>
+            </div>
+
+            <div class="settings-group">
+                <label class="settings-label">Current Password</label>
+                <div style="position: relative;">
+                    <input type="password" name="current_password" class="settings-control" required
+                        placeholder="Enter current password" style="padding-right: 3rem;">
+                    <button type="button" class="toggle-password" onclick="togglePass(this)"
+                        style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--dm-muted); cursor: pointer;">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <label class="settings-label">New Password</label>
+                <div style="position: relative; margin-bottom: 0.75rem;">
+                    <input type="password" name="new_password" id="new_password" class="settings-control" required
+                        placeholder="Min. 8 characters" onkeyup="checkPasswordStrength(this.value)"
+                        style="padding-right: 3rem;">
+                    <button type="button" class="toggle-password" onclick="togglePass(this)"
+                        style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--dm-muted); cursor: pointer;">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+
+                <!-- Validation Checklist -->
+                <div class="password-check-grid"
+                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; background: #f8fafc; padding: 0.75rem; border-radius: 10px; border: 1px solid #f1f5f9; margin-bottom: 0.5rem;">
+                    <div class="check-item" id="check-length"
+                        style="font-size: 0.7rem; font-weight: 700; color: var(--dm-muted); display: flex; align-items: center; gap: 0.4rem;">
+                        <i class="fas fa-circle-dot" style="font-size: 0.5rem;"></i> 8+ Characters
+                    </div>
+                    <div class="check-item" id="check-upper"
+                        style="font-size: 0.7rem; font-weight: 700; color: var(--dm-muted); display: flex; align-items: center; gap: 0.4rem;">
+                        <i class="fas fa-circle-dot" style="font-size: 0.5rem;"></i> Uppercase
+                    </div>
+                    <div class="check-item" id="check-lower"
+                        style="font-size: 0.7rem; font-weight: 700; color: var(--dm-muted); display: flex; align-items: center; gap: 0.4rem;">
+                        <i class="fas fa-circle-dot" style="font-size: 0.5rem;"></i> Lowercase
+                    </div>
+                    <div class="check-item" id="check-number"
+                        style="font-size: 0.7rem; font-weight: 700; color: var(--dm-muted); display: flex; align-items: center; gap: 0.4rem;">
+                        <i class="fas fa-circle-dot" style="font-size: 0.5rem;"></i> Number
+                    </div>
+                    <div class="check-item" id="check-symbol"
+                        style="font-size: 0.7rem; font-weight: 700; color: var(--dm-muted); display: flex; align-items: center; gap: 0.4rem;">
+                        <i class="fas fa-circle-dot" style="font-size: 0.5rem;"></i> Symbol
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-group" style="margin-bottom: 2rem;">
+                <label class="settings-label">Confirm New Password</label>
+                <input type="password" name="confirm_password" id="confirm_password" class="settings-control" required
+                    placeholder="Retype new password">
+            </div>
+
+            <div style="display: flex; gap: 1rem;">
+                <button type="button" onclick="closePasswordModal()"
+                    style="flex: 1; height: 50px; border-radius: 12px; font-weight: 800; color: var(--dm-muted); background: #f1f5f9; border: none; cursor: pointer; transition: all 0.2s;">Cancel</button>
+                <button type="submit" id="submitPasswordBtn" class="btn-premium-save shadow-orange"
+                    style="flex: 2; height: 50px; margin: 0; font-weight: 800; font-size: 0.95rem;">Save New
+                    Password</button>
+            </div>
+        </form>
+    </div>
 </div>
 {% endblock %}
 
@@ -196,6 +335,110 @@
         }
     }
 
+    /* --- Password Modal Logic --- */
+    function openPasswordModal() {
+        const modal = document.getElementById('passwordModal');
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closePasswordModal() {
+        const modal = document.getElementById('passwordModal');
+        modal.classList.remove('active');
+        document.body.style.overflow = 'auto';
+        document.getElementById('changePasswordForm').reset();
+        document.getElementById('passwordFormError').style.display = 'none';
+
+        // Reset checkmarks
+        document.querySelectorAll('.check-item').forEach(item => {
+            item.style.color = 'var(--dm-muted)';
+            item.querySelector('i').className = 'fas fa-circle-dot';
+        });
+    }
+
+    function togglePass(btn) {
+        const input = btn.parentElement.querySelector('input');
+        const icon = btn.querySelector('i');
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.className = 'fas fa-eye-slash';
+        } else {
+            input.type = 'password';
+            icon.className = 'fas fa-eye';
+        }
+    }
+
+    function checkPasswordStrength(val) {
+        const checks = {
+            length: val.length >= 8,
+            upper: /[A-Z]/.test(val),
+            lower: /[a-z]/.test(val),
+            number: /[0-9]/.test(val),
+            symbol: /[!@#$%^&*(),.?":{}|<>]/.test(val)
+        };
+
+        for (const [key, met] of Object.entries(checks)) {
+            const item = document.getElementById(`check-${key}`);
+            const icon = item.querySelector('i');
+            if (met) {
+                item.style.color = '#10b981';
+                icon.className = 'fas fa-check-circle';
+            } else {
+                item.style.color = 'var(--dm-muted)';
+                icon.className = 'fas fa-circle-dot';
+            }
+        }
+    }
+
+    async function handlePasswordChange(event) {
+        event.preventDefault();
+        const form = event.target;
+        const newPass = document.getElementById('new_password').value;
+        const confPass = document.getElementById('confirm_password').value;
+        const errorContainer = document.getElementById('passwordFormError');
+        const errorText = document.getElementById('passwordFormErrorText');
+        const submitBtn = document.getElementById('submitPasswordBtn');
+
+        function showError(msg) {
+            errorText.innerText = msg;
+            errorContainer.style.display = 'flex';
+            errorContainer.classList.remove('active');
+            void errorContainer.offsetWidth; // Trigger reflow
+            errorContainer.classList.add('active');
+        }
+
+        if (newPass !== confPass) {
+            showError('New passwords do not match.');
+            return;
+        }
+
+        errorContainer.style.display = 'none';
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+        try {
+            const formData = new FormData(form);
+            const response = await fetch('/admin/profile/change-password', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                window.showSuccess('Password updated successfully!');
+                closePasswordModal();
+            } else {
+                showError(result.message || 'Failed to update password.');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showError('An error occurred. Please try again.');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Save New Password';
+        }
+    }
 </script>
 </script>
 {% endblock %}

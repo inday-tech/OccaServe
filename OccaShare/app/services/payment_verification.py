@@ -1,8 +1,6 @@
 import os
 import hashlib
 import re
-import cv2
-import pytesseract
 import numpy as np
 from PIL import Image, ImageOps
 import io
@@ -10,8 +8,28 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from ..db import models
 
+# Graceful imports for heavy dependencies
+try:
+    import cv2
+    CV2_AVAILABLE = True
+except ImportError:
+    print("[PaymentVerify WARNING] OpenCV not available.")
+    CV2_AVAILABLE = False
+    cv2 = None
+
+try:
+    import pytesseract
+    PYTESSERACT_AVAILABLE = True
+except ImportError:
+    print("[PaymentVerify WARNING] pytesseract not available.")
+    PYTESSERACT_AVAILABLE = False
+    pytesseract = None
+
 class PaymentVerificationService:
     def __init__(self):
+        if not PYTESSERACT_AVAILABLE:
+            print("[PaymentVerify] pytesseract not available. Payment OCR disabled.")
+            return
         # Configure Tesseract Path (following verification.py patterns)
         TESSERACT_PATHS = [
             r"C:\Program Files\Tesseract-OCR\tesseract.exe",
