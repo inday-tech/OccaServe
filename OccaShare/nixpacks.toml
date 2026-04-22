@@ -27,6 +27,6 @@ cmds = [
     ".venv/bin/pip install opencv-python-headless==4.10.0.84"
 ]
 
-[phases.deploy]
+[phases.start]
 # Using gunicorn with uvicorn workers for production stability
-run = "PYTHONPATH=. .venv/bin/gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 600 --workers 2"
+cmd = "PYTHONPATH=. .venv/bin/gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 600 --workers 2"
