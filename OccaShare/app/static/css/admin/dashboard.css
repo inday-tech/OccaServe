@@ -26,10 +26,7 @@ body {
     background-color: var(--adm-bg) !important;
 }
 
-.main-content {
-    max-width: 1200px;
-    margin: 0 auto;
-}
+
 
 /* Header Section Override */
 .page-header {

@@ -407,16 +407,18 @@
    SIDEBAR OVERLAY
    ============================= */
     .sidebar-overlay {
-        display: none;
+        visibility: hidden;
         position: fixed;
         inset: 0;
         background: rgba(15, 23, 42, 0.5);
         z-index: 1001;
-        animation: fadeIn 0.2s ease;
+        opacity: 0;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
     }
 
     .sidebar-overlay.active {
-        display: block;
+        visibility: visible;
+        opacity: 1;
     }
 
     @keyframes fadeIn {
@@ -470,7 +472,8 @@
         scrollbar-width: thin;
         scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-            width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+            box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     /* Mini Sidebar State (Desktop) */
@@ -767,6 +770,10 @@
    RESPONSIVE
    ============================= */
     @media (max-width: 1024px) {
+        .sidebar-toggle-row {
+            display: none !important;
+        }
+
         .sidebar {
             width: 80px;
             padding: var(--space-lg) var(--space-sm);
@@ -841,7 +848,7 @@
             position: fixed;
             top: 1.25rem;
             left: 1.25rem;
-            z-index: 1005;
+            z-index: 2005;
             background: white;
             border: 1px solid var(--border-color, #e2e8f0);
             width: 44px;
@@ -863,10 +870,24 @@
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
         }
 
+        .floating-burger i {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
         .floating-burger.burger-open {
-            background: var(--primary-color);
-            color: white;
-            border-color: var(--primary-color);
+            left: calc(280px - 1.25rem - 44px);
+            background: transparent;
+            color: var(--secondary-color);
+            border-color: transparent;
+            box-shadow: none;
+        }
+
+        .floating-burger.burger-open i::before {
+            content: "\f00d" !important;
+        }
+
+        .floating-burger.burger-open i {
+            transform: rotate(90deg);
         }
 
         .mobile-header {

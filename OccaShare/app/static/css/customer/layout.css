@@ -96,17 +96,17 @@ body {
 
 /* Sidebar Overlay (Mobile Only) */
 .sidebar-overlay {
-    display: none;
+    visibility: hidden;
     position: fixed;
     inset: 0;
     background: rgba(15, 23, 42, 0.3);
     z-index: 990;
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
 .sidebar-overlay.active {
-    display: block;
+    visibility: visible;
     opacity: 1;
 }
 
@@ -250,7 +250,7 @@ body {
     padding: 1rem 1.5rem 1.5rem;
     z-index: 1001;
     overflow-y: auto;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
 }
@@ -585,7 +585,7 @@ html.sidebar-is-mini .sidebar-menu a span {
     position: fixed;
     top: 1.25rem;
     left: 1.25rem;
-    z-index: 1005;
+    z-index: 2005;
     background: white;
     border: 1px solid var(--border-color, #e2e8f0);
     width: 44px;
@@ -606,6 +606,33 @@ html.sidebar-is-mini .sidebar-menu a span {
     color: var(--primary-orange);
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.floating-burger i {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.floating-burger.burger-open {
+    left: calc(285px - 1.25rem - 44px);
+    background: transparent !important;
+    color: var(--secondary-slate) !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+
+@media (max-width: 640px) {
+    .floating-burger.burger-open {
+        /* Sidebar is 300px max on mobile */
+        left: calc(min(100vw, 300px) - 1.25rem - 44px);
+    }
+}
+
+.floating-burger.burger-open i::before {
+    content: "\f00d" !important;
+}
+
+.floating-burger.burger-open i {
+    transform: rotate(90deg);
 }
 
 /* Hide floating burger when sidebar is active on desktop */

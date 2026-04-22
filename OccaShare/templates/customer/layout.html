@@ -15,10 +15,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/layout.css') }}?v=3.5">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/layout.css') }}?v=3.7">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/shared/dashboard_premium.css') }}?v=1.0">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/alert_modal.css') }}?v=1.4">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v=1.1">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/mobile_app.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/customer_mobile.css') }}?v=2.1">
@@ -46,40 +46,6 @@
 <button class="floating-burger" onclick="toggleSidebar()" aria-label="Toggle Menu">
     <i class="fas fa-bars"></i>
 </button>
-<style>
-    .floating-burger {
-        position: fixed;
-        top: 1rem;
-        left: 1rem;
-        z-index: 1100;
-        background: #fff;
-        border: none;
-        border-radius: 12px;
-        width: 44px;
-        height: 44px;
-        display: none;
-        /* Hidden on desktop */
-        align-items: center;
-        justify-content: center;
-        font-size: 1.1rem;
-        color: #0f172a;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        cursor: pointer;
-        transition: background 0.2s;
-    }
-
-    @media (max-width: 1024px) {
-        .floating-burger {
-            display: flex !important;
-        }
-    }
-
-    .floating-burger.burger-open {
-        background: var(--primary-color, #f97316);
-        color: #fff;
-    }
-</style>
-
 
 
 <!-- Sidebar Toggle Logic -->
@@ -102,6 +68,7 @@
             if (isMobile) {
                 sidebar.classList.toggle('active');
                 if (overlay) overlay.classList.toggle('active');
+                if (burgerBtn) burgerBtn.classList.toggle('burger-open');
                 document.body.style.overflow = sidebar.classList.contains('active') ? '' : 'hidden';
             } else {
                 const isMiniNow = document.documentElement.classList.toggle('sidebar-is-mini');

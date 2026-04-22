@@ -20,8 +20,7 @@
 /* Page Setup & Burger Clearance */
 @media (max-width: 991px) {
     .page-header {
-        padding-top: 4.5rem;
-        /* Additional clearance for mobile burger */
+        /* Removed extra clearance to fix massive gap on mobile */
     }
 }
 
@@ -100,7 +99,7 @@
 /* --- Stats Grid --- */
 .caterer-stats-grid {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(4, 1fr);
     gap: 1.25rem;
     margin-bottom: 3rem;
 }

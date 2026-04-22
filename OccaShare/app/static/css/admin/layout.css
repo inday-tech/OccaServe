@@ -285,18 +285,18 @@ label {
 
 /* Update overlay for drawer feel */
 .sidebar-overlay {
-    display: none;
+    visibility: hidden;
     position: fixed;
     inset: 0;
     background: rgba(15, 23, 42, 0.4);
     backdrop-filter: blur(2px);
     z-index: 1049;
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
 .sidebar-overlay.active {
-    display: block;
+    visibility: visible;
     opacity: 1;
 }
 
@@ -372,7 +372,8 @@ label {
     overflow-y: auto;
     overflow-x: hidden;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-        width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sidebar-header {
@@ -553,6 +554,7 @@ label {
     font-size: 2.2rem !important;
     font-weight: 800 !important;
     color: #0f172a !important;
+    margin-top: 0 !important;
     margin-bottom: 0.6rem !important;
     letter-spacing: -0.015em !important;
 }
@@ -1024,6 +1026,26 @@ line-height: 1.5;
         background: #f8fafc;
     }
 
+    .mobile-burger-btn i {
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Transform Burger to X and slide inside sidebar */
+    .mobile-burger-btn.is-open {
+        left: calc(280px - 1.25rem - 48px);
+        background: transparent;
+        border-color: transparent;
+        box-shadow: none;
+    }
+
+    .mobile-burger-btn.is-open i::before {
+        content: "\f00d"; /* FontAwesome X icon */
+    }
+
+    .mobile-burger-btn.is-open i {
+        transform: rotate(90deg);
+    }
+
     .sidebar {
         transform: translateX(-100%);
         box-shadow: none;
@@ -1066,11 +1088,12 @@ line-height: 1.5;
         width: 100% !important;
         padding: 1rem !important;
         /* Adjust for floating button */
-        padding-top: 5rem !important;
+        padding-top: 4.25rem !important;
     }
 
     .page-header h1 {
         font-size: 1.5rem !important;
+        margin-top: 0 !important;
         margin-bottom: 0.4rem !important;
     }
 

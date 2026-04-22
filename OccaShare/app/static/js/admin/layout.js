@@ -90,6 +90,7 @@
         if (!sidebar) return;
         sidebar.classList.add('sidebar-open');
         if (overlay) overlay.classList.add('active');
+        if (burgerBtn) burgerBtn.classList.add('is-open');
         if (topbar) topbar.classList.add('burger-open');
         document.body.style.overflow = 'hidden'; 
     };
@@ -99,6 +100,7 @@
         if (window.innerWidth > 768) return;
         sidebar.classList.remove('sidebar-open');
         if (overlay) overlay.classList.remove('active');
+        if (burgerBtn) burgerBtn.classList.remove('is-open');
         if (topbar) topbar.classList.remove('burger-open');
         document.body.style.overflow = '';
     };
@@ -109,6 +111,7 @@
             const wrapper = document.querySelector('.dashboard-wrapper');
             if (wrapper) {
                 wrapper.classList.toggle('sidebar-icons-only');
+                document.documentElement.classList.toggle('sidebar-icons-only');
                 const isCollapsed = wrapper.classList.contains('sidebar-icons-only');
                 localStorage.setItem('adminSidebarCollapsed', isCollapsed ? 'true' : 'false');
                 window.dispatchEvent(new Event('resize'));
