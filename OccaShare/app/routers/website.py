@@ -36,15 +36,16 @@ async def read_root(request: Request, db: Session = Depends(database.get_db)):
         highlighted_reviews = db.query(models.Review).filter(models.Review.rating >= 4).order_by(models.Review.created_at.desc()).limit(3).all()
     
     # Stats for the "Trust Counter" section
-    total_caterers = db.query(models.CatererProfile).count()
-    total_packages = db.query(models.CateringPackage).filter(models.CateringPackage.status == 'active').count()
-    total_reviews = db.query(models.Review).count()
+    total_caterers = db.query(models.CatererProfile).filter(models.CatererProfile.is_verified == True).count()
+    # Count actual events that are paid or completed
+    total_events = db.query(models.Booking).filter(models.Booking.status.in_(['paid', 'completed'])).count()
+    # Count unique happy hosts (customers)
+    total_hosts = db.query(models.User).filter(models.User.role == 'customer', models.User.status == 'active').count()
     
-    # Ensuring we have some "impressive" minimums for the design if DB is empty
     stats = {
-        "caterers": max(total_caterers, 24),
-        "events": max(total_reviews * 3, 120),
-        "hosts": max(total_reviews, 85)
+        "caterers": total_caterers,
+        "events": total_events,
+        "hosts": total_hosts
     }
 
     return templates.TemplateResponse("index.html", {

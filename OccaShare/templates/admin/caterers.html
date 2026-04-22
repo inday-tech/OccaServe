@@ -46,8 +46,36 @@
         box-shadow: 0 0 0 4px rgba(255, 107, 0, 0.1);
     }
 
-    .dm-input-group input:focus+i {
+    .dm-input-group input:focus+i,
+    .dm-input-group select:focus+i {
         color: var(--dm-orange);
+    }
+
+    .dm-input-group select {
+        width: 100%;
+        padding: 0.9rem 1.25rem 0.9rem 3rem;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 14px;
+        font-size: 0.95rem;
+        font-weight: 500;
+        transition: all 0.3s;
+        appearance: none;
+        background: white;
+        cursor: pointer;
+    }
+
+    .dm-input-group select:focus {
+        outline: none;
+        border-color: var(--dm-orange);
+        box-shadow: 0 0 0 4px rgba(255, 107, 0, 0.1);
+    }
+
+    .dm-input-group .select-arrow {
+        position: absolute;
+        right: 1.25rem;
+        top: 1.1rem;
+        color: #94a3b8;
+        pointer-events: none;
     }
 </style>
 {% endblock %}
@@ -292,13 +320,35 @@
                 </div>
                 <div>
                     <label>Contact Phone</label>
-                    <div class="dm-input-group"><i class="fas fa-phone"></i><input type="text" name="phone"
-                            id="phoneInput" placeholder="09xxxxxxxxx" required maxlength="11"></div>
+                    <div class="dm-input-group">
+                        <i class="fas fa-phone"></i>
+                        <input type="tel" name="phone" id="phoneInput" placeholder="09xxxxxxxxx" 
+                               pattern="09[0-9]{9}" title="Phone must be 11 digits starting with 09" required>
+                    </div>
                 </div>
                 <div style="grid-column: span 2;">
-                    <label>Service Area/City</label>
-                    <div class="dm-input-group"><i class="fas fa-map-marker-alt"></i><input type="text" name="city"
-                            id="cityInput" placeholder="e.g. Biñan, Laguna" required></div>
+                    <label>Service Area/City (Sta Cruz Area Only)</label>
+                    <div class="dm-input-group">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <select name="city" id="cityInput" required>
+                            <option value="" disabled selected>Select Area in Santa Cruz...</option>
+                            <option value="Santa Cruz - Poblacion">Poblacion (I, II, III, IV, V)</option>
+                            <option value="Santa Cruz - Bagumbayan">Bagumbayan</option>
+                            <option value="Santa Cruz - Bubukal">Bubukal</option>
+                            <option value="Santa Cruz - Calios">Calios</option>
+                            <option value="Santa Cruz - Duhat">Duhat</option>
+                            <option value="Santa Cruz - Gatid">Gatid</option>
+                            <option value="Santa Cruz - Labuin">Labuin</option>
+                            <option value="Santa Cruz - Pagsawitan">Pagsawitan</option>
+                            <option value="Santa Cruz - Patimbao">Patimbao</option>
+                            <option value="Santa Cruz - San Jose">San Jose</option>
+                            <option value="Santa Cruz - San Juan">San Juan</option>
+                            <option value="Santa Cruz - San Pablo">San Pablo (Norte/Sur)</option>
+                            <option value="Santa Cruz - Santisima Cruz">Santisima Cruz</option>
+                            <option value="Santa Cruz - Sto. Angel">Santo Angel (Norte/Central/Sur)</option>
+                        </select>
+                        <i class="fas fa-chevron-down select-arrow"></i>
+                    </div>
                 </div>
             </div>
             <div
@@ -345,13 +395,34 @@
                 </div>
                 <div>
                     <label>Phone</label>
-                    <div class="dm-input-group"><i class="fas fa-phone"></i><input type="text" name="phone"
-                            id="editPhoneInput" required maxlength="11"></div>
+                    <div class="dm-input-group">
+                        <i class="fas fa-phone"></i>
+                        <input type="tel" name="phone" id="editPhoneInput" 
+                               pattern="09[0-9]{9}" title="Phone must be 11 digits starting with 09" required>
+                    </div>
                 </div>
                 <div style="grid-column: span 2;">
-                    <label>Location</label>
-                    <div class="dm-input-group"><i class="fas fa-map-marker-alt"></i><input type="text" name="city"
-                            id="editCityInput" required></div>
+                    <label>Location (Sta Cruz Area)</label>
+                    <div class="dm-input-group">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <select name="city" id="editCityInput" required>
+                            <option value="Santa Cruz - Poblacion">Poblacion (I, II, III, IV, V)</option>
+                            <option value="Santa Cruz - Bagumbayan">Bagumbayan</option>
+                            <option value="Santa Cruz - Bubukal">Bubukal</option>
+                            <option value="Santa Cruz - Calios">Calios</option>
+                            <option value="Santa Cruz - Duhat">Duhat</option>
+                            <option value="Santa Cruz - Gatid">Gatid</option>
+                            <option value="Santa Cruz - Labuin">Labuin</option>
+                            <option value="Santa Cruz - Pagsawitan">Pagsawitan</option>
+                            <option value="Santa Cruz - Patimbao">Patimbao</option>
+                            <option value="Santa Cruz - San Jose">San Jose</option>
+                            <option value="Santa Cruz - San Juan">San Juan</option>
+                            <option value="Santa Cruz - San Pablo">San Pablo (Norte/Sur)</option>
+                            <option value="Santa Cruz - Santisima Cruz">Santisima Cruz</option>
+                            <option value="Santa Cruz - Sto. Angel">Santo Angel (Norte/Central/Sur)</option>
+                        </select>
+                        <i class="fas fa-chevron-down select-arrow"></i>
+                    </div>
                 </div>
             </div>
             <div
@@ -446,10 +517,114 @@
         document.getElementById('editFullNameInput').value = btn.dataset.first + " " + btn.dataset.last;
         document.getElementById('editEmailInput').value = btn.dataset.email;
         document.getElementById('editPhoneInput').value = btn.dataset.phone;
-        document.getElementById('editCityInput').value = btn.dataset.city;
+        
+        // Match dropdown value
+        const citySelect = document.getElementById('editCityInput');
+        const cityValue = btn.dataset.city;
+        let matched = false;
+        for (let option of citySelect.options) {
+            if (option.value === cityValue) {
+                citySelect.value = cityValue;
+                matched = true;
+                break;
+            }
+        }
+        if (!matched) {
+            // If not in dropdown, add it temporarily or set to first
+            console.warn("City not in dropdown:", cityValue);
+        }
+
         document.getElementById('editCatererModal').classList.add('active');
         document.body.style.overflow = 'hidden';
     }
+
+    // ─── Form Submissions ────────────────────────────────────────────────
+    document.getElementById('addCatererForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerText;
+
+        // Custom Validation
+        const fullName = formData.get('full_name').trim();
+        if (fullName.split(' ').length < 2) {
+            Swal.fire('Error', 'Please enter your full name (First and Last Name).', 'error');
+            return;
+        }
+
+        submitBtn.innerText = "Creating...";
+        submitBtn.disabled = true;
+
+        try {
+            const response = await fetch('/admin/caterers/add', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                if (window.showToast) {
+                    window.showToast('Caterer onboarded successfully!', 'success');
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    Swal.fire('Success', 'Caterer onboarded successfully!', 'success')
+                        .then(() => window.location.reload());
+                }
+            } else {
+                let msg = result.message || 'Failed to add caterer';
+                if (result.errors) {
+                    msg += '<br><br><div style="text-align:left; font-size: 0.85rem; color: #ef4444;">' + 
+                           Object.values(result.errors).map(e => '• ' + e).join('<br>') + '</div>';
+                }
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Onboarding Failed',
+                    html: msg
+                });
+            }
+        } catch (error) {
+            Swal.fire('Error', 'An unexpected error occurred.', 'error');
+        } finally {
+            submitBtn.innerText = originalText;
+            submitBtn.disabled = false;
+        }
+    });
+
+    document.getElementById('editCatererForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        const id = document.getElementById('editCatererId').value;
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerText;
+
+        submitBtn.innerText = "Saving...";
+        submitBtn.disabled = true;
+
+        try {
+            const response = await fetch(`/admin/api/caterers/${id}/edit`, {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                if (window.showToast) {
+                    window.showToast('Caterer record updated.', 'success');
+                    setTimeout(() => window.location.reload(), 1200);
+                } else {
+                    Swal.fire('Updated', 'Caterer record has been updated.', 'success')
+                        .then(() => window.location.reload());
+                }
+            } else {
+                Swal.fire('Error', result.message || 'Failed to update record', 'error');
+            }
+        } catch (error) {
+            Swal.fire('Error', 'An unexpected error occurred.', 'error');
+        } finally {
+            submitBtn.innerText = originalText;
+            submitBtn.disabled = false;
+        }
+    });
 
     window.addEventListener('load', initPagination);
 </script>
