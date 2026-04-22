@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 
-function openPasswordModal() {
+window.openPasswordModal = function() {
     const modal = document.getElementById('passwordModal');
     if (modal) {
         modal.style.display = 'flex';
@@ -80,7 +80,7 @@ function openPasswordModal() {
     document.body.style.overflow = 'hidden';
 }
 
-function closePasswordModal() {
+window.closePasswordModal = function() {
     const modal = document.getElementById('passwordModal');
     if (modal) {
         modal.classList.remove('active');
@@ -230,7 +230,7 @@ function closePasswordModal() {
 
     async function extractColors(file) {
         magicBtn.classList.add('processing');
-        magicBtn.innerHTML = '<i class="fas fa-spinner"></i> Analyzing...';
+        magicBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
 
         try {
             let bitmap;

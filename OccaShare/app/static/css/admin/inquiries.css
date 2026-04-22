@@ -214,8 +214,15 @@
 }
 
 @keyframes modalIn {
-    from { opacity: 0; transform: scale(0.95) translateY(10px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
 }
 
 .modal-header {
@@ -314,12 +321,12 @@
         align-items: flex-start;
         gap: 1.25rem;
     }
-    
+
     .header-controls-pro {
         width: 100%;
         flex-wrap: wrap;
     }
-    
+
     .search-box-pro {
         width: 100%;
     }

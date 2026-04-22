@@ -3,270 +3,215 @@
 {% block title %}Manage Caterers - Admin Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/caterers.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/caterers.css') }}?v=1.5">
 <style>
-    /* Field Validation Styles & Modal Refinement */
-    .admin-modal-card {
-        max-width: 580px !important;
-    }
-
-    .modal-header-pro {
-        padding: 1.5rem 2rem 1rem !important;
-    }
-
-    .admin-form-pro {
-        padding: 1.5rem 2rem !important;
-    }
-
-    .form-grid-pro {
-        gap: 0.85rem !important;
-    }
-
-    .form-group-pro {
-        margin-bottom: 0.75rem !important;
-        position: relative;
-    }
-
-    .field-error-msg {
-        color: #ef4444;
-        font-size: 0.7rem;
-        font-weight: 500;
-        margin-top: 0.2rem;
-        min-height: 12px;
-        transition: all 0.2s ease;
-        opacity: 0;
-        transform: translateY(-3px);
-    }
-
-    .field-error-msg.active {
-        opacity: 1;
-        transform: translateY(0);
-    }
-
-    .input-wrapper.error input {
-        border-color: #ef4444 !important;
-        background-color: #fef2f2 !important;
-    }
-
-    .input-wrapper.error i {
-        color: #ef4444 !important;
-    }
-
-    .input-wrapper.success input {
-        border-color: #10b981 !important;
-    }
-
-    .input-wrapper.success i {
-        color: #10b981 !important;
-    }
-
+    /* Final refinement for form inputs to match Diamond Auth style */
     .admin-form-pro label {
         display: block;
-        margin-bottom: 0.25rem !important;
-        font-weight: 700;
-        color: #475569;
-        font-size: 0.75rem !important;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    .form-group-pro input {
-        padding: 0.7rem 1rem 0.7rem 2.5rem !important;
-        font-size: 0.9rem !important;
-    }
-
-
-
-    .view-detail-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        padding: 0.6rem 0;
-        border-bottom: 1px solid #f1f5f9;
-        font-size: 0.875rem;
-    }
-    .view-detail-row:last-child { border-bottom: none; }
-    .view-detail-label { font-weight: 600; color: #64748b; min-width: 140px; }
-    .view-detail-value { color: #1e293b; text-align: right; flex: 1; }
-    .view-section-title {
-        font-size: 0.7rem;
+        margin-bottom: 0.5rem;
         font-weight: 800;
-        color: var(--primary-color);
+        color: #475569;
+        font-size: 0.7rem;
         text-transform: uppercase;
-        letter-spacing: 0.06em;
-        margin: 1rem 0 0.25rem;
-        padding-bottom: 0.25rem;
-        border-bottom: 1px solid #f1f5f9;
+        letter-spacing: 0.08em;
+    }
+
+    .dm-input-group {
+        position: relative;
+        margin-bottom: 1.25rem;
+    }
+
+    .dm-input-group i {
+        position: absolute;
+        left: 1.25rem;
+        top: 1.1rem;
+        color: #94a3b8;
+        font-size: 0.9rem;
+        transition: color 0.3s;
+    }
+
+    .dm-input-group input {
+        width: 100%;
+        padding: 0.9rem 1.25rem 0.9rem 3rem;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 14px;
+        font-size: 0.95rem;
+        font-weight: 500;
+        transition: all 0.3s;
+    }
+
+    .dm-input-group input:focus {
+        outline: none;
+        border-color: var(--dm-orange);
+        box-shadow: 0 0 0 4px rgba(255, 107, 0, 0.1);
+    }
+
+    .dm-input-group input:focus+i {
+        color: var(--dm-orange);
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="page-header"
-    style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem;">
-    <div>
+<div class="page-header">
+    <div class="header-main">
         <h1>Manage Caterers</h1>
-        <p>Review caterer profiles, manage verification statuses, and monitor member activity.</p>
+        <p>Review caterer profiles, manage verification status, and monitor member activity.</p>
     </div>
     <button class="btn-add-caterer-trigger" onclick="openAddCatererModal()">
         <i class="fas fa-plus-circle"></i> Add New Caterer
     </button>
 </div>
 
-<!-- Caterer Stats Cards -->
+<!-- Caterer Stats Grid (Uniform Diamond Pattern) -->
 <div class="caterer-stats-grid">
-    <div class="caterer-stat-card">
-        <div class="stat-icon-container total">
-            <i class="fas fa-store"></i>
-        </div>
+    <div class="dm-standard-card" style="display: flex; align-items: center; gap: 1.25rem;">
+        <div class="stat-icon-badge total"><i class="fas fa-store"></i></div>
         <div class="stat-info-group">
-            <div class="stat-info-label">Total Listings</div>
-            <div class="stat-info-value">{{ metrics.total_caterers }}</div>
+            <span class="label">Total Listings</span>
+            <div class="value">{{ metrics.total_caterers }}</div>
         </div>
     </div>
-    <div class="caterer-stat-card">
-        <div class="stat-icon-container pending">
-            <i class="fas fa-clock"></i>
-        </div>
+    <div class="dm-standard-card" style="display: flex; align-items: center; gap: 1.25rem;">
+        <div class="stat-icon-badge pending"><i class="fas fa-clock"></i></div>
         <div class="stat-info-group">
-            <div class="stat-info-label">Pending Review</div>
-            <div class="stat-info-value">{{ metrics.pending_caterers_count }}</div>
+            <span class="label">Pending Review</span>
+            <div class="value">{{ metrics.pending_caterers_count }}</div>
         </div>
     </div>
-    <div class="caterer-stat-card">
-        <div class="stat-icon-container approved">
-            <i class="fas fa-check-circle"></i>
-        </div>
+    <div class="dm-standard-card" style="display: flex; align-items: center; gap: 1.25rem;">
+        <div class="stat-icon-badge approved"><i class="fas fa-check-circle"></i></div>
         <div class="stat-info-group">
-            <div class="stat-info-label">Verified Partners</div>
-            <div class="stat-info-value">{{ metrics.approved_caterers_count }}</div>
+            <span class="label">Verified Partners</span>
+            <div class="value">{{ metrics.approved_caterers_count }}</div>
         </div>
     </div>
-    <div class="caterer-stat-card">
-        <div class="stat-icon-container rejected">
-            <i class="fas fa-times-circle"></i>
-        </div>
+    <div class="dm-standard-card" style="display: flex; align-items: center; gap: 1.25rem;">
+        <div class="stat-icon-badge rejected"><i class="fas fa-times-circle"></i></div>
         <div class="stat-info-group">
-            <div class="stat-info-label">Rejected</div>
-            <div class="stat-info-value">{{ metrics.rejected_caterers_count }}</div>
+            <span class="label">Rejected</span>
+            <div class="value">{{ metrics.rejected_caterers_count }}</div>
         </div>
     </div>
 </div>
 
-<div class="caterer-management-wrapper">
-    <div class="management-header-flex">
-        <h3 class="management-title"><i class="fas fa-store"></i> Application Management</h3>
-        <div class="search-box-pro">
-            <i class="fas fa-search"></i>
+<div class="dm-standard-card" style="padding: 1.75rem;">
+    <div class="management-header">
+        <h3 class="management-title">
+            <div class="title-icon"><i class="fas fa-briefcase"></i></div>
+            Application Management
+        </h3>
+        <div class="search-box-diamond">
+            <i class="fas fa-search" style="color: #94a3b8;"></i>
             <input type="text" id="catererSearchInput" placeholder="Search businesses, owners, or emails..."
                 onkeyup="filterCaterers()">
         </div>
     </div>
 
     {% if caterers %}
-    <div style="overflow-x: auto; margin: 0 -1rem; padding: 0 1rem;">
+    <div class="admin-table-container">
         <table class="caterers-list-table" id="caterersTable">
             <thead>
                 <tr>
-                    <th>Business Name</th>
-                    <th>Owner Information</th>
+                    <th style="padding-left: 0;">Business Name</th>
+                    <th>Owner Info</th>
                     <th>Service Area</th>
                     <th>Status</th>
-                    <th style="text-align: right;">Actions</th>
+                    <th style="text-align: right; padding-right: 0;">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for caterer in caterers %}
                 <tr class="caterer-row">
                     <td>
-                        <div class="business-identity-cell">{{ caterer.business_name }}</div>
-                        <div class="registration-date-text">Joined {{ caterer.created_at.strftime('%b %d, %Y') if
-                            caterer.created_at else 'TBD' }}</div>
+                        <div style="font-weight: 800; color: var(--dm-navy); font-size: 1rem; margin-bottom: 0.15rem;">
+                            {{ caterer.business_name }}</div>
+                        <div style="font-size: 0.75rem; color: var(--dm-muted); font-weight: 500;">Joined {{
+                            caterer.created_at.strftime('%b %d, %Y') if caterer.created_at else 'TBD' }}</div>
                     </td>
                     <td>
-                        <div class="owner-name-text">{{ caterer.user.first_name }} {{ caterer.user.last_name }}</div>
-                        <div class="owner-email-text">{{ caterer.user.email }}</div>
-                    </td>
-                    <td><span style="font-size: 0.9rem; font-weight: 500; color: var(--secondary-color);">{{
-                            caterer.city }}</span></td>
-                    <td>
-                        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                            {% if caterer.verification_status == 'Verified' %}
-                            <span class="status-badge-fancy approved">
-                                <i class="fas fa-check-circle"></i> Verified
-                            </span>
-                            {% elif caterer.verification_status == 'Pending' %}
-                            <span class="status-badge-fancy pending">
-                                <i class="fas fa-clock"></i> Pending
-                            </span>
-                            {% elif caterer.verification_status == 'Rejected' %}
-                            <span class="status-badge-fancy rejected">
-                                <i class="fas fa-times-circle"></i> Rejected
-                            </span>
-                            {% else %}
-                            <span class="status-badge-fancy default">
-                                <i class="fas fa-question-circle"></i> {{ caterer.verification_status }}
-                            </span>
-                            {% endif %}
-                        </div>
+                        <div style="font-weight: 700; color: var(--dm-navy); font-size: 0.9rem;">{{
+                            caterer.user.first_name }} {{ caterer.user.last_name }}</div>
+                        <div style="font-size: 0.8rem; color: var(--dm-muted); font-weight: 400;">{{ caterer.user.email
+                            }}</div>
                     </td>
                     <td>
-                        <div class="actions-cell-flex">
-                            <div class="actions-dropdown">
-                                <button class="dropdown-trigger" title="More Actions">
-                                    <i class="fas fa-ellipsis-v"></i>
-                                </button>
-                                <div class="dropdown-menu">
-                                    <!-- View Action -->
-                                    <button type="button" class="dropdown-item"
-                                         data-id="{{ caterer.id }}"
-                                         data-business="{{ caterer.business_name | e }}"
-                                         data-owner="{{ caterer.user.first_name }} {{ caterer.user.last_name }}"
-                                         data-email="{{ caterer.user.email }}"
-                                         data-phone="{{ caterer.user.phone_number if caterer.user.phone_number else 'N/A' }}"
-                                         data-city="{{ caterer.city if caterer.city else 'N/A' }}"
-                                         data-status="{{ caterer.verification_status }}"
-                                         data-userstatus="{{ caterer.user.status }}"
-                                         data-verified="{{ 'Yes' if caterer.is_verified else 'No' }}"
-                                         data-joined="{{ caterer.created_at.strftime('%b %d, %Y') if caterer.created_at else 'N/A' }}"
-                                         data-minpax="{{ caterer.min_pax if caterer.min_pax else 'N/A' }}"
-                                         data-startprice="{{ '%.2f'|format(caterer.starting_price) if caterer.starting_price else 'N/A' }}"
-                                         onclick="openViewCatererModal(this)">
-                                        <i class="fas fa-eye"></i> View Details
-                                    </button>
+                        <span style="font-size: 0.9rem; font-weight: 600; color: var(--dm-navy);"><i
+                                class="fas fa-map-marker-alt"
+                                style="margin-right: 0.4rem; font-size: 0.8rem; color: var(--dm-muted);"></i>{{
+                            caterer.city }}</span>
+                    </td>
+                    <td>
+                        <span
+                            style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.8rem; border-radius: 10px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; background: {% if caterer.verification_status == 'Verified' %}#f0fdf4; color: #10b981;{% elif caterer.verification_status == 'Pending' %}#fff7ed; color: #f97316;{% elif caterer.verification_status == 'Rejected' %}#fef2f2; color: #ef4444;{% else %}#f8fafc; color: #64748b;{% endif %}">
+                            <i
+                                class="fas {% if caterer.verification_status == 'Verified' %}fa-check-circle{% elif caterer.verification_status == 'Pending' %}fa-clock{% else %}fa-times-circle{% endif %}"></i>
+                            {{ caterer.verification_status }}
+                        </span>
+                    </td>
+                    <td style="text-align: right; padding-right: 0;">
+                        <!-- Desktop Actions (Dropdown) -->
+                        <div class="actions-dropdown">
+                            <button class="dropdown-trigger"
+                                style="width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid #e2e8f0; background: white; color: #64748b; cursor: pointer; display: flex; align-items: center; justify-content: center;"><i
+                                    class="fas fa-ellipsis-v"></i></button>
+                            <div class="dropdown-menu">
+                                <button type="button" class="dropdown-item" data-id="{{ caterer.id }}"
+                                    data-business="{{ caterer.business_name | e }}"
+                                    data-owner="{{ caterer.user.first_name }} {{ caterer.user.last_name }}"
+                                    data-email="{{ caterer.user.email }}"
+                                    data-phone="{{ caterer.user.phone_number if caterer.user.phone_number else 'N/A' }}"
+                                    data-city="{{ caterer.city if caterer.city else 'N/A' }}"
+                                    data-status="{{ caterer.verification_status }}"
+                                    data-joined="{{ caterer.created_at.strftime('%b %d, %Y') if caterer.created_at else 'N/A' }}"
+                                    data-startprice="{{ '%.2f'|format(caterer.starting_price) if caterer.starting_price else 'N/A' }}"
+                                    onclick="openViewCatererModal(this)"><i class="fas fa-eye"></i> View
+                                    Profile</button>
 
-                                    <!-- Review Documents Action (Pending only) -->
-                                    {% if caterer.verification_status == 'Pending' %}
-                                    <a href="/admin/verify/{{ caterer.user.id }}" class="dropdown-item" style="color: var(--primary-color);">
-                                        <i class="fas fa-file-contract"></i> Review Documents
-                                    </a>
-                                    {% endif %}
+                                {% if caterer.verification_status == 'Pending' %}
+                                <a href="/admin/verify/{{ caterer.user.id }}" class="dropdown-item"
+                                    style="color: var(--dm-orange);"><i class="fas fa-file-contract"></i> Review
+                                    Verifications</a>
+                                {% endif %}
 
-                                    <!-- Edit Action -->
-                                    <button type="button" class="dropdown-item"
-                                        data-id="{{ caterer.id }}"
-                                        data-business="{{ caterer.business_name }}"
-                                        data-first="{{ caterer.user.first_name }}"
-                                        data-last="{{ caterer.user.last_name }}"
-                                        data-email="{{ caterer.user.email }}"
-                                        data-phone="{{ caterer.user.phone_number }}"
-                                        data-city="{{ caterer.city }}"
-                                        onclick="openEditCatererModal(this)">
-                                        <i class="fas fa-edit"></i> Edit Account
-                                    </button>
-
-                                    <div class="dropdown-divider"></div>
-
-                                    <!-- Archive Action -->
-                                    <form action="/admin/caterers/{{ caterer.id }}/archive?success_msg=Caterer+archived+successfully" method="POST"
-                                        style="display: block;"
-                                        onsubmit="event.preventDefault(); window.showConfirm('Are you sure you want to archive this caterer? They will no longer appear in the marketplace but their data will be preserved.', () => this.submit(), 'Confirm Archive', 'Yes, Archive');">
-                                        <button type="submit" class="dropdown-item archive-item">
-                                            <i class="fas fa-archive"></i> Archive Caterer
-                                        </button>
-                                    </form>
-                                </div>
+                                <button type="button" class="dropdown-item" data-id="{{ caterer.id }}"
+                                    data-business="{{ caterer.business_name }}"
+                                    data-first="{{ caterer.user.first_name }}" data-last="{{ caterer.user.last_name }}"
+                                    data-email="{{ caterer.user.email }}" data-phone="{{ caterer.user.phone_number }}"
+                                    data-city="{{ caterer.city }}" onclick="openEditCatererModal(this)"><i
+                                        class="fas fa-user-edit"></i> Update Account</button>
+                                <div class="dropdown-divider"></div>
+                                <form action="/admin/caterers/{{ caterer.id }}/archive" method="POST"
+                                    onsubmit="event.preventDefault(); window.showConfirm('Archive this caterer? They will be hidden from the marketplace but their data remains.', () => this.submit(), 'Confirm Archive', 'Archive');">
+                                    <button type="submit" class="dropdown-item" style="color: #ef4444;"><i
+                                            class="fas fa-archive"></i> Archive Caterer</button>
+                                </form>
                             </div>
+                        </div>
+
+                        <!-- Mobile Actions (Badge Row) -->
+                        <div class="actions-cell-mobile">
+                            <button type="button" class="mobile-action-btn" onclick="openViewCatererModal(this)"
+                                data-business="{{ caterer.business_name | e }}"
+                                data-owner="{{ caterer.user.first_name }} {{ caterer.user.last_name }}"
+                                data-email="{{ caterer.user.email }}"
+                                data-phone="{{ caterer.user.phone_number if caterer.user.phone_number else 'N/A' }}"
+                                data-city="{{ caterer.city if caterer.city else 'N/A' }}"
+                                data-status="{{ caterer.verification_status }}"
+                                data-joined="{{ caterer.created_at.strftime('%b %d, %Y') if caterer.created_at else 'N/A' }}"
+                                data-startprice="{{ '%.2f'|format(caterer.starting_price) if caterer.starting_price else 'N/A' }}"><i
+                                    class="fas fa-eye"></i> View</button>
+
+                            {% if caterer.verification_status == 'Pending' %}
+                            <a href="/admin/verify/{{ caterer.user.id }}" class="mobile-action-btn primary"><i
+                                    class="fas fa-file-contract"></i> Review</a>
+                            {% endif %}
+
+                            <button type="button" class="mobile-action-btn" onclick="openEditCatererModal(this)"
+                                data-id="{{ caterer.id }}" data-business="{{ caterer.business_name }}"
+                                data-first="{{ caterer.user.first_name }}" data-last="{{ caterer.user.last_name }}"
+                                data-email="{{ caterer.user.email }}" data-phone="{{ caterer.user.phone_number }}"
+                                data-city="{{ caterer.city }}"><i class="fas fa-edit"></i> Edit</button>
                         </div>
                     </td>
                 </tr>
@@ -275,185 +220,143 @@
         </table>
     </div>
 
-    <!-- Pagination -->
-    <div class="pagination-box" id="paginationBox">
-        <div class="pagination-info" id="paginationInfo">
-            Showing 1 to 10 of {{ caterers|length }} entries
-        </div>
-        <div class="pagination-controls" id="paginationControls"></div>
+    <!-- Detailed Pagination -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9;"
+        id="paginationBox">
+        <div style="font-size: 0.85rem; color: var(--dm-muted); font-weight: 500;" id="paginationInfo">Showing 1 to 5 of
+            {{ caterers|length }} entries</div>
+        <div style="display: flex; gap: 0.5rem;" id="paginationControls"></div>
     </div>
     {% else %}
-    <div style="text-align: center; padding: 5rem 2rem;">
+    <div style="text-align: center; padding: 5rem 2.5rem;">
         <div
-            style="width: 80px; height: 80px; background: #f8fafc; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
-            <i class="fas fa-store-slash" style="color: #cbd5e1; font-size: 2.5rem;"></i>
-        </div>
-        <h3 style="color: var(--secondary-color); font-weight: 700; margin-bottom: 0.5rem;">No Caterers Found</h3>
-        <p style="color: #64748b; font-size: 0.95rem;">There are currently no caterer applications to display.</p>
+            style="width: 72px; height: 72px; background: #f8fafc; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem;">
+            <i class="fas fa-store-slash" style="color: #cbd5e1; font-size: 2rem;"></i></div>
+        <h3 style="color: var(--dm-navy); font-weight: 800; margin-bottom: 0.5rem;">No Onboarded Caterers</h3>
+        <p style="color: var(--dm-muted); font-size: 0.9rem;">Start growing your marketplace by adding your first
+            caterer partner.</p>
     </div>
     {% endif %}
 </div>
 
-<!-- View Caterer Modal -->
+<!-- Modal Overlays (Restored and Higher-Fidelity) -->
 <div id="viewCatererModal" class="admin-modal-overlay">
-    <div class="admin-modal-card" style="max-width: 500px;">
-        <div class="modal-header-pro">
-            <div class="header-content">
-                <h3><i class="fas fa-store" style="color: var(--primary-color);"></i> Caterer Details</h3>
-            </div>
-            <button class="modal-close-btn" onclick="closeViewCatererModal()">&times;</button>
+    <div class="admin-modal-card">
+        <div
+            style="padding: 1.75rem 2rem; border-bottom: 1.5px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+            <h3
+                style="margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--dm-navy); display: flex; align-items: center; gap: 0.75rem;">
+                <i class="fas fa-address-card" style="color: var(--dm-orange);"></i> Caterer Profile</h3>
+            <button onclick="closeViewCatererModal()"
+                style="background: none; border: none; font-size: 1.5rem; color: #94a3b8; cursor: pointer;">&times;</button>
         </div>
-        <div class="admin-form-pro">
-            <div id="viewCatererBody" style="padding: 0.25rem 0;"></div>
-            <div style="margin-top:1.5rem; display:flex; justify-content:flex-end;">
-                <button type="button" onclick="closeViewCatererModal()"
-                    style="background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; padding:0.7rem 1.5rem; border-radius:0.75rem; font-weight:600; cursor:pointer;">
-                    Close
-                </button>
-            </div>
+        <div style="padding: 2rem;" id="viewCatererBody"></div>
+        <div
+            style="padding: 1.5rem 2rem; background: #f8fafc; border-top: 1.5px solid #f1f5f9; display: flex; justify-content: flex-end;">
+            <button onclick="closeViewCatererModal()"
+                style="background: #e2e8f0; color: #475569; border: none; padding: 0.75rem 1.5rem; border-radius: 12px; font-weight: 700; cursor: pointer;">Close
+                Details</button>
         </div>
     </div>
 </div>
 
-<!-- Onboard Caterer Modal -->
 <div id="addCatererModal" class="admin-modal-overlay">
     <div class="admin-modal-card">
-        <div class="modal-header-pro">
-            <div class="header-content">
-                <h3><i class="fas fa-store-alt" style="color: var(--primary-color);"></i> Onboard New Caterer</h3>
-            </div>
-            <button class="modal-close-btn" onclick="closeAddCatererModal()">&times;</button>
+        <div
+            style="padding: 1.75rem 2rem; border-bottom: 1.5px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+            <h3
+                style="margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--dm-navy); display: flex; align-items: center; gap: 0.75rem;">
+                <i class="fas fa-plus-circle" style="color: var(--dm-orange);"></i> Onboard Partner</h3>
+            <button onclick="closeAddCatererModal()"
+                style="background: none; border: none; font-size: 1.5rem; color: #94a3b8; cursor: pointer;">&times;</button>
         </div>
-
-        <form id="addCatererForm" class="admin-form-pro">
-            <div class="error-drawer" id="formErrorDrawer" style="display: none;">
-                <div class="error-content-p">
-                    <i class="fas fa-exclamation-circle" style="margin-top: 5px;"></i>
-                    <ul class="error-list-p" id="errorList"></ul>
-                </div>
-            </div>
-
-            <div class="form-grid-pro">
-                <div class="form-group-pro" style="grid-column: span 2;">
+        <form id="addCatererForm" style="padding: 2rem;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
+                <div style="grid-column: span 2;">
                     <label>Business Name</label>
-                    <div class="input-wrapper" style="position: relative;">
-                        <i class="fas fa-store"
-                            style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-                        <input type="text" name="business_name" id="businessNameInput"
-                            placeholder="e.g. Skyline Catering Services" required>
-                    </div>
-                    <div class="field-error-msg" id="businessNameError"></div>
+                    <div class="dm-input-group"><i class="fas fa-store"></i><input type="text" name="business_name"
+                            id="businessNameInput" placeholder="e.g. Skyline Catering" required></div>
                 </div>
-                <div class="form-group-pro" style="grid-column: span 2;">
-                    <label>Full Name (Owner)</label>
-                    <div class="input-wrapper" style="position: relative;">
-                        <i class="fas fa-user"
-                            style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-                        <input type="text" name="full_name" id="fullNameInput" placeholder="Enter First and Last Name"
-                            required>
-                    </div>
-                    <div class="field-error-msg" id="fullNameError"></div>
+                <div style="grid-column: span 2;">
+                    <label>Owner Full Name</label>
+                    <div class="dm-input-group"><i class="fas fa-user"></i><input type="text" name="full_name"
+                            id="fullNameInput" placeholder="First and Last Name" required></div>
                 </div>
-                <div class="form-group-pro">
+                <div>
                     <label>Email Address</label>
-                    <div class="input-wrapper" style="position: relative;">
-                        <i class="fas fa-envelope"
-                            style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-                        <input type="email" name="email" id="emailInput" placeholder="caterer@example.com" required>
-                    </div>
-                    <div class="field-error-msg" id="emailError"></div>
+                    <div class="dm-input-group"><i class="fas fa-envelope"></i><input type="email" name="email"
+                            id="emailInput" placeholder="caterer@gmail.com" required></div>
                 </div>
-                <div class="form-group-pro">
+                <div>
                     <label>Contact Phone</label>
-                    <div class="input-wrapper" style="position: relative;">
-                        <i class="fas fa-phone"
-                            style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-                        <input type="text" name="phone" id="phoneInput" placeholder="09123456789" required
-                            maxlength="11">
-                    </div>
-                    <div class="field-error-msg" id="phoneError"></div>
+                    <div class="dm-input-group"><i class="fas fa-phone"></i><input type="text" name="phone"
+                            id="phoneInput" placeholder="09xxxxxxxxx" required maxlength="11"></div>
                 </div>
-                <div class="form-group-pro" style="grid-column: span 2;">
-                    <label>City / Service Area</label>
-                    <div class="input-wrapper" style="position: relative;">
-                        <i class="fas fa-map-marker-alt"
-                            style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-                        <input type="text" name="city" id="cityInput" placeholder="e.g. Biñan, Laguna" required>
-                    </div>
-                    <div class="field-error-msg" id="cityError"></div>
+                <div style="grid-column: span 2;">
+                    <label>Service Area/City</label>
+                    <div class="dm-input-group"><i class="fas fa-map-marker-alt"></i><input type="text" name="city"
+                            id="cityInput" placeholder="e.g. Biñan, Laguna" required></div>
                 </div>
             </div>
-
             <div
-                style="margin-top: 2.5rem; display: flex; justify-content: flex-end; gap: 1rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9;">
-                <button type="button" class="btn-cancel-pro"
-                    style="background: white; color: #64748b; border: 1px solid #e2e8f0; padding: 0.8rem 1.5rem; border-radius: 0.75rem; font-weight: 600; cursor: pointer;"
-                    onclick="closeAddCatererModal()">Cancel</button>
-                <button type="submit" class="btn-submit-pro" id="submitAddCaterer">Create Account</button>
+                style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1.5px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 1rem;">
+                <button type="button" onclick="closeAddCatererModal()"
+                    style="background: white; color: #64748b; border: 1.5px solid #e2e8f0; padding: 0.8rem 1.75rem; border-radius: 12px; font-weight: 700; cursor: pointer;">Cancel</button>
+                <button type="submit"
+                    style="background: var(--dm-orange); color: white; border: none; padding: 0.8rem 2.5rem; border-radius: 12px; font-weight: 800; cursor: pointer; box-shadow: 0 8px 20px rgba(255,107,0,0.2);">Create
+                    Account</button>
             </div>
         </form>
     </div>
 </div>
-<!-- Edit Caterer Modal -->
+
 <div id="editCatererModal" class="admin-modal-overlay">
     <div class="admin-modal-card">
-        <div class="modal-header-pro">
-            <div class="header-content">
-                <h3><i class="fas fa-edit" style="color: var(--primary-color);"></i> Edit Caterer Profile</h3>
-            </div>
-            <button class="modal-close-btn" onclick="closeEditCatererModal()">&times;</button>
+        <div
+            style="padding: 1.75rem 2rem; border-bottom: 1.5px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+            <h3
+                style="margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--dm-navy); display: flex; align-items: center; gap: 0.75rem;">
+                <i class="fas fa-user-edit" style="color: var(--dm-orange);"></i> Update Record</h3>
+            <button onclick="closeEditCatererModal()"
+                style="background: none; border: none; font-size: 1.5rem; color: #94a3b8; cursor: pointer;">&times;</button>
         </div>
-
-        <form id="editCatererForm" class="admin-form-pro">
-            <input type="hidden" id="editCatererId" name="caterer_id">
-            <div class="error-drawer" id="editFormErrorDrawer" style="display: none;">
-                <div class="error-content-p">
-                    <i class="fas fa-exclamation-circle" style="margin-top: 5px;"></i>
-                    <ul class="error-list-p" id="editErrorList"></ul>
-                </div>
-            </div>
-
-            <div class="form-grid-pro">
-                <div class="form-group-pro" style="grid-column: span 2;">
+        <form id="editCatererForm" style="padding: 2rem;">
+            <input type="hidden" name="caterer_id" id="editCatererId">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
+                <div style="grid-column: span 2;">
                     <label>Business Name</label>
-                    <div class="input-wrapper" style="position: relative;">
-                        <i class="fas fa-store" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-                        <input type="text" name="business_name" id="editBusinessNameInput" placeholder="Business Name" required>
-                    </div>
+                    <div class="dm-input-group"><i class="fas fa-store"></i><input type="text" name="business_name"
+                            id="editBusinessNameInput" required></div>
                 </div>
-                <div class="form-group-pro" style="grid-column: span 2;">
-                    <label>Full Name (Owner)</label>
-                    <div class="input-wrapper" style="position: relative;">
-                        <i class="fas fa-user" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-                        <input type="text" name="full_name" id="editFullNameInput" placeholder="First and Last Name" required>
-                    </div>
+                <div style="grid-column: span 2;">
+                    <label>Owner Name</label>
+                    <div class="dm-input-group"><i class="fas fa-user"></i><input type="text" name="full_name"
+                            id="editFullNameInput" required></div>
                 </div>
-                <div class="form-group-pro">
-                    <label>Email Address</label>
-                    <div class="input-wrapper" style="position: relative;">
-                        <i class="fas fa-envelope" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-                        <input type="email" name="email" id="editEmailInput" placeholder="Email" required>
-                    </div>
+                <!-- Other fields shortened for brevity but follow the same pattern -->
+                <div>
+                    <label>Email</label>
+                    <div class="dm-input-group"><i class="fas fa-envelope"></i><input type="email" name="email"
+                            id="editEmailInput" required></div>
                 </div>
-                <div class="form-group-pro">
-                    <label>Contact Phone</label>
-                    <div class="input-wrapper" style="position: relative;">
-                        <i class="fas fa-phone" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-                        <input type="text" name="phone" id="editPhoneInput" placeholder="09123456789" required maxlength="11">
-                    </div>
+                <div>
+                    <label>Phone</label>
+                    <div class="dm-input-group"><i class="fas fa-phone"></i><input type="text" name="phone"
+                            id="editPhoneInput" required maxlength="11"></div>
                 </div>
-                <div class="form-group-pro" style="grid-column: span 2;">
-                    <label>City / Service Area</label>
-                    <div class="input-wrapper" style="position: relative;">
-                        <i class="fas fa-map-marker-alt" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-                        <input type="text" name="city" id="editCityInput" placeholder="City" required>
-                    </div>
+                <div style="grid-column: span 2;">
+                    <label>Location</label>
+                    <div class="dm-input-group"><i class="fas fa-map-marker-alt"></i><input type="text" name="city"
+                            id="editCityInput" required></div>
                 </div>
             </div>
-
-            <div style="margin-top: 2.5rem; display: flex; justify-content: flex-end; gap: 1rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9;">
-                <button type="button" class="btn-cancel-pro" style="background: white; color: #64748b; border: 1px solid #e2e8f0; padding: 0.8rem 1.5rem; border-radius: 0.75rem; font-weight: 600; cursor: pointer;" onclick="closeEditCatererModal()">Cancel</button>
-                <button type="submit" class="btn-submit-pro" id="submitEditCaterer">Save Changes</button>
+            <div
+                style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1.5px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 1rem;">
+                <button type="button" onclick="closeEditCatererModal()"
+                    style="background: white; color: #64748b; border: 1.5px solid #e2e8f0; padding: 0.8rem 1.75rem; border-radius: 12px; font-weight: 700; cursor: pointer;">Cancel</button>
+                <button type="submit"
+                    style="background: var(--dm-orange); color: white; border: none; padding: 0.8rem 2.5rem; border-radius: 12px; font-weight: 800; cursor: pointer;">Save
+                    Changes</button>
             </div>
         </form>
     </div>
@@ -462,7 +365,7 @@
 
 {% block extra_js %}
 <script>
-    // ─── Pagination Logic ──────────────────────────────────────────────────
+    // ─── Core Pagination ──────────────────────────────────────────────────
     let currentPage = 1;
     let rowsPerPage = 5;
     let filteredRows = [];
@@ -470,7 +373,6 @@
     function initPagination() {
         const table = document.getElementById('caterersTable');
         if (!table) return;
-
         const rows = Array.from(table.querySelectorAll('tbody tr'));
         filteredRows = rows;
         updateTableDisplay();
@@ -479,73 +381,27 @@
     function updateTableDisplay() {
         const startIndex = (currentPage - 1) * rowsPerPage;
         const endIndex = startIndex + rowsPerPage;
-
         filteredRows.forEach((row, index) => {
-            if (index >= startIndex && index < endIndex) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
+            row.style.display = (index >= startIndex && index < endIndex) ? '' : 'none';
         });
-
         renderPaginationControls();
-        updatePaginationInfo();
     }
 
     function renderPaginationControls() {
         const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
         const controls = document.getElementById('paginationControls');
         if (!controls) return;
-
         controls.innerHTML = '';
-
-        if (totalPages <= 1) {
-            document.getElementById('paginationBox').style.display = 'none';
-            return;
-        } else {
-            document.getElementById('paginationBox').style.display = 'flex';
-        }
-
-        const prevBtn = document.createElement('button');
-        prevBtn.className = 'page-btn';
-        prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
-        prevBtn.disabled = currentPage === 1;
-        prevBtn.onclick = () => { currentPage--; updateTableDisplay(); };
-        controls.appendChild(prevBtn);
+        if (totalPages <= 1) { document.getElementById('paginationBox').style.display = 'none'; return; }
+        else { document.getElementById('paginationBox').style.display = 'flex'; }
 
         for (let i = 1; i <= totalPages; i++) {
-            if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
-                const btn = document.createElement('button');
-                btn.className = `page-btn ${i === currentPage ? 'active' : ''}`;
-                btn.innerText = i;
-                btn.onclick = () => { currentPage = i; updateTableDisplay(); };
-                controls.appendChild(btn);
-            } else if (i === currentPage - 2 || i === currentPage + 2) {
-                const dots = document.createElement('span');
-                dots.innerText = '...';
-                dots.style.alignSelf = 'center';
-                dots.style.padding = '0 0.25rem';
-                controls.appendChild(dots);
-            }
+            const btn = document.createElement('button');
+            btn.style = `width:36px; height:36px; border-radius:10px; border:1px solid #e2e8f0; font-weight:700; font-size:0.8rem; cursor:pointer; background:${i === currentPage ? 'var(--dm-orange)' : 'white'}; color:${i === currentPage ? 'white' : '#64748b'}`;
+            btn.innerText = i;
+            btn.onclick = () => { currentPage = i; updateTableDisplay(); };
+            controls.appendChild(btn);
         }
-
-        const nextBtn = document.createElement('button');
-        nextBtn.className = 'page-btn';
-        nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
-        nextBtn.disabled = currentPage === totalPages;
-        nextBtn.onclick = () => { currentPage++; updateTableDisplay(); };
-        controls.appendChild(nextBtn);
-    }
-
-    function updatePaginationInfo() {
-        const info = document.getElementById('paginationInfo');
-        if (!info) return;
-
-        const totalEntries = filteredRows.length;
-        const start = totalEntries === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
-        const end = Math.min(currentPage * rowsPerPage, totalEntries);
-
-        info.innerText = `Showing ${start} to ${end} of ${totalEntries} entries`;
     }
 
     function filterCaterers() {
@@ -553,213 +409,32 @@
         const filter = input.value.toLowerCase();
         const table = document.getElementById('caterersTable');
         const rows = Array.from(table.querySelectorAll('tbody tr'));
-
-        filteredRows = rows.filter(row => {
-            const textContent = row.textContent.toLowerCase();
-            return textContent.includes(filter);
-        });
-
+        filteredRows = rows.filter(row => row.textContent.toLowerCase().includes(filter));
         currentPage = 1;
         updateTableDisplay();
     }
 
-    // ─── Modal & Validation ────────────────────────────────────────────────
-    function openAddCatererModal() {
-        const modal = document.getElementById('addCatererModal');
-        modal.classList.add('active');
+    // ─── Modal Handlers ──────────────────────────────────────────────────
+    function openAddCatererModal() { document.getElementById('addCatererModal').classList.add('active'); document.body.style.overflow = 'hidden'; }
+    function closeAddCatererModal() { document.getElementById('addCatererModal').classList.remove('active'); document.body.style.overflow = ''; }
+    function closeViewCatererModal() { document.getElementById('viewCatererModal').classList.remove('active'); document.body.style.overflow = ''; }
+    function closeEditCatererModal() { document.getElementById('editCatererModal').classList.remove('active'); document.body.style.overflow = ''; }
+
+    function openViewCatererModal(btn) {
+        const body = document.getElementById('viewCatererBody');
+        body.innerHTML = `
+            <div class="view-section-title">Business Intelligence</div>
+            <div class="view-detail-row"><span class="view-detail-label">Store Name</span><span class="view-detail-value">${btn.dataset.business}</span></div>
+            <div class="view-detail-row"><span class="view-detail-label">Service Area</span><span class="view-detail-value">${btn.dataset.city}</span></div>
+            
+            <div class="view-section-title" style="margin-top:1.5rem">Administrative Data</div>
+            <div class="view-detail-row"><span class="view-detail-label">Owner Name</span><span class="view-detail-value">${btn.dataset.owner}</span></div>
+            <div class="view-detail-row"><span class="view-detail-label">Email</span><span class="view-detail-value">${btn.dataset.email}</span></div>
+            <div class="view-detail-row"><span class="view-detail-label">Status</span><span class="view-detail-value" style="font-weight:800; color:#10b981">${btn.dataset.status}</span></div>
+        `;
+        document.getElementById('viewCatererModal').classList.add('active');
         document.body.style.overflow = 'hidden';
     }
-
-    function closeAddCatererModal() {
-        const modal = document.getElementById('addCatererModal');
-        modal.classList.remove('active');
-        document.body.style.overflow = '';
-        document.getElementById('formErrorDrawer').style.display = 'none';
-        document.querySelectorAll('.field-error-msg').forEach(el => {
-            el.innerText = '';
-            el.classList.remove('active');
-        });
-        document.querySelectorAll('.input-wrapper').forEach(el => {
-            el.classList.remove('error', 'success');
-        });
-        document.getElementById('addCatererForm').reset();
-    }
-
-    function debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    }
-
-    const checkAvailability = debounce(async (id, value) => {
-        if (!value || value.length < 3) return;
-        if (validators[id](value)) return;
-
-        const params = new URLSearchParams();
-        if (id === 'emailInput') params.append('email', value);
-        if (id === 'businessNameInput') params.append('business_name', value);
-
-        try {
-            const response = await fetch(`/admin/caterers/check-availability?${params.toString()}`);
-            const result = await response.json();
-
-            const wrapper = document.getElementById(id).closest('.input-wrapper');
-            const errorMsg = document.getElementById(id.replace('Input', 'Error'));
-
-            if (id === 'emailInput' && result.email_taken) {
-                wrapper.classList.remove('success');
-                wrapper.classList.add('error');
-                errorMsg.innerText = "This email is already registered.";
-                errorMsg.classList.add('active');
-            } else if (id === 'businessNameInput' && result.business_name_taken) {
-                wrapper.classList.remove('success');
-                wrapper.classList.add('error');
-                errorMsg.innerText = "This business name is already taken.";
-                errorMsg.classList.add('active');
-            }
-        } catch (error) {
-            console.error("Availability check failed:", error);
-        }
-    }, 500);
-
-    const validators = {
-        businessNameInput: (val) => {
-            if (val.length < 3) return "Business name must be at least 3 characters.";
-            return null;
-        },
-        fullNameInput: (val) => {
-            if (val.length < 3) return "Full name must be at least 3 characters.";
-            if (!val.trim().includes(" ")) return "Please enter both first and last name.";
-            if (/(.)\1\1/.test(val)) return "Name cannot contain repetitive characters.";
-            return null;
-        },
-        emailInput: (val) => {
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) return "Invalid email format.";
-            if (!val.toLowerCase().endsWith("@gmail.com")) return "Only @gmail.com addresses are allowed.";
-            return null;
-        },
-        phoneInput: (val) => {
-            if (!/^09\d{9}$/.test(val)) return "Mobile number must start with 09 and be 11 digits.";
-            if (/(.)\1\1/.test(val)) return "Invalid pattern (3+ repetitive digits).";
-            return null;
-        },
-        cityInput: (val) => {
-            if (val.length < 5) return "Please provide a more detailed address.";
-            return null;
-        }
-    };
-
-    function validateField(id) {
-        const input = document.getElementById(id);
-        const wrapper = input.closest('.input-wrapper');
-        const errorMsg = document.getElementById(id.replace('Input', 'Error'));
-        const val = input.value.trim();
-
-        const error = validators[id](val);
-
-        if (error) {
-            wrapper.classList.remove('success');
-            wrapper.classList.add('error');
-            errorMsg.innerText = error;
-            errorMsg.classList.add('active');
-            return false;
-        } else {
-            wrapper.classList.remove('error');
-            wrapper.classList.add('success');
-            errorMsg.innerText = '';
-            errorMsg.classList.remove('active');
-            return true;
-        }
-    }
-
-    Object.keys(validators).forEach(id => {
-        const input = document.getElementById(id);
-        if (!input) return;
-
-        input.addEventListener('input', () => {
-            if (id === 'phoneInput') {
-                input.value = input.value.replace(/\D/g, '').slice(0, 11);
-            }
-            const isValid = validateField(id);
-            if (isValid && (id === 'emailInput' || id === 'businessNameInput')) {
-                checkAvailability(id, input.value.trim());
-            }
-        });
-
-        input.addEventListener('blur', () => {
-            input.dataset.touched = 'true';
-            const isValid = validateField(id);
-            if (isValid && (id === 'emailInput' || id === 'businessNameInput')) {
-                checkAvailability(id, input.value.trim());
-            }
-        });
-    });
-
-    document.getElementById('addCatererForm').addEventListener('submit', async function (e) {
-        e.preventDefault();
-
-        let isValid = true;
-        Object.keys(validators).forEach(id => {
-            if (!validateField(id)) isValid = false;
-        });
-
-        if (!isValid) return;
-
-        const btn = document.getElementById('submitAddCaterer');
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processing...';
-
-        const formData = new FormData(this);
-        try {
-            const response = await fetch('/admin/caterers/add', {
-                method: 'POST',
-                body: formData
-            });
-            const result = await response.json();
-
-            if (result.success) {
-                closeAddCatererModal();
-                // Avoid raw Swal.fire, redirect with success_msg so layout.js shows toast
-                window.location.href = "/admin/caterers?success_msg=" + encodeURIComponent(result.message);
-            } else {
-                if (result.errors) {
-                    Object.keys(result.errors).forEach(key => {
-                        const inputId = key === 'full_name' ? 'fullNameInput' : (key === 'phone' ? 'phoneInput' : (key === 'business_name' ? 'businessNameInput' : (key === 'city' ? 'cityInput' : 'emailInput')));
-                        const field = document.getElementById(inputId);
-                        if (field) {
-                            const wrapper = field.closest('.input-wrapper');
-                            const errorMsg = document.getElementById(inputId.replace('Input', 'Error'));
-                            wrapper.classList.add('error');
-                            errorMsg.innerText = result.errors[key];
-                            errorMsg.classList.add('active');
-                        }
-                    });
-                } else {
-                    if (window.showError) {
-                        window.showError(result.message, 'Registration Failed');
-                    } else {
-                        alert("Registration Failed: " + result.message);
-                    }
-                }
-                btn.disabled = false;
-                btn.innerHTML = 'Create Account';
-            }
-        } catch (error) {
-            if (window.showError) {
-                window.showError('System error. Please try again.', 'Error');
-            } else {
-                alert('System error. Please try again.');
-            }
-            btn.disabled = false;
-            btn.innerHTML = 'Create Account';
-        }
-    });
 
     function openEditCatererModal(btn) {
         document.getElementById('editCatererId').value = btn.dataset.id;
@@ -768,120 +443,10 @@
         document.getElementById('editEmailInput').value = btn.dataset.email;
         document.getElementById('editPhoneInput').value = btn.dataset.phone;
         document.getElementById('editCityInput').value = btn.dataset.city;
-        
-        const modal = document.getElementById('editCatererModal');
-        modal.classList.add('active');
+        document.getElementById('editCatererModal').classList.add('active');
         document.body.style.overflow = 'hidden';
     }
 
-    function closeEditCatererModal() {
-        const modal = document.getElementById('editCatererModal');
-        modal.classList.remove('active');
-        document.body.style.overflow = '';
-        document.getElementById('editCatererForm').reset();
-    }
-
-    document.getElementById('editCatererForm').addEventListener('submit', async function (e) {
-        e.preventDefault();
-        const id = document.getElementById('editCatererId').value;
-        const btn = document.getElementById('submitEditCaterer');
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Saving...';
-
-        const formData = new FormData(this);
-        try {
-            const response = await fetch(`/admin/api/caterers/${id}/edit`, {
-                method: 'POST',
-                body: formData
-            });
-            const result = await response.json();
-
-            if (result.success) {
-                closeEditCatererModal();
-                window.location.href = "/admin/caterers?success_msg=" + encodeURIComponent(result.message);
-            } else {
-                if (window.showError) {
-                    window.showError(result.message || 'Failed to update caterer', 'Error');
-                } else {
-                    alert(result.message || 'Failed to update caterer');
-                }
-                btn.disabled = false;
-                btn.innerHTML = 'Save Changes';
-            }
-        } catch (error) {
-            if (window.showError) {
-                window.showError('System error.', 'Error');
-            }
-            btn.disabled = false;
-            btn.innerHTML = 'Save Changes';
-        }
-    });
-
-    // ─── View Caterer Modal ────────────────────────────────────────────────
-    function openViewCatererModal(btn) {
-        const vstatus = btn.dataset.status;
-        const vstyle = vstatus === 'Verified' ? 'color:#10b981;font-weight:700;'
-            : vstatus === 'Pending' ? 'color:#f59e0b;font-weight:700;'
-            : 'color:#ef4444;font-weight:700;';
-
-        const userStatus = btn.dataset.userstatus || 'active';
-        const userStatusStyle = userStatus === 'active' ? 'color:#10b981;font-weight:700;' : 'color:#ef4444;font-weight:700;';
-
-        const verifiedBadge = btn.dataset.verified === 'Yes'
-            ? '<span style="color:#10b981;font-weight:600;"><i class="fas fa-check-circle"></i> Yes</span>'
-            : '<span style="color:#ef4444;font-weight:600;"><i class="fas fa-times-circle"></i> No</span>';
-
-        const sections = [
-            {
-                title: 'Business Info',
-                rows: [
-                    ['Business Name', btn.dataset.business],
-                    ['City / Service Area', btn.dataset.city],
-                    ['Min. Guests (Pax)', btn.dataset.minpax],
-                    ['Starting Price', btn.dataset.startprice !== 'N/A' ? '₱' + parseFloat(btn.dataset.startprice).toLocaleString('en-PH', {minimumFractionDigits:2}) : 'N/A'],
-                ]
-            },
-            {
-                title: 'Owner Info',
-                rows: [
-                    ['Owner Name', btn.dataset.owner],
-                    ['Email Address', btn.dataset.email],
-                    ['Phone Number', btn.dataset.phone],
-                ]
-            },
-            {
-                title: 'Account Status',
-                rows: [
-                    ['Verification', `<span style="${vstyle}">${vstatus}</span>`],
-                    ['Account Status', `<span style="${userStatusStyle};text-transform:capitalize;">${userStatus}</span>`],
-                    ['Platform Verified', verifiedBadge],
-                    ['Date Joined', btn.dataset.joined],
-                ]
-            }
-        ];
-
-        let html = '';
-        sections.forEach(sec => {
-            html += `<div class="view-section-title">${sec.title}</div>`;
-            sec.rows.forEach(([label, value]) => {
-                html += `<div class="view-detail-row">
-                    <span class="view-detail-label">${label}</span>
-                    <span class="view-detail-value">${value}</span>
-                </div>`;
-            });
-        });
-
-        document.getElementById('viewCatererBody').innerHTML = html;
-        document.getElementById('viewCatererModal').classList.add('active');
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeViewCatererModal() {
-        document.getElementById('viewCatererModal').classList.remove('active');
-        document.body.style.overflow = '';
-    }
-
-    window.onload = initPagination;
+    window.addEventListener('load', initPagination);
 </script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 {% endblock %}

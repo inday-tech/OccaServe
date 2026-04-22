@@ -3,28 +3,32 @@
 {% block title %}Edit Profile - Caterer Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/profile_edit.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/profile_edit.css') }}?v=1.5">
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', path='/js/caterer/profile_edit.js') }}"></script>
+<script src="{{ url_for('static', path='/js/caterer/profile_edit.js') }}?v=1.2"></script>
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>Business Profile</h1>
-    <p>Update your business information shown to potential customers.</p>
+    <div class="header-title-group">
+        <h1>Business Profile</h1>
+        <p>Update your business information shown to potential customers.</p>
+    </div>
 </div>
 
 <div class="profile-edit-container">
     <div class="profile-card">
-        <!-- Profile Sidebar Info (Fixed) -->
+        <!-- Profile Sidebar Info -->
         <div class="profile-sidebar-column">
             <div class="profile-sidebar-logo">
                 {{ profile.business_name[0] if profile.business_name else 'B' }}
             </div>
-            <h3 class="sidebar-business-name">{{ profile.business_name or 'My Business' }}</h3>
-            <p class="sidebar-location"><i class="fas fa-map-marker-alt"></i> {{ profile.city or 'Add Address' }}</p>
+            <div class="profile-sidebar-header-info">
+                <h3 class="sidebar-business-name">{{ profile.business_name or 'My Business' }}</h3>
+                <p class="sidebar-location"><i class="fas fa-map-marker-alt"></i> {{ profile.city or 'Add Address' }}</p>
+            </div>
 
             <div class="account-status-box">
                 <div class="status-label">Account Status</div>
@@ -33,33 +37,34 @@
                 </div>
             </div>
 
-            <a href="/caterers/{{ profile.id }}" target="_blank" class="profile-action-btn secondary">
-                <i class="fas fa-external-link-alt"></i> View Public Profile
-            </a>
+            <div class="profile-sidebar-actions">
+                <a href="/caterers/{{ profile.id }}" target="_blank" class="profile-action-btn secondary">
+                    <i class="fas fa-external-link-alt"></i> <span>View Public Profile</span>
+                </a>
 
-            <button type="button" class="profile-action-btn danger mt-3" onclick="openPasswordModal()">
-                <i class="fas fa-key"></i> Change Password
-            </button>
+                <button type="button" class="profile-action-btn danger" onclick="openPasswordModal()">
+                    <i class="fas fa-key"></i> <span>Change Password</span>
+                </button>
+            </div>
         </div>
 
-        <!-- Edit Form with Tabs -->
-        <div class="profile-main-column">
+        <div class="profile-main-content">
             <div class="tabs-nav-wrapper">
                 <div class="tabs-nav">
                     <button type="button" class="tab-btn active" data-tab="general">
-                        <i class="fas fa-info-circle"></i> General Info
+                        <i class="fas fa-info-circle"></i> <span>General Info</span>
                     </button>
                     <button type="button" class="tab-btn" data-tab="payments">
-                        <i class="fas fa-credit-card"></i> Payments
+                        <i class="fas fa-credit-card"></i> <span>Payments</span>
                     </button>
                     <button type="button" class="tab-btn" data-tab="policies">
-                        <i class="fas fa-file-contract"></i> Policies
+                        <i class="fas fa-file-contract"></i> <span>Policies</span>
                     </button>
                     <button type="button" class="tab-btn" data-tab="brand">
-                        <i class="fas fa-palette"></i> Brand
+                        <i class="fas fa-palette"></i> <span>Brand</span>
                     </button>
                     <button type="button" class="tab-btn" data-tab="gallery">
-                        <i class="fas fa-images"></i> Gallery
+                        <i class="fas fa-images"></i> <span>Gallery</span>
                     </button>
                 </div>
             </div>
@@ -168,7 +173,8 @@
                                 <input type="text" name="maya_number" value="{{ profile.maya_number or '' }}" maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '');"
                                     placeholder="09123456789" pattern="^(09|\+639)\d{9}$"
                                     title="Must be a valid 11-digit mobile number starting with 09 or +6399">
-                                <div class="form-group">
+                            </div>
+                            <div class="form-group">
                                 <label>QR Code</label>
                                 <input type="file" name="maya_qr" accept="image/*" class="form-file-input">
                                 {% if profile.maya_qr_url %}
@@ -178,7 +184,6 @@
                                 </div>
                                 {% endif %}
                             </div>
-                        </div>
                         </div>
 
                         <!-- Bank Transfer -->
@@ -517,8 +522,6 @@
         </div>
     </div>
 </div>
-{% endblock %}
-{% block extra_body %}
 <!-- Change Password Modal -->
 <div id="passwordModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-sm">
@@ -588,15 +591,6 @@
 </style>
 
 <script>
-function openPasswordModal() {
-    window.openModal('passwordModal');
-}
-
-function closePasswordModal() {
-    window.closeModal('passwordModal');
-    document.getElementById('changePasswordForm').reset();
-}
-
 async function handlePasswordChange(event) {
     event.preventDefault();
     const form = event.target;
@@ -715,7 +709,7 @@ currentPassInput.addEventListener('input', validateRequirements);
 window.addEventListener('load', () => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('action') === 'change-password') {
-        openPasswordModal();
+        if(window.openPasswordModal) window.openPasswordModal();
     }
 });
 </script>

@@ -235,29 +235,33 @@
         margin-bottom: 2rem;
     }
 
-    .progress-stepper {
+    .progress-stepper-premium {
         margin-bottom: 2.5rem;
         padding: 0 0.25rem;
-        gap: 0.25rem;
+        gap: 1.5rem;
     }
 
-    .progress-stepper::before {
+    .progress-stepper-premium::before {
         top: 18px;
+        left: 10%;
+        right: 10%;
     }
 
-    .step-number {
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        font-size: 0.75rem;
+    .step-icon-p {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem;
     }
 
-    .step-label {
-        font-size: 0.6rem;
-        display: none;
+    .step-label-p {
+        font-size: 0.65rem;
     }
 
-    /* Hide labels on very small mobile for space */
+    .step-item-p {
+        width: 60px;
+    }
 
     .wizard-actions {
         margin-top: 3rem;

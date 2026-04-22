@@ -4,26 +4,22 @@
 {% block title %}Menu Library - OccaShare Caterer{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/menu.css') }}?v=1.4">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/menu.css') }}?v=1.5">
 {% endblock %}
 
 {% block content %}
-<div class="page-header" style="display: flex; justify-content: space-between; align-items: start;">
-    <div>
+<div class="page-header">
+    <div class="header-title-group">
         <h1>Menu Library</h1>
         <p>Manage your collection of exquisite dishes and culinary offerings.</p>
     </div>
-    <div class="header-actions" style="display: flex; gap: 1rem; align-items: center;">
-        <div class="search-box-pro"
-            style="display: flex; align-items: center; gap: 0.75rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 0 1.25rem; height: 46px; box-sizing: border-box; width: 320px; transition: all 0.2s ease;">
-            <i class="fas fa-search" style="color: #94a3b8; font-size: 0.95rem;"></i>
-            <input type="text" id="menuSearchInput" placeholder="Search dishes..."
-                style="border: none; outline: none; background: transparent; height: 100%; width: 100%; font-size: 0.9rem; color: #1e293b; font-weight: 500;"
-                onkeyup="filterMenu()">
+    <div class="header-actions">
+        <div class="search-box-pro">
+            <i class="fas fa-search"></i>
+            <input type="text" id="menuSearchInput" placeholder="Search dishes..." onkeyup="filterMenu()">
         </div>
-        <button class="btn-primary-pro" onclick="openAddMenuModal()"
-            style="height: 46px; padding: 0 1.5rem; border-radius: 0.75rem; background: var(--primary-gradient); color: white; border: none; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);">
-            <i class="fas fa-plus"></i> Add New Dish
+        <button class="btn-primary-pro" onclick="openAddMenuModal()">
+            <i class="fas fa-plus"></i> <span>Add New Dish</span>
         </button>
     </div>
 </div>

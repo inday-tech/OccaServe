@@ -21,6 +21,7 @@
         flex-direction: column;
         align-items: stretch;
     }
+
     .search-box-pro {
         max-width: 100% !important;
     }
@@ -327,4 +328,60 @@
     opacity: 0.7;
     cursor: not-allowed;
 }
-
+
+gap: 0.75rem;
+justify-content: flex-end;
+}
+
+.btn-view-customer,
+.btn-edit-customer,
+.btn-delete-customer {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1.5px solid #e2e8f0;
+    background: white;
+    color: var(--dm-muted);
+}
+
+.btn-view-customer:hover {
+    border-color: #3b82f6;
+    color: #3b82f6;
+    background: #eff6ff;
+}
+
+.btn-edit-customer:hover {
+    border-color: var(--dm-orange);
+    color: var(--dm-orange);
+    background: #fff7ed;
+}
+
+.btn-delete-customer:hover {
+    border-color: var(--dm-red);
+    color: var(--dm-red);
+    background: #fef2f2;
+}
+
+/* Modal Constraining for Desktop */
+.admin-modal-card {
+    background: white;
+    width: 100%;
+    max-width: 680px;
+    /* Constrains form on wide screens */
+    border-radius: 24px;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.3);
+    overflow: hidden;
+    margin: auto;
+}
+
+@media (max-width: 768px) {
+    .admin-modal-card {
+        max-width: 95%;
+        border-radius: 20px;
+    }
+}

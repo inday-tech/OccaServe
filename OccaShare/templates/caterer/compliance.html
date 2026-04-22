@@ -3,200 +3,19 @@
 {% block title %}KYC & Compliance Queue - OccaServe{% endblock %}
 
 {% block extra_css %}
-<style>
-    .page-header {
-        margin-bottom: 2rem;
-    }
-    .page-header h1 {
-        font-size: 1.85rem;
-        font-weight: 800;
-        color: var(--secondary-color);
-        margin-bottom: 0.25rem;
-    }
-    .page-header p {
-        color: #64748b;
-        font-size: 1rem;
-    }
-    .search-box-pro {
-        position: relative;
-        width: 300px;
-    }
-    .search-box-pro i {
-        position: absolute;
-        left: 1rem;
-        top: 50%;
-        transform: translateY(-50%);
-        color: #94a3b8;
-    }
-    .search-box-pro input {
-        width: 100%;
-        padding: 0.75rem 1rem 0.75rem 2.75rem;
-        border: 1.5px solid #e2e8f0;
-        border-radius: 12px;
-        font-size: 0.95rem;
-        outline: none;
-        transition: all 0.2s;
-    }
-    .search-box-pro input:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 4px rgba(var(--primary-color-rgb), 0.1);
-    }
-    .kyc-review-card-wrapper {
-        background: white;
-        border-radius: 1.25rem;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-        border: 1px solid #f1f5f9;
-        overflow: hidden;
-    }
-    .audit-review-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-    .audit-review-table th {
-        background: #f8fafc;
-        padding: 1rem 1.5rem;
-        text-align: left;
-        font-size: 0.75rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        color: #64748b;
-        letter-spacing: 0.025em;
-        border-bottom: 1px solid #f1f5f9;
-    }
-    .audit-review-table td {
-        padding: 1.25rem 1.5rem;
-        border-bottom: 1px solid #f1f5f9;
-        vertical-align: middle;
-    }
-    .kyc-user-identity-box {
-        display: flex;
-        flex-direction: column;
-        gap: 0.15rem;
-    }
-    .kyc-user-name {
-        font-weight: 700;
-        color: var(--secondary-color);
-        font-size: 0.95rem;
-    }
-    .kyc-user-email {
-        font-size: 0.8rem;
-        color: #64748b;
-    }
-    .fraud-score-pill {
-        display: inline-flex;
-        align-items: center;
-        padding: 0.35rem 0.75rem;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: 700;
-        letter-spacing: -0.01em;
-    }
-    .fraud-score-pill.low { background: #fee2e2; color: #ef4444; }
-    .fraud-score-pill.mid { background: #fef3c7; color: #d97706; }
-    .fraud-score-pill.high { background: #d1fae5; color: #059669; }
-
-    .kyc-status-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        padding: 0.35rem 0.75rem;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 700;
-    }
-    .status-pending { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
-    .status-processing { background: #eff6ff; color: #2563eb; border: 1px solid #dbeafe; }
-    .status-manual_review { background: #fff7ed; color: #ea580c; border: 1px solid #ffedd5; }
-    .status-approved, .status-verified { background: #ecfdf5; color: #059669; border: 1px solid #d1fae5; }
-    .status-rejected, .status-failed { background: #fef2f2; color: #dc2626; border: 1px solid #fee2e2; }
-
-    .btn-review-kyc {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.6rem 1.25rem;
-        background: white;
-        border: 1.5px solid #e2e8f0;
-        border-radius: 10px;
-        color: var(--secondary-color);
-        font-size: 0.85rem;
-        font-weight: 600;
-        text-decoration: none;
-        transition: all 0.2s;
-        cursor: pointer;
-    }
-    .btn-review-kyc:hover {
-        background: #f8fafc;
-        border-color: #cbd5e1;
-        transform: translateY(-1px);
-    }
-
-    /* Tab Styling */
-    .compliance-tabs {
-        display: flex;
-        gap: 2rem;
-        margin-bottom: 1.5rem;
-        border-bottom: 2px solid #f1f5f9;
-        padding: 0 0.5rem;
-    }
-    .compliance-tab {
-        padding: 0.75rem 0.5rem;
-        font-size: 0.95rem;
-        font-weight: 700;
-        color: #64748b;
-        cursor: pointer;
-        position: relative;
-        transition: all 0.2s;
-    }
-    .compliance-tab:hover {
-        color: var(--primary-color);
-    }
-    .compliance-tab.active {
-        color: var(--primary-color);
-    }
-    .compliance-tab.active::after {
-        content: '';
-        position: absolute;
-        bottom: -2px;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background: var(--primary-color);
-        border-radius: 2px;
-    }
-    .tab-content {
-        display: none;
-    }
-    .tab-content.active {
-        display: block;
-    }
-    .queue-badge {
-        font-size: 0.7rem;
-        padding: 0.15rem 0.5rem;
-        background: #f1f5f9;
-        color: #64748b;
-        border-radius: 20px;
-        margin-left: 0.5rem;
-    }
-    .active .queue-badge {
-        background: var(--primary-color);
-        color: white;
-    }
-</style>
-
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/compliance.css') }}?v=1.1">
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem;">
-        <div>
-            <h1>KYC & Compliance Queue</h1>
-            <p>High-precision verification monitoring and risk mitigation for your clients.</p>
-        </div>
-        <div class="search-box-pro">
-            <i class="fas fa-search"></i>
-            <input type="text" id="kycSearchInput" placeholder="Search identity files..." onkeyup="filterKYC()">
-        </div>
+<div class="container-premium">
+<div class="page-header kyc-page-header" id="page-header">
+    <div>
+        <h1>KYC & Compliance Queue</h1>
+        <p>High-precision verification monitoring and risk mitigation for your clients.</p>
+    </div>
+    <div class="kyc-search-box">
+        <i class="fas fa-search"></i>
+        <input type="text" id="kycSearchInput" placeholder="Search identity files..." onkeyup="filterKYC()">
     </div>
 </div>
 
@@ -211,11 +30,11 @@
 
 <div id="packages-queue" class="tab-content active">
     <div class="kyc-review-card-wrapper">
-        <div style="padding: 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 0.75rem;">
-            <i class="fas fa-gem" style="color: var(--primary-color);"></i>
-            <h3 style="margin: 0; color: var(--secondary-color); font-size: 1rem; font-weight: 800;">Package Booking Verification</h3>
+        <div class="kyc-section-header">
+            <i class="fas fa-gem"></i>
+            <h3>Package Booking Verification</h3>
         </div>
-        <div style="overflow-x: auto;">
+        <div class="kyc-table-scroll">
             <table class="audit-review-table" id="kycTablePackages">
                 <thead>
                     <tr>
@@ -238,35 +57,37 @@
                             </div>
                         </td>
                         <td>
-                            <div style="font-weight: 600; color: #1e293b; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <span class="kyc-card-label">Event Type</span>
+                            <div class="kyc-event-type">
                                 {{ package_map.get(u.id, 'N/A') }}
                                 {% if u.has_multiple_orders %}
-                                <span class="badge" style="background: rgba(var(--primary-color-rgb), 0.1); color: var(--primary-color); font-size: 0.65rem; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 800; border: 1px solid rgba(var(--primary-color-rgb), 0.2);">
-                                    MULTI-ORDER
-                                </span>
+                                <span class="kyc-multi-badge">MULTI-ORDER</span>
                                 {% endif %}
                             </div>
                         </td>
                         <td>
-                            <span style="font-size: 0.85rem; font-weight: 500; color: #475569;">
+                            <span class="kyc-card-label">ID Type</span>
+                            <span class="kyc-id-type">
                                 {% if kyc %}
                                 {{ kyc.verification_type or 'Gov ID' }}
                                 {% else %}
-                                <i class="fas fa-exclamation-triangle" style="color: #f59e0b; margin-right: 0.25rem;"></i> No ID Yet
+                                <i class="fas fa-exclamation-triangle" style="color: var(--color-warning);"></i> No ID Yet
                                 {% endif %}
                             </span>
                         </td>
                         <td>
+                            <span class="kyc-card-label">Trust Score</span>
                             {% if kyc %}
                             <div class="fraud-score-pill {% if kyc.fraud_score >= 85 %}high{% elif kyc.fraud_score >= 60 %}mid{% else %}low{% endif %}">
                                 <i class="fas fa-fingerprint" style="font-size: 0.7rem; margin-right: 0.4rem;"></i>
                                 {{ kyc.fraud_score }}%
                             </div>
                             {% else %}
-                            <span style="color: #94a3b8; font-size: 0.8rem; font-style: italic;">N/A</span>
+                            <span class="kyc-na-text">N/A</span>
                             {% endif %}
                         </td>
                         <td>
+                            <span class="kyc-card-label">Status</span>
                             {% if u.is_verified %}
                             <span class="kyc-status-badge status-approved">
                                 <i class="fas fa-check-circle" style="font-size: 0.7rem;"></i> Verified
@@ -283,20 +104,19 @@
                             {% endif %}
                         </td>
                         <td>
-                            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                {% if kyc %}
-                                <a href="/caterer/compliance/view/{{ u.id }}" class="btn-review-kyc">
-                                    Audit <i class="fas fa-chevron-right" style="font-size: 0.7rem;"></i>
-                                </a>
-                                {% else %}
-                                <span style="color: #94a3b8; font-size: 0.8rem; font-style: italic;">Wait</span>
-                                {% endif %}
-                            </div>
+                            <span class="kyc-card-label">Action</span>
+                            {% if kyc %}
+                            <a href="/caterer/compliance/view/{{ u.id }}" class="btn-review-kyc">
+                                Audit <i class="fas fa-chevron-right" style="font-size: 0.7rem;"></i>
+                            </a>
+                            {% else %}
+                            <span class="kyc-na-text">Wait</span>
+                            {% endif %}
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="6" style="text-align: center; color: #94a3b8; padding: 3rem;">
+                        <td colspan="6" class="kyc-empty-cell">
                             No event package verifications found.
                         </td>
                     </tr>
@@ -309,11 +129,11 @@
 
 <div id="alacarte-queue" class="tab-content">
     <div class="kyc-review-card-wrapper">
-        <div style="padding: 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 0.75rem;">
-            <i class="fas fa-utensils" style="color: var(--primary-color);"></i>
-            <h3 style="margin: 0; color: var(--secondary-color); font-size: 1rem; font-weight: 800;">Ala Carte Order Verification</h3>
+        <div class="kyc-section-header">
+            <i class="fas fa-utensils"></i>
+            <h3>Ala Carte Order Verification</h3>
         </div>
-        <div style="overflow-x: auto;">
+        <div class="kyc-table-scroll">
             <table class="audit-review-table" id="kycTableAlacarte">
                 <thead>
                     <tr>
@@ -336,35 +156,37 @@
                             </div>
                         </td>
                         <td>
-                            <div style="font-weight: 600; color: #1e293b; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <span class="kyc-card-label">Latest Order</span>
+                            <div class="kyc-event-type">
                                 {{ alacarte_map.get(u.id, 'N/A') }}
                                 {% if u.has_multiple_orders %}
-                                <span class="badge" style="background: rgba(var(--primary-color-rgb), 0.1); color: var(--primary-color); font-size: 0.65rem; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 800; border: 1px solid rgba(var(--primary-color-rgb), 0.2);">
-                                    MULTI-ORDER
-                                </span>
+                                <span class="kyc-multi-badge">MULTI-ORDER</span>
                                 {% endif %}
                             </div>
                         </td>
                         <td>
-                            <span style="font-size: 0.85rem; font-weight: 500; color: #475569;">
+                            <span class="kyc-card-label">ID Type</span>
+                            <span class="kyc-id-type">
                                 {% if kyc %}
                                 {{ kyc.verification_type or 'Gov ID' }}
                                 {% else %}
-                                <i class="fas fa-exclamation-triangle" style="color: #f59e0b; margin-right: 0.25rem;"></i> No ID Yet
+                                <i class="fas fa-exclamation-triangle" style="color: var(--color-warning);"></i> No ID Yet
                                 {% endif %}
                             </span>
                         </td>
                         <td>
+                            <span class="kyc-card-label">Trust Score</span>
                             {% if kyc %}
                             <div class="fraud-score-pill {% if kyc.fraud_score >= 85 %}high{% elif kyc.fraud_score >= 60 %}mid{% else %}low{% endif %}">
                                 <i class="fas fa-fingerprint" style="font-size: 0.7rem; margin-right: 0.4rem;"></i>
                                 {{ kyc.fraud_score }}%
                             </div>
                             {% else %}
-                            <span style="color: #94a3b8; font-size: 0.8rem; font-style: italic;">N/A</span>
+                            <span class="kyc-na-text">N/A</span>
                             {% endif %}
                         </td>
                         <td>
+                            <span class="kyc-card-label">Status</span>
                             {% if u.is_verified %}
                             <span class="kyc-status-badge status-approved">
                                 <i class="fas fa-check-circle" style="font-size: 0.7rem;"></i> Verified
@@ -381,20 +203,19 @@
                             {% endif %}
                         </td>
                         <td>
-                            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                {% if kyc %}
-                                <a href="/caterer/compliance/view/{{ u.id }}" class="btn-review-kyc">
-                                    Audit <i class="fas fa-history"></i>
-                                </a>
-                                {% else %}
-                                <span style="color: #94a3b8; font-size: 0.8rem; font-style: italic;">Wait</span>
-                                {% endif %}
-                            </div>
+                            <span class="kyc-card-label">Action</span>
+                            {% if kyc %}
+                            <a href="/caterer/compliance/view/{{ u.id }}" class="btn-review-kyc">
+                                Audit <i class="fas fa-history"></i>
+                            </a>
+                            {% else %}
+                            <span class="kyc-na-text">Wait</span>
+                            {% endif %}
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="6" style="text-align: center; color: #94a3b8; padding: 3rem;">
+                        <td colspan="6" class="kyc-empty-cell">
                             No Ala Carte order verifications found.
                         </td>
                     </tr>
@@ -404,7 +225,7 @@
         </div>
     </div>
 </div>
-
+</div>
 {% endblock %}
 
 {% block extra_js %}

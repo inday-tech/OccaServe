@@ -1,57 +1,79 @@
 {% extends "admin/layout.html" %}
 
-{% block title %}Overview - Admin Dashboard{% endblock %}
+{% block title %}Platform Overview - Admin Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v=1.1">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v=1.3">
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>Platform Overview</h1>
-    <p>Monitor platform growth, revenue, and pending administrative tasks.</p>
+    <h1>Welcome back, <span class="accent-text">{{ user.first_name }}!</span></h1>
+    <p>Here's what's happening across the platform today.</p>
 </div>
 
-<!-- Stats Grid -->
+<!-- Dashboard Grid (1 column mobile, 2 tablet, 4 desktop) -->
 <div class="stats-grid-dashboard">
-    <div class="stat-card-premium"
-        style="background: linear-gradient(135deg, var(--secondary-color), var(--primary-color)); color: white;">
-        <i class="fas fa-wallet stat-icon-bg stat-icon-vibrant icon-white"></i>
-        <div class="stat-label-dashboard" style="color: rgba(255,255,255,0.8);">Platform Revenue</div>
-        <div class="stat-value-dashboard" style="color: white;">₱{{ "{:,.2f}".format(metrics.platform_earnings) }}</div>
-        <div class="stat-hint-dashboard" style="color: rgba(255,255,255,0.6);">Net earnings</div>
+    <!-- Revenue Card -->
+    <div class="stat-card-premium">
+        <div class="stat-info">
+            <span class="stat-label-dashboard">PLATFORM REVENUE</span>
+            <div class="stat-value-dashboard">₱{{ "{:,.2f}".format(metrics.platform_earnings) }}</div>
+            <span class="stat-hint-dashboard">Net earnings</span>
+        </div>
+        <div class="stat-icon-badge bg-orange-soft">
+            <i class="fas fa-wallet"></i>
+        </div>
     </div>
 
+    <!-- Users Card -->
     <div class="stat-card-premium">
-        <i class="fas fa-users stat-icon-bg stat-icon-vibrant icon-purple"></i>
-        <div class="stat-label-dashboard">Total Users</div>
-        <div class="stat-value-dashboard">{{ metrics.user_count }}</div>
-        <div class="stat-hint-dashboard">Lifetime registered</div>
+        <div class="stat-info">
+            <span class="stat-label-dashboard">TOTAL USERS</span>
+            <div class="stat-value-dashboard">{{ metrics.user_count }}</div>
+            <span class="stat-hint-dashboard">Lifetime registered</span>
+        </div>
+        <div class="stat-icon-badge bg-purple-soft">
+            <i class="fas fa-users"></i>
+        </div>
     </div>
 
+    <!-- Caterers Card -->
     <div class="stat-card-premium">
-        <i class="fas fa-store stat-icon-bg stat-icon-vibrant icon-amber"></i>
-        <div class="stat-label-dashboard">Active Caterers</div>
-        <div class="stat-value-dashboard">{{ metrics.approved_caterers_count }}</div>
-        <div class="stat-hint-dashboard">Verified partners</div>
+        <div class="stat-info">
+            <span class="stat-label-dashboard">ACTIVE CATERERS</span>
+            <div class="stat-value-dashboard">{{ metrics.approved_caterers_count }}</div>
+            <span class="stat-hint-dashboard">Verified partners</span>
+        </div>
+        <div class="stat-icon-badge bg-gold-soft">
+            <i class="fas fa-store"></i>
+        </div>
     </div>
 
+    <!-- Bookings Card -->
     <div class="stat-card-premium">
-        <i class="fas fa-calendar-check stat-icon-bg stat-icon-vibrant icon-blue"></i>
-        <div class="stat-label-dashboard">Total Bookings</div>
-        <div class="stat-value-dashboard">{{ metrics.booking_count }}</div>
-        <div class="stat-hint-dashboard">Successful orders</div>
+        <div class="stat-info">
+            <span class="stat-label-dashboard">TOTAL BOOKINGS</span>
+            <div class="stat-value-dashboard">{{ metrics.booking_count }}</div>
+            <span class="stat-hint-dashboard">Successful orders</span>
+        </div>
+        <div class="stat-icon-badge bg-blue-soft">
+            <i class="fas fa-calendar-check"></i>
+        </div>
     </div>
 </div>
 
 <div class="dashboard-content-split">
-    <!-- Pending Verifications -->
+    <!-- Pending Verifications Section -->
     <div class="c-card-premium">
         <div class="verifications-header-flex">
-            <h3 class="verifications-title"><i class="fas fa-id-card-alt"></i> Pending Verifications</h3>
-            <a href="/admin/caterers"
-                style="color: var(--primary-color); font-weight: 600; font-size: 0.85rem; text-decoration: none;">Manage
-                All <i class="fas fa-arrow-right"></i></a>
+            <h3 class="verifications-title">
+                <div class="section-icon"><i class="fas fa-id-badge"></i></div>
+                Pending Verifications
+            </h3>
+            <a href="/admin/caterers" class="manage-all-link">
+                Manage All <i class="fas fa-chevron-right"></i>
+            </a>
         </div>
 
         {% if pending_caterers %}
@@ -59,9 +81,9 @@
             <table class="admin-dashboard-table">
                 <thead>
                     <tr>
-                        <th style="padding: 0 1.25rem;">Business Name</th>
-                        <th style="padding: 0 1.25rem;">City</th>
-                        <th style="padding: 0 1.25rem; text-align: right;">Actions</th>
+                        <th style="padding-left: 0;">Business Name</th>
+                        <th>City</th>
+                        <th style="text-align: right; padding-right: 0;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -69,17 +91,16 @@
                     <tr>
                         <td class="business-name-cell">{{ c.business_name }}</td>
                         <td class="location-cell">{{ c.city }}</td>
-                        <td style="text-align: right;">
-                            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-                                <a href="/admin/verify/{{ c.user_id }}" class="stat-icon-container"
-                                    title="Review Documents"
-                                    style="background: none; border: none; cursor: pointer; color: var(--primary-color); font-size: 1.1rem; text-decoration: none;">
-                                    <i class="fas fa-file-invoice"></i>
+                        <td style="text-align: right; padding-right: 0;">
+                            <div style="display: flex; gap: 0.75rem; justify-content: flex-end; align-items: center;">
+                                <a href="/admin/verify/{{ c.user_id }}" 
+                                   style="color: var(--adm-primary); font-size: 1.1rem; text-decoration: none;"
+                                   title="Review Documents">
+                                    <i class="fas fa-file-signature"></i>
                                 </a>
                                 <form action="/admin/caterers/{{ c.id }}/archive" method="POST" style="display: inline;"
-                                    onsubmit="event.preventDefault(); showConfirm('Are you sure you want to archive this request?', () => this.submit(), 'Confirm Archive', 'Yes, Archive');">
-                                    <button type="submit" class="stat-icon-container" title="Archive Request"
-                                        style="background: none; border: none; cursor: pointer; color: #64748b; font-size: 1.1rem;">
+                                    onsubmit="event.preventDefault(); window.showConfirm('Archive this request?', () => this.submit(), 'Confirm Archive', 'Archive');">
+                                    <button type="submit" style="background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 1.1rem;">
                                         <i class="fas fa-archive"></i>
                                     </button>
                                 </form>
@@ -90,37 +111,53 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- Mobile List View -->
+        <div class="admin-mobile-list">
+            {% for c in pending_caterers %}
+            <div class="mobile-list-item">
+                <div class="item-info">
+                    <div class="item-title">{{ c.business_name }}</div>
+                    <div class="item-subtitle"><i class="fas fa-location-dot"></i> {{ c.city }}</div>
+                </div>
+                <div class="item-actions">
+                    <a href="/admin/verify/{{ c.user_id }}" class="btn-action-mobile" style="color: var(--adm-primary);">
+                        <i class="fas fa-file-signature"></i>
+                    </a>
+                    <form action="/admin/caterers/{{ c.id }}/archive" method="POST" style="display: inline;"
+                        onsubmit="event.preventDefault(); window.showConfirm('Archive this request?', () => this.submit(), 'Confirm Archive', 'Archive');">
+                        <button type="submit" style="background: none; border: none; color: #94a3b8;">
+                            <i class="fas fa-archive"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
         {% else %}
-        <div style="text-align: center; padding: 3rem 1rem;">
-            <div
-                style="width: 60px; height: 60px; background: #f0fdf4; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+        <div style="text-align: center; padding: 3rem 1.5rem;">
+            <div style="width: 56px; height: 56px; background: #ecfdf5; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem;">
                 <i class="fas fa-check" style="color: #10b981; font-size: 1.5rem;"></i>
             </div>
-            <p style="font-weight: 700; color: var(--secondary-color); margin-bottom: 0.25rem;">No pending verifications
-            </p>
-            <p style="color: #64748b; font-size: 0.85rem;">You've processed all caterer applications.</p>
+            <p style="font-weight: 800; color: var(--adm-navy); margin-bottom: 0.25rem;">All caught up!</p>
+            <p style="color: var(--adm-muted); font-size: 0.85rem;">No pending caterer verifications found.</p>
         </div>
         {% endif %}
     </div>
 
-    <!-- Platform Stats / Quick Info -->
+    <!-- Status Column -->
     <div class="sidebar-widgets-column">
         <div class="system-status-widget">
-            <h3 class="system-status-title">System Status</h3>
+            <div class="system-status-title">System Status</div>
             <div class="system-online-indicator">
                 <span class="status-dot-pulse"></span>
-                PostgreSQL Online
+                Infrastracture Online
             </div>
-            <div
-                style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 0.7rem; color: rgba(255,255,255,0.4); font-weight: 600;">Engine
-                    v1.2.4-stable</span>
-                <i class="fas fa-shield-check" style="color: rgba(255,255,255,0.2);"></i>
+            <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; opacity: 0.5;">
+                <span style="font-size: 0.65rem; font-weight: 700;">v4.0.2-diamond</span>
+                <i class="fas fa-shield-check" style="font-size: 0.8rem;"></i>
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
 {% endblock %}

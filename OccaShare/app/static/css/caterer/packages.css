@@ -6,76 +6,165 @@
     --primary-gradient: linear-gradient(135deg, var(--primary-color), var(--primary-color));
 }
 
-.package-management-header {
+.page-header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    gap: 0.75rem;
     margin-bottom: 2rem;
-    flex-wrap: wrap;
-    gap: 1rem;
+    transition: all 0.3s ease;
+}
+
+@media (min-width: 1025px) {
+    .page-header {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 3rem;
+    }
+}
+
+.header-title-group h1 {
+    font-size: clamp(1.5rem, 4vw, 2.25rem);
+    font-weight: 900;
+    color: #0f172a;
+    margin: 0;
+    letter-spacing: -0.025em;
+    line-height: 1.1;
+}
+
+.header-title-group p {
+    color: #64748b;
+    font-size: clamp(0.85rem, 2vw, 1rem);
+    margin-top: 0.4rem;
+    max-width: 600px;
+    line-height: 1.5;
 }
 
 .header-actions {
     display: flex;
-    align-items: center;
+    flex-direction: column;
     gap: 1rem;
-    flex-wrap: wrap;
+    width: 100%;
+    margin-top: 1rem;
+}
+
+@media (min-width: 769px) {
+    .header-actions {
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-end;
+    }
 }
 
 .btn-primary-pro {
     background: var(--primary-gradient);
     color: white;
-    padding: 1rem 2.25rem;
-    border-radius: 1.25rem;
-    font-weight: 700;
+    padding: 0 2rem;
+    height: 48px;
+    border-radius: 0.85rem;
+    font-weight: 800;
     border: none;
-    box-shadow: 0 8px 20px rgba(79, 70, 229, 0.25);
+    box-shadow: 0 8px 20px rgba(var(--primary-color-rgb), 0.15);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 0.75rem;
+    white-space: nowrap;
 }
 
 .btn-primary-pro:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(var(--primary-color-rgb), 0.25);
+}
+
+@media (max-width: 768px) {
+    .btn-primary-pro {
+        width: 100%;
+    }
 }
 
 /* Professional Grid */
 .packages-grid-pro {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
-    gap: 2.5rem;
-    margin-bottom: 4rem;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+}
+
+@media (min-width: 769px) {
+    .packages-grid-pro {
+        gap: 2rem;
+    }
 }
 
 /* Search Box Integration */
 .search-box-pro {
-    min-width: 300px;
+    width: 100%;
+    max-width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 0.85rem;
+    padding: 0 1.25rem;
+    height: 48px;
+    transition: all 0.2s ease;
+}
+
+@media (min-width: 769px) {
+    .search-box-pro {
+        max-width: 320px;
+    }
+}
+
+.search-box-pro:focus-within {
+    border-color: var(--primary-color);
+    background: white;
+    box-shadow: 0 0 0 4px rgba(var(--primary-color-rgb, 249, 115, 22), 0.1);
+}
+
+.search-box-pro i {
+    color: #94a3b8;
+    font-size: 1rem;
+}
+
+.search-box-pro input {
+    border: none;
+    outline: none;
+    background: transparent;
+    height: 100%;
+    width: 100%;
+    font-size: 0.95rem;
+    color: #1e293b;
+    font-weight: 500;
 }
 
 .package-card-pro {
     background: #ffffff;
-    border-radius: 12px;
+    border-radius: 1.5rem;
     overflow: hidden;
-    border: 1px solid #f1f5f9;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
-    transition: all 0.3s ease;
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+    transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
     position: relative;
     display: flex;
     flex-direction: column;
 }
 
 .package-card-pro:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+    transform: translateY(-8px);
+    border-color: var(--primary-color);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
 }
 
 .package-media-pro {
-    height: 200px;
+    width: 100%;
+    aspect-ratio: 16 / 9;
     position: relative;
     overflow: hidden;
-    background: #fdfaf7; /* Soft aesthetic background */
+    background: #f8fafc;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -94,10 +183,16 @@
 }
 
 .package-body-pro {
-    padding: 1.5rem;
+    padding: 1.25rem;
     flex: 1;
     display: flex;
     flex-direction: column;
+}
+
+@media (min-width: 769px) {
+    .package-body-pro {
+        padding: 1.5rem;
+    }
 }
 
 .pkg-header-row {
@@ -108,22 +203,23 @@
 }
 
 .package-name-pro {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #1a1a1a;
+    font-size: clamp(1.1rem, 3vw, 1.35rem);
+    font-weight: 800;
+    color: #0f172a;
     margin: 0;
-    line-height: 1.3;
+    line-height: 1.2;
 }
 
 .status-pill-small {
-    font-size: 0.7rem;
-    font-weight: 700;
+    font-size: 0.65rem;
+    font-weight: 800;
     text-transform: uppercase;
-    padding: 0.2rem 0.6rem;
-    border-radius: 6px;
+    padding: 0.25rem 0.65rem;
+    border-radius: 999px;
     background: #f1f5f9;
     color: #64748b;
     cursor: pointer;
+    letter-spacing: 0.02em;
 }
 
 .status-pill-small.active {
@@ -717,37 +813,51 @@
 /* =============================
    RESPONSIVE — Packages
    ============================= */
-@media (max-width: 768px) {
-    .package-management-header {
-        flex-direction: column;
+@media (max-width: 1200px) {
+    .page-header {
         align-items: flex-start;
         gap: 1.25rem;
-        margin-bottom: 2rem;
+    }
+
+    .header-actions {
+        justify-content: flex-start;
+        flex: none;
+    }
+}
+
+@media (max-width: 992px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .header-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .search-box-pro {
+        max-width: 100%;
+    }
+    
+    .packages-grid-pro {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1.5rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .header-title-group h1 {
+        font-size: 1.75rem;
     }
 
     .header-actions {
         flex-direction: column;
-        width: 100%;
-        gap: 1rem;
+        align-items: stretch;
     }
 
-    .search-box-pro {
-        width: 100% !important;
-        min-width: unset !important;
-    }
-
-    .btn-primary-pro {
-        width: 100%;
-        justify-content: center;
-    }
-
-    .packages-grid-pro {
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 1rem;
-    }
-
-    .package-media-pro {
-        height: 180px; /* Much more compact on mobile */
+    .package-card-pro {
+        border-radius: 16px;
     }
 
     .package-body-pro {
@@ -755,29 +865,54 @@
     }
 
     .package-name-pro {
-        font-size: 1.25rem;
+        font-size: 1.35rem;
     }
 
-    .package-desc-pro {
-        font-size: 0.85rem;
+    .package-price-pro {
         margin-bottom: 1rem;
     }
 
-    .package-specs-pro {
-        gap: 0.75rem;
-        padding-top: 1rem;
+    .price-val {
+        font-size: 1.5rem;
     }
 
+    .package-specs-minimal {
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+    }
 
-    .modal-pro { padding: 0.5rem; align-items: flex-end; }
+    .footer-buttons-row {
+        flex-direction: column;
+    }
+
+    .btn-edit-full {
+        width: 100%;
+        order: 2;
+    }
+
+    .btn-menu-items, .btn-archive-pro {
+        width: 100%;
+        height: 48px;
+        order: 1;
+    }
+
+    /* Modals Pro Mobile Override */
+    .modal-pro {
+        padding: 1rem;
+    }
     .modal-content-pro {
-        max-height: 92vh;
-        border-radius: 1.5rem 1.5rem 0 0;
+        max-width: 420px;
+        border-radius: 1.25rem;
     }
-
-    .modal-header-pro { padding: 1.25rem 1.5rem; }
-    .modal-body-pro   { padding: 1.25rem 1.5rem; }
-    .modal-footer-pro { padding: 1rem 1.5rem; }
+    .modal-header-pro {
+        padding: 1.25rem 1.5rem;
+    }
+    .modal-body-pro {
+        padding: 1.25rem 1.5rem;
+    }
+    .modal-footer-pro {
+        padding: 1.25rem 1.5rem;
+    }
 }
 
 @media (max-width: 480px) {

@@ -5,44 +5,47 @@
 {% block extra_css %}
 <!-- FullCalendar CSS -->
 <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css' rel='stylesheet' />
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/calendar.css') }}?v=4">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/calendar.css') }}?v=5.0">
 {% endblock %}
 
 {% block content %}
-<div class="page-header" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 2.5rem;">
-    <div>
+<div class="container-premium">
+<div class="calendar-header-pro">
+    <div class="header-info">
         <h1>Service Calendar</h1>
         <p>Manage your availability and view upcoming event dates.</p>
     </div>
-    <button onclick="openManualBookingModal()" class="btn-primary" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; border-radius: 999px;">
-        <i class="fas fa-plus"></i> Walk-in Booking
-    </button>
+    <div class="header-action">
+        <button onclick="openManualBookingModal()" class="btn-primary btn-walkin-header">
+            <i class="fas fa-plus"></i> Walk-in Booking
+        </button>
+    </div>
 </div>
 
 <div class="calendar-layout-grid">
     <!-- Main Calendar -->
     <div class="calendar-main-container">
         <!-- Calendar Legend Moved Here -->
-        <div class="calendar-legend-top" style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
-            <div class="legend-item-flex" style="display: flex; align-items: center; gap: 0.5rem;">
-                <span class="legend-dot" style="background: #ec4899; width: 12px; height: 12px; border-radius: 50%;"></span>
-                <span class="legend-text" style="font-size: 0.85rem; font-weight: 600;">Weddings</span>
+        <div class="calendar-legend-top">
+            <div class="legend-item-flex">
+                <span class="legend-dot" style="background: #ec4899;"></span>
+                <span class="legend-text">Weddings</span>
             </div>
-            <div class="legend-item-flex" style="display: flex; align-items: center; gap: 0.5rem;">
-                <span class="legend-dot" style="background: #3b82f6; width: 12px; height: 12px; border-radius: 50%;"></span>
-                <span class="legend-text" style="font-size: 0.85rem; font-weight: 600;">Birthdays</span>
+            <div class="legend-item-flex">
+                <span class="legend-dot" style="background: #3b82f6;"></span>
+                <span class="legend-text">Birthdays</span>
             </div>
-            <div class="legend-item-flex" style="display: flex; align-items: center; gap: 0.5rem;">
-                <span class="legend-dot" style="background: #10b981; width: 12px; height: 12px; border-radius: 50%;"></span>
-                <span class="legend-text" style="font-size: 0.85rem; font-weight: 600;">Corporate</span>
+            <div class="legend-item-flex">
+                <span class="legend-dot" style="background: #10b981;"></span>
+                <span class="legend-text">Corporate</span>
             </div>
-            <div class="legend-item-flex" style="display: flex; align-items: center; gap: 0.5rem;">
-                <span class="legend-dot" style="background: #f59e0b; width: 12px; height: 12px; border-radius: 50%;"></span>
-                <span class="legend-text" style="font-size: 0.85rem; font-weight: 600;">Private Parties</span>
+            <div class="legend-item-flex">
+                <span class="legend-dot" style="background: #f59e0b;"></span>
+                <span class="legend-text">Private Parties</span>
             </div>
-            <div class="legend-item-flex" style="display: flex; align-items: center; gap: 0.5rem;">
-                <span class="legend-blocked-box" style="width: 12px; height: 12px; border-radius: 3px; background: #fee2e2; border: 1px solid #fecaca;"></span>
-                <span class="legend-text legend-text-danger" style="font-size: 0.85rem; font-weight: 600; color: #ef4444;">Blocked Date</span>
+            <div class="legend-item-flex">
+                <span class="legend-blocked-box"></span>
+                <span class="legend-text legend-text-danger">Blocked Date</span>
             </div>
         </div>
         <div id='calendar'></div>
@@ -125,41 +128,41 @@
             </button>
         </div>
 
-        <div id="modalBody" class="occ-modal-body" style="padding: 1.25rem 1.5rem;">
-            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                <div class="calendar-detail-item" style="display: flex; align-items: center; gap: 0.85rem; padding: 0.65rem 1rem; background: #f8fafc; border-radius: 0.5rem; border: 1px solid #f1f5f9;">
-                    <i class="fas fa-user" style="color: var(--primary-color); font-size: 1.1rem; width: 20px; text-align: center;"></i>
-                    <div style="flex: 1;">
-                        <div class="calendar-detail-label" style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 700;">Customer</div>
-                        <div id="detCustomer" class="calendar-detail-value" style="font-size: 1rem; font-weight: 600; color: #1e293b;">---</div>
+        <div id="modalBody" class="occ-modal-body">
+            <div class="calendar-detail-list">
+                <div class="calendar-detail-item">
+                    <i class="fas fa-user"></i>
+                    <div>
+                        <div class="calendar-detail-label">Customer</div>
+                        <div id="detCustomer" class="calendar-detail-value">---</div>
                     </div>
                 </div>
-                <div class="calendar-detail-item" style="display: flex; align-items: center; gap: 0.85rem; padding: 0.65rem 1rem; background: #f8fafc; border-radius: 0.5rem; border: 1px solid #f1f5f9;">
-                    <i class="fas fa-tag" style="color: var(--primary-color); font-size: 1.1rem; width: 20px; text-align: center;"></i>
-                    <div style="flex: 1;">
-                        <div class="calendar-detail-label" style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 700;">Event Type</div>
-                        <div id="detType" class="calendar-detail-value" style="font-size: 1rem; font-weight: 600; color: #1e293b;">---</div>
+                <div class="calendar-detail-item">
+                    <i class="fas fa-tag"></i>
+                    <div>
+                        <div class="calendar-detail-label">Event Type</div>
+                        <div id="detType" class="calendar-detail-value">---</div>
                     </div>
                 </div>
-                <div class="calendar-detail-item" style="display: flex; align-items: center; gap: 0.85rem; padding: 0.65rem 1rem; background: #f8fafc; border-radius: 0.5rem; border: 1px solid #f1f5f9;">
-                    <i class="fas fa-clock" style="color: var(--primary-color); font-size: 1.1rem; width: 20px; text-align: center;"></i>
-                    <div style="flex: 1;">
-                        <div class="calendar-detail-label" style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 700;">Date & Time</div>
-                        <div id="detDateTime" class="calendar-detail-value" style="font-size: 1rem; font-weight: 600; color: #1e293b;">---</div>
+                <div class="calendar-detail-item">
+                    <i class="fas fa-clock"></i>
+                    <div>
+                        <div class="calendar-detail-label">Date & Time</div>
+                        <div id="detDateTime" class="calendar-detail-value">---</div>
                     </div>
                 </div>
-                <div class="calendar-detail-item" style="display: flex; align-items: center; gap: 0.85rem; padding: 0.65rem 1rem; background: #f8fafc; border-radius: 0.5rem; border: 1px solid #f1f5f9;">
-                    <i class="fas fa-map-marker-alt" style="color: var(--primary-color); font-size: 1.1rem; width: 20px; text-align: center;"></i>
-                    <div style="flex: 1;">
-                        <div class="calendar-detail-label" style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 700;">Venue / Address</div>
-                        <div id="detVenue" class="calendar-detail-value" style="font-size: 1rem; font-weight: 600; color: #1e293b;">---</div>
+                <div class="calendar-detail-item">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <div>
+                        <div class="calendar-detail-label">Venue / Address</div>
+                        <div id="detVenue" class="calendar-detail-value">---</div>
                     </div>
                 </div>
-                <div class="calendar-detail-item" style="display: flex; align-items: center; gap: 0.85rem; padding: 0.65rem 1rem; background: #f8fafc; border-radius: 0.5rem; border: 1px solid #f1f5f9;">
-                    <i class="fas fa-users" style="color: var(--primary-color); font-size: 1.1rem; width: 20px; text-align: center;"></i>
-                    <div style="flex: 1;">
-                        <div class="calendar-detail-label" style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 700;">Guests & Package</div>
-                        <div id="detPackage" class="calendar-detail-value" style="font-size: 1rem; font-weight: 600; color: #1e293b;">---</div>
+                <div class="calendar-detail-item">
+                    <i class="fas fa-users"></i>
+                    <div>
+                        <div class="calendar-detail-label">Guests & Package</div>
+                        <div id="detPackage" class="calendar-detail-value">---</div>
                     </div>
                 </div>
             </div>
@@ -387,6 +390,7 @@
             </div>
         </form>
     </div>
+</div>
 </div>
 {% endblock %}
 

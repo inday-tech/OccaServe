@@ -3,15 +3,14 @@
 {% block title %}Overview - Caterer Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/index.css') }}?v=1.5">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/index.css') }}?v=2.0">
 {% endblock %}
 
 {% block content %}
-<div class="page-header"
-    style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 2rem;">
+<div class="page-header" id="page-header">
     <div>
-        <h1 style="font-weight: 800; letter-spacing: -0.02em;">Welcome back, {{ user.first_name }}!</h1>
-        <p style="color: #64748b; font-size: 1.1rem; margin-top: 0.25rem;">Here's how your business is performing.</p>
+        <h1>Welcome back, {{ user.first_name }}!</h1>
+        <p>Here's how your business is performing.</p>
     </div>
 
     <div class="timeframe-selector" id="dashboard-timeframe">
@@ -70,14 +69,10 @@
         <div class="roi-breakdown-card c-card-premium animate-up">
             <div class="roi-header">
                 <div>
-                    <h3 style="margin:0; font-weight: 800; color: var(--secondary-color); font-size: 1.15rem;"><i
-                            class="fas fa-wallet" style="margin-right: 0.5rem; color: var(--primary-color);"></i>
-                        Financial Performance</h3>
-                    <p style="font-size: 0.85rem; color: #64748b; margin-top: 0.25rem;">Breakdown of realized and
-                        projected profitability</p>
+                    <h3><i class="fas fa-wallet"></i> Financial Performance</h3>
+                    <p>Breakdown of realized and projected profitability</p>
                 </div>
-                <div id="roi-status-badge" class="roi-badge-premium"
-                    style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 0.5rem 1rem; border-radius: 2rem; font-weight: 800; font-size: 0.75rem; letter-spacing: 0.02em;">
+                <div id="roi-status-badge" class="roi-badge-premium">
                     <i class="fas fa-check-circle"></i> PROFITABLE
                 </div>
             </div>
@@ -85,66 +80,55 @@
             <div class="roi-metric-grid">
                 <div class="roi-metric-item">
                     <div class="roi-metric-label">Realized Revenue</div>
-                    <div class="roi-metric-value" id="roi-breakdown-revenue" style="color: var(--secondary-color);">₱{{
-                        "{:,.2f}".format(total_revenue|default(0.0)) }}</div>
+                    <div class="roi-metric-value" id="roi-breakdown-revenue" style="color: var(--secondary-color);">₱{{ "{:,.2f}".format(total_revenue|default(0.0)) }}</div>
                 </div>
                 <div class="roi-metric-item">
                     <div class="roi-metric-label">Operating Expenses</div>
-                    <div class="roi-metric-value" id="roi-breakdown-expenses" style="color: #e11d48;">₱{{
-                        "{:,.2f}".format(actual_expenses|default(0.0)) }}</div>
+                    <div class="roi-metric-value" id="roi-breakdown-expenses" style="color: #e11d48;">₱{{ "{:,.2f}".format(actual_expenses|default(0.0)) }}</div>
                 </div>
                 <div class="roi-metric-item">
                     <div class="roi-metric-label">Actual Net Profit</div>
-                    <div class="roi-metric-value" id="roi-breakdown-profit" style="color: #059669;">₱{{
-                        "{:,.2f}".format(net_profit|default(0.0)) }}</div>
+                    <div class="roi-metric-value" id="roi-breakdown-profit" style="color: #059669;">₱{{ "{:,.2f}".format(net_profit|default(0.0)) }}</div>
                 </div>
             </div>
 
-            <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9;">
-                <div
-                    style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.5rem;">
+            <div class="roi-trend-section">
+                <div class="roi-trend-header">
                     <div>
-                        <h4 style="margin:0; font-size: 1rem; font-weight: 800;">ROI Trend Analysis %</h4>
-                        <p style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.25rem;">Performance over the selected
-                            timeframe</p>
+                        <h4>ROI Trend Analysis %</h4>
+                        <p>Performance over the selected timeframe</p>
                     </div>
                     <div class="chart-legend-custom">
-                        <div class="legend-item"><span class="legend-dot" style="background: #10b981;"></span> ROI %
-                        </div>
-                        <div class="legend-item"><span class="legend-dot"
-                                style="background: var(--primary-color);"></span> Revenue</div>
+                        <div class="legend-item"><span class="legend-dot" style="background: #10b981;"></span> ROI %</div>
+                        <div class="legend-item"><span class="legend-dot" style="background: var(--primary-color);"></span> Revenue</div>
                     </div>
                 </div>
-                <div style="height: 320px; position: relative;">
+                <div class="chart-container">
                     <canvas id="roiTrendChart"></canvas>
                 </div>
             </div>
         </div>
 
         <!-- Secondary Analytics Row -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+        <div class="analytics-secondary-grid">
             <!-- Bookings Chart Card -->
             <div class="roi-breakdown-card c-card-premium animate-up">
-                <h3 style="margin:0 0 1.5rem 0; font-weight: 800; color: var(--secondary-color); font-size: 1rem;"><i
-                        class="fas fa-calendar-check" style="margin-right: 0.5rem;"></i> Bookings Volume</h3>
-                <div style="height: 250px; position: relative;">
+                <h3 style="margin:0 0 1rem 0; font-weight: 800; color: var(--secondary-color); font-size: 1rem;"><i class="fas fa-calendar-check" style="margin-right: 0.5rem;"></i> Bookings Volume</h3>
+                <div class="chart-container" style="height: 250px;">
                     <canvas id="bookingsChart"></canvas>
                 </div>
             </div>
 
             <!-- Most Profitable Packages -->
             <div class="roi-breakdown-card c-card-premium animate-up">
-                <h3 style="margin:0 0 1rem 0; font-weight: 800; color: var(--secondary-color); font-size: 1rem;"><i
-                        class="fas fa-fire" style="margin-right: 0.5rem; color: #f59e0b;"></i> Efficiency by Package
-                </h3>
+                <h3 style="margin:0 0 1rem 0; font-weight: 800; color: var(--secondary-color); font-size: 1rem;"><i class="fas fa-fire" style="margin-right: 0.5rem; color: #f59e0b;"></i> Efficiency by Package</h3>
                 <div id="profitable-packages-list">
                     {% if popular_packages %}
                     {% for p in popular_packages %}
                     <div class="profitability-row">
                         <div>
-                            <div style="font-weight: 700; color: var(--secondary-color); font-size: 0.9rem;">{{ p.name
-                                }}</div>
-                            <div style="font-size: 0.75rem; color: #94a3b8;">{{ p.orders }} orders</div>
+                            <div>{{ p.name }}</div>
+                            <div>{{ p.orders }} orders</div>
                         </div>
                         <div class="profitability-details">
                             <div style="font-weight: 800; color: var(--secondary-color); font-size: 1rem;">{{ p.roi }}%
@@ -167,42 +151,31 @@
     <!-- Sidebar Area: Operations and Messaging -->
     <div class="dashboard-sidebar-area">
         <!-- Upcoming Events -->
-        <div class="sidebar-card-dashboard upcoming-events-card c-card-premium animate-up"
-            style="border-radius: 1.25rem;">
-            <h3 class="sidebar-card-title"
-                style="font-weight: 800; font-size: 1.1rem; padding: 1.5rem 1.5rem 0 1.5rem; color: var(--secondary-color);">
-                Upcoming Events</h3>
-            <div style="padding: 0 1.5rem 1.5rem 1.5rem;">
+        <div class="sidebar-card-dashboard upcoming-events-card c-card-premium animate-up">
+            <h3 class="sidebar-card-title" style="padding: 0 0 8px 0;">Upcoming Events</h3>
+            <div>
                 {% if upcoming_events %}
                 <div class="event-list-dashboard" id="upcoming-events-container">
                     {% for event in upcoming_events %}
-                    <div class="upcoming-item-row" style="padding: 1rem 0; border-bottom: 1px solid #f1f5f9;">
-                        <div class="event-date-box"
-                            style="width: 50px; height: 50px; background: #fff; border: 1px solid #f1f5f9; box-shadow: none;">
-                            <span class="month" style="font-size: 0.7rem; font-weight: 800;">{{
-                                event.event_date.strftime('%b') if event.event_date else '???' }}</span>
-                            <span class="day"
-                                style="font-size: 1.1rem; font-weight: 800; color: var(--primary-color);">{{
-                                event.event_date.strftime('%d') if event.event_date else '??' }}</span>
+                    <div class="upcoming-item-row">
+                        <div class="event-date-box">
+                            <span class="month">{{ event.event_date.strftime('%b') if event.event_date else '???' }}</span>
+                            <span class="day">{{ event.event_date.strftime('%d') if event.event_date else '??' }}</span>
                         </div>
-                        <div class="event-details-box" style="padding-left: 0.75rem;">
+                        <div class="event-details-box">
                             <div class="event-head-box">
-                                <span class="event-title-text" style="font-weight: 700; font-size: 0.95rem;">{{
-                                    event.event_name or 'Event Title' }}</span>
-                                <span class="event-status status-badge-dashboard status-{{ event.status }}"
-                                    style="font-size: 0.65rem; padding: 0.2rem 0.5rem; background: #f1f5f9; border: none;">{{
-                                    event.status|replace('_', ' ')|capitalize }}</span>
+                                <span class="event-title-text">{{ event.event_name or 'Event Title' }}</span>
+                                <span class="event-status">{{ event.status|replace('_', ' ')|capitalize }}</span>
                             </div>
-                            <div class="event-meta-text" style="font-size: 0.75rem; color: #94a3b8;">
-                                <span><i class="far fa-clock"></i> {{ event.event_time.strftime('%I:%M %p') if
-                                    event.event_time else 'TBD' }}</span>
+                            <div class="event-meta-text">
+                                <span><i class="far fa-clock"></i> {{ event.event_time.strftime('%I:%M %p') if event.event_time else 'TBD' }}</span>
                             </div>
                         </div>
                     </div>
                     {% endfor %}
                 </div>
                 {% else %}
-                <p style="color: #94a3b8; font-size: 0.85rem; padding: 1rem 0;">No upcoming events.</p>
+                <p style="color: var(--color-neutral-400); font-size: 0.85rem; padding: 1rem 0;">No upcoming events.</p>
                 {% endif %}
             </div>
         </div>
@@ -213,25 +186,19 @@
         </div>
 
         <!-- Popular Packages Summary -->
-        <div class="sidebar-card-dashboard c-card-premium animate-up" style="border-radius: 1.25rem; padding: 1.5rem;">
-            <h3 class="sidebar-card-title"
-                style="font-weight: 800; font-size: 1.1rem; margin-bottom: 1rem; color: var(--secondary-color);">
-                Bookings by Package</h3>
+        <div class="sidebar-card-dashboard c-card-premium animate-up">
+            <h3 class="sidebar-card-title">Bookings by Package</h3>
             {% if popular_packages %}
             <div id="popular-packages-container">
                 {% for p in popular_packages %}
-                {% set pct = [((p.orders / popular_packages[0].orders) * 100), 100]|min if popular_packages[0].orders >
-                0 else 0 %}
-                <div class="popular-item-row" style="margin-bottom: 1rem;">
-                    <div
-                        style="display: flex; justify-content: space-between; margin-bottom: 0.4rem; font-size: 0.85rem;">
+                {% set pct = [((p.orders / popular_packages[0].orders) * 100), 100]|min if popular_packages[0].orders > 0 else 0 %}
+                <div class="popular-item-row">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.85rem;">
                         <span style="font-weight: 600;">{{ p.name }}</span>
-                        <span style="color: #64748b;">{{ p.orders }} orders</span>
+                        <span style="color: var(--color-neutral-500);">{{ p.orders }} orders</span>
                     </div>
-                    <div class="progress-bar-container" style="height: 6px; background: #f1f5f9; border-radius: 10px;">
-                        <div class="progress-bar-fill"
-                            style="width: {{ pct }}%; height: 100%; border-radius: 10px; background: var(--primary-color);">
-                        </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill" style="width: {{ pct }}%;"></div>
                     </div>
                 </div>
                 {% endfor %}
@@ -242,52 +209,40 @@
 </div>
 
 <!-- Recent Transactions / Orders Focus Section -->
-<div class="recent-requests-card c-card-premium animate-up"
-    style="margin-top: 1.5rem; border-radius: 1.25rem; padding: 2rem;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-        <h3 style="margin:0; font-weight: 800; color: var(--secondary-color); font-size: 1.3rem;"><i
-                class="fas fa-history" style="margin-right: 0.75rem; color: #94a3b8;"></i> Recent Orders History</h3>
-        <a href="{{ url_for('manage_bookings') }}"
-            style="font-size: 0.85rem; font-weight: 700; color: var(--primary-color);">View All Contracts <i
-                class="fas fa-arrow-right"></i></a>
+<div class="recent-requests-card c-card-premium animate-up">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-lg); flex-wrap: wrap; gap: var(--space-md);">
+        <h3 style="margin:0; font-weight: 800; color: var(--secondary-color); font-size: 1.15rem;"><i class="fas fa-history" style="margin-right: 0.5rem; color: var(--color-neutral-400);"></i> Recent Orders History</h3>
+        <a href="{{ url_for('manage_bookings') }}" style="font-size: 0.85rem; font-weight: 700; color: var(--primary-color);">View All <i class="fas fa-arrow-right"></i></a>
     </div>
     {% if recent_orders %}
     <div class="recent-orders-list" id="recent-orders-container">
         {% for booking in recent_orders %}
-        <div class="recent-order-row"
-            style="padding: 1.25rem; margin-bottom: 0.75rem; border: 1px solid #f1f5f9; border-radius: 1rem; transition: transform 0.2s ease;">
-            <div class="ro-avatar"
-                style="width: 45px; height: 45px; background: #eff6ff; color: #3b82f6; font-weight: 800; font-size: 0.9rem;">
+        <div class="recent-order-row">
+            <div class="ro-avatar">
                 {% if booking.user %}
                 {{ booking.user.first_name[0] | upper }}{{ booking.user.last_name[0] | upper }}
                 {% else %}WI{% endif %}
             </div>
             <div class="ro-details">
-                <div class="ro-name" style="font-weight: 700; color: var(--secondary-color);">
-                    {% if booking.user %}{{ booking.user.first_name }} {{ booking.user.last_name }}{% else %}Walk-in
-                    Customer{% endif %}
+                <div class="ro-name">
+                    {% if booking.user %}{{ booking.user.first_name }} {{ booking.user.last_name }}{% else %}Walk-in Customer{% endif %}
                 </div>
-                <div class="ro-event" style="color: #64748b; font-size: 0.8rem;">{{ booking.event_type }} • {{
-                    booking.package.name if booking.package else 'Custom' }}</div>
+                <div class="ro-event">{{ booking.event_type }} • {{ booking.package.name if booking.package else 'Custom' }}</div>
             </div>
-            <div class="ro-price-date" style="text-align: right; padding-right: 2rem;">
-                <div class="ro-amount" style="font-weight: 800; color: var(--secondary-color); font-size: 1.1rem;">₱{{
-                    "{:,.2f}".format(booking.total_amount) if booking.total_amount else 'TBD' }}</div>
-                <div class="ro-date" style="font-size: 0.75rem; color: #94a3b8;">{{ booking.event_date.strftime('%b %d,
-                    %Y') if booking.event_date else '' }}</div>
+            <div class="ro-price-date">
+                <div class="ro-amount">₱{{ "{:,.2f}".format(booking.total_amount) if booking.total_amount else 'TBD' }}</div>
+                <div class="ro-date">{{ booking.event_date.strftime('%b %d, %Y') if booking.event_date else '' }}</div>
             </div>
             <div class="ro-status">
-                <span class="ro-badge ro-status-{{ booking.status }}"
-                    style="font-weight: 800; padding: 0.5rem 1rem; border-radius: 2rem;">{{ booking.status|replace('_',
-                    ' ')|capitalize }}</span>
+                <span class="ro-badge ro-status-{{ booking.status }}">{{ booking.status|replace('_', ' ')|capitalize }}</span>
             </div>
         </div>
         {% endfor %}
     </div>
     {% else %}
-    <div style="text-align:center; padding: 4rem 0;">
-        <i class="fas fa-clipboard-list" style="font-size: 3rem; color: #f1f5f9; margin-bottom: 1rem;"></i>
-        <p style="color: #94a3b8;">No orders recorded yet.</p>
+    <div style="text-align:center; padding: 3rem 0;">
+        <i class="fas fa-clipboard-list" style="font-size: 2.5rem; color: var(--color-neutral-100); margin-bottom: 1rem; display: block;"></i>
+        <p style="color: var(--color-neutral-400);">No orders recorded yet.</p>
     </div>
     {% endif %}
 </div>

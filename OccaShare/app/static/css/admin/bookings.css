@@ -21,10 +21,12 @@
         flex-direction: column;
         align-items: stretch;
     }
+
     .header-controls-pro {
         flex-direction: column;
         align-items: stretch;
     }
+
     .search-box-pro {
         max-width: 100% !important;
     }
@@ -138,16 +140,56 @@
 }
 
 /* Status Colors - Refined for Orange/Navy Theme */
-.status-draft { color: #64748b; background: #f1f5f9; }
-.status-pending_payment { color: #d97706; background: #fffbeb; }
-.status-pending { color: #d97706; background: #fffbeb; }
-.status-verified { color: #10b981; background: #f0fdf4; }
-.status-confirmed { color: #166534; background: #dcfce7; }
-.status-completed { color: #0869da; background: #eff6ff; }
-.status-cancelled { color: #ef4444; background: #fef2f2; }
-.status-expired { color: #71717a; background: #f4f4f5; }
-.status-flagged { color: #f59e0b; background: #fff7ed; border: 1px solid #ffedd5; }
-.status-default { color: #374151; background: #f1f5f9; }
+.status-draft {
+    color: #64748b;
+    background: #f1f5f9;
+}
+
+.status-pending_payment {
+    color: #d97706;
+    background: #fffbeb;
+}
+
+.status-pending {
+    color: #d97706;
+    background: #fffbeb;
+}
+
+.status-verified {
+    color: #10b981;
+    background: #f0fdf4;
+}
+
+.status-confirmed {
+    color: #166534;
+    background: #dcfce7;
+}
+
+.status-completed {
+    color: #0869da;
+    background: #eff6ff;
+}
+
+.status-cancelled {
+    color: #ef4444;
+    background: #fef2f2;
+}
+
+.status-expired {
+    color: #71717a;
+    background: #f4f4f5;
+}
+
+.status-flagged {
+    color: #f59e0b;
+    background: #fff7ed;
+    border: 1px solid #ffedd5;
+}
+
+.status-default {
+    color: #374151;
+    background: #f1f5f9;
+}
 
 /* Pagination Registry */
 .pagination-registry-pro {
@@ -195,4 +237,4 @@
     opacity: 0.5;
     cursor: not-allowed;
     background: #f8fafc;
-}
+}

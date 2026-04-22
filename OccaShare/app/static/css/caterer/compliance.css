@@ -1,0 +1,436 @@
+/* =============================================
+   CATERER COMPLIANCE / KYC — compliance.css
+   Design System: 8px grid, type scale tokens
+   Breakpoints: 1024 / 768 / 480
+   ============================================= */
+
+/* ─── Page Header ─── */
+.kyc-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-lg);
+    margin-bottom: var(--space-xl);
+}
+
+.kyc-page-header h1 {
+    font-size: var(--text-2xl);
+    font-weight: 800;
+    color: var(--color-neutral-900);
+    margin-bottom: var(--space-xs);
+}
+
+.kyc-page-header p {
+    color: var(--color-neutral-500);
+    font-size: var(--text-base);
+    margin: 0;
+}
+
+/* ─── Search Box ─── */
+.kyc-search-box {
+    position: relative;
+    width: 300px;
+}
+
+.kyc-search-box i {
+    position: absolute;
+    left: var(--space-md);
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-neutral-400);
+    font-size: var(--text-sm);
+}
+
+.kyc-search-box input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.75rem;
+    border: 1.5px solid var(--color-neutral-200);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    outline: none;
+    transition: all 0.2s;
+    font-family: inherit;
+    height: var(--tap-min);
+    box-sizing: border-box;
+}
+
+.kyc-search-box input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 4px rgba(var(--primary-color-rgb), 0.1);
+}
+
+/* ─── Tabs ─── */
+.compliance-tabs {
+    display: flex;
+    gap: var(--space-xl);
+    margin-bottom: var(--space-lg);
+    border-bottom: 2px solid var(--color-neutral-100);
+    padding: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.compliance-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.compliance-tab {
+    padding: var(--space-sm) var(--space-xs);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--color-neutral-500);
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s;
+    white-space: nowrap;
+    min-height: var(--tap-min);
+    display: flex;
+    align-items: center;
+    background: none;
+    border: none;
+}
+
+.compliance-tab:hover {
+    color: var(--primary-color);
+}
+
+.compliance-tab.active {
+    color: var(--primary-color);
+}
+
+.compliance-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--primary-color);
+    border-radius: 2px;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.queue-badge {
+    font-size: var(--text-xs);
+    padding: 2px 8px;
+    background: var(--color-neutral-100);
+    color: var(--color-neutral-500);
+    border-radius: var(--radius-pill);
+    margin-left: var(--space-sm);
+    font-weight: 700;
+}
+
+.active .queue-badge {
+    background: var(--primary-color);
+    color: white;
+}
+
+/* ─── Card Wrapper ─── */
+.kyc-review-card-wrapper {
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    border: 1px solid var(--color-neutral-100);
+    overflow: hidden;
+}
+
+.kyc-section-header {
+    padding: var(--space-lg);
+    border-bottom: 1px solid var(--color-neutral-100);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.kyc-section-header i {
+    color: var(--primary-color);
+    font-size: var(--text-base);
+}
+
+.kyc-section-header h3 {
+    margin: 0;
+    color: var(--color-neutral-900);
+    font-size: var(--text-base);
+    font-weight: 800;
+}
+
+/* ─── Table (Desktop) ─── */
+.kyc-table-scroll {
+    overflow-x: auto;
+}
+
+.audit-review-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 800px;
+}
+
+.audit-review-table th {
+    background: var(--color-neutral-50);
+    padding: var(--space-md) var(--space-lg);
+    text-align: left;
+    font-size: var(--text-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--color-neutral-500);
+    letter-spacing: 0.025em;
+    border-bottom: 1px solid var(--color-neutral-100);
+}
+
+.audit-review-table td {
+    padding: var(--space-md) var(--space-lg);
+    border-bottom: 1px solid var(--color-neutral-100);
+    vertical-align: middle;
+}
+
+.audit-review-table tbody tr {
+    transition: background 0.2s;
+}
+
+.audit-review-table tbody tr:hover {
+    background: var(--color-neutral-50);
+}
+
+/* ─── Identity Cell ─── */
+.kyc-user-identity-box {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.kyc-user-name {
+    font-weight: 700;
+    color: var(--color-neutral-900);
+    font-size: var(--text-sm);
+}
+
+.kyc-user-email {
+    font-size: var(--text-xs);
+    color: var(--color-neutral-500);
+}
+
+/* ─── Event Type Cell ─── */
+.kyc-event-type {
+    font-weight: 600;
+    color: var(--color-neutral-900);
+    font-size: var(--text-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+}
+
+.kyc-multi-badge {
+    background: rgba(var(--primary-color-rgb), 0.1);
+    color: var(--primary-color);
+    font-size: 0.65rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 800;
+    border: 1px solid rgba(var(--primary-color-rgb), 0.2);
+    white-space: nowrap;
+}
+
+/* ─── ID Type Cell ─── */
+.kyc-id-type {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-neutral-700);
+}
+
+/* ─── Trust Score ─── */
+.fraud-score-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: var(--radius-pill);
+    font-size: var(--text-xs);
+    font-weight: 700;
+}
+
+.fraud-score-pill.low { background: #fee2e2; color: #ef4444; }
+.fraud-score-pill.mid { background: #fef3c7; color: #d97706; }
+.fraud-score-pill.high { background: #d1fae5; color: #059669; }
+
+/* ─── Status Badge ─── */
+.kyc-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: 6px 12px;
+    border-radius: var(--radius-pill);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.status-pending { background: var(--color-neutral-100); color: var(--color-neutral-700); border: 1px solid var(--color-neutral-200); }
+.status-processing { background: #eff6ff; color: #2563eb; border: 1px solid #dbeafe; }
+.status-manual_review { background: #fff7ed; color: #ea580c; border: 1px solid #ffedd5; }
+.status-approved, .status-verified { background: #ecfdf5; color: #059669; border: 1px solid #d1fae5; }
+.status-rejected, .status-failed { background: #fef2f2; color: #dc2626; border: 1px solid #fee2e2; }
+
+/* ─── Action Button ─── */
+.btn-review-kyc {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    background: white;
+    border: 1.5px solid var(--color-neutral-200);
+    border-radius: var(--radius-sm);
+    color: var(--color-neutral-900);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s;
+    cursor: pointer;
+    min-height: var(--tap-min);
+}
+
+.btn-review-kyc:hover {
+    background: var(--color-neutral-50);
+    border-color: var(--color-neutral-400);
+    transform: translateY(-1px);
+}
+
+.kyc-na-text {
+    color: var(--color-neutral-400);
+    font-size: var(--text-xs);
+    font-style: italic;
+}
+
+.kyc-empty-cell {
+    text-align: center;
+    color: var(--color-neutral-400);
+    padding: var(--space-2xl);
+    font-size: var(--text-sm);
+}
+
+/* ─── Mobile Card Labels (hidden on desktop) ─── */
+.kyc-card-label {
+    display: none;
+    font-size: var(--text-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--color-neutral-400);
+    letter-spacing: 0.025em;
+    margin-bottom: 4px;
+}
+
+/* =============================================
+   RESPONSIVE — Compliance Page
+   ============================================= */
+
+/* ─── Tablet (≤1024px) ─── */
+@media (max-width: 1024px) {
+    .kyc-search-box {
+        width: 260px;
+    }
+}
+
+/* ─── Mobile (≤768px) ─── */
+@media (max-width: 768px) {
+    .kyc-page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-md);
+    }
+
+    .kyc-page-header h1 {
+        font-size: var(--text-xl);
+    }
+
+    .kyc-page-header p {
+        font-size: var(--text-sm);
+    }
+
+    .kyc-search-box {
+        width: 100%;
+    }
+
+    .compliance-tabs {
+        gap: var(--space-lg);
+    }
+
+    .kyc-section-header {
+        padding: var(--space-md);
+    }
+
+    /* Table → Card Layout */
+    .audit-review-table {
+        min-width: unset;
+    }
+
+    .audit-review-table thead {
+        display: none;
+    }
+
+    .audit-review-table tbody tr {
+        display: flex;
+        flex-direction: column;
+        padding: var(--space-md);
+        border-bottom: 1px solid var(--color-neutral-100);
+        gap: var(--space-sm);
+    }
+
+    .audit-review-table tbody tr:last-child {
+        border-bottom: none;
+    }
+
+    .audit-review-table td {
+        padding: 0;
+        border-bottom: none;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .kyc-card-label {
+        display: block;
+    }
+
+    /* Customer name larger on mobile card */
+    .kyc-user-name {
+        font-size: var(--text-base);
+    }
+
+    .kyc-user-email {
+        font-size: var(--text-sm);
+    }
+
+    /* Full-width action button on mobile */
+    .btn-review-kyc {
+        width: 100%;
+        justify-content: center;
+        margin-top: var(--space-sm);
+    }
+}
+
+/* ─── Small Mobile (≤480px) ─── */
+@media (max-width: 480px) {
+    .kyc-page-header h1 {
+        font-size: var(--text-lg);
+    }
+
+    .compliance-tabs {
+        gap: var(--space-md);
+    }
+
+    .compliance-tab {
+        font-size: var(--text-sm);
+    }
+
+    .kyc-review-card-wrapper {
+        border-radius: var(--radius-md);
+    }
+}

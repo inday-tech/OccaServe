@@ -8,29 +8,19 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>{% block title %}Caterer Dashboard - OccaServe{% endblock %}</title>
 
-    <!-- Core Assets (Base) -->
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}?v=9.9">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
-        rel="stylesheet">
+    <!-- Core Assets -->
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- System & Layout Presets -->
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v=9.9">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}?v=9.9">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/alert_modal.css') }}?v=9.9">
-    
-    <!-- MASTER LAYOUT (Force Priority) -->
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/layout.css') }}?v=11.1">
-
-    <script>
-        // Apply historical sidebar state immediately to prevent flicker
-        (function () {
-            const isCollapsed = localStorage.getItem('catererSidebarCollapsed') === 'true';
-            if (isCollapsed) {
-                document.documentElement.classList.add('sidebar-icons-only');
-            }
-        })();
-    </script>
+    <!-- Design System Base -->
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/layout.css') }}?v=4.4">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/shared/dashboard_premium.css') }}?v=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/alert_modal.css') }}?v=1.5">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}">
 
     {% if wconfig and wconfig.favicon_url %}
     <link rel="icon" href="{{ wconfig.favicon_url }}">
@@ -38,361 +28,132 @@
 
     {% block extra_css %}{% endblock %}
 
-    {% if user and user.caterer_profile %}
     <style>
         :root {
-            /* Theme Color Injection with Enforced Fallbacks */
-            {% if user.caterer_profile.primary_color %}
-            --primary-color: {{ user.caterer_profile.primary_color }} !important;
-            --primary-color-rgb: {{ user.caterer_profile.primary_color|hex_to_rgb if user.caterer_profile.primary_color else '255, 123, 84' }} !important;
-            {% else %}
-            --primary-color: #ff7b54 !important;
-            --primary-color-rgb: 255, 123, 84 !important;
-            {% endif %}
-
-            {% if user.caterer_profile.secondary_color %}
-            --secondary-color: {{ user.caterer_profile.secondary_color }} !important;
-            {% endif %}
-
-            {% if user.caterer_profile.accent_color %}
-            --accent-color: {{ user.caterer_profile.accent_color }} !important;
-            --accent-color-rgb: {{ user.caterer_profile.accent_color|hex_to_rgb if user.caterer_profile.accent_color else '230, 106, 69' }} !important;
-            {% endif %}
-
-            {% if user.caterer_profile.highlight_color %}
-            --highlight-color: {{ user.caterer_profile.highlight_color }} !important;
-            --highlight-color-rgb: {{ user.caterer_profile.highlight_color|hex_to_rgb if user.caterer_profile.highlight_color else '72, 187, 120' }} !important;
-            {% else %}
-            --highlight-color: #48BB78 !important;
-            --highlight-color-rgb: 72, 187, 120 !important;
-            {% endif %}
-
-            /* Advanced Branding Variables */
-            --font-family-base: 'Poppins', sans-serif;
-            --border-radius-base: {{ user.caterer_profile.border_radius or 12 }}px;
-            
-            /* Enforced Sidebar Spacing Variable */
+            {% if user and user.caterer_profile %}
+            --primary-color: {{ user.caterer_profile.primary_color or '#f97316' }};
+            --secondary-color: {{ user.caterer_profile.secondary_color or '#334155' }};
+            --accent-color: {{ user.caterer_profile.accent_color or '#f97316' }};
+            --highlight-color: {{ user.caterer_profile.highlight_color or 'rgba(249, 115, 22, 0.1)' }};
             --sidebar-width: 280px !important;
-        }
-
-        body {
-            font-family: var(--font-family-base), sans-serif !important;
-        }
-
-        /* Global Border Radius Overrides */
-        .card,
-        .profile-card,
-        .btn,
-        .btn-primary,
-        .btn-secondary,
-        .form-group input,
-        .form-group select,
-        .form-group textarea,
-        .sidebar-link,
-        .stat-card,
-        .menu-item-card,
-        .account-status-box,
-        .modal-content,
-        .search-bar-container {
-            border-radius: var(--border-radius-base) !important;
-        }
-
-        /* Hide number spinners globally */
-        input[type=number]::-webkit-inner-spin-button,
-        input[type=number]::-webkit-outer-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-
-        input[type=number] {
-            -moz-appearance: textfield;
-            /* Firefox */
-        }
-
-        /* Error Drawer Styles */
-        .error-drawer {
-            background: #fef2f2;
-            border-left: 4px solid #ef4444;
-            color: #b91c1c;
-            padding: 12px 16px;
-            margin-bottom: 16px;
-            border-radius: var(--border-radius-base);
-            display: none;
-            align-items: flex-start;
-            gap: 12px;
-            font-size: 0.9rem;
-            animation: slideDown 0.3s ease-out;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        }
-
-        .error-drawer i {
-            margin-top: 3px;
-            font-size: 1.1rem;
-        }
-
-        .error-drawer ul {
-            margin: 0;
-            padding-left: 20px;
-            text-align: left;
-        }
-
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            {% else %}
+            --primary-color: #f97316;
+            --secondary-color: #334155;
+            --accent-color: #f97316;
+            --highlight-color: rgba(249, 115, 22, 0.1);
+            {% endif %}
         }
     </style>
 
-    <!-- ULTIMATE DIRECT INJECTION (Cache Bypass & Responsive) -->
-    <style>
-        /* Base Desktop (Full Sidebar) */
-        @media (min-width: 1025px) {
-            .sidebar:not(.sidebar-icons-only) {
-                width: 280px !important;
-            }
-            .dashboard-wrapper:not(.sidebar-icons-only) .main-content {
-                margin-left: 280px !important;
-                width: calc(100% - 280px) !important;
-            }
+<!-- Early Sidebar State Handler (Prevents Flash) -->
+<script>
+    (function () {
+        const isCollapsed = localStorage.getItem('catererSidebarCollapsed') === 'true';
+        if (isCollapsed && window.innerWidth > 1024) {
+            document.documentElement.classList.add('sidebar-is-mini');
         }
-        
-        /* Icons Only Mode (Desktop/Tablet) */
-        .sidebar-icons-only .sidebar,
-        html.sidebar-icons-only .sidebar {
-            width: 80px !important;
-        }
-        .sidebar-icons-only .main-content,
-        html.sidebar-icons-only .main-content {
-            margin-left: 80px !important;
-            width: calc(100% - 80px) !important;
-        }
-
-        /* Mobile Adjustments */
-        @media (max-width: 768px) {
-            .main-content {
-                margin-left: 0 !important;
-                width: 100% !important;
-                padding-top: calc(var(--topbar-height, 60px) + 1.5rem) !important;
-            }
-        }
-
-        /* Enforced Active Menu Aesthetics */
-        .sidebar-menu a.active {
-            background-color: var(--primary-color) !important;
-            color: white !important;
-            border-radius: 0.85rem !important;
-            box-shadow: 0 4px 15px rgba(var(--primary-color-rgb), 0.3) !important;
-        }
-        .sidebar-menu a.active::before {
-            display: none !important;
-        }
-
-        /* Ultimate Consistency for Mini Icons (Match Customer UI) */
-        .sidebar-icons-only .sidebar-menu a,
-        html.sidebar-icons-only .sidebar-menu a {
-            padding: 0 !important;
-            width: 44px !important;
-            height: 44px !important;
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
-            margin: 0 auto 0.5rem auto !important;
-            border-radius: 12px !important;
-        }
-        
-        .sidebar-icons-only .sidebar-menu li,
-        html.sidebar-icons-only .sidebar-menu li {
-            padding: 0 !important;
-            display: flex !important;
-            justify-content: center !important;
-        }
-
-        .sidebar-icons-only .sidebar-menu a i,
-        html.sidebar-icons-only .sidebar-menu a i {
-            margin: 0 !important;
-            width: auto !important;
-            height: auto !important;
-            text-align: center !important;
-            background: transparent !important;
-            box-shadow: none !important;
-        }
-        
-        /* Ensure there's no double background on hover/active child elements */
-        .sidebar-icons-only .sidebar-menu a.active i,
-        html.sidebar-icons-only .sidebar-menu a.active i {
-            background: transparent !important;
-            color: white !important;
-            box-shadow: none !important;
-        }
-        
-        /* Stop the logo from stretching and fix the 'Pill' shape in mini mode */
-        .sidebar-icons-only .sidebar-branding,
-        html.sidebar-icons-only .sidebar-branding {
-            background: transparent !important;
-            border: none !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            justify-content: center !important;
-        }
-        
-        .sidebar-icons-only .branding-logo-box,
-        html.sidebar-icons-only .branding-logo-box {
-            margin: 0 auto !important;
-            display: flex !important;
-            justify-content: center !important;
-        }
-        
-        /* Make Logo perfectly round like Customer Dashboard (Image 2) */
-        .sidebar-brand-img,
-        .sidebar-brand-initial {
-            border-radius: 50% !important;
-            width: 40px !important;
-            height: 40px !important;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05) !important;
-        }
-
-        /* Expanded Mode Styling Refinement */
-        .sidebar-branding {
-            background: transparent !important;
-            border: none !important;
-            padding: 0.5rem !important;
-            margin-bottom: 0.5rem !important;
-        }
-        .business-name-short {
-            color: var(--secondary-color) !important;
-            font-size: 0.95rem !important;
-            text-transform: capitalize !important;
-        }
-        .business-email-mini {
-            color: #64748b !important;
-            text-transform: lowercase !important;
-            font-size: 0.70rem !important;
-        }
-    </style>
-
-    <script>
-        window.catererConfig = {
-            userId: {{ user.id }},
-            businessName: "{{ user.caterer_profile.business_name|escape }}",
-            baseUrl: window.location.origin
-        };
-    </script>
-    {% endif %}
+    })();
+</script>
 </head>
 
 <body>
+    <!-- Floating Mobile Toggle -->
+    <button class="floating-burger" id="burgerBtn" onclick="toggleSidebar()" aria-label="Toggle Menu">
+        <i class="fas fa-bars"></i>
+    </button>
 
-    <!-- Mobile Top Bar -->
-    <div class="mobile-topbar" id="mobileTopbar">
-        <button class="burger-btn" id="burgerBtn" onclick="toggleSidebar()" aria-label="Toggle navigation">
-            <span></span><span></span><span></span>
-        </button>
-        <div class="mobile-brand">
-            {% if wconfig and wconfig.logo_url %}
-            <img src="{{ wconfig.logo_url }}" alt="Logo" style="height:22px; border-radius:4px; object-fit:contain;">
-            {% endif %}
-            <span>{{ user.caterer_profile.business_name if user.caterer_profile else 'OccaServe' }}</span>
-        </div>
-    </div>
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
-    <!-- Sidebar Overlay (mobile) -->
-    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
-
-    <div
-        class="dashboard-wrapper {{ wrapper_class if wrapper_class else '' }} {{ 'sidebar-icons-only' if user and user.caterer_profile and user.caterer_profile.sidebar_mode == 'icons' else '' }}">
-        <aside class="sidebar" id="mainSidebar">
-            <!-- New Header Structure -->
+    <div class="dashboard-wrapper">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <div class="sidebar-toggle-row">
-                    <button type="button" id="desktopToggleBtn" class="desktop-toggle-btn"
-                        aria-label="Toggle Desktop Sidebar">
+                    <button id="sidebarToggle" class="desktop-toggle-btn" onclick="toggleSidebar()"
+                        aria-label="Toggle Sidebar">
                         <i class="fas fa-bars"></i>
                     </button>
                 </div>
 
-                <div class="sidebar-branding">
-                    <div class="branding-logo-box">
+                <a href="/caterer/profile" class="sidebar-user-card" style="text-decoration: none;">
+                    <div class="user-avatar"
+                        style="position: relative; display: flex; align-items: center; justify-content: center; background: var(--primary-color); color: white; border-radius: 50%; width: 40px; height: 40px; font-weight: bold; overflow: hidden; flex-shrink: 0;">
                         {% if user and user.caterer_profile and user.caterer_profile.logo_url %}
-                        <img src="{{ user.caterer_profile.logo_url }}" alt="Logo" class="sidebar-brand-img">
+                        {% set logo_path = user.caterer_profile.logo_url if
+                        user.caterer_profile.logo_url.startswith('http') or
+                        user.caterer_profile.logo_url.startswith('/') else '/' ~ user.caterer_profile.logo_url %}
+                        <span class="fallback-initials" style="position: absolute;">{{ user.first_name[0] if user else
+                            '?' }}{{ user.last_name[0] if user else '' }}</span>
+                        <img src="{{ logo_path }}" alt="Logo"
+                            style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%; position: relative; z-index: 1;"
+                            onerror="this.style.display='none';">
                         {% else %}
-                        <div class="sidebar-brand-initial">
-                            {{ user.first_name[0] if user.first_name else '?' }}{{ user.last_name[0] if user.last_name
-                            else '' }}
-                        </div>
+                        {{ user.first_name[0] if user else '?' }}{{ user.last_name[0] if user else '' }}
                         {% endif %}
                     </div>
-                    <div class="sidebar-text branding-text">
-                        <h2 class="business-name-short">{{ user.caterer_profile.business_name|truncate(20) if
-                            user.caterer_profile else 'My Business' }}</h2>
-                        <span class="business-email-mini">{{ user.email|truncate(24) if user else '' }}</span>
+                    <div class="user-info">
+                        <div class="user-name">{{ user.caterer_profile.business_name if user and user.caterer_profile
+                            else 'Caterer' }}</div>
+                        <div class="user-role">Business Dashboard</div>
                     </div>
-                </div>
+                </a>
             </div>
 
-            <ul class="sidebar-menu" id="sidebarMenu">
+            <ul class="sidebar-menu">
                 <li>
-                    <a href="/caterer/dashboard" class="{{ 'active' if active_page == 'overview' }}"
-                        onclick="closeSidebar()">
+                    <a href="/caterer/dashboard" class="{{ 'active' if active_page == 'dashboard' }}">
                         <i class="fas fa-th-large"></i> <span>Overview</span>
                     </a>
                 </li>
                 <li>
-                    <a href="/caterer/bookings" class="{{ 'active' if active_page == 'bookings' }}"
-                        onclick="closeSidebar()">
-                        <i class="fas fa-tasks"></i> <span>Manage Bookings</span>
+                    <a href="/caterer/bookings" class="{{ 'active' if active_page == 'bookings' }}">
+                        <i class="fas fa-calendar-check"></i> <span>Manage Bookings</span>
                     </a>
                 </li>
                 <li>
-                    <a href="/caterer/calendar" class="{{ 'active' if active_page == 'calendar' }}"
-                        onclick="closeSidebar()">
-                        <i class="fas fa-calendar-alt"></i> <span>Calendar</span>
+                    <a href="/caterer/calendar" class="{{ 'active' if active_page == 'calendar' }}">
+                        <i class="fas fa-calendar-alt"></i> <span>Event Calendar</span>
                     </a>
                 </li>
                 <li>
-                    <a href="/caterer/compliance" class="{{ 'active' if active_page == 'compliance' }}"
-                        onclick="closeSidebar()">
-                        <i class="fas fa-shield-alt"></i> <span>Compliance</span>
+                    <a href="/caterer/menu" class="{{ 'active' if active_page == 'menu' }}">
+                        <i class="fas fa-utensils"></i> <span>Dish Management</span>
                     </a>
                 </li>
                 <li>
-                    <a href="/caterer/payments" class="{{ 'active' if active_page == 'payments' }}"
-                        onclick="closeSidebar()">
-                        <i class="fas fa-wallet"></i> <span>Payments</span>
+                    <a href="/caterer/packages" class="{{ 'active' if active_page == 'packages' }}">
+                        <i class="fas fa-gift"></i> <span>Catering Packages</span>
                     </a>
                 </li>
                 <li>
-                    <a href="/caterer/customers" class="{{ 'active' if active_page == 'customers' }}"
-                        onclick="closeSidebar()">
-                        <i class="fas fa-users"></i> <span>Customers</span>
+                    <a href="/caterer/customers" class="{{ 'active' if active_page == 'customers' }}">
+                        <i class="fas fa-users"></i> <span>My Customers</span>
                     </a>
                 </li>
                 <li>
-                    <a href="/caterer/packages" class="{{ 'active' if active_page == 'packages' }}"
-                        onclick="closeSidebar()">
-                        <i class="fas fa-box"></i> <span>Packages</span>
+                    <a href="/caterer/payments" class="{{ 'active' if active_page == 'payments' }}">
+                        <i class="fas fa-money-bill-wave"></i> <span>Payments & Earnings</span>
                     </a>
                 </li>
                 <li>
-                    <a href="/caterer/menu" class="{{ 'active' if active_page == 'menu' }}" onclick="closeSidebar()">
-                        <i class="fas fa-utensils"></i> <span>Menu Library</span>
+                    <a href="/caterer/compliance" class="{{ 'active' if active_page == 'compliance' }}">
+                        <i class="fas fa-shield-halved"></i> <span>KYC & Compliance</span>
                     </a>
                 </li>
                 <li>
-                    <a href="/caterer/reviews" class="{{ 'active' if active_page == 'reviews' }}"
-                        onclick="closeSidebar()">
-                        <i class="fas fa-star"></i> <span>Customer Reviews</span>
+                    <a href="/caterer/reviews" class="{{ 'active' if active_page == 'reviews' }}">
+                        <i class="fas fa-star"></i> <span>Reviews & Ratings</span>
                     </a>
                 </li>
                 <li style="position: relative;">
-                    <a href="/caterer/notifications" class="{{ 'active' if active_page == 'notifications' }}"
-                        onclick="closeSidebar()">
-                        <i class="fas fa-bell"></i> <span class="sidebar-text">Notifications</span>
+                    <a href="/caterer/messages" class="{{ 'active' if active_page == 'messages' }}">
+                        <i class="fas fa-comment-dots"></i> <span>Messages</span>
+                    </a>
+                </li>
+                <li style="position: relative;">
+                    <a href="/caterer/notifications" class="{{ 'active' if active_page == 'notifications' }}">
+                        <i class="fas fa-bell"></i> <span>Notifications</span>
                         {% set unread_count = user.notifications|selectattr('is_read', 'equalto', false)|list|count if
                         user and user.notifications else 0 %}
                         <span id="nav-notif-badge"
@@ -401,193 +162,99 @@
                     </a>
                 </li>
                 <li>
-                    <a href="/caterer/archives" class="{{ 'active' if active_page == 'archives' }}"
-                        onclick="closeSidebar()">
+                    <a href="/caterer/profile" class="{{ 'active' if active_page == 'profile' }}">
+                        <i class="fas fa-cog"></i> <span>Business Settings</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/caterer/archives" class="{{ 'active' if active_page == 'archives' }}">
                         <i class="fas fa-archive"></i> <span>Archives</span>
                     </a>
                 </li>
-
                 <li class="menu-divider"></li>
                 <li>
-                    <a href="/caterer/profile" class="{{ 'active' if active_page == 'profile' }}"
-                        onclick="closeSidebar()">
-                        <i class="fas fa-store"></i> <span>Business Profile</span>
-                    </a>
-                </li>
-                {% if user and user.role == 'caterer' and not user.platform_feedback %}
-                <li>
-                    <a href="#" onclick="document.getElementById('platformFeedbackModal').style.display='flex'; event.preventDefault(); closeSidebar();" style="color: var(--primary-color); font-weight: 600;">
-                        <i class="fas fa-comment-dots"></i> <span>Leave Feedback</span>
-                    </a>
-                </li>
-                {% endif %}
-                <li>
-                    <a href="/auth/logout" class="logout-link">
+                    <a href="#" class="logout-link" onclick="confirmLogout(event)">
                         <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
                     </a>
                 </li>
             </ul>
         </aside>
 
+        <!-- Main Content -->
         <main class="main-content">
             {% block content %}{% endblock %}
         </main>
     </div>
 
-    <!-- Notification system assets -->
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/notifications.css') }}?v=9.9">
-    <script src="{{ url_for('static', path='/js/caterer/notifications.js') }}?v=9.9"></script>
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
 
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="{{ url_for('static', path='/js/main.js') }}?v=30.0"></script>
-    <script src="{{ url_for('static', path='/js/global/diamond_validation.js') }}?v=30.0"></script>
-    <script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v=9.9"></script>
-    <script src="{{ url_for('static', path='/js/caterer/layout.js') }}?v=11.1"></script>
-
-    {% block extra_js %}{% endblock %}
-
-    <!-- Inactivity Auto-Logout (Premium Refactor) -->
-    <div id="inactivityModal" class="occ-modal-overlay">
-        <div class="occ-modal-box sz-sm">
-            <div class="occ-modal-header">
-                <div>
-                    <h3 class="occ-modal-title">Session Expiring Soon</h3>
-                    <div class="occ-modal-subtitle">For your security, you'll be logged out due to inactivity.</div>
-                </div>
-            </div>
-            <div class="occ-modal-body" style="text-align: center; padding: 2rem 1.5rem;">
-                <div style="font-size: 3.5rem; color: #f59e0b; margin-bottom: 1.5rem; filter: drop-shadow(0 0 15px rgba(245, 158, 11, 0.2));">
-                    <i class="fas fa-clock-rotate-left"></i>
-                </div>
-                <p style="color: #475569; font-size: 1rem; font-weight: 500; line-height: 1.6;">
-                    You've been inactive for a while. Your session will expire in <strong style="color:var(--secondary-color);">1 minute</strong>.
-                    <br>Would you like to stay logged in?
-                </p>
-            </div>
-            <div class="occ-modal-footer">
-                <button id="stayLoggedInBtn" class="btn-primary" style="width: 100%; height: 48px;">Yes, Keep Me Logged In</button>
-            </div>
-        </div>
-    </div>
-
-
-
-    {% if user %}
-    {% include "shared/floating_chat.html" %}
-    {% endif %}
-
-    <!-- Platform Feedback Modal -->
-    <div id="platformFeedbackModal" style="display:none; position:fixed; z-index:9999; inset:0; background:rgba(15,23,42,0.55); backdrop-filter:blur(6px); align-items:center; justify-content:center;">
-        <div style="background:white; border-radius:20px; padding:2rem; width:90%; max-width:480px; box-shadow:0 25px 60px rgba(0,0,0,0.2); position:relative;">
-            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem;">
-                <div>
-                    <h3 style="margin:0; font-size:1.15rem; font-weight:800; color:#0f172a;"><i class="fas fa-comment-dots" style="color:var(--primary-color,#FF7B54); margin-right:8px;"></i>Share Your Experience</h3>
-                    <p style="margin:4px 0 0; font-size:0.82rem; color:#64748b;">Tell us about using OccaServe as a caterer partner</p>
-                </div>
-                <button type="button" onclick="closePlatformFeedbackModal()" style="background:none; border:none; cursor:pointer; font-size:1.4rem; color:#94a3b8; line-height:1;">&times;</button>
-            </div>
-
-            <form method="POST" action="/caterer/platform-feedback" id="catererFeedbackForm">
-                <input type="hidden" name="rating" id="catererRatingInput" value="5">
-
-                <div style="margin-bottom:1.5rem;">
-                    <label style="font-size:0.82rem; font-weight:700; color:#475569; display:block; margin-bottom:0.75rem;">Your Rating</label>
-                    <div style="display:flex; gap:6px; align-items:center;" id="catererStarRow">
-                        {% for s in [1,2,3,4,5] %}
-                        <i class="fas fa-star caterer-fb-star"
-                           data-val="{{ s }}"
-                           style="font-size:2rem; cursor:pointer; color:{% if s <= 5 %}#f59e0b{% else %}#e2e8f0{% endif %}; transition:transform 0.1s, color 0.1s;"
-                        ></i>
-                        {% endfor %}
-                    </div>
-                    <p id="catererRatingLabel" style="margin:6px 0 0; font-size:0.78rem; color:#64748b; font-weight:600;">5 stars — Excellent</p>
-                </div>
-
-                <div style="margin-bottom:1.5rem;">
-                    <label style="font-size:0.82rem; font-weight:700; color:#475569; display:block; margin-bottom:0.5rem;">Your Feedback <span style="color:#ef4444;">*</span></label>
-                    <textarea name="comment" id="catererFeedbackText" rows="4" required minlength="10"
-                        placeholder="Share your experience using OccaServe to grow your business..."
-                        style="width:100%; box-sizing:border-box; padding:0.85rem 1rem; border:1.5px solid #e2e8f0; border-radius:12px; font-family:inherit; font-size:0.9rem; color:#334155; resize:none; outline:none; transition:border-color 0.2s;"
-                        onfocus="this.style.borderColor='var(--primary-color,#FF7B54)'"
-                        onblur="this.style.borderColor='#e2e8f0'"
-                    ></textarea>
-                    <p style="margin:4px 0 0; font-size:0.75rem; color:#94a3b8;">Minimum 10 characters</p>
-                </div>
-
-                <div style="display:flex; gap:12px; margin-top:0.5rem;">
-                    <button type="button" onclick="snoozePlatformFeedback()" style="flex:1; padding:0.95rem; background:#f1f5f9; color:#475569; border:none; border-radius:12px; font-weight:700; font-size:0.95rem; cursor:pointer; transition:background 0.2s;">
-                        Maybe Later
-                    </button>
-                    <button type="submit" style="flex:2; padding:0.95rem; background:linear-gradient(135deg, var(--primary-color,#FF7B54), var(--accent-color,#e85d3a)); color:white; border:none; border-radius:12px; font-weight:700; font-size:0.95rem; cursor:pointer; transition:opacity 0.2s;" onmouseenter="this.style.opacity='0.92'" onmouseleave="this.style.opacity='1'">
-                        <i class="fas fa-paper-plane" style="margin-right:6px;"></i>Submit Feedback
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
+    <script src="{{ url_for('static', path='js/main.js') }}?v=2.0"></script>
+    <script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v=1.4"></script>
 
     <script>
-        const catererRatingLabels = ['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent'];
-        const catererStars = document.querySelectorAll('.caterer-fb-star');
-        const catererRatingInput = document.getElementById('catererRatingInput');
-        const catererRatingLabel = document.getElementById('catererRatingLabel');
+        function toggleSidebar() {
+            const isMobile = window.innerWidth <= 1024;
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            const burgerBtn = document.getElementById('burgerBtn');
 
-        function setCatererStars(val) {
-            catererStars.forEach(s => {
-                const sv = parseInt(s.dataset.val);
-                s.style.color = sv <= val ? '#f59e0b' : '#e2e8f0';
-                s.style.transform = sv <= val ? 'scale(1.15)' : 'scale(1)';
-            });
-            catererRatingInput.value = val;
-            catererRatingLabel.textContent = val + ' star' + (val > 1 ? 's' : '') + ' — ' + catererRatingLabels[val];
+            if (isMobile) {
+                sidebar.classList.toggle('sidebar-open');
+                overlay.classList.toggle('active');
+                if (burgerBtn) burgerBtn.classList.toggle('burger-open');
+
+                // Prevent scrolling when sidebar is open
+                if (sidebar.classList.contains('sidebar-open')) {
+                    document.body.style.overflow = 'hidden';
+                } else {
+                    document.body.style.overflow = '';
+                }
+            } else {
+                const isMini = document.documentElement.classList.toggle('sidebar-is-mini');
+                localStorage.setItem('catererSidebarCollapsed', isMini);
+            }
         }
 
-        catererStars.forEach(s => {
-            s.addEventListener('click', () => setCatererStars(parseInt(s.dataset.val)));
-            s.addEventListener('mouseenter', () => {
-                catererStars.forEach(st => {
-                    st.style.color = parseInt(st.dataset.val) <= parseInt(s.dataset.val) ? '#fbbf24' : '#e2e8f0';
-                });
-            });
-            s.addEventListener('mouseleave', () => setCatererStars(parseInt(catererRatingInput.value)));
-        });
-
-        function closePlatformFeedbackModal() {
-            document.getElementById('platformFeedbackModal').style.display = 'none';
-        }
-
-        function snoozePlatformFeedback() {
-            const nextShow = Date.now() + (24 * 60 * 60 * 1000); // 24 hours
-            localStorage.setItem('feedbackNudgeSnooze', nextShow);
-            closePlatformFeedbackModal();
-        }
-
-        document.getElementById('platformFeedbackModal').addEventListener('click', function(e) {
-            if (e.target === this) closePlatformFeedbackModal();
-        });
-
-        // Proactive Nudge Logic
-        {% if user and user.role == 'caterer' and not user.platform_feedback %}
-        window.addEventListener('load', function() {
-            const snoozeUntil = localStorage.getItem('feedbackNudgeSnooze');
-            const now = Date.now();
-
-            if (!snoozeUntil || now > parseInt(snoozeUntil)) {
-                setTimeout(() => {
-                    const modal = document.getElementById('platformFeedbackModal');
-                    if (modal && modal.style.display === 'none') {
-                        modal.style.display = 'flex';
+        function confirmLogout(e) {
+            e.preventDefault();
+            if (typeof window.showConfirm === 'function') {
+                window.showConfirm('Are you sure you want to log out?', function () {
+                    window.location.href = '/auth/logout';
+                }, 'Logout', 'Yes, Logout');
+            } else {
+                Swal.fire({
+                    title: 'Logout',
+                    text: 'Are you sure you want to log out?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: 'var(--primary-color, #f97316)',
+                    cancelButtonColor: '#94a3b8',
+                    confirmButtonText: 'Yes, Logout'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = '/auth/logout';
                     }
-                }, 20000); // 20 seconds delay
+                });
+            }
+        }
+
+        // Close sidebar on window resize if it was open on mobile
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 1024) {
+                const sidebar = document.getElementById('sidebar');
+                const overlay = document.getElementById('sidebarOverlay');
+                if (sidebar) sidebar.classList.remove('sidebar-open');
+                if (overlay) overlay.classList.remove('active');
             }
         });
-        {% endif %}
-
-        // Initialize to 5 stars
-        setCatererStars(5);
     </script>
 
-    {% block extra_body %}{% endblock %}
+    {% include "shared/floating_chat.html" %}
+
+    {% block extra_js %}{% endblock %}
 </body>
 
 </html>

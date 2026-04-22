@@ -3,13 +3,15 @@
 {% block title %}Payments - Caterer Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/payments.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/payments.css') }}?v=1.1">
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>Payments & Earnings</h1>
-    <p>Track your revenue, collected deposits, and pending balances from bookings.</p>
+    <div class="header-title-group">
+        <h1>Payments & Earnings</h1>
+        <p>Track your revenue, collected deposits, and pending balances from bookings.</p>
+    </div>
 </div>
 
 <!-- Financial Calculations -->
@@ -17,54 +19,54 @@
 {% set current_month = 3 %} {# March 2026 for demo context #}
 
 {% for b in bookings %}
-    {% if b.status != 'cancelled' and b.status != 'rejected' %}
-        {% set ns.active_count = ns.active_count + 1 %}
-        {% set amount = (b.total_amount or b.total_price or 0)|float %}
-        
-        {% if b.payment_status == 'paid' %}
-            {% set ns.received = ns.received + amount %}
-        {% elif b.payment_status == 'deposit_paid' %}
-            {% set deposit = amount * 0.20 %}
-            {% if b.quotation %}
-                {% set deposit = amount * (b.quotation.downpayment_percent / 100) %}
-            {% endif %}
-            {% set ns.received = ns.received + deposit %}
-            {% set ns.pending = ns.pending + (amount - deposit) %}
-        {% else %}
-            {% set ns.pending = ns.pending + amount %}
-        {% endif %}
+{% if b.status != 'cancelled' and b.status != 'rejected' %}
+{% set ns.active_count = ns.active_count + 1 %}
+{% set amount = (b.total_amount or b.total_price or 0)|float %}
 
-        {% if b.created_at.month == current_month %}
-            {% set ns.this_month = ns.this_month + amount %}
-        {% endif %}
-    {% endif %}
+{% if b.payment_status == 'paid' %}
+{% set ns.received = ns.received + amount %}
+{% elif b.payment_status == 'deposit_paid' %}
+{% set deposit = amount * 0.20 %}
+{% if b.quotation %}
+{% set deposit = amount * (b.quotation.downpayment_percent / 100) %}
+{% endif %}
+{% set ns.received = ns.received + deposit %}
+{% set ns.pending = ns.pending + (amount - deposit) %}
+{% else %}
+{% set ns.pending = ns.pending + amount %}
+{% endif %}
+
+{% if b.created_at.month == current_month %}
+{% set ns.this_month = ns.this_month + amount %}
+{% endif %}
+{% endif %}
 {% endfor %}
 
 <!-- Stats Cards -->
-<div class="stats-grid-dashboard" style="margin-bottom: 3rem; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem;">
-    <div class="stat-card-premium c-card-premium stat-card-white" style="border-left: 5px solid #10b981;">
-        <div class="stat-icon-bg halo-green"><i class="fas fa-hand-holding-usd"></i></div>
+<div class="stats-grid-dashboard">
+    <div class="stat-card-premium c-card-premium stat-card-white released">
+        <div class="stat-card-icon-bg halo-green"><i class="fas fa-hand-holding-usd"></i></div>
         <div class="stat-label-dashboard">Released Capital</div>
-        <div class="stat-value-dashboard" style="color: #059669;">₱{{ "{:,.2f}".format(released_total) }}</div>
+        <div class="stat-value-dashboard">₱{{ "{:,.2f}".format(released_total) }}</div>
         <div class="stat-hint-dashboard">Already in your pockets</div>
     </div>
 
-    <div class="stat-card-premium c-card-premium stat-card-white" style="border-left: 5px solid #6366f1;">
-        <div class="stat-icon-bg halo-purple"><i class="fas fa-shipping-fast"></i></div>
+    <div class="stat-card-premium c-card-premium stat-card-white payout">
+        <div class="stat-card-icon-bg halo-purple"><i class="fas fa-shipping-fast"></i></div>
         <div class="stat-label-dashboard">Ready for Payout</div>
-        <div class="stat-value-dashboard" style="color: #4f46e5;">₱{{ "{:,.2f}".format(ready_total) }}</div>
+        <div class="stat-value-dashboard">₱{{ "{:,.2f}".format(ready_total) }}</div>
         <div class="stat-hint-dashboard">Prep funds / Due for release</div>
     </div>
 
-    <div class="stat-card-premium c-card-premium stat-card-white" style="border-left: 5px solid #f59e0b;">
-        <div class="stat-icon-bg halo-amber"><i class="fas fa-user-lock"></i></div>
+    <div class="stat-card-premium c-card-premium stat-card-white escrow">
+        <div class="stat-card-icon-bg halo-amber"><i class="fas fa-user-lock"></i></div>
         <div class="stat-label-dashboard">Held in Escrow</div>
-        <div class="stat-value-dashboard" style="color: #d97706;">₱{{ "{:,.2f}".format(escrow_total) }}</div>
+        <div class="stat-value-dashboard">₱{{ "{:,.2f}".format(escrow_total) }}</div>
         <div class="stat-hint-dashboard">Released after event complete</div>
     </div>
 
-    <div class="stat-card-premium c-card-premium stat-card-white" style="border-left: 5px solid #94a3b8;">
-        <div class="stat-icon-bg halo-gray"><i class="fas fa-calendar-check"></i></div>
+    <div class="stat-card-premium c-card-premium stat-card-white active">
+        <div class="stat-card-icon-bg halo-gray"><i class="fas fa-calendar-check"></i></div>
         <div class="stat-label-dashboard">Active Bookings</div>
         <div class="stat-value-dashboard">{{ ns.active_count }}</div>
         <div class="stat-hint-dashboard">Ongoing event contracts</div>
@@ -76,9 +78,9 @@
     <div class="payments-toolbar">
         <h3>Payment History</h3>
         <div class="toolbar-actions">
-            <div class="search-box-pro" style="display: flex; align-items: center; gap: 0.75rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 0 1.25rem; height: 46px; box-sizing: border-box; width: 320px; transition: all 0.2s ease;">
-                <i class="fas fa-search" style="color: #94a3b8; font-size: 0.95rem;"></i>
-                <input type="text" id="paymentSearch" placeholder="Search payments..." style="border: none; outline: none; background: transparent; height: 100%; width: 100%; font-size: 0.9rem; color: #1e293b; font-weight: 500;" onkeyup="filterPayments()">
+            <div class="search-box-pro">
+                <i class="fas fa-search"></i>
+                <input type="text" id="paymentSearch" placeholder="Search payments..." onkeyup="filterPayments()">
             </div>
             <select id="statusFilter" class="filter-select-pro" onchange="filterPayments()">
                 <option value="all">All Status</option>
@@ -88,7 +90,8 @@
             </select>
             <div class="export-dropdown-container" style="position: relative;">
                 <button class="btn-export-pro" onclick="toggleExportMenu(event)">
-                    <i class="fas fa-download"></i> Export <i class="fas fa-chevron-down" style="font-size: 0.7rem; margin-left: 0.3rem;"></i>
+                    <i class="fas fa-download"></i> Export <i class="fas fa-chevron-down"
+                        style="font-size: 0.7rem; margin-left: 0.3rem;"></i>
                 </button>
                 <div id="exportMenu" class="action-menu-pro">
                     <button class="action-item-pro" onclick="exportToExcel()">
@@ -142,7 +145,8 @@
                     </td>
                     <td class="text-right" style="padding: 1.25rem 1.5rem;">
                         <div class="action-dropdown-container">
-                            <button class="action-dropdown-btn" onclick="toggleActionMenu('{{ b.id }}', event)" style="color: #94a3b8;">
+                            <button class="action-dropdown-btn" onclick="toggleActionMenu('{{ b.id }}', event)"
+                                style="color: #94a3b8;">
                                 <i class="fas fa-ellipsis-h"></i>
                             </button>
                             <div id="actionMenu-{{ b.id }}" class="action-dropdown-menu">
@@ -155,12 +159,14 @@
                                     <i class="fas fa-eye" style="color: #64748b;"></i> View Details
                                 </button>
                                 {% if b.payment_proof_url %}
-                                <button class="action-item-pro" onclick="showProof('{{ b.payment_proof_url }}', 'Proof - BK-{{ b.id }}')">
+                                <button class="action-item-pro"
+                                    onclick="showProof('{{ b.payment_proof_url }}', 'Proof - BK-{{ b.id }}')">
                                     <i class="fas fa-receipt" style="color: #f59e0b;"></i> View Proof
                                 </button>
                                 {% endif %}
                                 {% if b.payment_status == 'paid' %}
-                                <button class="action-item-pro" onclick="archivePayment('{{ b.id }}')" style="color: #dc2626;">
+                                <button class="action-item-pro" onclick="archivePayment('{{ b.id }}')"
+                                    style="color: #dc2626;">
                                     <i class="fas fa-archive"></i> Archive
                                 </button>
                                 {% endif %}
@@ -174,18 +180,22 @@
     </div>
 
     <!-- Payments-style Pagination Controls -->
-    <div class="pagination-container-p" style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9; width: 100%;">
+    <div class="pagination-container-p"
+        style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9; width: 100%;">
         <div class="pagination-info" style="font-size: 0.85rem; color: #64748b; font-weight: 500;">
-            Showing <span id="startRange">0</span> to <span id="endRange">0</span> of <span id="totalEntries">0</span> transactions
+            Showing <span id="startRange">0</span> to <span id="endRange">0</span> of <span id="totalEntries">0</span>
+            transactions
         </div>
         <div class="pagination-buttons" style="display: flex; gap: 0.5rem; align-items: center;">
-            <button id="prevPage" class="btn-pagination" style="padding: 0.5rem 1rem; border: 1px solid #e2e8f0; background: white; border-radius: 0.5rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #475569;">
+            <button id="prevPage" class="btn-pagination"
+                style="padding: 0.5rem 1rem; border: 1px solid #e2e8f0; background: white; border-radius: 0.5rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #475569;">
                 <i class="fas fa-chevron-left"></i> Previous
             </button>
             <div id="pageNumbers" class="page-numbers" style="display: flex; gap: 0.4rem;">
                 <!-- Page numbers dynamically injected -->
             </div>
-            <button id="nextPage" class="btn-pagination" style="padding: 0.5rem 1rem; border: 1px solid #e2e8f0; background: white; border-radius: 0.5rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #475569;">
+            <button id="nextPage" class="btn-pagination"
+                style="padding: 0.5rem 1rem; border: 1px solid #e2e8f0; background: white; border-radius: 0.5rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #475569;">
                 Next <i class="fas fa-chevron-right"></i>
             </button>
         </div>
@@ -198,7 +208,8 @@
         <div class="occ-modal-header">
             <div>
                 <h3 class="occ-modal-title">Transaction Details</h3>
-                <div class="occ-modal-subtitle">Comprehensive breakdown of the financial records and AI verification.</div>
+                <div class="occ-modal-subtitle">Comprehensive breakdown of the financial records and AI verification.
+                </div>
             </div>
             <button onclick="closeDetailsModal()" class="occ-modal-close">
                 <i class="fas fa-times"></i>
@@ -208,7 +219,8 @@
             <!-- Populated by JS -->
         </div>
         <div class="occ-modal-footer">
-            <button type="button" class="btn-sm-outline" style="min-width:100px;" onclick="closeDetailsModal()">Close</button>
+            <button type="button" class="btn-sm-outline" style="min-width:100px;"
+                onclick="closeDetailsModal()">Close</button>
         </div>
     </div>
 </div>
@@ -226,7 +238,8 @@
             </button>
         </div>
         <div class="occ-modal-body" style="text-align: center;">
-            <img id="proofModalImg" src="" alt="Proof" style="max-width: 100%; border-radius: 1rem; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: 1px solid #e2e8f0;">
+            <img id="proofModalImg" src="" alt="Proof"
+                style="max-width: 100%; border-radius: 1rem; box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: 1px solid #e2e8f0;">
         </div>
         <div class="occ-modal-footer">
             <button type="button" class="btn-sm-outline" style="min-width:100px;" onclick="closeProof()">Close</button>

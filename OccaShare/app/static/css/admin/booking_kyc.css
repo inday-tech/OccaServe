@@ -289,6 +289,14 @@
 }
 
 /* Dynamic Score Levels */
-.score-high { color: #10b981 !important; }
-.score-medium { color: var(--primary-color) !important; }
-.score-low { color: #ef4444 !important; }
+.score-high {
+    color: #10b981 !important;
+}
+
+.score-medium {
+    color: var(--primary-color) !important;
+}
+
+.score-low {
+    color: #ef4444 !important;
+}

@@ -1,8 +1,10 @@
 /* Admin Reviews - Diamond Standard Design */
 :root {
-    --primary-color: #f97316; /* Vibrant Orange */
+    --primary-color: #f97316;
+    /* Vibrant Orange */
     --primary-hover: #ea580c;
-    --secondary-color: #1e293b; /* Slate Dark */
+    --secondary-color: #1e293b;
+    /* Slate Dark */
     --background-soft: #f8fafc;
     --white: #ffffff;
     --border-color: #e2e8f0;
@@ -17,8 +19,15 @@
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* Header Sections - Handled by layout.css */

@@ -513,6 +513,10 @@ async def step_kyc_page(booking_id: int, request: Request, db: Session = Depends
 # Phase 3: Quotation Review & Contract
 @router.get("/step/quotation/{booking_id}", response_class=HTMLResponse)
 async def step_quotation_page(booking_id: int, request: Request, db: Session = Depends(database.get_db)):
+    user = get_current_user_from_session(request, db)
+    if not user:
+        return RedirectResponse(url=f"/auth/login?next=/bookings/step/quotation/{booking_id}")
+        
     booking = db.query(models.Booking).get(booking_id)
     if not booking: raise HTTPException(status_code=404)
     
@@ -531,7 +535,6 @@ async def step_quotation_page(booking_id: int, request: Request, db: Session = D
     if not quotation:
         quotation = quotation_service.create_quotation(db, booking, 30)
     
-    user = get_current_user_from_session(request, db)
     return templates.TemplateResponse("customer/booking_wizard/step_quotation.html", {
         "request": request,
         "quotation": quotation,
@@ -545,13 +548,16 @@ async def step_quotation_page(booking_id: int, request: Request, db: Session = D
 # Phase 4: Downpayment
 @router.get("/step/payment/{booking_id}", response_class=HTMLResponse)
 async def step_payment_v2_page(booking_id: int, request: Request, db: Session = Depends(database.get_db)):
+    user = get_current_user_from_session(request, db)
+    if not user:
+        return RedirectResponse(url=f"/auth/login?next=/bookings/step/payment/{booking_id}")
+        
     # STRICT GATE: Ensure user is verified before payment
     if not user.is_verified:
-        return RedirectResponse(url=f"/bookings/step/kyc/{booking.id}?auth_needed=1", status_code=303)
+        return RedirectResponse(url=f"/bookings/step/kyc/{booking_id}?auth_needed=1", status_code=303)
 
     booking = db.query(models.Booking).get(booking_id)
     if not booking: raise HTTPException(status_code=404)
-    user = get_current_user_from_session(request, db)
     return templates.TemplateResponse("customer/booking_wizard/step_payment.html", {
         "request": request,
         "booking_id": booking_id,

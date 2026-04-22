@@ -132,12 +132,15 @@
                     <td><strong>{{ caterer.business_name }}</strong></td>
                     <td>{{ caterer.user.email }}</td>
                     <td style="text-align: right;">
-                        <form action="/admin/caterers/{{ caterer.id }}/restore?success_msg=Caterer+restored+successfully" method="POST" style="display: inline;"
+                        <form
+                            action="/admin/caterers/{{ caterer.id }}/restore?success_msg=Caterer+restored+successfully"
+                            method="POST" style="display: inline;"
                             onsubmit="event.preventDefault(); window.showConfirm('Restore this caterer record?', () => this.submit(), 'Confirm Restore', 'Yes, Restore');">
                             <button type="submit" class="btn-restore"><i class="fas fa-undo"></i> Restore</button>
                         </form>
-                        <form action="/admin/caterers/{{ caterer.id }}/delete_permanent?success_msg=Caterer+permanently+deleted" method="POST"
-                            style="display: inline;"
+                        <form
+                            action="/admin/caterers/{{ caterer.id }}/delete_permanent?success_msg=Caterer+permanently+deleted"
+                            method="POST" style="display: inline;"
                             onsubmit="event.preventDefault(); window.showConfirm('PERMANENTLY DELETE this caterer? This cannot be undone.', () => this.submit(), 'Wait! Permanent Action', 'Yes, Delete Forever');">
                             <button type="submit" class="btn-permanent-delete"><i class="fas fa-trash-alt"></i>
                                 Delete</button>
@@ -171,12 +174,14 @@
                     <td><strong>{{ c.first_name }} {{ c.last_name }}</strong></td>
                     <td>{{ c.email }}</td>
                     <td style="text-align: right;">
-                        <form action="/admin/customers/{{ c.id }}/restore?success_msg=Customer+restored+successfully" method="POST" style="display: inline;"
+                        <form action="/admin/customers/{{ c.id }}/restore?success_msg=Customer+restored+successfully"
+                            method="POST" style="display: inline;"
                             onsubmit="event.preventDefault(); window.showConfirm('Restore this customer record?', () => this.submit(), 'Confirm Restore', 'Yes, Restore');">
                             <button type="submit" class="btn-restore"><i class="fas fa-undo"></i> Restore</button>
                         </form>
-                        <form action="/admin/customers/{{ c.id }}/delete_permanent?success_msg=Customer+permanently+deleted" method="POST"
-                            style="display: inline;"
+                        <form
+                            action="/admin/customers/{{ c.id }}/delete_permanent?success_msg=Customer+permanently+deleted"
+                            method="POST" style="display: inline;"
                             onsubmit="event.preventDefault(); window.showConfirm('PERMANENTLY DELETE this customer and all their data?', () => this.submit(), 'Wait! Permanent Action', 'Yes, Delete Forever');">
                             <button type="submit" class="btn-permanent-delete"><i class="fas fa-trash-alt"></i>
                                 Delete</button>
@@ -212,12 +217,14 @@
                     <td>{{ b.user.first_name }} {{ b.user.last_name }}</td>
                     <td>₱{{ "{:,.2f}".format(b.total_amount) }}</td>
                     <td style="text-align: right;">
-                        <form action="/admin/bookings/{{ b.id }}/restore?success_msg=Booking+restored+successfully" method="POST" style="display: inline;"
+                        <form action="/admin/bookings/{{ b.id }}/restore?success_msg=Booking+restored+successfully"
+                            method="POST" style="display: inline;"
                             onsubmit="event.preventDefault(); window.showConfirm('Restore this booking record?', () => this.submit(), 'Confirm Restore', 'Yes, Restore');">
                             <button type="submit" class="btn-restore"><i class="fas fa-undo"></i> Restore</button>
                         </form>
-                        <form action="/admin/bookings/{{ b.id }}/delete_permanent?success_msg=Booking+permanently+deleted" method="POST"
-                            style="display: inline;"
+                        <form
+                            action="/admin/bookings/{{ b.id }}/delete_permanent?success_msg=Booking+permanently+deleted"
+                            method="POST" style="display: inline;"
                             onsubmit="event.preventDefault(); window.showConfirm('PERMANENTLY DELETE this booking history?', () => this.submit(), 'Wait! Permanent Action', 'Yes, Delete Forever');">
                             <button type="submit" class="btn-permanent-delete"><i class="fas fa-trash-alt"></i>
                                 Delete</button>
@@ -251,11 +258,13 @@
                     <td><strong>{{ r.user.first_name }}</strong></td>
                     <td><span style="font-size: 0.85rem; color: #64748b;">{{ r.comment[:50] }}...</span></td>
                     <td style="text-align: right;">
-                        <form action="/admin/reviews/{{ r.id }}/restore?success_msg=Review+restored+successfully" method="POST" style="display: inline;"
+                        <form action="/admin/reviews/{{ r.id }}/restore?success_msg=Review+restored+successfully"
+                            method="POST" style="display: inline;"
                             onsubmit="event.preventDefault(); window.showConfirm('Restore this review record?', () => this.submit(), 'Confirm Restore', 'Yes, Restore');">
                             <button type="submit" class="btn-restore"><i class="fas fa-undo"></i> Restore</button>
                         </form>
-                        <form action="/admin/reviews/{{ r.id }}/delete_permanent?success_msg=Review+permanently+deleted" method="POST" style="display: inline;"
+                        <form action="/admin/reviews/{{ r.id }}/delete_permanent?success_msg=Review+permanently+deleted"
+                            method="POST" style="display: inline;"
                             onsubmit="event.preventDefault(); window.showConfirm('PERMANENTLY DELETE this review?', () => this.submit(), 'Wait! Permanent Action', 'Yes, Delete Forever');">
                             <button type="submit" class="btn-permanent-delete"><i class="fas fa-trash-alt"></i>
                                 Delete</button>
@@ -289,11 +298,13 @@
                     <td><strong>#PAY-{{ p.id }}</strong></td>
                     <td>₱{{ "{:,.2f}".format(p.amount) }}</td>
                     <td style="text-align: right;">
-                        <form action="/admin/payouts/{{ p.id }}/restore?success_msg=Payout+restored+successfully" method="POST" style="display: inline;"
+                        <form action="/admin/payouts/{{ p.id }}/restore?success_msg=Payout+restored+successfully"
+                            method="POST" style="display: inline;"
                             onsubmit="event.preventDefault(); window.showConfirm('Restore this payout record?', () => this.submit(), 'Confirm Restore', 'Yes, Restore');">
                             <button type="submit" class="btn-restore"><i class="fas fa-undo"></i> Restore</button>
                         </form>
-                        <form action="/admin/payouts/{{ p.id }}/delete_permanent?success_msg=Payout+permanently+deleted" method="POST" style="display: inline;"
+                        <form action="/admin/payouts/{{ p.id }}/delete_permanent?success_msg=Payout+permanently+deleted"
+                            method="POST" style="display: inline;"
                             onsubmit="event.preventDefault(); window.showConfirm('PERMANENTLY DELETE this payout record?', () => this.submit(), 'Wait! Permanent Action', 'Yes, Delete Forever');">
                             <button type="submit" class="btn-permanent-delete"><i class="fas fa-trash-alt"></i>
                                 Delete</button>

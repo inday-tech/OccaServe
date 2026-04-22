@@ -406,6 +406,12 @@ html.sidebar-is-mini .sidebar-toggle-row {
     letter-spacing: 0.1em;
 }
 
+@media (max-width: 1024px) {
+    .user-role {
+        display: none !important;
+    }
+}
+
 /* Menu Items */
 .sidebar-menu {
     list-style: none;

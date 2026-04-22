@@ -17,6 +17,8 @@
     overflow: hidden;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
     transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
 }
 
 .stat-card:hover {
@@ -52,6 +54,31 @@
     font-weight: 800;
     color: var(--secondary-color);
     line-height: 1;
+}
+
+@media (max-width: 480px) {
+    .stats-container {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        padding: 1rem; /* 16px padding on mobile */
+        min-height: auto;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+    }
+
+    .stat-icon {
+        top: 1rem;
+        right: 1rem;
+        font-size: 1.4rem;
+        width: 44px;
+        height: 44px;
+    }
 }
 
 /* Recent Activity Card */

@@ -19,7 +19,7 @@
         padding: 1rem !important;
         white-space: nowrap;
     }
-    
+
     .settings-tab-btn {
         padding: 0.75rem 1.25rem !important;
         font-size: 0.9rem !important;
@@ -97,8 +97,15 @@
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .panel-header {
@@ -259,9 +266,19 @@
     font-size: 1.1rem;
 }
 
-.facebook-bg { background: #1877f2; }
-.instagram-bg { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%); }
-.twitter-bg { background: #000000; } /* Updated to X logo style if desired, or keep navy */
+.facebook-bg {
+    background: #1877f2;
+}
+
+.instagram-bg {
+    background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);
+}
+
+.twitter-bg {
+    background: #000000;
+}
+
+/* Updated to X logo style if desired, or keep navy */
 
 /* Actions */
 .settings-footer {
@@ -324,8 +341,15 @@
 }
 
 @keyframes slideDown {
-    from { opacity: 0; transform: translateY(-8px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .fade-out {
@@ -364,4 +388,4 @@
     border-color: var(--primary-color);
     color: var(--primary-color);
     background: #fff7ed;
-}
+}

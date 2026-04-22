@@ -11,6 +11,7 @@
         gap: 1.25rem;
         margin-bottom: 2rem;
     }
+
     .feedback-stat-card {
         background: white;
         border: 1px solid #e2e8f0;
@@ -20,6 +21,7 @@
         flex-direction: column;
         gap: 0.4rem;
     }
+
     .feedback-stat-card .label {
         font-size: 0.72rem;
         text-transform: uppercase;
@@ -27,13 +29,23 @@
         color: #94a3b8;
         font-weight: 600;
     }
+
     .feedback-stat-card .value {
         font-size: 2rem;
         font-weight: 800;
         color: #0f172a;
     }
-    .feedback-stat-card.highlight .value { color: var(--primary-color, #FF7B54); }
-    .feedback-list { display: flex; flex-direction: column; gap: 1.25rem; }
+
+    .feedback-stat-card.highlight .value {
+        color: var(--primary-color, #FF7B54);
+    }
+
+    .feedback-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+    }
+
     .feedback-card {
         background: white;
         border: 1px solid #e2e8f0;
@@ -42,11 +54,16 @@
         position: relative;
         transition: box-shadow 0.2s;
     }
-    .feedback-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.07); }
+
+    .feedback-card:hover {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
+    }
+
     .feedback-card.is-featured {
         border-color: #f59e0b;
         background: #fffdf4;
     }
+
     .featured-badge {
         position: absolute;
         top: -10px;
@@ -58,8 +75,9 @@
         padding: 4px 12px;
         border-radius: 6px;
         letter-spacing: 0.04em;
-        box-shadow: 0 2px 6px rgba(245,158,11,0.3);
+        box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
     }
+
     .feedback-header {
         display: flex;
         align-items: center;
@@ -68,7 +86,13 @@
         gap: 1rem;
         margin-bottom: 1rem;
     }
-    .feedback-user-info { display: flex; align-items: center; gap: 0.85rem; }
+
+    .feedback-user-info {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+    }
+
     .feedback-avatar {
         width: 44px;
         height: 44px;
@@ -77,8 +101,19 @@
         background: #f1f5f9;
         flex-shrink: 0;
     }
-    .feedback-user-text h4 { font-size: 0.95rem; font-weight: 700; color: #0f172a; margin: 0; }
-    .feedback-user-text span { font-size: 0.78rem; color: #64748b; }
+
+    .feedback-user-text h4 {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0;
+    }
+
+    .feedback-user-text span {
+        font-size: 0.78rem;
+        color: #64748b;
+    }
+
     .feedback-role-badge {
         font-size: 0.68rem;
         font-weight: 700;
@@ -87,8 +122,17 @@
         margin-top: 3px;
         display: inline-block;
     }
-    .role-customer { background: #dbeafe; color: #1d4ed8; }
-    .role-caterer { background: #dcfce7; color: #15803d; }
+
+    .role-customer {
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+
+    .role-caterer {
+        background: #dcfce7;
+        color: #15803d;
+    }
+
     .feedback-rating {
         display: flex;
         align-items: center;
@@ -101,6 +145,7 @@
         padding: 0.4rem 0.9rem;
         border-radius: 8px;
     }
+
     .feedback-comment {
         font-size: 0.97rem;
         line-height: 1.7;
@@ -108,6 +153,7 @@
         font-style: italic;
         margin: 0.5rem 0 1.25rem 0;
     }
+
     .feedback-footer {
         display: flex;
         align-items: center;
@@ -117,37 +163,87 @@
         border-top: 1px dashed #e2e8f0;
         padding-top: 1rem;
     }
-    .feedback-date { font-size: 0.78rem; color: #94a3b8; }
-    .feedback-actions { display: flex; gap: 0.6rem; align-items: center; }
+
+    .feedback-date {
+        font-size: 0.78rem;
+        color: #94a3b8;
+    }
+
+    .feedback-actions {
+        display: flex;
+        gap: 0.6rem;
+        align-items: center;
+    }
+
     .btn-feedback-action {
-        width: 36px; height: 36px;
+        width: 36px;
+        height: 36px;
         border-radius: 10px;
         border: 1.5px solid #e2e8f0;
         background: white;
         cursor: pointer;
-        display: flex; align-items: center; justify-content: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         font-size: 0.85rem;
         color: #64748b;
         transition: all 0.2s;
     }
-    .btn-feedback-action:hover { border-color: #cbd5e1; background: #f8fafc; }
-    .btn-feedback-action.active { background: #f59e0b; border-color: #f59e0b; color: white; }
-    .btn-feedback-action.danger:hover { background: #fef2f2; border-color: #fca5a5; color: #ef4444; }
-    .empty-feedback {
-        text-align: center; padding: 5rem 2rem;
-        background: white; border-radius: 16px; border: 1px solid #e2e8f0;
+
+    .btn-feedback-action:hover {
+        border-color: #cbd5e1;
+        background: #f8fafc;
     }
-    .empty-feedback i { font-size: 3rem; color: #cbd5e1; display: block; margin-bottom: 1rem; }
-    .empty-feedback h3 { color: #475569; font-weight: 700; margin-bottom: 0.5rem; }
-    .empty-feedback p { color: #94a3b8; }
-    .stars { color: #f59e0b; font-size: 0.85rem; }
+
+    .btn-feedback-action.active {
+        background: #f59e0b;
+        border-color: #f59e0b;
+        color: white;
+    }
+
+    .btn-feedback-action.danger:hover {
+        background: #fef2f2;
+        border-color: #fca5a5;
+        color: #ef4444;
+    }
+
+    .empty-feedback {
+        text-align: center;
+        padding: 5rem 2rem;
+        background: white;
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .empty-feedback i {
+        font-size: 3rem;
+        color: #cbd5e1;
+        display: block;
+        margin-bottom: 1rem;
+    }
+
+    .empty-feedback h3 {
+        color: #475569;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .empty-feedback p {
+        color: #94a3b8;
+    }
+
+    .stars {
+        color: #f59e0b;
+        font-size: 0.85rem;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
     <h1>Platform Feedback</h1>
-    <p>Manage testimonials from users and caterers about their experience with OccaServe. Featured feedback appears on the homepage.</p>
+    <p>Manage testimonials from users and caterers about their experience with OccaServe. Featured feedback appears on
+        the homepage.</p>
 </div>
 
 <div class="feedback-stat-grid">
@@ -181,7 +277,8 @@
                 <img src="{{ fb.user.profile_image_url if (fb.user and fb.user.profile_image_url) else url_for('static', path='/images/default-avatar.png') }}"
                     class="feedback-avatar" alt="User">
                 <div class="feedback-user-text">
-                    <h4>{{ fb.user.first_name if fb.user else 'Deleted' }} {{ fb.user.last_name if fb.user else 'User' }}</h4>
+                    <h4>{{ fb.user.first_name if fb.user else 'Deleted' }} {{ fb.user.last_name if fb.user else 'User'
+                        }}</h4>
                     <span>{{ fb.user.email if fb.user else 'N/A' }}</span>
                     <span class="feedback-role-badge {{ 'role-caterer' if fb.role == 'caterer' else 'role-customer' }}">
                         {{ 'Caterer Partner' if fb.role == 'caterer' else 'Customer' }}
@@ -203,8 +300,7 @@
             </span>
             <div class="feedback-actions">
                 <form action="/admin/feedback/{{ fb.id }}/highlight" method="POST" style="display: contents;">
-                    <button type="submit"
-                        class="btn-feedback-action {{ 'active' if fb.is_highlighted else '' }}"
+                    <button type="submit" class="btn-feedback-action {{ 'active' if fb.is_highlighted else '' }}"
                         title="{{ 'Remove from Landing Page' if fb.is_highlighted else 'Feature on Landing Page' }}">
                         <i class="fas {{ 'fa-star' if fb.is_highlighted else 'fa-thumbtack' }}"></i>
                     </button>
@@ -245,7 +341,7 @@
     });
 
     // ── Real-Time WebSocket for new feedback ───────────────────────────────
-    (function() {
+    (function () {
         const adminId = 'admin_feedback_{{ user.id }}';
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}/ws/${adminId}`;
@@ -266,7 +362,7 @@
                         prependFeedbackCard(data);
                         updateStats(data.rating);
                     }
-                } catch(e) { console.warn('[FeedbackWS] Parse error', e); }
+                } catch (e) { console.warn('[FeedbackWS] Parse error', e); }
             };
 
             socket.onclose = () => {
@@ -280,7 +376,7 @@
 
         function buildStars(rating) {
             let html = '';
-            for(let i = 1; i <= 5; i++) {
+            for (let i = 1; i <= 5; i++) {
                 html += i <= rating
                     ? '<i class="fas fa-star"></i>'
                     : '<i class="far fa-star" style="color:#e2e8f0;"></i>';
@@ -392,12 +488,27 @@
 </script>
 <style>
     @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.4; }
+
+        0%,
+        100% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.4;
+        }
     }
+
     @keyframes slideInRight {
-        from { transform: translateX(80px); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
+        from {
+            transform: translateX(80px);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
     }
 </style>
 {% endblock %}

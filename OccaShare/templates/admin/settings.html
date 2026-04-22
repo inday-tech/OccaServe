@@ -30,7 +30,9 @@
     </aside>
 
     <!-- Content Area -->
-    <form class="settings-content-area" action="/admin/settings/update?success_msg=Website+settings+updated+successfully" method="POST" enctype="multipart/form-data">
+    <form class="settings-content-area"
+        action="/admin/settings/update?success_msg=Website+settings+updated+successfully" method="POST"
+        enctype="multipart/form-data">
         <!-- General Panel -->
         <div id="general" class="settings-panel active">
             <div class="panel-header">
@@ -52,12 +54,14 @@
             <div class="settings-grid-2">
                 <div class="settings-group">
                     <label class="settings-label">Platform Commission (%)</label>
-                    <input type="number" step="0.1" name="commission" class="settings-control" value="{{ config.commission_rate }}">
+                    <input type="number" step="0.1" name="commission" class="settings-control"
+                        value="{{ config.commission_rate }}">
                     <span class="file-hint">Standard percentage commission for older bookings.</span>
                 </div>
                 <div class="settings-group">
                     <label class="settings-label">Fixed Escrow Fee (₱)</label>
-                    <input type="number" step="1" name="commission_fixed" class="settings-control" value="{{ config.commission_fixed_amount }}">
+                    <input type="number" step="1" name="commission_fixed" class="settings-control"
+                        value="{{ config.commission_fixed_amount }}">
                     <span class="file-hint">The new fixed fee deducted per booking (e.g. ₱20).</span>
                 </div>
             </div>

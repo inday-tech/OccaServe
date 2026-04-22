@@ -13,7 +13,8 @@
             <h1>Identity Verification Audit</h1>
             <p>Sensitive data review for Booking #{{ booking.id }}</p>
         </div>
-        <div class="status-badge-pill status-{{ booking.status if booking.status in ['draft', 'pending_payment', 'pending', 'verified', 'confirmed', 'completed', 'cancelled', 'expired', 'flagged'] else 'default' }}">
+        <div
+            class="status-badge-pill status-{{ booking.status if booking.status in ['draft', 'pending_payment', 'pending', 'verified', 'confirmed', 'completed', 'cancelled', 'expired', 'flagged'] else 'default' }}">
             <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
             {{ booking.status.replace('_', ' ') }}
         </div>
@@ -37,7 +38,8 @@
                     {% if kyc.document_url %}
                     <img src="{{ kyc.document_url }}" alt="ID Document">
                     {% else %}
-                    <div style="height: 100%; display: flex; align-items: center; justify-content: center; color: #cbd5e1;">
+                    <div
+                        style="height: 100%; display: flex; align-items: center; justify-content: center; color: #cbd5e1;">
                         <i class="fas fa-image" style="font-size: 2rem;"></i>
                     </div>
                     {% endif %}
@@ -48,17 +50,22 @@
                 <p class="label-tiny-caps">Liveness Verification</p>
                 <div class="liveness-thumbs-grid">
                     <div class="liveness-img-wrapper">
-                        <img src="{{ kyc.selfie_url if kyc.selfie_url else url_for('static', path='/images/default-avatar.png') }}">
+                        <img
+                            src="{{ kyc.selfie_url if kyc.selfie_url else url_for('static', path='/images/default-avatar.png') }}">
                     </div>
                     <div class="liveness-img-wrapper">
-                        <img src="{{ kyc.selfie_2_url if kyc.selfie_2_url else (kyc.selfie_url if kyc.selfie_url else url_for('static', path='/images/default-avatar.png')) }}">
+                        <img
+                            src="{{ kyc.selfie_2_url if kyc.selfie_2_url else (kyc.selfie_url if kyc.selfie_url else url_for('static', path='/images/default-avatar.png')) }}">
                     </div>
                     <div class="liveness-img-wrapper">
-                        <img src="{{ kyc.selfie_3_url if kyc.selfie_3_url else (kyc.selfie_url if kyc.selfie_url else url_for('static', path='/images/default-avatar.png')) }}">
+                        <img
+                            src="{{ kyc.selfie_3_url if kyc.selfie_3_url else (kyc.selfie_url if kyc.selfie_url else url_for('static', path='/images/default-avatar.png')) }}">
                     </div>
                 </div>
-                <div class="status-pill-indicator {% if kyc.liveness_status == 'passed' %}success{% else %}danger{% endif %}">
-                    <i class="fas {% if kyc.liveness_status == 'passed' %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %}"></i>
+                <div
+                    class="status-pill-indicator {% if kyc.liveness_status == 'passed' %}success{% else %}danger{% endif %}">
+                    <i
+                        class="fas {% if kyc.liveness_status == 'passed' %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %}"></i>
                     Liveness Score: {{ kyc.liveness_status|capitalize }}
                 </div>
             </div>
@@ -66,7 +73,8 @@
 
         <div class="fraud-score-summary-box">
             <span class="score-label-text">Automated Credibility Score:</span>
-            <span class="score-value-highlight {% if kyc.fraud_score >= 85 %}score-high{% elif kyc.fraud_score >= 60 %}score-medium{% else %}score-low{% endif %}">
+            <span
+                class="score-value-highlight {% if kyc.fraud_score >= 85 %}score-high{% elif kyc.fraud_score >= 60 %}score-medium{% else %}score-low{% endif %}">
                 {{ kyc.fraud_score }}%
             </span>
         </div>
@@ -79,7 +87,8 @@
         <div class="system-notes-container">
             <div class="notes-label-tiny">Automated Risk Analysis</div>
             <p class="system-notes-text">
-                {{ kyc.failure_reason or 'No high-risk anomalies detected during automated background check. Data integrity appears within acceptable platform parameters.' }}
+                {{ kyc.failure_reason or 'No high-risk anomalies detected during automated background check. Data
+                integrity appears within acceptable platform parameters.' }}
             </p>
         </div>
 
@@ -120,15 +129,18 @@
                 <tbody>
                     {% for log in audit_trail %}
                     <tr class="audit-txn-row">
-                        <td style="white-space: nowrap; font-weight: 500;">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-                        <td><strong style="color: var(--secondary-color);">{{ log.action|replace('_', ' ')|capitalize }}</strong></td>
+                        <td style="white-space: nowrap; font-weight: 500;">{{ log.timestamp.strftime('%Y-%m-%d
+                            %H:%M:%S') }}</td>
+                        <td><strong style="color: var(--secondary-color);">{{ log.action|replace('_', ' ')|capitalize
+                                }}</strong></td>
                         <td style="font-family: monospace; color: #64748b;">{{ log.ip_address }}</td>
                         <td>{{ log.notes or '...' }}</td>
                     </tr>
                     {% endfor %}
                     {% if not audit_trail %}
                     <tr>
-                        <td colspan="4" style="text-align: center; color: #64748b; padding: 2rem;">No previous audit entries recorded.</td>
+                        <td colspan="4" style="text-align: center; color: #64748b; padding: 2rem;">No previous audit
+                            entries recorded.</td>
                     </tr>
                     {% endif %}
                 </tbody>
@@ -136,4 +148,4 @@
         </div>
     </div>
 </div>
-{% endblock %}
+{% endblock %}

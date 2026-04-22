@@ -4,19 +4,20 @@
 {% block title %}Manage Bookings - Caterer Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/bookings.css') }}?v=1.6">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/bookings.css') }}?v=2.1">
 <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/contract_view.css') }}?v=1.6">
 <link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}?v=1.6">
 {% endblock %}
 
 {% block content %}
+<div class="container-premium">
 <div class="page-header">
     <h1>Manage Bookings</h1>
     <p>Review, track, and manage all your customer event reservations in one place.</p>
 </div>
 
 <!-- Stats Grid -->
-<div class="stats-grid-dashboard" style="margin-bottom: 3rem;">
+<div class="stats-grid-dashboard" style="margin-bottom: var(--space-xl);">
     <div class="stat-card-premium c-card-premium stat-card-white">
         <div class="stat-icon-bg halo-slate"><i class="fas fa-calendar-alt"></i></div>
         <div class="stat-label-dashboard">Total Bookings</div>
@@ -71,20 +72,16 @@
 </div>
 {% endif %}
 
-<div class="b-table-container c-card-premium"
-    style="width: 100%; box-sizing: border-box; padding: 2rem; margin-bottom: 3rem;">
-    <div class="b-table-header"
-        style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 2.5rem; padding: 0 0.5rem; width: 100%; box-sizing: border-box;">
-        <h3 style="margin: 0; font-size: 1.35rem; font-weight: 800; color: #0f172a;">All Bookings</h3>
-        <div class="header-controls" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-            <div class="search-box-pro"
-                style="display: flex; align-items: center; gap: 0.75rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 0 1.25rem; height: 46px; box-sizing: border-box; width: 300px; min-width: 250px; transition: all 0.2s ease;">
-                <i class="fas fa-search" style="color: #94a3b8; font-size: 0.95rem;"></i>
+<div class="b-table-container c-card-premium">
+    <div class="b-table-header">
+        <h3>All Bookings</h3>
+        <div class="header-controls">
+            <div class="search-box-pro">
+                <i class="fas fa-search"></i>
                 <input type="text" id="bookingSearchInput" placeholder="Search by customer, event, or ID..."
-                    style="border: none; outline: none; background: transparent; height: 100%; width: 100%; font-size: 0.9rem; color: #1e293b; font-weight: 500;"
                     onkeyup="filterBookings()">
             </div>
-            <div class="filter-wrapper" style="position: relative; display: flex; align-items: center;">
+            <div class="filter-wrapper">
                 <select class="filter-select-pro" id="statusFilter" onchange="filterBookings()">
                     <option value="">All Status</option>
                     <option value="action_required" style="font-weight:800; color:var(--primary-color);">🔥 Action Required</option>
@@ -324,23 +321,15 @@
         </table>
     </div>
 
-    <!-- Payments-style Pagination Controls -->
-    <div class="pagination-container-p"
-        style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9;">
-        <div class="pagination-info" style="font-size: 0.85rem; color: #64748b; font-weight: 500;">
-            Showing <span id="startRange">0</span> to <span id="endRange">0</span> of <span id="totalEntries">0</span>
-            bookings
+    <!-- Pagination Controls -->
+    <div class="pagination-container-p">
+        <div class="pagination-info">
+            Showing <span id="startRange">0</span> to <span id="endRange">0</span> of <span id="totalEntries">0</span> bookings
         </div>
-        <div class="pagination-buttons" style="display: flex; gap: 0.5rem; align-items: center;">
-            <button id="prevPage" class="btn-pagination"
-                style="padding: 0.5rem 1rem; border: 1px solid #e2e8f0; background: white; border-radius: 0.5rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #475569;"><i
-                    class="fas fa-chevron-left"></i> Previous</button>
-            <div id="pageNumbers" class="page-numbers" style="display: flex; gap: 0.4rem;">
-                <!-- Page numbers dynamically injected -->
-            </div>
-            <button id="nextPage" class="btn-pagination"
-                style="padding: 0.5rem 1rem; border: 1px solid #e2e8f0; background: white; border-radius: 0.5rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #475569;">Next
-                <i class="fas fa-chevron-right"></i></button>
+        <div class="pagination-buttons">
+            <button id="prevPage" class="btn-pagination"><i class="fas fa-chevron-left"></i> Previous</button>
+            <div id="pageNumbers" class="page-numbers"></div>
+            <button id="nextPage" class="btn-pagination">Next <i class="fas fa-chevron-right"></i></button>
         </div>
     </div>
     {% else %}
@@ -741,6 +730,7 @@
         });
     })();
 </script>
+</div>
 {% endblock %}
 
 {% block extra_js %}

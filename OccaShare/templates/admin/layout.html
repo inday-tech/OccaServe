@@ -44,10 +44,16 @@
         })();
     </script>
 
-    <!-- Floating Mobile Toggle -->
-    <button class="floating-burger" id="burgerBtn" onclick="toggleSidebar()" aria-label="Toggle navigation">
-        <i class="fas fa-bars"></i>
-    </button>
+    <!-- Modern Mobile Header -->
+    <header class="admin-mobile-header">
+        <button class="burger-toggle-btn" id="burgerBtn" onclick="toggleSidebar()" aria-label="Toggle navigation">
+            <i class="fas fa-bars"></i>
+        </button>
+        <div class="mobile-brand-name">Darwin's Catering Services</div>
+        <div class="header-right-action">
+            <!-- Space for profile icon or notifications if needed -->
+        </div>
+    </header>
 
     <!-- Sidebar Overlay -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
