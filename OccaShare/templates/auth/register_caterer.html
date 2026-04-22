@@ -12,52 +12,63 @@
     :root {
         --primary: #FF7B54;
         --primary-hover: #E66A45;
-        --slate-50: #F9F9FB;
-        --slate-100: #E8ECEF;
-        --slate-200: #DEE2E6;
-        --slate-600: #67727E;
-        --slate-700: #4B5563;
-        --slate-800: #2D4059;
-        --slate-900: #1E2532;
+        --primary-soft: rgba(255, 123, 84, 0.08);
+        --slate-50: #F8FAFC;
+        --slate-100: #F1F5F9;
+        --slate-200: #E2E8F0;
+        --slate-300: #CBD5E1;
+        --slate-600: #475569;
+        --slate-700: #334155;
+        --slate-800: #1E293B;
+        --slate-900: #0F172A;
+        --elite-shadow: 0 20px 50px -12px rgba(15, 23, 42, 0.12);
+        --elite-border: rgba(30, 41, 59, 0.05);
     }
 
     .main-content-wrap {
-        padding-top: 120px;
+        padding-top: 100px;
         padding-bottom: 100px;
-        min-height: 85vh;
+        min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, #FF8B6B 0%, #FFB695 100%);
+        background: linear-gradient(135deg, #1E293B 0%, #334155 100%);
         background-attachment: fixed;
+        position: relative;
+    }
+
+    .main-content-wrap::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle at 10% 20%, rgba(255, 123, 84, 0.05) 0%, transparent 40%);
+        pointer-events: none;
     }
 
     .auth-container {
         width: 100%;
-        max-width: 700px;
-        animation: slideIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        max-width: 750px;
+        padding: 1.5rem;
+        animation: eliteEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    @keyframes slideIn {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    @keyframes eliteEntrance {
+        from { opacity: 0; transform: translateY(30px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
     .professional-card {
-        background: #ffffff;
-        border-radius: 1.5rem;
-        padding: 3rem;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-        border: 1px solid var(--slate-200);
+        background: rgba(255, 255, 255, 0.98);
+        border-radius: 2rem;
+        padding: 3.5rem;
+        box-shadow: var(--elite-shadow);
+        border: 1px solid var(--elite-border);
         position: relative;
         overflow: hidden;
+        backdrop-filter: blur(8px);
     }
 
     .form-header {
@@ -171,7 +182,7 @@
     .form-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 1.5rem;
+        gap: 1.618rem; /* Golden Ratio Base Spacing */
     }
 
     .form-group {
@@ -290,22 +301,29 @@
     }
 
     .btn-next {
-        background: var(--slate-900);
+        background: linear-gradient(135deg, var(--primary) 0%, #E66A45 100%);
         color: white;
+        box-shadow: 0 4px 12px rgba(255, 123, 84, 0.2);
+        border: 1px solid transparent;
     }
 
     .btn-next:hover {
-        background: var(--primary);
+        background: linear-gradient(135deg, #E66A45 0%, #d85b37 100%);
         transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(255, 123, 84, 0.4);
     }
 
     .btn-prev {
-        background: var(--slate-100);
-        color: var(--slate-700);
+        background: transparent;
+        color: var(--primary);
+        border: 2px solid var(--primary);
+        box-shadow: none;
     }
 
     .btn-prev:hover {
-        background: var(--slate-200);
+        background: var(--primary-soft);
+        color: #E66A45;
+        border-color: #E66A45;
     }
 
     .logo-preview {
@@ -317,70 +335,49 @@
         margin-bottom: 0.5rem;
     }
 
-    .input-wrapper {
-        position: relative;
-        border-radius: 0.75rem;
-        overflow: hidden;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        background: var(--slate-50);
-        border: 2px solid var(--slate-200);
-    }
-
-    .input-wrapper:focus-within {
-        border-color: var(--primary);
-        background: #fff;
-        box-shadow: 0 0 0 4px rgba(255, 123, 84, 0.15);
-    }
-
+    /* Minimal Input Defaults (Aligns with Customer form) */
     .minimal-input {
         width: 100%;
         padding: 0.875rem 1rem;
-        border: none !important;
-        background: transparent !important;
+        border: 1.5px solid var(--slate-200);
+        border-radius: 0.75rem;
+        background: #ffffff;
         font-size: 0.95rem;
         color: var(--slate-900);
         box-sizing: border-box;
+        transition: all 0.2s ease;
     }
 
     .minimal-input:focus {
         outline: none;
-        box-shadow: none !important;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(255, 123, 84, 0.15);
     }
 
-    .error-drawer {
-        background: #ef4444;
-        color: white;
-        font-size: 0.7rem;
-        font-weight: 600;
-        padding: 0;
-        max-height: 0;
-        overflow: hidden;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    .password-field-wrapper {
+        position: relative;
         display: flex;
         align-items: center;
-        padding-left: 1rem;
+        width: 100%;
     }
-
-    .input-wrapper.error {
-        border-color: #ef4444 !important;
-        box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1) !important;
+    
+    .password-toggle-btn {
+        position: absolute;
+        right: 1rem;
+        background: none;
+        border: none;
+        color: var(--slate-400);
+        cursor: pointer;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+        transition: color 0.2s;
     }
-
-    .input-wrapper.error .error-drawer {
-        max-height: 30px;
-        padding-top: 4px;
-        padding-bottom: 4px;
-    }
-
-    .input-wrapper.warning {
-        border-color: #f59e0b !important;
-    }
-
-    .input-wrapper.warning .error-drawer {
-        background: #f59e0b;
-        max-height: 30px;
-        padding-top: 4px;
-        padding-bottom: 4px;
+    
+    .password-toggle-btn:hover {
+        color: var(--primary);
     }
 
     /* Scanning Animation */
@@ -429,6 +426,473 @@
         display: inline-block;
         background: #ef4444;
         color: white;
+    }
+    .file-upload-box {
+        height: 160px; /* Fixed height for stability */
+    }
+    .ocr-error-text {
+        font-size: 0.8rem;
+        color: #ef4444;
+        margin-top: 0.4rem;
+        margin-left: 0.2rem;
+        display: none;
+        line-height: 1.3;
+        font-weight: 600;
+        text-align: left;
+    }
+    .file-upload-box.scanned-error + .ocr-error-text {
+        display: block;
+        animation: fadeInError 0.3s ease forwards;
+    }
+
+    /* Elite Scanner Modal Styles */
+    .scanner-modal-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        margin-top: 1rem;
+    }
+    
+    .scanner-preview-container {
+        position: relative;
+        width: 100%;
+        max-width: 400px;
+        aspect-ratio: 4/3;
+        background: #000;
+        border-radius: 1rem;
+        overflow: hidden;
+        border: 3px solid var(--primary);
+        box-shadow: 0 0 20px rgba(255, 123, 84, 0.3);
+    }
+
+    #modalWebcamVideo {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .scanner-laser {
+        position: absolute;
+        width: 100%;
+        height: 4px;
+        background: rgba(255, 123, 84, 0.8);
+        box-shadow: 0 0 15px var(--primary);
+        z-index: 5;
+        top: 0;
+        animation: laserScan 2s infinite linear;
+    }
+
+    @keyframes laserScan {
+        0%, 100% { top: 0%; opacity: 0.8; }
+        50% { top: 100%; opacity: 1; }
+    }
+
+    .scanner-guide-frame {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        border: 2px dashed rgba(255, 255, 255, 0.6);
+        z-index: 10;
+        pointer-events: none;
+    }
+
+    .scanner-guide-frame.permit { width: 80%; height: 80%; border-radius: 4px; }
+    .scanner-guide-frame.id { width: 80%; height: 50%; border-radius: 8px; }
+    .scanner-guide-frame.selfie { width: 60%; height: 70%; border-radius: 50%; }
+
+    .scanner-hint {
+        margin-top: 1rem;
+        font-size: 0.85rem;
+        color: var(--slate-600);
+        font-weight: 500;
+        text-align: center;
+    }
+
+    /* Face Scan UI Enhancements */
+    .face-scan-overlay {
+        position: relative;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: rgba(255, 123, 84, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 0.5rem;
+        border: 2px solid rgba(255, 123, 84, 0.2);
+    }
+    
+    .face-scan-overlay i {
+        font-size: 1.5rem;
+        color: var(--primary);
+    }
+
+    .verification-tips-box {
+        background: #f0f9ff;
+        border: 1px solid #bae6fd;
+        border-radius: 0.75rem;
+        padding: 1rem;
+        margin-top: 0.5rem;
+    }
+
+    .verification-tips-box h5 {
+        color: #0369a1;
+        font-size: 0.85rem;
+        margin: 0 0 0.5rem 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .verification-tips-box ul {
+        margin: 0;
+        padding-left: 1.25rem;
+        font-size: 0.75rem;
+        color: #0c4a6e;
+        line-height: 1.5;
+    }
+    
+    .verification-tips-box li {
+        margin-bottom: 0.25rem;
+    }
+
+    /* Input Validation Icons */
+    .input-wrapper .validation-icon {
+        position: absolute;
+        right: 1.25rem;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1rem;
+        display: none;
+        pointer-events: none;
+        z-index: 10;
+        transition: all 0.2s ease;
+    }
+
+    /* Target leading icons specifically to enforce a fixed width and prevent overlapping text */
+    .input-wrapper > i.fas:first-child {
+        width: 1.25rem;
+        text-align: center;
+        z-index: 5;
+    }
+
+    .input-wrapper.error .validation-icon.error-icon {
+        display: block;
+        color: #ef4444;
+        animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .input-wrapper.success .validation-icon.success-icon {
+        display: block;
+        color: #10b981;
+        animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes pop {
+        0% { transform: translateY(-50%) scale(0.5); opacity: 0; }
+        100% { transform: translateY(-50%) scale(1); opacity: 1; }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .professional-card {
+            padding: 2rem 1.5rem;
+            border-radius: 1rem;
+        }
+
+        .form-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .form-header h2 {
+            font-size: 1.75rem;
+        }
+
+        .progress-container {
+            margin-bottom: 2.5rem;
+        }
+
+        .step-label {
+            display: none; /* Hide labels on mobile to prevent overlap */
+        }
+
+        .btn-container {
+            flex-direction: column-reverse;
+        }
+
+        .btn-nav {
+            width: 100%;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .main-content-wrap {
+            padding-top: 80px;
+            padding-bottom: 60px;
+        }
+
+        .form-header h2 {
+            font-size: 1.5rem;
+        }
+
+        .progress-step {
+            width: 32px;
+            height: 32px;
+            font-size: 0.85rem;
+        }
+        
+        .file-upload-box {
+            height: 120px;
+        }
+    }
+    /* ===================================================
+       ELITE KYC GRID & CARDS (Rock-Solid Stability)
+       =================================================== */
+    .kyc-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.25rem;
+        margin-top: 1.5rem;
+    }
+
+    .kyc-card {
+        background: #ffffff;
+        border: 2px dashed var(--slate-200);
+        border-radius: 1.25rem;
+        padding: 1.75rem;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        min-height: 240px;
+        overflow: hidden;
+        cursor: pointer;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    .kyc-card:hover:not(.scanned-success):not(.scanned-error) {
+        border-color: var(--primary);
+        background: rgba(255, 123, 84, 0.02);
+        transform: translateY(-4px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+
+    .kyc-card.scanning {
+        border-style: solid;
+        border-color: var(--primary);
+        background: rgba(255, 123, 84, 0.05);
+    }
+
+    .kyc-card.scanned-success {
+        border-style: solid;
+        border-color: #10b981;
+        background: rgba(16, 185, 129, 0.02);
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.1);
+    }
+
+    .kyc-card.scanned-error {
+        border-style: solid;
+        border-color: #ef4444;
+        background: rgba(239, 68, 68, 0.02);
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.1);
+    }
+
+    .kyc-card i {
+        font-size: 2.5rem;
+        color: var(--slate-400);
+        margin-bottom: 1rem;
+        transition: all 0.3s;
+    }
+
+    .kyc-card.scanned-success i { color: #10b981; }
+    .kyc-card.scanned-error i { color: #ef4444; }
+
+    .kyc-card .card-title {
+        font-size: 1rem;
+        font-weight: 800;
+        color: var(--slate-800);
+        margin-bottom: 0.25rem;
+    }
+
+    .kyc-card .card-status {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--slate-500);
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+    }
+
+    .kyc-tip {
+        font-size: 0.7rem;
+        color: var(--slate-400);
+        margin-top: 1rem;
+        line-height: 1.4;
+        max-width: 190px;
+    }
+
+    /* Elite Status Overlay */
+    .kyc-status-overlay {
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .kyc-badge {
+        padding: 0.35rem 0.75rem;
+        border-radius: 2rem;
+        font-size: 0.65rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        display: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .kyc-card.scanning .kyc-badge.progress { display: block; background: var(--primary); color: white; animation: badgePulse 1.5s infinite; }
+    .kyc-card.scanned-success .kyc-badge.success { display: block; background: #10b981; color: white; }
+    .kyc-card.scanned-error .kyc-badge.error { display: block; background: #ef4444; color: white; }
+
+    @keyframes badgePulse {
+        0% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.8; transform: scale(1.05); }
+        100% { opacity: 1; transform: scale(1); }
+    }
+
+    /* Elite Error Drawer */
+    .kyc-error-message {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: #ef4444;
+        color: white;
+        font-size: 0.7rem;
+        padding: 0.75rem;
+        font-weight: 700;
+        display: none;
+        animation: slideUpError 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        z-index: 20;
+    }
+
+    .kyc-card.scanned-error .kyc-error-message {
+        display: block;
+    }
+
+    @keyframes slideUpError {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+    }
+
+    /* Scanning Animation Line */
+    .kyc-card.scanning::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, var(--primary), transparent);
+        animation: kycScanAnimation 2s infinite linear;
+        box-shadow: 0 0 10px var(--primary);
+    }
+
+    @keyframes kycScanAnimation {
+        0% { top: 0; }
+        100% { top: 100%; }
+    }
+
+    /* Mobile KYC Grid */
+    @media (max-width: 600px) {
+        .kyc-grid {
+            grid-template-columns: 1fr;
+        }
+        .kyc-card {
+            min-height: 200px;
+        }
+    }
+    /* Elite Input Icons */
+    .input-wrapper i.fas {
+        transition: color 0.3s ease;
+    }
+
+    .input-wrapper:focus-within i.fas {
+        color: var(--primary);
+    }
+
+    /* Modern Checkbox Tiles */
+    .hidden-check {
+        position: absolute;
+        opacity: 0;
+        cursor: pointer;
+        height: 0;
+        width: 0;
+    }
+
+    .checkbox-tile .tile-content {
+        cursor: pointer;
+        background: var(--slate-50);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .checkbox-tile.selected .tile-content {
+        background: var(--primary-soft);
+        border-color: var(--primary) !important;
+        box-shadow: 0 0 0 4px rgba(255, 123, 84, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .checkbox-tile.selected .tile-content div {
+        color: var(--primary) !important;
+    }
+
+    /* Elite Progress Tracker Enhancements */
+    .progress-container {
+        padding: 0 1rem;
+    }
+
+    .progress-step {
+        z-index: 10;
+        cursor: default;
+    }
+
+    .progress-step.completed {
+        background: var(--primary) !important;
+        border-color: var(--primary) !important;
+        box-shadow: 0 4px 10px rgba(255, 123, 84, 0.2);
+    }
+
+    /* Step Fade-In Animation */
+    .form-step {
+        display: none;
+        opacity: 0;
+        transform: translateY(10px);
+        transition: all 0.4s ease-out;
+    }
+
+    .form-step.active {
+        display: block;
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    /* Responsive Grid Patch */
+    @media (max-width: 768px) {
+        .professional-card {
+            padding: 2.5rem 1.5rem;
+        }
+        
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 {% endblock %}
@@ -482,6 +946,8 @@
                                 <input type="text" id="full_name" name="full_name" class="minimal-input" required
                                     placeholder="Juan Dela Cruz"
                                     value="{{ user.first_name ~ ' ' ~ user.last_name if user else '' }}">
+                                <i class="fas fa-check-circle validation-icon success-icon"></i>
+                                <i class="fas fa-exclamation-circle validation-icon error-icon"></i>
                                 <div id="fullNameError" class="error-drawer">Required</div>
                             </div>
                         </div>
@@ -491,6 +957,8 @@
                                 <input type="email" id="email" name="email" class="minimal-input" required
                                     placeholder="juan@example.com" value="{{ user.email if user else '' }}"
                                     {{ 'readonly' if user and user.auth_provider !='email' else '' }}>
+                                <i class="fas fa-check-circle validation-icon success-icon"></i>
+                                <i class="fas fa-exclamation-circle validation-icon error-icon"></i>
                                 <div id="emailError" class="error-drawer">Invalid email format</div>
                             </div>
                         </div>
@@ -500,6 +968,8 @@
                                 <input type="tel" id="mobile_number" name="mobile_number" class="minimal-input" required
                                     placeholder="0917 123 4567" maxlength="11"
                                     value="{{ user.phone_number if user else '' }}">
+                                <i class="fas fa-check-circle validation-icon success-icon"></i>
+                                <i class="fas fa-exclamation-circle validation-icon error-icon"></i>
                                 <div id="mobileError" class="error-drawer">Use format 09XXXXXXXXX</div>
                             </div>
                         </div>
@@ -514,6 +984,8 @@
                                         <i class="fas fa-eye"></i>
                                     </button>
                                 </div>
+                                <i class="fas fa-check-circle validation-icon success-icon" style="right: 3rem;"></i>
+                                <i class="fas fa-exclamation-circle validation-icon error-icon" style="right: 3rem;"></i>
                                 <div id="passwordError" class="error-drawer">Min 8 characters needed</div>
                             </div>
                         </div>
@@ -527,6 +999,8 @@
                                         <i class="fas fa-eye"></i>
                                     </button>
                                 </div>
+                                <i class="fas fa-check-circle validation-icon success-icon" style="right: 3rem;"></i>
+                                <i class="fas fa-exclamation-circle validation-icon error-icon" style="right: 3rem;"></i>
                                 <div id="confirmError" class="error-drawer">Passwords do not match</div>
                             </div>
                         </div>
@@ -553,6 +1027,8 @@
                             <div class="input-wrapper" id="businessNameWrapper">
                                 <input type="text" id="business_name" name="business_name" class="minimal-input"
                                     required placeholder="Gourmet Catering Services">
+                                <i class="fas fa-check-circle validation-icon success-icon"></i>
+                                <i class="fas fa-exclamation-circle validation-icon error-icon"></i>
                                 <div id="businessNameError" class="error-drawer">Required</div>
                             </div>
                         </div>
@@ -644,7 +1120,6 @@
                                 <label class="checkbox-item"><input type="checkbox" name="event_type_choice"
                                         value="Christening"> Christening</label>
                             </div>
-                            <input type="hidden" name="event_types" id="eventTypesInput">
                         </div>
                         <div class="form-group">
                             <label for="min_pax">Minimum Pax</label>
@@ -683,6 +1158,7 @@
                                 <i class="fas fa-file-invoice" id="permitIcon"></i>
                                 <p id="permitName">BusinessPermit.pdf / jpg</p>
                                 <span class="scan-status-badge" id="permitStatus">Verified</span>
+                                <div id="permitOcrError" class="ocr-error-text"></div>
                                 <input type="file" id="permit" name="permit" accept=".pdf,image/*" required
                                     onchange="handleFileUpload(this, 'permit')">
                             </div>
@@ -690,20 +1166,21 @@
 
                         <div class="form-group">
                             <label for="id_type">Valid ID Type</label>
-                            <select id="id_type" name="id_type" class="minimal-input" required>
-                                <option value="">Select ID Type</option>
-                                <option value="Passport">Passport</option>
-                                <option value="Driver's License">Driver's License</option>
-                                <option value="PhilID (National ID)">PhilID (National ID)</option>
-                                <option value="UMID">Unified Multi-Purpose ID (UMID)</option>
-                                <option value="SSS ID">SSS ID</option>
-                                <option value="PRC ID">PRC ID</option>
-                                <option value="Postal ID">Postal ID</option>
-                                <option value="Voter's ID">Voter's ID</option>
-                                <option value="TIN ID">TIN ID</option>
-                                <option value="PhilHealth ID">PhilHealth ID</option>
-                                <option value="School ID">School ID</option>
-                            </select>
+                            <div class="input-wrapper">
+                                <select id="id_type" name="id_type" class="minimal-input" required>
+                                    <option value="">Select ID Type</option>
+                                    <option value="Passport">Passport</option>
+                                    <option value="Driver's License">Driver's License</option>
+                                    <option value="PhilID (National ID)">PhilID (National ID)</option>
+                                    <option value="UMID">Unified Multi-Purpose ID (UMID)</option>
+                                    <option value="SSS ID">SSS ID</option>
+                                    <option value="PRC ID">PRC ID</option>
+                                    <option value="Postal ID">Postal ID</option>
+                                    <option value="Voter's ID">Voter's ID</option>
+                                    <option value="TIN ID">TIN ID</option>
+                                    <option value="PhilHealth ID">PhilHealth ID</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div class="form-group">
@@ -712,16 +1189,42 @@
                                 <i class="fas fa-id-card" id="govIdIcon"></i>
                                 <p id="govIdName">GovID.pdf / jpg</p>
                                 <span class="scan-status-badge" id="govIdStatus">Verified</span>
+                                <div id="govIdOcrError" class="ocr-error-text"></div>
                                 <input type="file" id="gov_id" name="gov_id" accept=".pdf,image/*" required
                                     onchange="handleFileUpload(this, 'id')">
                             </div>
                         </div>
 
+                        <div class="form-group">
+                            <label for="selfie">Smart Face Scan (Selfie)</label>
+                            <div class="file-upload-box" id="selfieBox">
+                                <div class="face-scan-overlay">
+                                    <i class="fas fa-user-shield" id="selfieIcon"></i>
+                                </div>
+                                <p id="selfieName" style="z-index:2;">Capture or Upload Selfie</p>
+                                <span class="scan-status-badge" id="selfieStatus">Matched</span>
+                                <div id="selfieError" class="ocr-error-text"></div>
+                                <input type="file" id="selfie" name="selfie" accept="image/*" required
+                                    onchange="handleFileUpload(this, 'selfie')">
+                            </div>
+                        </div>
+
                         <div class="form-group full-width">
-                            <label for="logo">Profile Picture / Logo</label>
+                            <div class="verification-tips-box">
+                                <h5><i class="fas fa-lightbulb"></i> Verification Tips</h5>
+                                <ul>
+                                    <li>Ensure your **Full Name** matches the ID exactly.</li>
+                                    <li>Upload clear, high-resolution photos (no blurs).</li>
+                                    <li>**Face Scan:** Ensure good lighting and remove glasses/mask.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label for="logo">Business Logo</label>
                             <div class="file-upload-box">
                                 <img id="logoPreview" class="logo-preview">
-                                <i class="fas fa-user-circle" id="uploadIcon"></i>
+                                <i class="fas fa-store" id="uploadIcon"></i>
                                 <p id="uploadText" style="margin:0;">Upload Business Logo</p>
                                 <input type="file" id="logo" name="logo" accept="image/*" onchange="previewLogo(this)">
                             </div>
@@ -859,10 +1362,12 @@
 
         if (isError) {
             wrapper.classList.add('error');
+            wrapper.classList.remove('success');
             wrapper.classList.remove('warning');
             drawer.innerText = message;
         } else {
             wrapper.classList.remove('error');
+            wrapper.classList.add('success'); // Show green check
             wrapper.classList.remove('warning');
         }
     }
@@ -874,6 +1379,7 @@
 
         wrapper.classList.add('warning');
         wrapper.classList.remove('error');
+        wrapper.classList.remove('success');
         drawer.innerText = message;
     }
 
@@ -1286,9 +1792,29 @@
             e.preventDefault();
             return false;
         }
-        const checkboxes = document.querySelectorAll('input[name="event_type_choice"]:checked');
         const eventTypes = Array.from(checkboxes).map(cb => cb.value).join(',');
         document.getElementById('eventTypesInput').value = eventTypes;
+
+        // Smart Validation Check: Ensure ID, Permit and Selfie are scanned-success
+        const permitScanned = document.getElementById('permitBox').classList.contains('scanned-success');
+        const idScanned = document.getElementById('govIdBox').classList.contains('scanned-success');
+        const selfieScanned = document.getElementById('selfieBox').classList.contains('scanned-success');
+
+        if (!permitScanned || !idScanned || !selfieScanned) {
+            if (window.Swal) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Security Verification Required',
+                    text: 'Please ensure your Business Permit, Valid ID, and Selfie have been successfully verified before completing registration.',
+                    confirmButtonColor: '#FF7B54'
+                });
+            } else {
+                alert('Please complete all security verifications first.');
+            }
+            if (e) e.preventDefault();
+            return false;
+        }
+
         document.getElementById('catererForm').submit();
     }
 
@@ -1315,13 +1841,16 @@
     }
 
     async function handleFileUpload(input, type) {
-        const boxId = type === 'permit' ? 'permitBox' : 'govIdBox';
-        const labelId = type === 'permit' ? 'permitName' : 'govIdName';
-        const statusId = type === 'permit' ? 'permitStatus' : 'govIdStatus';
-        const iconId = type === 'permit' ? 'permitIcon' : 'govIdIcon';
+        const boxId = type === 'permit' ? 'permitBox' : (type === 'selfie' ? 'selfieBox' : 'govIdBox');
+        const labelId = type === 'permit' ? 'permitName' : (type === 'selfie' ? 'selfieName' : 'govIdName');
+        const statusId = type === 'permit' ? 'permitStatus' : (type === 'selfie' ? 'selfieStatus' : 'govIdStatus');
+        const iconId = type === 'permit' ? 'permitIcon' : (type === 'selfie' ? 'selfieIcon' : 'govIdIcon');
+        const errorId = type === 'permit' ? 'permitOcrError' : (type === 'selfie' ? 'selfieError' : (type === 'id' ? 'govIdOcrError' : null));
+        
         const box = document.getElementById(boxId);
         const statusBadge = document.getElementById(statusId);
         const icon = document.getElementById(iconId);
+        const errorDiv = errorId ? document.getElementById(errorId) : null;
         
         updateFileName(input, labelId);
         
@@ -1340,11 +1869,14 @@
         formData.append('doc_type', type);
         
         // Get name to match
-        const userName = type === 'permit' ? 
-            document.getElementById('business_name').value : 
-            document.getElementById('full_name').value;
+        const fullNameInput = document.getElementById('full_name');
+        const businessNameInput = document.getElementById('business_name');
+        const userName = type === 'permit' ? businessNameInput.value : fullNameInput.value;
             
         formData.append('user_name', userName || "Unknown");
+        if (type === 'permit') {
+            formData.append('owner_name', fullNameInput.value || "Unknown");
+        }
         if (type === 'id') {
             formData.append('id_type', document.getElementById('id_type').value || "Passport");
         }
@@ -1353,6 +1885,7 @@
         box.classList.add('scanning');
         box.classList.remove('scanned-success', 'scanned-error');
         statusBadge.innerText = "Scanning...";
+        if(errorDiv) errorDiv.style.display = 'none';
 
         try {
             const response = await fetch('/auth/scan-document', {
@@ -1363,19 +1896,22 @@
             
             box.classList.remove('scanning');
             
-            if (result.status === 'matched') {
+            if (result.status === 'matched' || result.status === 'approved') {
                 box.classList.add('scanned-success');
-                statusBadge.innerText = "Document Verified";
+                statusBadge.innerText = type === 'selfie' ? "Face Matched" : "Document Verified";
                 icon.className = "fas fa-check-circle";
                 icon.style.color = "#10b981";
-            } else if (result.status === 'mismatched') {
+                if(errorDiv) errorDiv.style.display = 'none';
+            } else if (result.status === 'mismatched' || result.status === 'rejected' || result.status === 'error') {
                 box.classList.add('scanned-error');
-                statusBadge.innerText = "Validation Flagged"; // Don't be too mean
+                statusBadge.innerText = "Validation Failed";
                 icon.className = "fas fa-exclamation-triangle";
                 icon.style.color = "#ef4444";
                 
-                // Show a subtle toast or hint
-                console.warn("OCR Mismatch:", result.failure_reason);
+                if(errorDiv) {
+                    errorDiv.innerText = result.failure_reason || "Verification failed. Please check the image quality.";
+                    errorDiv.style.display = 'block';
+                }
             } else {
                 box.classList.remove('scanned-success', 'scanned-error');
             }

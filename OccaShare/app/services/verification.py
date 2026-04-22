@@ -48,7 +48,12 @@ class VerificationService:
     }
 
     BUSINESS_PERMIT_KEYWORDS = [
-        "BUSINESS PERMIT", "MAYOR'S PERMIT", "DTI", "SEC", "REGISTRATION", "PERMIT TO OPERATE", "CERTIFICATE OF REGISTRATION"
+        "BUSINESS PERMIT", "MAYOR'S PERMIT", "DTI", "SEC", "REGISTRATION", "PERMIT TO OPERATE", "CERTIFICATE OF REGISTRATION",
+        "REPUBLIC OF THE PHILIPPINES", "OFFICE OF THE MAYOR", "BUSINESS NAME REGISTRATION", "TAX DECLARATION", "DEPARTMENT OF TRADE AND INDUSTRY"
+    ]
+
+    OWNER_NAME_LABELS = [
+        "REGISTERED OWNER", "NAME OF OWNER", "OWNER", "PROPRIETOR", "TAXPAYER", "PERMITTEE"
     ]
 
     def __init__(self):
@@ -119,9 +124,17 @@ class VerificationService:
 
         try:
             with open(real_path, "rb") as f:
-                encrypted_data = f.read()
-            decrypted_data = decrypt_data(encrypted_data)
+                raw_data = f.read()
             
+            # Try to decrypt
+            try:
+                decrypted_data = decrypt_data(raw_data)
+                print(f"[KYC DEBUG] Decrypted {filename} successfully.")
+            except Exception:
+                # Fallback: Maybe it's not encrypted? (e.g. from a previous version or direct upload)
+                decrypted_data = raw_data
+                print(f"[KYC DEBUG] Could not decrypt {filename}, using raw data.")
+
             # Use PIL to handle EXIF orientation automatically
             pil_img = Image.open(io.BytesIO(decrypted_data))
             pil_img = ImageOps.exif_transpose(pil_img)
@@ -130,10 +143,13 @@ class VerificationService:
             img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
             return img
         except Exception as e:
-            print(f"[KYC DEBUG] Error preparing image: {e}")
-            # Fallback to standard loading if PIL fails
-            nparr = np.frombuffer(decrypted_data, np.uint8)
-            return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            print(f"[KYC DEBUG] Fatal error preparing image {filename}: {e}")
+            # Last resort fallback
+            try:
+                nparr = np.frombuffer(raw_data, np.uint8)
+                return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            except:
+                raise e
 
     def _detect_faces_detailed(self, img: np.ndarray) -> List[Any]:
         """Detect faces using standard OpenCV Haar Cascades."""
@@ -157,56 +173,85 @@ class VerificationService:
         return ear
 
     def _check_liveness_mediapipe(self, img_list: List[np.ndarray]) -> Dict[str, Any]:
-        """Sophisticated liveness check using MediaPipe Tasks API."""
+        """Sophisticated liveness check with occlusion and head pose detection."""
         if not self.landmarker:
             return {"score": 0.0, "face_count": 0, "error": "Landmarker not initialized"}
 
         ears = []
         nose_tips = []
         face_detected_count = 0
+        occlusion_detected = False
+        occlusion_reason = None
+        
+        # Head pose tracking
+        angles_v = [] # Vertical (pitch)
+        angles_h = [] # Horizontal (yaw)
 
         for img in img_list:
-            # Convert OpenCV frame to MediaPipe Image
             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-            
-            # Detect face landmarks
             detection_result = self.landmarker.detect(mp_image)
             
             if detection_result.face_landmarks:
                 face_detected_count += 1
                 landmarks = detection_result.face_landmarks[0]
                 
-                # Indexes for EAR (Approximate for FaceMesh/Tasks Landmarker)
-                # Left Eye: 33, 160, 158, 133, 153, 144
-                # Right Eye: 362, 385, 387, 263, 373, 380
+                # --- OCCLUSION CHECK ---
+                # Check for "confidence" or presence of key landmarks
+                # In MediaPipe Tasks, landmarks are always returned but we check 
+                # for unusual values or spatial distribution
+                # If mouth (index 0, 13, 14, 17) or eyes (33, 133, 362, 263) are out of bounds
+                # or if some landmarks have 0 coordinates (rare but possible in some implementations)
+                
+                # Check Face Orientation (Pose)
+                # Yaw: Check distance between eyes and nose
+                e_dist_l = np.linalg.norm(np.array([landmarks[33].x, landmarks[33].y]) - np.array([landmarks[1].x, landmarks[1].y]))
+                e_dist_r = np.linalg.norm(np.array([landmarks[263].x, landmarks[263].y]) - np.array([landmarks[1].x, landmarks[1].y]))
+                yaw_ratio = e_dist_l / e_dist_r if e_dist_r > 0 else 5
+                
+                if yaw_ratio > 3.0 or yaw_ratio < 0.33:
+                    occlusion_detected = True
+                    occlusion_reason = "Please face the camera directly."
+
+                # Check if face is too close or far (bounding box size)
+                # Normalized coordinates: x, y in [0, 1]
+                xs = [l.x for l in landmarks]
+                ys = [l.y for l in landmarks]
+                face_w = max(xs) - min(xs)
+                face_h = max(ys) - min(ys)
+                
+                if face_w < 0.2: # Face too small
+                    occlusion_detected = True
+                    occlusion_reason = "Face is too far from the camera."
+                elif face_w > 0.9: # Face too large/cropped
+                    occlusion_detected = True
+                    occlusion_reason = "Face is too close or partially out of frame."
+
+                # Indexes for EAR
                 left_eye = [33, 160, 158, 133, 153, 144]
                 right_eye = [362, 385, 387, 263, 373, 380]
                 
                 ear_l = self._calculate_ear(landmarks, left_eye)
                 ear_r = self._calculate_ear(landmarks, right_eye)
                 ears.append((ear_l + ear_r) / 2.0)
-                
-                # Nose tip (index 1)
                 nose_tips.append(np.array([landmarks[1].x, landmarks[1].y, landmarks[1].z]))
 
-        # Liveness Score Calculation
-        # 1. Blink Detection (Variance in EAR)
+        # Calculation
         ear_variance = np.var(ears) if len(ears) > 1 else 0
-        
-        # 2. Movement Detection
         movement = 0
         if len(nose_tips) > 1:
             movement = np.mean([np.linalg.norm(nose_tips[i] - nose_tips[i-1]) for i in range(1, len(nose_tips))])
 
         liveness_score = 0.0
-        if face_detected_count == len(img_list):
-            liveness_score += 0.4 # Base score for consistent face detection
-            if ear_variance > 0.001: liveness_score += 0.3 # Blink detected
-            if movement > 0.01: liveness_score += 0.3 # Natural movement detected
+        if face_detected_count == len(img_list) and not occlusion_detected:
+            liveness_score += 0.4
+            if ear_variance > 0.001: liveness_score += 0.3
+            if movement > 0.01: liveness_score += 0.3
 
         return {
             "score": liveness_score,
             "face_count": face_detected_count,
+            "occlusion_detected": occlusion_detected,
+            "failure_reason": occlusion_reason,
             "ear_variance": ear_variance,
             "movement": movement
         }
@@ -218,8 +263,8 @@ class VerificationService:
                                 pattern_valid: bool) -> int:
         """Fintech-level 100-point scoring engine."""
         score = 0
-        if face_match_conf >= 0.6: score += 40
-        elif face_match_conf >= 0.4: score += 20
+        if face_match_conf >= 0.7: score += 40
+        elif face_match_conf >= 0.5: score += 20
         
         if liveness_score >= 0.7: score += 30
         elif liveness_score >= 0.4: score += 15
@@ -228,6 +273,41 @@ class VerificationService:
         if pattern_valid: score += 10
         
         return score
+
+    def compare_faces(self, img1: np.ndarray, img2: np.ndarray) -> Dict[str, Any]:
+        """Compares two faces using MediaPipe landmark feature similarity."""
+        if not self.landmarker:
+            return {"match": False, "confidence": 0.0, "error": "Landmarker offline"}
+
+        def get_face_features(img):
+            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+            res = self.landmarker.detect(mp_image)
+            if not res.face_landmarks: return None
+            # Return relative spatial distribution of key features
+            lm = res.face_landmarks[0]
+            # Normalize key points relative to nose (index 1)
+            nose = np.array([lm[1].x, lm[1].y])
+            features = []
+            for idx in [33, 133, 362, 263, 61, 291, 10, 152]: # Eyes, Mouth, Forehead, Chin
+                pt = np.array([lm[idx].x, lm[idx].y])
+                features.append(pt - nose)
+            return np.array(features).flatten()
+
+        f1 = get_face_features(img1)
+        f2 = get_face_features(img2)
+
+        if f1 is None or f2 is None:
+            return {"match": False, "confidence": 0.0, "error": "Face not detected in one or both images"}
+
+        # Calculate Cosine Similarity or Euclidean distance
+        dist = np.linalg.norm(f1 - f2)
+        # Threshold (tuned for normalized landmark relative coordinates)
+        confidence = max(0, 1 - (dist * 2.0))
+        
+        return {
+            "match": confidence > 0.6,
+            "confidence": float(confidence)
+        }
 
     def _extract_rich_ocr_data(self, text: str) -> Dict[str, Any]:
         """Extracts Full Name, ID Number, DOB, Expiry, and Address using regex."""
@@ -241,54 +321,46 @@ class VerificationService:
         
         lines = [l.strip() for l in text.split("\n") if l.strip()]
         
-        # 1. ID Number Extraction (Look for common patterns or long numeric strings)
-        for line in lines:
-            # Match formats like 1234-5678-9012-3456 or just long digits
-            digits_only = re.sub(r'[^0-9]', '', line)
-            if len(digits_only) >= 10:
-                # Prioritize formatted patterns if they exist
-                match = re.search(r'(\d+[- ]\d+[- ]\d+[- ]\d+)', line)
-                data["id_number"] = match.group(1) if match else line
-                break
+        # 1. Name Extraction (More robust heuristics)
+        # Often names are in the first few lines or near keywords
+        potential_names = []
+        for i, line in enumerate(lines):
+            upper_line = line.upper()
+            # Keywords indicating following line is a name
+            if any(k in upper_line for k in ["NAME", "SURNAME", "GIVEN", "FIRST"]):
+                val = lines[i+1] if i+1 < len(lines) else ""
+                if len(val) > 5 and not any(char.isdigit() for char in val):
+                    potential_names.append(val.strip())
+            
+            # Lines that are 2-3 words, all caps, no symbols/digits
+            if 10 < len(line) < 40 and line.isupper() and re.match(r'^[A-Z ,.-]+$', line):
+                # Ignore legitimacy keywords
+                if not any(kw in line for kw in self.ID_LEGITIMACY_KEYWORDS):
+                    potential_names.append(line)
 
-        # 2. Date Extraction (DOB, Expiry)
+        if potential_names:
+            # Heuristic: the most likely name is often the one that's not a category
+            data["full_name"] = potential_names[0]
+
+        # 2. ID Number Extraction
+        for line in lines:
+            digits_only = re.sub(r'[^0-9]', '', line)
+            if len(digits_only) >= 9:
+                match = re.search(r'([A-Z0-9][-A-Z0-9 ]{8,20})', line)
+                if match:
+                    data["id_number"] = match.group(1).strip()
+                    break
+
+        # 3. Date Extraction
         date_pattern = r"(\d{2}[-/]\d{2}[-/]\d{4})"
         dates = re.findall(date_pattern, text)
         if dates:
-            # Heuristic: Earlier date is usually DOB, later is Expiry
             try:
                 sorted_dates = sorted(dates, key=lambda d: time.strptime(d.replace("/", "-"), "%d-%m-%Y"))
                 data["extracted_dob"] = sorted_dates[0]
                 if len(sorted_dates) > 1:
                     data["extracted_expiry"] = sorted_dates[-1]
             except: pass
-
-        # 3. Name Extraction (PhilID Heuristic: usually following "Last Name" / "Given Names")
-        # Find lines that look like surnames or given names
-        for i, line in enumerate(lines):
-            if "LAST NAME" in line.upper() or "SURNAME" in line.upper():
-                surname = lines[i+1] if i+1 < len(lines) else ""
-                # PhilID often has labels followed by the actual value
-                data["full_name"] = surname
-            if "GIVEN NAMES" in line.upper() or "FIRST NAME" in line.upper():
-                given = lines[i+1] if i+1 < len(lines) else ""
-                if data["full_name"]:
-                    data["full_name"] = f"{given} {data['full_name']}".strip()
-                else:
-                    data["full_name"] = given
-
-        # 4. Address Extraction
-        for i, line in enumerate(lines):
-            if "ADDRESS" in line.upper() or "ADD:" in line.upper():
-                data["extracted_address"] = " ".join(lines[i:i+3]).strip()
-                break
-        
-        if not data["extracted_address"]:
-            ph_keywords = ["MANILA", "QUEZON CITY", "CEBU", "DAVAO", "MAKATI", "PASIG", "TAGUIG", "CAVITE", "LAGUNA", "RIZAL", "PROVINCE", "CITY"]
-            for line in lines:
-                if any(kw in line.upper() for kw in ph_keywords):
-                    data["extracted_address"] = line.strip()
-                    break
 
         return data
 
@@ -431,6 +503,13 @@ class VerificationService:
             
         return best_text
 
+    ID_LEGITIMACY_KEYWORDS = [
+        "REPUBLIC OF THE PHILIPPINES", "PHILIPPINES", "PASSPORT", "IDENTIFICATION", "SOCIAL SECURITY", 
+        "PROFESSIONAL REGULATION COMMISSION", "LAND TRANSPORTATION OFFICE", "COMMISSION ON ELECTIONS",
+        "PHILIPPINE IDENTIFICATION", "UNIFIED MULTI-PURPOSE ID", "POSTAL ID", "TAXPAYER IDENTIFICATION",
+        "DRIVER'S LICENSE", "UMID", "SSS", "GSIS", "PRC", "COMELEC", "PHILHEALTH"
+    ]
+
     def verify_id_document(self, 
                            id_path: str, 
                            full_name: str, 
@@ -458,14 +537,11 @@ class VerificationService:
             
             # 4. Perform OCR with Tesseract Multi-Pass
             ocr_text = self._run_tesseract_multi_psm(id_img)
-            pass_name = "Tesseract"
-
-            if not ocr_text or len(ocr_text.strip()) < 5:
-                failure_msg = "Could not extract readable text from the ID. Please ensure clear lighting and focus."
-                
-                return {"status": "mismatched", "ocr_match": False, "pattern_valid": pattern_valid,
-                        "failure_reason": failure_msg}
-
+            clean_ocr_upper = ocr_text.upper()
+            
+            # 5. Legitimacy Check (NEW)
+            is_likely_id = any(kw in clean_ocr_upper for kw in self.ID_LEGITIMACY_KEYWORDS)
+            
             rich_data = self._extract_rich_ocr_data(ocr_text)
             
             # 6. Robust Matching Logic
@@ -486,89 +562,86 @@ class VerificationService:
             matches_count = 0
             
             def ocr_normalize(s):
-                """Normalizes common OCR misreads in names/IDs."""
+                """Normalizes common OCR misreads in names/IDs for robust matching."""
+                if not s: return ""
                 subs = {
                     '0': 'o', '1': 'i', '2': 'z', '5': 's', '8': 'b',
                     '|': 'i', '[': 'i', ']': 'i', '(': 'i', ')': 'i',
-                    'ç': 'c', 'ñ': 'n'
+                    'ç': 'c', 'ñ': 'n', 'Ñ': 'n', '—': '-', '–': '-'
                 }
-                res = s.lower()
+                res = s.lower().strip()
                 for k, v in subs.items():
                     res = res.replace(k, v)
-                return res
+                # Remove extra spaces/dots to handle 'Jr.' etc
+                res = re.sub(r'[^a-z0-9 ]', '', res)
+                return " ".join(res.split())
 
             norm_ocr_for_names = ocr_normalize(clean_ocr)
             norm_name_parts = [ocr_normalize(p) for p in name_parts]
             
             for part in norm_name_parts:
-                # Check for exact match first in normalized OCR
+                if len(part) < 2: continue # Ignore very short artifacts
+                
+                # Check for exact match first
                 if part in norm_ocr_for_names:
                     matches_count += 1
                     continue
                 
-                # Fuzzy match within OCR text words
+                # Improved fuzzy match within OCR text words
                 ocr_words = norm_ocr_for_names.split()
                 best_ratio = 0
                 for word in ocr_words:
-                    if len(word) < 3: continue
+                    if len(word) < 2: continue
                     ratio = difflib.SequenceMatcher(None, part, word).ratio()
                     if ratio > best_ratio: best_ratio = ratio
                 
-                # Standard fuzzy threshold for Tesseract
-                if best_ratio >= 0.7:
+                # Higher precision threshold for elite verification
+                if best_ratio > 0.85:
                     matches_count += 1
+                
+            # Calculation of match sufficiency (at least 70% of name parts found)
+            name_match = (matches_count / len(name_parts) >= 0.7) if name_parts else False
             
-            # Require 40% of name parts to match
-            name_match = (matches_count / len(name_parts) >= 0.4) if name_parts else False
-            
-            # --- ROBUST ID MATCHING ---
-            def id_normalize(s):
-                """Normalizes ID numbers, handling common digit/letter confusions."""
-                # Keep only alnum
-                s = re.sub(r'[^a-zA-Z0-9]', '', s).lower() if s else ""
-                # confusion mapping
-                subs = {'o': '0', 'i': '1', 'l': '1', 's': '5', 'z': '2', 'b': '8'}
-                for k, v in subs.items():
-                    s = s.replace(k, v)
-                return s
-
-            norm_id_input_final = id_normalize(id_number)
-            norm_ocr_for_id = id_normalize(ocr_text)
-            
-            id_found = norm_id_input_final in norm_ocr_for_id if norm_id_input_final else False
-            
-            # Substring fuzzy check for ID number if exact fails
-            if not id_found and norm_id_input_final:
-                # Try to find a substring of similar length with high similarity
-                id_len = len(norm_id_input_final)
-                best_id_ratio = 0
+            # Fuzzy ID check refinement
+            id_found = False
+            best_id_ratio = 0
+            if norm_id_input:
+                norm_ocr_for_id = re.sub(r'[^a-z0-9]', '', norm_ocr_for_names)
+                id_len = len(norm_id_input)
                 for i in range(len(norm_ocr_for_id) - id_len + 1):
                     window = norm_ocr_for_id[i:i+id_len]
-                    ratio = difflib.SequenceMatcher(None, norm_id_input_final, window).ratio()
+                    ratio = difflib.SequenceMatcher(None, norm_id_input, window).ratio()
                     if ratio > best_id_ratio: best_id_ratio = ratio
                 
-                # Standard fuzzy threshold for ID matching
-                if best_id_ratio >= 0.75:
+                if best_id_ratio >= 0.8:
                     id_found = True
-                    print(f"[KYC DEBUG] ID found via fuzzy match (ratio: {best_id_ratio:.2f})")
-            
-            print(f"[KYC DEBUG] ID Verification Check - Name Match: {name_match} ({matches_count}/{len(name_parts)}), ID Found: {id_found}")
             
             ocr_match = name_match or id_found
-            
-            # Final document status
-            status = "matched" if ocr_match else "mismatched"
+            status = "matched" if (ocr_match and is_likely_id) else "mismatched"
             reasons = []
+            
+            if not is_likely_id:
+                return {
+                    "status": "rejected",
+                    "failure_reason": "Document not recognized as a valid Government ID. Please upload a clear photo of the original document.",
+                    "ocr_match": False,
+                    "is_likely_id": False
+                }
+            
             if not ocr_match: 
-                ocr_preview = ocr_text[:100].replace("\n", " ")
-                reasons.append(f"Document mismatch: Name or ID number not recognized. (System saw: '{ocr_preview}...')")
-            if not pattern_valid: reasons.append("Invalid ID number format for the selected document type.")
+                entered_name = full_name.upper()
+                detected_name = rich_data.get("full_name", "Unknown").upper()
+                reasons.append(f"Identity mismatch: Detected '{detected_name}' instead of '{entered_name}'.")
+
+            if not pattern_valid: 
+                reasons.append(f"Invalid {id_type} format.")
             
             return {
                 "status": status,
-                "ocr_match": ocr_match,
+                "ocr_match": ocr_match and is_likely_id,
+                "is_likely_id": is_likely_id,
                 "pattern_valid": pattern_valid,
-                "failure_reason": ", ".join(reasons) if reasons else None,
+                "failure_reason": "; ".join(reasons) if reasons else None,
                 "extracted_text_preview": ocr_text[:200],
                 "ocr_data": {
                     "raw_text": ocr_text,
@@ -661,8 +734,8 @@ class VerificationService:
                 "ocr_data": {}
             }
 
-    def verify_business_permit(self, permit_path: str, business_name: str) -> Dict[str, Any]:
-        """OCR Verification for Business Permits."""
+    def verify_business_permit(self, permit_path: str, business_name: str, owner_name: str = None) -> Dict[str, Any]:
+        """OCR Verification for Business Permits with Owner Matching."""
         try:
             # 1. Image Loading & Quality Check
             img = self._prepare_image(permit_path)
@@ -682,14 +755,12 @@ class VerificationService:
             is_likely_permit = any(kw.lower() in clean_ocr for kw in self.BUSINESS_PERMIT_KEYWORDS)
 
             # 4. Fuzzy Matching for Business Name
-            # We look for the business name or parts of it
             name_parts = [p for p in target_name.split() if len(p) > 2]
             matches = 0
             for part in name_parts:
                 if part in clean_ocr:
                     matches += 1
                 else:
-                    # Fuzzy check within words
                     words = clean_ocr.split()
                     for word in words:
                         if difflib.SequenceMatcher(None, part, word).ratio() > 0.8:
@@ -697,26 +768,66 @@ class VerificationService:
                             break
             
             match_ratio = matches / len(name_parts) if name_parts else 0
-            name_match = match_ratio >= 0.5 # 50% of name parts found
+            name_match = match_ratio >= 0.5 
 
-            status = "matched" if name_match else "mismatched"
-            failure_reason = None
-            if not name_match:
-                failure_reason = "Business Name not found on the permit. Please ensure the document is clear and matches the registered name."
-            elif not is_likely_permit:
-                # We still match the name, but warn that it might not be a permit
-                print("[KYC DEBUG] Name matched but permit keywords not found. Proceeding with caution.")
+            # 5. Owner Name Matching (NEW)
+            owner_match = True
+            owner_found_in_ocr = ""
+            if owner_name:
+                clean_owner = " ".join(owner_name.lower().split())
+                owner_parts = [p for p in clean_owner.split() if len(p) > 2]
+                owner_matches = 0
+                for part in owner_parts:
+                    if part in clean_ocr:
+                        owner_matches += 1
+                    else:
+                        words = clean_ocr.split()
+                        for word in words:
+                            if difflib.SequenceMatcher(None, part, word).ratio() > 0.8:
+                                owner_matches += 1
+                                break
+                
+                owner_match_ratio = owner_matches / len(owner_parts) if owner_parts else 0
+                owner_match = owner_match_ratio >= 0.5
+                
+                # Attempt to find owner name around labels
+                for label in self.OWNER_NAME_LABELS:
+                    label_pos = ocr_text.upper().find(label)
+                    if label_pos != -1:
+                        # Take next 50 characters
+                        snippet = ocr_text[label_pos + len(label):label_pos + len(label) + 50].strip()
+                        owner_found_in_ocr = snippet.split('\n')[0].strip()
+                        break
+
+            # 6. Final Decision
+            status = "matched" if (name_match and owner_match and is_likely_permit) else "mismatched"
+            failure_reason = []
             
+            if not is_likely_permit:
+                return {
+                    "status": "rejected",
+                    "failure_reason": "The uploaded file does not appear to be a valid Business Permit or DTI Certificate. Please upload a clear photo of the original document.",
+                    "ocr_match": False,
+                    "is_likely_permit": False
+                }
+
+            if not name_match:
+                failure_reason.append(f"Business mismatch: '{business_name}' not detected on document.")
+            if not owner_match:
+                failure_reason.append(f"Owner mismatch: '{owner_name}' not detected on document.")
+
             return {
                 "status": status,
-                "ocr_match": name_match,
+                "ocr_match": name_match and owner_match,
                 "is_likely_permit": is_likely_permit,
-                "failure_reason": failure_reason,
+                "failure_reason": "; ".join(failure_reason) if failure_reason else None,
                 "extracted_text_preview": ocr_text[:300],
                 "ocr_data": {
                     "raw_text": ocr_text,
                     "business_name_match": name_match,
-                    "match_ratio": match_ratio
+                    "owner_name_match": owner_match,
+                    "match_ratio": match_ratio,
+                    "owner_found": owner_found_in_ocr
                 }
             }
 

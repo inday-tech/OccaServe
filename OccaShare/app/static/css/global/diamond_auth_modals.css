@@ -29,7 +29,7 @@
     display: none; /* Changed back to hidden by default for better control */
     align-items: center;
     justify-content: center;
-    z-index: 9999;
+    z-index: 1000;
     opacity: 0;
     transition: opacity 0.3s ease, backdrop-filter 0.3s ease;
 }
@@ -47,7 +47,7 @@
     max-height: 95vh;
     transform: scale(0.95) translateY(20px);
     transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-    z-index: 2001;
+    z-index: 1001;
 }
 
 .auth-modal-container.wide {
@@ -95,7 +95,7 @@
     justify-content: center;
     cursor: pointer;
     transition: all 0.3s ease;
-    z-index: 2002;
+    z-index: 1002;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
@@ -236,7 +236,10 @@
     transform: translateY(-2px);
 }
 
+.link-primary {
     color: var(--auth-primary);
+    font-weight: 700;
+    text-decoration: none;
 }
 
 /* Footer & Dividers */
@@ -636,3 +639,1019 @@ body.modal-open {
         z-index: 10001 !important;
     }
 }
+
+/* SMART VALIDATION ENHANCEMENTS */
+
+/* Input Validation Icons */
+.input-wrapper {
+    position: relative;
+    display: block;
+}
+
+.input-wrapper .validation-icon {
+    position: absolute;
+    right: 1.15rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.95rem;
+    display: none !important;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.input-wrapper.error .validation-icon.error-icon {
+    display: block !important;
+    color: #ef4444;
+}
+
+.input-wrapper.success .validation-icon.success-icon {
+    display: block !important;
+    color: #10b981;
+}
+
+/* Special right padding for password inputs with toggle */
+.input-wrapper.has-password-toggle .validation-icon {
+    right: 3.5rem;
+}
+
+/* Scanning Status Badges */
+.scan-status-badge {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    font-size: 0.7rem;
+    font-weight: 800;
+    padding: 0.25rem 0.75rem;
+    border-radius: 50px;
+    background: var(--auth-slate-100);
+    color: var(--auth-slate-600);
+    z-index: 10;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: none !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.file-upload-box.scanning .scan-status-badge {
+    display: block !important;
+    background: var(--auth-primary);
+    color: white;
+    animation: badgePulse 1.5s infinite;
+/* ===================================================
+   ELITE KYC GRID & CARDS (Rock-Solid Stability)
+   =================================================== */
+.kyc-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+    margin-top: 1rem;
+}
+
+.kyc-card {
+    background: #fff;
+    border: 1.5px dashed var(--auth-slate-200);
+    border-radius: 1.25rem;
+    padding: 1.5rem;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    min-height: 220px; /* Locked height */
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.kyc-card:hover:not(.scanned-success):not(.scanned-error) {
+    border-color: var(--auth-primary);
+    background: rgba(249, 115, 22, 0.02);
+    transform: translateY(-2px);
+}
+
+.kyc-card.scanning {
+    border-style: solid;
+    border-color: var(--auth-primary);
+    background: rgba(249, 115, 22, 0.05);
+}
+
+.kyc-card.scanned-success {
+    border-style: solid;
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.03);
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
+}
+
+.kyc-card.scanned-error {
+    border-style: solid;
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.03);
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.15);
+}
+
+.kyc-card i {
+    font-size: 2.25rem;
+    color: var(--auth-slate-400);
+    margin-bottom: 1rem;
+    transition: color 0.3s;
+}
+
+.kyc-card.scanned-success i { color: #10b981; }
+.kyc-card.scanned-error i { color: #ef4444; }
+
+.kyc-card .card-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--auth-slate-800);
+    margin-bottom: 0.25rem;
+}
+
+.kyc-card .card-status {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--auth-slate-500);
+}
+
+.kyc-tip {
+    font-size: 0.7rem;
+    color: var(--auth-slate-400);
+    margin-top: 0.75rem;
+    line-height: 1.4;
+    max-width: 180px;
+}
+
+/* Elite Status Overlay */
+.kyc-status-overlay {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+}
+
+.kyc-badge {
+    padding: 0.35rem 0.75rem;
+    border-radius: 2rem;
+    font-size: 0.65rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: none;
+}
+
+.kyc-card.scanning .kyc-badge.progress { display: block; background: var(--auth-primary); color: white; animation: badgePulse 1.5s infinite; }
+.kyc-card.scanned-success .kyc-badge.success { display: block; background: #10b981; color: white; }
+.kyc-card.scanned-error .kyc-badge.error { display: block; background: #ef4444; color: white; }
+
+/* Elite Error Drawer (Locked within card) */
+.kyc-error-message {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: #ef4444;
+    color: white;
+    font-size: 0.7rem;
+    padding: 0.5rem;
+    font-weight: 700;
+    display: none;
+    animation: slideUpError 0.3s ease forwards;
+}
+
+.kyc-card.scanned-error .kyc-error-message {
+    display: block;
+}
+
+@keyframes slideUpError {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+
+@media (max-width: 600px) {
+    .kyc-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.face-scan-overlay i {
+    font-size: 1.6rem;
+    color: var(--auth-primary);
+}
+/* --- CATERER MODAL CSS IMPORT --- */
+
+    body {
+        margin-top: 20px;
+    }
+
+    :root {
+        --primary: #FF7B54;
+        --primary-hover: #E66A45;
+        --primary-soft: rgba(255, 123, 84, 0.08);
+        --slate-50: #F8FAFC;
+        --slate-100: #F1F5F9;
+        --slate-200: #E2E8F0;
+        --slate-300: #CBD5E1;
+        --slate-600: #475569;
+        --slate-700: #334155;
+        --slate-800: #1E293B;
+        --slate-900: #0F172A;
+        --elite-shadow: 0 20px 50px -12px rgba(15, 23, 42, 0.12);
+        --elite-border: rgba(30, 41, 59, 0.05);
+    }
+
+    .main-content-wrap {
+        padding-top: 100px;
+        padding-bottom: 100px;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #1E293B 0%, #334155 100%);
+        background-attachment: fixed;
+        position: relative;
+    }
+
+    .main-content-wrap::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle at 10% 20%, rgba(255, 123, 84, 0.05) 0%, transparent 40%);
+        pointer-events: none;
+    }
+
+    .auth-container {
+        width: 100%;
+        max-width: 750px;
+        padding: 1.5rem;
+        animation: eliteEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes eliteEntrance {
+        from { opacity: 0; transform: translateY(30px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .professional-card {
+        background: rgba(255, 255, 255, 0.98);
+        border-radius: 2rem;
+        padding: 3.5rem;
+        box-shadow: var(--elite-shadow);
+        border: 1px solid var(--elite-border);
+        position: relative;
+        overflow: hidden;
+        backdrop-filter: blur(8px);
+    }
+
+    .form-header {
+        text-align: center;
+        margin-bottom: 2.5rem;
+    }
+
+    .form-header h2 {
+        font-family: 'Poppins', sans-serif;
+        font-size: 2.25rem;
+        color: var(--slate-900);
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.02em;
+    }
+
+    .form-header p {
+        color: var(--slate-600);
+        font-size: 1rem;
+        max-width: 450px;
+        margin: 0 auto;
+        line-height: 1.5;
+    }
+
+    /* Progress Steps */
+    .progress-container {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 3rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .progress-container::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 0;
+        transform: translateY(-50%);
+        height: 2px;
+        width: 100%;
+        background: var(--slate-100);
+        z-index: -1;
+    }
+
+    .progress-step {
+        width: 40px;
+        height: 40px;
+        background: #fff;
+        border: 2px solid var(--slate-200);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        color: var(--slate-600);
+        transition: all 0.3s ease;
+        position: relative;
+        background: white;
+    }
+
+    .progress-step.active {
+        border-color: var(--primary);
+        color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(153, 204, 102, 0.2);
+    }
+
+    .progress-step.completed {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: white;
+    }
+
+    .step-label {
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        margin-top: 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        white-space: nowrap;
+        color: var(--slate-600);
+    }
+
+    .progress-step.active .step-label {
+        color: var(--primary);
+    }
+
+    /* Form Content */
+    .form-step {
+        display: none;
+        animation: fadeIn 0.4s ease-out;
+    }
+
+    .form-step.active {
+        display: block;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateX(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.618rem; /* Golden Ratio Base Spacing */
+    }
+
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+
+    .form-group.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: var(--slate-700);
+        margin-bottom: 0.5rem;
+    }
+
+    .minimal-input {
+        width: 100%;
+        padding: 0.875rem 1rem;
+        border: 2px solid var(--slate-200);
+        border-radius: 0.75rem;
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+        background: var(--slate-50);
+        color: var(--slate-900);
+        box-sizing: border-box;
+    }
+
+    .minimal-input:focus {
+        outline: none;
+        border-color: var(--primary);
+        background: #fff;
+        box-shadow: 0 0 0 4px rgba(153, 204, 102, 0.1);
+    }
+
+    .checkbox-group {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 0.75rem;
+        background: var(--slate-50);
+        padding: 1.5rem;
+        border-radius: 1rem;
+        border: 2px solid var(--slate-200);
+    }
+
+    .checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+        color: var(--slate-700);
+        cursor: pointer;
+    }
+
+    .file-upload-box {
+        height: 100px;
+        border: 2px dashed var(--slate-200);
+        border-radius: 0.75rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: var(--slate-50);
+        transition: all 0.2s;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+        padding: 1rem;
+        text-align: center;
+    }
+
+    .file-upload-box:hover {
+        border-color: var(--primary);
+        background: #fff;
+    }
+
+    .file-upload-box i {
+        font-size: 1.5rem;
+        color: var(--slate-600);
+        margin-bottom: 0.25rem;
+    }
+
+    .file-upload-box p {
+        margin: 0;
+        font-size: 0.75rem;
+        color: var(--slate-600);
+    }
+
+    .file-upload-box input {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+    }
+
+    .btn-container {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+
+    .btn-nav {
+        padding: 1rem 1.5rem;
+        border-radius: 0.75rem;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+        flex: 1;
+    }
+
+    .btn-next {
+        background: linear-gradient(135deg, var(--primary) 0%, #E66A45 100%);
+        color: white;
+        box-shadow: 0 4px 12px rgba(255, 123, 84, 0.2);
+        border: 1px solid transparent;
+    }
+
+    .btn-next:hover {
+        background: linear-gradient(135deg, #E66A45 0%, #d85b37 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(255, 123, 84, 0.4);
+    }
+
+    .btn-prev {
+        background: transparent;
+        color: var(--primary);
+        border: 2px solid var(--primary);
+        box-shadow: none;
+    }
+
+    .btn-prev:hover {
+        background: var(--primary-soft);
+        color: #E66A45;
+        border-color: #E66A45;
+    }
+
+    .logo-preview {
+        width: 60px;
+        height: 60px;
+        border-radius: 0.5rem;
+        object-fit: cover;
+        display: none;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Minimal Input Defaults (Aligns with Customer form) */
+    .minimal-input {
+        width: 100%;
+        padding: 0.875rem 1rem;
+        border: 1.5px solid var(--slate-200);
+        border-radius: 0.75rem;
+        background: #ffffff;
+        font-size: 0.95rem;
+        color: var(--slate-900);
+        box-sizing: border-box;
+        transition: all 0.2s ease;
+    }
+
+    .minimal-input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(255, 123, 84, 0.15);
+    }
+
+    .password-field-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+        width: 100%;
+    }
+    
+    .password-toggle-btn {
+        position: absolute;
+        right: 1rem;
+        background: none;
+        border: none;
+        color: var(--slate-400);
+        cursor: pointer;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+        transition: color 0.2s;
+    }
+    
+    .password-toggle-btn:hover {
+        color: var(--primary);
+    }
+
+    /* Scanning Animation */
+    .file-upload-box.scanning {
+        border-color: var(--primary);
+        pointer-events: none;
+    }
+    .file-upload-box.scanning::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: var(--primary);
+        box-shadow: 0 0 15px var(--primary);
+        animation: scanLine 1.5s infinite linear;
+        z-index: 10;
+    }
+    @keyframes scanLine {
+        0% { top: 0; }
+        100% { top: 100%; }
+    }
+    .file-upload-box.scanned-success {
+        border-color: #10b981;
+        background: #ecfdf5;
+    }
+    .file-upload-box.scanned-error {
+        border-color: #ef4444;
+        background: #fef2f2;
+    }
+    .scan-status-badge {
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 99px;
+        margin-top: 5px;
+        display: none;
+    }
+    .scanned-success .scan-status-badge {
+        display: inline-block;
+        background: #10b981;
+        color: white;
+    }
+    .scanned-error .scan-status-badge {
+        display: inline-block;
+        background: #ef4444;
+        color: white;
+    }
+    .ocr-error-text {
+        font-size: 0.7rem;
+        color: #ef4444;
+        margin-top: 4px;
+        display: none;
+        line-height: 1.2;
+    }
+    .scanned-error .ocr-error-text {
+        display: block;
+    }
+
+    /* Face Scan UI Enhancements */
+    .face-scan-overlay {
+        position: relative;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: rgba(255, 123, 84, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 0.5rem;
+        border: 2px solid rgba(255, 123, 84, 0.2);
+    }
+    
+    .face-scan-overlay i {
+        font-size: 1.5rem;
+        color: var(--primary);
+    }
+
+    .verification-tips-box {
+        background: #f0f9ff;
+        border: 1px solid #bae6fd;
+        border-radius: 0.75rem;
+        padding: 1rem;
+        margin-top: 0.5rem;
+    }
+
+    .verification-tips-box h5 {
+        color: #0369a1;
+        font-size: 0.85rem;
+        margin: 0 0 0.5rem 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .verification-tips-box ul {
+        margin: 0;
+        padding-left: 1.25rem;
+        font-size: 0.75rem;
+        color: #0c4a6e;
+        line-height: 1.5;
+    }
+    
+    .verification-tips-box li {
+        margin-bottom: 0.25rem;
+    }
+
+    /* Input Validation Icons */
+    .input-wrapper .validation-icon {
+        position: absolute;
+        right: 1.25rem;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1rem;
+        display: none;
+        pointer-events: none;
+        z-index: 10;
+        transition: all 0.2s ease;
+    }
+
+    /* Target leading icons specifically to enforce a fixed width and prevent overlapping text */
+    .input-wrapper > i.fas:first-child {
+        width: 1.25rem;
+        text-align: center;
+        z-index: 5;
+    }
+
+    .input-wrapper.error .validation-icon.error-icon {
+        display: block;
+        color: #ef4444;
+        animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .input-wrapper.success .validation-icon.success-icon {
+        display: block;
+        color: #10b981;
+        animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes pop {
+        0% { transform: translateY(-50%) scale(0.5); opacity: 0; }
+        100% { transform: translateY(-50%) scale(1); opacity: 1; }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .professional-card {
+            padding: 2rem 1.5rem;
+            border-radius: 1rem;
+        }
+
+        .form-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .form-header h2 {
+            font-size: 1.75rem;
+        }
+
+        .progress-container {
+            margin-bottom: 2.5rem;
+        }
+
+        .step-label {
+            display: none; /* Hide labels on mobile to prevent overlap */
+        }
+
+        .btn-container {
+            flex-direction: column-reverse;
+        }
+
+        .btn-nav {
+            width: 100%;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .main-content-wrap {
+            padding-top: 80px;
+            padding-bottom: 60px;
+        }
+
+        .form-header h2 {
+            font-size: 1.5rem;
+        }
+
+        .progress-step {
+            width: 32px;
+            height: 32px;
+            font-size: 0.85rem;
+        }
+        
+        .file-upload-box {
+            height: 120px;
+        }
+    }
+    /* ===================================================
+       ELITE KYC GRID & CARDS (Rock-Solid Stability)
+       =================================================== */
+    .kyc-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.25rem;
+        margin-top: 1.5rem;
+    }
+
+    .kyc-card {
+        background: #ffffff;
+        border: 2px dashed var(--slate-200);
+        border-radius: 1.25rem;
+        padding: 1.75rem;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        min-height: 240px;
+        overflow: hidden;
+        cursor: pointer;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    .kyc-card:hover:not(.scanned-success):not(.scanned-error) {
+        border-color: var(--primary);
+        background: rgba(255, 123, 84, 0.02);
+        transform: translateY(-4px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+
+    .kyc-card.scanning {
+        border-style: solid;
+        border-color: var(--primary);
+        background: rgba(255, 123, 84, 0.05);
+    }
+
+    .kyc-card.scanned-success {
+        border-style: solid;
+        border-color: #10b981;
+        background: rgba(16, 185, 129, 0.02);
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.1);
+    }
+
+    .kyc-card.scanned-error {
+        border-style: solid;
+        border-color: #ef4444;
+        background: rgba(239, 68, 68, 0.02);
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.1);
+    }
+
+    .kyc-card i {
+        font-size: 2.5rem;
+        color: var(--slate-400);
+        margin-bottom: 1rem;
+        transition: all 0.3s;
+    }
+
+    .kyc-card.scanned-success i { color: #10b981; }
+    .kyc-card.scanned-error i { color: #ef4444; }
+
+    .kyc-card .card-title {
+        font-size: 1rem;
+        font-weight: 800;
+        color: var(--slate-800);
+        margin-bottom: 0.25rem;
+    }
+
+    .kyc-card .card-status {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--slate-500);
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+    }
+
+    .kyc-tip {
+        font-size: 0.7rem;
+        color: var(--slate-400);
+        margin-top: 1rem;
+        line-height: 1.4;
+        max-width: 190px;
+    }
+
+    /* Elite Status Overlay */
+    .kyc-status-overlay {
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .kyc-badge {
+        padding: 0.35rem 0.75rem;
+        border-radius: 2rem;
+        font-size: 0.65rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        display: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .kyc-card.scanning .kyc-badge.progress { display: block; background: var(--primary); color: white; animation: badgePulse 1.5s infinite; }
+    .kyc-card.scanned-success .kyc-badge.success { display: block; background: #10b981; color: white; }
+    .kyc-card.scanned-error .kyc-badge.error { display: block; background: #ef4444; color: white; }
+
+    @keyframes badgePulse {
+        0% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.8; transform: scale(1.05); }
+        100% { opacity: 1; transform: scale(1); }
+    }
+
+    /* Elite Error Drawer */
+    .kyc-error-message {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: #ef4444;
+        color: white;
+        font-size: 0.7rem;
+        padding: 0.75rem;
+        font-weight: 700;
+        display: none;
+        animation: slideUpError 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        z-index: 20;
+    }
+
+    .kyc-card.scanned-error .kyc-error-message {
+        display: block;
+    }
+
+    @keyframes slideUpError {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+    }
+
+    /* Scanning Animation Line */
+    .kyc-card.scanning::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, var(--primary), transparent);
+        animation: kycScanAnimation 2s infinite linear;
+        box-shadow: 0 0 10px var(--primary);
+    }
+
+    @keyframes kycScanAnimation {
+        0% { top: 0; }
+        100% { top: 100%; }
+    }
+
+    /* Mobile KYC Grid */
+    @media (max-width: 600px) {
+        .kyc-grid {
+            grid-template-columns: 1fr;
+        }
+        .kyc-card {
+            min-height: 200px;
+        }
+    }
+    /* Elite Input Icons */
+    .input-wrapper i.fas {
+        transition: color 0.3s ease;
+    }
+
+    .input-wrapper:focus-within i.fas {
+        color: var(--primary);
+    }
+
+    /* Modern Checkbox Tiles */
+    .hidden-check {
+        position: absolute;
+        opacity: 0;
+        cursor: pointer;
+        height: 0;
+        width: 0;
+    }
+
+    .checkbox-tile .tile-content {
+        cursor: pointer;
+        background: var(--slate-50);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .checkbox-tile.selected .tile-content {
+        background: var(--primary-soft);
+        border-color: var(--primary) !important;
+        box-shadow: 0 0 0 4px rgba(255, 123, 84, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .checkbox-tile.selected .tile-content div {
+        color: var(--primary) !important;
+    }
+
+    /* Elite Progress Tracker Enhancements */
+    .progress-container {
+        padding: 0 1rem;
+    }
+
+    .progress-step {
+        z-index: 10;
+        cursor: default;
+    }
+
+    .progress-step.completed {
+        background: var(--primary) !important;
+        border-color: var(--primary) !important;
+        box-shadow: 0 4px 10px rgba(255, 123, 84, 0.2);
+    }
+
+    /* Step Fade-In Animation */
+    .form-step {
+        display: none;
+        opacity: 0;
+        transform: translateY(10px);
+        transition: all 0.4s ease-out;
+    }
+
+    .form-step.active {
+        display: block;
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    /* Responsive Grid Patch */
+    @media (max-width: 768px) {
+        .professional-card {
+            padding: 2.5rem 1.5rem;
+        }
+        
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+    }
