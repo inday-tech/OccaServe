@@ -93,14 +93,15 @@
                         <td class="location-cell">{{ c.city }}</td>
                         <td style="text-align: right; padding-right: 0;">
                             <div style="display: flex; gap: 0.75rem; justify-content: flex-end; align-items: center;">
-                                <a href="/admin/verify/{{ c.user_id }}" 
-                                   style="color: var(--adm-primary); font-size: 1.1rem; text-decoration: none;"
-                                   title="Review Documents">
+                                <a href="/admin/verify/{{ c.user_id }}"
+                                    style="color: var(--adm-primary); font-size: 1.1rem; text-decoration: none;"
+                                    title="Review Documents">
                                     <i class="fas fa-file-signature"></i>
                                 </a>
                                 <form action="/admin/caterers/{{ c.id }}/archive" method="POST" style="display: inline;"
                                     onsubmit="event.preventDefault(); window.showConfirm('Archive this request?', () => this.submit(), 'Confirm Archive', 'Archive');">
-                                    <button type="submit" style="background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 1.1rem;">
+                                    <button type="submit"
+                                        style="background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 1.1rem;">
                                         <i class="fas fa-archive"></i>
                                     </button>
                                 </form>
@@ -121,7 +122,8 @@
                     <div class="item-subtitle"><i class="fas fa-location-dot"></i> {{ c.city }}</div>
                 </div>
                 <div class="item-actions">
-                    <a href="/admin/verify/{{ c.user_id }}" class="btn-action-mobile" style="color: var(--adm-primary);">
+                    <a href="/admin/verify/{{ c.user_id }}" class="btn-action-mobile"
+                        style="color: var(--adm-primary);">
                         <i class="fas fa-file-signature"></i>
                     </a>
                     <form action="/admin/caterers/{{ c.id }}/archive" method="POST" style="display: inline;"
@@ -136,7 +138,8 @@
         </div>
         {% else %}
         <div style="text-align: center; padding: 3rem 1.5rem;">
-            <div style="width: 56px; height: 56px; background: #ecfdf5; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem;">
+            <div
+                style="width: 56px; height: 56px; background: #ecfdf5; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem;">
                 <i class="fas fa-check" style="color: #10b981; font-size: 1.5rem;"></i>
             </div>
             <p style="font-weight: 800; color: var(--adm-navy); margin-bottom: 0.25rem;">All caught up!</p>
@@ -153,7 +156,8 @@
                 <span class="status-dot-pulse"></span>
                 Infrastracture Online
             </div>
-            <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; opacity: 0.5;">
+            <div
+                style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; opacity: 0.5;">
                 <span style="font-size: 0.65rem; font-weight: 700;">v4.0.2-diamond</span>
                 <i class="fas fa-shield-check" style="font-size: 0.8rem;"></i>
             </div>

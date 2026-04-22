@@ -12,7 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/admin/layout.css') }}?v=1.6">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/admin/layout.css') }}?v=1.8">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/alert_modal.css') }}?v=1.5">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -44,16 +44,10 @@
         })();
     </script>
 
-    <!-- Modern Mobile Header -->
-    <header class="admin-mobile-header">
-        <button class="burger-toggle-btn" id="burgerBtn" onclick="toggleSidebar()" aria-label="Toggle navigation">
-            <i class="fas fa-bars"></i>
-        </button>
-        <div class="mobile-brand-name">Darwin's Catering Services</div>
-        <div class="header-right-action">
-            <!-- Space for profile icon or notifications if needed -->
-        </div>
-    </header>
+    <!-- Standalone Mobile Burger Button (Floating Style) -->
+    <button class="mobile-burger-btn" id="burgerBtn" onclick="toggleSidebar()" aria-label="Toggle navigation">
+        <i class="fas fa-bars"></i>
+    </button>
 
     <!-- Sidebar Overlay -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
@@ -127,10 +121,11 @@
                     </a>
                 </li>
                 <li style="position: relative;">
-                    <a href="/admin/notifications" class="{{ 'active' if active_page == 'notifications' }}" id="adminNotifLink"
-                        onclick="closeSidebar()">
+                    <a href="/admin/notifications" class="{{ 'active' if active_page == 'notifications' }}"
+                        id="adminNotifLink" onclick="closeSidebar()">
                         <i class="fas fa-bell"></i> <span>Notifications</span>
-                        <span class="badge" id="adminNotifBadge" style="display: none; background: #ef4444; color: white; padding: 0.1rem 0.4rem; border-radius: 99px; font-size: 0.7rem; margin-left: auto;">0</span>
+                        <span class="badge" id="adminNotifBadge"
+                            style="display: none; background: #ef4444; color: white; padding: 0.1rem 0.4rem; border-radius: 99px; font-size: 0.7rem; margin-left: auto;">0</span>
                     </a>
                 </li>
                 <li>
@@ -185,7 +180,7 @@
 
     <script>
         // Real-Time Admin Notifications
-        (function() {
+        (function () {
             const adminId = "{{ user.id }}";
             const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/user_${adminId}`;
             let socket;
@@ -201,10 +196,10 @@
             }
 
             function connectWebSocket() {
-                if(reconnectAttempts >= maxAttempts) return;
+                if (reconnectAttempts >= maxAttempts) return;
                 socket = new WebSocket(wsUrl);
 
-                socket.onopen = function() {
+                socket.onopen = function () {
                     console.log("Admin WebSocket connected.");
                     reconnectAttempts = 0;
                     // Fetch initial unread count
@@ -214,13 +209,13 @@
                         .catch(e => console.error("Error fetching initial notif count", e));
                 };
 
-                socket.onmessage = function(event) {
+                socket.onmessage = function (event) {
                     try {
                         const data = JSON.parse(event.data);
-                        if(data.type === 'new_notification') {
+                        if (data.type === 'new_notification') {
                             updateBadge(data.count);
                             // Show toast alert
-                            if(typeof window.showSuccess === 'function') {
+                            if (typeof window.showSuccess === 'function') {
                                 window.showSuccess(data.message, "New Notification");
                             } else if (typeof Swal !== 'undefined') {
                                 Swal.fire({
@@ -234,21 +229,22 @@
                                 });
                             }
                         }
-                    } catch(e) {
+                    } catch (e) {
                         console.error('Failed to parse WebSocket message:', e);
                     }
                 };
 
-                socket.onclose = function() {
+                socket.onclose = function () {
                     reconnectAttempts++;
                     setTimeout(connectWebSocket, 3000 * Math.min(reconnectAttempts, 5));
                 };
             }
 
-            if(adminId && adminId !== "None") {
+            if (adminId && adminId !== "None") {
                 connectWebSocket();
             }
         })();
     </script>
 </body>
+
 </html>
