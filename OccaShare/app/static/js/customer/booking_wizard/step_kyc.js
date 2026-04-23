@@ -485,6 +485,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let idStream = null;
 
+    let currentFacingMode = "environment";
+
     window.startIdScanner = async function (deviceId = null) {
         if (document.getElementById('option-scan').classList.contains('disabled')) {
             if (window.showError) window.showError('ID type and number are required.', 'Missing Fields'); else alert('ID type and number are required.');
@@ -499,55 +501,47 @@ document.addEventListener('DOMContentLoaded', function () {
             idStream.getTracks().forEach(track => track.stop());
         }
 
-        let config;
+        let constraints;
         if (deviceId) {
-            config = { video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } } };
+            constraints = { video: { deviceId: { exact: deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } } };
         } else {
-            const configs = [
-                { video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } },
-                { video: { facingMode: "user" } },
-                { video: true }
-            ];
+            constraints = { 
+                video: { 
+                    facingMode: currentFacingMode, 
+                    width: { ideal: 1920 }, 
+                    height: { ideal: 1080 } 
+                } 
+            };
+        }
 
-            let success = false;
-            for (const c of configs) {
-                try {
-                    idStream = await navigator.mediaDevices.getUserMedia(c);
-                    success = true;
-                    break;
-                } catch (err) {
-                    console.warn("Camera config failed:", c, err);
-                }
-            }
-
-            if (success) {
+        try {
+            idStream = await navigator.mediaDevices.getUserMedia(constraints);
+            video.srcObject = idStream;
+            formContainer.style.display = 'none';
+            scannerContainer.style.display = 'block';
+            
+            // Re-enumerate to show switch button if multiple cameras exist
+            await getCameraDevices();
+        } catch (err) {
+            console.error("Camera access failed:", err);
+            // Fallback to any camera
+            try {
+                idStream = await navigator.mediaDevices.getUserMedia({ video: true });
                 video.srcObject = idStream;
                 formContainer.style.display = 'none';
                 scannerContainer.style.display = 'block';
                 await getCameraDevices();
-                return;
-            } else {
+            } catch (e) {
                 showCameraError();
-                return;
             }
-        }
-
-        try {
-            idStream = await navigator.mediaDevices.getUserMedia(config);
-            video.srcObject = idStream;
-            formContainer.style.display = 'none';
-            scannerContainer.style.display = 'block';
-            await getCameraDevices();
-        } catch (err) {
-            console.error("Manual camera start failed:", err);
-            showCameraError();
         }
     };
 
     window.switchCamera = function () {
-        if (availableDevices.length < 2) return;
-        currentDeviceIndex = (currentDeviceIndex + 1) % availableDevices.length;
-        window.startIdScanner(availableDevices[currentDeviceIndex].deviceId);
+        // Toggle facing mode for simpler mobile switching
+        currentFacingMode = (currentFacingMode === "environment") ? "user" : "environment";
+        console.log("[KYC] Switching to:", currentFacingMode);
+        window.startIdScanner();
     };
 
     function showCameraError() {

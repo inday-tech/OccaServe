@@ -342,11 +342,11 @@ class VerificationService:
     def _extract_rich_ocr_data(self, text: str) -> Dict[str, Any]:
         """Extracts Full Name, ID Number, DOB, Expiry, and Address using regex."""
         data = {
-            "full_name": None,
-            "id_number": None,
-            "extracted_dob": None,
-            "extracted_expiry": None,
-            "extracted_address": None
+            "full_name": "",
+            "id_number": "",
+            "extracted_dob": "",
+            "extracted_expiry": "",
+            "extracted_address": ""
         }
         
         lines = [l.strip() for l in text.split("\n") if l.strip()]
@@ -567,6 +567,14 @@ class VerificationService:
             
             # 4. Perform OCR with Tesseract Multi-Pass
             ocr_text = self._run_tesseract_multi_psm(id_img)
+            
+            if not ocr_text or not ocr_text.strip():
+                return {
+                    "status": "mismatched",
+                    "ocr_match": False,
+                    "failure_reason": "Could not extract readable text from your ID. Please ensure the photo is clear, well-lit, and not blurry."
+                }
+                
             clean_ocr_upper = ocr_text.upper()
             
             # 5. Legitimacy Check (NEW)
@@ -574,22 +582,26 @@ class VerificationService:
             
             rich_data = self._extract_rich_ocr_data(ocr_text)
             
-            # 6. Robust Matching Logic
+            # 6. Specific ID Type Keyword Check (NEW & STRICT)
+            # Check if the selected ID type (e.g. "Passport") appears in the OCR text
+            type_keywords = {
+                'PhilSys / PhilID': ["PHILSYS", "PHILID", "NATIONAL ID", "PHILIPPINE IDENTIFICATION"],
+                'Driver\'s License': ["DRIVER", "LICENSE", "LTO", "TRANSPORTATION"],
+                'Passport': ["PASSPORT", "REPUBLIC", "DFA"],
+                'UMID': ["UMID", "UNIFIED", "MULTI-PURPOSE"],
+                'SSS ID': ["SSS", "SOCIAL SECURITY"],
+                'PRC ID': ["PRC", "PROFESSIONAL", "REGULATION"],
+                'Postal ID': ["POSTAL", "PHLPOST"],
+                'TIN ID': ["TIN", "INTERNAL REVENUE", "TAX"],
+                'PhilHealth ID': ["PHILHEALTH"]
+            }
+            
+            selected_type_kws = type_keywords.get(id_type, [id_type.upper()])
+            type_found_in_ocr = any(kw in clean_ocr_upper for kw in selected_type_kws)
+            
+            # 7. Robust Matching Logic
             clean_name = " ".join(full_name.lower().split())
             clean_ocr = " ".join(ocr_text.lower().split())
-            
-            def normalize_id(s): return re.sub(r'[^a-zA-Z0-9]', '', s).lower() if s else ""
-            
-            # Lowering length to >1 to capture short name parts (e.g. initials, short surnames)
-            name_parts = [p for p in clean_name.replace(",", " ").split() if len(p) > 1]
-            norm_id_input = normalize_id(id_number)
-            
-            print(f"[KYC DEBUG] Matching Logic - Clean Name: '{clean_name}', Name Parts: {name_parts}")
-            print(f"[KYC DEBUG] Matching Logic - Normalized ID Input: '{norm_id_input}'")
-            print(f"[KYC DEBUG] OCR Text (Cleaned Preview): '{clean_ocr[:200]}...'")
-            
-            # --- FUZZY NAME MATCHING ---
-            matches_count = 0
             
             def ocr_normalize(s):
                 """Normalizes common OCR misreads in names/IDs for robust matching."""
@@ -602,22 +614,27 @@ class VerificationService:
                 res = s.lower().strip()
                 for k, v in subs.items():
                     res = res.replace(k, v)
-                # Remove extra spaces/dots to handle 'Jr.' etc
                 res = re.sub(r'[^a-z0-9 ]', '', res)
                 return " ".join(res.split())
 
+            def normalize_id(s): return re.sub(r'[^a-zA-Z0-9]', '', s).lower() if s else ""
+            
+            name_parts = [p for p in clean_name.replace(",", " ").split() if len(p) > 2] # Use longer parts for precision
+            norm_id_input = normalize_id(id_number)
+            
+            print(f"[KYC DEBUG] Strict Matching - Name: '{clean_name}', ID: '{norm_id_input}', Type: '{id_type}'")
+            
+            # --- FUZZY NAME MATCHING ---
+            matches_count = 0
             norm_ocr_for_names = ocr_normalize(clean_ocr)
             norm_name_parts = [ocr_normalize(p) for p in name_parts]
             
             for part in norm_name_parts:
-                if len(part) < 2: continue # Ignore very short artifacts
-                
-                # Check for exact match first
+                if len(part) < 2: continue
                 if part in norm_ocr_for_names:
                     matches_count += 1
                     continue
                 
-                # Improved fuzzy match within OCR text words
                 ocr_words = norm_ocr_for_names.split()
                 best_ratio = 0
                 for word in ocr_words:
@@ -625,12 +642,11 @@ class VerificationService:
                     ratio = difflib.SequenceMatcher(None, part, word).ratio()
                     if ratio > best_ratio: best_ratio = ratio
                 
-                # Higher precision threshold for elite verification
                 if best_ratio > 0.85:
                     matches_count += 1
                 
-            # Calculation of match sufficiency (at least 70% of name parts found)
-            name_match = (matches_count / len(name_parts) >= 0.7) if name_parts else False
+            # Stricter Name Match Threshold (80%)
+            name_match = (matches_count / len(name_parts) >= 0.8) if name_parts else False
             
             # Fuzzy ID check refinement
             id_found = False
@@ -638,15 +654,19 @@ class VerificationService:
             if norm_id_input:
                 norm_ocr_for_id = re.sub(r'[^a-z0-9]', '', norm_ocr_for_names)
                 id_len = len(norm_id_input)
-                for i in range(len(norm_ocr_for_id) - id_len + 1):
-                    window = norm_ocr_for_id[i:i+id_len]
-                    ratio = difflib.SequenceMatcher(None, norm_id_input, window).ratio()
-                    if ratio > best_id_ratio: best_id_ratio = ratio
-                
-                if best_id_ratio >= 0.8:
+                # Check for exact or highly similar substring
+                if norm_id_input in norm_ocr_for_id:
                     id_found = True
+                else:
+                    for i in range(len(norm_ocr_for_id) - id_len + 1):
+                        window = norm_ocr_for_id[i:i+id_len]
+                        ratio = difflib.SequenceMatcher(None, norm_id_input, window).ratio()
+                        if ratio > best_id_ratio: best_id_ratio = ratio
+                    if best_id_ratio >= 0.9: # Increased from 0.8 for strictness
+                        id_found = True
             
-            ocr_match = name_match or id_found
+            # STRICT REQUIREMENT: Name Match AND (ID Found OR Type Found)
+            ocr_match = name_match and (id_found or type_found_in_ocr)
             status = "matched" if (ocr_match and is_likely_id) else "mismatched"
             reasons = []
             
@@ -660,8 +680,8 @@ class VerificationService:
             
             if not ocr_match: 
                 entered_name = full_name.upper()
-                detected_name = rich_data.get("full_name", "Unknown").upper()
-                reasons.append(f"Identity mismatch: Detected '{detected_name}' instead of '{entered_name}'.")
+                detected_name = (rich_data.get("full_name") or "NOT DETECTED").upper()
+                reasons.append(f"ID Name Mismatch: The name detected on your ID ({detected_name}) does not match your registered customer name ({entered_name}). Please ensure you are using your own valid ID.")
 
             if not pattern_valid: 
                 reasons.append(f"Invalid {id_type} format.")

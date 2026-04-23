@@ -223,10 +223,100 @@
     .checkout-screen.active { display: block; animation: slideUpFade 0.5s ease-out forwards; }
     @keyframes slideUpFade { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 
-    @media (max-width: 1024px) {
-        .checkout-grid { grid-template-columns: 1fr; }
-        .bill-card-premium { position: static; order: -1; }
-        .mini-stepper { gap: 1rem; }
+    /* Payment Selector Premium */
+    .payment-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        margin-top: 1.5rem;
+    }
+
+    .payment-opt {
+        background: white;
+        border: 2px solid #e2e8f0;
+        border-radius: 1.25rem;
+        padding: 2rem 1.5rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .payment-opt:hover {
+        border-color: #cbd5e1;
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+    }
+
+    .payment-opt.active {
+        border-color: var(--checkout-primary);
+        background: var(--checkout-primary-soft);
+        transform: scale(1.05);
+        box-shadow: 0 15px 35px rgba(255, 107, 0, 0.15);
+    }
+
+    .payment-opt .pay-icon {
+        font-size: 2.5rem;
+        color: var(--kyc-slate-400);
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .payment-opt.active .pay-icon {
+        color: var(--checkout-primary);
+        transform: translateY(-5px);
+    }
+
+    .payment-opt .pay-label {
+        font-weight: 850;
+        font-size: 1.1rem;
+        color: var(--text-slate);
+        display: block;
+        margin-bottom: 0.25rem;
+    }
+
+    .payment-opt .pay-sub {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .selection-indicator {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        width: 24px;
+        height: 24px;
+        background: var(--checkout-primary);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+        opacity: 0;
+        transform: scale(0);
+        transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    }
+
+    .payment-opt.active .selection-indicator {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    /* Error Message Fix */
+    .field-error {
+        display: none !important;
+        color: #ef4444;
+        font-size: 0.75rem;
+        font-weight: 700;
+        margin-top: 0.5rem;
+    }
+    .field-error.show {
+        display: block !important;
     }
 </style>
 {% endblock %}
@@ -239,12 +329,8 @@
             <div class="ms-icon">1</div>
             <span class="ms-label">Delivery</span>
         </div>
-        <div class="mini-step {% if user.is_verified %}completed{% endif %}" id="m-step-2">
-            <div class="ms-icon">{% if user.is_verified %}<i class="fas fa-check"></i>{% else %}2{% endif %}</div>
-            <span class="ms-label">Identity</span>
-        </div>
-        <div class="mini-step" id="m-step-3">
-            <div class="ms-icon">3</div>
+        <div class="mini-step" id="m-step-2">
+            <div class="ms-icon">2</div>
             <span class="ms-label">Payment</span>
         </div>
     </div>
@@ -317,11 +403,80 @@
                         </div>
 
                         <div id="address-section">
-                            <div class="form-group" style="padding-top: 1rem; border-top: 1px dashed #e2e8f0; margin-top: 0.5rem;">
-                                <label>Delivery Address</label>
-                                <textarea name="address" id="address" class="form-input" style="height: auto; padding: 1rem;" rows="3" placeholder="Exact Street, Brgy, City, Province"></textarea>
-                                <span class="field-error" id="err-address">Complete address required.</span>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding-top: 1rem; border-top: 1px dashed #e2e8f0; margin-top: 0.5rem;">
+                                <div class="form-group">
+                                    <label>Barangay (Sta. Cruz)</label>
+                                    <select id="brgy_select" class="form-input" required onchange="syncAddress()">
+                                        <option value="">-- Select Barangay --</option>
+                                        <option value="Alobo">Alobo</option>
+                                        <option value="Angas">Angas</option>
+                                        <option value="Aturan">Aturan</option>
+                                        <option value="Bagong Silang">Bagong Silang</option>
+                                        <option value="Baguidbirin">Baguidbirin</option>
+                                        <option value="Baliis">Baliis</option>
+                                        <option value="Balogo">Balogo</option>
+                                        <option value="Banahaw">Banahaw</option>
+                                        <option value="Bangcuangan">Bangcuangan</option>
+                                        <option value="Banogbog">Banogbog</option>
+                                        <option value="Binuangan">Binuangan</option>
+                                        <option value="Bocboc">Bocboc</option>
+                                        <option value="Botilao">Botilao</option>
+                                        <option value="Buyaba">Buyaba</option>
+                                        <option value="Caigangan">Caigangan</option>
+                                        <option value="Daykitin">Daykitin</option>
+                                        <option value="Devilla">Devilla</option>
+                                        <option value="Dolores">Dolores</option>
+                                        <option value="Haguimit">Haguimit</option>
+                                        <option value="Hupi">Hupi</option>
+                                        <option value="Ipil">Ipil</option>
+                                        <option value="Jolo">Jolo</option>
+                                        <option value="Kaganhao">Kaganhao</option>
+                                        <option value="Kalunuran">Kalunuran</option>
+                                        <option value="Kilo-kilo">Kilo-kilo</option>
+                                        <option value="Kiydaman">Kiydaman</option>
+                                        <option value="Labo">Labo</option>
+                                        <option value="Lamesa">Lamesa</option>
+                                        <option value="Landy">Landy</option>
+                                        <option value="Lapu-lapu">Lapu-lapu</option>
+                                        <option value="Libjo">Libjo</option>
+                                        <option value="Lipa">Lipa</option>
+                                        <option value="Lusok">Lusok</option>
+                                        <option value="Maharlika">Maharlika</option>
+                                        <option value="Makawayan">Makawayan</option>
+                                        <option value="Maniwaya">Maniwaya</option>
+                                        <option value="Masaguisi">Masaguisi</option>
+                                        <option value="Masalukot">Masalukot</option>
+                                        <option value="Matalaba">Matalaba</option>
+                                        <option value="Mongpong">Mongpong</option>
+                                        <option value="Morales">Morales</option>
+                                        <option value="Napo">Napo</option>
+                                        <option value="Pag-asa">Pag-asa</option>
+                                        <option value="Pantayin">Pantayin</option>
+                                        <option value="Polo">Polo</option>
+                                        <option value="Pulong-Parang">Pulong-Parang</option>
+                                        <option value="Punong">Punong</option>
+                                        <option value="San Antonio">San Antonio</option>
+                                        <option value="San Isidro">San Isidro</option>
+                                        <option value="San Jose">San Jose</option>
+                                        <option value="San Juan">San Juan</option>
+                                        <option value="San Pedro">San Pedro</option>
+                                        <option value="San Roque">San Roque</option>
+                                        <option value="Tagum">Tagum</option>
+                                        <option value="Tamayo">Tamayo</option>
+                                        <option value="Tambangan">Tambangan</option>
+                                        <option value="Tawiran">Tawiran</option>
+                                        <option value="Taytay">Taytay</option>
+                                    </select>
+                                    <span class="field-error" id="err-brgy_select">Please select a barangay.</span>
+                                </div>
+                                <div class="form-group">
+                                    <label>Street / House No.</label>
+                                    <input type="text" id="street_input" class="form-input" placeholder="e.g. 123 Diamond St." oninput="syncAddress()">
+                                </div>
                             </div>
+                            <!-- Hidden field for combined address -->
+                            <input type="hidden" name="address" id="address">
+                            <span class="field-error" id="err-address" style="margin-top: -1rem; margin-bottom: 1rem;">Full address is required.</span>
                         </div>
 
                         <div class="form-group">
@@ -332,175 +487,17 @@
 
                     <div class="checkout-nav-box">
                         <div class="nav-right">
-                            <button type="button" class="btn-wizard-next" onclick="nextScreen({% if user.is_verified %}3{% else %}2{% endif %})">
-                                Next Step: {% if user.is_verified %}Payment{% else %}Verification{% endif %} <i class="fas fa-chevron-right" style="margin-left: 0.5rem;"></i>
+                            <button type="button" class="btn-wizard-next" onclick="nextScreen(2)">
+                                Next Step: Payment <i class="fas fa-chevron-right" style="margin-left: 0.5rem;"></i>
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- STEP 2: IDENTITY VERIFICATION (EXACT PORT FROM PACKAGE KYC) -->
-                <div class="checkout-screen" id="screen-2">
-                    <div class="checkout-card">
-                        <!-- Shield Header -->
-                        <div class="kyc-header-icon">
-                            <div class="shield-icon-container">
-                                <i class="fas fa-shield-alt"></i>
-                            </div>
-                        </div>
 
-                        <div style="text-align: center; margin-bottom: 2.5rem;">
-                            <h2 class="section-title" style="justify-content: center;">Identity Verification</h2>
-                            <p class="section-subtitle">Securing your order through automated identity checks</p>
-                        </div>
-
-                        <!-- Internal Sub-Stepper for KYC -->
-                        <div class="kyc-stepper-minimal">
-                            <div class="step-node active" id="node-1">
-                                <div class="node-icon"><i class="fas fa-id-card"></i></div>
-                                <span class="node-label">ID Details</span>
-                            </div>
-                            <div class="step-node" id="node-2">
-                                <div class="node-icon"><i class="fas fa-file-import"></i></div>
-                                <span class="node-label">Extraction</span>
-                            </div>
-                            <div class="step-node" id="node-3">
-                                <div class="node-icon"><i class="fas fa-face-smile"></i></div>
-                                <span class="node-label">Biometrics</span>
-                            </div>
-                            <div class="step-node" id="node-4">
-                                <div class="node-icon"><i class="fas fa-clipboard-check"></i></div>
-                                <span class="node-label">Review</span>
-                            </div>
-                        </div>
-
-                        <!-- SUB-STEP 1: ID FORM -->
-                        <div id="kyc-step-1" class="kyc-phase">
-                            <div class="kyc-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
-                                <div class="form-group">
-                                    <label>ID Type</label>
-                                    <select id="id_type" name="id_type" class="form-input" onchange="validateIdSelection()">
-                                        <option value="">-- Choose ID Type --</option>
-                                        <option value="PhilSys / PhilID">PhilSys / PhilID</option>
-                                        <option value="Driver's License">Philippine Driver's License</option>
-                                        <option value="Passport">Philippine Passport</option>
-                                        <option value="UMID">UMID</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label>ID Number</label>
-                                    <input type="text" id="id_number" name="id_number" class="form-input" placeholder="Enter ID number" oninput="validateIdSelection()">
-                                    <div id="alc-id-validation-msg" style="font-size: 0.75rem; color: #94a3b8; font-weight: 700; margin-top: 0.4rem; min-height: 1rem;"></div>
-                                </div>
-                            </div>
-
-                            <div class="kyc-action-cards" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-                                <div class="action-card disabled" id="alc-option-scan" onclick="startIdScanner()">
-                                    <div class="card-icon"><i class="fas fa-camera"></i></div>
-                                    <h3 style="font-weight: 800; font-size: 1rem; margin-bottom: 0.25rem;">Scan Live</h3>
-                                    <p style="font-size: 0.75rem; color: #94a3b8;">Use your webcam to scan</p>
-                                </div>
-                                <div class="action-card disabled" id="alc-option-upload" onclick="handleUploadClick()">
-                                    <div class="card-icon"><i class="fas fa-upload"></i></div>
-                                    <h3 style="font-weight: 800; font-size: 1rem; margin-bottom: 0.25rem;">Upload ID</h3>
-                                    <p style="font-size: 0.75rem; color: #94a3b8;">Attach a photo of your ID</p>
-                                </div>
-                            </div>
-                            <input type="file" id="id_document_input" style="display: none;" accept="image/*" onchange="previewKycId(this)">
-                        </div>
-
-                        <!-- ID SCANNER VIEWPORT -->
-                        <div id="kyc-step-scanner" class="kyc-phase" style="display: none; text-align: center;">
-                            <div class="webcam-box" style="width: 100%; max-width: 480px; aspect-ratio: 4/3; margin: 0 auto 2rem; position: relative; border-radius: 1.5rem; overflow: hidden; background: #000; box-shadow: 0 20px 50px rgba(0,0,0,0.2);">
-                                <video id="id-scanner-webcam" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
-                                <div style="position: absolute; top: 15%; left: 10%; right: 10%; bottom: 15%; border: 3px dashed rgba(255,255,255,0.4); border-radius: 1rem; pointer-events: none; box-shadow: 0 0 0 500px rgba(0,0,0,0.4);">
-                                    <div style="position: absolute; bottom: -35px; width: 100%; color: white; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.1em; text-align: center;">ALIGN ID WITHIN FRAME</div>
-                                </div>
-                            </div>
-                            <div style="display: flex; gap: 1rem; justify-content: center;">
-                                <button type="button" class="btn btn-secondary" onclick="resetKycStep(1)">Back</button>
-                                <button type="button" class="btn-wizard-next" onclick="captureIdPhoto()" style="padding: 0.75rem 2rem;">Capture <i class="fas fa-camera"></i></button>
-                            </div>
-                        </div>
-
-                        <!-- ID PREVIEW -->
-                        <div id="kyc-step-2" class="kyc-phase" style="display: none; text-align: center;">
-                            <img id="id-image-preview" src="" style="width: 100%; max-width: 480px; border-radius: 1.5rem; margin-bottom: 2rem; border: 1px solid #e2e8f0; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
-                            <div style="display: flex; gap: 1rem; justify-content: center;">
-                                <button type="button" class="btn btn-secondary" onclick="resetKycStep(1)">Retake</button>
-                                <button type="button" class="btn-wizard-next" onclick="proceedToOcr()" style="padding: 0.75rem 2rem;">Confirm ID <i class="fas fa-check-circle"></i></button>
-                            </div>
-                        </div>
-
-                        <!-- EXTRACTION (OCR ANIM) -->
-                        <div id="kyc-step-3" class="kyc-phase" style="display: none; text-align: center; padding: 2rem 0;">
-                            <div class="ocr-loader" style="width: 50px; height: 50px; border: 4px solid #f1f5f9; border-top-color: var(--kyc-accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1.5rem;"></div>
-                            <h3 style="font-weight: 800; margin-bottom: 0.5rem;">Processing Data</h3>
-                            <p style="color: #94a3b8; font-weight: 600; font-size: 0.9rem;">Extracting information for secure checkout...</p>
-                            <div id="quality-indicators" style="display: flex; justify-content: center; gap: 1.5rem; margin-top: 2rem; font-size: 0.8rem; color: #94a3b8; font-weight: 700;">
-                                <span id="qc-resolution"><i class="fas fa-circle-notch fa-spin"></i> <span>Quality</span></span>
-                                <span id="qc-focus"><i class="fas fa-circle-notch fa-spin"></i> <span>Focus</span></span>
-                                <span id="qc-ocr"><i class="fas fa-circle-notch fa-spin"></i> <span>Extraction</span></span>
-                            </div>
-                        </div>
-
-                        <!-- BIOMETRICS (LIVENESS) -->
-                        <div id="kyc-step-4" class="kyc-phase" style="display: none; text-align: center;">
-                            <div class="webcam-box" style="width: 320px; height: 320px; border-radius: 50%; overflow: hidden; margin: 0 auto 1.5rem; border: 4px solid var(--kyc-accent); position: relative; box-shadow: 0 15px 40px rgba(0,0,0,0.15);">
-                                <video id="webcam" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
-                                <div id="selfie-countdown" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 5rem; font-weight: 900; color: white; display: none; z-index: 100; text-shadow: 0 4px 10px rgba(0,0,0,0.3);">3</div>
-                            </div>
-                            <p id="liveness-feedback" style="font-weight: 800; color: var(--kyc-accent); margin-bottom: 2rem;">Position your face in the center</p>
-                            <button type="button" class="btn-wizard-next" id="btn-begin-capture" onclick="beginLivenessSequence()" style="margin: 0 auto; padding: 0.85rem 3rem;">I'm Ready</button>
-                        </div>
-
-                        <!-- BIOMETRIC REVIEW -->
-                        <div id="kyc-step-5" class="kyc-phase" style="display: none; text-align: center;">
-                             <h3 style="font-weight: 800; margin-bottom: 1.5rem;">Liveness Assessment</h3>
-                             <div id="selfie-gallery" style="display: flex; justify-content: center; gap: 0.75rem; margin-bottom: 2rem;">
-                                 <!-- Frames -->
-                             </div>
-                             <p style="color: #10b981; font-weight: 800; margin-bottom: 2rem;"><i class="fas fa-check-double" style="margin-right: 0.5rem;"></i> Verified Real Human</p>
-                             <div style="display: flex; gap: 1rem; justify-content: center;">
-                                <button type="button" class="btn btn-secondary" onclick="retryLiveness()">Retake</button>
-                                <button type="button" class="btn-wizard-next" onclick="confirmIdentityReview()" style="padding: 0.85rem 2rem;">Securely Upload <i class="fas fa-cloud-upload-alt" style="margin-left: 0.5rem;"></i></button>
-                             </div>
-                        </div>
-
-                        <!-- WAITING FOR CATERER APPROVAL -->
-                        <div id="kyc-step-waiting" class="kyc-phase" style="display: none; text-align: center; padding: 2rem 0;">
-                            <div class="ocr-loader" style="width: 60px; height: 60px; border: 4px solid #f1f5f9; border-top-color: var(--checkout-primary); border-radius: 50%; animation: spin 1.2s linear infinite; margin: 0 auto 2rem;"></div>
-                            <h2 style="font-weight: 800; font-size: 1.5rem; color: #1e293b; margin-bottom: 1rem;">Waiting for Caterer Approval</h2>
-                            <p style="color: #64748b; font-weight: 600; line-height: 1.6; max-width: 400px; margin: 0 auto 2.5rem;">
-                                Aming sinisiguro ang iyong seguridad. Kasalukuyang bine-verify ng caterer ang iyong pagkakakilanlan upang maprotektahan ang inyong transaksyon.
-                            </p>
-                            <div style="background: #eff6ff; color: #1d4ed8; padding: 1rem; border-radius: 1rem; font-size: 0.85rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.75rem;">
-                                <i class="fas fa-info-circle"></i>
-                                <span>Real-time Update: Automatic kaming lilipat sa Payment kapag na-approve na.</span>
-                            </div>
-                        </div>
-
-
-                        <!-- Security Notice Footer -->
-                        <div class="security-notice" style="background: #f8fafc; border-color: #e2e8f0; color: #64748b; margin-top: 3.5rem;">
-                            <i class="fas fa-shield-halved"></i>
-                            <span>End-to-End Encrypted Identity Engine</span>
-                        </div>
-                    </div>
-
-                    <div class="checkout-nav-box">
-                        <button type="button" class="btn-wizard-back" onclick="nextScreen(1)"><i class="fas fa-chevron-left"></i> Back</button>
-                        <div class="nav-right">
-                            <button type="button" class="btn-wizard-next" id="id-next-btn" onclick="nextScreen(3)" disabled style="display: none;">
-                                Next Step: Payment <i class="fas fa-chevron-right"></i>
-                            </button>
-
-                        </div>
-                    </div>
-                </div>
 
                 <!-- STEP 3: PAYMENT & CONFIRMATION -->
-                <div class="checkout-screen" id="screen-3">
+                <div class="checkout-screen" id="screen-2">
                     <div class="checkout-card">
                         <h2 class="section-title">
                             <i class="fas fa-wallet" style="color: var(--checkout-primary);"></i>
@@ -511,20 +508,21 @@
 
                         <div class="form-group">
                             <label>Payment Method</label>
-                            <div class="option-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                <label class="option-card selected" style="border: 2px solid #e2e8f0; border-radius: 1rem; padding: 1.25rem; display: block; cursor: pointer; text-align: center;">
-                                    <input type="radio" name="payment_method" value="COD" checked style="display: none;">
-                                    <i class="fas fa-hand-holding-dollar" style="font-size: 1.25rem; color: var(--checkout-primary); margin-bottom: 0.5rem; display: block;"></i>
-                                    <div style="font-weight: 800; font-size: 0.9rem;">COD</div>
-                                    <div style="font-size: 0.75rem; color: #94a3b8;">Pay on delivery</div>
-                                </label>
-                                <label class="option-card" style="border: 2px solid #e2e8f0; border-radius: 1rem; padding: 1.25rem; display: block; cursor: pointer; text-align: center;">
-                                    <input type="radio" name="payment_method" value="GCASH" style="display: none;">
-                                    <i class="fas fa-mobile-screen" style="font-size: 1.25rem; color: var(--checkout-primary); margin-bottom: 0.5rem; display: block;"></i>
-                                    <div style="font-weight: 800; font-size: 0.9rem;">GCash</div>
-                                    <div style="font-size: 0.75rem; color: #94a3b8;">Online Transfer</div>
-                                </label>
+                            <div class="payment-grid">
+                                <div class="payment-opt active" onclick="selectPayment('COD', this)">
+                                    <div class="selection-indicator"><i class="fas fa-check"></i></div>
+                                    <i class="fas fa-hand-holding-usd pay-icon"></i>
+                                    <span class="pay-label">CASH ON DELIVERY</span>
+                                    <span class="pay-sub">PAY UPON ARRIVAL</span>
+                                </div>
+                                <div class="payment-opt" onclick="selectPayment('GCASH', this)">
+                                    <div class="selection-indicator"><i class="fas fa-check"></i></div>
+                                    <i class="fas fa-mobile-alt pay-icon"></i>
+                                    <span class="pay-label">GCASH TRANSFER</span>
+                                    <span class="pay-sub">ONLINE PAYMENT</span>
+                                </div>
                             </div>
+                            <input type="hidden" name="payment_method" id="payment_method" value="COD">
                         </div>
 
                         <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 2.5rem 0;">
@@ -544,7 +542,7 @@
                     </div>
 
                     <div class="checkout-nav-box">
-                        <button type="button" class="btn-wizard-back" onclick="nextScreen(2)"><i class="fas fa-chevron-left"></i> Back</button>
+                        <button type="button" class="btn-wizard-back" onclick="nextScreen(1)"><i class="fas fa-chevron-left"></i> Back</button>
                         <div class="nav-right">
                             <button type="button" class="btn-wizard-next" id="final-submit-btn" onclick="submitAtaCarteOrder()" style="background: var(--checkout-primary); padding: 1rem 3.5rem;">
                                 PLACE ORDER NOW <i class="fas fa-check" style="margin-left: 0.75rem;"></i>
@@ -554,7 +552,7 @@
                 </div>
 
                 <!-- SUCCESS SCREEN -->
-                <div class="checkout-screen" id="screen-5">
+                <div class="checkout-screen" id="screen-3">
                     <div class="checkout-card" style="text-align: center; padding: 4rem 2rem;">
                         <div style="width: 80px; height: 80px; background: #10b981; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin: 0 auto 2rem; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.25);">
                             <i class="fas fa-check"></i>
@@ -627,5 +625,5 @@
     window.menuId = "{{ menu_item.id }}";
     window.isVerified = {% if user.is_verified %}true{% else %}false{% endif %};
 </script>
-<script src="{{ url_for('static', path='/js/customer/alacarte_checkout.js') }}?v=1.1"></script>
+<script src="{{ url_for('static', path='/js/customer/alacarte_checkout.js') }}?v={{ range(1, 9999) | random }}"></script>
 {% endblock %}

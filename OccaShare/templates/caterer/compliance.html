@@ -19,15 +19,6 @@
     </div>
 </div>
 
-<div class="compliance-tabs">
-    <div class="compliance-tab active" onclick="switchQueueTab('packages', this)">
-        Event Packages <span class="queue-badge">{{ package_customers|length }}</span>
-    </div>
-    <div class="compliance-tab" onclick="switchQueueTab('alacarte', this)">
-        Ala Carte Orders <span class="queue-badge">{{ alacarte_customers|length }}</span>
-    </div>
-</div>
-
 <div id="packages-queue" class="tab-content active">
     <div class="kyc-review-card-wrapper">
         <div class="kyc-section-header">
@@ -126,143 +117,26 @@
         </div>
     </div>
 </div>
-
-<div id="alacarte-queue" class="tab-content">
-    <div class="kyc-review-card-wrapper">
-        <div class="kyc-section-header">
-            <i class="fas fa-utensils"></i>
-            <h3>Ala Carte Order Verification</h3>
-        </div>
-        <div class="kyc-table-scroll">
-            <table class="audit-review-table" id="kycTableAlacarte">
-                <thead>
-                    <tr>
-                        <th>Customer Identity</th>
-                        <th>Latest Order</th>
-                        <th>ID Type</th>
-                        <th>Trust Score</th>
-                        <th>Status</th>
-                        <th>Audit Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for u in alacarte_customers %}
-                    {% set kyc = kyc_map.get(u.id) %}
-                    <tr>
-                        <td>
-                            <div class="kyc-user-identity-box">
-                                <strong class="kyc-user-name">{{ u.first_name }} {{ u.last_name }}</strong>
-                                <span class="kyc-user-email">{{ u.email }}</span>
-                            </div>
-                        </td>
-                        <td>
-                            <span class="kyc-card-label">Latest Order</span>
-                            <div class="kyc-event-type">
-                                {{ alacarte_map.get(u.id, 'N/A') }}
-                                {% if u.has_multiple_orders %}
-                                <span class="kyc-multi-badge">MULTI-ORDER</span>
-                                {% endif %}
-                            </div>
-                        </td>
-                        <td>
-                            <span class="kyc-card-label">ID Type</span>
-                            <span class="kyc-id-type">
-                                {% if kyc %}
-                                {{ kyc.verification_type or 'Gov ID' }}
-                                {% else %}
-                                <i class="fas fa-exclamation-triangle" style="color: var(--color-warning);"></i> No ID Yet
-                                {% endif %}
-                            </span>
-                        </td>
-                        <td>
-                            <span class="kyc-card-label">Trust Score</span>
-                            {% if kyc %}
-                            <div class="fraud-score-pill {% if kyc.fraud_score >= 85 %}high{% elif kyc.fraud_score >= 60 %}mid{% else %}low{% endif %}">
-                                <i class="fas fa-fingerprint" style="font-size: 0.7rem; margin-right: 0.4rem;"></i>
-                                {{ kyc.fraud_score }}%
-                            </div>
-                            {% else %}
-                            <span class="kyc-na-text">N/A</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <span class="kyc-card-label">Status</span>
-                            {% if u.is_verified %}
-                            <span class="kyc-status-badge status-approved">
-                                <i class="fas fa-check-circle" style="font-size: 0.7rem;"></i> Verified
-                            </span>
-                            {% elif kyc %}
-                            <span class="kyc-status-badge status-{{ kyc.verification_status }}">
-                                <i class="fas fa-circle" style="font-size: 0.4rem;"></i>
-                                {{ kyc.verification_status|replace('_', ' ')|capitalize }}
-                            </span>
-                            {% else %}
-                            <span class="kyc-status-badge status-pending">
-                                <i class="fas fa-clock" style="font-size: 0.7rem;"></i> No ID Data
-                            </span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <span class="kyc-card-label">Action</span>
-                            {% if kyc %}
-                            <a href="/caterer/compliance/view/{{ u.id }}" class="btn-review-kyc">
-                                Audit <i class="fas fa-history"></i>
-                            </a>
-                            {% else %}
-                            <span class="kyc-na-text">Wait</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="6" class="kyc-empty-cell">
-                            No Ala Carte order verifications found.
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    function switchQueueTab(tab, el) {
-        // Update Tabs
-        document.querySelectorAll('.compliance-tab').forEach(t => t.classList.remove('active'));
-        el.classList.add('active');
-
-        // Update Content
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        if (tab === 'packages') {
-            document.getElementById('packages-queue').classList.add('active');
-        } else {
-            document.getElementById('alacarte-queue').classList.add('active');
-        }
-    }
-
     function filterKYC() {
         const input = document.getElementById('kycSearchInput');
         const filter = input.value.toLowerCase();
         
-        // Filter both tables
-        ['kycTablePackages', 'kycTableAlacarte'].forEach(tableId => {
-            const table = document.getElementById(tableId);
-            const rows = table.querySelectorAll('tbody tr');
+        const table = document.getElementById('kycTablePackages');
+        const rows = table.querySelectorAll('tbody tr');
 
-            rows.forEach(row => {
-                const textContent = row.textContent || row.innerText;
-                if (textContent.toLowerCase().indexOf(filter) > -1) {
-                    row.style.display = "";
-                } else {
-                    row.style.display = "none";
-                }
-            });
+        rows.forEach(row => {
+            const textContent = row.textContent || row.innerText;
+            if (textContent.toLowerCase().indexOf(filter) > -1) {
+                row.style.display = "";
+            } else {
+                row.style.display = "none";
+            }
         });
     }
-
 </script>
 {% endblock %}
