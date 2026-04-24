@@ -61,12 +61,12 @@ async def upload_id(
 
     # Security: File Validation
     if id_document.content_type not in ALLOWED_MIME_TYPES:
-        raise HTTPException(status_code=400, detail="Invalid file type. Only JPEG and PNG are allowed.")
+        raise HTTPException(status_code=400, detail="❌ Unsupported file format. Please upload JPG or PNG.")
     
     # Check file size (FastAPI doesn't do this by default, we read a bit)
     content = await id_document.read()
     if len(content) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail="File too large. Max size is 5MB.")
+        raise HTTPException(status_code=400, detail="❌ File size exceeds limit (max 5MB).")
     
     # Encrypt data
     encrypted_content = encrypt_data(content)
@@ -85,10 +85,14 @@ async def upload_id(
         kyc_record = models.IdentityVerification(user_id=current_user.id)
         db.add(kyc_record)
     
+    # Always reset status to pending when starting a new upload attempt
+    kyc_record.verification_status = "pending"
+    kyc_record.failure_reason = None
+    
     kyc_record.document_url = id_url
     kyc_record.id_number = id_number
     kyc_record.verification_type = id_type
-    kyc_record.verification_status = "processing"
+    # Remove the 'processing' status here as it's synchronous
     db.commit() # Commit so service can read it
 
     # --- STRICT SYNCHRONOUS VALIDATION ---
@@ -103,7 +107,7 @@ async def upload_id(
         user_id=current_user.id
     )
     
-    if id_result["status"] == "mismatched":
+    if id_result["status"] in ["mismatched", "rejected"]:
         # Delete the uploaded file and roll back the record status to prevent blocked progression
         try:
             os.remove(path)
@@ -111,6 +115,7 @@ async def upload_id(
             pass
         kyc_record.verification_status = "failed"
         kyc_record.failure_reason = id_result["failure_reason"]
+        kyc_record.document_url = None # Clear the URL so they can't "resume" with a bad ID
         db.commit()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
@@ -121,7 +126,11 @@ async def upload_id(
         raise HTTPException(status_code=500, detail=id_result["failure_reason"])
 
     # If matched, we proceed
+    kyc_record.document_url = id_url
+    kyc_record.id_number = id_number
+    kyc_record.verification_type = id_type
     kyc_record.ocr_data = id_result.get("ocr_data", {})
+    kyc_record.verification_status = "pending" # Keep as pending until full verification (selfie) is done
     db.commit()
 
     return {"success": True, "message": "ID uploaded and verified. You may now proceed to liveness check."}
@@ -236,6 +245,27 @@ def process_kyc_background(user_id, booking_id, id_path, selfie_paths, full_name
     except Exception as e:
         print(f"[KYC DEBUG] Error in background KYC: {e}")
         traceback.print_exc()
+        try:
+            db = next(database.get_db())
+            kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user_id).first()
+            if kyc_record:
+                kyc_record.verification_status = "failed"
+                kyc_record.failure_reason = f"System error during processing: {str(e)}"
+                db.commit()
+        except:
+            pass
+
+@router.post("/kyc/reset")
+async def reset_kyc_status(
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).first()
+    if kyc_record:
+        kyc_record.verification_status = "pending"
+        kyc_record.failure_reason = None
+        db.commit()
+    return {"success": True}
 
 @router.get("/{booking_id}/status")
 async def get_kyc_status(

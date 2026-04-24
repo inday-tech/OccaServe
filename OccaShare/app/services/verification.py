@@ -415,7 +415,6 @@ class VerificationService:
 
     def check_duplicate_id(self, db: Session, id_number: str, current_user_id: int) -> bool:
         """Checks if the ID number is already associated with another verified user."""
-        from ..db.models import IdentityVerification
         existing = db.query(IdentityVerification).filter(
             IdentityVerification.id_number == id_number,
             IdentityVerification.user_id != current_user_id,
@@ -552,8 +551,8 @@ class VerificationService:
             # 1. Duplicate Check (Fraud Prevention)
             if db and user_id and id_number:
                 if self.check_duplicate_id(db, id_number, user_id):
-                    return {"status": "mismatched", "ocr_match": False, "pattern_valid": True, 
-                            "failure_reason": "This ID number is already registered to another account."}
+                    return {"status": "rejected", "ocr_match": False, "pattern_valid": True, 
+                            "failure_reason": "❌ This ID has already been registered."}
 
             # 2. ID Pattern Validation
             pattern_valid = self.validate_id_pattern(id_type, id_number)
@@ -568,17 +567,18 @@ class VerificationService:
             # 4. Perform OCR with Tesseract Multi-Pass
             ocr_text = self._run_tesseract_multi_psm(id_img)
             
-            if not ocr_text or not ocr_text.strip():
+            if not ocr_text or not ocr_text.strip() or self._is_ocr_garbage(ocr_text):
                 return {
-                    "status": "mismatched",
+                    "status": "rejected",
                     "ocr_match": False,
-                    "failure_reason": "Could not extract readable text from your ID. Please ensure the photo is clear, well-lit, and not blurry."
+                    "failure_reason": "❌ Unable to read the ID. Please upload a clearer image."
                 }
                 
             clean_ocr_upper = ocr_text.upper()
             
-            # 5. Legitimacy Check (NEW)
-            is_likely_id = any(kw in clean_ocr_upper for kw in self.ID_LEGITIMACY_KEYWORDS)
+            # 5. Legitimacy Check (STRICTER)
+            # Require at least one major keyword AND minimum text length (increased to 100) to be sure it's an ID
+            is_likely_id = any(kw in clean_ocr_upper for kw in self.ID_LEGITIMACY_KEYWORDS) and len(clean_ocr_upper.strip()) > 100
             
             rich_data = self._extract_rich_ocr_data(ocr_text)
             
@@ -587,7 +587,7 @@ class VerificationService:
             type_keywords = {
                 'PhilSys / PhilID': ["PHILSYS", "PHILID", "NATIONAL ID", "PHILIPPINE IDENTIFICATION"],
                 'Driver\'s License': ["DRIVER", "LICENSE", "LTO", "TRANSPORTATION"],
-                'Passport': ["PASSPORT", "REPUBLIC", "DFA"],
+                'Passport': ["PASSPORT", "DFA"],
                 'UMID': ["UMID", "UNIFIED", "MULTI-PURPOSE"],
                 'SSS ID': ["SSS", "SOCIAL SECURITY"],
                 'PRC ID': ["PRC", "PROFESSIONAL", "REGULATION"],
@@ -597,7 +597,13 @@ class VerificationService:
             }
             
             selected_type_kws = type_keywords.get(id_type, [id_type.upper()])
-            type_found_in_ocr = any(kw in clean_ocr_upper for kw in selected_type_kws)
+            
+            # Stricter type matching using word boundaries to avoid partial matches (e.g., "DRIVER" in random text)
+            type_found_in_ocr = False
+            for kw in selected_type_kws:
+                if re.search(r'\b' + re.escape(kw) + r'\b', clean_ocr_upper):
+                    type_found_in_ocr = True
+                    break
             
             # 7. Robust Matching Logic
             clean_name = " ".join(full_name.lower().split())
@@ -649,9 +655,10 @@ class VerificationService:
             name_match = (matches_count / len(name_parts) >= 0.8) if name_parts else False
             
             # Fuzzy ID check refinement
-            id_found = False
+            id_found = True # Default to True if no ID number provided (e.g. during registration extraction)
             best_id_ratio = 0
             if norm_id_input:
+                id_found = False
                 norm_ocr_for_id = re.sub(r'[^a-z0-9]', '', norm_ocr_for_names)
                 id_len = len(norm_id_input)
                 # Check for exact or highly similar substring
@@ -665,26 +672,40 @@ class VerificationService:
                     if best_id_ratio >= 0.9: # Increased from 0.8 for strictness
                         id_found = True
             
-            # STRICT REQUIREMENT: Name Match AND (ID Found OR Type Found)
-            ocr_match = name_match and (id_found or type_found_in_ocr)
+            # STRICT REQUIREMENT: Name Match AND ID Found AND Type Found
+            ocr_match = name_match and id_found and type_found_in_ocr
             status = "matched" if (ocr_match and is_likely_id) else "mismatched"
             reasons = []
             
             if not is_likely_id:
                 return {
                     "status": "rejected",
-                    "failure_reason": "Document not recognized as a valid Government ID. Please upload a clear photo of the original document.",
+                    "failure_reason": "❌ Image is unclear or invalid. Please upload a clear and complete ID.",
                     "ocr_match": False,
                     "is_likely_id": False
                 }
             
-            if not ocr_match: 
-                entered_name = full_name.upper()
-                detected_name = (rich_data.get("full_name") or "NOT DETECTED").upper()
-                reasons.append(f"ID Name Mismatch: The name detected on your ID ({detected_name}) does not match your registered customer name ({entered_name}). Please ensure you are using your own valid ID.")
+            if not ocr_match:
+                # If everything is missing/mismatched, give a unified "invalid document" message
+                if not name_match and not id_found and not type_found_in_ocr:
+                    return {
+                        "status": "rejected",
+                        "ocr_match": False,
+                        "failure_reason": "❌ ID verification failed. Please check your details and try again."
+                    }
+                
+                # Otherwise, specify what exactly was wrong
+                if not name_match: 
+                    reasons.append(f"❌ The name on the ID does not match your account name.")
+
+                if not type_found_in_ocr:
+                    reasons.append(f"❌ Uploaded ID does not match the selected ID type.")
+                    
+                if not id_found:
+                    reasons.append(f"❌ The ID number does not match the uploaded ID.")
 
             if not pattern_valid: 
-                reasons.append(f"Invalid {id_type} format.")
+                reasons.append(f"❌ Invalid ID number format for selected ID type.")
             
             return {
                 "status": status,
@@ -696,9 +717,10 @@ class VerificationService:
                 "ocr_data": {
                     "raw_text": ocr_text,
                     "full_name": rich_data.get("full_name") or "Not detected",
-                    "id_number": rich_data.get("id_number") or id_normalize(ocr_text),
-                    "name_match": ocr_match,
+                    "id_number": rich_data.get("id_number") or self.normalize_id(ocr_text),
+                    "name_match": name_match,
                     "id_found": id_found,
+                    "type_found": type_found_in_ocr,
                     **rich_data
                 }
             }
