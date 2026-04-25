@@ -77,6 +77,32 @@
         color: #94a3b8;
         pointer-events: none;
     }
+
+    /* Validation Styles */
+    .field-error-msg {
+        color: #ef4444;
+        font-size: 0.7rem;
+        font-weight: 700;
+        margin-top: 0.25rem;
+        margin-left: 0.5rem;
+        display: none;
+        animation: fadeInDown 0.2s ease-out;
+    }
+    
+    .dm-input-group.has-error input,
+    .dm-input-group.has-error select {
+        border-color: #ef4444 !important;
+        background-color: #fff1f2 !important;
+    }
+
+    .dm-input-group.has-error i {
+        color: #ef4444 !important;
+    }
+
+    @keyframes fadeInDown {
+        from { opacity: 0; transform: translateY(-5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
 </style>
 {% endblock %}
 
@@ -301,30 +327,39 @@
             <button onclick="closeAddCatererModal()"
                 style="background: none; border: none; font-size: 1.5rem; color: #94a3b8; cursor: pointer;">&times;</button>
         </div>
-        <form id="addCatererForm" style="padding: 2rem;">
+        <form id="addCatererForm" style="padding: 2rem;" novalidate>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
                 <div style="grid-column: span 2;">
                     <label>Business Name</label>
-                    <div class="dm-input-group"><i class="fas fa-store"></i><input type="text" name="business_name"
-                            id="businessNameInput" placeholder="e.g. Skyline Catering" required></div>
+                    <div class="dm-input-group">
+                        <i class="fas fa-store"></i>
+                        <input type="text" name="business_name" id="businessNameInput" placeholder="e.g. Skyline Catering" required>
+                    </div>
+                    <span class="field-error-msg" id="error-business_name">Business name is required</span>
                 </div>
                 <div style="grid-column: span 2;">
                     <label>Owner Full Name</label>
-                    <div class="dm-input-group"><i class="fas fa-user"></i><input type="text" name="full_name"
-                            id="fullNameInput" placeholder="First and Last Name" required></div>
+                    <div class="dm-input-group">
+                        <i class="fas fa-user"></i>
+                        <input type="text" name="full_name" id="fullNameInput" placeholder="First and Last Name" required>
+                    </div>
+                    <span class="field-error-msg" id="error-full_name">Please enter a valid full name</span>
                 </div>
                 <div>
                     <label>Email Address</label>
-                    <div class="dm-input-group"><i class="fas fa-envelope"></i><input type="email" name="email"
-                            id="emailInput" placeholder="caterer@gmail.com" required></div>
+                    <div class="dm-input-group">
+                        <i class="fas fa-envelope"></i>
+                        <input type="email" name="email" id="emailInput" placeholder="caterer@gmail.com" required>
+                    </div>
+                    <span class="field-error-msg" id="error-email">Invalid email format</span>
                 </div>
                 <div>
                     <label>Contact Phone</label>
                     <div class="dm-input-group">
                         <i class="fas fa-phone"></i>
-                        <input type="tel" name="phone" id="phoneInput" placeholder="09xxxxxxxxx" 
-                               pattern="09[0-9]{9}" title="Phone must be 11 digits starting with 09" required>
+                        <input type="tel" name="phone" id="phoneInput" placeholder="09xxxxxxxxx" maxlength="11" required>
                     </div>
+                    <span class="field-error-msg" id="error-phone">Must be 11 digits (e.g. 09123456789)</span>
                 </div>
                 <div style="grid-column: span 2;">
                     <label>Service Area/City (Sta Cruz Area Only)</label>
@@ -349,6 +384,7 @@
                         </select>
                         <i class="fas fa-chevron-down select-arrow"></i>
                     </div>
+                    <span class="field-error-msg" id="error-city">Please select a service area</span>
                 </div>
             </div>
             <div
@@ -538,57 +574,165 @@
         document.body.style.overflow = 'hidden';
     }
 
-    // ─── Form Submissions ────────────────────────────────────────────────
-    document.getElementById('addCatererForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const formData = new FormData(this);
-        const submitBtn = this.querySelector('button[type="submit"]');
-        const originalText = submitBtn.innerText;
+    // ─── High-Grade Validation ──────────────────────────────────────────
+    console.log("[Admin] Initializing Onboarding Validation...");
+    
+    const onboardingForm = document.getElementById('addCatererForm');
+    if (!onboardingForm) {
+        console.error("[Admin] onboardingForm not found!");
+    } else {
+        const onboardInputs = {
+            business_name: document.getElementById('businessNameInput'),
+            full_name: document.getElementById('fullNameInput'),
+            email: document.getElementById('emailInput'),
+            phone: document.getElementById('phoneInput'),
+            city: document.getElementById('cityInput')
+        };
 
-        // Custom Validation
-        const fullName = formData.get('full_name').trim();
-        if (fullName.split(' ').length < 2) {
-            Swal.fire('Error', 'Please enter your full name (First and Last Name).', 'error');
-            return;
+        function setFieldError(fieldId, message) {
+            const errorSpan = document.getElementById(`error-${fieldId}`);
+            const input = onboardInputs[fieldId];
+            const inputGroup = input ? input.closest('.dm-input-group') : null;
+            
+            if (errorSpan) {
+                errorSpan.innerText = message;
+                errorSpan.style.display = 'block';
+            }
+            if (inputGroup) {
+                inputGroup.classList.add('has-error');
+            }
         }
 
-        submitBtn.innerText = "Creating...";
-        submitBtn.disabled = true;
+        function clearFieldError(fieldId) {
+            const errorSpan = document.getElementById(`error-${fieldId}`);
+            const input = onboardInputs[fieldId];
+            const inputGroup = input ? input.closest('.dm-input-group') : null;
+            
+            if (errorSpan) errorSpan.style.display = 'none';
+            if (inputGroup) inputGroup.classList.remove('has-error');
+        }
 
-        try {
-            const response = await fetch('/admin/caterers/add', {
-                method: 'POST',
-                body: formData
-            });
-            const result = await response.json();
+        // Real-time constraints
+        onboardInputs.full_name.addEventListener('input', function() {
+            this.value = this.value.replace(/[0-9]/g, '');
+            validateOnboardField('full_name');
+        });
 
-            if (result.success) {
-                if (window.showToast) {
-                    window.showToast('Caterer onboarded successfully!', 'success');
+        onboardInputs.phone.addEventListener('input', function() {
+            this.value = this.value.replace(/[^0-9]/g, '');
+            validateOnboardField('phone');
+        });
+
+        onboardInputs.email.addEventListener('input', () => validateOnboardField('email'));
+        onboardInputs.business_name.addEventListener('input', () => validateOnboardField('business_name'));
+        onboardInputs.city.addEventListener('change', () => validateOnboardField('city'));
+
+        function validateOnboardField(fieldId) {
+            const input = onboardInputs[fieldId];
+            const val = input.value.trim();
+            
+            clearFieldError(fieldId);
+
+            if (fieldId === 'business_name' && !val) {
+                setFieldError('business_name', 'Business name is required');
+                return false;
+            }
+
+            if (fieldId === 'full_name') {
+                if (!val) { setFieldError('full_name', 'Full name is required'); return false; }
+                if (val.length < 5) { setFieldError('full_name', 'Full name must be at least 5 characters'); return false; }
+                
+                const words = val.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+                if (words.length < 2) {
+                    setFieldError('full_name', 'Please enter a valid full name (First and Last Name)');
+                    return false;
+                }
+                
+                // Identical words check
+                const firstWord = words[0];
+                if (words.every(w => w === firstWord)) {
+                    setFieldError('full_name', 'Full name should NOT be identical words');
+                    return false;
+                }
+            }
+
+            if (fieldId === 'email') {
+                const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!val) { setFieldError('email', 'Email is required'); return false; }
+                if (!regex.test(val)) { setFieldError('email', 'Invalid email format (e.g. example@gmail.com)'); return false; }
+            }
+
+            if (fieldId === 'phone') {
+                if (!val) { setFieldError('phone', 'Contact number is required'); return false; }
+                if (!val.startsWith('09')) { setFieldError('phone', 'Must start with 09'); return false; }
+                if (val.length !== 11) { setFieldError('phone', 'Must be 11 digits (e.g. 09123456789)'); return false; }
+            }
+
+            if (fieldId === 'city' && !onboardInputs.city.value) {
+                setFieldError('city', 'Please select a service area');
+                return false;
+            }
+
+            return true;
+        }
+
+        onboardingForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            console.log("[Admin] Submit triggered. Validating...");
+
+            let isValid = true;
+            let firstError = null;
+
+            const fields = ['business_name', 'full_name', 'email', 'phone', 'city'];
+            for (const field of fields) {
+                if (!validateOnboardField(field)) {
+                    isValid = false;
+                    if (!firstError) firstError = onboardInputs[field];
+                }
+            }
+
+            if (!isValid) {
+                console.warn("[Admin] Validation failed.");
+                if (firstError) firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                if (window.showToast) window.showToast('Please fix the errors before submitting', 'error');
+                return;
+            }
+
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerText;
+
+            submitBtn.innerText = "Creating...";
+            submitBtn.disabled = true;
+
+            try {
+                const response = await fetch('/admin/caterers/add', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    if (window.showToast) window.showToast('Account created successfully!', 'success');
+                    else Swal.fire('Success', 'Account created successfully!', 'success');
                     setTimeout(() => window.location.reload(), 1500);
                 } else {
-                    Swal.fire('Success', 'Caterer onboarded successfully!', 'success')
-                        .then(() => window.location.reload());
+                    if (result.errors && result.errors.email) {
+                        setFieldError('email', 'Email is already registered');
+                        onboardInputs.email.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    } else {
+                        Swal.fire('Onboarding Failed', result.message || 'Failed to add caterer', 'error');
+                    }
                 }
-            } else {
-                let msg = result.message || 'Failed to add caterer';
-                if (result.errors) {
-                    msg += '<br><br><div style="text-align:left; font-size: 0.85rem; color: #ef4444;">' + 
-                           Object.values(result.errors).map(e => '• ' + e).join('<br>') + '</div>';
-                }
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Onboarding Failed',
-                    html: msg
-                });
+            } catch (error) {
+                console.error("[Admin] Submission error:", error);
+                Swal.fire('Error', 'An unexpected error occurred.', 'error');
+            } finally {
+                submitBtn.innerText = originalText;
+                submitBtn.disabled = false;
             }
-        } catch (error) {
-            Swal.fire('Error', 'An unexpected error occurred.', 'error');
-        } finally {
-            submitBtn.innerText = originalText;
-            submitBtn.disabled = false;
-        }
-    });
+        });
+    }
 
     document.getElementById('editCatererForm').addEventListener('submit', async function(e) {
         e.preventDefault();

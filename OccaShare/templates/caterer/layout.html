@@ -253,6 +253,36 @@
     {% endif %}
 
     {% block extra_js %}{% endblock %}
+
+    <script>
+        // Verification Success Toast
+        window.addEventListener('load', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('verified') === 'success') {
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 4000,
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.addEventListener('mouseenter', Swal.stopTimer)
+                        toast.addEventListener('mouseleave', Swal.resumeTimer)
+                    }
+                });
+
+                Toast.fire({
+                    icon: 'success',
+                    title: 'Account Verified Successfully!',
+                    text: 'Your business profile is now active.'
+                });
+                
+                // Clean up URL
+                const newUrl = window.location.pathname + (urlParams.toString().replace(/verified=success&?/, '').length > 0 ? '?' + urlParams.toString().replace(/verified=success&?/, '') : '');
+                window.history.replaceState({}, document.title, newUrl);
+            }
+        });
+    </script>
 </body>
 
 </html>

@@ -2847,53 +2847,32 @@ async def view_compliance_queue(
 
     # Categorization and Labels
     package_customers = []
-    alacarte_customers = []
     package_map = {}
-    alacarte_map = {}
 
     for customer in customers:
-        # Get all relevant bookings for this customer with this caterer
+        # Get all relevant package bookings for this customer with this caterer
         user_bookings = db.query(models.Booking).filter(
             models.Booking.user_id == customer.id, 
-            models.Booking.caterer_id == profile.id
+            models.Booking.caterer_id == profile.id,
+            models.Booking.event_type != "Ala Carte Order"
         ).order_by(models.Booking.created_at.desc()).all()
         
         if not user_bookings:
             continue
 
-        # Split by type
-        pkgs = [b for b in user_bookings if b.event_type != "Ala Carte Order"]
-        alcs = [b for b in user_bookings if b.event_type == "Ala Carte Order"]
-
-        if pkgs:
-            package_customers.append(customer)
-            latest = pkgs[0]
-            package_map[customer.id] = latest.event_type if len(pkgs) == 1 else f"{latest.event_type} (+{len(pkgs)-1} more)"
-            
-        if alcs:
-            alacarte_customers.append(customer)
-            latest = alcs[0]
-            alacarte_map[customer.id] = "Ala Carte Order" if len(alcs) == 1 else f"Ala Carte (+{len(alcs)-1} more)"
+        package_customers.append(customer)
+        latest = user_bookings[0]
+        package_map[customer.id] = latest.event_type if len(user_bookings) == 1 else f"{latest.event_type} (+{len(user_bookings)-1} more)"
             
         # Flag for the Multi-Order badge UI
         customer.has_multiple_orders = (len(user_bookings) > 1)
-
-
-    # Final count mapping for badges
-    counts = {
-        "packages": len(package_customers),
-        "alacarte": len(alacarte_customers)
-    }
 
     return templates.TemplateResponse("caterer/compliance.html", {
         "request": request,
         "user": user,
         "package_customers": package_customers,
-        "alacarte_customers": alacarte_customers,
         "kyc_map": kyc_map,
-        "package_map": package_map,       # Renamed
-        "alacarte_map": alacarte_map,     # New
-        "counts": counts,
+        "package_map": package_map,
         "active_page": "compliance"
     })
 

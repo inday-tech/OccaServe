@@ -45,9 +45,39 @@ document.addEventListener('DOMContentLoaded', function () {
             availableDevices = devices.filter(device => device.kind === 'videoinput');
             console.log("Available video devices:", availableDevices);
 
-            const switchBtn = document.getElementById('switch-camera-btn');
-            if (switchBtn) {
-                switchBtn.style.display = availableDevices.length > 1 ? 'inline-block' : 'none';
+            const switchGroup = document.getElementById('camera-switch-group');
+            const liveSwitchGroup = document.getElementById('liveness-camera-switch-group');
+            
+            // ID Scanner Group
+            if (switchGroup) {
+                switchGroup.style.display = 'flex'; // Force show for testing
+                const frontBtn = document.getElementById('btn-cam-front');
+                const backBtn = document.getElementById('btn-cam-back');
+                if (frontBtn && backBtn) {
+                    if (currentFacingMode === "user") {
+                        frontBtn.classList.add('active');
+                        backBtn.classList.remove('active');
+                    } else {
+                        backBtn.classList.add('active');
+                        frontBtn.classList.remove('active');
+                    }
+                }
+            }
+
+            // Liveness Scanner Group
+            if (liveSwitchGroup) {
+                liveSwitchGroup.style.display = (availableDevices.length > 1 || isMobile()) ? 'flex' : 'none';
+                const frontBtn = document.getElementById('btn-live-cam-front');
+                const backBtn = document.getElementById('btn-live-cam-back');
+                if (frontBtn && backBtn) {
+                    if (livenessFacingMode === "user") {
+                        frontBtn.classList.add('active');
+                        backBtn.classList.remove('active');
+                    } else {
+                        backBtn.classList.add('active');
+                        frontBtn.classList.remove('active');
+                    }
+                }
             }
         } catch (err) {
             console.error("Error enumerating devices:", err);
@@ -155,8 +185,21 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     window.handleUploadClick = function () {
-        if (document.getElementById('option-upload').classList.contains('disabled')) {
-            if (window.showError) window.showError('Please select an ID type and enter a valid ID number first.', 'Incomplete Data'); else alert('Please select an ID type and enter a valid ID number first.');
+        const idType = document.getElementById('id_type').value;
+        const idNumber = document.getElementById('id_number').value.trim();
+
+        if (!idType) {
+            if (window.showError) window.showError('❌ Please select an ID type.', 'Incomplete Data'); else alert('❌ Please select an ID type.');
+            return;
+        }
+        if (!idNumber) {
+            if (window.showError) window.showError('❌ ID number is required.', 'Incomplete Data'); else alert('❌ ID number is required.');
+            return;
+        }
+
+        const scanBox = document.getElementById('option-upload');
+        if (scanBox.classList.contains('disabled')) {
+            if (window.showError) window.showError('❌ Invalid ID number format for selected ID type.', 'Format Error'); else alert('❌ Invalid ID number format for selected ID type.');
             return;
         }
         document.getElementById('id_document').click();
@@ -251,7 +294,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const configs = [
-            { video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } } },
+            { video: { facingMode: livenessFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } } },
+            { video: { facingMode: livenessFacingMode } },
             { video: true }
         ];
 
@@ -266,14 +310,15 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        if (success) {
-            video.srcObject = stream;
-            document.getElementById('scan-line').style.display = 'block';
-            document.getElementById('camera-placeholder').style.opacity = '0';
-            startBtn.style.display = 'none';
-            beginBtn.style.display = 'inline-block';
-            document.getElementById('scan-feedback').innerText = "Look into the center of the circle and click 'I'm Ready'";
-        } else {
+            if (success) {
+                video.srcObject = stream;
+                document.getElementById('scan-line').style.display = 'block';
+                document.getElementById('camera-placeholder').style.opacity = '0';
+                startBtn.style.display = 'none';
+                beginBtn.style.display = 'inline-block';
+                document.getElementById('scan-feedback').innerText = "Look into the center of the circle and click 'I'm Ready'";
+                await getCameraDevices();
+            } else {
             if (window.showError) window.showError("Unable to access camera.", "Camera Error"); else alert("Unable to access camera.");
         }
     };
@@ -484,10 +529,29 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     let idStream = null;
+    let currentFacingMode = "environment";
+    let livenessFacingMode = "user";
 
     window.startIdScanner = async function (deviceId = null) {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            showCameraError("Your browser does not support camera access or you are not using a secure connection (HTTPS). Please use the 'Upload File' option instead.");
+            return;
+        }
+
+        const idType = document.getElementById('id_type').value;
+        const idNumber = document.getElementById('id_number').value.trim();
+
+        if (!idType) {
+            if (window.showError) window.showError('❌ Please select an ID type.', 'Missing Fields'); else alert('❌ Please select an ID type.');
+            return;
+        }
+        if (!idNumber) {
+            if (window.showError) window.showError('❌ ID number is required.', 'Missing Fields'); else alert('❌ ID number is required.');
+            return;
+        }
+
         if (document.getElementById('option-scan').classList.contains('disabled')) {
-            if (window.showError) window.showError('ID type and number are required.', 'Missing Fields'); else alert('ID type and number are required.');
+            if (window.showError) window.showError('❌ Invalid ID number format for selected ID type.', 'Format Error'); else alert('❌ Invalid ID number format for selected ID type.');
             return;
         }
 
@@ -499,63 +563,79 @@ document.addEventListener('DOMContentLoaded', function () {
             idStream.getTracks().forEach(track => track.stop());
         }
 
-        let config;
+        let constraints = {
+            video: {
+                facingMode: currentFacingMode,
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }
+        };
+
         if (deviceId) {
-            config = { video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } } };
-        } else {
-            const configs = [
-                { video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } },
-                { video: { facingMode: "user" } },
-                { video: true }
-            ];
-
-            let success = false;
-            for (const c of configs) {
-                try {
-                    idStream = await navigator.mediaDevices.getUserMedia(c);
-                    success = true;
-                    break;
-                } catch (err) {
-                    console.warn("Camera config failed:", c, err);
-                }
-            }
-
-            if (success) {
-                video.srcObject = idStream;
-                formContainer.style.display = 'none';
-                scannerContainer.style.display = 'block';
-                await getCameraDevices();
-                return;
-            } else {
-                showCameraError();
-                return;
-            }
+            constraints.video.deviceId = { exact: deviceId };
         }
 
         try {
-            idStream = await navigator.mediaDevices.getUserMedia(config);
+            idStream = await navigator.mediaDevices.getUserMedia(constraints);
             video.srcObject = idStream;
             formContainer.style.display = 'none';
             scannerContainer.style.display = 'block';
             await getCameraDevices();
         } catch (err) {
-            console.error("Manual camera start failed:", err);
-            showCameraError();
+            console.warn("First camera attempt failed, trying fallback...", err);
+            try {
+                // Fallback 1: No specific resolution
+                idStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode } });
+                video.srcObject = idStream;
+                formContainer.style.display = 'none';
+                scannerContainer.style.display = 'block';
+                await getCameraDevices();
+            } catch (err2) {
+                console.warn("Second camera attempt failed, trying basic...", err2);
+                try {
+                    // Fallback 2: Minimalist - just any video
+                    idStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    video.srcObject = idStream;
+                    formContainer.style.display = 'none';
+                    scannerContainer.style.display = 'block';
+                    await getCameraDevices();
+                } catch (err3) {
+                    console.error("All camera attempts failed:", err3);
+                    showCameraError();
+                }
+            }
         }
     };
 
-    window.switchCamera = function () {
-        if (availableDevices.length < 2) return;
-        currentDeviceIndex = (currentDeviceIndex + 1) % availableDevices.length;
-        window.startIdScanner(availableDevices[currentDeviceIndex].deviceId);
+    window.switchCamera = function (mode = null) {
+        if (mode) {
+            currentFacingMode = mode;
+        } else {
+            // Toggle facing mode if no mode specified
+            currentFacingMode = (currentFacingMode === "environment") ? "user" : "environment";
+        }
+        
+        console.log("[KYC] ID Camera Switching to:", currentFacingMode);
+        window.startIdScanner();
+    };
+
+    window.switchLivenessCamera = function (mode = null) {
+        if (mode) {
+            livenessFacingMode = mode;
+        } else {
+            livenessFacingMode = (livenessFacingMode === "user") ? "environment" : "user";
+        }
+        
+        console.log("[KYC] Liveness Camera Switching to:", livenessFacingMode);
+        window.startRealtimeScanner();
     };
 
     function showCameraError() {
-        let msg = "Unable to access camera. Please ensure camera permissions are allowed.";
+        let msg = "Unable to access camera. Please ensure camera permissions are allowed. Alternatively, you can use the 'Upload File' option.";
         if (!window.isSecureContext) {
-            msg = "Camera access is restricted in non-secure HTTP. Please use HTTPS.";
+            msg = "Camera access is restricted in non-secure HTTP. Please use HTTPS or use the 'Upload File' option.";
         }
-        if (window.showError) window.showError(msg, 'Error'); else alert(msg);
+        if (window.showError) window.showError(msg, 'Camera Access Error'); else alert(msg);
     }
 
     window.stopIdScanner = function () {

@@ -14,6 +14,7 @@ from ..db import database, schemas, models
 from ..core import security as security_auth, utils
 from ..core.encryption import encrypt_data
 from ..services.verification import verification_service
+from ..services.email import EmailService
 
 # Router instance
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -162,6 +163,9 @@ async def register(
     next_url: Optional[str] = Form(None),
     db: Session = Depends(database.get_db)
 ):
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest" or \
+              "application/json" in request.headers.get("Accept", "")
+    
     # Split full_name into first and last
     parts = full_name.strip().split(None, 1)
     if len(parts) > 1:
@@ -239,15 +243,8 @@ async def register(
             errors["starting_price"] = "Starting Price must be between 0 and 10000000"
         # Removed coverage_area requirement per user request
 
-    if errors:
-        context = {
-            "request": request,
-            "error": "Please correct the highlighted fields below.",
-            "field_errors": errors,
-            "next_url": next_url,
-            "role": role,
-            "submitted_data": locals()
-        }
+        if is_ajax:
+            return JSONResponse(status_code=400, content={"success": False, "message": "Please correct the highlighted fields.", "field_errors": errors})
         template = "auth/register_caterer.html" if role == "caterer" else "auth/register.html"
         return templates.TemplateResponse(template, context)
 
@@ -258,13 +255,33 @@ async def register(
     if user and user.auth_provider != 'email' and user.role == "pending":
         is_upgrade = True
     elif user:
-        template = "auth/register_caterer.html" if role == "caterer" else "auth/register.html"
-        return templates.TemplateResponse(template, {
-            "request": request,
-            "error": "Email already registered",
-            "next_url": next_url,
-            "role": role
-        })
+        if not user.is_email_verified:
+            # If user exists but not verified, generate new OTP and redirect
+            otp = utils.get_random_digits(6)
+            user.verification_code = otp
+            from datetime import datetime, timedelta, timezone
+            user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
+            db.commit()
+            
+            try:
+                EmailService.send_verification_email(email, otp)
+            except Exception as e:
+                print(f"[AUTH ERROR] Failed to resend verification email: {e}")
+                
+            verify_url = f"/auth/verify?email={email}"
+            if next_url: verify_url += f"&next={next_url}"
+            return RedirectResponse(url=verify_url, status_code=status.HTTP_303_SEE_OTHER)
+
+        if user.is_email_verified:
+            if is_ajax:
+                return JSONResponse(status_code=400, content={"success": False, "message": "Email already registered and verified. Please login."})
+            template = "auth/register_caterer.html" if role == "caterer" else "auth/register.html"
+            return templates.TemplateResponse(template, {
+                "request": request,
+                "error": "Email already registered and verified. Please login.",
+                "next_url": next_url,
+                "role": role
+            })
     
     if is_upgrade:
         # Update existing social user
@@ -356,7 +373,7 @@ async def register(
             is_verified=False,
             is_email_verified=False,
             verification_code=otp,
-            otp_expires_at=datetime.now(timezone.utc) + timedelta(minutes=3)
+            otp_expires_at=datetime.now(timezone.utc) + timedelta(minutes=5)
         )
         db.add(new_user)
         db.flush()
@@ -415,6 +432,8 @@ async def register(
                         if id_res["status"] != "matched": error_msg += f"ID Validation Error ({id_res.get('failure_reason')}). "
                         if permit_res["status"] != "matched": error_msg += f"Permit Validation Error ({permit_res.get('failure_reason', 'Owner Name Mismatch')}). "
                         
+                        if is_ajax:
+                            return JSONResponse(status_code=400, content={"success": False, "message": error_msg})
                         return templates.TemplateResponse("auth/register_caterer.html", {
                             "request": request, 
                             "error": error_msg,
@@ -443,11 +462,13 @@ async def register(
                     print(f"[AUTH OCR ERROR] Registration OCR failed: {ocr_err}")
                     # If system error happens, we might still want to manual review or block
                     db.rollback()
+                    if is_ajax:
+                        return JSONResponse(status_code=500, content={"success": False, "message": f"Verification system error: {str(ocr_err)}"})
                     return templates.TemplateResponse("auth/register_caterer.html", {
                         "request": request, "error": f"Verification system error: {str(ocr_err)}"
                     })
 
-        db.commit()
+        db.flush()
         
         if role == "caterer":
             from ..services.realtime import manager
@@ -462,7 +483,7 @@ async def register(
                     type="info"
                 )
                 db.add(new_notif)
-            db.commit()
+            db.flush()
             
             for admin in admins:
                 count = db.query(models.Notification).filter(models.Notification.user_id == admin.id, models.Notification.is_read == False).count()
@@ -476,11 +497,36 @@ async def register(
 
     if not is_upgrade:
         try:
-            from ..services.email import EmailService
-            EmailService.send_verification_email(email, otp)
-            print(f"[AUTH] Registration buffered for {email}. Verification email sent.")
+            if EmailService.send_verification_email(email, otp):
+                print(f"[AUTH] Registration buffered for {email}. Verification email sent.")
+                db.commit() # Commit all changes only if email is sent
+            else:
+                db.rollback()
+                if is_ajax:
+                    return JSONResponse(status_code=500, content={"success": False, "message": f"Failed to send verification email to {email}."})
+                template = "auth/register_caterer.html" if role == "caterer" else "auth/register.html"
+                return templates.TemplateResponse(template, {
+                    "request": request, 
+                    "error": f"Failed to send verification email to {email}. Please check your email address or try again later.",
+                    "next_url": next_url,
+                    "role": role,
+                    "submitted_data": locals()
+                })
         except Exception as e:
+            db.rollback()
             print(f"[AUTH ERROR] Failed to send verification email: {e}")
+            if is_ajax:
+                return JSONResponse(status_code=500, content={"success": False, "message": f"Email service error: {str(e)}"})
+            template = "auth/register_caterer.html" if role == "caterer" else "auth/register.html"
+            return templates.TemplateResponse(template, {
+                "request": request, 
+                "error": f"Email service error: {str(e)}",
+                "next_url": next_url,
+                "role": role,
+                "submitted_data": locals()
+            })
+    else:
+        db.commit() # Upgrade users don't need email OTP at this stage
             
     # Redirect logic
     if is_upgrade:
@@ -516,6 +562,9 @@ def verify_email_submit(
     next_url: Optional[str] = Form(None),
     db: Session = Depends(database.get_db)
 ):
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest" or \
+              "application/json" in request.headers.get("Accept", "")
+              
     user = db.query(models.User).filter(models.User.email == email).first()
     
     if user:
@@ -532,6 +581,8 @@ def verify_email_submit(
                     expire_time = expire_time.replace(tzinfo=timezone.utc)
                 
                 if now_time > expire_time:
+                    if is_ajax:
+                        return JSONResponse(status_code=400, content={"success": False, "message": "Verification code expired. Please request a new one."})
                     return templates.TemplateResponse("auth/verify_email.html", {"request": request, "email": email, "error": "Verification code expired. Please request a new one."})
 
             user.is_email_verified = True
@@ -546,8 +597,12 @@ def verify_email_submit(
             user.last_login = func.now()
             db.commit()
         else:
+            if is_ajax:
+                return JSONResponse(status_code=400, content={"success": False, "message": "Invalid verification code"})
             return templates.TemplateResponse("auth/verify_email.html", {"request": request, "email": email, "error": "Invalid verification code"})
     else:
+        if is_ajax:
+            return JSONResponse(status_code=404, content={"success": False, "message": "User not found or registration expired"})
         return templates.TemplateResponse("auth/verify_email.html", {"request": request, "email": email, "error": "User not found or registration expired"})
         
     # Check if this is a caterer that needs admin approval
@@ -561,6 +616,10 @@ def verify_email_submit(
     )
     
     redirect_url = next_url if next_url else utils.get_dashboard_url(user.role)
+    if "?" in redirect_url:
+        redirect_url += "&verified=success"
+    else:
+        redirect_url += "?verified=success"
     response = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
     response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
     return response
@@ -582,14 +641,15 @@ def resend_verification_code(
     otp = utils.get_random_digits(6)
     user.verification_code = otp
     from datetime import datetime, timedelta, timezone
-    user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=3)
+    user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
     db.commit()
     
     # Resend Email
     from ..services.email import EmailService
-    EmailService.send_verification_email(email, otp)
-    
-    return {"success": True, "message": "Verification code resent"}
+    if EmailService.send_verification_email(email, otp):
+        return {"success": True, "message": "Verification code resent"}
+    else:
+        return {"success": False, "message": "Failed to send email. Please check your email address or try again later."}
 
 @router.get("/verify-status")
 def check_verify_status(email: str, db: Session = Depends(database.get_db)):

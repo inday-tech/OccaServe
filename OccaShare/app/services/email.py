@@ -9,32 +9,38 @@ logger = logging.getLogger(__name__)
 
 class EmailService:
     @staticmethod
-    def _send_email(to_email: str, subject: str, body: str):
+    def _send_email(to_email: str, subject: str, body: str, html_body: str = None):
         logger.info(f"[EMAIL SERVICE] Preparing to send email to {to_email} | subject: '{subject}'")
-        logger.info(f"[EMAIL SERVICE] MAIL_SERVER={settings.MAIL_SERVER}, MAIL_PORT={settings.MAIL_PORT}, MAIL_USERNAME={settings.MAIL_USERNAME}, MAIL_PASSWORD_SET={bool(settings.MAIL_PASSWORD)}")
-        logger.debug(f"[EMAIL SERVICE] Email body:\n{body}")
+        from_email = settings.MAIL_FROM if settings.MAIL_FROM else settings.MAIL_USERNAME
+        
         try:
-            msg = MIMEMultipart()
-            msg['From'] = settings.MAIL_FROM
+            msg = MIMEMultipart('alternative')
+            msg['From'] = from_email
             msg['To'] = to_email
             msg['Subject'] = subject
 
+            # Attach plain text version
             msg.attach(MIMEText(body, 'plain'))
+            
+            # Attach HTML version if provided
+            if html_body:
+                msg.attach(MIMEText(html_body, 'html'))
 
             logger.info(f"[EMAIL SERVICE] Connecting to SMTP server {settings.MAIL_SERVER}:{settings.MAIL_PORT}")
-            server = smtplib.SMTP(settings.MAIL_SERVER, settings.MAIL_PORT)
-            server.starttls()
+            if settings.MAIL_PORT == 465:
+                server = smtplib.SMTP_SSL(settings.MAIL_SERVER, settings.MAIL_PORT)
+            else:
+                server = smtplib.SMTP(settings.MAIL_SERVER, settings.MAIL_PORT)
+                server.starttls()
+            
             clean_password = settings.MAIL_PASSWORD.replace(" ", "").strip() if settings.MAIL_PASSWORD else ""
             server.login(settings.MAIL_USERNAME, clean_password)
-            logger.info(f"[EMAIL SERVICE] Successfully logged in to SMTP as {settings.MAIL_USERNAME}")
-            text = msg.as_string()
-            server.sendmail(settings.MAIL_FROM, to_email, text)
+            server.sendmail(from_email, to_email, msg.as_string())
             server.quit()
             logger.info(f"[EMAIL SERVICE] Email successfully sent to {to_email}")
             return True
         except Exception as e:
             logger.error(f"[EMAIL SERVICE ERROR] Failed to send email to {to_email}: {e}")
-            logger.error(f"[EMAIL SERVICE ERROR] Full traceback:\n{traceback.format_exc()}")
             return False
 
     @staticmethod
@@ -69,17 +75,47 @@ class EmailService:
     
     @staticmethod
     def send_verification_email(email: str, code: str):
-        subject = "Verify your OccaServe Account"
-        body = f"""
-        Hello,
+        subject = f"{code} is your OccaServe verification code"
+        body = f"Hello,\n\nYour verification code is: {code}\n\nPlease enter this code to complete your registration.\n\nIf you did not request this code, please ignore this email."
         
-        Your verification code is: {code}
-        
-        Please enter this code to complete your registration.
-        
-        If you did not request this code, please ignore this email.
+        html_body = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                .container {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; }}
+                .header {{ background-color: #FF7B54; padding: 20px; text-align: center; border-radius: 10px 10px 0 0; }}
+                .header h1 {{ color: white; margin: 0; font-size: 24px; }}
+                .content {{ background-color: #f9f9f9; padding: 30px; border: 1px solid #eee; border-radius: 0 0 10px 10px; }}
+                .otp-box {{ background-color: #fff; border: 2px dashed #FF7B54; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px; }}
+                .otp-code {{ font-size: 32px; font-weight: bold; color: #FF7B54; letter-spacing: 5px; }}
+                .footer {{ text-align: center; margin-top: 20px; font-size: 12px; color: #888; }}
+                .btn {{ background-color: #FF7B54; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 20px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>OccaServe</h1>
+                </div>
+                <div class="content">
+                    <h2>Verify Your Account</h2>
+                    <p>Hello,</p>
+                    <p>Thank you for joining OccaServe. To complete your registration, please use the following verification code:</p>
+                    <div class="otp-box">
+                        <div class="otp-code">{code}</div>
+                    </div>
+                    <p>This code will expire in 5 minutes. If you did not request this, you can safely ignore this email.</p>
+                    <p>Best regards,<br>The OccaServe Team</p>
+                </div>
+                <div class="footer">
+                    &copy; 2026 OccaServe Philippines. All rights reserved.
+                </div>
+            </div>
+        </body>
+        </html>
         """
-        return EmailService._send_email(email, subject, body)
+        return EmailService._send_email(email, subject, body, html_body)
 
     @staticmethod
     def send_password_reset_email(email: str, token: str):

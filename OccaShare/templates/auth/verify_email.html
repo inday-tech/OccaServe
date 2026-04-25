@@ -218,7 +218,7 @@
             </form>
 
             <div class="auth-footer">
-                <p>Resend code in <span id="timer" style="font-weight: 700; color: var(--slate-900);">03:00</span></p>
+                <p>Resend code in <span id="timer" style="font-weight: 700; color: var(--slate-900);">05:00</span></p>
                 <a href="#" class="resend-link disabled" id="resendBtn" onclick="resendCode(event)">Resend Code</a>
             </div>
         </div>
@@ -270,13 +270,13 @@
             }
         });
         // Countdown Timer Logic
-        let timeLeft = 180; // 3 minutes
+        let timeLeft = 300; // 5 minutes
         const timerElement = document.getElementById('timer');
         const resendBtn = document.getElementById('resendBtn');
         let timerId;
 
         function startTimer() {
-            timeLeft = 60;
+            timeLeft = 300;
             resendBtn.classList.add('disabled');
             resendBtn.textContent = "Resend Code";
 
@@ -296,7 +296,7 @@
         }
 
         function resetTimer() {
-            timeLeft = 180;
+            timeLeft = 300;
             startTimer();
         }
 
@@ -408,7 +408,13 @@
                             showConfirmButton: false,
                             confirmButtonColor: '#FF7B54'
                         });
-                        window.location.href = response.url;
+                        
+                        let next_url = "{{ next_url if next_url else '' }}";
+                        if (!next_url) {
+                            const role = "{{ user.role if user else 'customer' }}";
+                            next_url = role === 'admin' ? '/admin/dashboard' : (role === 'caterer' ? '/caterer/dashboard' : '/customer/dashboard');
+                        }
+                        window.location.href = next_url + (next_url.includes('?') ? '&' : '?') + 'verified=success';
                     } else {
                         window.location.href = response.url;
                     }

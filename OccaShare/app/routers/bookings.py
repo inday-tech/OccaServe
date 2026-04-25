@@ -161,8 +161,6 @@ async def alacarte_checkout_submit(
     total_amount: float = Form(...),
     landmark: Optional[str] = Form(None),
     booking_id: Optional[int] = Form(None),
-    id_file: Optional[UploadFile] = File(None),
-    selfie_base64: Optional[str] = Form(None),
     db: Session = Depends(database.get_db)
 ):
     user = get_current_user_from_session(request, db)
@@ -170,16 +168,7 @@ async def alacarte_checkout_submit(
         return {"success": False, "message": "Unauthorized"}
     
     try:
-        # 1. Process Images
-        id_url = ""
-        if id_file and id_file.filename:
-            id_url = save_upload_file(id_file)
-            
-        selfie_url = ""
-        if selfie_base64:
-            selfie_url = save_base64_file(selfie_base64)
-
-        # 2. Update or Create Booking
+        # 1. Update or Create Booking
         event_date_obj = date.fromisoformat(delivery_date)
         event_time_obj = datetime.strptime(delivery_time, "%H:%M").time()
         status = "pending_payment" if payment_method == "GCASH" else "confirmed"
@@ -222,23 +211,6 @@ async def alacarte_checkout_submit(
                 price=menu_item.price if menu_item else 0
             )
             db.add(booking_item)
-
-        # 3. Save Identity Data
-        if id_url or selfie_url:
-            # Check for existing OCR record
-            ocr_verify = db.query(models.OCRVerification).filter(models.OCRVerification.booking_id == booking.id).first()
-            if not ocr_verify:
-                ocr_verify = models.OCRVerification(
-                    booking_id=booking.id,
-                    user_id=user.id,
-                    status="verified",
-                    ocr_data={"full_name_provided": full_name}
-                )
-                db.add(ocr_verify)
-            
-            if id_url: ocr_verify.document_url = id_url
-            if selfie_url: ocr_verify.selfie_url = selfie_url
-            ocr_verify.status = "verified"
 
         db.commit()
         return {"success": True, "booking_id": booking.id}
