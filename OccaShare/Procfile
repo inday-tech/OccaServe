@@ -1,2 +1,2 @@
-release: python -m scripts.migrations.init_admin
+release: python -m scripts.master_migration && python -m scripts.migrations.create_admin
 web: gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
