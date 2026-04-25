@@ -50,7 +50,7 @@
     resetTimer();
 
     // ─── Sidebar Scroll Persistence ─────────────────────────────────────────
-    const sidebar = document.getElementById('mainSidebar');
+    const sidebar = document.getElementById('sidebar');
 
     function restoreSidebarScroll() {
         if (!sidebar) return;
@@ -101,7 +101,8 @@
 
     window.closeSidebar = function () {
         if (!sidebar) return;
-        if (window.innerWidth > 768) return;
+        // Check window width - logic for mobile
+        if (window.innerWidth > 1024) return;
         sidebar.classList.remove('sidebar-open');
         if (overlay) overlay.classList.remove('active');
         if (topbar) topbar.classList.remove('burger-open');
@@ -115,7 +116,7 @@
 
     // On resize: if switching to desktop, clean up mobile state
     window.addEventListener('resize', function () {
-        if (window.innerWidth > 768 && sidebar) {
+        if (window.innerWidth > 1024 && sidebar) {
             sidebar.classList.remove('sidebar-open');
             if (overlay) overlay.classList.remove('active');
             if (topbar) topbar.classList.remove('burger-open');
@@ -317,25 +318,7 @@
         connectWebSocket();
     }
 
-    // ─── Logout Confirmation ────────────────────────────────────────────────
-    const logoutBtn = document.querySelector('.logout-link');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', function (e) {
-            e.preventDefault();
-            const href = this.getAttribute('href');
-
-            if (window.showConfirm) {
-                window.showConfirm(
-                    'Are you sure you want to log out of the Caterer panel?',
-                    () => { window.location.href = href; },
-                    'Ready to leave?',
-                    'Yes, log out'
-                );
-            } else if (confirm('Are you sure you want to log out of the Caterer panel?')) {
-                window.location.href = href;
-            }
-        });
-    }
+    // ─── End of Layout Logic ────────────────────────────────────────────────
 })();
 
 /**
@@ -444,6 +427,13 @@ window.ValidationManager = class ValidationManager {
                 if (first === last && first.length > 2) {
                     error = 'First name and surname cannot be identical.';
                 }
+            }
+        }
+
+        if (rules.custom && value && !error) {
+            const customResult = rules.custom(value);
+            if (customResult !== true) {
+                error = customResult;
             }
         }
 
@@ -664,3 +654,35 @@ document.addEventListener('click', function(e) {
     }
 });
 
+// ─── Global Logout Handler ──────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+    const logoutLinks = document.querySelectorAll('.logout-link');
+    logoutLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const logoutUrl = this.getAttribute('href') || '/auth/logout';
+            
+            const doLogout = () => {
+                window.location.href = logoutUrl;
+            };
+
+            if (typeof window.showConfirm === 'function') {
+                window.showConfirm('Are you sure you want to log out?', doLogout, 'Logout', 'Yes, Logout');
+            } else if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Logout',
+                    text: 'Are you sure you want to log out?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: 'var(--primary-color, #f97316)',
+                    cancelButtonColor: '#94a3b8',
+                    confirmButtonText: 'Yes, Logout'
+                }).then((result) => {
+                    if (result.isConfirmed) doLogout();
+                });
+            } else {
+                if (confirm('Are you sure you want to log out?')) doLogout();
+            }
+        });
+    });
+});

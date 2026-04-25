@@ -131,6 +131,33 @@ class CatererProfile(Base):
     payouts = relationship("Payout", back_populates="caterer")
     menu_items = relationship("MenuItem", back_populates="caterer", cascade="all, delete-orphan")
     social_posts = relationship("SocialPost", back_populates="caterer", cascade="all, delete-orphan")
+    ingredients = relationship("Ingredient", back_populates="caterer", cascade="all, delete-orphan")
+
+class Ingredient(Base):
+    __tablename__ = "ingredients"
+
+    id = Column(Integer, primary_key=True, index=True)
+    caterer_id = Column(Integer, ForeignKey("caterer_profiles.id"))
+    name = Column(String, index=True)
+    unit = Column(String) # kg, g, pieces, ml, etc.
+    unit_price = Column(Float, default=0.0)
+    is_archived = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    caterer = relationship("CatererProfile", back_populates="ingredients")
+    menu_item_ingredients = relationship("MenuItemIngredient", back_populates="ingredient")
+
+class MenuItemIngredient(Base):
+    __tablename__ = "menu_item_ingredients"
+
+    id = Column(Integer, primary_key=True, index=True)
+    menu_item_id = Column(Integer, ForeignKey("menu_items.id"))
+    ingredient_id = Column(Integer, ForeignKey("ingredients.id"))
+    quantity = Column(Float) # Quantity in the specified unit
+
+    menu_item = relationship("MenuItem", back_populates="ingredients")
+    ingredient = relationship("Ingredient", back_populates="menu_item_ingredients")
 
 class PackageItem(Base):
     __tablename__ = "package_items"
@@ -154,7 +181,16 @@ class CateringPackage(Base):
     service_type = Column(String, default="General") # Wedding, Birthday, Corporate, etc.
     
     # NEW: Rich Pricing & Details
-    price_per_head = Column(Float, nullable=True)
+    price_per_head = Column(Float, nullable=True) # Selling Price (Customer Visible)
+    internal_cost_per_pax = Column(Float, default=0.0) # Internal Break-even (Hidden)
+    base_pax = Column(Integer, default=50) # The pax count used for costing
+    
+    # Internal Expense Breakdown
+    labor_cost = Column(Float, default=0.0)
+    utility_cost = Column(Float, default=0.0)
+    equipment_cost = Column(Float, default=0.0)
+    ingredient_total_cost = Column(Float, default=0.0)
+    
     min_contract_amount = Column(Float, nullable=True)
     additional_guest_price = Column(Float, nullable=True)
     service_duration = Column(Integer, default=4) # In hours
@@ -168,6 +204,11 @@ class CateringPackage(Base):
     is_active = Column(Boolean, default=True)
     status = Column(String, default="active") # active, inactive, draft
     is_featured = Column(Boolean, default=False)
+    
+    # ROI & Markup Management
+    markup_type = Column(String, default='percentage') # 'percentage', 'fixed'
+    markup_value = Column(Float, default=0.0)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     caterer = relationship("CatererProfile", back_populates="packages")
@@ -201,6 +242,7 @@ class MenuItem(Base):
 
     caterer = relationship("CatererProfile", back_populates="menu_items")
     packages = relationship("CateringPackage", secondary="package_items", back_populates="menu_items")
+    ingredients = relationship("MenuItemIngredient", back_populates="menu_item", cascade="all, delete-orphan")
 
 
 class CatererGallery(Base):

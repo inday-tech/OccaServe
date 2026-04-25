@@ -334,77 +334,124 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (!response.ok) throw new Error(booking.detail || "Failed to load details");
 
+            let documentsHtml = '';
+            if (booking.payment_proof_url || booking.balance_proof_url || booking.contract_url) {
+                documentsHtml = `
+                    <div class="pay-docs-group">
+                        <div class="pay-docs-title">Verified Documents</div>
+                        <div class="pay-docs-actions">
+                            ${booking.payment_proof_url || booking.balance_proof_url ? `
+                                <button class="pay-doc-btn" onclick="showProof('${booking.balance_proof_url || booking.payment_proof_url}', 'Proof - BK-${bookingId}')">
+                                    <i class="fas fa-image"></i> Payment Proof
+                                </button>
+                            ` : ''}
+                            ${booking.contract_url ? `
+                                <a href="${booking.contract_url}" target="_blank" class="pay-doc-btn">
+                                    <i class="fas fa-file-contract"></i> Digital Contract
+                                </a>
+                            ` : ''}
+                            ${booking.quotation_id ? `
+                                <button type="button" class="pay-doc-btn" onclick="window.viewInvoice(${bookingId})">
+                                    <i class="fas fa-receipt"></i> Official Invoice
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+
             let verificationHtml = '';
-            if (booking.payment_proof_url) {
+            if (booking.payment_proof_url || booking.balance_proof_url) {
                 const verif = booking.payment_verification_data;
                 const confidence = verif ? verif.confidence : 0;
-                const statusColor = confidence > 70 ? '#10b981' : (confidence > 30 ? '#f59e0b' : '#ef4444');
+                const statusColor = confidence > 70 ? 'var(--color-success-500)' : (confidence > 30 ? 'var(--color-warning-500)' : 'var(--color-danger-500)');
+                const statusBg = confidence > 70 ? 'var(--color-success-50)' : (confidence > 30 ? 'var(--color-warning-50)' : 'var(--color-danger-50)');
                 const statusIcon = confidence > 70 ? 'fa-shield-check' : (confidence > 30 ? 'fa-shield-exclamation' : 'fa-shield-slash');
                 
                 verificationHtml = `
-                    <div class="verification-report-pro" style="margin-top: 1.5rem; padding: 1.5rem; background: #f8fafc; border: 2px solid ${statusColor}15; border-radius: 1.25rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                            <h4 style="margin: 0; color: #1e293b; display: flex; align-items: center; gap: 0.5rem;">
-                                <i class="fas ${statusIcon}" style="color: ${statusColor};"></i> Legitimacy Report
+                    <div class="pay-verification-report" style="margin-top: var(--space-md);">
+                        <div class="pay-verification-header">
+                            <h4 class="pay-verification-title">
+                                <i class="fas ${statusIcon}" style="color: ${statusColor};"></i> AI Integrity Scan
                             </h4>
-                            <span style="font-size: 0.8rem; font-weight: 700; color: ${statusColor}; background: ${statusColor}15; padding: 0.2rem 0.6rem; border-radius: 2rem;">
+                            <span class="pay-verification-confidence" style="color: ${statusColor}; background: ${statusBg};">
                                 ${confidence}% Confidence
                             </span>
                         </div>
                         
                         ${verif ? `
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; font-size: 0.85rem;">
-                                <div style="color: #64748b;">Amount Match:</div>
-                                <div style="font-weight: 600; text-align: right; color: ${verif.amount_match ? '#10b981' : '#ef4444'}">
-                                    ${verif.amount_match ? 'Matched ✓' : 'Mismatch ✗'}
+                            <div class="pay-verification-grid">
+                                <div class="pay-verification-key">Amount Match:</div>
+                                <div class="pay-verification-val" style="color: ${verif.amount_match ? 'var(--color-success-600)' : 'var(--color-danger-600)'}">
+                                    ${verif.amount_match ? 'Match ✓' : 'Mismatch ✗'}
                                 </div>
-                                <div style="color: #64748b;">Unique Receipt:</div>
-                                <div style="font-weight: 600; text-align: right; color: ${!verif.is_duplicate_ref ? '#10b981' : '#ef4444'}">
-                                    ${!verif.is_duplicate_ref ? 'Verified ✓' : 'Duplicate Found ✗'}
+                                <div class="pay-verification-key">Receipt Status:</div>
+                                <div class="pay-verification-val" style="color: ${!verif.is_duplicate_ref ? 'var(--color-success-600)' : 'var(--color-danger-600)'}">
+                                    ${!verif.is_duplicate_ref ? 'Unique ✓' : 'Duplicate ✗'}
                                 </div>
-                                <div style="color: #64748b;">Extracted Ref:</div>
-                                <div style="font-weight: 600; text-align: right; color: #1e293b;">
-                                    ${verif.extracted_data.reference_no || 'Not found'}
+                                <div class="pay-verification-key">Reference No:</div>
+                                <div class="pay-verification-val" style="color: var(--color-neutral-900);">
+                                    ${verif.extracted_data?.reference_no || 'N/A'}
                                 </div>
                             </div>
-                            
-                            ${verif.flags && verif.flags.length > 0 ? `
-                                <div style="margin-top: 1rem; padding: 0.75rem; background: #fff5f5; border: 1px solid #feb2b2; border-radius: 0.75rem;">
-                                    <div style="font-weight: 700; color: #c53030; font-size: 0.75rem; margin-bottom: 0.25rem; text-transform: uppercase;">System Alerts</div>
-                                    <ul style="margin: 0; padding-left: 1.25rem; font-size: 0.8rem; color: #9b2c2c;">
-                                        ${verif.flags.map(f => `<li>${f}</li>`).join('')}
-                                    </ul>
-                                </div>
-                            ` : ''}
                         ` : `
-                            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Verification report not yet generated for this proof.</p>
-                            <button class="btn-primary-pro" onclick="runManualVerification(${bookingId})" style="width: 100%; border: none; padding: 0.6rem; border-radius: 0.75rem; font-weight: 600; font-size: 0.85rem; cursor: pointer;">
-                                <i class="fas fa-microchip"></i> Run AI Scan
+                            <p style="font-size: var(--text-xs); color: var(--color-neutral-500); margin-bottom: var(--space-sm);">No security scan data found for this proof.</p>
+                            <button class="btn-review-kyc" onclick="runManualVerification(${bookingId})" style="width: 100%; padding: 0.5rem;">
+                                <i class="fas fa-microchip"></i> Re-scan Proof
                             </button>
                         `}
-                        
-                        <button onclick="showProof('${booking.payment_proof_url}', 'Proof - BK-${bookingId}')" style="width: 100%; margin-top: 0.75rem; background: white; border: 1px solid #e2e8f0; padding: 0.6rem; border-radius: 0.75rem; font-weight: 600; font-size: 0.85rem; cursor: pointer; color: #475569;">
-                            <i class="fas fa-search-plus"></i> Enlarged Proof
-                        </button>
                     </div>
                 `;
             }
 
             content.innerHTML = `
-                <div style="display: flex; flex-direction: column; gap: 1.25rem;">
-                    <div style="text-align: center; margin-bottom: 0.5rem; padding: 1.25rem; background: #f8fafc; border-radius: 1.25rem; border: 1px solid #f1f5f9;">
-                        <div style="font-size: 0.85rem; text-transform: uppercase; color: #64748b; font-weight: 700; margin-bottom: 0.35rem; letter-spacing: 0.05em;">Transaction Amount</div>
-                        <div style="font-size: 2.25rem; font-weight: 800; color: var(--primary-color);">₱${parseFloat(booking.total_amount).toLocaleString()}</div>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem;"><span style="color: #64748b; font-weight: 600;">Customer</span><span style="font-weight: 700; color: #0f172a;">${booking.user.first_name} ${booking.user.last_name}</span></div>
-                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem;"><span style="color: #64748b; font-weight: 600;">Booking Ref</span><span style="font-weight: 700; color: #0f172a;">BK-${bookingId}</span></div>
-                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem;"><span style="color: #64748b; font-weight: 600;">Event Name</span><span style="font-weight: 700; color: #0f172a;">${booking.event_name || booking.event_type}</span></div>
-                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem;"><span style="color: #64748b; font-weight: 600;">Payment Method</span><span style="font-weight: 700; color: #1e293b;">${booking.payment_method || 'Manual'}</span></div>
-                    <div style="display: flex; justify-content: space-between;"><span style="color: #64748b; font-weight: 600;">Payment Status</span><span class="badge-status-pro ${booking.payment_status.toLowerCase()}">${booking.payment_status}</span></div>
-                    
-                    ${verificationHtml}
+                <div class="pay-details-summary">
+                    <div class="pay-details-label-sm">Gross Amount</div>
+                    <div class="pay-details-amount-lg">₱${parseFloat(booking.total_amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
                 </div>
+
+                <div class="pay-details-grid">
+                    <div class="pay-details-item-box">
+                        <span class="pay-details-key-label">Customer</span>
+                        <span class="pay-details-val-text">${booking.user.first_name} ${booking.user.last_name}</span>
+                    </div>
+                    <div class="pay-details-item-box">
+                        <span class="pay-details-key-label">Booking Ref</span>
+                        <span class="pay-details-val-text">#BK-${bookingId}</span>
+                    </div>
+                    <div class="pay-details-item-box">
+                        <span class="pay-details-key-label">Event Type</span>
+                        <span class="pay-details-val-text">${booking.event_type}</span>
+                    </div>
+                    <div class="pay-details-item-box">
+                        <span class="pay-details-key-label">Method</span>
+                        <span class="pay-details-val-text">${booking.payment_method || 'Manual'}</span>
+                    </div>
+                </div>
+
+                <div class="pay-breakdown-card">
+                    <div class="pay-breakdown-hdr">
+                        <i class="fas fa-chart-pie"></i> Profit Breakdown
+                    </div>
+                    <div class="pay-breakdown-row">
+                        <span class="pay-breakdown-label">Gross Subtotal</span>
+                        <span class="pay-breakdown-val">₱${parseFloat(booking.total_amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                    </div>
+                    <div class="pay-breakdown-row">
+                        <span class="pay-breakdown-label">Platform Fee (${booking.commission_rate}%)</span>
+                        <span class="pay-breakdown-val negative">- ₱${parseFloat(booking.commission).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                    </div>
+                    <div class="pay-earnings-summary-line">
+                        <span class="pay-earnings-label-text">Your Earnings</span>
+                        <span class="pay-earnings-amount-val">₱${parseFloat(booking.net_amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                    </div>
+                </div>
+
+                ${documentsHtml}
+                
+                ${verificationHtml}
             `;
+
         } catch (err) {
             console.error(err);
             content.innerHTML = `<div style="text-align: center; color: #ef4444; padding: 2rem;"><i class="fas fa-exclamation-triangle fa-2x"></i><p>${err.message}</p></div>`;
@@ -449,6 +496,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .then(res => {
                     if (res.status === 'success' && row) {
+                        refreshPaymentSummary(); // Immediate refresh
                         row.classList.add('fade-out-archive');
                         setTimeout(() => {
                             row.remove();
@@ -479,6 +527,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.apiAction(`/caterer/bookings/${bookingId}/archive`, { method: "POST" })
                 .then(res => {
                     if (res.status === 'success' && row) {
+                        refreshPaymentSummary(); // Immediate refresh
                         row.classList.add('fade-out-archive');
                         setTimeout(() => {
                             row.remove();
@@ -498,6 +547,38 @@ document.addEventListener('DOMContentLoaded', function() {
         }, "Archive Payment", "Yes, Archive");
     };
 
+    // Real-time Summary Polling
+    async function refreshPaymentSummary() {
+        try {
+            const response = await fetch('/caterer/api/payments/summary');
+            const data = await response.json();
+            
+            if (data) {
+                // Update Released Capital Card
+                const releasedCard = document.querySelector('.pay-stat-released .pay-stat-value');
+                if (releasedCard) releasedCard.innerText = `₱${data.released_total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+                // Update Ready for Payout Card
+                const readyCard = document.querySelector('.pay-stat-payout .pay-stat-value');
+                if (readyCard) readyCard.innerText = `₱${data.ready_total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+                // Update Held in Escrow Card
+                const escrowCard = document.querySelector('.pay-stat-escrow .pay-stat-value');
+                if (escrowCard) escrowCard.innerText = `₱${data.escrow_total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+                // Update Active Bookings Card
+                const activeCard = document.querySelector('.pay-stats-grid .pay-stat-card:last-child .pay-stat-value');
+                if (activeCard) activeCard.innerText = data.active_count;
+            }
+        } catch (err) {
+            console.warn("Summary refresh failed:", err);
+        }
+    }
+
+    // Initial refresh and setup interval (every 30 seconds)
+    refreshPaymentSummary();
+    setInterval(refreshPaymentSummary, 30000);
+
     window.showProof = function(url, title) {
         const img = document.getElementById('proofModalImg');
         const h3 = document.getElementById('proofModalTitle');
@@ -509,5 +590,103 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     window.closeProof = function() { 
         window.closeModal('proofModal');
+    };
+
+    // Modal Invoice View
+    window.viewInvoice = async function(bookingId) {
+        const modal = document.getElementById('invoiceModal');
+        const content = document.getElementById('invoiceContent');
+        
+        content.innerHTML = '<div style="text-align: center; padding: 3rem;"><i class="fas fa-spinner fa-spin fa-3x" style="color: var(--primary-color);"></i><p style="margin-top:1rem; font-weight:700; color:var(--color-neutral-400);">GENERTING INVOICE...</p></div>';
+        window.openModal('invoiceModal');
+
+        try {
+            const response = await fetch(`/caterer/api/bookings/${bookingId}/details`);
+            const data = await response.json();
+
+            const dateStr = new Date(data.created_at || Date.now()).toLocaleDateString('en-PH', { 
+                year: 'numeric', month: 'long', day: 'numeric' 
+            });
+
+            content.innerHTML = `
+                <div style="background: white; padding: 2.5rem; border-radius: var(--radius-md); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; border-bottom: 2px solid var(--color-neutral-50); padding-bottom: 1.5rem;">
+                        <div>
+                            <h2 style="margin: 0; color: var(--primary-color); font-weight: 800;">OccaServe</h2>
+                            <p style="margin: 4px 0 0; font-size: 0.7rem; color: var(--color-neutral-400); font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;">Official Invoice</p>
+                        </div>
+                        <div style="text-align: right;">
+                            <h3 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--color-neutral-900);">#BK-${bookingId}</h3>
+                            <p style="margin: 4px 0 0; font-size: 0.85rem; color: var(--color-neutral-500); font-weight: 600;">Date: ${dateStr}</p>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                        <div>
+                            <h4 style="font-size: 10px; text-transform: uppercase; color: var(--color-neutral-400); margin-bottom: 0.5rem; font-weight: 800; letter-spacing: 0.05em;">Client Details</h4>
+                            <p style="margin: 0; font-weight: 700; font-size: 0.9rem; color: var(--color-neutral-900);">${data.user.first_name} ${data.user.last_name}</p>
+                            <p style="margin: 2px 0; font-size: 0.8rem; color: var(--color-neutral-500);">${data.user.email}</p>
+                        </div>
+                        <div style="text-align: right;">
+                            <h4 style="font-size: 10px; text-transform: uppercase; color: var(--color-neutral-400); margin-bottom: 0.5rem; font-weight: 800; letter-spacing: 0.05em;">Service Provider</h4>
+                            <p style="margin: 0; font-weight: 700; font-size: 0.9rem; color: var(--color-neutral-900);">Verified Caterer</p>
+                            <p style="margin: 2px 0; font-size: 0.8rem; color: var(--color-neutral-500);">OccaServe Certified Partner</p>
+                        </div>
+                    </div>
+
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 2rem;">
+                        <thead>
+                            <tr style="background: var(--color-neutral-50);">
+                                <th style="text-align: left; padding: 12px; font-size: 10px; font-weight: 800; color: var(--color-neutral-500); text-transform: uppercase; letter-spacing: 0.05em;">Description</th>
+                                <th style="text-align: right; padding: 12px; font-size: 10px; font-weight: 800; color: var(--color-neutral-500); text-transform: uppercase; letter-spacing: 0.05em;">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="padding: 1.25rem 12px; border-bottom: 1px solid var(--color-neutral-50);">
+                                    <div style="font-weight: 700; font-size: 0.9rem; color: var(--color-neutral-900);">${data.event_name || data.event_type}</div>
+                                    <div style="font-size: 0.75rem; color: var(--color-neutral-400); margin-top: 4px;">Standard event package and platform service fee.</div>
+                                </td>
+                                <td style="text-align: right; padding: 1.25rem 12px; font-weight: 800; font-size: 0.9rem; color: var(--color-neutral-900); border-bottom: 1px solid var(--color-neutral-50);">₱${parseFloat(data.total_amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div style="margin-left: auto; width: 100%; max-width: 250px;">
+                        <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 0.85rem; color: var(--color-neutral-500); font-weight: 600;">
+                            <span>Subtotal</span>
+                            <span>₱${parseFloat(data.total_amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 12px 0; font-weight: 900; font-size: 1.15rem; color: var(--primary-color); border-top: 2px solid var(--color-neutral-100); margin-top: 8px;">
+                            <span>TOTAL PAID</span>
+                            <span>₱${parseFloat(data.total_amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 3rem; padding-top: 1.5rem; border-top: 1px dashed var(--color-neutral-200); text-align: center;">
+                        <p style="margin: 0; font-size: 0.7rem; color: var(--color-neutral-400); font-weight: 600; letter-spacing: 0.025em;">Thank you for using OccaServe. This is a computer-generated digital record.</p>
+                    </div>
+                </div>
+            `;
+        } catch (err) {
+            console.error(err);
+            content.innerHTML = '<p style="text-align: center; color: var(--color-danger-500); padding: 2rem; font-weight:700;">Failed to generate invoice. Please try again.</p>';
+        }
+    };
+
+    window.printInvoice = function() {
+        const content = document.getElementById('invoiceContent').innerHTML;
+        const win = window.open('', '', 'height=700,width=900');
+        win.document.write('<html><head><title>Invoice</title>');
+        win.document.write('<style>body{font-family: sans-serif; padding: 40px; color: #1e293b;} table{width:100%; border-collapse:collapse;} th,td{padding:12px; border-bottom:1px solid #f1f5f9;} th{background:#f8fafc; text-transform:uppercase; font-size:10px; color:#64748b;}</style>');
+        win.document.write('</head><body>');
+        win.document.write(content);
+        win.document.write('</body></html>');
+        win.document.close();
+        win.print();
+    };
+
+    window.closeInvoiceModal = function() {
+        window.closeModal('invoiceModal');
     };
 });

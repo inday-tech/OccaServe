@@ -668,11 +668,8 @@ def login_page(request: Request, next: Optional[str] = None, db: Session = Depen
         if user:
             return RedirectResponse(url=next if next else utils.get_dashboard_url(user.role))
             
-    # Initialize session to ensure cookie is set before OAuth redirect (fixes mismatching_state)
-    if not request.session.get("session_init"):
-        request.session["session_init"] = True
-
-    return templates.TemplateResponse("auth/login.html", {"request": request, "next_url": next})
+    # Redirect to home with login modal
+    return RedirectResponse(url="/?auth_modal=login" + (f"&next={next}" if next else ""))
 
 @router.post("/login")
 def login(
@@ -882,7 +879,7 @@ def logout(request: Request, db: Session = Depends(database.get_db)):
             db_token.is_revoked = True
             db.commit()
 
-    response = RedirectResponse(url="/?logout=success#home", status_code=status.HTTP_303_SEE_OTHER)
+    response = RedirectResponse(url="/?logout=success&auth_modal=login#home", status_code=status.HTTP_303_SEE_OTHER)
     response.delete_cookie("access_token")
     response.delete_cookie("refresh_token")
     return response

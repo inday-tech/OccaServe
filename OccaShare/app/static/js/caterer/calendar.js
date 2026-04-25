@@ -217,6 +217,87 @@ function recalculateTotal() {
 
     // Trigger validation update
     amountInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+    // --- SMART PRICING UI UPDATE ---
+    const quoteBtn = document.getElementById('btnQuickQuote');
+    const roiLabel = document.getElementById('roiPreviewLabel');
+    if (pkgSelect.value) {
+        if (quoteBtn) quoteBtn.style.display = 'inline-block';
+        if (roiLabel) {
+            roiLabel.style.display = 'block';
+            roiLabel.innerHTML = '<i class="fas fa-sync fa-spin"></i> Calculating ROI...';
+            
+            // Debounced ROI Preview
+            clearTimeout(window.roiPreviewTimeout);
+            window.roiPreviewTimeout = setTimeout(async () => {
+                try {
+                    const resp = await fetch(`/caterer/api/quick-quotation/${pkgSelect.value}?pax=${guests}`);
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        roiLabel.innerHTML = `Calc. Profit: ₱${data.roi.toLocaleString()} (${data.markup_label})`;
+                    }
+                } catch (e) {}
+            }, 500);
+        }
+    } else {
+        if (quoteBtn) quoteBtn.style.display = 'none';
+        if (roiLabel) roiLabel.style.display = 'none';
+    }
+}
+
+async function getQuickQuotation() {
+    const pkgId = document.getElementById('manPackage').value;
+    const pax = parseInt(document.getElementById('manGuests').value) || 0;
+    
+    if (!pkgId || pax <= 0) return;
+
+    try {
+        const resp = await fetch(`/caterer/api/quick-quotation/${pkgId}?pax=${pax}`);
+        const data = await resp.json();
+        
+        document.getElementById('roiBreakdownSubtitle').innerText = `Package: ${data.package_name} (${pax} Pax)`;
+        document.getElementById('breakdownTotalCost').innerText = `₱${data.total_cost.toLocaleString()}`;
+        document.getElementById('breakdownRoi').innerText = `₱${data.roi.toLocaleString()}`;
+        document.getElementById('breakdownTotalPrice').innerText = `₱${data.total_price.toLocaleString()}`;
+        
+        const list = document.getElementById('breakdownList');
+        list.innerHTML = '';
+        data.breakdown.forEach(item => {
+            const itemCost = item.cost_per_pax * pax;
+            list.innerHTML += `
+                <div style="background: white; padding: var(--space-md); border-radius: var(--radius-sm); border: 1px solid var(--color-neutral-100); display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-weight: 700; color: var(--color-neutral-700); font-size: var(--text-sm);">${item.name}</div>
+                        <div style="font-size: var(--text-xs); color: var(--color-neutral-400);">Total Dish Cost (x${pax})</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-weight: 900; color: var(--color-neutral-700);">₱${itemCost.toLocaleString()}</div>
+                        <div style="font-size: var(--text-xs); color: var(--color-info); font-weight: 700;">₱${item.cost_per_pax.toFixed(2)} / pax</div>
+                    </div>
+                </div>
+            `;
+        });
+
+        const modal = document.getElementById('roiBreakdownModal');
+        modal.style.display = 'flex';
+        setTimeout(() => modal.classList.add('active'), 10);
+        
+        // Update the preview label on the main modal too
+        const roiLabel = document.getElementById('roiPreviewLabel');
+        if (roiLabel) {
+            roiLabel.innerHTML = `Calc. Profit: ₱${data.roi.toLocaleString()} (${data.markup_label})`;
+        }
+
+    } catch (e) {
+        console.error(e);
+        alert('Failed to fetch quotation breakdown');
+    }
+}
+
+function closeRoiBreakdown() {
+    const modal = document.getElementById('roiBreakdownModal');
+    modal.classList.remove('active');
+    setTimeout(() => modal.style.display = 'none', 400);
 }
 
 function showEventDetails(event) {
@@ -277,20 +358,17 @@ function openManualBookingModal(slotStr = null) {
     const modal = document.getElementById('manualBookingModal');
     if (!modal) return;
     document.getElementById('manualBookingForm').reset();
-    document.getElementById('manualBookingError').style.display = 'none';
+    
+    const errorDrawer = document.getElementById('manualBookingError');
+    if (errorDrawer) errorDrawer.style.display = 'none';
     
     if (slotStr) {
         document.getElementById('manDate').value = slotStr;
     }
     
     if (document.getElementById('manAmount')) {
-        document.getElementById('manAmount').style.borderColor = '';
-        document.getElementById('manAmount').style.backgroundColor = '';
         document.getElementById('manAmount').value = '0.00';
     }
-    
-    document.getElementById('btnSubmitManual').disabled = true;
-    document.getElementById('btnSubmitManual').style.opacity = '0.5';
 
     // Reset checkmarks
     document.querySelectorAll('.man-menu-checkbox').forEach(cb => cb.checked = false);

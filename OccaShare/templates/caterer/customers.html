@@ -1,100 +1,143 @@
+{% set nav_page = 'customers' %}
 {% extends "caterer/layout.html" %}
 
-{% block title %}Customers - Caterer Dashboard{% endblock %}
+{% block title %}My Customers - Caterer Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/customers.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/customers.css') }}?v=2.0">
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>Customers</h1>
-    <p>Manage your customer database and relationships</p>
-</div>
 
-<div class="stats-grid-dashboard" style="margin-bottom: 3rem;">
-    <div class="stat-card-premium c-card-premium stat-card-white">
-        <div class="stat-icon-bg halo-purple"><i class="fas fa-users"></i></div>
-        <div class="stat-label-dashboard">Total Customers</div>
-        <div class="stat-value-dashboard">{{ stats.total }}</div>
-        <div class="stat-hint-dashboard">All-time customers</div>
+<!-- Page Header — KYC-aligned -->
+<div class="cust-page-header">
+    <div>
+        <h1>My Customers</h1>
+        <p>Manage your customer database and track relationship history.</p>
     </div>
-    <div class="stat-card-premium c-card-premium stat-card-white">
-        <div class="stat-icon-bg halo-amber"><i class="fas fa-crown"></i></div>
-        <div class="stat-label-dashboard">VIP Customers</div>
-        <div class="stat-value-dashboard" style="color: #d97706;">{{ stats.vip }}</div>
-        <div class="stat-hint-dashboard">High-value clients</div>
-    </div>
-    <div class="stat-card-premium c-card-premium stat-card-white">
-        <div class="stat-icon-bg halo-green"><i class="fas fa-user-plus"></i></div>
-        <div class="stat-label-dashboard">New This Month</div>
-        <div class="stat-value-dashboard" style="color: #16a34a;">{{ stats.new }}</div>
-        <div class="stat-hint-dashboard">Recent additions</div>
-    </div>
-    <div class="stat-card-premium c-card-premium stat-card-white">
-        <div class="stat-icon-bg halo-blue"><i class="fas fa-sync"></i></div>
-        <div class="stat-label-dashboard">Repeat Rate</div>
-        <div class="stat-value-dashboard">{{ stats.repeat }}</div>
-        <div class="stat-hint-dashboard">Returning clients</div>
+    <div class="cust-search-box">
+        <i class="fas fa-search"></i>
+        <input type="text" id="customerSearch" placeholder="Search by name, email, or phone..." onkeyup="filterCustomers()">
     </div>
 </div>
 
-
-<div class="customers-main-container c-card-premium">
-    <div class="customers-toolbar">
-        <h3>Customer List</h3>
-        <div class="toolbar-actions">
-            <div class="search-box-pro" style="display: flex; align-items: center; gap: 0.75rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 0 1.25rem; height: 46px; box-sizing: border-box; width: 320px; min-width: 250px; transition: all 0.2s ease;">
-                <i class="fas fa-search" style="color: #94a3b8; font-size: 0.95rem;"></i>
-                <input type="text" id="customerSearch" placeholder="Search by name, email, or phone..." style="border: none; outline: none; background: transparent; height: 100%; width: 100%; font-size: 0.9rem; color: #1e293b; font-weight: 500;" onkeyup="filterCustomers()">
-            </div>
+<!-- Stats Row — 4 cards -->
+<div class="cust-stats-grid">
+    <div class="cust-stat-card">
+        <div class="cust-stat-icon cust-icon-purple">
+            <i class="fas fa-users"></i>
+        </div>
+        <div class="cust-stat-info">
+            <div class="cust-stat-label">Total Customers</div>
+            <div class="cust-stat-value">{{ stats.total }}</div>
+            <div class="cust-stat-hint">All-time clients</div>
         </div>
     </div>
+    <div class="cust-stat-card">
+        <div class="cust-stat-icon cust-icon-amber">
+            <i class="fas fa-crown"></i>
+        </div>
+        <div class="cust-stat-info">
+            <div class="cust-stat-label">VIP Customers</div>
+            <div class="cust-stat-value cust-value-amber">{{ stats.vip }}</div>
+            <div class="cust-stat-hint">3+ bookings</div>
+        </div>
+    </div>
+    <div class="cust-stat-card">
+        <div class="cust-stat-icon cust-icon-green">
+            <i class="fas fa-user-plus"></i>
+        </div>
+        <div class="cust-stat-info">
+            <div class="cust-stat-label">New This Month</div>
+            <div class="cust-stat-value cust-value-green">{{ stats.new }}</div>
+            <div class="cust-stat-hint">Recent additions</div>
+        </div>
+    </div>
+    <div class="cust-stat-card">
+        <div class="cust-stat-icon cust-icon-blue">
+            <i class="fas fa-sync"></i>
+        </div>
+        <div class="cust-stat-info">
+            <div class="cust-stat-label">Repeat Rate</div>
+            <div class="cust-stat-value">{{ stats.repeat }}</div>
+            <div class="cust-stat-hint">Returning clients</div>
+        </div>
+    </div>
+</div>
 
-    <div class="table-responsive">
-        <table class="customers-table-pro">
+<!-- Customer List Card — KYC-aligned -->
+<div class="cust-card">
+    <!-- Card Header -->
+    <div class="cust-section-header">
+        <i class="fas fa-address-book"></i>
+        <h3>Customer List</h3>
+        <span class="cust-count-pill">{{ customers | length }} record{{ 's' if customers | length != 1 else '' }}</span>
+    </div>
+
+    <!-- Table -->
+    {% if customers %}
+    <div class="cust-table-scroll">
+        <table class="cust-table">
             <thead>
                 <tr>
                     <th>Customer</th>
                     <th>Contact</th>
-                    <th>Total Bookings</th>
+                    <th>Bookings</th>
                     <th>Total Spent</th>
                     <th>Last Booking</th>
                     <th>Status</th>
-                    <th class="text-right">Actions</th>
+                    <th class="cust-th-right">Actions</th>
                 </tr>
             </thead>
             <tbody id="customersTableBody">
                 {% for c in customers %}
                 <tr class="customer-row">
                     <td>
-                        <div class="customer-profile-cell">
-                            <div class="customer-avatar">
+                        <div class="cust-profile-cell">
+                            <div class="cust-avatar {% if c.status == 'VIP' %}cust-avatar-vip{% endif %}">
                                 {{ c.first_name[0] }}{{ c.last_name[0] }}
                             </div>
-                            <span class="customer-name-pro">{{ c.first_name }} {{ c.last_name }}</span>
+                            <div class="cust-name-group">
+                                <span class="cust-name">{{ c.first_name }} {{ c.last_name }}</span>
+                            </div>
                         </div>
                     </td>
                     <td>
-                        <div class="contact-info-pro">
+                        <div class="cust-contact-info">
                             <span class="info-email"><i class="far fa-envelope"></i> {{ c.email }}</span>
                             <span class="info-phone"><i class="fas fa-phone-alt"></i> {{ c.phone or 'No contact' }}</span>
                         </div>
                     </td>
-                    <td><span class="count-badge">{{ c.total_bookings }}</span></td>
-                    <td><span class="spent-value">₱{{ "{:,.2f}".format(c.total_spent) }}</span></td>
-                    <td><span class="date-value">{{ c.last_booking_date.strftime('%b %d, %Y') if c.last_booking_date else 'N/A' }}</span></td>
                     <td>
-                        <span class="status-badge-pro {{ c.status.lower() }}">
+                        <span class="cust-count-badge">{{ c.total_bookings }}</span>
+                    </td>
+                    <td>
+                        <span class="cust-spent">₱{{ "{:,.2f}".format(c.total_spent) }}</span>
+                    </td>
+                    <td>
+                        <span class="cust-date">
+                            {% if c.last_booking_date %}
+                                {{ c.last_booking_date.strftime('%b %d, %Y') }}
+                            {% else %}
+                                <span class="cust-na">N/A</span>
+                            {% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="cust-status-badge cust-status-{{ c.status.lower() }}">
+                            {% if c.status == 'VIP' %}<i class="fas fa-crown"></i>{% endif %}
+                            {% if c.status == 'NEW' %}<i class="fas fa-sparkles"></i>{% endif %}
                             {{ c.status }}
                         </span>
                     </td>
-                    <td class="text-right">
-                        <div class="actions-group">
-                            <a href="/caterer/bookings?search={{ c.first_name }}+{{ c.last_name }}" class="btn-action-pro" title="View History">
-                                <i class="fas fa-history"></i>
+                    <td class="cust-th-right">
+                        <div class="cust-actions">
+                            <a href="/caterer/bookings?search={{ c.first_name }}+{{ c.last_name }}"
+                               class="btn-review-kyc" title="View Booking History">
+                                <i class="fas fa-history"></i> History
                             </a>
-                            <a href="mailto:{{ c.email }}" class="btn-action-pro" title="Send Email">
+                            <a href="mailto:{{ c.email }}"
+                               class="btn-review-kyc" title="Send Email">
                                 <i class="far fa-envelope"></i>
                             </a>
                         </div>
@@ -104,6 +147,21 @@
             </tbody>
         </table>
     </div>
+
+    <!-- Empty search state (hidden by default) -->
+    <div id="noSearchResults" class="cust-empty-state" style="display:none;">
+        <i class="fas fa-search"></i>
+        <p>No customers match your search.</p>
+    </div>
+
+    {% else %}
+    <!-- Empty state -->
+    <div class="cust-empty-state">
+        <i class="fas fa-users"></i>
+        <p>No customers yet.</p>
+        <span>Customers will appear here once they book your catering services.</span>
+    </div>
+    {% endif %}
 </div>
 
 <script>
@@ -111,17 +169,20 @@ function filterCustomers() {
     const input = document.getElementById('customerSearch');
     const filter = input.value.toLowerCase();
     const rows = document.querySelectorAll('#customersTableBody .customer-row');
+    const noResults = document.getElementById('noSearchResults');
+    let visibleCount = 0;
 
     rows.forEach(row => {
-        const nameText = row.querySelector('.customer-name-pro').textContent.toLowerCase();
-        const emailText = row.querySelector('.info-email').textContent.toLowerCase();
-        const phoneText = row.querySelector('.info-phone').textContent.toLowerCase();
-        if (nameText.includes(filter) || emailText.includes(filter) || phoneText.includes(filter)) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
-        }
+        const name   = row.querySelector('.cust-name')?.textContent.toLowerCase() || '';
+        const email  = row.querySelector('.info-email')?.textContent.toLowerCase() || '';
+        const phone  = row.querySelector('.info-phone')?.textContent.toLowerCase() || '';
+        const match  = name.includes(filter) || email.includes(filter) || phone.includes(filter);
+        row.style.display = match ? '' : 'none';
+        if (match) visibleCount++;
     });
+
+    if (noResults) noResults.style.display = visibleCount === 0 && filter ? 'flex' : 'none';
 }
 </script>
+
 {% endblock %}

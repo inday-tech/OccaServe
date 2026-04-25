@@ -245,6 +245,10 @@ from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 app = FastAPI()
 
+@app.get("/", include_in_schema=False)
+async def root():
+    return {"status": "running", "message": "OccaServe API is operational"}
+
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     # Attempt to redirect to a static favicon if it exists to silence the default 404
@@ -262,6 +266,18 @@ async def db_session_middleware(request: Request, call_next):
     request.state.db = SessionLocal()
     response = await call_next(request)
     request.state.db.close()
+    return response
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    # Prevent browser from caching dashboard pages to handle Back/Forward button security
+    path = request.url.path
+    dashboard_routes = ["/caterer", "/admin", "/customer", "/kyc", "/verification", "/payments"]
+    if any(path.startswith(route) for route in dashboard_routes):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
     return response
 
 def get_website_config():
@@ -282,9 +298,10 @@ async def custom_http_exception_handler(request: Request, exc: HTTPException):
     # Check if the error is 401 Unauthorized
     if exc.status_code == 401:
         accept_header = request.headers.get("accept", "")
-        # If it's a browser requesting HTML, redirect to login
+        # If it's a browser requesting HTML, redirect to home and open login modal
         if "text/html" in accept_header:
-            return RedirectResponse(url="/auth/login?reason=session_expired", status_code=303)
+            return RedirectResponse(url="/?auth_modal=login&reason=session_expired", status_code=303)
+        
         # Otherwise, for APIs/fetch requests, return standard JSON
         return JSONResponse(
             status_code=exc.status_code,

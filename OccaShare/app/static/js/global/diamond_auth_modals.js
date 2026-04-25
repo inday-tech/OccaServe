@@ -224,12 +224,22 @@ document.addEventListener('DOMContentLoaded', () => {
     attachGlobalAuthInterceptors();
     attachModalInternalInterceptors();
 
-    // Auto-open from hash
-    if (window.location.hash === '#login') openAuthModal('login');
-    else if (window.location.hash === '#signup') openAuthModal('signup');
-    else if (window.location.hash === '#forgot') openAuthModal('forgot');
-    else if (window.location.hash === '#verify') openAuthModal('verify');
-    else if (window.location.hash === '#caterer-signup') openAuthModal('caterer-signup');
+    // Auto-open from query parameter (New standard for redirects)
+    const urlParams = new URLSearchParams(window.location.search);
+    const authModalParam = urlParams.get('auth_modal');
+    if (authModalParam) {
+        openAuthModal(authModalParam);
+        // Clear param from URL without refreshing to keep it clean
+        const newUrl = window.location.pathname + window.location.hash;
+        window.history.replaceState({}, document.title, newUrl);
+    } else {
+        // Fallback: Auto-open from hash (Legacy)
+        if (window.location.hash === '#login') openAuthModal('login');
+        else if (window.location.hash === '#signup') openAuthModal('signup');
+        else if (window.location.hash === '#forgot') openAuthModal('forgot');
+        else if (window.location.hash === '#verify') openAuthModal('verify');
+        else if (window.location.hash === '#caterer-signup') openAuthModal('caterer-signup');
+    }
 });
 
 // Export for global use

@@ -30,9 +30,9 @@
         <div class="stat-hint-dashboard">Total cash collected</div>
     </div>
 
-    <div class="stat-card-premium c-card-premium stat-card-white animate-up stat-roi-card"
-        style="border-left: 4px solid #10b981 !important;">
-        <div class="stat-icon-bg" style="color: #10b981;"><i class="fas fa-chart-line"></i></div>
+    <div class="stat-card-premium c-card-premium stat-card-white animate-up stat-roi-card {{ 'card-loss-warning' if net_profit and net_profit < 0 else '' }}"
+        style="border-left: 4px solid {{ '#ef4444' if net_profit and net_profit < 0 else '#10b981' }} !important;">
+        <div class="stat-icon-bg" style="color: {{ '#ef4444' if net_profit and net_profit < 0 else '#10b981' }};"><i class="fas fa-chart-line"></i></div>
         <div class="stat-label-dashboard">
             Business ROI
             <span class="roi-tooltip">
@@ -40,7 +40,7 @@
                 <span class="tooltip-text">Calculated as: ((Revenue - Expenses) / Expenses) × 100</span>
             </span>
         </div>
-        <div class="stat-value-dashboard" id="stat-roi" style="color: #10b981;">{{ roi_percentage|default(0) }}%</div>
+        <div class="stat-value-dashboard {{ 'text-danger-pulse' if net_profit and net_profit < 0 else '' }}" id="stat-roi" style="color: {{ '#ef4444' if net_profit and net_profit < 0 else '#10b981' }};">{{ roi_percentage|default(0) }}%</div>
         <div class="stat-hint-dashboard">
             <span id="stat-margin-text">{{ ((net_profit / total_revenue * 100)|round if total_revenue and total_revenue
                 > 0 else 0)|int }}% Net Margin</span>
@@ -50,7 +50,7 @@
     <div class="stat-card-premium c-card-premium stat-card-white animate-up">
         <div class="stat-icon-bg" style="color: #059669;"><i class="fas fa-hand-holding-usd"></i></div>
         <div class="stat-label-dashboard">Net Profit</div>
-        <div class="stat-value-dashboard" id="stat-profit">₱{{ "{:,.2f}".format(net_profit|default(0.0)) }}</div>
+        <div class="stat-value-dashboard" id="stat-profit" style="color: {{ '#ef4444' if net_profit and net_profit < 0 else '#059669' }};">₱{{ "{:,.2f}".format(net_profit|default(0.0)) }}</div>
         <div class="stat-hint-dashboard">Earnings after costs</div>
     </div>
 
@@ -72,8 +72,15 @@
                     <h3><i class="fas fa-wallet"></i> Financial Performance</h3>
                     <p>Breakdown of realized and projected profitability</p>
                 </div>
-                <div id="roi-status-badge" class="roi-badge-premium">
+                <div id="roi-status-badge" class="roi-badge-premium {{ 'status-loss-alert' if net_profit and net_profit < 0 else '' }}" 
+                     style="{% if net_profit and net_profit < 0 %}background:#ef4444; color:white;{% elif roi_percentage and roi_percentage < 15 %}background:rgba(245, 158, 11, 0.1); color:#f59e0b;{% else %}background:rgba(16, 185, 129, 0.1); color:#10b981;{% endif %}">
+                    {% if net_profit and net_profit < 0 %}
+                    <i class="fas fa-exclamation-triangle"></i> AT LOSS
+                    {% elif roi_percentage and roi_percentage < 15 %}
+                    <i class="fas fa-info-circle"></i> LOW MARGIN
+                    {% else %}
                     <i class="fas fa-check-circle"></i> PROFITABLE
+                    {% endif %}
                 </div>
             </div>
 
@@ -88,7 +95,7 @@
                 </div>
                 <div class="roi-metric-item">
                     <div class="roi-metric-label">Actual Net Profit</div>
-                    <div class="roi-metric-value" id="roi-breakdown-profit" style="color: #059669;">₱{{ "{:,.2f}".format(net_profit|default(0.0)) }}</div>
+                    <div class="roi-metric-value" id="roi-breakdown-profit" style="color: {{ '#ef4444' if net_profit and net_profit < 0 else '#059669' }};">₱{{ "{:,.2f}".format(net_profit|default(0.0)) }}</div>
                 </div>
             </div>
 
@@ -372,21 +379,31 @@
                 updateStatValue('roi-breakdown-expenses', '₱' + (data.actual_expenses || 0).toLocaleString(undefined, { minimumFractionDigits: 2 }));
                 updateStatValue('roi-breakdown-profit', formatCurrency(data.net_profit || 0));
 
-                // 3. Update Status Badge
+                // 3. Update Status Badge & ROI Card
                 const sb = document.getElementById('roi-status-badge');
+                const roiCard = document.querySelector('.stat-roi-card');
+                const roiValue = document.getElementById('stat-roi');
+
                 if (sb) {
                     if (data.net_profit < 0) {
                         sb.innerHTML = '<i class="fas fa-exclamation-triangle"></i> AT LOSS';
-                        sb.style.background = 'rgba(239, 68, 68, 0.1)';
-                        sb.style.color = '#ef4444';
+                        sb.className = 'roi-badge-premium status-loss-alert';
+                        if (roiCard) roiCard.className = 'stat-card-premium c-card-premium stat-card-white animate-up stat-roi-card card-loss-warning';
+                        if (roiValue) roiValue.className = 'stat-value-dashboard text-danger-pulse';
                     } else if (data.roi_percentage < 15) {
                         sb.innerHTML = '<i class="fas fa-info-circle"></i> LOW MARGIN';
+                        sb.className = 'roi-badge-premium';
                         sb.style.background = 'rgba(245, 158, 11, 0.1)';
                         sb.style.color = '#f59e0b';
+                        if (roiCard) roiCard.style.borderLeft = '4px solid #f59e0b';
+                        if (roiValue) roiValue.style.color = '#f59e0b';
                     } else {
                         sb.innerHTML = '<i class="fas fa-check-circle"></i> PROFITABLE';
+                        sb.className = 'roi-badge-premium';
                         sb.style.background = 'rgba(16, 185, 129, 0.1)';
                         sb.style.color = '#10b981';
+                        if (roiCard) roiCard.style.borderLeft = '4px solid #10b981';
+                        if (roiValue) roiValue.style.color = '#10b981';
                     }
                 }
 

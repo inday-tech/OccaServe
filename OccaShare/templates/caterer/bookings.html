@@ -4,45 +4,43 @@
 {% block title %}Manage Bookings - Caterer Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/bookings.css') }}?v=2.1">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/bookings.css') }}?v=2.3">
 <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/contract_view.css') }}?v=1.6">
 <link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}?v=1.6">
 {% endblock %}
 
 {% block content %}
 <div class="container-premium">
-<div class="page-header">
-    <h1>Manage Bookings</h1>
-    <p>Review, track, and manage all your customer event reservations in one place.</p>
+<div class="page-header" style="margin-bottom: var(--space-md);">
+    <div class="header-title-group">
+        <h1>Manage Bookings</h1>
+        <p>Review, track, and manage all your customer event reservations in one place.</p>
+    </div>
 </div>
 
-<!-- Stats Grid -->
-<div class="stats-grid-dashboard" style="margin-bottom: var(--space-xl);">
+<div class="stats-grid-dashboard" style="margin-bottom: var(--space-md);">
     <div class="stat-card-premium c-card-premium stat-card-white">
         <div class="stat-icon-bg halo-slate"><i class="fas fa-calendar-alt"></i></div>
-        <div class="stat-label-dashboard">Total Bookings</div>
+        <div class="stat-label-dashboard" style="text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800;">Total Bookings</div>
         <div class="stat-value-dashboard">{{ bookings|count }}</div>
         <div class="stat-hint-dashboard">All reservations</div>
     </div>
     <div class="stat-card-premium c-card-premium stat-card-white">
         <div class="stat-icon-bg halo-green"><i class="fas fa-check-circle"></i></div>
-        <div class="stat-label-dashboard">Confirmed</div>
-        <div class="stat-value-dashboard" style="color: #10b981;">{{ bookings|selectattr('status', 'equalto',
-            'confirmed')|list|count }}</div>
+        <div class="stat-label-dashboard" style="text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800;">Confirmed</div>
+        <div class="stat-value-dashboard" style="color: #10b981;">{{ bookings|selectattr('status', 'equalto', 'confirmed')|list|count }}</div>
         <div class="stat-hint-dashboard">Ready to serve</div>
     </div>
     <div class="stat-card-premium c-card-premium stat-card-white">
         <div class="stat-icon-bg halo-amber"><i class="fas fa-hourglass-half"></i></div>
-        <div class="stat-label-dashboard">Pending</div>
-        <div class="stat-value-dashboard" style="color: #f59e0b;">{{ bookings|selectattr('status', 'in', ['pending',
-            'pending_quotation', 'awaiting_payment'])|list|count }}</div>
+        <div class="stat-label-dashboard" style="text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800;">Pending</div>
+        <div class="stat-value-dashboard" style="color: #f59e0b;">{{ bookings|selectattr('status', 'in', ['pending', 'pending_quotation', 'awaiting_payment'])|list|count }}</div>
         <div class="stat-hint-dashboard">Awaiting action</div>
     </div>
     <div class="stat-card-premium c-card-premium stat-card-white">
         <div class="stat-icon-bg halo-red"><i class="fas fa-times-circle"></i></div>
-        <div class="stat-label-dashboard">Cancelled</div>
-        <div class="stat-value-dashboard" style="color: #ef4444;">{{ bookings|selectattr('status', 'equalto',
-            'cancelled')|list|count }}</div>
+        <div class="stat-label-dashboard" style="text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800;">Cancelled</div>
+        <div class="stat-value-dashboard" style="color: #ef4444;">{{ bookings|selectattr('status', 'equalto', 'cancelled')|list|count }}</div>
         <div class="stat-hint-dashboard">Cancelled events</div>
     </div>
 </div>
@@ -58,10 +56,12 @@
             <i class="fas fa-bell"></i>
         </div>
         <div class="action-banner-text">
-            <h3 style="color: #92400e;">ACTION REQUIRED <span style="font-size:0.7rem; font-weight:800; background:#fef3c7; color:#92400e; padding:0.25rem 0.75rem; border-radius:1rem; margin-left:0.5rem; border:1px solid #fde68a;">{{ total_alerts }} ALERTS</span></h3>
-            <p>
-                {% if payments_to_verify %} <strong>{{ payments_to_verify|length }}</strong> internal payments to verify. {% endif %}
-                {% if contracts_to_sign %} <strong>{{ contracts_to_sign|length }}</strong> contracts waiting for your signature. {% endif %}
+            <h4>Action Required <span class="alert-count-badge">{{ total_alerts }} Alerts</span></h4>
+            <p style="margin-top: 4px; font-size: 0.85rem; color: #9a3412; font-weight: 600;">
+                Pending tasks: 
+                {% if payments_to_verify %} <span style="color: #92400e; font-weight: 800;">{{ payments_to_verify|length }}</span> payments to verify {% endif %}
+                {% if payments_to_verify and contracts_to_sign %} &bull; {% endif %}
+                {% if contracts_to_sign %} <span style="color: #92400e; font-weight: 800;">{{ contracts_to_sign|length }}</span> contracts to sign {% endif %}
             </p>
         </div>
     </div>
@@ -72,7 +72,7 @@
 </div>
 {% endif %}
 
-<div class="b-table-container c-card-premium">
+<div class="b-table-container c-card-premium" style="margin-top: 0;">
     <div class="b-table-header">
         <h3>All Bookings</h3>
         <div class="header-controls">
@@ -109,28 +109,28 @@
             <thead>
                 <tr style="border-bottom: 2px solid #f1f5f9;">
                     <th
-                        style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                        style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
                         Booking ID</th>
                     <th
-                        style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                        style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
                         Customer</th>
                     <th
-                        style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                        style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
                         Event</th>
                     <th
-                        style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                        style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
                         Date & Time</th>
                     <th
-                        style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                        style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
                         Guests</th>
                     <th
-                        style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                        style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
                         Amount</th>
                     <th
-                        style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                        style="padding: 1.5rem; text-align: left; font-size: 0.8rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
                         Status</th>
                     <th
-                        style="padding: 1.5rem; text-align: right; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                        style="padding: 1.5rem; text-align: right; font-size: 0.8rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
                         Actions</th>
                 </tr>
             </thead>
@@ -141,19 +141,28 @@
                     data-payment-status="{{ booking.payment_status }}"
                     style="border-bottom: 1px solid #f8fafc; transition: all 0.2s ease;">
                     <!-- ID -->
-                    <td style="padding: 1.5rem; font-weight: 600; color: #64748b; font-size: 0.95rem;">BK-{{ "%03d" |
+                    <td style="padding: 1.5rem; font-weight: 800; color: #64748b; font-size: 0.85rem; letter-spacing: 0.05em; text-transform: uppercase;">BK-{{ "%03d" |
                         format(booking.id) }}</td>
 
                     <!-- CUSTOMER -->
                     <td style="padding: 1.5rem;">
-                        <div style="font-weight: 700; color: #0f172a; font-size: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div style="font-weight: 800; color: #0f172a; font-size: var(--text-sm);">
+                                {% if booking.user %}
+                                {{ booking.user.first_name }} {{ booking.user.last_name }}
+                                {% else %}
+                                Walk-in Customer
+                                {% endif %}
+                            </div>
                             {% if booking.user %}
-                            {{ booking.user.first_name }} {{ booking.user.last_name }}
-                            {% else %}
-                            Walk-in Customer
+                                {% if booking.user.is_verified %}
+                                    <span title="Identity Verified" style="color: #10b981; font-size: 0.75rem;"><i class="fas fa-shield-check"></i></span>
+                                {% else %}
+                                    <span title="Needs KYC Audit" style="color: #f59e0b; font-size: 0.75rem;"><i class="fas fa-shield-exclamation"></i></span>
+                                {% endif %}
                             {% endif %}
                         </div>
-                        <div style="font-size: 0.85rem; color: #94a3b8; font-weight: 500; margin-top: 0.1rem;">
+                        <div style="font-size: var(--text-xs); color: #94a3b8; font-weight: 500; margin-top: 0.1rem; letter-spacing: 0.02em;">
                             {% if booking.user %}
                             {{ booking.user.email }}
                             {% else %}
@@ -164,8 +173,8 @@
 
                     <!-- EVENT -->
                     <td style="padding: 1.5rem;">
-                        <div style="font-weight: 700; color: #0f172a; font-size: 1rem;">{{ booking.event_type }}</div>
-                        <div style="font-size: 0.85rem; color: #94a3b8; font-weight: 500; margin-top: 0.1rem;">
+                        <div style="font-weight: 800; color: #0f172a; font-size: var(--text-sm);">{{ booking.event_type }}</div>
+                        <div style="font-size: var(--text-xs); color: #94a3b8; font-weight: 600; margin-top: 0.1rem; text-transform: uppercase; letter-spacing: 0.03em;">
                             {% if booking.package %}
                                 {{ booking.package.name }}
                             {% elif booking.event_type == 'Ala Carte Order' %}
@@ -268,6 +277,8 @@
                                 data-balance-due="{{ booking.balance_due_date.strftime('%Y-%m-%d') if booking.balance_due_date else '' }}"
                                 data-payment-plan="{{ booking.payment_plan or 'downpayment' }}"
                                 data-is-package="{{ 'true' if booking.package_id else 'false' }}"
+                                data-is-verified="{{ 'true' if (booking.user and booking.user.is_verified) else 'false' }}"
+                                data-target-user-id="{{ booking.user_id or '' }}"
                                 data-has-contract="{{ 'true' if booking.quotation else 'false' }}">
                                 <i class="far fa-eye" style="color: #64748b;"></i> View Details
                             </button>
@@ -295,23 +306,69 @@
 
                         <!-- Hidden Menu Info for Modal -->
                         <div id="booking-items-{{ booking.id }}" style="display: none;">
-                            <div class="modal-menu-grid">
-                                {% if booking.package %}
-                                    <div class="menu-pkg-badge">
-                                        <i class="fas fa-box-open"></i> {{ booking.package.name }}
+                            {% if booking.package %}
+                                <div class="package-accordion-container">
+                                    <div class="package-accordion">
+                                        <button class="accordion-header" onclick="togglePackageAccordion(this)">
+                                            <span class="accordion-title">
+                                                <i class="fas fa-gift"></i> {{ booking.package.name }}
+                                            </span>
+                                            <i class="fas fa-chevron-down accordion-icon"></i>
+                                        </button>
+                                        <div class="accordion-content">
+                                            <div class="pkg-details-box">
+                                                {% if booking.package.description %}
+                                                    <p class="pkg-desc-text">{{ booking.package.description }}</p>
+                                                {% endif %}
+                                                
+                                                {% if booking.package.inclusions %}
+                                                    <div class="inclusion-section-p">
+                                                        <h4><i class="fas fa-check-circle"></i> Service Inclusions</h4>
+                                                        <div class="inclusion-grid-p">
+                                                            {% for inc in booking.package.inclusions %}
+                                                                <div class="inclusion-item-p">
+                                                                    <i class="fas fa-star"></i> {{ inc }}
+                                                                </div>
+                                                            {% endfor %}
+                                                        </div>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
                                     </div>
-                                {% endif %}
-                                
-                                {% for item in booking.selected_items %}
-                                    <div class="menu-item-row-p">
-                                        <div class="mi-name">{{ item.menu_item.name }}</div>
-                                        <div class="mi-qty">x{{ booking.guest_count if not item.is_add_on else 1 }}</div>
-                                    </div>
-                                {% endfor %}
-                                
-                                {% if not booking.package and not booking.selected_items %}
-                                    <p class="text-muted italic small">No itemized data available.</p>
-                                {% endif %}
+                                </div>
+                            {% endif %}
+
+                            <div class="menu-structured-p" style="margin-top: 1.5rem;">
+                                <div class="menu-section-p">
+                                    <h4 style="font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1rem;"><i class="fas fa-utensils"></i> Dish Selection</h4>
+                                    
+                                    {% if booking.selected_items %}
+                                        {% for group in booking.selected_items|groupby('menu_item.category') %}
+                                            <div class="menu-cat-group">
+                                                <div class="menu-cat-label">{{ group.grouper or 'Main Dishes' }}</div>
+                                                <div class="menu-items-flex">
+                                                    {% for item in group.list %}
+                                                        <div class="mi-pill-premium">
+                                                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                                                <span class="mi-name-text">{{ item.menu_item.name }}</span>
+                                                                {% if item.is_add_on %}
+                                                                    <span class="mi-addon-badge">Add-on</span>
+                                                                {% endif %}
+                                                            </div>
+                                                            <span class="mi-qty-text">x{{ booking.guest_count if not item.is_add_on else 1 }}</span>
+                                                        </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <div style="text-align: center; padding: 2rem; background: #f8fafc; border-radius: 1rem; border: 1px dashed #cbd5e1;">
+                                            <i class="fas fa-info-circle" style="color: #94a3b8; font-size: 1.5rem; margin-bottom: 0.5rem;"></i>
+                                            <p style="color: #64748b; font-size: 0.85rem; margin: 0;">No itemized menu data available for this booking.</p>
+                                        </div>
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
                     </td>
@@ -357,108 +414,124 @@
         </div>
 
         <div class="occ-modal-body">
-            <!-- Header Meta Info -->
-            <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; padding:1.25rem; border-radius:1rem; border:1px solid #e2e8f0;">
-                <div style="display:flex; gap:1.5rem;">
+            <!-- Header Status Card -->
+            <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 1.5rem; border-radius: 1.25rem; border: 1px solid #e2e8f0; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; gap: 2rem;">
                     <div>
-                        <span style="display:block; font-size:0.7rem; font-weight:700; color:#64748b; text-transform:uppercase;">Status</span>
-                        <span id="modalStatus" class="premium-status-badge"></span>
+                        <span style="display: block; font-size: 0.7rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem;">Current Status</span>
+                        <span id="modalStatus" class="premium-status-badge" style="font-size: 0.85rem; padding: 0.5rem 1rem;"></span>
                     </div>
                     <div>
-                        <span style="display:block; font-size:0.7rem; font-weight:700; color:#64748b; text-transform:uppercase;">Booked On</span>
-                        <span id="modalBookedOn" style="font-weight:700; color:#1e293b; font-size:0.9rem;"></span>
+                        <span style="display: block; font-size: 0.7rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem;">Booking Date</span>
+                        <span id="modalBookedOn" style="font-weight: 800; color: #1e293b; font-size: 1rem;"></span>
                     </div>
                 </div>
-                <div id="modalRiskAlert" style="display:none; background:#fef2f2; color:#ef4444; padding:0.5rem 1rem; border-radius:2rem; font-size:0.75rem; font-weight:700; align-items:center; gap:0.5rem;">
+                <div id="modalRiskAlert" class="action-required-alert" style="display: none; margin-top: 0; padding: 0.6rem 1rem;">
                     <i class="fas fa-exclamation-triangle"></i> HIGH RISK
                 </div>
             </div>
 
             <!-- Tabs Navigation -->
-            <div class="modal-tabs-pro">
-                <button type="button" class="mtab-btn-pro active" onclick="switchBookingTab('summary')">Summary</button>
-                <button type="button" class="mtab-btn-pro" onclick="switchBookingTab('financials')">Financials</button>
-                <button type="button" class="mtab-btn-pro" onclick="switchBookingTab('logistics')">Menu & Logistics</button>
+            <div class="modal-tabs-pro" style="margin-bottom: 1.5rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0;">
+                <button type="button" class="mtab-btn-pro active" onclick="switchBookingTab('summary')" style="padding-bottom: 1rem;">Summary</button>
+                <button type="button" class="mtab-btn-pro" onclick="switchBookingTab('financials')" style="padding-bottom: 1rem;">Financials</button>
+                <button type="button" class="mtab-btn-pro" onclick="switchBookingTab('logistics')" style="padding-bottom: 1rem;">Menu & Logistics</button>
             </div>
 
             <!-- Tab Content -->
             <div id="btab-summary" class="mtab-pane-pro active">
                 <div class="occ-form-grid">
-                    <div class="modal-info-card" style="margin-bottom:0;">
-                        <div class="modal-card-label"><i class="fas fa-user-circle"></i> Customer</div>
-                        <div id="modalCustomer" class="modal-card-value-main"></div>
-                        <div id="modalEmail" class="modal-card-value-sub"></div>
+                    <div class="modal-info-card-premium">
+                        <div class="modal-card-label-premium"><i class="fas fa-user-circle"></i> Customer Details</div>
+                        <div id="modalCustomer" class="modal-card-value-premium"></div>
+                        <div id="modalEmail" style="font-size: 0.85rem; color: #64748b; font-weight: 500;"></div>
                     </div>
-                    <div class="modal-info-card" style="margin-bottom:0;">
-                        <div class="modal-card-label"><i class="fas fa-calendar-alt"></i> Event</div>
-                        <div id="modalEventName" class="modal-card-value-main"></div>
-                        <div class="flex-between align-center">
-                            <span id="modalEventType" class="modal-card-value-sub"></span>
-                            <span id="modalGuestCount" class="modal-guest-count-badge"></span>
+                    <div class="modal-info-card-premium">
+                        <div class="modal-card-label-premium"><i class="fas fa-calendar-star"></i> Event Details</div>
+                        <div id="modalEventName" class="modal-card-value-premium"></div>
+                        <div class="flex-between align-center" style="margin-top: 2px;">
+                            <span id="modalEventType" style="font-size: 0.75rem; font-weight: 700; color: var(--primary-color); text-transform: uppercase;"></span>
+                            <span id="modalGuestCount" class="modal-guest-count-badge" style="background: #f8fafc; border: 1px solid #e2e8f0; color: #475569;"></span>
                         </div>
                     </div>
                     <div class="occ-form-group full-width">
-                        <label class="occ-form-label"><i class="fas fa-map-marker-alt"></i> Venue Address</label>
-                        <div id="modalVenue" class="modal-venue-text" style="padding:1rem; background:#f8fafc; border-radius:0.75rem; border:1px solid #e2e8f0; min-height:60px;"></div>
+                        <div class="modal-info-card-premium">
+                            <div class="modal-card-label-premium"><i class="fas fa-map-marker-alt"></i> Venue Address</div>
+                            <div id="modalVenue" style="font-size: 0.95rem; color: #334155; line-height: 1.5; font-weight: 500;"></div>
+                        </div>
                     </div>
                     <div class="occ-form-group full-width">
-                        <label class="occ-form-label"><i class="fas fa-comment-dots"></i> Special Requests</label>
-                        <div id="modalRequests" class="modal-requests-box" style="padding:1rem; background:#fffbeb; border-radius:0.75rem; border:1px solid #fef3c7; color:#92400e; font-size:0.9rem;"></div>
+                        <div class="modal-info-card-premium" style="background: #fffbeb; border-color: #fef3c7;">
+                            <div class="modal-card-label-premium" style="color: #b45309;"><i class="fas fa-comment-dots"></i> Special Requests</div>
+                            <div id="modalRequests" style="font-size: 0.9rem; color: #92400e; font-weight: 500; line-height: 1.5;"></div>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <div id="btab-financials" class="mtab-pane-pro">
-                <div class="financial-stat-box-pro">
-                    <span class="fsn-label">Total Amount</span>
-                    <span id="modalTotalAmount" class="fsn-value">₱0.00</span>
+                <div class="financial-stat-box-pro" style="background: linear-gradient(135deg, #0f172a 0%, #334155 100%); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);">
+                    <span class="fsn-label" style="opacity: 0.7; font-weight: 700;">Contract Total Amount</span>
+                    <span id="modalTotalAmount" class="fsn-value" style="font-size: 2rem; letter-spacing: -0.02em;">₱0.00</span>
                 </div>
                 
-                <div class="occ-form-grid">
-                    <div class="occ-form-group">
-                        <label class="occ-form-label">Payment Status</label>
-                        <div id="modalPaymentStatus" class="premium-status-badge"></div>
+                <div class="occ-form-grid" style="margin-top: 1.5rem;">
+                    <div class="modal-info-card-premium">
+                        <div class="modal-card-label-premium">Payment Status</div>
+                        <div id="modalPaymentStatus" class="premium-status-badge" style="width: fit-content;"></div>
                     </div>
-                    <div class="occ-form-group">
-                        <label class="occ-form-label">Payment Method</label>
-                        <div id="modalPaymentMethod" style="font-weight:700; color:#1e293b;"></div>
+                    <div class="modal-info-card-premium">
+                        <div class="modal-card-label-premium">Method & Plan</div>
+                        <div id="modalPaymentMethod" style="font-weight: 800; color: #1e293b; font-size: 0.95rem;"></div>
                     </div>
                     
-                    <div class="occ-form-group full-width" style="margin-top:0.5rem;">
-                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:1rem; padding:1.25rem;">
-                            <div class="flex-between align-center mb-2">
-                                <label class="occ-form-label" style="margin:0;"><i class="fas fa-clock"></i> Balance Due Date</label>
-                                <button onclick="toggleDueDateEdit()" class="btn-sm-outline" id="btnEditDueDate">Update</button>
+                    <div class="occ-form-group full-width">
+                        <div class="due-date-card-premium">
+                            <div class="due-date-header">
+                                <div>
+                                    <div class="modal-card-label-premium" style="margin-bottom: 0.5rem;"><i class="fas fa-clock"></i> Balance Due Date</div>
+                                    <div id="dueDateDisplaySection">
+                                        <div id="modalDueDate" style="font-size: 1.5rem; font-weight: 900; color: var(--primary-color); letter-spacing: -0.02em;">Not Set</div>
+                                    </div>
+                                </div>
+                                <div id="dueDateBadgeContainer">
+                                    <!-- Badge dynamically injected -->
+                                </div>
+                                <button onclick="toggleDueDateEdit()" class="btn-update-due-date" id="btnEditDueDate">
+                                    <i class="fas fa-edit"></i> Update
+                                </button>
                             </div>
-                            <div id="dueDateDisplaySection">
-                                <div id="modalDueDate" style="font-size:1.25rem; font-weight:800; color:var(--primary-color);">Not Set</div>
-                            </div>
-                            <div id="dueDateEditSection" style="display:none;">
+
+                            <div id="dueDateEditSection" style="display: none; background: white; padding: 1.25rem; border-radius: 1rem; border: 1px solid #e2e8f0; margin-top: 1rem;">
+                                <label class="occ-form-label" style="margin-bottom: 0.5rem; display: block;">Select New Deadline</label>
                                 <div class="d-flex gap-2">
-                                    <input type="date" id="balanceDueDateInput" class="occ-form-input">
-                                    <button onclick="saveDueDate()" class="btn-sm-confirm">Save</button>
+                                    <input type="date" id="balanceDueDateInput" class="occ-form-input" style="flex: 1;">
+                                    <button onclick="saveDueDate()" class="btn-sm-confirm">Save & Notify</button>
                                     <button onclick="toggleDueDateEdit()" class="btn-sm-cancel"><i class="fas fa-times"></i></button>
                                 </div>
+                                <p style="font-size: 0.75rem; color: #64748b; margin-top: 0.75rem;">
+                                    <i class="fas fa-info-circle"></i> The customer will be notified of this new deadline automatically.
+                                </p>
                             </div>
                         </div>
                     </div>
 
-                    <div id="modalProofSection" class="occ-form-group full-width" style="display:none;">
+                    <div id="modalProofSection" class="occ-form-group full-width" style="display: none; margin-top: 1rem;">
                         <div class="flex-between align-center mb-2">
-                            <label class="occ-form-label" style="margin:0;"><i class="fas fa-file-invoice-dollar"></i> Transaction Proofs</label>
-                            <button id="aiVerifyBtn" onclick="runAIScan()" class="btn-sm-outline" style="background:#f0f9ff; border-color:#bae6fd; color:#0369a1;">
-                                <i class="fas fa-microchip me-1"></i> AI Scan
+                            <label class="occ-form-label" style="margin:0; font-weight: 800; color: #475569;"><i class="fas fa-file-invoice-dollar"></i> Customer Payment Proofs</label>
+                            <button id="aiVerifyBtn" onclick="runAIScan()" class="btn-sm-outline" style="background:#f0f9ff; border-color:#bae6fd; color:#0369a1; padding: 0.5rem 1rem; border-radius: 0.75rem;">
+                                <i class="fas fa-microchip me-1"></i> Run AI Verification
                             </button>
                         </div>
-                        <div id="modalProofContainer" class="modal-proof-container" style="background:#f8fafc; border:1px dashed #cbd5e1; padding:1rem; border-radius:1rem;"></div>
+                        <div id="modalProofContainer" class="modal-proof-container" style="background:#f8fafc; border: 1px dashed #cbd5e1; padding:1.5rem; border-radius:1.25rem;"></div>
                         
-                        <div id="aiScanResults" class="mt-3">
-                            <div class="ai-report-header">
-                                <span class="ai-report-title"><i class="fas fa-robot"></i> AI LEGITIMACY REPORT</span>
+                        <div id="aiScanResults" class="mt-4" style="display: none; background: white; border: 1px solid #e2e8f0; border-radius: 1.25rem; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                            <div class="ai-report-header" style="background: #f8fafc; padding: 1rem 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                                <span class="ai-report-title" style="font-weight: 800; color: #1e293b; font-size: 0.85rem;"><i class="fas fa-robot" style="color: #0ea5e9;"></i> AI LEGITIMACY REPORT</span>
                                 <div id="aiConfidenceBadge"></div>
                             </div>
-                            <div id="aiScanContent"></div>
-                            <div id="aiScanFlags" class="mt-2"></div>
+                            <div id="aiScanContent" style="padding: 1.5rem;"></div>
+                            <div id="aiScanFlags" class="mt-2" style="padding: 0 1.5rem 1.5rem;"></div>
                         </div>
                     </div>
                 </div>
@@ -466,8 +539,8 @@
 
             <div id="btab-logistics" class="mtab-pane-pro">
                 <div id="modalMenuSection">
-                    <label class="occ-form-label mb-2 d-block"><i class="fas fa-utensils"></i> Menu & Inclusions</label>
-                    <div id="modalMenuItems" class="modal-menu-container"></div>
+                    <label class="occ-form-label mb-3 d-block" style="font-weight: 800; color: #475569;"><i class="fas fa-utensils"></i> Final Menu & Event Inclusions</label>
+                    <div id="modalMenuItems" class="modal-menu-container" style="background: white; border: 1px solid #f1f5f9; border-radius: 1.25rem; padding: 0.5rem;"></div>
                 </div>
             </div>
         </div>
@@ -523,7 +596,7 @@
         </div>
 
         <div class="occ-modal-body">
-            <form id="walkinBookingForm" onsubmit="submitWalkinBooking(event)">
+            <form id="walkinBookingForm" onsubmit="submitWalkinBooking(event)" novalidate>
                 <div class="occ-form-grid" style="gap: 0.85rem;">
                     <!-- Customer Group -->
                     <div class="occ-form-group full-width" style="margin-bottom:0.25rem;">
@@ -734,5 +807,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', path='/js/caterer/bookings.js') }}?v=1.8"></script>
+<script src="{{ url_for('static', path='/js/caterer/bookings.js') }}?v=2.2"></script>
 {% endblock %}

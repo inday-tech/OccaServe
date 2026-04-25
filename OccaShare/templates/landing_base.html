@@ -84,8 +84,8 @@
                     {% endif %}
                     <a href="/auth/logout" class="btn-primary">Logout</a>
                     {% else %}
-                    <a href="/auth/login" class="btn-text" id="navLoginBtn">Login</a>
-                    <a href="/auth/register" class="btn-primary" id="navSignupBtn">Sign Up</a>
+                    <a href="javascript:void(0);" onclick="openAuthModal('login')" class="btn-text" id="navLoginBtn">Login</a>
+                    <a href="javascript:void(0);" onclick="openAuthModal('signup')" class="btn-primary" id="navSignupBtn">Sign Up</a>
                     {% endif %}
                 </div>
             </div>
@@ -146,7 +146,7 @@
                     <h4>Professionals</h4>
                     <ul>
                         <li><a href="/auth/register/caterer">Join as Caterer</a></li>
-                        <li><a href="/auth/login">Book a Caterer</a></li>
+                        <li><a href="javascript:void(0);" onclick="openAuthModal('login')">Book a Caterer</a></li>
                     </ul>
                 </div>
             </div>
