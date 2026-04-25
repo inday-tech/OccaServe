@@ -1,6 +1,6 @@
 [phases.setup]
 nixPkgs = ["python311", "tesseract", "libglvnd", "libGL", "glib", "zlib"]
-aptPkgs = ["tesseract-ocr", "tesseract-ocr-eng", "libgl1-mesa-glx", "libglib2.0-0", "libsm6", "libxrender1", "libxext6", "libgomp1"]
+aptPkgs = ["tesseract-ocr", "tesseract-ocr-eng", "libgl1", "libglib2.0-0", "libsm6", "libxrender1", "libxext6", "libgomp1"]
 
 [start]
 cmd = "gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 600 --workers 2"
