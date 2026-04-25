@@ -24,6 +24,10 @@ app = FastAPI()
 # async def root():
 #     return {"status": "running", "message": "OccaServe API is operational"}
 
+@app.get("/health", include_in_schema=False)
+async def health_check():
+    return {"status": "ok"}
+
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     # Attempt to redirect to a static favicon if it exists to silence the default 404
