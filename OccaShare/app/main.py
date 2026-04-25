@@ -245,9 +245,10 @@ from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 app = FastAPI()
 
-@app.get("/", include_in_schema=False)
-async def root():
-    return {"status": "running", "message": "OccaServe API is operational"}
+# Removed conflicting root route to allow website.router landing page to load
+# @app.get("/", include_in_schema=False)
+# async def root():
+#     return {"status": "running", "message": "OccaServe API is operational"}
 
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
