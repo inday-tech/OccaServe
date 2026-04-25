@@ -19,19 +19,19 @@
 }
 
 .header-title-group h1 {
-    font-size: clamp(1.5rem, 4vw, 2.25rem);
-    font-weight: 900;
-    color: #0f172a;
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--secondary-color);
     margin: 0;
-    letter-spacing: -0.025em;
-    line-height: 1.1;
+    letter-spacing: -0.02em;
 }
 
 .header-title-group p {
     color: #64748b;
-    font-size: clamp(0.85rem, 2vw, 1rem);
-    margin-top: 0.4rem;
+    font-size: 1rem;
+    margin-top: 0.25rem;
     line-height: 1.5;
+    font-weight: 500;
 }
 
 /* --- Main Layout --- */
@@ -270,21 +270,23 @@
 .form-group label {
     display: block;
     font-weight: 700;
-    margin-bottom: 0.5rem;
-    color: #334155;
-    font-size: 0.85rem;
+    margin-bottom: 0.4rem;
+    color: #475569;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
 }
 
 .form-group input,
 .form-group textarea,
 .form-group select {
     width: 100%;
-    height: 48px;
-    padding: 0 1rem;
+    height: 44px;
+    padding: 0 0.85rem;
     border: 1.5px solid #e2e8f0;
-    border-radius: 0.85rem;
+    border-radius: var(--border-radius);
     background: #f8fafc;
-    font-size: 0.95rem;
+    font-size: 0.875rem;
     font-family: inherit;
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -716,7 +718,7 @@
     padding: 0.35rem 0.75rem;
     background: var(--primary-color, #94a3b8);
     color: white;
-    border-radius: 9999px;
+    border-radius: var(--preview-radius, 9999px);
     display: inline-block;
     font-weight: 700;
 }
@@ -725,14 +727,14 @@
     padding: 0.35rem 0.75rem;
     background: #000000;
     color: white;
-    border-radius: 9999px;
+    border-radius: var(--preview-radius, 9999px);
     display: inline-block;
     font-weight: 700;
 }
 
 .mock-widget {
     background: white;
-    border-radius: 12px;
+    border-radius: var(--preview-radius, 12px);
     padding: 1.25rem;
     box-shadow: 0 4px 10px rgba(0,0,0,0.02);
 }

@@ -1730,6 +1730,10 @@ async def update_profile(
     bank_account_name: Optional[str] = Form(None),
     bank_account_number: Optional[str] = Form(None),
     bank_qr: Optional[UploadFile] = File(None),
+    card_bank: Optional[str] = Form(None),
+    card_holder_name: Optional[str] = Form(None),
+    card_number: Optional[str] = Form(None),
+    cash_instructions: Optional[str] = Form(None),
     booking_policy: Optional[str] = Form(None),
     payment_policy: Optional[str] = Form(None),
     cancellation_policy: Optional[str] = Form(None),
@@ -1741,6 +1745,7 @@ async def update_profile(
     border_radius: Optional[int] = Form(None),
     sidebar_mode: Optional[str] = Form("full"),
     show_platform_logo: bool = Form(False),
+    gallery: Optional[List[UploadFile]] = File(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
@@ -1761,6 +1766,10 @@ async def update_profile(
     profile.bank_name = bank_name
     profile.bank_account_name = bank_account_name
     profile.bank_account_number = bank_account_number
+    profile.card_bank = card_bank
+    profile.card_holder_name = card_holder_name
+    profile.card_number = card_number
+    profile.cash_instructions = cash_instructions
     profile.booking_policy = booking_policy
     profile.payment_policy = payment_policy
     profile.cancellation_policy = cancellation_policy
@@ -1773,7 +1782,7 @@ async def update_profile(
     profile.sidebar_mode = sidebar_mode
     profile.show_platform_logo = show_platform_logo
 
-    # Handle File Uploads
+    # Handle Single File Uploads
     for field_name, file_obj in [("logo", logo), ("cover_image", cover_image), ("gcash_qr", gcash_qr), ("maya_qr", maya_qr), ("bank_qr", bank_qr)]:
         if file_obj and file_obj.filename:
             ext = os.path.splitext(file_obj.filename)[1]
@@ -1782,6 +1791,23 @@ async def update_profile(
             with open(filepath, "wb") as buffer:
                 shutil.copyfileobj(file_obj.file, buffer)
             setattr(profile, f"{field_name}_url" if field_name != 'logo' else 'logo_url', f"/static/uploads/caterer/{filename}")
+
+    # Handle Gallery Uploads (Multiple)
+    if gallery:
+        for file_obj in gallery:
+            if file_obj.filename:
+                ext = os.path.splitext(file_obj.filename)[1]
+                filename = f"gallery_{uuid.uuid4()}{ext}"
+                filepath = os.path.join(UPLOAD_DIR, filename)
+                with open(filepath, "wb") as buffer:
+                    shutil.copyfileobj(file_obj.file, buffer)
+                
+                new_gallery_item = models.CatererGallery(
+                    caterer_id=profile.id,
+                    media_url=f"/static/uploads/caterer/{filename}",
+                    media_type="image"
+                )
+                db.add(new_gallery_item)
 
     db.commit()
     return RedirectResponse(url="/caterer/profile?success_msg=Business+profile+updated+successfully", status_code=303)
