@@ -32,9 +32,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const colorInputs = document.querySelectorAll('input[type="color"]');
     colorInputs.forEach(input => {
         input.addEventListener('input', () => {
-            const codeTag = input.nextElementSibling;
-            if (codeTag && codeTag.tagName === 'CODE') {
-                codeTag.textContent = input.value.toUpperCase();
+            const sibling = input.nextElementSibling;
+            // Supports both SPAN.color-code and CODE tags
+            if (sibling && (sibling.classList.contains('color-code') || sibling.tagName === 'CODE')) {
+                sibling.textContent = input.value.toUpperCase();
             }
         });
     });
@@ -215,22 +216,25 @@ window.closePasswordModal = function() {
     }
 
     // 4. Magic Color Extraction from Logo
-    const logoInput = document.getElementById('logoInput');
-    const magicBtn = document.getElementById('magicExtractBtn');
+    const logoInputs = document.querySelectorAll('.logo-input-shared');
+    const magicBtns = document.querySelectorAll('.magic-extract-shared');
 
-    if (magicBtn && logoInput) {
-        magicBtn.addEventListener('click', () => {
-            if (logoInput.files && logoInput.files[0]) {
-                extractColors(logoInput.files[0]);
+    magicBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Find the closest related input or just check any if there are multiple
+            const activeInput = Array.from(logoInputs).find(input => input.files && input.files[0]);
+            if (activeInput) {
+                extractColors(activeInput.files[0], btn);
             } else {
                 window.showError("Please select a logo file first.");
             }
         });
-    }
+    });
 
-    async function extractColors(file) {
-        magicBtn.classList.add('processing');
-        magicBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+    async function extractColors(file, triggerBtn) {
+        triggerBtn.classList.add('processing');
+        const originalHtml = triggerBtn.innerHTML;
+        triggerBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
 
         try {
             let bitmap;
@@ -341,8 +345,8 @@ window.closePasswordModal = function() {
             console.error("Color extraction failed:", err);
             window.showError("Could not extract colors from this image. Please try another one.");
         } finally {
-            magicBtn.classList.remove('processing');
-            magicBtn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Analyze Colors';
+            triggerBtn.classList.remove('processing');
+            triggerBtn.innerHTML = originalHtml;
         }
     }
 
@@ -371,6 +375,15 @@ window.closePasswordModal = function() {
             const hex = x.toString(16);
             return hex.length === 1 ? "0" + hex : hex;
         }).join("").toUpperCase();
+    }
+
+    function hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : null;
     }
 
     // 4. Branding Advanced Interactivity
@@ -438,13 +451,26 @@ window.closePasswordModal = function() {
         if (hInput) { hInput.value = palette.highlight; hInput.dispatchEvent(new Event('input')); }
 
         // Preview in UI instantly
-        document.documentElement.style.setProperty('--primary-color', palette.primary);
-        document.documentElement.style.setProperty('--accent-color', palette.accent);
-        document.documentElement.style.setProperty('--highlight-color', palette.highlight);
+        const root = document.documentElement;
+        
+        // Update Hex Variables
+        root.style.setProperty('--primary-color', palette.primary);
+        root.style.setProperty('--secondary-color', palette.secondary);
+        root.style.setProperty('--accent-color', palette.accent);
+        root.style.setProperty('--highlight-color', palette.highlight);
+        
+        // Update RGB Variables for transparency/shadows
+        const pRgb = hexToRgb(palette.primary);
+        const sRgb = hexToRgb(palette.secondary);
+        const aRgb = hexToRgb(palette.accent);
+        const hRgb = hexToRgb(palette.highlight);
+        
+        if (pRgb) root.style.setProperty('--primary-color-rgb', `${pRgb.r}, ${pRgb.g}, ${pRgb.b}`);
+        if (sRgb) root.style.setProperty('--secondary-color-rgb', `${sRgb.r}, ${sRgb.g}, ${sRgb.b}`);
+        if (aRgb) root.style.setProperty('--accent-color-rgb', `${aRgb.r}, ${aRgb.g}, ${aRgb.b}`);
+        if (hRgb) root.style.setProperty('--highlight-color-rgb', `${hRgb.r}, ${hRgb.g}, ${hRgb.b}`);
         
         updateMockup();
-        
-        // Success feedback if it was from magic button, but let's keep it simple
     }
 
     function updateMockup() {
@@ -491,16 +517,29 @@ window.closePasswordModal = function() {
         const showLogo = platformLogoCheck ? platformLogoCheck.checked : true;
     }
 
-    // Connect manual color changes
+    // Connect manual color changes — also update CSS RGB variables live
     const colorInputsForMock = document.querySelectorAll('input[type="color"]');
     colorInputsForMock.forEach(input => {
         input.addEventListener('input', () => {
             updateMockup();
+            // Keep global CSS variables in sync when user manually changes colors
+            const varMap = {
+                'primary_color': ['--primary-color', '--primary-color-rgb'],
+                'secondary_color': ['--secondary-color', '--secondary-color-rgb'],
+                'accent_color': ['--accent-color', '--accent-color-rgb'],
+                'highlight_color': ['--highlight-color', '--highlight-color-rgb']
+            };
+            const fieldName = input.getAttribute('name');
+            if (varMap[fieldName]) {
+                document.documentElement.style.setProperty(varMap[fieldName][0], input.value);
+                const rgb = hexToRgb(input.value);
+                if (rgb) document.documentElement.style.setProperty(varMap[fieldName][1], `${rgb.r}, ${rgb.g}, ${rgb.b}`);
+            }
         });
     });
 
-    // Logo image preview in mockup
-    if (logoInput) {
+    // Logo image preview in mockup (works for ALL logo inputs via shared class)
+    logoInputs.forEach(logoInput => {
         logoInput.addEventListener('change', function() {
             if (this.files && this.files[0]) {
                 const reader = new FileReader();
@@ -516,7 +555,7 @@ window.closePasswordModal = function() {
                 reader.readAsDataURL(this.files[0]);
             }
         });
-    }
+    });
 
     // Prevent form submission if there are validation errors
     const profileForm = document.querySelector('.profile-edit-form');

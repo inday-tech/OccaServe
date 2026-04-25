@@ -31,55 +31,30 @@
 
     <style>
         :root {
-                {
-                % if user and user.caterer_profile %
-            }
-
-            --primary-color: {
-                    {
-                    user.caterer_profile.primary_color or '#f97316'
-                }
-            }
-
-            ;
-
-            --secondary-color: {
-                    {
-                    user.caterer_profile.secondary_color or '#334155'
-                }
-            }
-
-            ;
-
-            --accent-color: {
-                    {
-                    user.caterer_profile.accent_color or '#f97316'
-                }
-            }
-
-            ;
-
-            --highlight-color: {
-                    {
-                    user.caterer_profile.highlight_color or 'rgba(249, 115, 22, 0.1)'
-                }
-            }
-
-            ;
+            {% if user and user.caterer_profile %}
+            --primary-color: {{ user.caterer_profile.primary_color or '#f97316' }} !important;
+            --primary-color-rgb: {{ (user.caterer_profile.primary_color or '#f97316') | hex_to_rgb }} !important;
+            
+            --secondary-color: {{ user.caterer_profile.secondary_color or '#334155' }} !important;
+            --secondary-color-rgb: {{ (user.caterer_profile.secondary_color or '#334155') | hex_to_rgb }} !important;
+            
+            --accent-color: {{ user.caterer_profile.accent_color or '#f97316' }} !important;
+            --accent-color-rgb: {{ (user.caterer_profile.accent_color or '#f97316') | hex_to_rgb }} !important;
+            
+            --highlight-color: {{ user.caterer_profile.highlight_color or '#48BB78' }} !important;
+            --highlight-color-rgb: {{ (user.caterer_profile.highlight_color or '#48BB78') | hex_to_rgb }} !important;
+            
             --sidebar-width: 280px !important;
-
-                {
-                % else %
-            }
-
-            --primary-color: #f97316;
-            --secondary-color: #334155;
-            --accent-color: #f97316;
-            --highlight-color: rgba(249, 115, 22, 0.1);
-
-                {
-                % endif %
-            }
+            {% else %}
+            --primary-color: #f97316 !important;
+            --primary-color-rgb: 249, 115, 22 !important;
+            --secondary-color: #334155 !important;
+            --secondary-color-rgb: 51, 65, 85 !important;
+            --accent-color: #f97316 !important;
+            --accent-color-rgb: 249, 115, 22 !important;
+            --highlight-color: #48BB78 !important;
+            --highlight-color-rgb: 72, 187, 120 !important;
+            {% endif %}
         }
     </style>
 
