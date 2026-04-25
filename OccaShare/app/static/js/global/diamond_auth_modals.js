@@ -242,25 +242,22 @@ window.handleSocialLogin = function (provider) {
     if (isSocialLoggingIn) return;
     isSocialLoggingIn = true;
 
-    // Target by provider class
-    const btn = document.querySelector(`.btn-${provider}`);
+    // Support both standard and premium button classes
+    const btn = document.querySelector(`.btn-${provider}`) || document.querySelector(`.btn-${provider}-premium`);
+    
     if (btn) {
         btn.style.opacity = '0.7';
         btn.style.cursor = 'wait';
         btn.style.pointerEvents = 'none';
 
-        // Show loading spinner in place of existing icon
-        const icon = btn.querySelector('i');
-        if (icon) {
-            icon.className = 'fas fa-circle-notch fa-spin';
-        } else {
-            btn.innerHTML = `<i class="fas fa-circle-notch fa-spin"></i>`;
-        }
+        // Replace content with a loading spinner (works for both <i> and <svg> setups)
+        btn.innerHTML = `<i class="fas fa-circle-notch fa-spin"></i> <span>Processing...</span>`;
     }
 
     // Direct redirection to backend OAuth route
     window.location.href = `/auth/login/${provider}`;
 };
+
 
 window.togglePasswordVisibility = function (button) {
     const wrapper = button.parentElement;

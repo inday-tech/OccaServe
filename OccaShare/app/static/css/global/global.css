@@ -1,6 +1,8 @@
 /* Minimal Cross-browser CSS Reset & Normalize */
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
     box-sizing: border-box;
 }
 
@@ -33,29 +35,45 @@ body {
     width: 6px;
     height: 6px;
 }
+
 *::-webkit-scrollbar-track {
     background: transparent;
 }
+
 *::-webkit-scrollbar-thumb {
     background-color: #cbd5e1;
     border-radius: 20px;
     border: 2px solid transparent;
     background-clip: content-box;
 }
+
 *::-webkit-scrollbar-thumb:hover {
     background-color: #94a3b8;
 }
 
-img, picture, video, canvas, svg {
+img,
+picture,
+video,
+canvas,
+svg {
     display: block;
     max-width: 100%;
 }
 
-input, button, textarea, select {
+input,
+button,
+textarea,
+select {
     font: inherit;
 }
 
-p, h1, h2, h3, h4, h5, h6 {
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
     overflow-wrap: break-word;
 }
 
@@ -73,7 +91,8 @@ p, h1, h2, h3, h4, h5, h6 {
     right: 12px !important;
     top: 50% !important;
     transform: translateY(-50%) !important;
-    color: #64748b !important; /* Slate-500 */
+    color: #64748b !important;
+    /* Slate-500 */
     cursor: pointer !important;
     background: transparent !important;
     border: none !important;
@@ -91,7 +110,8 @@ p, h1, h2, h3, h4, h5, h6 {
 }
 
 .password-toggle-btn:hover {
-    color: #f97316 !important; /* LP Primary Orange */
+    color: #f97316 !important;
+    /* LP Primary Orange */
     transform: translateY(-50%) scale(1.15) !important;
     opacity: 1 !important;
 }
@@ -116,10 +136,12 @@ p, h1, h2, h3, h4, h5, h6 {
     display: flex !important;
     align-items: center !important;
     gap: 1rem !important;
-    margin: 1.75rem 0 !important;
-    color: #737373 !important; /* slate-600 */
-    font-size: 0.85rem !important;
-    font-weight: 500 !important;
+    margin: 1.5rem 0 !important;
+    color: #94a3b8 !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
     width: 100% !important;
 }
 
@@ -127,62 +149,57 @@ p, h1, h2, h3, h4, h5, h6 {
 .auth-divider::after {
     content: '' !important;
     flex: 1 !important;
-    height: 1.5px !important;
-    background: #e5e5e5 !important; /* slate-200 */
+    height: 1px !important;
+    background: #e2e8f0 !important;
 }
 
 .social-auth-grid {
     display: flex !important;
-    justify-content: center !important;
+    flex-direction: column !important;
     gap: 1rem !important;
     margin-bottom: 1.5rem !important;
     width: 100% !important;
 }
 
+
 .btn-social {
-    width: 48px !important;
-    height: 48px !important;
-    border-radius: 0.75rem !important;
+    width: 100% !important;
+    height: 44px !important;
+    border-radius: 8px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+    gap: 10px !important;
     text-decoration: none !important;
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
-    font-size: 1.25rem !important;
+    font-size: 0.9rem !important;
+    font-weight: 500 !important;
     background: #fff !important;
-    border: 1.5px solid #e5e5e5 !important;
-    color: #262626 !important; /* slate-800 */
-    box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
+    border: 1px solid #dadce0 !important;
+    color: #3c4043 !important;
+    box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15) !important;
+    white-space: nowrap !important;
 }
 
 .btn-social:hover {
-    transform: translateY(-3px) !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+    background-color: #f8f9fa !important;
+    border-color: #d2d4d7 !important;
+    box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15) !important;
+    transform: translateY(-1px) scale(1.01) !important;
 }
 
-/* BRAND SPECIFIC COLORS */
-.btn-facebook i {
-    color: #1877F2 !important;
-}
-.btn-facebook:hover {
-    border-color: #1877F2 !important;
-    box-shadow: 0 0 15px rgba(24, 119, 242, 0.2) !important;
+.btn-social svg {
+    width: 18px !important;
+    height: 18px !important;
+    display: block !important;
+    flex-shrink: 0 !important;
 }
 
-.btn-google i {
-    color: #EA4335 !important; /* Google Red */
-}
-.btn-google:hover {
-    border-color: #EA4335 !important;
-    box-shadow: 0 0 15px rgba(234, 67, 53, 0.15) !important;
+
+.btn-google-premium {
+    /* Inherits from .btn-social, specifically for Google */
 }
 
-.btn-instagram i {
-    background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
 
 /* ============================================================ 
    DIAMOND STANDARD: GLOBAL ALERT MODALS (SweetAlert2)
@@ -232,20 +249,20 @@ p, h1, h2, h3, h4, h5, h6 {
         width: 90% !important;
         padding: 1.5rem !important;
     }
-    
+
     .premium-swal-popup .swal2-title {
         font-size: 1.25rem !important;
     }
-    
+
     .premium-swal-popup .swal2-html-container {
         font-size: 0.85rem !important;
     }
-    
+
     .swal2-actions {
         flex-direction: column-reverse !important;
         width: 100% !important;
     }
-    
+
     .swal2-actions button {
         width: 100% !important;
         margin: 0.25rem 0 !important;

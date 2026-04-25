@@ -235,59 +235,12 @@ body {
     }
 }
 
-.social-auth-grid {
-    display: flex;
-    justify-content: center;
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-}
 
-.btn-social {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none;
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    font-size: 1.25rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
 
-.btn-social:hover {
-    transform: translateY(-4px);
-}
 
-.btn-facebook {
-    background: #1877f2;
-    color: white;
-}
 
-.btn-facebook:hover {
-    background: #166fe5;
-    box-shadow: 0 10px 15px -3px rgba(24, 119, 242, 0.3);
-}
 
-.btn-google {
-    background: white;
-    color: #DB4437;
-    border: 1px solid var(--slate-200);
-}
 
-.btn-google:hover {
-    background: #f8f9fa;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-}
-
-.btn-instagram {
-    background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2397 75%, #323232 100%);
-    color: white;
-}
-
-.btn-instagram:hover {
-    box-shadow: 0 10px 15px -3px rgba(220, 39, 67, 0.3);
-}
 
 .auth-divider {
     display: flex;

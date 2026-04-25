@@ -88,7 +88,7 @@
         display: none;
         animation: fadeInDown 0.2s ease-out;
     }
-    
+
     .dm-input-group.has-error input,
     .dm-input-group.has-error select {
         border-color: #ef4444 !important;
@@ -100,8 +100,15 @@
     }
 
     @keyframes fadeInDown {
-        from { opacity: 0; transform: translateY(-5px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+            opacity: 0;
+            transform: translateY(-5px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 </style>
 {% endblock %}
@@ -333,7 +340,8 @@
                     <label>Business Name</label>
                     <div class="dm-input-group">
                         <i class="fas fa-store"></i>
-                        <input type="text" name="business_name" id="businessNameInput" placeholder="e.g. Skyline Catering" required>
+                        <input type="text" name="business_name" id="businessNameInput"
+                            placeholder="e.g. Skyline Catering" required>
                     </div>
                     <span class="field-error-msg" id="error-business_name">Business name is required</span>
                 </div>
@@ -341,7 +349,8 @@
                     <label>Owner Full Name</label>
                     <div class="dm-input-group">
                         <i class="fas fa-user"></i>
-                        <input type="text" name="full_name" id="fullNameInput" placeholder="First and Last Name" required>
+                        <input type="text" name="full_name" id="fullNameInput" placeholder="First and Last Name"
+                            required>
                     </div>
                     <span class="field-error-msg" id="error-full_name">Please enter a valid full name</span>
                 </div>
@@ -357,7 +366,8 @@
                     <label>Contact Phone</label>
                     <div class="dm-input-group">
                         <i class="fas fa-phone"></i>
-                        <input type="tel" name="phone" id="phoneInput" placeholder="09xxxxxxxxx" maxlength="11" required>
+                        <input type="tel" name="phone" id="phoneInput" placeholder="09xxxxxxxxx" maxlength="11"
+                            required>
                     </div>
                     <span class="field-error-msg" id="error-phone">Must be 11 digits (e.g. 09123456789)</span>
                 </div>
@@ -433,8 +443,8 @@
                     <label>Phone</label>
                     <div class="dm-input-group">
                         <i class="fas fa-phone"></i>
-                        <input type="tel" name="phone" id="editPhoneInput" 
-                               pattern="09[0-9]{9}" title="Phone must be 11 digits starting with 09" required>
+                        <input type="tel" name="phone" id="editPhoneInput" pattern="09[0-9]{9}"
+                            title="Phone must be 11 digits starting with 09" required>
                     </div>
                 </div>
                 <div style="grid-column: span 2;">
@@ -553,7 +563,7 @@
         document.getElementById('editFullNameInput').value = btn.dataset.first + " " + btn.dataset.last;
         document.getElementById('editEmailInput').value = btn.dataset.email;
         document.getElementById('editPhoneInput').value = btn.dataset.phone;
-        
+
         // Match dropdown value
         const citySelect = document.getElementById('editCityInput');
         const cityValue = btn.dataset.city;
@@ -576,7 +586,7 @@
 
     // ─── High-Grade Validation ──────────────────────────────────────────
     console.log("[Admin] Initializing Onboarding Validation...");
-    
+
     const onboardingForm = document.getElementById('addCatererForm');
     if (!onboardingForm) {
         console.error("[Admin] onboardingForm not found!");
@@ -593,7 +603,7 @@
             const errorSpan = document.getElementById(`error-${fieldId}`);
             const input = onboardInputs[fieldId];
             const inputGroup = input ? input.closest('.dm-input-group') : null;
-            
+
             if (errorSpan) {
                 errorSpan.innerText = message;
                 errorSpan.style.display = 'block';
@@ -607,19 +617,22 @@
             const errorSpan = document.getElementById(`error-${fieldId}`);
             const input = onboardInputs[fieldId];
             const inputGroup = input ? input.closest('.dm-input-group') : null;
-            
+
             if (errorSpan) errorSpan.style.display = 'none';
             if (inputGroup) inputGroup.classList.remove('has-error');
         }
 
         // Real-time constraints
-        onboardInputs.full_name.addEventListener('input', function() {
-            this.value = this.value.replace(/[0-9]/g, '');
+        onboardInputs.full_name.addEventListener('input', function () {
+            // Allow letters and spaces only
+            this.value = this.value.replace(/[^a-zA-Z\s]/g, '');
             validateOnboardField('full_name');
         });
 
-        onboardInputs.phone.addEventListener('input', function() {
+        onboardInputs.phone.addEventListener('input', function () {
             this.value = this.value.replace(/[^0-9]/g, '');
+            // Limit to 11 digits
+            if (this.value.length > 11) this.value = this.value.slice(0, 11);
             validateOnboardField('phone');
         });
 
@@ -630,7 +643,7 @@
         function validateOnboardField(fieldId) {
             const input = onboardInputs[fieldId];
             const val = input.value.trim();
-            
+
             clearFieldError(fieldId);
 
             if (fieldId === 'business_name' && !val) {
@@ -640,15 +653,22 @@
 
             if (fieldId === 'full_name') {
                 if (!val) { setFieldError('full_name', 'Full name is required'); return false; }
-                if (val.length < 5) { setFieldError('full_name', 'Full name must be at least 5 characters'); return false; }
-                
+
+                // Rule: Letters and spaces only
+                if (/[^a-zA-Z\s]/.test(val)) {
+                    setFieldError('full_name', 'Full name must contain letters only');
+                    return false;
+                }
+
+                if (val.length < 5) { setFieldError('full_name', 'Please enter a valid full name'); return false; }
+
                 const words = val.toLowerCase().split(/\s+/).filter(w => w.length > 0);
                 if (words.length < 2) {
                     setFieldError('full_name', 'Please enter a valid full name (First and Last Name)');
                     return false;
                 }
-                
-                // Identical words check
+
+                // Identical words check (Rule: pepito pepito -> INVALID)
                 const firstWord = words[0];
                 if (words.every(w => w === firstWord)) {
                     setFieldError('full_name', 'Full name should NOT be identical words');
@@ -657,14 +677,27 @@
             }
 
             if (fieldId === 'email') {
-                const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (!val) { setFieldError('email', 'Email is required'); return false; }
-                if (!regex.test(val)) { setFieldError('email', 'Invalid email format (e.g. example@gmail.com)'); return false; }
+                const emailVal = val.toLowerCase();
+                if (!val) {
+                    setFieldError('email', 'Email is required');
+                    return false;
+                }
+
+                if (!emailVal.endsWith('@gmail.com')) {
+                    setFieldError('email', 'Only Gmail addresses are accepted (e.g. example@gmail.com)');
+                    return false;
+                }
+
+                const regex = /^[a-z0-9](\.?[a-z0-9]){4,}@gmail\.com$/;
+                if (!regex.test(emailVal)) {
+                    setFieldError('email', 'Invalid Gmail format');
+                    return false;
+                }
             }
 
             if (fieldId === 'phone') {
                 if (!val) { setFieldError('phone', 'Contact number is required'); return false; }
-                if (!val.startsWith('09')) { setFieldError('phone', 'Must start with 09'); return false; }
+                if (!val.startsWith('09')) { setFieldError('phone', 'Invalid phone number (Must start with 09)'); return false; }
                 if (val.length !== 11) { setFieldError('phone', 'Must be 11 digits (e.g. 09123456789)'); return false; }
             }
 
@@ -676,7 +709,7 @@
             return true;
         }
 
-        onboardingForm.addEventListener('submit', async function(e) {
+        onboardingForm.addEventListener('submit', async function (e) {
             e.preventDefault();
             console.log("[Admin] Submit triggered. Validating...");
 
@@ -734,7 +767,7 @@
         });
     }
 
-    document.getElementById('editCatererForm').addEventListener('submit', async function(e) {
+    document.getElementById('editCatererForm').addEventListener('submit', async function (e) {
         e.preventDefault();
         const formData = new FormData(this);
         const id = document.getElementById('editCatererId').value;

@@ -1039,7 +1039,8 @@ line-height: 1.5;
     }
 
     .mobile-burger-btn.is-open i::before {
-        content: "\f00d"; /* FontAwesome X icon */
+        content: "\f00d";
+        /* FontAwesome X icon */
     }
 
     .mobile-burger-btn.is-open i {

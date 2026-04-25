@@ -557,7 +557,7 @@
     setCustStars(5);
 
     // Verification Success Toast
-    window.addEventListener('load', function() {
+    window.addEventListener('load', function () {
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('verified') === 'success') {
             const Toast = Swal.mixin({
@@ -577,7 +577,7 @@
                 title: 'Account Verified Successfully!',
                 text: 'Welcome to OccaServe!'
             });
-            
+
             // Clean up URL
             const newUrl = window.location.pathname + (urlParams.toString().replace(/verified=success&?/, '').length > 0 ? '?' + urlParams.toString().replace(/verified=success&?/, '') : '');
             window.history.replaceState({}, document.title, newUrl);

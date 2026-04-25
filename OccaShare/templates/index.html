@@ -273,7 +273,7 @@
             </div>
         </div>
     </header>
-    
+
     {# ======= 1.5 TRUST COUNTERS ======= #}
     <section class="section-stats-bar">
         <div class="container">
@@ -457,45 +457,48 @@
 
             <div class="testimonial-slider-container">
                 <div class="testimonial-grid animate-on-scroll slider-track">
-                {% if highlighted_reviews %}
-                {% for review in highlighted_reviews %}
-                {% set initials = (review.user.first_name[0] if review.user.first_name else '?') ~
-                (review.user.last_name[0] if review.user.last_name else '') %}
-                {% set full_name = ((review.user.first_name or '') ~ ' ' ~ (review.user.last_name or ''))|trim or
-                review.user.email %}
-                <div class="testimonial-card">
-                    <div class="testimonial-rating" style="margin-bottom: 1rem;">
-                        {% for i in range(review.rating) %}<i class="fas fa-star"></i>{% endfor %}
-                        {% for i in range(5 - review.rating) %}<i class="far fa-star" style="color: #d1d5db;"></i>{%
-                        endfor %}
-                    </div>
-                    <p class="testimonial-quote">"{{ review.comment }}"</p>
-                    <div class="testimonial-author">
-                        {% if review.user.profile_image_url %}
-                        <img src="{{ review.user.profile_image_url }}" class="testimonial-avatar" alt="{{ initials }}"
-                            style="object-fit: cover;">
-                        {% else %}
-                        <img src="https://ui-avatars.com/api/?name={{ full_name|urlencode }}&background=E67E22&color=fff"
-                            class="testimonial-avatar" alt="{{ initials }}">
-                        {% endif %}
-                        <div>
-                            <span style="display: block; font-weight: 600; color: var(--lp-secondary);">{{ full_name
-                                }}</span>
-                            <span style="font-size: 0.85rem; color: var(--lp-text-muted);">{{ review.booking.event_type
-                                if review.booking and review.booking.event_type else 'OccaServe Customer' }}</span>
+                    {% if highlighted_reviews %}
+                    {% for review in highlighted_reviews %}
+                    {% set initials = (review.user.first_name[0] if review.user.first_name else '?') ~
+                    (review.user.last_name[0] if review.user.last_name else '') %}
+                    {% set full_name = ((review.user.first_name or '') ~ ' ' ~ (review.user.last_name or ''))|trim or
+                    review.user.email %}
+                    <div class="testimonial-card">
+                        <div class="testimonial-rating" style="margin-bottom: 1rem;">
+                            {% for i in range(review.rating) %}<i class="fas fa-star"></i>{% endfor %}
+                            {% for i in range(5 - review.rating) %}<i class="far fa-star" style="color: #d1d5db;"></i>{%
+                            endfor %}
+                        </div>
+                        <p class="testimonial-quote">"{{ review.comment }}"</p>
+                        <div class="testimonial-author">
+                            {% if review.user.profile_image_url %}
+                            <img src="{{ review.user.profile_image_url }}" class="testimonial-avatar"
+                                alt="{{ initials }}" style="object-fit: cover;">
+                            {% else %}
+                            <img src="https://ui-avatars.com/api/?name={{ full_name|urlencode }}&background=E67E22&color=fff"
+                                class="testimonial-avatar" alt="{{ initials }}">
+                            {% endif %}
+                            <div>
+                                <span style="display: block; font-weight: 600; color: var(--lp-secondary);">{{ full_name
+                                    }}</span>
+                                <span style="font-size: 0.85rem; color: var(--lp-text-muted);">{{
+                                    review.booking.event_type
+                                    if review.booking and review.booking.event_type else 'OccaServe Customer' }}</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-                {% endfor %}
-                {% else %}
-                <div style="grid-column: 1 / -1; text-align: center; padding: 4rem 2rem;">
-                    <div style="font-size: 3rem; color: #fcd34d; margin-bottom: 1rem;">⭐</div>
-                    <p style="color: var(--lp-text-muted); font-size: 1.1rem; font-weight: 600;">Be the first to leave a
-                        review!</p>
-                    <p style="color: var(--lp-text-muted); font-size: 0.95rem; margin-top: 0.5rem;">Book a caterer today
-                        and share your experience with our community.</p>
-                </div>
-                {% endif %}
+                    {% endfor %}
+                    {% else %}
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 4rem 2rem;">
+                        <div style="font-size: 3rem; color: #fcd34d; margin-bottom: 1rem;">⭐</div>
+                        <p style="color: var(--lp-text-muted); font-size: 1.1rem; font-weight: 600;">Be the first to
+                            leave a
+                            review!</p>
+                        <p style="color: var(--lp-text-muted); font-size: 0.95rem; margin-top: 0.5rem;">Book a caterer
+                            today
+                            and share your experience with our community.</p>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>

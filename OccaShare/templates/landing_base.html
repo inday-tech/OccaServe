@@ -50,21 +50,26 @@
                     <li><a href="/#how-it-works" data-nav="how-it-works">How It Works</a></li>
                     <li><a href="/#about" data-nav="about">About Us</a></li>
                     <li><a href="/#contact" data-nav="contact">Contact Us</a></li>
-                    
+
                     {# Mobile Only Auth Links #}
                     <li class="nav-auth-mobile">
                         {% if user %}
-                            {% if user.role == 'admin' %}
-                                <a href="/admin/dashboard" class="btn-primary">Admin Panel</a>
-                            {% elif user.role == 'caterer' %}
-                                <a href="/caterer/dashboard" class="btn-primary">Caterer Dashboard</a>
-                            {% else %}
-                                <a href="/customer/dashboard" class="btn-primary">My Dashboard</a>
-                            {% endif %}
-                            <a href="/auth/logout" class="btn-secondary" style="margin-top: 0.5rem; color: #fff !important;">Logout</a>
+                        {% if user.role == 'admin' %}
+                        <a href="/admin/dashboard" class="btn-primary">Admin Panel</a>
+                        {% elif user.role == 'caterer' %}
+                        <a href="/caterer/dashboard" class="btn-primary">Caterer Dashboard</a>
                         {% else %}
-                            <a href="javascript:void(0);" onclick="openAuthModal('login'); document.querySelector('.hamburger').click();" class="btn-primary">Login</a>
-                            <a href="javascript:void(0);" onclick="openAuthModal('signup'); document.querySelector('.hamburger').click();" class="btn-secondary" style="margin-top: 0.5rem; color: #fff !important;">Sign Up</a>
+                        <a href="/customer/dashboard" class="btn-primary">My Dashboard</a>
+                        {% endif %}
+                        <a href="/auth/logout" class="btn-secondary"
+                            style="margin-top: 0.5rem; color: #fff !important;">Logout</a>
+                        {% else %}
+                        <a href="javascript:void(0);"
+                            onclick="openAuthModal('login'); document.querySelector('.hamburger').click();"
+                            class="btn-primary">Login</a>
+                        <a href="javascript:void(0);"
+                            onclick="openAuthModal('signup'); document.querySelector('.hamburger').click();"
+                            class="btn-secondary" style="margin-top: 0.5rem; color: #fff !important;">Sign Up</a>
                         {% endif %}
                     </li>
                 </ul>

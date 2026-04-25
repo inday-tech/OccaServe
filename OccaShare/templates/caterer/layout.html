@@ -12,9 +12,10 @@
     <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <!-- Design System Base -->
     <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/layout.css') }}?v=4.7">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/shared/dashboard_premium.css') }}?v=1.0">
@@ -30,30 +31,67 @@
 
     <style>
         :root {
-            {% if user and user.caterer_profile %}
-            --primary-color: {{ user.caterer_profile.primary_color or '#f97316' }};
-            --secondary-color: {{ user.caterer_profile.secondary_color or '#334155' }};
-            --accent-color: {{ user.caterer_profile.accent_color or '#f97316' }};
-            --highlight-color: {{ user.caterer_profile.highlight_color or 'rgba(249, 115, 22, 0.1)' }};
+                {
+                % if user and user.caterer_profile %
+            }
+
+            --primary-color: {
+                    {
+                    user.caterer_profile.primary_color or '#f97316'
+                }
+            }
+
+            ;
+
+            --secondary-color: {
+                    {
+                    user.caterer_profile.secondary_color or '#334155'
+                }
+            }
+
+            ;
+
+            --accent-color: {
+                    {
+                    user.caterer_profile.accent_color or '#f97316'
+                }
+            }
+
+            ;
+
+            --highlight-color: {
+                    {
+                    user.caterer_profile.highlight_color or 'rgba(249, 115, 22, 0.1)'
+                }
+            }
+
+            ;
             --sidebar-width: 280px !important;
-            {% else %}
+
+                {
+                % else %
+            }
+
             --primary-color: #f97316;
             --secondary-color: #334155;
             --accent-color: #f97316;
             --highlight-color: rgba(249, 115, 22, 0.1);
-            {% endif %}
+
+                {
+                % endif %
+            }
         }
     </style>
 
-<!-- Early Sidebar State Handler (Prevents Flash) -->
-<script>
-    (function () {
-        const isCollapsed = localStorage.getItem('catererSidebarCollapsed') === 'true';
-        if (isCollapsed && window.innerWidth > 1024) {
-            document.documentElement.classList.add('sidebar-is-mini');
-        }
-    })();
-</script>
+    <!-- Early Sidebar State Handler (Prevents Flash) -->
+    <script>
+        (function () {
+            const isCollapsed = localStorage.getItem('catererSidebarCollapsed') === 'true';
+            if (isCollapsed && window.innerWidth > 1024) {
+                document.documentElement.classList.add('sidebar-is-mini');
+            }
+        })();
+    </script>
 </head>
 
 <body>
@@ -258,7 +296,7 @@
 
     <script>
         // Verification Success Toast
-        window.addEventListener('load', function() {
+        window.addEventListener('load', function () {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('verified') === 'success') {
                 const Toast = Swal.mixin({
@@ -278,7 +316,7 @@
                     title: 'Account Verified Successfully!',
                     text: 'Your business profile is now active.'
                 });
-                
+
                 // Clean up URL
                 const newUrl = window.location.pathname + (urlParams.toString().replace(/verified=success&?/, '').length > 0 ? '?' + urlParams.toString().replace(/verified=success&?/, '') : '');
                 window.history.replaceState({}, document.title, newUrl);
