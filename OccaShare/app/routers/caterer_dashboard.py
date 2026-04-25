@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Form, Request, UploadFile, File, Body
 from typing import Optional, List
+from datetime import datetime, date
 from pydantic import BaseModel
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from ..core.templates import templates
@@ -131,7 +132,6 @@ async def create_manual_booking(
             raise HTTPException(status_code=400, detail="Customer name is required")
 
         # 1. Handle User (Customer)
-        # Check if user exists by email, else create a placeholder
         target_user = None
         if "@" in customer_email:
             target_user = db.query(models.User).filter(models.User.email == customer_email).first()
@@ -149,17 +149,23 @@ async def create_manual_booking(
                 status="active"
             )
             db.add(target_user)
-            db.flush() # Get ID
+            db.flush() 
 
         # 2. Create Booking
-        event_date = datetime.strptime(data.get("event_date"), "%Y-%m-%d").date()
+        event_date = datetime.strptime(data.get("event_date")[:10], "%Y-%m-%d").date()
         event_time_str = data.get("event_time")
-        event_time = datetime.strptime(event_time_str, "%H:%M").time() if event_time_str else None
+        if event_time_str:
+            try:
+                event_time = datetime.strptime(event_time_str[:5], "%H:%M").time()
+            except ValueError:
+                event_time = None
+        else:
+            event_time = None
 
         new_booking = models.Booking(
             user_id=target_user.id,
             caterer_id=user.caterer_profile.id,
-            package_id=data.get("package_id"),
+            package_id=data.get("package_id") or None,
             event_name=data.get("event_name"),
             event_type=data.get("event_type"),
             event_date=event_date,
@@ -168,27 +174,37 @@ async def create_manual_booking(
             total_amount=data.get("total_amount", 0),
             total_price=data.get("total_amount", 0),
             venue_address=data.get("venue_address"),
-            status="confirmed", # Walk-ins are usually confirmed immediately
-            payment_status="paid", # Typically paid on the spot
+            status="confirmed", 
+            payment_status="paid", 
             payment_method="Cash",
             special_requests="Walk-in Booking"
         )
         db.add(new_booking)
+        db.flush()
+
+        # 3. Handle Selected Menu Items (Add-ons or Package items)
+        menu_item_ids = data.get("menu_items", [])
+        if menu_item_ids:
+            for mi_id in menu_item_ids:
+                mi = db.query(models.MenuItem).get(mi_id)
+                if mi:
+                    sel_item = models.SelectedMenuItem(
+                        booking_id=new_booking.id,
+                        menu_item_id=mi.id,
+                        quantity=1, # Default for now
+                        price_at_booking=mi.addon_price or mi.price or 0
+                    )
+                    db.add(sel_item)
         
-        # 3. Add History
+        # 4. Add History
         history = models.BookingHistory(
-            booking_id=None, # Will be set after flush
+            booking_id=new_booking.id,
             status="confirmed",
             notes="Manual walk-in booking created by caterer."
         )
         db.add(history)
         
         db.commit()
-        
-        # Set history's booking_id (or rely on relationship if set up)
-        history.booking_id = new_booking.id
-        db.commit()
-
         return {"status": "success", "booking_id": new_booking.id}
     except Exception as e:
         db.rollback()
@@ -653,6 +669,7 @@ async def caterer_archives(
     archived_packages = [pkg for pkg in profile.packages if pkg.status == 'archived']
     archived_gallery_items = [item for item in profile.gallery_items if item.is_archived]
     archived_bookings = [b for b in profile.bookings if b.is_archived]
+    archived_ingredients = [ing for ing in profile.ingredients if ing.is_archived]
 
     return templates.TemplateResponse("caterer/archives.html", {
         "request": request,
@@ -661,6 +678,7 @@ async def caterer_archives(
         "archived_packages": archived_packages,
         "archived_gallery_items": archived_gallery_items,
         "archived_bookings": archived_bookings,
+        "archived_ingredients": archived_ingredients,
         "active_page": "archives"
     })
 
@@ -670,28 +688,68 @@ async def caterer_payments(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    from datetime import datetime, timezone
     profile = user.caterer_profile
     bookings = [b for b in profile.bookings if b.status != 'draft' and not b.is_archived]
-    
-    # Calculate Escrow and Capital
-    # 1. Total Released (Capital already sent to caterer)
-    released_total = db.query(func.sum(models.PayoutItem.amount)).join(models.Payout).filter(
+
+    # ── Payout-table totals (formal system values) ──────────────────────────
+    released_payout = db.query(func.sum(models.PayoutItem.amount)).join(models.Payout).filter(
         models.Payout.caterer_id == profile.id,
         models.PayoutItem.status == 'released'
     ).scalar() or 0.0
 
-    # 2. Total Ready (Processable by admin - e.g. DP prep funds)
-    ready_total = db.query(func.sum(models.PayoutItem.amount)).join(models.Payout).filter(
+    ready_payout = db.query(func.sum(models.PayoutItem.amount)).join(models.Payout).filter(
         models.Payout.caterer_id == profile.id,
         models.PayoutItem.status == 'ready'
     ).scalar() or 0.0
 
-    # 3. Total Escrowed (Held until completion)
-    escrow_total = db.query(func.sum(models.PayoutItem.amount)).join(models.Payout).filter(
+    escrow_payout = db.query(func.sum(models.PayoutItem.amount)).join(models.Payout).filter(
         models.Payout.caterer_id == profile.id,
         models.PayoutItem.status == 'escrowed'
     ).scalar() or 0.0
-    
+
+    # ── Booking-based fallback (always accurate even without payout records) ─
+    # Compute directly from booking payment_status for accuracy
+    booking_released = 0.0   # fully paid + completed
+    booking_escrow   = 0.0   # deposit_paid — balance held until event
+    booking_pending  = 0.0   # not yet paid
+
+    now = datetime.now(timezone.utc)
+    active_count = 0
+
+    for b in bookings:
+        if b.status in ('cancelled', 'rejected'):
+            continue
+        active_count += 1
+        amount = float(b.total_amount or b.total_price or 0)
+
+        if b.payment_status == 'paid' and b.status == 'completed':
+            booking_released += amount
+        elif b.payment_status == 'paid':
+            # Paid but not yet completed — treat as escrow pending release
+            booking_escrow += amount
+        elif b.payment_status == 'deposit_paid':
+            # Partial: deposit released, balance escrowed
+            dp_pct = 0.20
+            if b.quotation and b.quotation.downpayment_percent:
+                dp_pct = b.quotation.downpayment_percent / 100.0
+            deposit = amount * dp_pct
+            booking_released += deposit
+            booking_escrow   += (amount - deposit)
+        else:
+            booking_pending += amount
+
+    # Use payout table if it has real data, otherwise use booking-based values
+    has_payout_data = (released_payout + ready_payout + escrow_payout) > 0
+    if has_payout_data:
+        released_total = released_payout
+        ready_total    = ready_payout
+        escrow_total   = escrow_payout
+    else:
+        released_total = booking_released
+        ready_total    = booking_pending   # pending = ready-to-collect
+        escrow_total   = booking_escrow
+
     return templates.TemplateResponse("caterer/payments.html", {
         "request": request,
         "user": user,
@@ -700,8 +758,10 @@ async def caterer_payments(
         "ready_total": ready_total,
         "escrow_total": escrow_total,
         "capital_total": released_total + ready_total,
+        "active_count": active_count,
         "active_page": "payments"
     })
+
 
 @router.get("/payments/{booking_id}/confirm")
 async def confirm_caterer_payment_get(booking_id: int):
@@ -988,8 +1048,18 @@ async def set_balance_due_date(
         )
         db.add(history)
         db.commit()
+
+        # [NEW] Notify Customer
+        from ..services.notification import NotificationService
+        await NotificationService.notify_status_update(
+            db, 
+            booking.user_id, 
+            "Balance Payment Deadline Set", 
+            f"The caterer has set the final payment deadline for '{booking.event_name}' to {req.due_date}. Please ensure payment is settled by this date.", 
+            f"/customer/bookings/manage/{booking.id}"
+        )
         
-        return {"status": "success", "message": "Due date updated"}
+        return {"status": "success", "message": "Due date updated and customer notified"}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=f"Invalid date format: {e}")
@@ -1034,23 +1104,67 @@ async def get_booking_details_api(
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
 
+    # Fetch commission settings
+    config = db.query(models.WebsiteConfig).first()
+    comm_rate = config.commission_rate if config else 10.0
+    comm_fixed = config.commission_fixed_amount if config else 20.0
+    
+    total = float(booking.total_amount or 0)
+    commission = (total * (comm_rate / 100.0)) + comm_fixed
+    net_amount = total - commission
+
     return {
         "id": booking.id,
         "event_name": booking.event_name,
         "event_type": booking.event_type,
-        "total_amount": float(booking.total_amount or 0),
+        "total_amount": total,
+        "commission": round(commission, 2),
+        "net_amount": round(net_amount, 2),
+        "commission_rate": comm_rate,
         "payment_status": booking.payment_status,
         "payment_method": booking.payment_method,
         "payment_proof_url": booking.payment_proof_url,
         "balance_proof_url": booking.balance_proof_url,
         "payment_verification_data": booking.payment_verification_data,
+        "quotation_id": booking.quotation.id if booking.quotation else None,
+        "contract_url": booking.quotation.contract_url if booking.quotation else None,
         "user": {
-            "first_name": booking.user.first_name,
-            "last_name": booking.user.last_name,
-            "email": booking.user.email
+            "first_name": booking.user.first_name if booking.user else "Walk-in",
+            "last_name": booking.user.last_name if booking.user else "Customer",
+            "email": booking.user.email if booking.user else "N/A"
         },
         "is_package": booking.package_id is not None
     }
+
+
+@router.get("/bookings/{booking_id}/quotation")
+async def view_booking_quotation(
+    request: Request,
+    booking_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    """View the detailed quotation/invoice for a booking."""
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking or booking.caterer_id != user.caterer_profile.id:
+        return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
+    
+    quotation = booking.quotation
+    if not quotation:
+        # Fallback if no quotation record exists
+        quotation = {
+            "total_amount": booking.total_amount,
+            "package_details": {"name": booking.event_type},
+            "addons": [],
+            "status": "confirmed"
+        }
+
+    return templates.TemplateResponse("caterer/quotation_view.html", {
+        "request": request,
+        "booking": booking,
+        "quotation": quotation,
+        "user": user
+    })
 
 
 @router.post("/bookings/{booking_id}/complete")
@@ -1247,7 +1361,89 @@ async def caterer_customers(
         "active_page": "customers"
     })
 
+@router.get("/api/payments/summary")
+async def payments_summary_api(
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    """Real-time summary of payment card totals — used by JS polling."""
+    from datetime import datetime, timezone
+    profile = user.caterer_profile
+    bookings = [b for b in profile.bookings if b.status != 'draft' and not b.is_archived]
+
+    released_payout = db.query(func.sum(models.PayoutItem.amount)).join(models.Payout).filter(
+        models.Payout.caterer_id == profile.id,
+        models.PayoutItem.status == 'released'
+    ).scalar() or 0.0
+
+    ready_payout = db.query(func.sum(models.PayoutItem.amount)).join(models.Payout).filter(
+        models.Payout.caterer_id == profile.id,
+        models.PayoutItem.status == 'ready'
+    ).scalar() or 0.0
+
+    escrow_payout = db.query(func.sum(models.PayoutItem.amount)).join(models.Payout).filter(
+        models.Payout.caterer_id == profile.id,
+        models.PayoutItem.status == 'escrowed'
+    ).scalar() or 0.0
+
+    booking_released = 0.0
+    booking_escrow   = 0.0
+    booking_pending  = 0.0
+    active_count     = 0
+
+    for b in bookings:
+        if b.status in ('cancelled', 'rejected'):
+            continue
+        active_count += 1
+        amount = float(b.total_amount or b.total_price or 0)
+
+        if b.payment_status == 'paid' and b.status == 'completed':
+            booking_released += amount
+        elif b.payment_status == 'paid':
+            booking_escrow += amount
+        elif b.payment_status == 'deposit_paid':
+            dp_pct = 0.20
+            if b.quotation and b.quotation.downpayment_percent:
+                dp_pct = b.quotation.downpayment_percent / 100.0
+            deposit = amount * dp_pct
+            booking_released += deposit
+            booking_escrow   += (amount - deposit)
+        else:
+            booking_pending += amount
+
+    has_payout_data = (released_payout + ready_payout + escrow_payout) > 0
+    if has_payout_data:
+        released_total = released_payout
+        ready_total    = ready_payout
+        escrow_total   = escrow_payout
+    else:
+        released_total = booking_released
+        ready_total    = booking_pending
+        escrow_total   = booking_escrow
+
+    # Per-booking payment status counts
+    status_counts = {"completed": 0, "partial": 0, "pending": 0}
+    for b in bookings:
+        if b.status in ('cancelled', 'rejected'):
+            continue
+        if b.payment_status == 'paid':
+            status_counts["completed"] += 1
+        elif b.payment_status == 'deposit_paid':
+            status_counts["partial"] += 1
+        else:
+            status_counts["pending"] += 1
+
+    return JSONResponse({
+        "released_total": round(released_total, 2),
+        "ready_total":    round(ready_total, 2),
+        "escrow_total":   round(escrow_total, 2),
+        "active_count":   active_count,
+        "status_counts":  status_counts,
+        "last_updated":   datetime.now(timezone.utc).isoformat()
+    })
+
 @router.get("/api/roi-analytics")
+
 async def caterer_roi_analytics(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
@@ -1309,11 +1505,12 @@ async def caterer_calendar(
     current_date = date.today()
     
     # For the list view on the side
-    confirmed_bookings = db.query(models.Booking).filter(
+    # For the list view on the side (Status Tracker) - Show active non-completed bookings first
+    tracker_bookings = db.query(models.Booking).filter(
         models.Booking.caterer_id == user.caterer_profile.id,
-        models.Booking.status == 'confirmed',
-        models.Booking.event_date >= current_date
-    ).order_by(models.Booking.event_date).limit(5).all()
+        models.Booking.status.in_(['confirmed', 'preparing', 'ready_for_delivery', 'on_the_way', 'arrived', 'setup_ongoing']),
+        models.Booking.is_archived == False
+    ).order_by(models.Booking.event_date.asc()).all()
     # For the walk-in form options
     packages = db.query(models.CateringPackage).filter(
         models.CateringPackage.caterer_id == user.caterer_profile.id,
@@ -1329,7 +1526,7 @@ async def caterer_calendar(
     return templates.TemplateResponse("caterer/calendar.html", {
         "request": request,
         "user": user,
-        "bookings": confirmed_bookings,
+        "bookings": tracker_bookings,
         "current_date": current_date,
         "packages": packages,
         "menu_items": menu_items,
@@ -1391,10 +1588,19 @@ async def add_package(
     price_per_head: float = Form(0.0),
     cost_price: float = Form(0.0),
     cost_breakdown: Optional[str] = Form(None),
+    markup_type: str = Form("percentage"),
+    markup_value: float = Form(0.0),
     min_contract_amount: float = Form(0.0),
     min_guests: int = Form(1),
     max_guests: Optional[int] = Form(None),
+    inclusions: Optional[List[str]] = Form(None),
+    linked_menu_ids: Optional[List[int]] = Form(None),
     image: Optional[UploadFile] = File(None),
+    base_pax: int = Form(50),
+    labor_cost: float = Form(0.0),
+    utility_cost: float = Form(0.0),
+    equipment_cost: float = Form(0.0),
+    internal_cost_per_pax: float = Form(0.0),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
@@ -1415,14 +1621,31 @@ async def add_package(
         service_duration=service_duration,
         price_per_head=price_per_head,
         cost_price=cost_price,
-        cost_breakdown=json.loads(cost_breakdown) if cost_breakdown else None,
+        cost_breakdown=json.loads(cost_breakdown) if cost_breakdown else [],
+        markup_type=markup_type,
+        markup_value=markup_value,
         min_contract_amount=min_contract_amount,
         min_guests=min_guests,
         max_guests=max_guests,
         image_url=image_url,
+        inclusions={inc: True for inc in inclusions} if inclusions else {},
+        base_pax=base_pax,
+        labor_cost=labor_cost,
+        utility_cost=utility_cost,
+        equipment_cost=equipment_cost,
+        internal_cost_per_pax=internal_cost_per_pax,
         is_active=True,
         status='active'
     )
+    
+    # Handle linked menu items
+    if linked_menu_ids:
+        items = db.query(models.MenuItem).filter(
+            models.MenuItem.id.in_(linked_menu_ids),
+            models.MenuItem.caterer_id == user.caterer_profile.id
+        ).all()
+        new_pkg.menu_items = items
+
     db.add(new_pkg)
     db.commit()
     return RedirectResponse(url="/caterer/packages?success_msg=Package+added+successfully", status_code=303)
@@ -1583,14 +1806,22 @@ async def get_package_details_api(
         "service_type": package.service_type,
         "price_per_head": package.price_per_head,
         "cost_price": package.cost_price,
-        "cost_breakdown": package.cost_breakdown,
+        "cost_breakdown": package.cost_breakdown or [],
+        "markup_type": package.markup_type or 'percentage',
+        "markup_value": package.markup_value or 0,
         "min_contract_amount": package.min_contract_amount,
         "min_guests": package.min_guests,
         "max_guests": package.max_guests,
         "service_duration": package.service_duration,
         "image_url": package.image_url,
         "inclusions": package.inclusions or {},
-        "is_active": package.is_active
+        "is_active": package.is_active,
+        "base_pax": package.base_pax,
+        "labor_cost": package.labor_cost,
+        "utility_cost": package.utility_cost,
+        "equipment_cost": package.equipment_cost,
+        "ingredient_total_cost": package.ingredient_total_cost,
+        "internal_cost_per_pax": package.internal_cost_per_pax
     }
 
 @router.post("/packages/{package_id}/update")
@@ -1603,11 +1834,19 @@ async def update_package(
     price_per_head: float = Form(0.0),
     cost_price: float = Form(0.0),
     cost_breakdown: Optional[str] = Form(None),
+    markup_type: str = Form("percentage"),
+    markup_value: float = Form(0.0),
     min_contract_amount: float = Form(0.0),
     min_guests: int = Form(1),
     max_guests: Optional[int] = Form(None),
-    inclusions: Optional[list[str]] = Form(None),
+    inclusions: Optional[List[str]] = Form(None),
+    linked_menu_ids: Optional[List[int]] = Form(None),
     image: Optional[UploadFile] = File(None),
+    base_pax: int = Form(50),
+    labor_cost: float = Form(0.0),
+    utility_cost: float = Form(0.0),
+    equipment_cost: float = Form(0.0),
+    internal_cost_per_pax: float = Form(0.0),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
@@ -1629,13 +1868,28 @@ async def update_package(
     package.min_contract_amount = min_contract_amount
     package.min_guests = min_guests
     package.max_guests = max_guests
+    package.base_pax = base_pax
+    package.labor_cost = labor_cost
+    package.utility_cost = utility_cost
+    package.equipment_cost = equipment_cost
+    package.internal_cost_per_pax = internal_cost_per_pax
+    package.markup_type = markup_type
+    package.markup_value = markup_value
     
     # Process inclusions into a dict for storage
     if inclusions:
-        inc_dict = {inc: True for inc in inclusions}
-        package.inclusions = inc_dict
+        package.inclusions = {inc: True for inc in inclusions}
     else:
         package.inclusions = {}
+
+    # Handle linked menu items
+    if linked_menu_ids is not None:
+        items = db.query(models.MenuItem).filter(
+            models.MenuItem.id.in_(linked_menu_ids),
+            models.MenuItem.caterer_id == user.caterer_profile.id
+        ).all()
+        package.menu_items = items
+
 
     if image and image.filename:
         ext = os.path.splitext(image.filename)[1]
@@ -1829,6 +2083,11 @@ async def update_menu_item(
     serving_size: Optional[str] = Form(None),
     is_addon: bool = Form(False),
     addon_price: float = Form(0.0),
+    base_pax: int = Form(50),
+    labor_cost: float = Form(0.0),
+    utility_cost: float = Form(0.0),
+    equipment_cost: float = Form(0.0),
+    internal_cost_per_pax: float = Form(0.0),
     dietary_tags: Optional[list[str]] = Form(None),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db),
@@ -1866,6 +2125,7 @@ async def update_menu_item(
 
 @router.post("/menu/{item_id}/archive")
 async def archive_menu_item_caterer(
+    request: Request,
     item_id: int,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
@@ -1940,6 +2200,8 @@ async def toggle_availability(
         )
         db.add(new_avail)
     
+    db.commit()
+    return {"status": "success"}
 @router.post("/api/sidebar-mode")
 async def toggle_sidebar_mode(
     request: Request,
@@ -1975,7 +2237,8 @@ async def get_calendar_events(
 
     bookings = db.query(models.Booking).filter(
         models.Booking.caterer_id == target_caterer_id,
-        models.Booking.status == 'confirmed'
+        models.Booking.status.in_(['confirmed', 'preparing', 'ready_for_delivery', 'on_the_way', 'arrived', 'setup_ongoing', 'completed']),
+        models.Booking.is_archived == False
     ).all()
     
     events = []
@@ -2074,162 +2337,6 @@ async def set_booking_reminder(
 
     return {"status": "success", "message": "Reminder set successfully"}
 
-from pydantic import BaseModel
-from typing import Optional
-
-class ManualBookingCreate(BaseModel):
-    event_name: str
-    event_type: str
-    event_date: str
-    event_time: Optional[str] = None
-    venue_address: Optional[str] = None
-    guest_count: int
-    total_amount: float
-    customer_name: str
-    customer_email: Optional[str] = None
-    customer_contact: Optional[str] = None
-    package_id: Optional[int] = None
-    menu_items: Optional[list[int]] = []
-
-class CustomerCheck(BaseModel):
-    name: str
-    email: Optional[str] = None
-
-@router.post("/api/check-customer")
-async def check_customer(
-    data: CustomerCheck,
-    db: Session = Depends(database.get_db),
-    user: models.User = Depends(auth.get_current_user_optional)
-):
-    if not user or user.role != 'caterer':
-        raise HTTPException(status_code=403, detail="Not authorized")
-    
-    query = db.query(models.User).filter(models.User.role == 'customer')
-    
-    customer = None
-    if data.email:
-        customer = query.filter(models.User.email == data.email).first()
-
-    # If not found by email, try fuzzy searching by name
-    if not customer and data.name:
-        parts = data.name.split()
-        if len(parts) >= 2:
-            first = parts[0]
-            last = parts[-1]
-            customer = query.filter(
-                models.User.first_name.ilike(f"%{first}%"),
-                models.User.last_name.ilike(f"%{last}%")
-            ).first()
-        else:
-            customer = query.filter(
-                (models.User.first_name.ilike(f"%{data.name}%")) | 
-                (models.User.last_name.ilike(f"%{data.name}%"))
-            ).first()
-        
-    if customer:
-        full_name = f"{customer.first_name or ''} {customer.last_name or ''}".strip()
-        # Explicit check if email matches exactly for "taken" detection
-        email_taken = False
-        if data.email and customer.email and data.email.lower() == customer.email.lower():
-            email_taken = True
-            
-        return {
-            "exists": True, 
-            "is_taken": email_taken,
-            "name": full_name or customer.email, 
-            "email": customer.email, 
-            "contact": customer.phone_number,
-            "message": "Existing customer found." if email_taken else "Similar name found."
-        }
-    
-    return {"exists": False}
-
-@router.post("/api/bookings/manual")
-async def create_manual_booking(
-    booking_data: ManualBookingCreate,
-    db: Session = Depends(database.get_db),
-    user: models.User = Depends(auth.get_current_user_optional)
-):
-    if not user or user.role != 'caterer':
-        raise HTTPException(status_code=403, detail="Not authorized")
-        
-    profile = user.caterer_profile
-    if not profile:
-        raise HTTPException(status_code=404, detail="Caterer profile not found")
-
-    try:
-        from datetime import datetime
-        event_date_obj = datetime.strptime(booking_data.event_date, "%Y-%m-%d").date()
-        
-        event_time_obj = None
-        if booking_data.event_time:
-            try:
-                event_time_obj = datetime.strptime(booking_data.event_time, "%H:%M").time()
-            except ValueError:
-                event_time_obj = datetime.strptime(booking_data.event_time, "%H:%M:%S").time()
-        
-        # Ensure walk-in dummy user exists to bypass any SQLite NOT NULL user_id constraints safely
-        walkin_user = db.query(models.User).filter_by(email="walkin@occaserve.local").first()
-        if not walkin_user:
-            walkin_user = models.User(
-                email="walkin@occaserve.local",
-                first_name="Walk-in",
-                last_name="Customer",
-                role="customer",
-                password_hash="system_managed",
-                status="inactive"
-            )
-            db.add(walkin_user)
-            db.commit()
-            db.refresh(walkin_user)
-        
-        new_booking = models.Booking(
-            caterer_id=profile.id,
-            user_id=walkin_user.id,
-            event_name=booking_data.event_name,
-            event_type=booking_data.event_type,
-            event_date=event_date_obj,
-            event_time=event_time_obj,
-            venue_address=booking_data.venue_address,
-            guest_count=booking_data.guest_count,
-            total_amount=booking_data.total_amount,
-            total_price=booking_data.total_amount,
-            package_id=booking_data.package_id,
-            special_requests=f"Walk-in Customer: {booking_data.customer_name}\nContact: {booking_data.customer_contact or 'N/A'}",
-            status="confirmed",
-            payment_status="paid"
-        )
-        db.add(new_booking)
-        db.commit()
-        db.refresh(new_booking)
-        
-        # Link explicit selected menu items
-        if booking_data.menu_items:
-            items_db = db.query(models.MenuItem).filter(
-                models.MenuItem.id.in_(booking_data.menu_items),
-                models.MenuItem.caterer_id == profile.id
-            ).all()
-            for item in items_db:
-                bmi = models.BookingMenuItem(
-                    booking_id=new_booking.id,
-                    menu_item_id=item.id,
-                    price=item.price,
-                    is_add_on=item.is_addon
-                )
-                db.add(bmi)
-            db.commit()
-            
-        # Broadcast update for real-time dashboard sync
-        await manager.broadcast_to_user(user.id, {
-            "type": "dashboard_update",
-            "message": f"Manual booking created: {new_booking.event_name}"
-        })
-
-        return {"status": "success", "booking_id": new_booking.id}
-    except Exception as e:
-        db.rollback()
-        print(f"MANUAL BOOKING ERROR: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/notifications", response_class=HTMLResponse)
 async def caterer_notifications(
@@ -2573,6 +2680,38 @@ async def delete_gallery_item_permanent(
     db.commit()
     return RedirectResponse(url="/caterer/archives?success_msg=Gallery+photo+permanently+deleted", status_code=303)
 
+@router.post("/ingredients/{item_id}/restore")
+async def restore_ingredient(
+    item_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    item = db.query(models.Ingredient).filter(
+        models.Ingredient.id == item_id,
+        models.Ingredient.caterer_id == user.caterer_profile.id
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Ingredient not found")
+    item.is_archived = False
+    db.commit()
+    return RedirectResponse(url="/caterer/archives?success_msg=Ingredient+restored+successfully", status_code=303)
+
+@router.post("/ingredients/{item_id}/delete")
+async def delete_ingredient_permanent(
+    item_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    item = db.query(models.Ingredient).filter(
+        models.Ingredient.id == item_id,
+        models.Ingredient.caterer_id == user.caterer_profile.id
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Ingredient not found")
+    db.delete(item)
+    db.commit()
+    return RedirectResponse(url="/caterer/archives?success_msg=Ingredient+permanently+deleted", status_code=303)
+
 @router.get("/messages", response_class=HTMLResponse)
 async def caterer_messages(
     request: Request, 
@@ -2596,35 +2735,42 @@ async def check_customer(
     email = data.get("email", "").strip()
     name = data.get("name", "").strip()
 
-    # Search for an existing user
-    # Priority is exact email match
+    query = db.query(models.User).filter(models.User.role == 'customer')
+    
+    target = None
     if email and "@" in email:
-        target = db.query(models.User).filter(models.User.email.ilike(email)).first()
-        if target:
-            return {
-                "exists": True, 
-                "match_type": "email",
-                "name": f"{target.first_name} {target.last_name}".strip() if target.first_name else "Unknown",
-                "email": target.email,
-                "contact": target.phone_number
-            }
-            
-    # Then by name using ilike if email is missing or not found
-    if name and len(name) > 2:
-        target = db.query(models.User).filter(
-            models.User.first_name.ilike(f"%{name.split()[0]}%") |
-            models.User.last_name.ilike(f"%{name.split()[-1]}%")
-        ).first()
-        
-        if target:
-            return {
-                "exists": True,
-                "match_type": "name",
-                "name": f"{target.first_name} {target.last_name}".strip(),
-                "email": target.email,
-                "contact": target.phone_number
-            }
+        target = query.filter(models.User.email.ilike(email)).first()
 
+    # Then by name using ilike if email is missing or not found
+    if not target and name and len(name) > 2:
+        parts = name.split()
+        if len(parts) >= 2:
+            target = query.filter(
+                models.User.first_name.ilike(f"%{parts[0]}%"),
+                models.User.last_name.ilike(f"%{parts[-1]}%")
+            ).first()
+        else:
+            target = query.filter(
+                models.User.first_name.ilike(f"%{name}%") |
+                models.User.last_name.ilike(f"%{name}%")
+            ).first()
+
+    if target:
+        full_name = f"{target.first_name or ''} {target.last_name or ''}".strip()
+        email_taken = False
+        if email and target.email and email.lower() == target.email.lower():
+            email_taken = True
+            
+        return {
+            "exists": True, 
+            "is_taken": email_taken,
+            "match_type": "email" if email_taken else "name",
+            "name": full_name or target.email, 
+            "email": target.email, 
+            "contact": target.phone_number,
+            "message": "Existing customer found." if email_taken else "Similar name found."
+        }
+        
     return {"exists": False}
 
 @router.get("/reviews", response_class=HTMLResponse)
@@ -2778,11 +2924,18 @@ async def view_customer_verification(
     if not verification:
         return RedirectResponse(url="/caterer/compliance?error_msg=No+verification+data+found+for+this+user.")
 
+    # Fetch relevant bookings for historical context
+    bookings = db.query(models.Booking).filter(
+        models.Booking.caterer_id == profile.id,
+        models.Booking.user_id == user_id
+    ).order_by(models.Booking.created_at.desc()).all()
+
     return templates.TemplateResponse("caterer/compliance_verify.html", {
         "request": request,
         "user": user,
         "target_user": target_user,
         "verification": verification,
+        "bookings": bookings,
         "active_page": "compliance"
     })
 
@@ -2860,5 +3013,237 @@ async def verify_customer_compliance(
     except Exception as e:
         print(f"[KYC WS] Failed to notify user {user_id}: {e}")
 
-    return RedirectResponse(url=f"/caterer/compliance?success_msg=Customer+{action}d+successfully", status_code=303)
+    return RedirectResponse(url=f"/caterer/compliance/view/{user_id}?success_msg=Identity+{action}d+successfully", status_code=303)
 
+
+# --- SMART PRICING & QUICK BOOK SYSTEM ---
+from ..services.pricing_service import PricingService
+
+@router.get("/ingredients", response_class=HTMLResponse)
+async def manage_ingredients(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    ingredients = db.query(models.Ingredient).filter(
+        models.Ingredient.caterer_id == user.caterer_profile.id,
+        models.Ingredient.is_archived == False
+    ).order_by(models.Ingredient.name).all()
+    
+    return templates.TemplateResponse("caterer/ingredients.html", {
+        "request": request,
+        "user": user,
+        "ingredients": ingredients,
+        "active_page": "ingredients" # Corrected active page to highlight the sidebar link
+    })
+
+@router.get("/api/ingredients/list")
+async def list_ingredients_api(
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    ingredients = db.query(models.Ingredient).filter(
+        models.Ingredient.caterer_id == user.caterer_profile.id,
+        models.Ingredient.is_archived == False
+    ).order_by(models.Ingredient.name).all()
+    
+    return [{"id": i.id, "name": i.name, "unit": i.unit, "unit_price": i.unit_price} for i in ingredients]
+
+@router.post("/api/ingredients")
+async def save_ingredient(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    data = await request.json()
+    ing_id = data.get("id")
+    name = data.get("name")
+    unit = data.get("unit")
+    unit_price = float(data.get("unit_price") or 0)
+
+    if ing_id:
+        ingredient = db.query(models.Ingredient).get(ing_id)
+        if not ingredient or ingredient.caterer_id != user.caterer_profile.id:
+            raise HTTPException(status_code=404, detail="Ingredient not found")
+        
+        ingredient.name = name
+        ingredient.unit = unit
+        ingredient.unit_price = unit_price
+    else:
+        ingredient = models.Ingredient(
+            caterer_id=user.caterer_profile.id,
+            name=name,
+            unit=unit,
+            unit_price=unit_price
+        )
+        db.add(ingredient)
+    
+    db.commit()
+    db.refresh(ingredient)
+    
+    # Cascade updates if price changed
+    if ing_id:
+        PricingService.cascade_update_from_ingredient(db, ingredient.id)
+    
+    return {"status": "success", "ingredient_id": ingredient.id}
+
+@router.delete("/api/ingredients/{ingredient_id}")
+async def delete_ingredient(
+    ingredient_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    ingredient = db.query(models.Ingredient).get(ingredient_id)
+    if not ingredient or ingredient.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Ingredient not found")
+    
+    ingredient.is_archived = True
+    db.commit()
+    return {"status": "success"}
+
+@router.get("/api/menu-items/{menu_item_id}/ingredients")
+async def get_menu_item_ingredients(
+    menu_item_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    menu_item = db.query(models.MenuItem).get(menu_item_id)
+    if not menu_item or menu_item.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+    
+    ingredients = []
+    for mii in menu_item.ingredients:
+        ingredients.append({
+            "id": mii.ingredient_id,
+            "name": mii.ingredient.name,
+            "unit": mii.ingredient.unit,
+            "unit_price": mii.ingredient.unit_price,
+            "quantity": mii.quantity
+        })
+    
+    return {
+        "menu_item_id": menu_item_id,
+        "name": menu_item.name,
+        "ingredients": ingredients,
+        "total_cost": menu_item.cost_price
+    }
+
+@router.post("/api/menu-items/{menu_item_id}/ingredients")
+async def save_menu_item_ingredients(
+    menu_item_id: int,
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    data = await request.json()
+    mapping = data.get("ingredients", []) # List of {id, quantity}
+
+    menu_item = db.query(models.MenuItem).get(menu_item_id)
+    if not menu_item or menu_item.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+    
+    # Remove existing mappings
+    db.query(models.MenuItemIngredient).filter_by(menu_item_id=menu_item_id).delete()
+    
+    # Add new mappings
+    for item in mapping:
+        mii = models.MenuItemIngredient(
+            menu_item_id=menu_item_id,
+            ingredient_id=item['id'],
+            quantity=item['quantity']
+        )
+        db.add(mii)
+    
+    db.commit()
+    
+    # Recalculate cost
+    PricingService.calculate_menu_item_cost(db, menu_item_id)
+    
+    # Cascade to packages
+    for pkg in menu_item.packages:
+        PricingService.calculate_package_cost(db, pkg.id)
+        
+    return {"status": "success"}
+
+@router.post("/api/packages/{package_id}/roi")
+async def save_package_roi(
+    package_id: int,
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    data = await request.json()
+    markup_type = data.get("markup_type", "percentage")
+    markup_value = float(data.get("markup_value") or 0)
+
+    package = db.query(models.CateringPackage).get(package_id)
+    if not package or package.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Package not found")
+    
+    package.markup_type = markup_type
+    package.markup_value = markup_value
+    
+    db.commit()
+    
+    # Recalculate package selling price
+    PricingService.calculate_package_cost(db, package_id)
+    
+    return {"status": "success", "new_price": package.price}
+
+@router.get("/api/quick-quotation/{package_id}")
+async def get_quick_quotation(
+    package_id: int,
+    pax: int = 10,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    package = db.query(models.CateringPackage).get(package_id)
+    if not package or package.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Package not found")
+    
+    PricingService.calculate_package_cost(db, package_id)
+    
+    cost_per_pax = package.cost_price
+    total_cost = cost_per_pax * pax
+    total_price = package.price * pax
+    roi = total_price - total_cost
+    
+    breakdown = []
+    for item in package.menu_items:
+        breakdown.append({
+            "name": item.name,
+            "cost_per_pax": item.cost_price,
+            "ingredients": [{
+                "name": mi.ingredient.name,
+                "qty": mi.quantity,
+                "unit": mi.ingredient.unit,
+                "cost": mi.ingredient.unit_price * mi.quantity
+            } for mi in item.ingredients]
+        })
+
+    return {
+        "package_name": package.name,
+        "pax": pax,
+        "cost_per_pax": cost_per_pax,
+        "total_cost": total_cost,
+        "total_price": total_price,
+        "roi": roi,
+        "markup_label": f"{package.markup_value}%" if package.markup_type == 'percentage' else f"₱{package.markup_value}",
+        "breakdown": breakdown
+    }
+
+@router.get("/api/validate-customer-email")
+async def validate_customer_email(
+    email: str, 
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    """Detects if a customer email is already registered in the system."""
+    target_user = db.query(models.User).filter(models.User.email == email).first()
+    if target_user:
+        return {
+            "exists": True, 
+            "name": f"{target_user.first_name} {target_user.last_name}",
+            "role": target_user.role
+        }
+    return {"exists": False}

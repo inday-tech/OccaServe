@@ -1,0 +1,228 @@
+{% extends "caterer/layout.html" %}
+{% block title %}Ingredients Library - OccaServe{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/ingredients.css') }}?v=1.2">
+{% endblock %}
+
+{% block content %}
+<div class="container-premium">
+    <div class="page-header kyc-page-header animate-up">
+        <div class="header-title-group">
+            <h1>Ingredient Inventory</h1>
+            <p>Manage your raw materials and track internal costs for accurate menu pricing.</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn-primary-pro" onclick="openIngredientModal()">
+                <i class="fas fa-plus"></i> <span>Add Ingredient</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="stats-grid-dashboard animate-up delay-1">
+        <div class="stat-card-premium c-card-premium stat-card-white">
+            <div class="stat-icon-bg halo-slate"><i class="fas fa-box-open"></i></div>
+            <div class="stat-label-dashboard">Total Ingredients</div>
+            <div class="stat-value-dashboard">{{ ingredients|length }}</div>
+        </div>
+        <div class="stat-card-premium c-card-premium stat-card-white">
+            <div class="stat-icon-bg halo-amber"><i class="fas fa-chart-line"></i></div>
+            <div class="stat-label-dashboard">Market Price Alerts</div>
+            <div class="stat-value-dashboard" style="color: #f59e0b;">0</div>
+        </div>
+    </div>
+
+    <div class="c-card-premium animate-up delay-2">
+        <div class="search-box-pro mb-4">
+            <i class="fas fa-search"></i>
+            <input type="text" id="ingredientSearch" placeholder="Search ingredients..." onkeyup="filterIngredients()">
+        </div>
+        <div class="premium-table-wrapper mt-4">
+            <table class="premium-table" id="ingredientsTable">
+                <thead>
+                    <tr>
+                        <th>Ingredient Name</th>
+                        <th>Unit Type</th>
+                        <th>Cost per Unit</th>
+                        <th>Last Updated</th>
+                        <th style="text-align: right;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in ingredients %}
+                    <tr class="premium-row">
+                        <td class="premium-cell">
+                            <div class="kyc-user-identity-box">
+                                <strong class="kyc-user-name">{{ item.name }}</strong>
+                            </div>
+                        </td>
+                        <td class="premium-cell">
+                            <span class="kyc-status-badge status-pending" style="text-transform: lowercase;">{{ item.unit }}</span>
+                        </td>
+                        <td class="premium-cell" style="font-weight: 700; color: var(--color-neutral-900);">
+                            ₱{{ "{:,.2f}".format(item.unit_price) }}
+                        </td>
+                        <td class="premium-cell" style="color: var(--color-neutral-500); font-size: var(--text-sm);">
+                            {{ item.updated_at.strftime('%Y-%m-%d') if item.updated_at else 'Never' }}
+                        </td>
+                        <td class="premium-cell" style="text-align: right; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                            <button class="btn-icon-edit" onclick="editIngredient({{ item.id }}, '{{ item.name|escape }}', '{{ item.unit }}', {{ item.unit_price }})" title="Edit"><i class="fas fa-edit"></i></button>
+                            <button class="btn-icon-archive" onclick="deleteIngredient({{ item.id }})" title="Archive"><i class="fas fa-archive"></i></button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" style="text-align:center; padding: 3rem;">
+                            <div style="color: var(--color-neutral-400); margin-bottom: 1rem;"><i class="fas fa-box-open fa-3x"></i></div>
+                            <strong>No ingredients added yet.</strong>
+                            <p style="color: var(--color-neutral-500); font-size: var(--text-sm); margin-top: 0.5rem;">Start adding raw materials to enable smart costing.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Add/Edit Ingredient -->
+<div id="ingredientModal" class="modal-pro">
+    <div class="modal-content-pro">
+        <div class="modal-header-pro">
+            <h3 id="modalTitle">Add New Ingredient</h3>
+            <button class="btn-close-pro" type="button" onclick="closeModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <form id="ingredientForm" onsubmit="saveIngredient(event)">
+            <input type="hidden" id="ingId">
+            <div class="modal-body-pro space-y-4">
+                <div class="form-group-pro">
+                    <label>Ingredient Name</label>
+                    <input type="text" id="ingName" class="control-pro" placeholder="e.g. Chicken Breast, Jasmine Rice" required>
+                </div>
+                <div class="form-row-pro">
+                    <div class="form-group-pro">
+                        <label>Unit Type</label>
+                        <select id="ingUnit" class="control-pro">
+                            <option value="kg">Kilogram (kg)</option>
+                            <option value="g">Gram (g)</option>
+                            <option value="pack">Pack</option>
+                            <option value="piece">Piece (pcs)</option>
+                            <option value="ml">Milliliter (ml)</option>
+                            <option value="l">Liter (L)</option>
+                        </select>
+                    </div>
+                    <div class="form-group-pro">
+                        <label>Cost per Unit (₱)</label>
+                        <input type="number" step="0.01" id="ingPrice" class="control-pro" placeholder="0.00" required>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer-pro">
+                <button type="button" class="btn-secondary-pro" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn-primary-pro">Save Ingredient</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function openIngredientModal() {
+        document.getElementById('modalTitle').innerText = 'Add New Ingredient';
+        document.getElementById('ingId').value = '';
+        document.getElementById('ingredientForm').reset();
+        document.getElementById('ingredientModal').classList.add('active');
+    }
+
+    function editIngredient(id, name, unit, price) {
+        document.getElementById('modalTitle').innerText = 'Edit Ingredient';
+        document.getElementById('ingId').value = id;
+        document.getElementById('ingName').value = name;
+        document.getElementById('ingUnit').value = unit;
+        document.getElementById('ingPrice').value = price;
+        document.getElementById('ingredientModal').classList.add('active');
+    }
+
+    function closeModal() {
+        document.getElementById('ingredientModal').classList.remove('active');
+    }
+
+    async function saveIngredient(event) {
+        event.preventDefault();
+        const ingName = document.getElementById('ingName');
+        const ingPrice = document.getElementById('ingPrice');
+        
+        if(!ingName.value || !ingPrice.value) {
+            window.showError('Please fill in all required fields.', 'Required Fields');
+            return;
+        }
+
+        const id = document.getElementById('ingId').value;
+        const data = {
+            id: id ? parseInt(id) : null,
+            name: ingName.value,
+            unit: document.getElementById('ingUnit').value,
+            unit_price: parseFloat(ingPrice.value)
+        };
+
+        try {
+            const resp = await fetch('/caterer/api/ingredients', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const res = await resp.json();
+            if (res.status === 'success') {
+                closeModal();
+                window.showSuccess('Ingredient saved. Costing engine will update automatically.', 'Success!');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                window.showError(res.detail || 'Failed to save ingredient.', 'Error');
+            }
+        } catch (e) {
+            console.error(e);
+            window.showError('Failed to save ingredient due to a network error.', 'Error');
+        }
+    }
+
+    function deleteIngredient(id) {
+        window.showConfirm(
+            "Are you sure you want to archive this ingredient? It will no longer be available for new menus.",
+            () => executeDelete(id),
+            "Archive Ingredient?",
+            "Yes, Archive"
+        );
+    }
+
+    async function executeDelete(id) {
+        try {
+            const resp = await fetch(`/caterer/api/ingredients/${id}`, { method: 'DELETE' });
+            const res = await resp.json();
+            if (res.status === 'success') {
+                window.showSuccess('Ingredient archived successfully.', 'Archived');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                window.showError(res.detail || 'Failed to archive ingredient.', 'Error');
+            }
+        } catch (e) {
+            console.error(e);
+            window.showError('Failed to archive ingredient.', 'Error');
+        }
+    }
+
+    function filterIngredients() {
+        const query = document.getElementById('ingredientSearch').value.toLowerCase();
+        const rows = document.querySelectorAll('#ingredientsTable tbody tr.premium-row');
+        
+        rows.forEach(row => {
+            const name = row.querySelector('.kyc-user-name').innerText.toLowerCase();
+            if (name.includes(query)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+</script>
+{% endblock %}

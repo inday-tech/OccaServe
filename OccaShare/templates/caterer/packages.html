@@ -4,7 +4,7 @@
 {% block title %}Manage Packages - OccaShare Caterer{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/packages.css') }}?v=1.5">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/packages.css') }}?v=1.7">
 {% endblock %}
 
 {% block content %}
@@ -30,7 +30,8 @@
     <div class="package-card-pro" id="package-{{ package.id }}">
         <div class="package-media-pro">
             {% if package.image_url %}
-            <img src="{{ package.image_url }}" alt="{{ package.name }}" loading="lazy">
+            <img src="{{ package.image_url }}" alt="{{ package.name }}" loading="lazy" 
+                 onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Crect width=\'100%25\' height=\'100%25\' fill=\'%23f8fafc\'/%3E%3Cpath d=\'M30 40 L70 40 L50 70 Z\' fill=\'%23e2e8f0\'/%3E%3Ctext x=\'50%25\' y=\'85%25\' dominant-baseline=\'middle\' text-anchor=\'middle\' font-family=\'sans-serif\' font-size=\'8\' font-weight=\'800\' fill=\'%23cbd5e1\'%3EIMAGE NOT FOUND%3C/text%3E%3C/svg%3E'">
             {% else %}
             <div class="no-image-placeholder">
                 <i class="fas fa-utensils"></i>
@@ -66,11 +67,11 @@
             <div class="package-specs-minimal">
                 <div class="spec-item-min">
                     <i class="fas fa-users"></i>
-                    <span>{{ package.min_guests or 1 }}-{{ package.max_guests or '500+' }} guests</span>
+                    <span>{{ package.min_guests or 50 }}+ guests</span>
                 </div>
                 <div class="spec-item-min">
-                    <i class="fas fa-utensils-alt"></i>
-                    <span>{{ package.menu_items|length if package.menu_items else 0 }} items</span>
+                    <i class="fas fa-utensils"></i>
+                    <span>{{ package.menu_items|length if package.menu_items else 0 }} dishes</span>
                 </div>
             </div>
 
@@ -79,9 +80,13 @@
                     <button class="btn-edit-full" onclick="editPackage({{ package.id }})">
                         <i class="fas fa-edit"></i> Edit
                     </button>
-                    <button class="btn-menu-items" onclick="showMenuModal({{ package.id }}, '{{ package.name }}')"
-                        title="Menu Items">
-                        <i class="fas fa-list-ul"></i>
+                    <button class="btn-menu-items" onclick="openRoiModal({{ package.id }}, '{{ package.name }}', '{{ package.markup_type }}', {{ package.markup_value or 0 }})"
+                        title="ROI & Markup Settings" style="color: #10b981; background: #f0fdf4;">
+                        <i class="fas fa-chart-line"></i>
+                    </button>
+                    <button class="btn-menu-items" onclick='showMenuModal({{ package.id }}, {{ package.name | tojson | safe }})'
+                        title="Manage Included Menu">
+                        <i class="fas fa-utensils"></i>
                     </button>
                     <button class="btn-archive-pro" onclick="archivePackage({{ package.id }})" title="Archive Package">
                         <i class="fas fa-archive"></i>
@@ -105,441 +110,297 @@
 </div>
 {% endif %}
 
-<!-- Create/Edit Package Modal -->
-<div id="packageModal" class="occ-modal-overlay">
-    <div class="occ-modal-box sz-lg occ-content-pop">
-        <div class="occ-modal-header">
+<!-- Create/Edit Package Form Modal -->
+<div id="packageModal" class="modal-pro">
+    <div class="modal-content-pro" style="max-width: 800px;">
+        <div class="modal-header-pro">
             <div>
-                <h3 id="packageModalTitle" class="occ-modal-title">Create New Package</h3>
-                <div class="occ-modal-subtitle">Define your service logistics, inclusions, and professional pricing tiers.</div>
+                <h3 id="packageModalTitle" class="modal-title">Create New Package</h3>
+                <p class="text-xs text-neutral-500 mt-1">Define your service logistics, inclusions, and professional pricing tiers.</p>
             </div>
-            <button onclick="hideModal()" class="occ-modal-close">
+            <button type="button" class="btn-close-pro" onclick="closeModal('packageModal')">
                 <i class="fas fa-times"></i>
             </button>
         </div>
 
         <form id="packageForm" action="/caterer/packages/add" method="POST" enctype="multipart/form-data" novalidate>
-            <div class="occ-modal-body">
-                <div id="packageErrorDrawer" class="error-drawer"></div>
+            <div class="modal-body-pro">
+                <div id="packageErrorDrawer" class="error-drawer mb-4" style="display:none;"></div>
                 
-                <div class="modal-tabs-pro" style="position: relative; z-index: 5000; pointer-events: auto;">
-                    <button type="button" class="mtab-btn active" onclick="switchPackageTab(this, 'basic')">Logistics</button>
-                    <button type="button" class="mtab-btn" onclick="switchPackageTab(this, 'details')">Inclusions</button>
-                    <button type="button" class="mtab-btn" onclick="switchPackageTab(this, 'pricing')">Pricing & ROI</button>
+                <input type="hidden" name="cost_price" id="cost_price_input" value="0">
+                <input type="hidden" name="cost_breakdown" id="cost_breakdown_input" value="[]">
+                <input type="hidden" name="markup_type" id="pkgEditorMarkupType" value="percentage">
+                <input type="hidden" name="markup_value" id="pkgEditorMarkupValue" value="0">
+                
+                <!-- Premium Wizard Navigation -->
+                <div class="pkg-wizard-steps">
+                    <div class="pkg-step active" id="step-btn-basic" onclick="switchPackageTab(this, 'basic')">
+                        <div class="step-icon"><i class="fas fa-info-circle"></i></div>
+                        <span class="step-label">Basic</span>
+                    </div>
+                    <div class="pkg-step" id="step-btn-perks" onclick="switchPackageTab(this, 'perks')">
+                        <div class="step-icon"><i class="fas fa-gift"></i></div>
+                        <span class="step-label">Inclusions</span>
+                    </div>
+                    <div class="pkg-step" id="step-btn-menu" onclick="switchPackageTab(this, 'menu')">
+                        <div class="step-icon"><i class="fas fa-utensils"></i></div>
+                        <span class="step-label">Dishes</span>
+                    </div>
+                    <div class="pkg-step" id="step-btn-pricing" onclick="switchPackageTab(this, 'pricing')">
+                        <div class="step-icon"><i class="fas fa-calculator"></i></div>
+                        <span class="step-label">Pricing</span>
+                    </div>
                 </div>
 
-                <!-- Logistics Tab -->
+                <!-- Tab Panes -->
                 <div id="tab-basic" class="tab-pane-pro active">
-                    <div class="occ-form-grid">
-                        <div class="occ-form-group full-width">
-                            <label class="occ-form-label">Package Title *</label>
-                            <input type="text" name="name" class="occ-form-input" placeholder="e.g. Royal Wedding Tier" required minlength="3" maxlength="100">
-                            <div class="invalid-feedback"></div>
-                        </div>
-                        <div class="occ-form-group">
-                            <label class="occ-form-label">Event Category</label>
-                            <select name="service_type" class="filter-select-pro w-100">
-                                <option value="Wedding">Wedding Celebration</option>
-                                <option value="Birthday">Birthday Party</option>
-                                <option value="Corporate">Corporate Event</option>
-                                <option value="Debut">Debut/Engagement</option>
-                                <option value="General">Custom Gathering</option>
+                    <div class="form-group-pro">
+                        <label>Package Name</label>
+                        <input type="text" name="name" class="control-pro" placeholder="e.g. Premium Wedding Package" required>
+                    </div>
+                    <div class="form-group-pro">
+                        <label>Description</label>
+                        <textarea name="description" class="control-pro" rows="3" placeholder="Tell us more about this package..."></textarea>
+                    </div>
+                    <div class="form-row-pro">
+                        <div class="form-group-pro">
+                            <label>Service Type</label>
+                            <select name="service_type" class="control-pro">
+                                <option value="Wedding">Wedding</option>
+                                <option value="Corporate">Corporate</option>
+                                <option value="Birthday">Birthday</option>
+                                <option value="General" selected>General Event</option>
                             </select>
                         </div>
-                        <div class="occ-form-group">
-                            <label class="occ-form-label">Service Duration (Hours) *</label>
-                            <input type="text" name="service_duration" class="occ-form-input js-format-comma" value="8" required inputmode="numeric">
-                            <div class="invalid-feedback"></div>
-                        </div>
-                        <div class="occ-form-group full-width">
-                            <label class="occ-form-label">Description *</label>
-                            <textarea name="description" rows="3" class="occ-form-input" style="height:auto;" placeholder="Tell the story of this dining experience..." required maxlength="1000"></textarea>
-                        </div>
-                        <div class="occ-form-group full-width">
-                            <label class="occ-form-label">Package Cover Photo</label>
-                            <div class="photo-upload-area" id="photoUploadArea" style="border: 2px dashed #cbd5e1; border-radius: 1rem; padding: 2rem; text-align: center; background: #f8fafc; cursor: pointer; transition: all 0.2s;">
-                                <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; color: #94a3b8; margin-bottom: 0.5rem; display: block;"></i>
-                                <span style="font-size: 0.9rem; color: #64748b; font-weight: 500;">Click to upload or drag and drop</span>
-                                <input type="file" name="image" accept="image/*" id="packageImageInput" onchange="previewPackageImage(event)" style="display:none;">
-                            </div>
-                            <img id="packageImagePreview" class="photo-preview-img" style="display:none; width:100%; height:200px; object-fit:cover; border-radius:1rem; margin-top:1rem;" alt="Preview">
+                        <div class="form-group-pro">
+                            <label>Service Duration (Hours)</label>
+                            <input type="number" name="service_duration" class="control-pro" value="8">
                         </div>
                     </div>
                 </div>
 
-                <!-- Inclusions Tab -->
-                <div id="tab-details" class="tab-pane-pro">
-                    <label class="occ-form-label mb-3 d-block">Standard Inclusions:</label>
-                    <div class="inclusion-matrix" id="inclusionMatrix">
-                        <label class="matrix-item"><input type="checkbox" name="inclusions" value="Full Setup"> Full Venue Setup</label>
-                        <label class="matrix-item"><input type="checkbox" name="inclusions" value="Wait Staff"> Professional Staff</label>
-                        <label class="matrix-item"><input type="checkbox" name="inclusions" value="Styling"> Event Styling</label>
-                        <label class="matrix-item"><input type="checkbox" name="inclusions" value="Equipment"> Service Equipment</label>
-                        <label class="matrix-item"><input type="checkbox" name="inclusions" value="Lights/Sounds"> Lights & Sounds</label>
-                        <label class="matrix-item"><input type="checkbox" name="inclusions" value="Mobile Bar"> Mobile Bar</label>
-                    </div>
+                <!-- Tab 2: Inclusions & Amenities -->
+                <div id="tab-perks" class="tab-pane-pro">
+                    <div class="form-group-pro">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md);">
+                            <label style="margin:0;">Amenities & Package Perks</label>
+                            <span style="font-size: 9px; font-weight:800; color:var(--color-neutral-400); text-transform:uppercase; background:var(--color-neutral-100); padding:2px 8px; border-radius:4px;">Checklist Mode</span>
+                        </div>
+                        
+                        <div style="background:var(--color-neutral-50); border-radius:var(--radius-md); padding:var(--space-md); border:1px solid var(--color-neutral-200); margin-bottom:var(--space-md); max-height:220px; overflow-y:auto;">
+                            <div id="inclusionMatrix" class="inclusion-matrix">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
 
-                    <div style="margin-top:2rem; padding:1.25rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:1rem;">
-                        <label class="occ-form-label" style="margin-bottom:0.75rem;">Add Custom Inclusion</label>
-                        <div style="display:flex; gap:0.75rem;">
-                            <input type="text" id="customInclusionInput" class="occ-form-input" style="flex:1;" placeholder="e.g. Free Champagne Toast" onkeydown="if(event.key === 'Enter') { event.preventDefault(); window.addCustomInclusion(); }">
-                            <button type="button" class="btn-sm-confirm" onclick="window.addCustomInclusion()" style="height:46px; padding:0 1.25rem;">Add</button>
+                        <div style="display:flex; gap:var(--space-sm);">
+                            <input type="text" id="customInclusionInput" class="control-pro" placeholder="Add custom perk (e.g., Free Unlimited Rice)" style="flex:1;">
+                            <button type="button" onclick="window.addCustomInclusion()" class="btn-primary-pro" style="min-width: 42px; padding:0;">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Menu Selection -->
+                <div id="tab-menu" class="tab-pane-pro">
+                    <div style="background:var(--color-neutral-50); border:1px solid var(--color-neutral-200); border-radius:var(--radius-md); padding:var(--space-md);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md);">
+                            <label style="margin:0;">Library Selection</label>
+                            <div style="position:relative; width:160px;">
+                                <i class="fas fa-search" style="position:absolute; left:var(--space-sm); top:50%; transform:translateY(-50%); font-size:10px; color:var(--color-neutral-400);"></i>
+                                <input type="text" id="pkgMenuLibrarySearch" placeholder="Quick search..." onkeyup="filterPkgMenuLibrary()" class="control-pro" style="height:32px; padding-left:2rem; font-size:11px;">
+                            </div>
+                        </div>
+                        <div id="pkgMenuLibraryContainer" class="menu-items-scroll">
+                            <!-- Populated with via JS -->
                         </div>
                     </div>
                 </div>
 
                 <!-- Pricing Tab -->
                 <div id="tab-pricing" class="tab-pane-pro">
-                    <div class="occ-form-grid">
-                        <div class="occ-form-group">
-                            <label class="occ-form-label">Price Per Guest (₱) *</label>
-                            <input type="text" name="price_per_head" class="occ-form-input js-format-comma" placeholder="0" required inputmode="numeric">
-                            <div class="invalid-feedback"></div>
+                    <div class="form-row-pro">
+                        <div class="form-group-pro">
+                            <label style="color:var(--primary-color);">Selling Price (PHP)</label>
+                            <div style="position:relative;">
+                                <span style="position:absolute; left:var(--space-md); top:50%; transform:translateY(-50%); font-weight:800; color:var(--color-neutral-400);">₱</span>
+                                <input type="text" name="price_per_head" id="pkgManualPriceInput" class="control-pro js-format-comma" style="padding-left:2.5rem; font-weight:800; font-size:var(--text-base);" placeholder="0.00" required>
+                            </div>
                         </div>
-                        <div class="occ-form-group">
-                            <label class="occ-form-label">Min. Investment (₱)</label>
-                            <input type="text" name="min_contract_amount" class="occ-form-input js-format-comma" placeholder="0" inputmode="numeric">
-                            <div class="invalid-feedback"></div>
+                        <div class="form-group-pro">
+                            <label>Minimum Guests</label>
+                            <input type="number" name="min_guests" class="control-pro" style="font-weight:700;" value="50">
                         </div>
-                        <div class="occ-form-group">
-                            <label class="occ-form-label">Min. Guests</label>
-                            <input type="text" name="min_guests" class="occ-form-input js-format-comma" value="50" required inputmode="numeric">
-                        </div>
-                        <div class="occ-form-group">
-                            <label class="occ-form-label">Max. Guests</label>
-                            <input type="text" name="max_guests" class="occ-form-input js-format-comma" placeholder="Unlimited" inputmode="numeric">
-                        </div>
+                    </div>
 
-                        <div class="occ-form-group full-width" style="margin-top:1rem;">
-                            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:1rem; padding:1.5rem;">
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                                    <label class="occ-form-label" style="margin:0;">Internal Costing & ROI</label>
-                                    <span class="premium-status-badge" id="roiMarginBadge" style="background:#94a3b8; color:white;">Margin: --%</span>
-                                </div>
-                                <div id="costRowsContainer" style="display:flex; flex-direction:column; gap:0.75rem;">
-                                    <!-- Dynamic rows -->
-                                </div>
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1.5rem; padding-top:1rem; border-top:1px dashed #cbd5e1;">
-                                    <button type="button" class="btn-sm-outline" onclick="addCostRow('costRowsContainer')" style="border-style:dashed;">+ Add Expense</button>
-                                    <div style="text-align:right;">
-                                        <span style="display:block; font-size:0.7rem; font-weight:800; color:#64748b; text-transform:uppercase;">Total Base Cost</span>
-                                        <span id="totalCostDisplay" style="font-size:1.25rem; font-weight:800; color:var(--secondary-color);">₱0</span>
+                    <!-- Profit Analyzer -->
+                    <div class="internal-tools-wrapper">
+                        <div class="tools-header" onclick="window.toggleSmartPricing()" style="border-radius: var(--radius-md);">
+                            <span><i class="fas fa-chart-pie mr-2"></i> Profit Margin Analyzer</span>
+                            <i id="smartToolsIcon" class="fas fa-chevron-down transition-transform"></i>
+                        </div>
+                        
+                        <div id="smartPricingSection" style="display:none; padding:var(--space-lg); border:1px solid var(--color-neutral-200); border-top:none; border-bottom-left-radius:var(--radius-md); border-bottom-right-radius:var(--radius-md); background:white;">
+                            <div class="form-row-pro" style="margin-bottom:var(--space-md);">
+                                <div style="padding:var(--space-md); background:var(--color-neutral-50); border-radius:var(--radius-md); border:1px solid var(--color-neutral-100);">
+                                    <label>ROI Strategy</label>
+                                    <div style="display:flex; gap:4px; margin-bottom:var(--space-sm);">
+                                        <button type="button" id="p-markup-percentage" onclick="setEditorMarkupType('percentage')" style="flex:1; height:32px; font-size:9px; font-weight:900; border-radius:6px; border:1px solid var(--color-neutral-200); background:white;">PERCENT %</button>
+                                        <button type="button" id="p-markup-fixed" onclick="setEditorMarkupType('fixed')" style="flex:1; height:32px; font-size:9px; font-weight:900; border-radius:6px; border:1px solid var(--color-neutral-200); background:white;">FIXED ₱</button>
+                                    </div>
+                                    <div style="position:relative;">
+                                        <span id="pMarkupSymbol" style="position:absolute; left:var(--space-sm); top:50%; transform:translateY(-50%); font-size:12px; font-weight:800; color:var(--color-neutral-400);">%</span>
+                                        <input type="number" id="pkgEditorMarkupValue" class="control-pro" style="height:36px; padding-left:2rem; font-weight:700;" placeholder="0">
                                     </div>
                                 </div>
-                                <input type="hidden" name="cost_price" id="cost_price_input" value="0">
-                                <input type="hidden" name="cost_breakdown" id="cost_breakdown_input" value="[]">
+                                <div style="padding:var(--space-md); background:#eff6ff; border-radius:var(--radius-md); border:1px solid #dbeafe; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
+                                    <span style="font-size:9px; font-weight:900; color:#3b82f6; text-transform:uppercase; margin-bottom:4px;">Projected Revenue</span>
+                                    <span style="color:#1d4ed8; font-weight:900; font-size:var(--text-lg);">₱<span id="projRevenueDisplay">0.00</span></span>
+                                </div>
+                            </div>
+                            
+                            <div style="background:white; padding:var(--space-md); border-radius:var(--radius-md); border:1px solid var(--color-neutral-200);">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md);">
+                                    <span style="font-size:10px; font-weight:800; color:var(--color-neutral-400); text-transform:uppercase;">Internal Overhead Expenses</span>
+                                    <span id="roiMarginBadge" class="roi-badge-smart good">--% Margin</span>
+                                </div>
+                                <div class="form-row-pro">
+                                    <div class="form-group-pro">
+                                        <label>Base Pax (For Costing)</label>
+                                        <input type="number" name="base_pax" id="pkgBasePax" class="control-pro" value="50">
+                                    </div>
+                                    <div class="form-group-pro">
+                                        <label>Total Labor Cost (₱)</label>
+                                        <input type="number" step="0.01" name="labor_cost" id="pkgLaborCost" class="control-pro" value="0.00">
+                                    </div>
+                                </div>
+                                <div class="form-row-pro mt-2">
+                                    <div class="form-group-pro">
+                                        <label>Total Utilities (₱)</label>
+                                        <input type="number" step="0.01" name="utility_cost" id="pkgUtilityCost" class="control-pro" value="0.00">
+                                    </div>
+                                    <div class="form-group-pro">
+                                        <label>Total Equipment (₱)</label>
+                                        <input type="number" step="0.01" name="equipment_cost" id="pkgEquipmentCost" class="control-pro" value="0.00">
+                                    </div>
+                                </div>
+                                
+                                <div style="padding-top:var(--space-sm); border-top:1px dashed var(--color-neutral-200); display:flex; justify-content:space-between; align-items:center; margin-top: 1rem;">
+                                    <div>
+                                        <span style="font-size:10px; font-weight:900; color:var(--color-neutral-500); display:block; margin-bottom: 2px;">+ Menu Ingredient Cost</span>
+                                        <span id="pkgIngredientCostDisplay" style="font-size:11px; font-weight:800; color:var(--primary-color);">₱0.00 / pax</span>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <span style="font-size:10px; font-weight:900; color:var(--color-neutral-500); display:block; margin-bottom: 2px;">Internal Cost Per Pax</span>
+                                        <span id="totalCostDisplay" style="font-size:12px; font-weight:900; color:var(--color-neutral-900);">₱0.00</span>
+                                        <input type="hidden" name="internal_cost_per_pax" id="pkgInternalCostPerPax" value="0">
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="occ-modal-footer">
-                <button type="button" class="btn-sm-outline" style="min-width:100px;" onclick="hideModal()">Cancel</button>
-                <button type="submit" class="btn-primary" style="height:44px; padding:0 2rem;">Save Package</button>
+            <div class="modal-footer-pro">
+                <button type="button" class="btn-secondary-pro" style="min-width: 100px;" onclick="closeModal('packageModal')">Cancel</button>
+                <button type="submit" class="btn-primary-pro" style="padding: 0 var(--space-xl);">
+                    <i class="fas fa-check-circle"></i> Save Package
+                </button>
             </div>
         </form>
     </div>
 </div>
-
 <!-- Menu Management Modal -->
-<div id="menuModal" class="occ-modal-overlay">
-    <div class="occ-modal-box sz-lg occ-content-pop">
-        <div class="occ-modal-header">
+<div id="menuModal" class="modal-pro">
+    <div class="modal-content-pro" style="max-width: 700px;">
+        <div class="modal-header-pro">
             <div>
-                <h3 class="occ-modal-title">Manage Menu Items</h3>
-                <div id="targetPkgDisplay" class="occ-modal-subtitle"></div>
+                <h3 class="modal-title">Manage Menu Items</h3>
+                <p id="targetPkgDisplay" class="text-xs text-neutral-500 mt-1"></p>
             </div>
-            <button onclick="hideMenuModal()" class="occ-modal-close">
+            <button onclick="hideMenuModal()" class="btn-close-pro">
                 <i class="fas fa-times"></i>
             </button>
         </div>
 
-        <div class="occ-modal-body">
+        <div class="modal-body-pro">
             <div class="modal-tabs-pro" style="margin-bottom:1.5rem;">
                 <button type="button" class="mtab-btn active" onclick="switchMenuMode('current')">Curated Menu</button>
                 <button type="button" class="mtab-btn" onclick="switchMenuMode('library')">Link from Library</button>
-                <button type="button" class="mtab-btn" onclick="switchMenuMode('new')">Add New Dish</button>
             </div>
 
             <!-- Current Package Items -->
-            <div id="menu-mode-current" class="menu-mode-pane active">
-                <div id="menuItemsContainer" style="display:flex; flex-direction:column; gap:0.75rem;">
+            <div id="menu-mode-current" class="tab-pane-pro active">
+                <div id="menuItemsContainer" style="display:flex; flex-direction:column; gap:0.5rem;">
                     <!-- Dynamically populated -->
                 </div>
             </div>
 
             <!-- Library Linking -->
-            <div id="menu-mode-library" class="menu-mode-pane" style="display: none;">
-                <div class="occ-form-group full-width" style="margin-bottom:1.25rem;">
+            <div id="menu-mode-library" class="tab-pane-pro">
+                <div class="form-group-pro">
                     <div style="position:relative;">
-                        <i class="fas fa-search" style="position:absolute; left:1rem; top:50%; transform:translateY(-50%); color:#94a3b8;"></i>
-                        <input type="text" id="librarySearchInput" class="occ-form-input" style="padding-left:3rem;" placeholder="Search your library..." onkeyup="filterLibraryItems()">
+                        <i class="fas fa-search" style="position:absolute; left:var(--space-md); top:50%; transform:translateY(-50%); color:var(--color-neutral-400);"></i>
+                        <input type="text" id="librarySearchInput" class="control-pro" style="padding-left:3rem;" placeholder="Search your library..." onkeyup="filterLibraryItems()">
                     </div>
                 </div>
-                <div id="libraryItemsContainer" style="display:flex; flex-direction:column; gap:0.75rem; max-height:400px; overflow-y:auto; padding-right:0.5rem;">
+                <div id="libraryItemsContainer" class="menu-items-scroll">
                     <!-- Dynamically populated -->
                 </div>
             </div>
 
-            <!-- New Dish Form -->
-            <div id="menu-mode-new" class="menu-mode-pane" style="display: none;">
-                <form id="menuForm" method="POST" enctype="multipart/form-data" novalidate>
-                    <div id="menuErrorDrawer" class="error-drawer"></div>
-                    <input type="hidden" name="package_id" id="modalMenuPackageId">
-                    
-                    <div class="occ-form-grid">
-                        <div class="occ-form-group full-width">
-                            <label class="occ-form-label">Dish Name *</label>
-                            <input type="text" name="name" class="occ-form-input" placeholder="e.g. Slow-Roasted Angus Beef" required minlength="2" maxlength="100">
-                            <div class="invalid-feedback"></div>
-                        </div>
-                        <div class="occ-form-group">
-                            <label class="occ-form-label">Category</label>
-                            <select name="category" class="filter-select-pro w-100">
-                                <option>Main Course</option>
-                                <option>Appetizer</option>
-                                <option>Soup / Salad</option>
-                                <option>Dessert</option>
-                                <option>Beverage</option>
-                            </select>
-                        </div>
-                        <div class="occ-form-group">
-                            <label class="occ-form-label">Dish Photo</label>
-                            <input type="file" name="image" class="occ-form-input" style="padding:0.4rem;" accept="image/*">
-                        </div>
-                        
-                        <div class="occ-form-group full-width" style="margin-top:0.5rem;">
-                            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:1rem; padding:1.25rem;">
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                                    <label class="occ-form-label" style="margin:0;">Internal Costing</label>
-                                    <span class="premium-status-badge" id="menuRoiBadge" style="background:#94a3b8; color:white;">Margin: --%</span>
-                                </div>
-                                <div id="menuCostRowsContainer" style="display:flex; flex-direction:column; gap:0.5rem;">
-                                    <!-- Dynamic rows -->
-                                </div>
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1.25rem; padding-top:0.75rem; border-top:1px dashed #cbd5e1;">
-                                    <button type="button" class="btn-sm-outline" onclick="addCostRow('menuCostRowsContainer', true)" style="border-style:dashed;">+ Add Expense</button>
-                                    <div style="text-align:right;">
-                                        <span id="menuTotalCostDisplay" style="font-size:1.1rem; font-weight:800; color:var(--secondary-color);">₱0</span>
-                                    </div>
-                                </div>
-                                <input type="hidden" name="cost_price" id="menu_cost_price_input" value="0">
-                                <input type="hidden" name="cost_breakdown" id="menu_cost_breakdown_input" value="[]">
-                            </div>
-                        </div>
 
-                        <div class="occ-form-group full-width" style="margin-top:0.5rem; background:#f8fafc; padding:1rem; border-radius:0.75rem;">
-                            <div class="d-flex align-items-center justify-content-between">
-                                <label class="occ-form-label" style="margin:0;">Premium Add-on</label>
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" name="is_addon" id="is_addon">
-                                </div>
-                            </div>
-                            <div id="addonPriceGroup" class="mt-2" style="display: none;">
-                                <input type="text" name="addon_price" class="occ-form-input js-format-comma" placeholder="Enter Add-on Price (₱)" inputmode="numeric">
-                                <div class="invalid-feedback"></div>
-                            </div>
-                        </div>
-
-                        <div class="occ-form-group full-width">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="link_to_package" id="link_to_package" value="true" checked>
-                                <label class="form-check-label small fw-700" for="link_to_package" style="color:#475569;">Link this dish to current package immediately</label>
-                            </div>
-                        </div>
-                    </div>
-                </form>
-            </div>
         </div>
 
-        <div class="occ-modal-footer">
-            <button type="button" onclick="hideMenuModal()" class="btn-sm-outline" style="min-width:100px;">Close</button>
-            <button type="submit" form="menuForm" id="menuSubmitBtn" class="btn-primary" style="height:44px; padding:0 1.5rem;">Add to Library & Package</button>
+        <div class="modal-footer-pro">
+            <button type="button" onclick="hideMenuModal()" class="btn-secondary-pro" style="min-width:100px;">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- ROI Modal -->
+<div id="roiModal" class="modal-pro">
+    <div class="modal-content-pro" style="max-width: 450px;">
+        <div class="modal-header-pro">
+            <div>
+                <h3 class="modal-title">ROI & Markup Settings</h3>
+                <p id="roiModalSubtitle" class="text-xs text-neutral-500 mt-1">Package: Loading...</p>
+            </div>
+            <button onclick="hideRoiModal()" class="btn-close-pro"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body-pro">
+            <div class="form-group-pro">
+                <label>Markup Strategy</label>
+                <div style="display:flex; gap:var(--space-sm); padding:4px; background:var(--color-neutral-100); border-radius:var(--radius-md);">
+                    <button type="button" onclick="setMarkupType('percentage')" id="btn-markup-percentage" style="flex:1; height:36px; font-size:var(--text-xs); font-weight:800; border-radius:var(--radius-sm); border:none; background:white; color:var(--primary-color);">Percentage (%)</button>
+                    <button type="button" onclick="setMarkupType('fixed')" id="btn-markup-fixed" style="flex:1; height:36px; font-size:var(--text-xs); font-weight:800; border-radius:var(--radius-sm); border:none; background:transparent; color:var(--color-neutral-500);">Fixed Amount (₱)</button>
+                </div>
+            </div>
+
+            <div class="form-group-pro">
+                <label id="markupValueLabel">Markup Value (%)</label>
+                <div style="position:relative;">
+                    <span id="markupSymbol" style="position:absolute; left:var(--space-md); top:50%; transform:translateY(-50%); font-weight:800; color:var(--color-neutral-400);">%</span>
+                    <input type="number" id="roiMarkupValue" class="control-pro" style="padding-left:2.5rem; font-weight:700;" placeholder="0.00">
+                </div>
+            </div>
+
+            <div style="margin-top:var(--space-lg); padding-top:var(--space-md); border-top:1px solid var(--color-neutral-100);">
+                <p class="text-xs text-neutral-500 leading-relaxed">
+                    Final Selling Price will be automatically computed based on the total cost of linked ingredients in your Menu Items.
+                </p>
+            </div>
+        </div>
+        <div class="modal-footer-pro">
+            <button type="button" class="btn-secondary-pro" style="min-width: 100px;" onclick="hideRoiModal()">Cancel</button>
+            <button type="button" onclick="saveRoi()" class="btn-primary-pro" style="padding: 0 var(--space-xl);">Apply ROI Strategy</button>
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', path='/js/caterer/packages.js') }}?v=11.1"></script>
-<script>
-    function previewPackageImage(event) {
-        const preview = document.getElementById('packageImagePreview');
-        const area = document.getElementById('photoUploadArea');
-        const file = event.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                preview.src = e.target.result;
-                preview.style.display = 'block';
-                area.style.display = 'none';
-            };
-            reader.readAsDataURL(file);
-        }
-    }
-
-    function filterPackages() {
-        const input = document.getElementById('packageSearchInput');
-        const filter = input.value.toLowerCase();
-        const cards = document.querySelectorAll('.package-card-pro');
-
-        cards.forEach(card => {
-            const textContent = card.textContent || card.innerText;
-            if (textContent.toLowerCase().indexOf(filter) > -1) {
-                card.style.display = "";
-            } else {
-                card.style.display = "none";
-            }
-        });
-    }
-
-    document.getElementById('packageForm').addEventListener('submit', function (e) {
-        const drawer = document.getElementById('packageErrorDrawer');
-        drawer.style.display = 'none';
-
-        if (!this.checkValidity()) {
-            e.preventDefault();
-            const invalidInputs = Array.from(this.querySelectorAll(':invalid'));
-            const errors = invalidInputs.map(input => {
-                let label = input.previousElementSibling ? input.previousElementSibling.innerText : input.name;
-                label = label.replace(/\s*\([^)]*\)/g, ''); // Remove units
-                return `<li><strong>${label}:</strong> ${input.validationMessage}</li>`;
-            });
-            drawer.innerHTML = `<i class="fas fa-exclamation-circle"></i><div><strong>Please fix the following issues:</strong><ul>${errors.join('')}</ul></div>`;
-            drawer.style.display = 'flex';
-            document.querySelector('#packageModal .occ-modal-body').scrollTop = 0;
-        }
-    });
-
-    const menuForm = document.getElementById('menuForm');
-    if (menuForm) {
-        menuForm.addEventListener('submit', function (e) {
-            const drawer = document.getElementById('menuErrorDrawer');
-            if (drawer) drawer.style.display = 'none';
-
-            if (!this.checkValidity()) {
-                e.preventDefault();
-                const invalidInputs = Array.from(this.querySelectorAll(':invalid'));
-                const errors = invalidInputs.map(input => {
-                    let label = input.previousElementSibling ? input.previousElementSibling.innerText : input.name;
-                    label = label.replace(/\s*\([^)]*\)/g, '');
-                    return `<li><strong>${label}:</strong> ${input.validationMessage}</li>`;
-                });
-                if (drawer) {
-                    drawer.innerHTML = `<i class="fas fa-exclamation-circle"></i><div><strong>Please fix the following issues:</strong><ul>${errors.join('')}</ul></div>`;
-                    drawer.style.display = 'flex';
-                }
-            }
-        });
-    }
-
-    // Attempt to hijack modal opens to hide drawers
-    if (typeof openAddPackageModal === 'function') {
-        const originalOpenPackage = openAddPackageModal;
-        window.openAddPackageModal = function () {
-            document.getElementById('packageErrorDrawer').style.display = 'none';
-            originalOpenPackage();
-        };
-    }
-    if (typeof editPackage === 'function') {
-        const originalEditPackage = editPackage;
-        window.editPackage = function (id) {
-            document.getElementById('packageErrorDrawer').style.display = 'none';
-            originalEditPackage(id);
-        };
-    }
-    if (typeof showMenuModal === 'function') {
-        const originalShowMenu = showMenuModal;
-        window.showMenuModal = function (id, name) {
-            const drawer = document.getElementById('menuErrorDrawer');
-            if (drawer) drawer.style.display = 'none';
-            originalShowMenu(id, name);
-        };
-    }
-    
-    // Detailed Costing Logic
-    function addCostRow(containerId, isMenu = false) {
-        const container = document.getElementById(containerId);
-        const row = document.createElement('div');
-        row.className = 'premium-cost-row';
-        row.innerHTML = `
-            <div class="premium-cost-input-group">
-                <label>Expense Item</label>
-                <input type="text" class="premium-cost-control ${isMenu ? 'menu-cost-name' : 'cost-name'}" placeholder="e.g. Ingredients">
-            </div>
-            <div class="premium-cost-input-group" style="max-width: 120px;">
-                <label>Cost (₱)</label>
-                <input type="number" class="premium-cost-control ${isMenu ? 'menu-cost-amount' : 'cost-amount'}" placeholder="0" min="0" oninput="${isMenu ? 'calculateMenuCosts()' : 'calculateCosts()'}">
-            </div>
-            <button type="button" class="btn-remove-cost" onclick="this.parentElement.remove(); ${isMenu ? 'calculateMenuCosts()' : 'calculateCosts()'}"><i class="fas fa-trash-alt"></i></button>
-        `;
-        container.appendChild(row);
-    }
-    
-    function calculateCosts() {
-        const rows = document.querySelectorAll('#costRowsContainer .premium-cost-row');
-        let total = 0;
-        let breakdown = [];
-        
-        rows.forEach(row => {
-            const name = row.querySelector('.cost-name').value;
-            const amount = parseFloat(row.querySelector('.cost-amount').value) || 0;
-            if (name && amount > 0) {
-                total += amount;
-                breakdown.push({name, amount});
-            }
-        });
-        
-        document.getElementById('totalCostDisplay').innerText = '₱' + total.toLocaleString();
-        document.getElementById('cost_price_input').value = total;
-        document.getElementById('cost_breakdown_input').value = JSON.stringify(breakdown);
-        
-        // Calculate Margin Alert
-        const sellInput = document.querySelector('input[name="price_per_head"]');
-        let sellPrice = parseFloat(sellInput.value.replace(/,/g, '')) || 0;
-        const badge = document.getElementById('roiMarginBadge');
-        
-        if (sellPrice > 0) {
-            const profit = sellPrice - total;
-            const margin = (profit / sellPrice) * 100;
-            badge.innerText = 'Margin: ' + margin.toFixed(1) + '%';
-            if (margin < 20) {
-                badge.style.background = '#ef4444'; // Red warning
-                badge.classList.add('margin-pulse-warning');
-                badge.title = 'Warning: Margin is below 20%';
-            } else {
-                badge.style.background = '#22c55e'; // Green good
-                badge.classList.remove('margin-pulse-warning');
-                badge.title = '';
-            }
-        } else {
-            badge.innerText = 'Margin: --%';
-            badge.style.background = '#94a3b8';
-            badge.classList.remove('margin-pulse-warning');
-        }
-    }
-    
-    function calculateMenuCosts() {
-        const rows = document.querySelectorAll('#menuCostRowsContainer .premium-cost-row');
-        let total = 0;
-        let breakdown = [];
-        
-        rows.forEach(row => {
-            const name = row.querySelector('.menu-cost-name').value;
-            const amount = parseFloat(row.querySelector('.menu-cost-amount').value) || 0;
-            if (name && amount > 0) {
-                total += amount;
-                breakdown.push({name, amount});
-            }
-        });
-        
-        document.getElementById('menuTotalCostDisplay').innerText = '₱' + total.toLocaleString();
-        document.getElementById('menu_cost_price_input').value = total;
-        document.getElementById('menu_cost_breakdown_input').value = JSON.stringify(breakdown);
-    }
-    
-    // Add event listener to selling price to recalculate margin on type
-    document.querySelector('input[name="price_per_head"]').addEventListener('input', calculateCosts);
-</script>
+<script src="{{ url_for('static', path='/js/caterer/packages.js') }}?v=13.4"></script>
 {% endblock %}

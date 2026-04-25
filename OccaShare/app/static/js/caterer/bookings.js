@@ -102,16 +102,24 @@ document.addEventListener('DOMContentLoaded', function () {
             console.log('[BookingsJS] Initializing ValidationManager for walkinBookingForm...');
             new window.ValidationManager('walkinBookingForm', {
                 'customer_name': { label: 'customer name', noSameParts: true },
-                'customer_email': { label: 'email address' },
+                'customer_email': { 
+                    label: 'email address',
+                    custom: (val) => {
+                        const email = (val || '').trim().toLowerCase();
+                        if (!email.endsWith('@gmail.com')) return 'Only Gmail accounts are allowed.';
+                        return true;
+                    }
+                },
                 'customer_contact': { 
                     label: 'contact number', 
                     numericOnly: true, 
                     maxLength: 11,
                     custom: (val) => {
-                        const repetitve = /(.)\1{4,}/; // Matches 5 or more same digits
+                        const repetitive = /^(\d)\1+$/; // Entirely same
+                        const consecutiveSame = /(.)\1{3,}/; // 4 or more same digits anywhere
                         if (!val.startsWith('09')) return 'Must start with 09';
-                        if (val.length !== 11) return 'Must be exactly 11 digits';
-                        if (repetitve.test(val)) return 'Invalid repetitive contact number';
+                        if (val.length !== 11) return 'Must be 11 digits';
+                        if (repetitive.test(val) || consecutiveSame.test(val)) return 'Too many repetitive numbers.';
                         return true;
                     }
                 },
@@ -164,7 +172,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        console.log('[BookingsJS] Manage Bookings JS Ready.');
+        console.log('[BookingsJS] Manage Bookings JS Ready. [v2.0-english-standard]');
     } catch (err) {
         console.error('[BookingsJS] CRITICAL ERROR DURING INIT:', err);
     }
@@ -324,8 +332,12 @@ async function submitWalkinBooking(e) {
     const form = e.target;
 
     // 1. Strict HTML5 Check
-    if (!form.checkValidity()) {
-        form.reportValidity();
+    if (!form.checkValidity() || form.querySelectorAll('.is-invalid').length > 0) {
+        if (form.querySelectorAll('.is-invalid').length > 0) {
+            window.showError('Please check the fields in red. There is an error in your input.');
+        } else {
+            form.reportValidity();
+        }
         return;
     }
 
@@ -336,7 +348,7 @@ async function submitWalkinBooking(e) {
         const option = pkgSelect.options[pkgSelect.selectedIndex];
         const minGuests = parseInt(option.dataset.min) || 1;
         if (parseInt(guestInput.value) < minGuests) {
-            window.showError(`Dapat hindi bababa sa ${minGuests} ang guests para sa package na ito.`);
+            window.showError(`Minimum of ${minGuests} guests required for this package.`);
             guestInput.classList.add('is-invalid');
             return;
         }
@@ -344,14 +356,29 @@ async function submitWalkinBooking(e) {
 
     const btn = document.getElementById('walkinSubmitBtn');
     if (!btn) return;
-    btn.disabled = true;
-    btn.innerText = 'Creating...';
 
     const formData = new FormData(form);
     const data = {};
     for (let [key, value] of formData.entries()) { data[key] = value; }
+
+    // --- SMART VALIDATION: GMAIL ONLY ---
+    if (data.customer_email && !data.customer_email.toLowerCase().endsWith('@gmail.com')) {
+        window.showError('Only @gmail.com emails are accepted for security.');
+        return;
+    }
+
+    // --- SMART VALIDATION: REPETITIVE CONTACT ---
+    const contact = data.customer_contact || '';
+    if (/^(\d)\1+$/.test(contact) || contact.length < 10) {
+        window.showError('Invalid Contact Number. Avoid repetitive numbers and ensure correct length.');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerText = 'Creating...';
+
     data.guest_count = parseInt(data.guest_count);
-    data.total_amount = parseFloat(data.total_amount.replace(/,/g, ''));
+    data.total_amount = parseFloat((data.total_amount || "0").toString().replace(/,/g, ''));
     if (!data.package_id) data.package_id = null;
     else data.package_id = parseInt(data.package_id);
     if (!data.event_time) data.event_time = null;
@@ -598,10 +625,31 @@ function showBookingDetails(btn) {
     }
 
     var actionsEl = document.getElementById('bookingModalActions');
+    const isVerified = data.isVerified === 'true' || data.isVerified === true;
+    const targetUserId = data.targetUserId;
+
     if (actionsEl) {
         actionsEl.innerHTML = '';
-        const plan = (data.paymentPlan || 'downpayment').toUpperCase();
         
+        // --- KYC WARNING BANNER ---
+        if (!isVerified && targetUserId) {
+            actionsEl.innerHTML = `
+                <div style="width:100%; margin-bottom: 1rem; background:#fff7ed; border:1px solid #fed7aa; padding:1rem; border-radius:0.75rem; display:flex; align-items:center; gap:0.75rem;">
+                    <div style="width:40px; height:40px; background:#ffedd5; color:#f97316; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                        <i class="fas fa-shield-exclamation"></i>
+                    </div>
+                    <div style="flex:1;">
+                        <h4 style="margin:0; font-size:0.85rem; color:#9a3412; font-weight:800;">UNVERIFIED CUSTOMER</h4>
+                        <p style="margin:2px 0 0; font-size:0.75rem; color:#c2410c;">Audit their identity before accepting this booking to prevent fraud.</p>
+                    </div>
+                    <a href="/caterer/compliance/view/${targetUserId}" class="btn-sm-outline" style="background:white; height:36px; font-size:0.75rem; white-space:nowrap; border-color:#fdba74; color:#9a3412;">
+                        <i class="fas fa-search"></i> Audit Now
+                    </a>
+                </div>
+            `;
+        }
+
+        const plan = (data.paymentPlan || 'downpayment').toUpperCase();
         const isPackage = data.isPackage === 'true' || data.isPackage === true;
         
         if (data.status === 'pending') {
@@ -609,7 +657,7 @@ function showBookingDetails(btn) {
             const btnLabel = isPayment ? `Verify ${plan}` : 'Accept Booking';
             const btnIcon = isPayment ? 'fa-check-double' : 'fa-check-circle';
             
-            actionsEl.innerHTML = `<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.confirmAcceptBooking(${data.id}, ${isPayment})"><i class="fas ${btnIcon}"></i> ${btnLabel}</button>`;
+            actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.confirmAcceptBooking(${data.id}, ${isPayment}, ${isVerified})"><i class="fas ${btnIcon}"></i> ${btnLabel}</button>`;
             if (isPayment) actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-reject" onclick="window.requestNewProof(${data.id})" style="background:#64748b;"><i class="fas fa-redo"></i> Request New Proof</button>`;
             actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-reject" onclick="window.confirmRejectBooking(${data.id})"><i class="fas fa-times-circle"></i> Reject Booking</button>`;
             
@@ -658,18 +706,24 @@ function showBookingDetails(btn) {
     document.getElementById('modalTotalAmount').innerText = data.amount;
     document.getElementById('modalGuestCount').innerText = data.guestCount + ' Guests';
     // Handle Due Date section display logic
-    const dueDateSection = document.getElementById('dueDateDisplaySection').parentElement;
+    const dueDateCard = document.querySelector('.due-date-card-premium');
     const modalDueDate = document.getElementById('modalDueDate');
+    const badgeContainer = document.getElementById('dueDateBadgeContainer');
     
     if (data.paymentPlan === 'full') {
-        dueDateSection.style.display = 'none';
+        if (dueDateCard) dueDateCard.closest('.occ-form-group').style.display = 'none';
     } else {
-        dueDateSection.style.display = 'block';
-        // Highlight if missing
+        if (dueDateCard) dueDateCard.closest('.occ-form-group').style.display = 'block';
         if (!data.balanceDue) {
-            modalDueDate.innerHTML = '<span style="color:#ef4444; font-weight:700;"><i class="fas fa-exclamation-triangle"></i> ACTION REQUIRED: Set Due Date</span>';
+            modalDueDate.innerHTML = '<span style="color:#ef4444;"><i class="fas fa-exclamation-circle"></i> Needs Deadline</span>';
+            if (badgeContainer) badgeContainer.innerHTML = '<span class="due-date-badge missing">Action Required</span>';
         } else {
-            modalDueDate.innerText = data.balanceDue;
+            // Simple format for display
+            const parts = data.balanceDue.split('-');
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const formatted = `${months[parseInt(parts[1])-1]} ${parts[2]}, ${parts[0]}`;
+            modalDueDate.innerText = formatted;
+            if (badgeContainer) badgeContainer.innerHTML = '<span class="due-date-badge"><i class="fas fa-check-circle"></i> Deadline Set</span>';
         }
     }
 
@@ -765,11 +819,21 @@ async function saveDueDate() {
             body: JSON.stringify({ due_date: newDate })
         });
         if (response.ok) {
-            document.getElementById('modalDueDate').innerText = newDate;
+            // Local UI Update
+            const parts = newDate.split('-');
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const formatted = `${months[parseInt(parts[1])-1]} ${parts[2]}, ${parts[0]}`;
+            
+            document.getElementById('modalDueDate').innerText = formatted;
+            const badgeContainer = document.getElementById('dueDateBadgeContainer');
+            if (badgeContainer) badgeContainer.innerHTML = '<span class="due-date-badge"><i class="fas fa-check-circle"></i> Deadline Set</span>';
+            
             toggleDueDateEdit();
+            
             var btn = document.querySelector('.view-details[data-id="' + currentBookingId + '"]');
             if (btn) btn.dataset.balanceDue = newDate;
-            window.showSuccess('Due date updated!');
+            
+            window.showSuccess('Payment deadline updated and customer has been notified!');
         } else {
             var err = await response.json();
             window.showError(err.detail || 'Failed to update due date.');
@@ -853,10 +917,30 @@ async function runAIScan() {
     }
 }
 
-function confirmAcceptBooking(bookingId, isPayment) {
+function confirmAcceptBooking(bookingId, isPayment, isVerified) {
     isPayment = isPayment || false;
+    isVerified = isVerified === undefined ? true : isVerified; // Default to true if not provided (e.g. walk-ins)
     
-    let confirmMsg = isPayment ? 'Natanggap mo na ba ang bayad mula sa customer?' : 'Nais mo bang tanggapin ang booking na ito kahit wala pang payment proof?';
+    // --- KYC GATEKEEPER ---
+    if (!isVerified) {
+        window.showAlert({
+            type: 'warning',
+            title: 'Customer Not Verified',
+            message: 'This customer has not submitted identity verification (KYC). Are you sure you want to accept this booking?<br><br><small style="color:#64748b;">Recommendation: Audit their identity on the Compliance page first to prevent fake bookings.</small>',
+            confirmText: 'Accept Anyway',
+            cancelText: 'Go to Audit',
+            onConfirm: () => {
+                proceedWithAcceptance(bookingId, isPayment);
+            }
+        });
+        return;
+    }
+
+    proceedWithAcceptance(bookingId, isPayment);
+}
+
+async function proceedWithAcceptance(bookingId, isPayment) {
+    let confirmMsg = isPayment ? 'Have you received the payment from the customer?' : 'Do you want to accept this booking even without payment proof?';
     let confirmTitle = isPayment ? 'Confirm Payment?' : 'Accept Booking Manually?';
     let confirmBtn = isPayment ? 'Yes, Verify Payment' : 'Yes, Accept Booking';
 
@@ -867,6 +951,7 @@ function confirmAcceptBooking(bookingId, isPayment) {
             if (result && result.status === 'success') {
                 bk_closeBookingDetailModal();
                 if (typeof window.refreshDashboardData === 'function') window.refreshDashboardData();
+                else window.location.reload();
             }
         },
         confirmTitle, confirmBtn
@@ -874,7 +959,7 @@ function confirmAcceptBooking(bookingId, isPayment) {
 }
 
 function confirmRejectBooking(bookingId) {
-    window.showConfirm('Nais mo bang i-REJECT ang booking na ito?',
+    window.showConfirm('Are you sure you want to REJECT this booking?',
         async function() { await window.apiAction('/caterer/bookings/' + bookingId + '/reject', { method: 'POST' }); },
         'Reject Booking?', 'Yes, Reject Booking'
     );
@@ -1020,10 +1105,17 @@ function requestNewProof(bookingId) {
 }
 
 function confirmArchiveBooking(bookingId) {
-    window.showConfirm('Do you want to archive this booking?',
+    window.showConfirm('Are you sure you want to archive this booking?',
         async function() { await window.apiAction('/caterer/bookings/' + bookingId + '/archive', { method: 'POST' }); },
         'Archive Booking?', 'Yes, Archive'
     );
+}
+
+function togglePackageAccordion(btn) {
+    const accordion = btn.closest('.package-accordion');
+    if (accordion) {
+        accordion.classList.toggle('active');
+    }
 }
 
 // ─── GLOBAL EXPOSURE ─────────────────────────────────────────────────────────
@@ -1047,6 +1139,7 @@ window.closeContractModal = closeContractModal;
 window.printContract = printContract;
 window.toggleDueDateEdit = toggleDueDateEdit;
 window.saveDueDate = saveDueDate;
+window.togglePackageAccordion = togglePackageAccordion;
 window.confirmAcceptBooking = confirmAcceptBooking;
 window.confirmRejectBooking = confirmRejectBooking;
 window.confirmCompleteBooking = confirmCompleteBooking;

@@ -12,6 +12,7 @@
         border-radius: var(--border-radius-base);
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         overflow: hidden;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
     /* Conversations List */
@@ -122,6 +123,9 @@
         display: flex;
         flex-direction: column;
         background: white;
+        height: 100%;
+        min-height: 0;
+        overflow: hidden;
     }
 
     .chat-header {
@@ -203,6 +207,37 @@
 
     .chat-input-wrapper input:focus {
         border-color: var(--accent-color);
+        background: #ffffff;
+        box-shadow: 0 0 0 3px rgba(var(--accent-color-rgb, 37, 99, 235), 0.08);
+    }
+
+    /* Custom send button - bypasses main.js loading state */
+    .btn-chat-send {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 1.5rem;
+        height: 48px;
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 0.75rem;
+        font-size: 1rem;
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: background 0.2s, transform 0.1s;
+    }
+    .btn-chat-send:hover { opacity: 0.9; }
+    .btn-chat-send:active { transform: scale(0.97); }
+
+    .sidebar-search input {
+        font-family: 'Inter', -apple-system, sans-serif;
+        background: white;
+        outline: none;
+        transition: border-color 0.2s;
+    }
+    .sidebar-search input:focus {
+        border-color: var(--primary-color);
     }
 
     .no-chat-selected {
@@ -263,7 +298,7 @@
         </div>
 
         <!-- Active Chat (Hidden by default) -->
-        <div id="activeChat" style="display: none; flex-direction: column; height: 100%;">
+        <div id="activeChat" style="display: none; flex-direction: column; height: 100%; min-height: 0; overflow: hidden;">
             <div class="chat-header">
                 <div class="active-peer">
                     <button class="mobile-back btn-icon" style="display: none;" onclick="showSidebar()"><i class="fas fa-arrow-left"></i></button>
@@ -281,8 +316,12 @@
 
             <div class="chat-input-area">
                 <form id="chatForm" class="chat-input-wrapper">
+                    <input type="file" id="mainChatFileInput" style="display: none;" accept=".jpg,.jpeg,.png,.gif,.mp4,.mov,.pdf,.docx,.txt,.webp">
+                    <button type="button" class="btn-secondary" id="mainAttachmentBtn" style="padding: 0 1rem; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.5rem;" title="Attach file">
+                        <i class="fas fa-paperclip"></i>
+                    </button>
                     <input type="text" id="messageInput" placeholder="Type your message..." autocomplete="off">
-                    <button type="submit" class="btn-primary" style="padding: 0 1.5rem;"><i class="fas fa-paper-plane"></i></button>
+                    <button type="submit" id="chatSendBtn" class="btn-chat-send"><i class="fas fa-paper-plane"></i></button>
                 </form>
             </div>
         </div>
@@ -316,48 +355,92 @@
         // Load initial conversations
         refreshConversations();
 
-        // Handle sending messages
+        // Handle sending messages - optimistic UI (shows message immediately)
         document.getElementById('chatForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const input = document.getElementById('messageInput');
             const content = input.value.trim();
             if (!content || !currentPeerId) return;
 
+            // Optimistic: clear input and show message immediately
+            input.value = '';
+            const tempMsg = {
+                id: 'temp_' + Date.now(),
+                content: content,
+                sender_id: {{ user.id }},
+                created_at: new Date().toISOString(),
+                message_type: 'text',
+                is_deleted: false,
+                is_edited: false
+            };
+            appendMessage(tempMsg, 'sent');
+            scrollToBottom();
+
             const msg = await chatClient.sendMessage(currentPeerId, content);
-            if (msg) {
-                appendMessage(msg, 'sent');
-                input.value = '';
-                scrollToBottom();
+            if (!msg) {
+                // Show error if failed
+                window.showToast('Message failed to send. Please try again.', 'error');
+            } else {
                 refreshConversations();
             }
         });
+
+        // Handle File Attachments
+        const mainFileIn = document.getElementById('mainChatFileInput');
+        const mainAttachBtn = document.getElementById('mainAttachmentBtn');
+        if (mainAttachBtn && mainFileIn) {
+            mainAttachBtn.onclick = () => mainFileIn.click();
+            mainFileIn.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file || !currentPeerId) return;
+                
+                // 5MB Limit
+                if (file.size > 5 * 1024 * 1024) {
+                    Swal.fire('File Too Large', 'File exceeds the 5MB limit. Please choose a smaller file.', 'warning');
+                    mainFileIn.value = '';
+                    return;
+                }
+                
+                const originalIcon = mainAttachBtn.innerHTML;
+                mainAttachBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                mainAttachBtn.disabled = true;
+
+                try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    const uploadResp = await fetch('/api/chat/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    if (!uploadResp.ok) throw new Error('Upload failed');
+                    const fileData = await uploadResp.json();
+                    
+                    const msg = await chatClient.sendMessage(currentPeerId, null, {
+                        message_type: fileData.message_type,
+                        file_url: fileData.file_url,
+                        file_name: fileData.file_name
+                    });
+                    if (msg) {
+                        appendMessage(msg, 'sent');
+                        scrollToBottom();
+                        refreshConversations();
+                    }
+                } catch (err) {
+                    Swal.fire('Upload Failed', err.message, 'error');
+                } finally {
+                    mainAttachBtn.innerHTML = originalIcon;
+                    mainAttachBtn.disabled = false;
+                    mainFileIn.value = '';
+                }
+            };
+        }
     });
 
     async function refreshConversations() {
         const conversations = await loadConversations();
-        const listDiv = document.getElementById('conversationsList');
+        window.pageConversationsData = conversations; // Save for search filtering
+        renderConversations(conversations);
         
-        if (conversations.length === 0) {
-            listDiv.innerHTML = '<div style="padding: 3rem; text-align: center; color: #94a3b8;"><p>No messages yet.</p></div>';
-            return;
-        }
-
-        listDiv.innerHTML = conversations.map(conv => `
-            <div class="conversation-item ${currentPeerId == conv.peer.id ? 'active' : ''}" onclick="selectConversation(${conv.peer.id}, '${conv.peer.name}')">
-                <div class="peer-avatar">${conv.peer.name.charAt(0)}</div>
-                <div class="conversation-info">
-                    <div class="conversation-header">
-                        <span class="peer-name">${conv.peer.name}</span>
-                        <span class="last-time">${new Date(conv.last_message.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span class="last-msg">${conv.last_message.sender_id === Number("{{ user.id }}") ? 'You: ' : ''}${conv.last_message.content}</span>
-                        ${conv.unread_count > 0 ? `<span class="unread-badge">${conv.unread_count}</span>` : ''}
-                    </div>
-                </div>
-            </div>
-        `).join('');
-
         // Update overall nav badge
         const totalUnread = conversations.reduce((sum, c) => sum + c.unread_count, 0);
         const navBadge = document.getElementById('nav-chat-badge');
@@ -366,6 +449,42 @@
             navBadge.style.display = totalUnread > 0 ? 'flex' : 'none';
         }
     }
+
+    function renderConversations(conversationsToRender) {
+        const listDiv = document.getElementById('conversationsList');
+        
+        if (conversationsToRender.length === 0) {
+            listDiv.innerHTML = '<div style="padding: 3rem; text-align: center; color: #94a3b8;"><p>No conversations found.</p></div>';
+            return;
+        }
+
+        listDiv.innerHTML = conversationsToRender.map(conv => `
+            <div class="conversation-item ${currentPeerId == conv.peer.id ? 'active' : ''}" onclick="selectConversation(${conv.peer.id}, '${conv.peer.name.replace(/'/g, "\\'")}')">
+                <div class="peer-avatar">${conv.peer.name.charAt(0)}</div>
+                <div class="conversation-info">
+                    <div class="conversation-header">
+                        <span class="peer-name">${conv.peer.name}</span>
+                        <span class="last-time">${new Date(conv.last_message.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="last-msg">${conv.last_message.sender_id === Number("{{ user.id }}") ? 'You: ' : ''}${conv.last_message.message_type === 'image' ? '📷 Photo' : conv.last_message.message_type === 'file' ? '📄 File' : conv.last_message.content}</span>
+                        ${conv.unread_count > 0 ? `<span class="unread-badge">${conv.unread_count}</span>` : ''}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // Search Logic
+    document.getElementById('searchConversations').addEventListener('input', function(e) {
+        const term = e.target.value.toLowerCase();
+        if (!window.pageConversationsData) return;
+        
+        const filtered = window.pageConversationsData.filter(c => 
+            c.peer.name.toLowerCase().includes(term)
+        );
+        renderConversations(filtered);
+    });
 
     async function selectConversation(peerId, peerName) {
         currentPeerId = peerId;
@@ -385,12 +504,22 @@
         const messages = await loadChatHistory(peerId);
         const historyDiv = document.getElementById('chatHistory');
         const currentUserId = Number("{{ user.id }}");
-        historyDiv.innerHTML = messages.map(msg => `
-            <div class="message-bubble ${msg.sender_id === currentUserId ? 'message-sent' : 'message-received'}">
-                ${msg.content}
+        historyDiv.innerHTML = messages.map(msg => {
+            let contentHtml = msg.content;
+            if (msg.is_deleted) {
+                contentHtml = '<span style="font-style: italic; opacity: 0.8;">This message was deleted</span>';
+            } else if (msg.message_type === 'image') {
+                contentHtml = `<img src="${msg.file_url}" style="max-width: 200px; border-radius: 8px;">`;
+            } else if (msg.message_type === 'file') {
+                contentHtml = `<a href="${msg.file_url}" target="_blank" style="color: inherit; text-decoration: underline;"><i class="fas fa-file-alt"></i> ${msg.file_name || 'Attachment'}</a>`;
+            }
+            return `
+            <div class="message-bubble ${msg.sender_id === currentUserId ? 'message-sent' : 'message-received'}" style="${msg.is_deleted ? 'background: #f1f5f9; color: #94a3b8; border: 1px dashed #cbd5e1;' : ''}">
+                ${contentHtml}
                 <span class="message-time">${new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
             </div>
-        `).join('');
+            `;
+        }).join('');
 
         scrollToBottom();
         

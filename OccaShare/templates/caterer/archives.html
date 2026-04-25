@@ -243,7 +243,7 @@
         </div>
         <div class="header-stats-visual" style="display: flex; gap: 2rem; margin-right: 1rem; align-items: center; height: 100%;">
             <div style="text-align: center;">
-                <span style="display: block; font-size: 1.5rem; font-weight: 800; color: #000;">{{ archived_bookings|length + archived_packages|length + archived_menu_items|length + archived_gallery_items|length }}</span>
+                <span style="display: block; font-size: 1.5rem; font-weight: 800; color: #000;">{{ archived_bookings|length + archived_packages|length + archived_menu_items|length + archived_gallery_items|length + archived_ingredients|length }}</span>
                 <span style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Items</span>
             </div>
         </div>
@@ -251,17 +251,20 @@
 
     <!-- Navigation Tabs -->
     <div class="archive-tabs-container animate-slide-up" style="animation-delay: 0.1s;">
-        <button class="archive-tab-btn active" onclick="switchTab('bookings')">
+        <button class="archive-tab-btn active" onclick="switchTab('bookings', event)">
             <i class="fas fa-calendar-check"></i> Bookings ({{ archived_bookings|length }})
         </button>
-        <button class="archive-tab-btn" onclick="switchTab('packages')">
+        <button class="archive-tab-btn" onclick="switchTab('packages', event)">
             <i class="fas fa-layer-group"></i> Packages ({{ archived_packages|length }})
         </button>
-        <button class="archive-tab-btn" onclick="switchTab('menu')">
+        <button class="archive-tab-btn" onclick="switchTab('menu', event)">
             <i class="fas fa-utensils"></i> Menu Items ({{ archived_menu_items|length }})
         </button>
-        <button class="archive-tab-btn" onclick="switchTab('gallery')">
+        <button class="archive-tab-btn" onclick="switchTab('gallery', event)">
             <i class="fas fa-images"></i> Gallery ({{ archived_gallery_items|length }})
+        </button>
+        <button class="archive-tab-btn" onclick="switchTab('ingredients', event)">
+            <i class="fas fa-carrot"></i> Ingredients ({{ archived_ingredients|length }})
         </button>
     </div>
 
@@ -293,7 +296,7 @@
                         <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
                             <span style="color: var(--text-muted);">Amount:</span>
                             <span style="font-weight: 800; color: var(--primary-color);">₱{{
-                                "{:,.2f}".format(booking.total_price or booking.total_amount) }}</span>
+                                "{:,.2f}".format(booking.total_price or booking.total_amount or 0) }}</span>
                         </div>
                     </div>
                     <div class="archived-card-actions">
@@ -337,9 +340,9 @@
                     <h3 class="archived-card-title">{{ package.name }}</h3>
                     <div
                         style="display: flex; gap: 0.75rem; margin-bottom: 0.75rem; font-size: 0.8rem; color: var(--text-muted);">
-                        <span><i class="fas fa-tags"></i> ₱{{ "{:,.0f}".format(package.price_per_head or package.price)
+                        <span><i class="fas fa-tags"></i> ₱{{ "{:,.0f}".format(package.price_per_head or package.price or 0)
                             }}/pax</span>
-                        <span><i class="fas fa-users"></i> {{ package.min_guests }}+ pax</span>
+                        <span><i class="fas fa-users"></i> {{ package.min_guests or 0 }}+ pax</span>
                     </div>
                     <p
                         style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 1rem; flex: 1;">
@@ -443,17 +446,54 @@
         {% endif %}
     </div>
 
+    <!-- Ingredients Tab -->
+    <div id="tab-ingredients" class="archive-tab-pane">
+        {% if archived_ingredients %}
+        <div class="archived-grid">
+            {% for item in archived_ingredients %}
+            <div class="archived-card c-card-premium" id="archive-ingredient-{{ item.id }}">
+                <div class="archived-card-media" style="height: 100px;">
+                    <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #cbd5e1; font-size: 2.5rem; background: #f8fafc;">
+                        <i class="fas fa-seedling"></i>
+                    </div>
+                </div>
+                <div class="archived-card-body">
+                    <h3 class="archived-card-title">{{ item.name }}</h3>
+                    <div style="margin-bottom: 0.75rem; font-size: 0.8rem; color: var(--text-muted);">
+                        <i class="fas fa-tag"></i> ₱{{ "{:,.2f}".format(item.unit_price or 0) }} / {{ item.unit }}
+                    </div>
+                    <div class="archived-card-actions" style="margin-top: auto;">
+                        <button class="archive-btn btn-restore" onclick="restoreAction('ingredient', {{ item.id }})">
+                            <i class="fas fa-undo"></i> Restore
+                        </button>
+                        <button class="archive-btn btn-delete" onclick="deleteAction('ingredient', {{ item.id }})">
+                            <i class="fas fa-trash-alt"></i> Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="archive-empty-state">
+            <div class="archive-empty-icon"><i class="fas fa-box-open"></i></div>
+            <h3 class="archive-empty-title">No Archived Ingredients</h3>
+            <p class="archive-empty-desc">Ingredients you remove from your inventory will be kept here safely.</p>
+        </div>
+        {% endif %}
+    </div>
+
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    function switchTab(tabId) {
+    function switchTab(tabId, event) {
         // Update Buttons
         document.querySelectorAll('.archive-tab-btn').forEach(btn => {
             btn.classList.remove('active');
         });
-        event.currentTarget.classList.add('active');
+        if (event) event.currentTarget.classList.add('active');
 
         // Update Panes
         document.querySelectorAll('.archive-tab-pane').forEach(pane => {
@@ -499,6 +539,7 @@
         else if (type === 'package') url = `/caterer/packages/${id}/restore`;
         else if (type === 'menu') url = `/caterer/menu/${id}/restore`;
         else if (type === 'gallery') url = `/caterer/gallery/${id}/restore`;
+        else if (type === 'ingredient') url = `/caterer/ingredients/${id}/restore`;
 
         performAction(type, id, 'restore', url,
             `Are you sure you want to restore this item?`,
@@ -512,6 +553,7 @@
         else if (type === 'package') url = `/caterer/packages/${id}/delete`;
         else if (type === 'menu') url = `/caterer/menu/${id}/delete`;
         else if (type === 'gallery') url = `/caterer/gallery/${id}/delete`;
+        else if (type === 'ingredient') url = `/caterer/ingredients/${id}/delete`;
 
         performAction(type, id, 'delete', url,
             `WARNING: This deletion is PERMANENT and cannot be undone. Are you sure?`,
