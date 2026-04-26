@@ -100,16 +100,17 @@ app.add_middleware(
     max_age=3600 * 24 * 7 # 1 week
 )
 
-# Add ProxyHeadersMiddleware to handle Ngrok/Proxy headers (X-Forwarded-Proto)
-# Adding this AFTER SessionMiddleware ensures it's at the TOP of the stack (runs first on request)
-app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+# Add ProxyHeadersMiddleware to handle Railway/Proxy headers
+# We trust all hosts here to ensure Railway domains are accepted correctly
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])
 
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
-
-# DEBUG MIDDLEWARE: Log all incoming requests to find the 404 culprit
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    print(f"[DEBUG LOG] Request: {request.method} {request.url}")
+    # Log the REAL host and protocol seen by the app
+    host = request.headers.get("host", "unknown")
+    proto = request.headers.get("x-forwarded-proto", "http")
+    print(f"[DEBUG LOG] Request: {request.method} {proto}://{host}{request.url.path}")
+    
     response = await call_next(request)
     print(f"[DEBUG LOG] Response: {response.status_code} for {request.url.path}")
     return response
