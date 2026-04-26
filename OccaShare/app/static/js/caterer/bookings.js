@@ -631,8 +631,11 @@ function showBookingDetails(btn) {
     if (actionsEl) {
         actionsEl.innerHTML = '';
         
+        const isPackage = data.isPackage === 'true' || data.isPackage === true;
+        
         // --- KYC WARNING BANNER ---
-        if (!isVerified && targetUserId) {
+        // Only show for Event Packages. Skip for Ala Carte / Food Orders.
+        if (!isVerified && targetUserId && isPackage) {
             actionsEl.innerHTML = `
                 <div style="width:100%; margin-bottom: 1rem; background:#fff7ed; border:1px solid #fed7aa; padding:1rem; border-radius:0.75rem; display:flex; align-items:center; gap:0.75rem;">
                     <div style="width:40px; height:40px; background:#ffedd5; color:#f97316; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
@@ -650,14 +653,13 @@ function showBookingDetails(btn) {
         }
 
         const plan = (data.paymentPlan || 'downpayment').toUpperCase();
-        const isPackage = data.isPackage === 'true' || data.isPackage === true;
         
         if (data.status === 'pending') {
             const isPayment = data.paymentStatus === 'proof_submitted';
             const btnLabel = isPayment ? `Verify ${plan}` : 'Accept Booking';
             const btnIcon = isPayment ? 'fa-check-double' : 'fa-check-circle';
             
-            actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.confirmAcceptBooking(${data.id}, ${isPayment}, ${isVerified})"><i class="fas ${btnIcon}"></i> ${btnLabel}</button>`;
+            actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.confirmAcceptBooking(${data.id}, ${isPayment}, ${isVerified}, ${isPackage})"><i class="fas ${btnIcon}"></i> ${btnLabel}</button>`;
             if (isPayment) actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-reject" onclick="window.requestNewProof(${data.id})" style="background:#64748b;"><i class="fas fa-redo"></i> Request New Proof</button>`;
             actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-reject" onclick="window.confirmRejectBooking(${data.id})"><i class="fas fa-times-circle"></i> Reject Booking</button>`;
             
@@ -917,12 +919,14 @@ async function runAIScan() {
     }
 }
 
-function confirmAcceptBooking(bookingId, isPayment, isVerified) {
+function confirmAcceptBooking(bookingId, isPayment, isVerified, isPackage) {
     isPayment = isPayment || false;
-    isVerified = isVerified === undefined ? true : isVerified; // Default to true if not provided (e.g. walk-ins)
+    isVerified = isVerified === undefined ? true : isVerified; 
+    isPackage = isPackage === undefined ? false : isPackage;
     
     // --- KYC GATEKEEPER ---
-    if (!isVerified) {
+    // Only enforce for Packages. Ala Carte is exempt.
+    if (!isVerified && isPackage) {
         window.showAlert({
             type: 'warning',
             title: 'Customer Not Verified',
