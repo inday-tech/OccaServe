@@ -607,7 +607,9 @@ class VerificationService:
                            id_number: str, 
                            id_type: str,
                            db: Session = None,
-                           user_id: int = None) -> Dict[str, Any]:
+                           user_id: int = None,
+                           dob: str = None,
+                           address: str = None) -> Dict[str, Any]:
         """Strictly validates the ID document (Quality + OCR + Patterns) synchronously."""
         try:
             # 1. Duplicate Check (Fraud Prevention)
@@ -667,136 +669,93 @@ class VerificationService:
                     type_found_in_ocr = True
                     break
             
-            # 7. Robust Matching Logic
-            clean_name = " ".join(full_name.lower().split())
-            clean_ocr = " ".join(ocr_text.lower().split())
-            
-            def ocr_normalize(s):
-                """Normalizes common OCR misreads in names/IDs for robust matching."""
-                if not s: return ""
-                # Map similar looking characters that OCR often confuses
-                subs = {
-                    '0': 'o', 'O': 'o', 'Q': 'o', 'D': 'o',
-                    '1': 'i', 'I': 'i', 'L': 'i', '|': 'i', '!': 'i',
-                    '5': 's', 'S': 's', '2': 'z', 'Z': 'z', '8': 'b', 'B': 'b',
-                    'ç': 'c', 'ñ': 'n', 'Ñ': 'n', '—': '-', '–': '-'
-                }
-                res = s.lower().strip()
-                for k, v in subs.items():
-                    res = res.replace(k.lower(), v.lower())
-                # Keep only alphanumeric for core comparison
-                res = re.sub(r'[^a-z0-9 ]', '', res)
-                return " ".join(res.split())
-
-            def normalize_id(s): 
-                # For IDs, we are even stricter: only letters and numbers
-                return re.sub(r'[^a-z0-9]', '', s.lower()) if s else ""
-            
-            name_parts = [p for p in clean_name.replace(",", " ").split() if len(p) > 2]
-            norm_id_input = normalize_id(id_number)
-            
-            print(f"[KYC DEBUG] Smart Matching - Name: '{clean_name}', ID: '{norm_id_input}'")
-            
-            # --- FUZZY NAME MATCHING ---
-            matches_count = 0
-            norm_ocr_for_names = ocr_normalize(clean_ocr)
-            norm_name_parts = [ocr_normalize(p) for p in name_parts]
-            
-            for part in norm_name_parts:
-                if len(part) < 2: continue
-                # Check for exact normalized match
-                if part in norm_ocr_for_names:
-                    matches_count += 1
-                    continue
-                
-                # Check for fuzzy word match
-                ocr_words = norm_ocr_for_names.split()
-                best_ratio = 0
-                for word in ocr_words:
-                    if len(word) < 2: continue
-                    ratio = difflib.SequenceMatcher(None, part, word).ratio()
-                    if ratio > best_ratio: best_ratio = ratio
-                
-                if best_ratio > 0.8: # Adjusted from 0.85 to be more lenient
-                    matches_count += 1
-                
-            # Name Match Threshold: At least 75% of name parts found
-            name_match = (matches_count / len(name_parts) >= 0.75) if name_parts else False
-            
-            # --- SMART ID NUMBER CHECK ---
-            id_found = False
-            best_id_ratio = 0
-            if norm_id_input:
-                # Remove all symbols from OCR for ID search
-                norm_ocr_for_id = normalize_id(ocr_text)
-                
-                # 1. Exact Substring Match (Normalized)
-                if norm_id_input in norm_ocr_for_id:
-                    id_found = True
-                else:
-                    # 2. Sliding Window Fuzzy Match (to handle missing/extra chars)
-                    id_len = len(norm_id_input)
-                    for i in range(len(norm_ocr_for_id) - id_len + 1):
-                        window = norm_ocr_for_id[i:i+id_len]
-                        ratio = difflib.SequenceMatcher(None, norm_id_input, window).ratio()
-                        if ratio > best_id_ratio: best_id_ratio = ratio
-                    
-                    # If 85% match, we consider it the same ID (handles common OCR noise)
-                    if best_id_ratio >= 0.85: 
-                        id_found = True
-            else:
-                id_found = True # Skip if no ID number provided for extraction
-            
-            # --- BROAD TYPE MATCHING ---
-            # If the scanner is poor, we check if ANY of the keywords exist even partially
-            type_found_in_ocr = False
-            for kw in selected_type_kws:
-                if kw.lower() in clean_ocr.lower():
-                    type_found_in_ocr = True
-                    break
-            
-            # FINAL DECISION: If Name matches and ID matches, we are 90% sure it's valid
-            # Even if the "ID Type" string was missed by OCR, we can be lenient if name/ID are solid
-            ocr_match = name_match and id_found
-            
-            status = "matched" if (ocr_match and is_likely_id) else "mismatched"
+            # 7. SMART MATCHING LOGIC (FOLLOWING USER'S PSEUDO-CODE)
             reasons = []
             
-            if not is_likely_id:
-                return {
-                    "status": "rejected",
-                    "failure_reason": "❌ Image is unclear or invalid. Please ensure the whole ID is visible.",
-                    "ocr_match": False,
-                    "is_likely_id": False
-                }
-            
-            if not ocr_match:
-                if not name_match: 
-                    reasons.append(f"❌ Name mismatch. Detected: '{rich_data.get('full_name') or 'Unknown'}'")
-                if not id_found:
-                    reasons.append(f"❌ ID number mismatch. Please check if it's correct.")
-                if not type_found_in_ocr:
-                    # Just a warning for type if other fields match
-                    print(f"[KYC WARNING] ID Type '{id_type}' not clearly found in OCR.")
+            # Helper for name matching (Case insensitive, ignore extra spaces, typo tolerance)
+            def match_name(input_name, ocr_data_name, full_ocr_text):
+                if not input_name: return False
+                clean_input = " ".join(input_name.lower().split())
+                full_ocr_lower = full_ocr_text.lower()
+                
+                # Try exact match first
+                if (ocr_data_name and clean_input in ocr_data_name.lower()) or clean_input in full_ocr_lower:
+                    return True
+                
+                # Typo tolerance (Fuzzy)
+                if ocr_data_name:
+                    ratio = difflib.SequenceMatcher(None, clean_input, ocr_data_name.lower()).ratio()
+                    if ratio > 0.85: return True
+                
+                # Check parts (at least 75% match)
+                input_parts = [p for p in clean_input.split() if len(p) > 2]
+                if not input_parts: return False
+                matches = 0
+                for part in input_parts:
+                    if part in full_ocr_lower:
+                        matches += 1
+                return (matches / len(input_parts)) >= 0.75
 
-            if not pattern_valid: 
-                reasons.append(f"❌ Invalid ID format.")
+            # Helper for Date of Birth matching
+            def match_dob(input_dob, extracted_dob, full_ocr_text):
+                if not input_dob: return True
+                # Format check (YYYY-MM-DD)
+                clean_input = input_dob.replace("-", "").replace("/", "")
+                clean_ocr = re.sub(r'[^0-9]', '', full_ocr_text)
+                return clean_input in clean_ocr or input_dob in full_ocr_text
+            # Helper for Address matching
+            def match_address(input_addr, extracted_addr, full_ocr_text):
+                if not input_addr: return True
+                clean_input = re.sub(r'[^a-z0-9]', '', input_addr.lower())
+                clean_ocr_norm = re.sub(r'[^a-z0-9]', '', full_ocr_text.lower())
+                if clean_input in clean_ocr_norm: return True
+                # Fuzzy word match
+                input_words = [w for w in input_addr.lower().split() if len(w) > 3]
+                if not input_words: return True
+                found = 0
+                for w in input_words:
+                    if w in clean_ocr_norm: found += 1
+                return (found / len(input_words)) >= 0.5
+            # --- EXECUTE VALIDATIONS ---
+            # 1. ID Type Check
+            if not type_found_in_ocr:
+                reasons.append("❌ ID type mismatch. The selected ID type does not match the registered ID.")
             
+            # 2. ID Number Check (Strict)
+            norm_id_input = re.sub(r'[^a-z0-9]', '', id_number.lower())
+            norm_id_ocr = re.sub(r'[^a-z0-9]', '', ocr_text.lower())
+            if norm_id_input not in norm_id_ocr:
+                reasons.append("❌ ID number mismatch. The ID number does not match our records.")
+            
+            # 3. Name Check
+            if not match_name(full_name, rich_data.get("full_name", ""), ocr_text):
+                reasons.append("❌ Name mismatch. The name on the ID does not match our records.")
+            
+            # 4. DOB Check
+            if dob and not match_dob(dob, rich_data.get("extracted_dob", ""), ocr_text):
+                reasons.append("❌ Date of birth mismatch. The date of birth does not match our records.")
+            
+            # 5. Address Check
+            if address and not match_address(address, rich_data.get("extracted_address", ""), ocr_text):
+                reasons.append("❌ Address mismatch. The address does not match our records.")
+
+            status = "matched" if not reasons else "mismatched"
+            if not is_likely_id and status == "matched":
+                status = "rejected"
+                reasons.append("❌ Image is unclear or invalid. Please ensure the whole ID is visible.")
+
             return {
                 "status": status,
-                "ocr_match": ocr_match and is_likely_id,
+                "ocr_match": status == "matched",
                 "is_likely_id": is_likely_id,
                 "pattern_valid": pattern_valid,
-                "failure_reason": "; ".join(reasons) if reasons else None,
+                "failure_reason": " ".join(reasons) if reasons else None,
                 "extracted_text_preview": ocr_text[:200],
                 "ocr_data": {
                     "raw_text": ocr_text,
-                    "full_name": rich_data.get("full_name") or "Not detected",
-                    "id_number": rich_data.get("id_number") or id_number,
-                    "name_match": name_match,
-                    "id_found": id_found,
-                    "type_found": type_found_in_ocr,
-                    "best_id_ratio": best_id_ratio,
+                    "full_name_extracted": rich_data.get("full_name"),
+                    "dob_extracted": rich_data.get("extracted_dob"),
+                    "address_extracted": rich_data.get("extracted_address"),
                     **rich_data
                 }
             }
@@ -811,11 +770,13 @@ class VerificationService:
                            id_number: str, 
                            id_type: str, 
                            db: Session = None,
-                           user_id: int = None) -> Dict[str, Any]:
+                           user_id: int = None,
+                           dob: str = None,
+                           address: str = None) -> Dict[str, Any]:
         """Refactored full verification logic using verify_id_document."""
         try:
             # 1. Document Verification (Now just re-using the method)
-            id_result = self.verify_id_document(id_path, full_name, id_number, id_type, db, user_id)
+            id_result = self.verify_id_document(id_path, full_name, id_number, id_type, db, user_id, dob, address)
             if id_result["status"] == "error":
                 return id_result # Bubble up error
 

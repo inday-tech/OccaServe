@@ -8,9 +8,12 @@
         --space-xs: 4px;
         --space-sm: 8px;
         --space-md: 16px;
-        --space-lg: 20px; /* Reduced from 24px */
-        --space-xl: 24px; /* Reduced from 32px */
-        --space-2xl: 40px; /* Reduced from 48px */
+        --space-lg: 20px;
+        /* Reduced from 24px */
+        --space-xl: 24px;
+        /* Reduced from 32px */
+        --space-2xl: 40px;
+        /* Reduced from 48px */
 
         /* ── Type Scale ── */
         --text-xs: 0.75rem;
@@ -1321,7 +1324,8 @@
             max-height: 85vh;
             width: 100%;
             max-width: 420px;
-            margin-bottom: 0.5rem; /* Slight float from bottom */
+            margin-bottom: 0.5rem;
+            /* Slight float from bottom */
             transform: translateY(105%);
             transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
@@ -1398,8 +1402,15 @@
     }
 
     @keyframes fadeInError {
-        from { opacity: 0; transform: translateY(-3px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+            opacity: 0;
+            transform: translateY(-3px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     /* ROI & Profitability Utility Classes */

@@ -18,7 +18,8 @@
     <div class="manage-header-flex">
         <div class="booking-title-section">
             <h1 class="booking-id-text">{{ booking.event_name or 'Event Booking' }}</h1>
-            <p class="event-meta-text">Booking #{{ booking.id }} &bull; {{ booking.event_date.strftime('%B %d, %Y') }}</p>
+            <p class="event-meta-text">Booking #{{ booking.id }} &bull; {{ booking.event_date.strftime('%B %d, %Y') }}
+            </p>
         </div>
         <div class="status-badge status-{{ (booking.status or 'pending').lower().replace(' ', '_') }}">
             {{ (booking.status or 'pending').replace('_', ' ').upper() }}
@@ -30,29 +31,36 @@
 <div class="c-card-premium stepper-card">
     <div class="status-timeline">
         <div class="timeline-track"></div>
-        <div class="timeline-progress" style="width: {{ (((current_step_idx - 1) / 5) * 100)|int if current_step_idx else 0 }}%"></div>
+        <div class="timeline-progress"
+            style="width: {{ (((current_step_idx - 1) / 5) * 100)|int if current_step_idx else 0 }}%"></div>
 
-        <div class="timeline-step {% if current_step_idx > 1 %}completed{% elif current_step_idx == 1 %}active{% endif %}">
+        <div
+            class="timeline-step {% if current_step_idx > 1 %}completed{% elif current_step_idx == 1 %}active{% endif %}">
             <div class="step-circle"><i class="far fa-edit"></i></div>
             <span class="step-label">Draft</span>
         </div>
-        <div class="timeline-step {% if current_step_idx > 2 %}completed{% elif current_step_idx == 2 %}active{% endif %}">
+        <div
+            class="timeline-step {% if current_step_idx > 2 %}completed{% elif current_step_idx == 2 %}active{% endif %}">
             <div class="step-circle"><i class="far fa-id-card"></i></div>
             <span class="step-label">Identity</span>
         </div>
-        <div class="timeline-step {% if current_step_idx > 3 %}completed{% elif current_step_idx == 3 %}active{% endif %}">
+        <div
+            class="timeline-step {% if current_step_idx > 3 %}completed{% elif current_step_idx == 3 %}active{% endif %}">
             <div class="step-circle"><i class="far fa-clipboard-check"></i></div>
             <span class="step-label">Quotation</span>
         </div>
-        <div class="timeline-step {% if current_step_idx > 4 %}completed{% elif current_step_idx == 4 %}active{% endif %}">
+        <div
+            class="timeline-step {% if current_step_idx > 4 %}completed{% elif current_step_idx == 4 %}active{% endif %}">
             <div class="step-circle"><i class="far fa-credit-card"></i></div>
             <span class="step-label">Payment</span>
         </div>
-        <div class="timeline-step {% if current_step_idx > 5 %}completed{% elif current_step_idx == 5 %}active{% endif %}">
+        <div
+            class="timeline-step {% if current_step_idx > 5 %}completed{% elif current_step_idx == 5 %}active{% endif %}">
             <div class="step-circle"><i class="fas fa-utensils"></i></div>
             <span class="step-label">Prep</span>
         </div>
-        <div class="timeline-step {% if current_step_idx > 6 %}completed{% elif current_step_idx == 6 %}active{% endif %}">
+        <div
+            class="timeline-step {% if current_step_idx > 6 %}completed{% elif current_step_idx == 6 %}active{% endif %}">
             <div class="step-circle"><i class="fas fa-check-double"></i></div>
             <span class="step-label">Done</span>
         </div>
@@ -65,26 +73,31 @@
         <div class="c-card-premium">
             <h2 class="section-title"><i class="far fa-calendar-alt"></i> Event Details</h2>
             <div class="detail-row">
-                <span class="detail-label"><i class="far fa-calendar-alt" style="margin-right: 0.5rem; color: #94a3b8;"></i> Event Type</span>
+                <span class="detail-label"><i class="far fa-calendar-alt"
+                        style="margin-right: 0.5rem; color: #94a3b8;"></i> Event Type</span>
                 <span class="detail-value">{{ booking.event_type or 'N/A' }}</span>
             </div>
             <div class="detail-row">
-                <span class="detail-label"><i class="far fa-file-alt" style="margin-right: 0.5rem; color: #94a3b8;"></i> Event Name</span>
+                <span class="detail-label"><i class="far fa-file-alt" style="margin-right: 0.5rem; color: #94a3b8;"></i>
+                    Event Name</span>
                 <span class="detail-value">{{ booking.event_name or 'N/A' }}</span>
             </div>
             <div class="detail-row">
-                <span class="detail-label"><i class="far fa-clock" style="margin-right: 0.5rem; color: #94a3b8;"></i> Schedule</span>
+                <span class="detail-label"><i class="far fa-clock" style="margin-right: 0.5rem; color: #94a3b8;"></i>
+                    Schedule</span>
                 <span class="detail-value">
                     {{ booking.event_date.strftime('%B %d, %Y') }} at
                     {{ booking.event_time.strftime('%I:%M %p') if booking.event_time else 'TBD' }}
                 </span>
             </div>
             <div class="detail-row">
-                <span class="detail-label"><i class="far fa-map-marker-alt" style="margin-right: 0.5rem; color: #94a3b8;"></i> Venue</span>
+                <span class="detail-label"><i class="far fa-map-marker-alt"
+                        style="margin-right: 0.5rem; color: #94a3b8;"></i> Venue</span>
                 <span class="detail-value">{{ booking.venue_address or 'TBD' }}</span>
             </div>
             <div class="detail-row">
-                <span class="detail-label"><i class="far fa-users" style="margin-right: 0.5rem; color: #94a3b8;"></i> Guest Count</span>
+                <span class="detail-label"><i class="far fa-users" style="margin-right: 0.5rem; color: #94a3b8;"></i>
+                    Guest Count</span>
                 <span class="detail-value">{{ booking.guest_count }} guests</span>
             </div>
             {% if booking.special_requests %}
@@ -98,15 +111,17 @@
         <div class="c-card-premium menu-sidebar-card">
             <h2 class="section-title"><i class="far fa-file-alt"></i> Menu Selection</h2>
             <div class="menu-package-header">
-                <div class="package-name-label" style="font-size: 0.9rem;">Package: {{ booking.package.name if booking.package else 'Custom Menu' }}</div>
-                <div class="package-desc-text" style="font-size: 0.8rem;">{{ booking.package.description if booking.package else '' }}</div>
+                <div class="package-name-label" style="font-size: 0.9rem;">Package: {{ booking.package.name if
+                    booking.package else 'Custom Menu' }}</div>
+                <div class="package-desc-text" style="font-size: 0.8rem;">{{ booking.package.description if
+                    booking.package else '' }}</div>
             </div>
 
             <div class="menu-items-grid">
                 {% for b_item in booking.selected_items %}
                 <div class="menu-item-tag">
                     <div style="display: flex; align-items: center; gap: 0.75rem;">
-                         <i class="fas fa-check-circle" style="color: #10b981;"></i>
+                        <i class="fas fa-check-circle" style="color: #10b981;"></i>
                         <span class="item-name-text">
                             {{ b_item.menu_item.name }}
                         </span>
@@ -121,34 +136,34 @@
         <!-- Action Center -->
         <div class="c-card-premium action-center-premium brand-action-card">
             <h2 class="section-title"><i class="fas fa-bolt"></i> Action Center & Settlement</h2>
-            
+
             <div class="action-landscape-grid">
                 <div class="action-financials-col">
                     <div class="payment-summary-block">
                         {% set total_val = booking.total_amount|float %}
                         {% set res_fee = booking.reservation_fee|float if booking.reservation_fee else 0.0 %}
                         {% set paid_amt = 0.0 %}
-                        
+
                         {# Plan-based override: Full means Paid in full (as per user request) #}
                         {% if booking.payment_plan == 'full' %}
-                            {% set paid_amt = total_val %}
-                            {% set balance_val = 0.0 %}
+                        {% set paid_amt = total_val %}
+                        {% set balance_val = 0.0 %}
                         {% else %}
-                            {# Strict status-based accounting for downpayment plans #}
-                            {% if booking.payment_status == 'paid' %}
-                                {% set paid_amt = total_val %}
-                            {% elif booking.payment_status == 'deposit_paid' %}
-                                {% set paid_amt = res_fee %}
-                            {% elif booking.payment_status in ['proof_submitted', 'balance_proof_submitted'] %}
-                                {# Even if proof is submitted, we show current verified paid amount until verified #}
-                                {% if booking.payment_status == 'balance_proof_submitted' %}
-                                    {% set paid_amt = res_fee %} 
-                                {% else %}
-                                    {% set paid_amt = 0.0 %}
-                                {% endif %}
-                            {% endif %}
-                            {% set balance_val = total_val - paid_amt %}
-                            {% if booking.payment_status == 'paid' %}{% set balance_val = 0.0 %}{% endif %}
+                        {# Strict status-based accounting for downpayment plans #}
+                        {% if booking.payment_status == 'paid' %}
+                        {% set paid_amt = total_val %}
+                        {% elif booking.payment_status == 'deposit_paid' %}
+                        {% set paid_amt = res_fee %}
+                        {% elif booking.payment_status in ['proof_submitted', 'balance_proof_submitted'] %}
+                        {# Even if proof is submitted, we show current verified paid amount until verified #}
+                        {% if booking.payment_status == 'balance_proof_submitted' %}
+                        {% set paid_amt = res_fee %}
+                        {% else %}
+                        {% set paid_amt = 0.0 %}
+                        {% endif %}
+                        {% endif %}
+                        {% set balance_val = total_val - paid_amt %}
+                        {% if booking.payment_status == 'paid' %}{% set balance_val = 0.0 %}{% endif %}
                         {% endif %}
 
                         <div class="detail-row">
@@ -157,7 +172,7 @@
                                 ₱{{ "{:,.2f}".format(booking.total_amount) }}
                             </span>
                         </div>
-                        
+
                         <div class="detail-row">
                             <span class="detail-label">Paid Amount</span>
                             <span class="detail-value text-success-pro">
@@ -187,158 +202,216 @@
                     {% endif %}
                 </div>
 
-                <div class="action-main-content-col" style="margin-top: 2rem; border-top: 1px solid #f1f5f9; padding-top: 2rem;">
+                <div class="action-main-content-col"
+                    style="margin-top: 2rem; border-top: 1px solid #f1f5f9; padding-top: 2rem;">
                     {% if booking.status == 'draft' %}
-                        <div class="alert-banner alert-warning" style="background: #fffbeb; border: 1px solid #fef3c7; color: #92400e; padding: 1.25rem; border-radius: 0.75rem; margin-bottom: 1.5rem;">
-                            <p style="margin: 0; font-size: 0.9rem;">This booking is incomplete. You need to finalize your quotation and reservation fee.</p>
-                        </div>
-                        {% set next_step = '/bookings/step/kyc/' ~ booking.id %}
-                        {% if current_step_idx == 2 %} {% set next_step = '/bookings/step/quotation/' ~ booking.id %} {% endif %}
-                        {% if current_step_idx == 3 %} {% set next_step = '/bookings/step/payment/' ~ booking.id %} {% endif %}
-                        <a href="{{ next_step }}" class="btn-primary-premium" style="width: 100%; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 0.75rem;">
-                            Continue Booking <i class="fas fa-arrow-right"></i>
-                        </a>
+                    <div class="alert-banner alert-warning"
+                        style="background: #fffbeb; border: 1px solid #fef3c7; color: #92400e; padding: 1.25rem; border-radius: 0.75rem; margin-bottom: 1.5rem;">
+                        <p style="margin: 0; font-size: 0.9rem;">This booking is incomplete. You need to finalize your
+                            quotation and reservation fee.</p>
+                    </div>
+                    {% set next_step = '/bookings/step/kyc/' ~ booking.id %}
+                    {% if current_step_idx == 2 %} {% set next_step = '/bookings/step/quotation/' ~ booking.id %} {%
+                    endif %}
+                    {% if current_step_idx == 3 %} {% set next_step = '/bookings/step/payment/' ~ booking.id %} {% endif
+                    %}
+                    <a href="{{ next_step }}" class="btn-primary-premium"
+                        style="width: 100%; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 0.75rem;">
+                        Continue Booking <i class="fas fa-arrow-right"></i>
+                    </a>
 
                     {% elif booking.status == 'pending' %}
-                        <div style="text-align: center; padding: 1rem;">
-                             <i class="fas fa-clock fa-3x" style="color: #3b82f6; margin-bottom: 1rem;"></i>
-                             <h4 style="font-weight: 700;">Awaiting Caterer Confirmation</h4>
-                             <p style="color: #64748b; font-size: 0.9rem;">The caterer will review and confirm your booking details shortly.</p>
-                        </div>
+                    <div style="text-align: center; padding: 1rem;">
+                        <i class="fas fa-clock fa-3x" style="color: #3b82f6; margin-bottom: 1rem;"></i>
+                        <h4 style="font-weight: 700;">Awaiting Caterer Confirmation</h4>
+                        <p style="color: #64748b; font-size: 0.9rem;">The caterer will review and confirm your booking
+                            details shortly.</p>
+                    </div>
 
                     {% elif booking.payment_status in ['pending', 'proof_submitted', 'reupload_requested'] %}
-                        <!-- STEP 4: Initial Payment Phase -->
-                        <div class="alert-banner alert-info" style="background: #eff6ff; border: 1px solid #dbeafe; color: #1e40af; padding: 1.25rem; border-radius: 0.75rem; margin-bottom: 1.5rem;">
-                            <p style="margin: 0; font-size: 0.9rem;">Your reservation is ready. Please complete the selected payment to secure your booking.</p>
-                            <div style="margin-top: 0.5rem; font-weight: 700;">
-                                Amount Due ({{ 'Full' if booking.payment_plan == 'full' else 'Downpayment' }}): 
-                                ₱{{ "{:,.2f}".format(booking.total_amount if booking.payment_plan == 'full' else (booking.reservation_fee or 0)) }}
-                            </div>
+                    <!-- STEP 4: Initial Payment Phase -->
+                    <div class="alert-banner alert-info"
+                        style="background: #eff6ff; border: 1px solid #dbeafe; color: #1e40af; padding: 1.25rem; border-radius: 0.75rem; margin-bottom: 1.5rem;">
+                        <p style="margin: 0; font-size: 0.9rem;">Your reservation is ready. Please complete the selected
+                            payment to secure your booking.</p>
+                        <div style="margin-top: 0.5rem; font-weight: 700;">
+                            Amount Due ({{ 'Full' if booking.payment_plan == 'full' else 'Downpayment' }}):
+                            ₱{{ "{:,.2f}".format(booking.total_amount if booking.payment_plan == 'full' else
+                            (booking.reservation_fee or 0)) }}
                         </div>
-                        
-                        {# Paymongo Integration #}
-                        <div class="paymongo-action-box" style="margin-bottom: 1.5rem; padding: 1.5rem; background: #fff; border-radius: 1rem; border: 2px dashed #4f46e5; text-align: center;">
-                            <img src="https://static.paymongo.com/images/paymongo-logo.png" alt="Paymongo" style="height: 24px; margin-bottom: 0.75rem;">
-                            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Recommended: Fast & Secure payment via Gcash, Maya, or Credit Card.</p>
-                            <button onclick="initiatePaymongo('dp')" class="btn-primary-premium" id="payBtn" style="width: 100%; justify-content: center; background: #4f46e5;">
-                                <i class="fas fa-shield-check" style="margin-right: 0.5rem;"></i> Pay Reservation via Paymongo
-                            </button>
-                            <div id="payLoading" style="display: none; margin-top: 1rem; color: #4f46e5; font-size: 0.9rem;">
-                                <i class="fas fa-spinner fa-spin"></i> Generating secure link...
-                            </div>
-                        </div>
+                    </div>
 
-                        <div style="text-align: center; margin-bottom: 1.5rem;">
-                            <span style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; font-weight: 700;">— Or Manual Transfer —</span>
+                    {# Paymongo Integration #}
+                    <div class="paymongo-action-box"
+                        style="margin-bottom: 1.5rem; padding: 1.5rem; background: #fff; border-radius: 1rem; border: 2px dashed #4f46e5; text-align: center;">
+                        <img src="https://static.paymongo.com/images/paymongo-logo.png" alt="Paymongo"
+                            style="height: 24px; margin-bottom: 0.75rem;">
+                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Recommended: Fast & Secure
+                            payment via Gcash, Maya, or Credit Card.</p>
+                        <button onclick="initiatePaymongo('dp')" class="btn-primary-premium" id="payBtn"
+                            style="width: 100%; justify-content: center; background: #4f46e5;">
+                            <i class="fas fa-shield-check" style="margin-right: 0.5rem;"></i> Pay Reservation via
+                            Paymongo
+                        </button>
+                        <div id="payLoading"
+                            style="display: none; margin-top: 1rem; color: #4f46e5; font-size: 0.9rem;">
+                            <i class="fas fa-spinner fa-spin"></i> Generating secure link...
                         </div>
+                    </div>
 
-                        <a href="/bookings/step/payment/{{ booking.id }}" class="btn-outline-premium" style="width: 100%; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 0.75rem; border: 1px solid #cbd5e1;">
-                            Manual Bank/Receipt Upload <i class="fas fa-upload"></i>
-                        </a>
+                    <div style="text-align: center; margin-bottom: 1.5rem;">
+                        <span style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; font-weight: 700;">—
+                            Or Manual Transfer —</span>
+                    </div>
+
+                    <a href="/bookings/step/payment/{{ booking.id }}" class="btn-outline-premium"
+                        style="width: 100%; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 0.75rem; border: 1px solid #cbd5e1;">
+                        Manual Bank/Receipt Upload <i class="fas fa-upload"></i>
+                    </a>
 
                     {% elif balance_val > 0 and booking.payment_plan != 'full' %}
-                        <!-- STEP 5/6: Balance Settlement Phase -->
-                        <div class="payment-settlement-pro">
-                            <div class="settlement-header-pro" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
-                                <div style="width: 40px; height: 40px; background: #fff7ed; color: #f97316; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center;">
-                                    <i class="fas fa-money-bill-wave"></i>
-                                </div>
-                                <div style="flex: 1;">
-                                    <h4 style="font-size: 1rem; font-weight: 700; color: #1e293b; margin: 0;">Final Balance Settlement</h4>
-                                    {% if booking.payment_plan == 'full' %}
-                                        <p style="font-size: 0.8rem; color: {{ '#10b981' if booking.payment_status == 'paid' else '#f59e0b' }}; font-weight: 700; margin: 0;">
-                                            <i class="fas {{ 'fa-check-circle' if booking.payment_status == 'paid' else 'fa-hourglass-half' }}"></i>
-                                            {{ 'Full Payment scheme - Verified' if booking.payment_status == 'paid' else 'Full Payment Scheme - Verification Pending' }}
-                                        </p>
-                                    {% elif booking.balance_due_date %}
-                                        <p style="font-size: 0.8rem; color: #ef4444; font-weight: 700; margin: 0;">
-                                            Due Date: {{ booking.balance_due_date.strftime('%b %d, %Y') }}
-                                        </p>
-                                    {% else %}
-                                        <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: #64748b;">Schedule TBD by your caterer.</p>
-                                    {% endif %}
-                                </div>
+                    <!-- STEP 5/6: Balance Settlement Phase -->
+                    <div class="payment-settlement-pro">
+                        <div class="settlement-header-pro"
+                            style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+                            <div
+                                style="width: 40px; height: 40px; background: #fff7ed; color: #f97316; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-money-bill-wave"></i>
                             </div>
-
-                            <div class="payout-selector-p" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1.5rem;">
-                                {% if booking.caterer.gcash_number %}<div class="payout-option-p active" onclick="switchPayout('gcash', this)" style="border: 1px solid #e2e8f0; padding: 0.6rem; border-radius: 0.5rem; text-align: center; cursor: pointer; font-size: 0.75rem; font-weight: 600;">GCash</div>{% endif %}
-                                {% if booking.caterer.maya_number %}<div class="payout-option-p" onclick="switchPayout('maya', this)" style="border: 1px solid #e2e8f0; padding: 0.6rem; border-radius: 0.5rem; text-align: center; cursor: pointer; font-size: 0.75rem; font-weight: 600;">Maya</div>{% endif %}
-                                {% if booking.caterer.bank_account_number %}<div class="payout-option-p" onclick="switchPayout('bank', this)" style="border: 1px solid #e2e8f0; padding: 0.6rem; border-radius: 0.5rem; text-align: center; cursor: pointer; font-size: 0.75rem; font-weight: 600;">Bank</div>{% endif %}
-                            </div>
-
-                            <div id="payout-details-container" class="payout-details-pro">
-                                {% if booking.caterer.gcash_number %}
-                                <div id="payout-gcash" class="payout-detail-box active" style="background: #f8fafc; padding: 0.75rem; border-radius: 0.5rem;">
-                                    <div style="font-size: 0.7rem; color: #64748b; margin-bottom: 0.1rem;">GCash Number</div>
-                                    <div style="font-weight: 700; color: #1e293b; font-size: 1rem;">{{ booking.caterer.gcash_number }}</div>
-                                </div>
-                                {% endif %}
-                                <!-- Maya and Bank hidden by default -->
-                                {% if booking.caterer.maya_number %}
-                                <div id="payout-maya" class="payout-detail-box" style="display: none; background: #f8fafc; padding: 0.75rem; border-radius: 0.5rem;">
-                                    <div style="font-size: 0.7rem; color: #64748b; margin-bottom: 0.1rem;">Maya Number</div>
-                                    <div style="font-weight: 700; color: #1e293b; font-size: 1rem;">{{ booking.caterer.maya_number }}</div>
-                                </div>
-                                {% endif %}
-                                {% if booking.caterer.bank_account_number %}
-                                <div id="payout-bank" class="payout-detail-box" style="display: none; background: #f8fafc; padding: 0.75rem; border-radius: 0.5rem;">
-                                    <div style="font-size: 0.7rem; color: #64748b; margin-bottom: 0.1rem;">Bank Details</div>
-                                    <div style="font-weight: 700; color: #1e293b; font-size: 0.9rem;">{{ booking.caterer.bank_name }}</div>
-                                    <div style="font-size: 0.8rem; color: #1e293b;">{{ booking.caterer.bank_account_number }}</div>
-                                </div>
+                            <div style="flex: 1;">
+                                <h4 style="font-size: 1rem; font-weight: 700; color: #1e293b; margin: 0;">Final Balance
+                                    Settlement</h4>
+                                {% if booking.payment_plan == 'full' %}
+                                <p
+                                    style="font-size: 0.8rem; color: {{ '#10b981' if booking.payment_status == 'paid' else '#f59e0b' }}; font-weight: 700; margin: 0;">
+                                    <i
+                                        class="fas {{ 'fa-check-circle' if booking.payment_status == 'paid' else 'fa-hourglass-half' }}"></i>
+                                    {{ 'Full Payment scheme - Verified' if booking.payment_status == 'paid' else 'Full
+                                    Payment Scheme - Verification Pending' }}
+                                </p>
+                                {% elif booking.balance_due_date %}
+                                <p style="font-size: 0.8rem; color: #ef4444; font-weight: 700; margin: 0;">
+                                    Due Date: {{ booking.balance_due_date.strftime('%b %d, %Y') }}
+                                </p>
+                                {% else %}
+                                <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: #64748b;">Schedule TBD by your
+                                    caterer.</p>
                                 {% endif %}
                             </div>
+                        </div>
 
-                            {% if booking.payment_status == 'balance_proof_submitted' %}
-                                <div class="alert-banner alert-info" style="margin-top: 1.5rem; background: #eff6ff; padding: 0.75rem; border-radius: 0.5rem; text-align: center; font-size: 0.85rem;">
-                                    <i class="fas fa-clock"></i> Proof Submitted. Awaiting verification.
-                                </div>
-                            {% else %}
-                                {# Paymongo Integration for Balance #}
-                                <div class="paymongo-action-box" style="margin: 1.5rem 0; padding: 1.25rem; background: #f8fafc; border-radius: 1rem; border: 1px solid #e2e8f0; text-align: center;">
-                                    <img src="https://static.paymongo.com/images/paymongo-logo.png" alt="Paymongo" style="height: 20px; margin-bottom: 0.75rem; opacity: 0.6;">
-                                    <button onclick="initiatePaymongo('balance')" class="btn-primary-premium" id="payBtnBal" style="width: 100%; justify-content: center; background: #111827; font-size: 0.9rem;">
-                                        <i class="fas fa-wallet" style="margin-right: 0.5rem;"></i> Pay Balance via Paymongo
-                                    </button>
-                                    <div id="payLoadingBal" style="display: none; margin-top: 1rem; color: #111827; font-size: 0.85rem;">
-                                        <i class="fas fa-spinner fa-spin"></i> Loading...
-                                    </div>
-                                </div>
+                        <div class="payout-selector-p"
+                            style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1.5rem;">
+                            {% if booking.caterer.gcash_number %}<div class="payout-option-p active"
+                                onclick="switchPayout('gcash', this)"
+                                style="border: 1px solid #e2e8f0; padding: 0.6rem; border-radius: 0.5rem; text-align: center; cursor: pointer; font-size: 0.75rem; font-weight: 600;">
+                                GCash</div>{% endif %}
+                            {% if booking.caterer.maya_number %}<div class="payout-option-p"
+                                onclick="switchPayout('maya', this)"
+                                style="border: 1px solid #e2e8f0; padding: 0.6rem; border-radius: 0.5rem; text-align: center; cursor: pointer; font-size: 0.75rem; font-weight: 600;">
+                                Maya</div>{% endif %}
+                            {% if booking.caterer.bank_account_number %}<div class="payout-option-p"
+                                onclick="switchPayout('bank', this)"
+                                style="border: 1px solid #e2e8f0; padding: 0.6rem; border-radius: 0.5rem; text-align: center; cursor: pointer; font-size: 0.75rem; font-weight: 600;">
+                                Bank</div>{% endif %}
+                        </div>
 
-                                <div style="text-align: center; margin-bottom: 1rem;">
-                                    <span style="font-size: 0.7rem; color: #94a3b8; font-weight: 700;">OR UPLOAD MANUALLY</span>
+                        <div id="payout-details-container" class="payout-details-pro">
+                            {% if booking.caterer.gcash_number %}
+                            <div id="payout-gcash" class="payout-detail-box active"
+                                style="background: #f8fafc; padding: 0.75rem; border-radius: 0.5rem;">
+                                <div style="font-size: 0.7rem; color: #64748b; margin-bottom: 0.1rem;">GCash Number
                                 </div>
-
-                                <form action="/bookings/pay-balance/{{ booking.id }}" method="POST" enctype="multipart/form-data" 
-                                      onsubmit="event.preventDefault(); submitPaymentForm(this);" 
-                                      style="border: 1px dashed #cbd5e1; padding: 1rem; border-radius: 0.75rem;">
-                                    <div id="image-preview-container" style="display: none; margin-bottom: 1rem; text-align: center;">
-                                        <img id="payment-preview-img" src="" style="max-height: 120px; border-radius: 0.5rem;">
-                                    </div>
-                                    <div class="file-upload-wrapper-p" style="position: relative; text-align: center;">
-                                        <label for="payment_proof" style="cursor: pointer; font-size: 0.85rem; color: #64748b;">
-                                            <i class="fas fa-upload" style="display: block; font-size: 1.25rem; color: var(--primary-color); margin-bottom: 0.5rem;"></i>
-                                            <span id="file-name-display">Upload Balance Proof</span>
-                                        </label>
-                                        <input type="file" name="payment_proof" id="payment_proof" accept="image/*" required onchange="handleFileSelect(this)" style="position: absolute; width:100%; height:100%; top:0; left:0; opacity:0; cursor:pointer;">
-                                    </div>
-                                    <button type="submit" id="submit-payment-btn" class="btn-primary-premium" disabled style="width: 100%; margin-top: 1rem; font-size: 0.9rem; opacity: 0.6;">Submit Final Payment</button>
-                                </form>
+                                <div style="font-weight: 700; color: #1e293b; font-size: 1rem;">{{
+                                    booking.caterer.gcash_number }}</div>
+                            </div>
+                            {% endif %}
+                            <!-- Maya and Bank hidden by default -->
+                            {% if booking.caterer.maya_number %}
+                            <div id="payout-maya" class="payout-detail-box"
+                                style="display: none; background: #f8fafc; padding: 0.75rem; border-radius: 0.5rem;">
+                                <div style="font-size: 0.7rem; color: #64748b; margin-bottom: 0.1rem;">Maya Number</div>
+                                <div style="font-weight: 700; color: #1e293b; font-size: 1rem;">{{
+                                    booking.caterer.maya_number }}</div>
+                            </div>
+                            {% endif %}
+                            {% if booking.caterer.bank_account_number %}
+                            <div id="payout-bank" class="payout-detail-box"
+                                style="display: none; background: #f8fafc; padding: 0.75rem; border-radius: 0.5rem;">
+                                <div style="font-size: 0.7rem; color: #64748b; margin-bottom: 0.1rem;">Bank Details
+                                </div>
+                                <div style="font-weight: 700; color: #1e293b; font-size: 0.9rem;">{{
+                                    booking.caterer.bank_name }}</div>
+                                <div style="font-size: 0.8rem; color: #1e293b;">{{ booking.caterer.bank_account_number
+                                    }}</div>
+                            </div>
                             {% endif %}
                         </div>
+
+                        {% if booking.payment_status == 'balance_proof_submitted' %}
+                        <div class="alert-banner alert-info"
+                            style="margin-top: 1.5rem; background: #eff6ff; padding: 0.75rem; border-radius: 0.5rem; text-align: center; font-size: 0.85rem;">
+                            <i class="fas fa-clock"></i> Proof Submitted. Awaiting verification.
+                        </div>
+                        {% else %}
+                        {# Paymongo Integration for Balance #}
+                        <div class="paymongo-action-box"
+                            style="margin: 1.5rem 0; padding: 1.25rem; background: #f8fafc; border-radius: 1rem; border: 1px solid #e2e8f0; text-align: center;">
+                            <img src="https://static.paymongo.com/images/paymongo-logo.png" alt="Paymongo"
+                                style="height: 20px; margin-bottom: 0.75rem; opacity: 0.6;">
+                            <button onclick="initiatePaymongo('balance')" class="btn-primary-premium" id="payBtnBal"
+                                style="width: 100%; justify-content: center; background: #111827; font-size: 0.9rem;">
+                                <i class="fas fa-wallet" style="margin-right: 0.5rem;"></i> Pay Balance via Paymongo
+                            </button>
+                            <div id="payLoadingBal"
+                                style="display: none; margin-top: 1rem; color: #111827; font-size: 0.85rem;">
+                                <i class="fas fa-spinner fa-spin"></i> Loading...
+                            </div>
+                        </div>
+
+                        <div style="text-align: center; margin-bottom: 1rem;">
+                            <span style="font-size: 0.7rem; color: #94a3b8; font-weight: 700;">OR UPLOAD MANUALLY</span>
+                        </div>
+
+                        <form action="/bookings/pay-balance/{{ booking.id }}" method="POST"
+                            enctype="multipart/form-data" onsubmit="event.preventDefault(); submitPaymentForm(this);"
+                            style="border: 1px dashed #cbd5e1; padding: 1rem; border-radius: 0.75rem;">
+                            <div id="image-preview-container"
+                                style="display: none; margin-bottom: 1rem; text-align: center;">
+                                <img id="payment-preview-img" src="" style="max-height: 120px; border-radius: 0.5rem;">
+                            </div>
+                            <div class="file-upload-wrapper-p" style="position: relative; text-align: center;">
+                                <label for="payment_proof" style="cursor: pointer; font-size: 0.85rem; color: #64748b;">
+                                    <i class="fas fa-upload"
+                                        style="display: block; font-size: 1.25rem; color: var(--primary-color); margin-bottom: 0.5rem;"></i>
+                                    <span id="file-name-display">Upload Balance Proof</span>
+                                </label>
+                                <input type="file" name="payment_proof" id="payment_proof" accept="image/*" required
+                                    onchange="handleFileSelect(this)"
+                                    style="position: absolute; width:100%; height:100%; top:0; left:0; opacity:0; cursor:pointer;">
+                            </div>
+                            <button type="submit" id="submit-payment-btn" class="btn-primary-premium" disabled
+                                style="width: 100%; margin-top: 1rem; font-size: 0.9rem; opacity: 0.6;">Submit Final
+                                Payment</button>
+                        </form>
+                        {% endif %}
+                    </div>
 
                     {% else %}
-                        <div style="text-align: center; padding: 1.5rem; background: #f0fdf4; border-radius: 0.75rem; border: 1px solid #bbf7d0; color: #15803d;">
-                            <i class="fas fa-check-circle fa-2x" style="margin-bottom: 0.5rem; display: block;"></i>
-                            <h4 style="margin: 0; font-weight: 700;">Event Completed</h4>
-                            <p style="margin: 0.25rem 0 0; font-size: 0.85rem;">Thank you! All transactions and services for this booking are complete.</p>
-                            
-                            {% if booking.status == 'completed' and not booking.review %}
-                            <a href="/customer/feedback/{{ booking.id }}" class="btn-primary-premium" style="width: 100%; margin-top: 1.5rem; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 0.75rem; background: #f59e0b;">
-                                Share Your Experience <i class="fas fa-star"></i>
-                            </a>
-                            {% endif %}
-                        </div>
+                    <div
+                        style="text-align: center; padding: 1.5rem; background: #f0fdf4; border-radius: 0.75rem; border: 1px solid #bbf7d0; color: #15803d;">
+                        <i class="fas fa-check-circle fa-2x" style="margin-bottom: 0.5rem; display: block;"></i>
+                        <h4 style="margin: 0; font-weight: 700;">Event Completed</h4>
+                        <p style="margin: 0.25rem 0 0; font-size: 0.85rem;">Thank you! All transactions and services for
+                            this booking are complete.</p>
+
+                        {% if booking.status == 'completed' and not booking.review %}
+                        <a href="/customer/feedback/{{ booking.id }}" class="btn-primary-premium"
+                            style="width: 100%; margin-top: 1.5rem; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 0.75rem; background: #f59e0b;">
+                            Share Your Experience <i class="fas fa-star"></i>
+                        </a>
+                        {% endif %}
+                    </div>
                     {% endif %}
                 </div>
             </div>
@@ -350,13 +423,17 @@
                 <div class="modal-header-p">
                     <div style="display: flex; align-items: center; gap: 0.75rem;">
                         <div class="secure-badge-pro"><i class="fas fa-shield-check"></i> Certified Secure</div>
-                        <h2 style="font-size: 1.25rem; font-weight: 800; color: #1e293b; margin: 0; letter-spacing: -0.5px;">Digital Service Agreement</h2>
+                        <h2
+                            style="font-size: 1.25rem; font-weight: 800; color: #1e293b; margin: 0; letter-spacing: -0.5px;">
+                            Digital Service Agreement</h2>
                     </div>
                     <div style="display: flex; gap: 1rem;">
-                        <button onclick="printContract('{{ booking.id }}')" class="btn-outline-premium" style="padding: 0.6rem 1.25rem; border-radius: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <button onclick="printContract('{{ booking.id }}')" class="btn-outline-premium"
+                            style="padding: 0.6rem 1.25rem; border-radius: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer;">
                             <i class="fas fa-print"></i> Print / Save PDF
                         </button>
-                        <button onclick="closeContractModal()" style="background: none; border: none; font-size: 1.5rem; color: #94a3b8; cursor: pointer; padding: 0.5rem; transition: color 0.2s;">
+                        <button onclick="closeContractModal()"
+                            style="background: none; border: none; font-size: 1.5rem; color: #94a3b8; cursor: pointer; padding: 0.5rem; transition: color 0.2s;">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
@@ -375,7 +452,8 @@
             <h2 class="section-title"><i class="far fa-user"></i> Your Caterer</h2>
             <div class="caterer-mini-profile">
                 <div class="caterer-logo-wrapper">
-                    <img src="{{ booking.caterer.logo_url or url_for('static', path='/img/default_caterer.png') }}" class="caterer-logo" alt="Logo">
+                    <img src="{{ booking.caterer.logo_url or url_for('static', path='/img/default_caterer.png') }}"
+                        class="caterer-logo" alt="Logo">
                 </div>
                 <div class="caterer-id-info">
                     <h3 class="caterer-name-h3">{{ booking.caterer.business_name }}</h3>
@@ -386,101 +464,101 @@
 </div>
 
 <script>
-function switchPayout(type, element) {
-    document.querySelectorAll('.payout-option-p').forEach(opt => opt.classList.remove('active'));
-    element.classList.add('active');
-    document.querySelectorAll('.payout-detail-box').forEach(box => box.style.display = 'none');
-    const target = document.getElementById('payout-' + type);
-    if (target) target.style.display = 'block';
-}
-
-function handleFileSelect(input) {
-    const display = document.getElementById('file-name-display');
-    const container = document.getElementById('image-preview-container');
-    const img = document.getElementById('payment-preview-img');
-    const btn = document.getElementById('submit-payment-btn');
-    
-    if (input.files && input.files[0]) {
-        display.innerText = input.files[0].name;
-        const reader = new FileReader();
-        reader.onload = e => {
-            img.src = e.target.result;
-            container.style.display = 'block';
-            btn.disabled = false;
-            btn.style.opacity = '1';
-        };
-        reader.readAsDataURL(input.files[0]);
+    function switchPayout(type, element) {
+        document.querySelectorAll('.payout-option-p').forEach(opt => opt.classList.remove('active'));
+        element.classList.add('active');
+        document.querySelectorAll('.payout-detail-box').forEach(box => box.style.display = 'none');
+        const target = document.getElementById('payout-' + type);
+        if (target) target.style.display = 'block';
     }
-}
 
-function submitPaymentForm(form) {
-    if(confirm("Submit this payment proof?")) form.submit();
-}
-async function initiatePaymongo(type) {
-    const isBalance = type === 'balance';
-    const btn = document.getElementById(isBalance ? 'payBtnBal' : 'payBtn');
-    const loading = document.getElementById(isBalance ? 'payLoadingBal' : 'payLoading');
-    
-    btn.disabled = true;
-    loading.style.display = 'block';
-    
-    const formData = new FormData();
-    formData.append('payment_type', type);
-    
-    try {
-        const response = await fetch(`/api/bookings/{{ booking.id }}/pay`, {
-            method: 'POST',
-            body: formData
-        });
-        
-        const data = await response.json();
-        if (data.success && data.checkout_url) {
-            window.location.href = data.checkout_url;
-        } else {
-            alert(data.message || 'Failed to generate payment link. Please try again.');
+    function handleFileSelect(input) {
+        const display = document.getElementById('file-name-display');
+        const container = document.getElementById('image-preview-container');
+        const img = document.getElementById('payment-preview-img');
+        const btn = document.getElementById('submit-payment-btn');
+
+        if (input.files && input.files[0]) {
+            display.innerText = input.files[0].name;
+            const reader = new FileReader();
+            reader.onload = e => {
+                img.src = e.target.result;
+                container.style.display = 'block';
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function submitPaymentForm(form) {
+        if (confirm("Submit this payment proof?")) form.submit();
+    }
+    async function initiatePaymongo(type) {
+        const isBalance = type === 'balance';
+        const btn = document.getElementById(isBalance ? 'payBtnBal' : 'payBtn');
+        const loading = document.getElementById(isBalance ? 'payLoadingBal' : 'payLoading');
+
+        btn.disabled = true;
+        loading.style.display = 'block';
+
+        const formData = new FormData();
+        formData.append('payment_type', type);
+
+        try {
+            const response = await fetch(`/api/bookings/{{ booking.id }}/pay`, {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+            if (data.success && data.checkout_url) {
+                window.location.href = data.checkout_url;
+            } else {
+                alert(data.message || 'Failed to generate payment link. Please try again.');
+                btn.disabled = false;
+                loading.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('A connection error occurred. Please check your internet.');
             btn.disabled = false;
             loading.style.display = 'none';
         }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('A connection error occurred. Please check your internet.');
-        btn.disabled = false;
-        loading.style.display = 'none';
     }
-}
 
-function openContractModal(bookingId) {
-    const modal = document.getElementById('contractModal');
-    const body = document.getElementById('contractModalBody');
-    modal.style.display = 'flex';
-    
-    fetch(`/api/bookings/${bookingId}/contract/content`)
-        .then(response => response.text())
-        .then(html => {
-            body.innerHTML = html;
-        })
-        .catch(err => {
-            body.innerHTML = '<p style="color: #ef4444; text-align: center;">Failed to load contract content.</p>';
-            console.error(err);
-        });
-}
+    function openContractModal(bookingId) {
+        const modal = document.getElementById('contractModal');
+        const body = document.getElementById('contractModalBody');
+        modal.style.display = 'flex';
 
-function closeContractModal() {
-    document.getElementById('contractModal').style.display = 'none';
-}
+        fetch(`/api/bookings/${bookingId}/contract/content`)
+            .then(response => response.text())
+            .then(html => {
+                body.innerHTML = html;
+            })
+            .catch(err => {
+                body.innerHTML = '<p style="color: #ef4444; text-align: center;">Failed to load contract content.</p>';
+                console.error(err);
+            });
+    }
 
-function printContract(bookingId) {
-    const url = `/customer/bookings/${bookingId}/contract`;
-    const printWindow = window.open(url, '_blank');
-    printWindow.onload = function() {
-        printWindow.print();
-    };
-}
+    function closeContractModal() {
+        document.getElementById('contractModal').style.display = 'none';
+    }
 
-// Close on outside click
-window.onclick = function(event) {
-    const modal = document.getElementById('contractModal');
-    if (event.target == modal) closeContractModal();
-}
+    function printContract(bookingId) {
+        const url = `/customer/bookings/${bookingId}/contract`;
+        const printWindow = window.open(url, '_blank');
+        printWindow.onload = function () {
+            printWindow.print();
+        };
+    }
+
+    // Close on outside click
+    window.onclick = function (event) {
+        const modal = document.getElementById('contractModal');
+        if (event.target == modal) closeContractModal();
+    }
 </script>
 {% endblock %}

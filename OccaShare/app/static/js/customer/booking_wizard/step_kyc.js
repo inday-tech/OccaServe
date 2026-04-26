@@ -187,6 +187,16 @@ document.addEventListener('DOMContentLoaded', function () {
     window.handleUploadClick = function () {
         const idType = document.getElementById('id_type').value;
         const idNumber = document.getElementById('id_number').value.trim();
+        const firstName = document.getElementById('first_name').value.trim();
+        const lastName = document.getElementById('last_name').value.trim();
+        const dob = document.getElementById('dob').value;
+        const address = document.getElementById('address').value.trim();
+
+        if (!firstName || !lastName || !dob || !address) {
+            const msg = '❌ Please complete your name, date of birth, and address.';
+            if (window.showError) window.showError(msg, 'Incomplete Data'); else alert(msg);
+            return;
+        }
 
         if (!idType) {
             if (window.showError) window.showError('❌ Please select an ID type.', 'Incomplete Data'); else alert('❌ Please select an ID type.');
@@ -246,6 +256,11 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('id_type', idType);
         formData.append('id_number', idNumber);
         formData.append('id_document', idFile);
+        formData.append('first_name', document.getElementById('first_name').value.trim());
+        formData.append('middle_name', document.getElementById('middle_name').value.trim());
+        formData.append('last_name', document.getElementById('last_name').value.trim());
+        formData.append('dob', document.getElementById('dob').value);
+        formData.append('address', document.getElementById('address').value.trim());
 
         try {
             // Simulated sequence for better UX
@@ -552,6 +567,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const idType = document.getElementById('id_type').value;
         const idNumber = document.getElementById('id_number').value.trim();
+        const firstName = document.getElementById('first_name').value.trim();
+        const lastName = document.getElementById('last_name').value.trim();
+        const dob = document.getElementById('dob').value;
+        const address = document.getElementById('address').value.trim();
+
+        if (!firstName || !lastName || !dob || !address) {
+            const msg = '❌ Please complete your name, date of birth, and address.';
+            if (window.showError) window.showError(msg, 'Missing Fields'); else alert(msg);
+            return;
+        }
 
         if (!idType) {
             if (window.showError) window.showError('❌ Please select an ID type.', 'Missing Fields'); else alert('❌ Please select an ID type.');
