@@ -55,7 +55,6 @@
                     data-description="{{ item.description or '' }}"
                     data-price="{{ item.price or 0 }}"
                     data-cost-price="{{ item.cost_price or 0 }}"
-                    data-cost-breakdown='{{ item.cost_breakdown|tojson if item.cost_breakdown else "[]" }}'
                     data-serving-size="{{ item.serving_size or '' }}"
                     data-is-addon="{{ 'true' if item.is_addon else 'false' }}"
                     data-addon-price="{{ item.addon_price or 0 }}"
@@ -102,8 +101,7 @@
         <i class="fas fa-utensils"></i>
     </div>
     <h2>Your Library is Empty</h2>
-    <p class="mx-auto" style="max-width: 400px;">Start building your culinary collection by adding your signature
-        dishes.</p>
+    <p class="mx-auto" style="max-width: 400px;">Start building your culinary collection by adding your signature dishes.</p>
     <button class="btn-primary-pro mt-4 mx-auto" onclick="openAddMenuModal()">Add Your First Dish</button>
 </div>
 {% endif %}
@@ -173,7 +171,6 @@
                         <div style="padding: var(--space-xs) 0;">
                             <span class="status-badge-pro available" id="roiMarginBadge" style="background: var(--color-neutral-400); height: 32px; display: inline-flex; align-items: center; padding: 0 1rem; border-radius: 16px;">Margin: --%</span>
                         </div>
-                        <input type="hidden" name="cost_breakdown" id="cost_breakdown_input" value="[]">
                     </div>
                 </div>
 
@@ -234,8 +231,6 @@
     </div>
 </div>
 
-
-
 <!-- Archive Dish Modal -->
 <div id="archiveDishModal" class="modal-pro">
     <div class="modal-content-pro" style="max-width: 450px;">
@@ -259,9 +254,6 @@
         </div>
     </div>
 </div>
-
-
-
 {% endblock %}
 
 {% block extra_js %}
@@ -269,7 +261,6 @@
     const modal = document.getElementById('menuModal');
     const form = document.getElementById('menuForm');
     const modalTitle = document.getElementById('menuModalTitle');
-
     const imagePreviewContainer = document.getElementById('imagePreviewContainer');
     const imagePreview = document.getElementById('imagePreview');
     const photoDropzone = document.getElementById('photoDropzone');
@@ -281,14 +272,15 @@
         form.reset();
         removeImage();
         toggleAddonPrice();
-        document.getElementById('menuErrorDrawer').style.display = 'none';
+        if (document.getElementById('menuErrorDrawer')) document.getElementById('menuErrorDrawer').style.display = 'none';
         
-        modal.style.display = 'flex';
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                modal.classList.add('active');
-            });
-        });
+        if (window.openModal) {
+            window.openModal('menuModal');
+        } else {
+            modal.style.display = 'flex';
+            requestAnimationFrame(() => modal.classList.add('active'));
+        }
+        calculateMenuCosts();
     }
 
     function editMenuItem(el) {
@@ -300,7 +292,6 @@
                 description: el.dataset.description,
                 price: el.dataset.price,
                 cost_price: el.dataset.costPrice,
-                cost_breakdown: el.dataset.costBreakdown,
                 serving_size: el.dataset.servingSize,
                 is_addon: el.dataset.isAddon === 'true',
                 addon_price: el.dataset.addonPrice,
@@ -310,61 +301,27 @@
 
             modalTitle.innerText = 'Edit Dish';
             form.action = `/caterer/menu/${item.id}/update`;
-
             form.name.value = item.name;
             form.category.value = item.category;
             form.description.value = item.description || '';
             form.price.value = item.price || 0;
-
-            const costContainer = document.getElementById('menuCostRowsContainer');
-            if (costContainer) {
-                costContainer.innerHTML = '';
-                let breakdown = [];
-                try {
-                    breakdown = typeof item.cost_breakdown === 'string' ? JSON.parse(item.cost_breakdown) : (item.cost_breakdown || []);
-                } catch(e) { console.warn("Failed to parse cost breakdown", e); }
-                
-                if (breakdown && breakdown.length > 0) {
-                    breakdown.forEach(exp => {
-                        const row = document.createElement('div');
-                        row.className = 'premium-cost-row';
-                        row.innerHTML = `
-                            <div class="premium-cost-input-group">
-                                <label style="font-size: 10px; text-transform: uppercase; font-weight: 700; color: var(--color-neutral-400);">Expense Item</label>
-                                <input type="text" class="premium-cost-control menu-cost-name" value="${exp.name}" placeholder="Expense Name">
-                            </div>
-                            <div class="premium-cost-input-group" style="max-width: 100px;">
-                                <label style="font-size: 10px; text-transform: uppercase; font-weight: 700; color: var(--color-neutral-400);">Cost (₱)</label>
-                                <input type="number" class="premium-cost-control menu-cost-amount" value="${exp.amount}" placeholder="0" min="0" oninput="calculateMenuCosts()">
-                            </div>
-                            <button type="button" class="btn-remove-cost" style="align-self: flex-end; margin-bottom: 4px;" onclick="this.parentElement.remove(); calculateMenuCosts()"><i class="fas fa-trash-alt"></i></button>
-                        `;
-                        costContainer.appendChild(row);
-                    });
-                }
-                calculateMenuCosts();
-            }
-            
+            form.cost_price.value = item.cost_price || 0;
             form.serving_size.value = item.serving_size || '';
-            const isAddon = item.is_addon;
-            document.getElementById('isAddonCheckbox').checked = isAddon;
+            
+            const cb = document.getElementById('isAddonCheckbox');
+            if (cb) cb.checked = item.is_addon;
             form.addon_price.value = item.addon_price || 0;
 
             if (window.applyCommaFormatting) {
                 window.applyCommaFormatting(form.price);
+                window.applyCommaFormatting(form.cost_price);
                 window.applyCommaFormatting(form.addon_price);
             }
             toggleAddonPrice();
 
-            // Handle Dietary Tags
             let tags = [];
-            try {
-                tags = typeof item.dietary_tags === 'string' ? JSON.parse(item.dietary_tags) : (item.dietary_tags || []);
-            } catch(e) { console.warn("Failed to parse dietary tags", e); }
-            
-            form.querySelectorAll('input[name="dietary_tags"]').forEach(cb => {
-                cb.checked = tags.includes(cb.value);
-            });
+            try { tags = JSON.parse(item.dietary_tags); } catch(e) { tags = []; }
+            form.querySelectorAll('input[name="dietary_tags"]').forEach(c => c.checked = tags.includes(c.value));
 
             if (item.image_url) {
                 imagePreview.src = item.image_url;
@@ -374,41 +331,24 @@
                 removeImage();
             }
 
-            document.getElementById('menuErrorDrawer').style.display = 'none';
-            
-            if (window.openModal) {
-                window.openModal('menuModal');
-            } else {
+            if (window.openModal) window.openModal('menuModal');
+            else {
                 modal.style.display = 'flex';
                 requestAnimationFrame(() => modal.classList.add('active'));
             }
-        } catch (err) {
-            console.error("Error in editMenuItem:", err);
-        }
-    }
-
-    function hideModal() {
-        if (window.closeModal) {
-            window.closeModal('menuModal');
-        } else {
-            modal.classList.remove('active');
-            setTimeout(() => {
-                if (!modal.classList.contains('active')) {
-                    modal.style.display = 'none';
-                }
-            }, 400);
-        }
+            calculateMenuCosts();
+        } catch (err) { console.error("Edit error:", err); }
     }
 
     function previewImage(event) {
         const file = event.target.files[0];
         if (file) {
             const reader = new FileReader();
-            reader.onload = function (e) {
+            reader.onload = e => {
                 imagePreview.src = e.target.result;
                 imagePreviewContainer.style.display = 'block';
                 photoDropzone.style.display = 'none';
-            }
+            };
             reader.readAsDataURL(file);
         }
     }
@@ -421,380 +361,102 @@
     }
 
     function toggleAddonPrice() {
-        const checked = document.getElementById('isAddonCheckbox').checked;
-        addonPriceContainer.style.display = checked ? 'block' : 'none';
+        const cb = document.getElementById('isAddonCheckbox');
+        if (cb && addonPriceContainer) addonPriceContainer.style.display = cb.checked ? 'block' : 'none';
     }
 
     function toggleDropdown(btn, e) {
         const dropdown = btn.nextElementSibling;
         const isActive = dropdown.classList.contains('active');
-
-        // Close all other dropdowns and reset their parent card z-index
-        document.querySelectorAll('.dropdown-menu-pro').forEach(d => {
-            d.classList.remove('active');
-            const card = d.closest('.menu-item-card-pro');
-            if (card) card.style.zIndex = '1';
-        });
-
-        if (!isActive) {
-            dropdown.classList.add('active');
-            // Elevate the parent card's z-index so the dropdown overlaps adjacent cards
-            const parentCard = btn.closest('.menu-item-card-pro');
-            if (parentCard) parentCard.style.zIndex = '999';
-        }
-
-        // Stop bubbling
+        document.querySelectorAll('.dropdown-menu-pro').forEach(d => d.classList.remove('active'));
+        if (!isActive) dropdown.classList.add('active');
         if (e) e.stopPropagation();
     }
 
-    // Close dropdowns when clicking outside
-    document.addEventListener('click', () => {
-        document.querySelectorAll('.dropdown-menu-pro').forEach(d => {
-            d.classList.remove('active');
-            const card = d.closest('.menu-item-card-pro');
-            if (card) card.style.zIndex = '1';
-        });
-    });
-
-    let currentCategory = 'all';
-
     function filterByCategory(cat) {
-        currentCategory = cat;
-        const chips = document.querySelectorAll('.cat-chip');
-        chips.forEach(chip => {
-            chip.classList.toggle('active', chip.dataset.cat === cat);
-        });
-        applyFilters();
+        document.querySelectorAll('.cat-chip').forEach(c => c.classList.toggle('active', c.dataset.cat === cat));
+        applyFilters(cat);
     }
 
-    function filterMenu() {
-        applyFilters();
-    }
+    function filterMenu() { applyFilters(document.querySelector('.cat-chip.active').dataset.cat); }
 
-    function applyFilters() {
+    function applyFilters(cat) {
         const query = document.getElementById('menuSearchInput').value.toLowerCase();
         const cards = document.querySelectorAll('.menu-item-card-pro');
-        let visibleCount = 0;
-
+        let count = 0;
         cards.forEach(card => {
-            const name = card.dataset.name;
-            const itemCat = card.dataset.category;
-
-            const matchQuery = name.includes(query);
-            const matchCategory = currentCategory === 'all' || itemCat === currentCategory;
-
-            if (matchQuery && matchCategory) {
+            const matchQuery = card.dataset.name.includes(query);
+            const matchCat = cat === 'all' || card.dataset.category === cat;
+            if (matchQuery && matchCat) {
                 card.style.display = 'block';
-                visibleCount++;
-            } else {
-                card.style.display = 'none';
-            }
+                count++;
+            } else card.style.display = 'none';
         });
-
-        // Toggle empty state if no results found during filter
-        const emptyState = document.querySelector('.empty-state');
-        if (emptyState && cards.length > 0) {
-            emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
-        }
+        const empty = document.querySelector('.empty-state');
+        if (empty && cards.length > 0) empty.style.display = count === 0 ? 'block' : 'none';
     }
 
     function confirmArchiveDish(id) {
-        const modal = document.getElementById('archiveDishModal');
-        const itemName = document.querySelector(`.dropdown-item-pro[onclick*="confirmArchiveDish(${id})"]`)?.closest('.menu-item-card-pro')?.querySelector('.item-name-pro')?.innerText || 'this dish';
-        
-        document.getElementById('archiveItemName').innerText = itemName;
-        
-        const confirmBtn = document.getElementById('confirmArchiveBtn');
-        confirmBtn.onclick = async () => {
+        const archiveModal = document.getElementById('archiveDishModal');
+        const btn = document.querySelector(`.dropdown-item-pro[data-id="${id}"]`);
+        document.getElementById('archiveItemName').innerText = btn ? btn.dataset.name : 'this dish';
+        document.getElementById('confirmArchiveBtn').onclick = async () => {
             const res = await window.apiAction(`/caterer/menu/${id}/archive`, { method: 'POST' });
             if (res) {
-                closeModal('archiveDishModal');
+                if (window.closeModal) window.closeModal('archiveDishModal');
                 setTimeout(() => window.location.reload(), 500);
             }
         };
-        
-        if (window.openModal) {
-            window.openModal('archiveDishModal');
-        } else {
-            modal.style.display = 'flex';
-            requestAnimationFrame(() => modal.classList.add('active'));
-        }
+        if (window.openModal) window.openModal('archiveDishModal');
+        else archiveModal.style.display = 'flex';
     }
 
-    // Initialize real-time validation
+    function calculateMenuCosts() {
+        const sellInput = document.querySelector('input[name="price"]');
+        const costInput = document.getElementById('cost_price_input');
+        const badge = document.getElementById('roiMarginBadge');
+        if (!sellInput || !costInput || !badge) return;
+        const sell = parseFloat(sellInput.value.replace(/,/g, '')) || 0;
+        const cost = parseFloat(costInput.value.replace(/,/g, '')) || 0;
+        if (sell > 0) {
+            const margin = ((sell - cost) / sell) * 100;
+            badge.innerText = `Margin: ${margin.toFixed(1)}%`;
+            if (margin < 0) {
+                badge.innerText = `Loss: ${Math.abs(margin).toFixed(1)}%`;
+                badge.style.background = '#ef4444';
+            } else if (margin < 20) badge.style.background = '#f59e0b';
+            else badge.style.background = '#22c55e';
+        } else badge.innerText = 'Margin: --%';
+    }
+
     const menuValidation = new window.ValidationManager('menuForm', {
         'name': { unique: true, uniqueApi: '/caterer/api/validate-dish-name', label: 'dish' },
-        'price': { numericOnly: true, max: 100000, autoStop: true },
-        'cost_price': { numericOnly: true, max: 100000, autoStop: true },
-        'addon_price': { numericOnly: true, max: 50000, autoStop: true }
+        'price': { numericOnly: true, max: 100000 },
+        'cost_price': { numericOnly: true, max: 100000 }
     });
 
-    // Intercept form submission to use AJAX and handle real-time updates
     form.addEventListener('submit', async function (e) {
         e.preventDefault();
         if (!this.checkValidity()) return;
-
         const btn = this.querySelector('button[type="submit"]');
-        
-        // Success - sanitize all numeric inputs by stripping commas and spaces before creating FormData
-        this.querySelectorAll('.js-format-comma, input[type="number"], input[inputmode="numeric"]').forEach(input => {
-            input.dataset.originalValue = input.value; // Store for potential rollback or UI update
-            input.value = input.value.replace(/[, \s]/g, '');
-        });
-
+        this.querySelectorAll('.js-format-comma').forEach(i => i.value = i.value.replace(/,/g, ''));
         const data = new FormData(this);
-
         if (window.apiAction) {
-            const res = await window.apiAction(this.action, {
-                method: 'POST',
-                body: data
-            }, btn);
-
-            if (res) {
-                if (window.closeModal) window.closeModal('menuModal');
-                
-                const action = this.action;
-                if (action.includes('/update')) {
-                    const parts = action.split('/');
-                    const itemId = parts[parts.length - 2];
-                    updateMenuItemUI(itemId, data);
-                } else {
-                    // For new items, reload after a short delay
-                    setTimeout(() => window.location.reload(), 1000);
-                }
-            }
+            const res = await window.apiAction(this.action, { method: 'POST', body: data }, btn);
+            if (res) setTimeout(() => window.location.reload(), 800);
         }
     });
 
-    function updateMenuItemUI(id, formData) {
-        // Find the card. Since it doesn't have an ID, we find the edit button with the data-id
-        const editBtn = document.querySelector(`.dropdown-item-pro[data-id="${id}"]`);
-        if (!editBtn) return;
-        const card = editBtn.closest('.menu-item-card-pro');
-        if (!card) return;
-
-        const name = formData.get('name');
-        const category = formData.get('category');
-        const desc = formData.get('description');
-        const price = formData.get('price');
-        const isAddon = formData.get('is_addon') === 'on';
-        const imageFile = formData.get('image');
-
-        // Update data attributes on the edit button for future edits
-        if (name) editBtn.dataset.name = name;
-        if (category) editBtn.dataset.category = category;
-        if (desc) editBtn.dataset.description = desc;
-        if (price) editBtn.dataset.price = price;
-        editBtn.dataset.isAddon = isAddon ? 'true' : 'false';
-
-        // Update UI elements
-        if (name) {
-            const nameEl = card.querySelector('.item-name-pro');
-            if (nameEl) nameEl.innerText = name;
-            card.dataset.name = name.toLowerCase();
-        }
-        if (category) {
-            const catEl = card.querySelector('.item-category-tag');
-            if (catEl) catEl.innerText = category;
-            card.dataset.category = category;
-        }
-        if (desc) {
-            const descEl = card.querySelector('.item-desc-pro');
-            if (descEl) descEl.innerText = desc.length > 100 ? desc.substring(0, 97) + '...' : desc;
-        }
-        if (price) {
-            const priceEl = card.querySelector('.item-price-pro');
-            if (priceEl) priceEl.innerText = '₱' + parseFloat(price).toLocaleString();
-        }
-        
-        const addonBadge = card.querySelector('.addon-mini-badge');
-        if (isAddon && !addonBadge) {
-            const footer = card.querySelector('.item-footer-row');
-            if (footer) {
-                const badge = document.createElement('span');
-                badge.className = 'addon-mini-badge';
-                badge.innerText = 'Add-on';
-                footer.appendChild(badge);
-            }
-        } else if (!isAddon && addonBadge) {
-            addonBadge.remove();
-        }
-    }
-
-    // Detailed Costing Logic
-    function addCostRow(containerId) {
-        const container = document.getElementById(containerId);
-        const row = document.createElement('div');
-        row.className = 'premium-cost-row';
-        row.innerHTML = `
-            <div class="premium-cost-input-group">
-                <label>Expense Item</label>
-                <input type="text" class="premium-cost-control cost-name" placeholder="Expense Name">
-            </div>
-            <div class="premium-cost-input-group" style="max-width: 120px;">
-                <label>Cost (₱)</label>
-                <input type="number" class="premium-cost-control cost-amount" placeholder="0" min="0" oninput="calculateCosts()">
-            </div>
-            <button type="button" class="btn-remove-cost" onclick="this.parentElement.remove(); calculateCosts()"><i class="fas fa-trash-alt"></i></button>
-        `;
-        container.appendChild(row);
-    }
-    
-    function calculateMenuCosts() {
-        const rows = document.querySelectorAll('#menuCostRowsContainer .premium-cost-row');
-        let total = 0;
-        let breakdown = [];
-        
-        rows.forEach(row => {
-            const name = row.querySelector('.menu-cost-name').value;
-            const amount = parseFloat(row.querySelector('.menu-cost-amount').value) || 0;
-            if (name && amount > 0) {
-                total += amount;
-                breakdown.push({name, amount});
-            }
-        });
-        
-        const totalDisplay = document.getElementById('totalCostDisplay');
-        if (totalDisplay) totalDisplay.innerText = '₱' + total.toLocaleString();
-        
-        const costInput = document.getElementById('cost_price_input');
-        if (costInput) costInput.value = total;
-        
-        const breakdownInput = document.getElementById('cost_breakdown_input');
-        if (breakdownInput) breakdownInput.value = JSON.stringify(breakdown);
-        
-        // Calculate Margin Alert
-        const sellInput = document.querySelector('input[name="price"]');
-        if (!sellInput) return;
-        
-        let sellPrice = parseFloat(sellInput.value.replace(/,/g, '')) || 0;
-        const badge = document.getElementById('roiMarginBadge');
-        if (!badge) return;
-        
-        if (sellPrice > 0) {
-            const profit = sellPrice - total;
-            const margin = (profit / sellPrice) * 100;
-            badge.innerText = 'Margin: ' + margin.toFixed(1) + '%';
-            if (margin < 20) {
-                badge.style.background = '#ef4444'; // Red warning
-                badge.classList.add('margin-pulse-warning');
-                badge.title = 'Warning: Margin is below 20%';
-            } else {
-                badge.style.background = '#22c55e'; // Green good
-                badge.classList.remove('margin-pulse-warning');
-                badge.title = '';
-            }
-        } else {
-            badge.innerText = 'Margin: --%';
-            badge.style.background = '#94a3b8';
-            badge.classList.remove('margin-pulse-warning');
-        }
-    }
-    
-    // Add event listener to selling price to recalculate margin on type
-    const mainPriceInput = document.querySelector('input[name="price"]');
-    if (mainPriceInput) mainPriceInput.addEventListener('input', calculateMenuCosts);
-
-    // --- SMART RECIPE SYSTEM ---
-    const recipeModal = document.getElementById('recipeModal');
-    let currentRecipeMenuItem = null;
-    let availableIngredients = [];
-
-    async function openRecipeModal(el) {
-        const itemId = el.dataset.id;
-        const itemName = el.dataset.name;
-        currentRecipeMenuItem = itemId;
-        document.getElementById('recipeModalSubtitle').innerText = `Dish: ${itemName}`;
-        
-        // Refresh ingredient list if empty
-        if (availableIngredients.length === 0) {
-            await refreshIngredientList();
-        }
-
-        try {
-            // Fetch current recipe
-            const resp = await fetch(`/caterer/api/menu-items/${itemId}/ingredients`);
-            if (!resp.ok) throw new Error("Failed to load recipe");
-            const data = await resp.json();
-            
-            const container = document.getElementById('recipeListContainer');
-            container.innerHTML = '';
-            
-            if (data.ingredients && data.ingredients.length > 0) {
-                data.ingredients.forEach(ing => {
-                    appendRecipeRow(ing.id, ing.name, ing.unit, ing.unit_price, ing.quantity);
-                });
-            } else {
-                container.innerHTML = `
-                    <div class="text-center py-10 text-slate-300 font-medium italic">
-                        <i class="fas fa-box-open text-4xl block mb-3 opacity-20"></i>
-                        No ingredients linked to this dish yet.
-                    </div>
-                `;
-            }
-            
-            updateRecipeTotal(); // Ensure total is updated on load
-            
-            if (window.openModal) {
-                window.openModal('recipeModal');
-            } else {
-                recipeModal.style.display = 'flex';
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        recipeModal.classList.add('active');
-                    });
-                });
-            }
-    function calculateMenuCosts() {
-        const sellInput = document.querySelector('input[name="price"]');
-        const costInput = document.getElementById('cost_price_input');
-        const badge = document.getElementById('roiMarginBadge');
-        
-        if (!sellInput || !costInput || !badge) return;
-        
-        let sellPrice = parseFloat(sellInput.value.replace(/,/g, '')) || 0;
-        let prepCost = parseFloat(costInput.value.replace(/,/g, '')) || 0;
-        
-        if (sellPrice > 0) {
-            const profit = sellPrice - prepCost;
-            const margin = (profit / sellPrice) * 100;
-            
-            badge.innerText = 'Margin: ' + margin.toFixed(1) + '%';
-            
-            // Set colors based on profitability
-            if (margin < 0) {
-                badge.innerText = 'Loss: ' + Math.abs(margin).toFixed(1) + '%';
-                badge.style.background = '#ef4444'; // Red for loss
-                badge.classList.add('margin-pulse-warning');
-            } else if (margin < 20) {
-                badge.style.background = '#f59e0b'; // Amber for low margin
-                badge.classList.add('margin-pulse-warning');
-            } else {
-                badge.style.background = '#22c55e'; // Green for healthy margin
-                badge.classList.remove('margin-pulse-warning');
-            }
-        } else {
-            badge.innerText = 'Margin: --%';
-            badge.style.background = '#94a3b8';
-            badge.classList.remove('margin-pulse-warning');
-        }
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-        const mainPriceInput = document.querySelector('input[name="price"]');
-        const costPriceInput = document.getElementById('cost_price_input');
-        if (mainPriceInput) mainPriceInput.addEventListener('input', calculateMenuCosts);
-        if (costPriceInput) costPriceInput.addEventListener('input', calculateMenuCosts);
-        
-        // Initial calculation on load if values exist
+    document.addEventListener('DOMContentLoaded', () => {
+        const sp = document.querySelector('input[name="price"]');
+        const cp = document.getElementById('cost_price_input');
+        if (sp) sp.addEventListener('input', calculateMenuCosts);
+        if (cp) cp.addEventListener('input', calculateMenuCosts);
         calculateMenuCosts();
     });
 
-    window.addEventListener('click', (event) => {
-        if (event.target === modal) hideModal();
-        
-        // Custom dropdown closing logic
-        if (!event.target.closest('.card-options-dropdown')) {
+    window.addEventListener('click', e => {
+        if (!e.target.closest('.card-options-dropdown')) {
             document.querySelectorAll('.dropdown-menu-pro').forEach(d => d.classList.remove('active'));
         }
     });
