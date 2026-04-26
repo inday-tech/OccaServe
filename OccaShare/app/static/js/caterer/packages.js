@@ -588,9 +588,67 @@ document.addEventListener('DOMContentLoaded', () => {
                     method: 'POST',
                     body: data
                 }, btn);
-                if (res) window.location.reload();
+
+                if (res) {
+                    if (window.closeModal) window.closeModal('packageModal');
+                    
+                    // If update, refresh the card in-place
+                    const action = pkgForm.action;
+                    if (action.includes('/update')) {
+                        const parts = action.split('/');
+                        const pkgId = parts[parts.length - 2];
+                        updatePackageCardUI(pkgId, data);
+                    } else {
+                        // For new packages, reload after a short delay for smooth feel
+                        setTimeout(() => window.location.reload(), 1000);
+                    }
+                }
             }
         });
+    }
+
+    function updatePackageCardUI(id, formData) {
+        const card = document.getElementById(`package-${id}`);
+        if (!card) return;
+
+        const name = formData.get('name');
+        const desc = formData.get('description');
+        const price = formData.get('price_per_head');
+        const minGuests = formData.get('min_guests');
+        const imageFile = formData.get('image');
+
+        if (name) {
+            const nameEl = card.querySelector('.package-name-pro');
+            if (nameEl) nameEl.innerText = name;
+        }
+        if (desc) {
+            const descEl = card.querySelector('.package-desc-pro');
+            if (descEl) descEl.innerText = desc.length > 120 ? desc.substring(0, 117) + '...' : desc;
+        }
+        if (price) {
+            const priceEl = card.querySelector('.price-val');
+            if (priceEl) priceEl.innerText = '₱' + parseFloat(price.replace(/,/g, '')).toLocaleString();
+        }
+        if (minGuests) {
+            const guestEl = card.querySelector('.spec-item-min span');
+            if (guestEl) guestEl.innerText = `${minGuests}+ guests`;
+        }
+        
+        // Handle image preview update if a new image was uploaded
+        if (imageFile && imageFile.size > 0) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = card.querySelector('.package-media-pro img');
+                if (img) img.src = e.target.result;
+                else {
+                    // If there was no image, we might need to replace the placeholder
+                    const media = card.querySelector('.package-media-pro');
+                    if (media) media.innerHTML = `<img src="${e.target.result}" alt="${name || 'Package'}" loading="lazy">`;
+                }
+            };
+            reader.readAsDataURL(imageFile);
+        }
+    }
     }
 
     const manualPriceInput = document.getElementById('pkgManualPriceInput');

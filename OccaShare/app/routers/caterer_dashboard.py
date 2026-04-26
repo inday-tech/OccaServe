@@ -1648,6 +1648,15 @@ async def add_package(
 
     db.add(new_pkg)
     db.commit()
+    
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JSONResponse({
+            "status": "success", 
+            "message": "Package added successfully", 
+            "package_id": new_pkg.id,
+            "package_name": new_pkg.name
+        })
+
     return RedirectResponse(url="/caterer/packages?success_msg=Package+added+successfully", status_code=303)
 
 @router.post("/packages/{package_id}/toggle")
@@ -1708,6 +1717,15 @@ async def add_menu_item(
     )
     db.add(new_item)
     db.commit()
+
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JSONResponse({
+            "status": "success", 
+            "message": "Menu item added successfully", 
+            "item_id": new_item.id,
+            "item_name": new_item.name
+        })
+
     return RedirectResponse(url="/caterer/menu?success_msg=Menu+item+added+successfully", status_code=303)
 
 @router.post("/profile")
@@ -1926,6 +1944,15 @@ async def update_package(
         package.image_url = f"/static/uploads/caterer/{filename}"
 
     db.commit()
+
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JSONResponse({
+            "status": "success", 
+            "message": "Package updated successfully", 
+            "package_id": package.id,
+            "package_name": package.name
+        })
+
     return RedirectResponse(url="/caterer/packages", status_code=303)
 
 @router.post("/packages/{package_id}/archive")
@@ -2147,6 +2174,15 @@ async def update_menu_item(
         item.image_url = f"/static/uploads/caterer/{filename}"
 
     db.commit()
+
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JSONResponse({
+            "status": "success", 
+            "message": "Menu item updated successfully", 
+            "item_id": item.id,
+            "item_name": item.name
+        })
+
     return RedirectResponse(url="/caterer/menu?success_msg=Menu+item+updated+successfully", status_code=303)
 
 @router.post("/menu/{item_id}/archive")
