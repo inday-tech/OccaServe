@@ -5,11 +5,20 @@ This script runs once during release phase and creates admin account if it doesn
 
 from app.db.database import SessionLocal, engine, Base
 from app.db import models
+from app.db.migrations import ensure_columns
 from app.core import security as auth
 import os
 
-# Initialize database
+# Step 1: Create any brand-new tables that don't exist yet
 Base.metadata.create_all(bind=engine)
+
+# Step 2: Add any missing columns to EXISTING tables (e.g. middle_name, first_name, etc.)
+# This must run BEFORE any query that references these columns.
+print("Checking for missing columns...")
+try:
+    ensure_columns()
+except Exception as e:
+    print(f"Warning: ensure_columns() encountered an issue: {e}")
 
 db = SessionLocal()
 

@@ -5,6 +5,16 @@ def ensure_columns():
     with engine.connect() as conn:
         # 1. Check/Add columns for 'users' table
         users_columns = [
+            # Name fields (added for KYC support)
+            ("first_name", "VARCHAR"),
+            ("middle_name", "VARCHAR"),
+            ("last_name", "VARCHAR"),
+            # Social login fields
+            ("facebook_id", "VARCHAR UNIQUE"),
+            ("google_id", "VARCHAR UNIQUE"),
+            ("instagram_id", "VARCHAR UNIQUE"),
+            ("auth_provider", "VARCHAR DEFAULT 'email'"),
+            # Core fields
             ("must_change_password", "BOOLEAN DEFAULT FALSE"),
             ("security_flag", "BOOLEAN DEFAULT FALSE"),
             ("is_kyc_complete", "BOOLEAN DEFAULT FALSE"),
@@ -19,6 +29,9 @@ def ensure_columns():
             ("last_login", "TIMESTAMP WITH TIME ZONE"),
             ("address", "TEXT"),
             ("profile_image_url", "VARCHAR"),
+            ("phone_number", "VARCHAR"),
+            ("dob", "DATE"),
+            ("is_archived", "BOOLEAN DEFAULT FALSE"),
             ("created_at", "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"),
             ("updated_at", "TIMESTAMP WITH TIME ZONE"),
         ]
