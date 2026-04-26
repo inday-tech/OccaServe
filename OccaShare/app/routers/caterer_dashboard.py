@@ -1984,6 +1984,28 @@ async def archive_package_caterer(
     
     return JSONResponse({"status": "success", "message": "Package archived successfully", "package_id": package_id})
 
+@router.post("/packages/{package_id}/toggle-status")
+async def toggle_package_status(
+    package_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    package = db.query(models.CateringPackage).filter(
+        models.CateringPackage.id == package_id,
+        models.CateringPackage.caterer_id == user.caterer_profile.id
+    ).first()
+    if not package:
+        raise HTTPException(status_code=404, detail="Package not found")
+    
+    package.is_active = not package.is_active
+    db.commit()
+    
+    return JSONResponse({
+        "status": "success", 
+        "is_active": package.is_active,
+        "message": f"Package '{package.name}' is now {'active' if package.is_active else 'hidden'}."
+    })
+
 @router.get("/packages/{package_id}/menu")
 async def get_package_menu(
     package_id: int,

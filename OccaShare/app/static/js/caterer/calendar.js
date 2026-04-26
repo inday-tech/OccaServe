@@ -671,9 +671,17 @@ function initCustomerDetection() {
             }
 
             badge.style.display = 'flex';
-            badge.style.background = '#f1f5f9';
-            badge.style.color = '#64748b';
-            badge.innerHTML = `<i class="fas fa-spinner fa-spin"></i> <span>Checking records...</span>`;
+            badge.className = 'detection-badge-container';
+            badge.style.background = 'var(--color-neutral-50)';
+            badge.style.borderLeftColor = 'var(--color-neutral-300)';
+            
+            badge.innerHTML = `
+                <div class="badge-spinner"><i class="fas fa-circle-notch fa-spin"></i></div>
+                <div class="badge-content">
+                    <span class="badge-title">AI Scanner</span>
+                    <span style="color: var(--color-neutral-500); font-size: 11px;">Scanning platform records...</span>
+                </div>
+            `;
 
             try {
                 const response = await fetch('/caterer/api/check-customer', {
@@ -687,38 +695,51 @@ function initCustomerDetection() {
                     if (data.exists) {
                         badge.style.display = 'flex';
                         if (data.is_taken) {
-                            badge.style.background = '#fef2f2';
-                            badge.style.color = '#dc2626';
-                            badge.style.border = '1px solid #fecaca';
-                            badge.innerHTML = `<i class="fas fa-id-card"></i> <span><b>Email Taken:</b> Registered to ${data.name}</span>`;
+                            badge.style.background = '#fff1f2';
+                            badge.style.borderLeftColor = '#e11d48';
+                            badge.innerHTML = `
+                                <div class="badge-spinner" style="color: #e11d48;"><i class="fas fa-exclamation-triangle"></i></div>
+                                <div class="badge-content">
+                                    <span class="badge-title" style="color: #e11d48;">System Warning</span>
+                                    <span style="color: #9f1239; font-size: 11px;">Email is registered to <b>${data.name}</b>.</span>
+                                </div>
+                            `;
                         } else {
-                            badge.style.background = '#eff6ff';
-                            badge.style.color = '#3b82f6';
-                            badge.style.border = '1px solid #bfdbfe';
-                            badge.innerHTML = `<i class="fas fa-check-circle"></i> <span><b>Existing User:</b> ${data.name} (Auto-link Active)</span>`;
+                            badge.style.background = '#f0f9ff';
+                            badge.style.borderLeftColor = '#0284c7';
+                            badge.innerHTML = `
+                                <div class="badge-spinner" style="color: #0284c7;"><i class="fas fa-fingerprint"></i></div>
+                                <div class="badge-content">
+                                    <span class="badge-title" style="color: #0284c7;">Match Detected</span>
+                                    <span style="color: #0369a1; font-size: 11px;">Found <b>${data.name}</b>. Linking enabled.</span>
+                                </div>
+                            `;
                         }
                         
-                        // Smart Auto-fill (only if currently empty or being typed)
-                        if (data.is_taken) {
+                        // Smart Auto-fill
+                        if (data.exists && !data.is_taken) {
                              if (!nameInput.value || nameInput.value.length < 3) nameInput.value = data.name;
-                             if (!contactInput.value) contactInput.value = data.contact;
+                             if (!contactInput.value && data.contact) contactInput.value = data.contact;
                              
-                             // Trigger validation to clear/set state
                              nameInput.dispatchEvent(new Event('input', { bubbles: true }));
-                             contactInput.dispatchEvent(new Event('input', { bubbles: true }));
+                             if (contactInput.value) contactInput.dispatchEvent(new Event('input', { bubbles: true }));
                         }
                     } else {
-                        badge.style.display = 'flex';
                         badge.style.background = '#f0fdf4';
-                        badge.style.color = '#16a34a';
-                        badge.style.border = '1px solid #bbf7d0';
-                        badge.innerHTML = `<i class="fas fa-user-plus"></i> <span style="font-weight: 600;">New Customer Registration</span>`;
+                        badge.style.borderLeftColor = '#16a34a';
+                        badge.innerHTML = `
+                            <div class="badge-spinner" style="color: #16a34a;"><i class="fas fa-user-plus"></i></div>
+                            <div class="badge-content">
+                                <span class="badge-title" style="color: #16a34a;">New Registry</span>
+                                <span style="color: #166534; font-size: 11px;">Unique user. Ready for registration.</span>
+                            </div>
+                        `;
                     }
                 }
             } catch (err) {
                 badge.style.display = 'none';
             }
-        }, 800); // Debounce
+        }, 600);
     }
 
     nameInput.addEventListener('input', checkUser);

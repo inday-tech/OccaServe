@@ -420,13 +420,10 @@ window.ValidationManager = class ValidationManager {
 
 
         if (rules.noSameParts && value.includes(' ')) {
-            const parts = value.trim().split(/\s+/);
-            if (parts.length >= 2) {
-                const first = parts[0].toLowerCase();
-                const last = parts[parts.length - 1].toLowerCase();
-                if (first === last && first.length > 2) {
-                    error = 'First name and surname cannot be identical.';
-                }
+            const parts = value.trim().toLowerCase().split(/\s+/).filter(p => p.length > 1);
+            const uniqueParts = new Set(parts);
+            if (uniqueParts.size < parts.length) {
+                error = 'Name contains repetitive parts (e.g. "John John"). Please enter a valid name.';
             }
         }
 
