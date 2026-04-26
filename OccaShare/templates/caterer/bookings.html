@@ -157,7 +157,7 @@
                             {% if booking.user %}
                                 {% if booking.user.is_verified %}
                                     <span title="Identity Verified" style="color: #10b981; font-size: 0.75rem;"><i class="fas fa-shield-check"></i></span>
-                                {% else %}
+                                {% elif booking.package_id %}
                                     <span title="Needs KYC Audit" style="color: #f59e0b; font-size: 0.75rem;"><i class="fas fa-shield-exclamation"></i></span>
                                 {% endif %}
                             {% endif %}

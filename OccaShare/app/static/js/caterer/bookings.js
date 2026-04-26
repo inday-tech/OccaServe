@@ -631,8 +631,11 @@ function showBookingDetails(btn) {
     if (actionsEl) {
         actionsEl.innerHTML = '';
         
+        const isPackage = data.isPackage === 'true' || data.isPackage === true;
+        
         // --- KYC WARNING BANNER ---
-        if (!isVerified && targetUserId) {
+        // Only show for Event Packages. Skip for Ala Carte / Food Orders.
+        if (!isVerified && targetUserId && isPackage) {
             actionsEl.innerHTML = `
                 <div style="width:100%; margin-bottom: 1rem; background:#fff7ed; border:1px solid #fed7aa; padding:1rem; border-radius:0.75rem; display:flex; align-items:center; gap:0.75rem;">
                     <div style="width:40px; height:40px; background:#ffedd5; color:#f97316; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
@@ -650,14 +653,13 @@ function showBookingDetails(btn) {
         }
 
         const plan = (data.paymentPlan || 'downpayment').toUpperCase();
-        const isPackage = data.isPackage === 'true' || data.isPackage === true;
         
         if (data.status === 'pending') {
             const isPayment = data.paymentStatus === 'proof_submitted';
             const btnLabel = isPayment ? `Verify ${plan}` : 'Accept Booking';
             const btnIcon = isPayment ? 'fa-check-double' : 'fa-check-circle';
             
-            actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.confirmAcceptBooking(${data.id}, ${isPayment}, ${isVerified})"><i class="fas ${btnIcon}"></i> ${btnLabel}</button>`;
+            actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.confirmAcceptBooking(${data.id}, ${isPayment}, ${isVerified}, ${isPackage})"><i class="fas ${btnIcon}"></i> ${btnLabel}</button>`;
             if (isPayment) actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-reject" onclick="window.requestNewProof(${data.id})" style="background:#64748b;"><i class="fas fa-redo"></i> Request New Proof</button>`;
             actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-reject" onclick="window.confirmRejectBooking(${data.id})"><i class="fas fa-times-circle"></i> Reject Booking</button>`;
             
@@ -673,11 +675,17 @@ function showBookingDetails(btn) {
                 }
                 actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.updateBookingStage(${data.id}, 'preparing')" style="background:#5b5a9c;"><i class="fas fa-utensils"></i> Start Preparation</button>`;
             } else if (data.status === 'preparing') {
-                actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.updateBookingStage(' + data.id + ', \'ready_for_delivery\')" style="background:#10b981;"><i class="fas fa-box"></i> Mark as Ready</button>';
+                if (data.venue === 'PICKUP') {
+                    actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.updateBookingStage(' + data.id + ', \'ready_for_pickup\')" style="background:#10b981;"><i class="fas fa-shopping-bag"></i> Mark as Ready for Pickup</button>';
+                } else {
+                    actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.updateBookingStage(' + data.id + ', \'ready_for_delivery\')" style="background:#10b981;"><i class="fas fa-box"></i> Mark as Ready for Delivery</button>';
+                }
+            } else if (data.status === 'ready_for_pickup') {
+                actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-complete" onclick="window.confirmCompleteBooking(' + data.id + ')"><i class="fas fa-flag-checkered"></i> Mark as Picked Up (Complete)</button>';
             } else if (data.status === 'ready_for_delivery') {
                 actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.updateBookingStage(' + data.id + ', \'on_the_way\')" style="background:#0ea5e9;"><i class="fas fa-truck"></i> Out for Delivery</button>';
             } else if (data.status === 'on_the_way') {
-                actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.updateBookingStage(' + data.id + ', \'arrived\')" style="background:#6366f1;"><i class="fas fa-map-marker-alt"></i> Arrived</button>';
+                actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.updateBookingStage(' + data.id + ', \'arrived\')" style="background:#6366f1;"><i class="fas fa-map-marker-alt"></i> Arrived at Location</button>';
             } else if (data.status === 'arrived') {
                 actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.updateBookingStage(' + data.id + ', \'setup_ongoing\')" style="background:#f97316;"><i class="fas fa-magic"></i> Setup & Serve</button>';
             } else if (data.status === 'setup_ongoing' || data.status === 'in_progress') {
@@ -917,12 +925,14 @@ async function runAIScan() {
     }
 }
 
-function confirmAcceptBooking(bookingId, isPayment, isVerified) {
+function confirmAcceptBooking(bookingId, isPayment, isVerified, isPackage) {
     isPayment = isPayment || false;
-    isVerified = isVerified === undefined ? true : isVerified; // Default to true if not provided (e.g. walk-ins)
+    isVerified = isVerified === undefined ? true : isVerified; 
+    isPackage = isPackage === undefined ? false : isPackage;
     
     // --- KYC GATEKEEPER ---
-    if (!isVerified) {
+    // Only enforce for Packages. Ala Carte is exempt.
+    if (!isVerified && isPackage) {
         window.showAlert({
             type: 'warning',
             title: 'Customer Not Verified',
@@ -1007,16 +1017,18 @@ function updateBookingStage(bookingId, status) {
     const labels = {
         'preparing': 'Start cooking and preparation?',
         'ready_for_delivery': 'Is the order packed and ready for delivery?',
-        'on_the_way': 'Is the team currently in transit to the location?',
-        'arrived': 'Has the team arrived at the venue?',
+        'ready_for_pickup': 'Is the order ready for the customer to pick up?',
+        'on_the_way': 'Is the team/rider currently in transit to the location?',
+        'arrived': 'Has the order/team arrived at the venue?',
         'setup_ongoing': 'Has the setup and food service started?',
         'in_progress': 'Has the event serving officially started?'
     };
     const titles = {
         'preparing': 'Start Preparation?',
         'ready_for_delivery': 'Mark as Ready?',
-        'on_the_way': 'Dispatch Team?',
-        'arrived': 'Staff Arrived?',
+        'ready_for_pickup': 'Ready for Pickup?',
+        'on_the_way': 'Dispatch Order?',
+        'arrived': 'Order Arrived?',
         'setup_ongoing': 'Start Setup?',
         'in_progress': 'Start Event?'
     };

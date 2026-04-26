@@ -653,18 +653,97 @@
         'addon_price': { numericOnly: true, max: 50000, autoStop: true }
     });
 
-    // Intercept form submission to sanitize values
-    form.addEventListener('submit', function (e) {
-        if (!this.checkValidity()) {
-            e.preventDefault();
-            return;
+    // Intercept form submission to use AJAX and handle real-time updates
+    form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        if (!this.checkValidity()) return;
+
+        const btn = this.querySelector('button[type="submit"]');
+        
+        // Success - sanitize all numeric inputs by stripping commas and spaces before creating FormData
+        this.querySelectorAll('.js-format-comma, input[type="number"], input[inputmode="numeric"]').forEach(input => {
+            input.dataset.originalValue = input.value; // Store for potential rollback or UI update
+            input.value = input.value.replace(/[, \s]/g, '');
+        });
+
+        const data = new FormData(this);
+
+        if (window.apiAction) {
+            const res = await window.apiAction(this.action, {
+                method: 'POST',
+                body: data
+            }, btn);
+
+            if (res) {
+                if (window.closeModal) window.closeModal('menuModal');
+                
+                const action = this.action;
+                if (action.includes('/update')) {
+                    const parts = action.split('/');
+                    const itemId = parts[parts.length - 2];
+                    updateMenuItemUI(itemId, data);
+                } else {
+                    // For new items, reload after a short delay
+                    setTimeout(() => window.location.reload(), 1000);
+                }
+            }
+        }
+    });
+
+    function updateMenuItemUI(id, formData) {
+        // Find the card. Since it doesn't have an ID, we find the edit button with the data-id
+        const editBtn = document.querySelector(`.dropdown-item-pro[data-id="${id}"]`);
+        if (!editBtn) return;
+        const card = editBtn.closest('.menu-item-card-pro');
+        if (!card) return;
+
+        const name = formData.get('name');
+        const category = formData.get('category');
+        const desc = formData.get('description');
+        const price = formData.get('price');
+        const isAddon = formData.get('is_addon') === 'on';
+        const imageFile = formData.get('image');
+
+        // Update data attributes on the edit button for future edits
+        if (name) editBtn.dataset.name = name;
+        if (category) editBtn.dataset.category = category;
+        if (desc) editBtn.dataset.description = desc;
+        if (price) editBtn.dataset.price = price;
+        editBtn.dataset.isAddon = isAddon ? 'true' : 'false';
+
+        // Update UI elements
+        if (name) {
+            const nameEl = card.querySelector('.item-name-pro');
+            if (nameEl) nameEl.innerText = name;
+            card.dataset.name = name.toLowerCase();
+        }
+        if (category) {
+            const catEl = card.querySelector('.item-category-tag');
+            if (catEl) catEl.innerText = category;
+            card.dataset.category = category;
+        }
+        if (desc) {
+            const descEl = card.querySelector('.item-desc-pro');
+            if (descEl) descEl.innerText = desc.length > 100 ? desc.substring(0, 97) + '...' : desc;
+        }
+        if (price) {
+            const priceEl = card.querySelector('.item-price-pro');
+            if (priceEl) priceEl.innerText = '₱' + parseFloat(price).toLocaleString();
         }
         
-        // Success - sanitize numeric inputs by stripping commas
-        this.querySelectorAll('.js-format-comma').forEach(input => {
-            input.value = input.value.replace(/,/g, '');
-        });
-    });
+        const addonBadge = card.querySelector('.addon-mini-badge');
+        if (isAddon && !addonBadge) {
+            const footer = card.querySelector('.item-footer-row');
+            if (footer) {
+                const badge = document.createElement('span');
+                badge.className = 'addon-mini-badge';
+                badge.innerText = 'Add-on';
+                footer.appendChild(badge);
+            }
+        } else if (!isAddon && addonBadge) {
+            addonBadge.remove();
+        }
+    }
 
     // Detailed Costing Logic
     function addCostRow(containerId) {

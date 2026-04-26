@@ -110,8 +110,20 @@ def master_migration():
         
         # Identity Verifications
         id_ver_cols = [
+            ("verification_type", "VARCHAR DEFAULT 'government_id'"),
+            ("document_url", "VARCHAR"),
+            ("id_number", "VARCHAR"),
+            ("selfie_url", "VARCHAR"),
+            ("selfie_2_url", "VARCHAR"),
+            ("selfie_3_url", "VARCHAR"),
+            ("ocr_data", "JSONB"),
+            ("verification_status", "VARCHAR DEFAULT 'pending'"),
+            ("failure_reason", "TEXT"),
             ("is_archived", "BOOLEAN DEFAULT FALSE"),
             ("fraud_score", "INTEGER DEFAULT 0"),
+            ("match_score", "FLOAT DEFAULT 0.0"),
+            ("face_detected", "BOOLEAN DEFAULT FALSE"),
+            ("id_detected", "BOOLEAN DEFAULT FALSE"),
             ("ip_address", "VARCHAR"),
             ("device_info", "JSONB"),
             ("liveness_status", "VARCHAR"),
