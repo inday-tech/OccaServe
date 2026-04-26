@@ -192,15 +192,41 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.ok && result.success) {
                 // Success! Redirect to the dashboard
                 window.location.href = result.redirect_url;
+            } else if (result.use_google_signin) {
+                // Special case: This account uses Google Sign-In
+                const emailVal = formData.get('email') || '';
+                if (errorContainer) {
+                    errorContainer.style.display = 'block';
+                    errorContainer.innerHTML = `
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:0.75rem; padding:0.5rem 0; text-align:center;">
+                            <div style="display:flex; align-items:center; gap:0.5rem; color:#b91c1c; font-weight:700; font-size:0.9rem;">
+                                <i class="fab fa-google" style="font-size:1.1rem;"></i>
+                                <span>This account uses Google Sign-In</span>
+                            </div>
+                            <p style="font-size:0.82rem; color:#64748b; margin:0; font-weight:500;">
+                                <strong>${emailVal}</strong> was registered via Google.<br>Please use the button below to continue.
+                            </p>
+                            <button type="button"
+                                onclick="handleSocialLogin('google')"
+                                style="display:flex; align-items:center; gap:0.6rem; background:#4285F4; color:white;
+                                       border:none; border-radius:0.75rem; padding:0.65rem 1.5rem; font-weight:700;
+                                       font-size:0.88rem; cursor:pointer; transition:all 0.2s ease; margin-top:0.25rem;">
+                                <i class="fab fa-google"></i> Continue with Google
+                            </button>
+                        </div>`;
+                    errorContainer.style.animation = 'none';
+                    errorContainer.offsetHeight;
+                    errorContainer.style.animation = 'fadeInError 0.3s ease';
+                }
             } else {
-                // Error! Show in modal
+                // Generic error
                 if (errorContainer && errorText) {
                     errorText.textContent = result.error || 'An unexpected error occurred.';
+                    errorContainer.innerHTML = ''; // reset to simple text version
+                    errorContainer.appendChild(errorText);
                     errorContainer.style.display = 'block';
-                    
-                    // Simple show/hide for cleaner UX
                     errorContainer.style.animation = 'none';
-                    errorContainer.offsetHeight; // trigger reflow
+                    errorContainer.offsetHeight;
                     errorContainer.style.animation = 'fadeInError 0.3s ease';
                 } else {
                     alert(result.error || 'Login failed');
