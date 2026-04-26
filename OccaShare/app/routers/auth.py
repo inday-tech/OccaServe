@@ -709,26 +709,29 @@ def login(
         
     user = db.query(models.User).filter(func.lower(models.User.email) == search_email.lower().strip()).first()
 
-    # ── Google-only account detection ──────────────────────────────────────────
-    # If the account exists but was created via Google OAuth, they have no real
-    # password. Guide them to use Google Sign-In instead of showing a generic error.
-    if user and getattr(user, 'auth_provider', 'email') == 'google':
-        if not security_auth.verify_password(password, user.password_hash):
-            google_msg = "This account uses Google Sign-In. Please click 'Continue with Google' to log in."
+    if not user:
+        if is_ajax:
+            return JSONResponse(status_code=401, content={"success": False, "error": "Invalid credentials"})
+        return templates.TemplateResponse("auth/login.html", {
+            "request": request,
+            "error": "Invalid credentials",
+            "next_url": next_url
+        })
+    
+    # Check if password matches
+    if not security_auth.verify_password(password, user.password_hash):
+        # If password fails, check if this is a social user who hasn't set a password yet
+        if user.auth_provider != 'email':
+            provider_name = user.auth_provider.capitalize()
+            error_msg = f"This account is linked with {provider_name}. Please use the 'Sign in with {provider_name}' button."
             if is_ajax:
-                return JSONResponse(status_code=401, content={
-                    "success": False,
-                    "error": google_msg,
-                    "use_google_signin": True
-                })
+                return JSONResponse(status_code=403, content={"success": False, "error": error_msg})
             return templates.TemplateResponse("auth/login.html", {
                 "request": request,
-                "error": google_msg,
-                "use_google_signin": True,
+                "error": error_msg,
                 "next_url": next_url
             })
-
-    if not user or not security_auth.verify_password(password, user.password_hash):
+            
         if is_ajax:
             return JSONResponse(status_code=401, content={"success": False, "error": "Invalid credentials"})
         return templates.TemplateResponse("auth/login.html", {
