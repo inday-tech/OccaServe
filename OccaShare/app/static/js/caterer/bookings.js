@@ -675,11 +675,17 @@ function showBookingDetails(btn) {
                 }
                 actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.updateBookingStage(${data.id}, 'preparing')" style="background:#5b5a9c;"><i class="fas fa-utensils"></i> Start Preparation</button>`;
             } else if (data.status === 'preparing') {
-                actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.updateBookingStage(' + data.id + ', \'ready_for_delivery\')" style="background:#10b981;"><i class="fas fa-box"></i> Mark as Ready</button>';
+                if (data.venue === 'PICKUP') {
+                    actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.updateBookingStage(' + data.id + ', \'ready_for_pickup\')" style="background:#10b981;"><i class="fas fa-shopping-bag"></i> Mark as Ready for Pickup</button>';
+                } else {
+                    actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.updateBookingStage(' + data.id + ', \'ready_for_delivery\')" style="background:#10b981;"><i class="fas fa-box"></i> Mark as Ready for Delivery</button>';
+                }
+            } else if (data.status === 'ready_for_pickup') {
+                actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-complete" onclick="window.confirmCompleteBooking(' + data.id + ')"><i class="fas fa-flag-checkered"></i> Mark as Picked Up (Complete)</button>';
             } else if (data.status === 'ready_for_delivery') {
                 actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.updateBookingStage(' + data.id + ', \'on_the_way\')" style="background:#0ea5e9;"><i class="fas fa-truck"></i> Out for Delivery</button>';
             } else if (data.status === 'on_the_way') {
-                actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.updateBookingStage(' + data.id + ', \'arrived\')" style="background:#6366f1;"><i class="fas fa-map-marker-alt"></i> Arrived</button>';
+                actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.updateBookingStage(' + data.id + ', \'arrived\')" style="background:#6366f1;"><i class="fas fa-map-marker-alt"></i> Arrived at Location</button>';
             } else if (data.status === 'arrived') {
                 actionsEl.innerHTML = '<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.updateBookingStage(' + data.id + ', \'setup_ongoing\')" style="background:#f97316;"><i class="fas fa-magic"></i> Setup & Serve</button>';
             } else if (data.status === 'setup_ongoing' || data.status === 'in_progress') {
@@ -1011,16 +1017,18 @@ function updateBookingStage(bookingId, status) {
     const labels = {
         'preparing': 'Start cooking and preparation?',
         'ready_for_delivery': 'Is the order packed and ready for delivery?',
-        'on_the_way': 'Is the team currently in transit to the location?',
-        'arrived': 'Has the team arrived at the venue?',
+        'ready_for_pickup': 'Is the order ready for the customer to pick up?',
+        'on_the_way': 'Is the team/rider currently in transit to the location?',
+        'arrived': 'Has the order/team arrived at the venue?',
         'setup_ongoing': 'Has the setup and food service started?',
         'in_progress': 'Has the event serving officially started?'
     };
     const titles = {
         'preparing': 'Start Preparation?',
         'ready_for_delivery': 'Mark as Ready?',
-        'on_the_way': 'Dispatch Team?',
-        'arrived': 'Staff Arrived?',
+        'ready_for_pickup': 'Ready for Pickup?',
+        'on_the_way': 'Dispatch Order?',
+        'arrived': 'Order Arrived?',
         'setup_ongoing': 'Start Setup?',
         'in_progress': 'Start Event?'
     };

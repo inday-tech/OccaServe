@@ -172,7 +172,14 @@ async def alacarte_checkout_submit(
         # 1. Update or Create Booking
         event_date_obj = date.fromisoformat(delivery_date)
         event_time_obj = datetime.strptime(delivery_time, "%H:%M").time()
-        status = "pending_payment" if payment_method == "GCASH" else "confirmed"
+        
+        # New Payment Logic for Ala Carte:
+        if payment_method == "CASH":
+            reservation_fee = 0
+            status = "confirmed"
+        else:
+            reservation_fee = total_amount
+            status = "pending_payment"
         
         booking = None
         if booking_id:
@@ -184,7 +191,7 @@ async def alacarte_checkout_submit(
                 booking.venue_address = address if fulfillment == "delivery" else "PICKUP"
                 booking.special_requests = landmark
                 booking.total_amount = total_amount
-                booking.reservation_fee = total_amount
+                booking.reservation_fee = reservation_fee
         
         if not booking:
             booking = models.Booking(
@@ -198,7 +205,7 @@ async def alacarte_checkout_submit(
                 guest_count=quantity,
                 total_amount=total_amount,
                 total_price=total_amount,
-                reservation_fee=total_amount,
+                reservation_fee=reservation_fee,
                 status=status,
                 payment_method=payment_method,
                 special_requests=landmark
@@ -282,14 +289,16 @@ async def continue_draft_booking(booking_id: int, request: Request, db: Session 
     # Default fallback to Quotation
     return RedirectResponse(url=f"/bookings/step/quotation/{booking.id}", status_code=303)
 
-# New: Package Selection Step (If not selected from Marketplace)
 @router.get("/step/menu/{caterer_id}", response_class=HTMLResponse)
 async def step_menu_page(caterer_id: int, request: Request, db: Session = Depends(database.get_db)):
+    user = get_current_user_from_session(request, db)
+    if not user:
+        return RedirectResponse(url=f"/auth/login?next=/bookings/step/menu/{caterer_id}")
+    
     caterer = db.query(models.CatererProfile).get(caterer_id)
     if not caterer: raise HTTPException(status_code=404)
     
     packages = db.query(models.CateringPackage).filter(models.CateringPackage.caterer_id == caterer_id).all()
-    user = get_current_user_from_session(request, db)
     
     return templates.TemplateResponse("customer/booking_wizard/step_menu.html", {
         "request": request,
@@ -312,6 +321,10 @@ async def step_menu_submit(request: Request, package_id: int = Form(...)):
 @router.get("/step/details", response_class=HTMLResponse)
 async def step_details_page(request: Request, booking_id: Optional[int] = None, db: Session = Depends(database.get_db)):
     user = get_current_user_from_session(request, db)
+    if not user:
+        next_url = f"/bookings/step/details/{booking_id}" if booking_id else "/bookings/step/details"
+        return RedirectResponse(url=f"/auth/login?next={next_url}")
+        
     data = request.session.get("booking_data", {})
     
     # Priority: 1. URL path, 2. Session data
@@ -474,9 +487,12 @@ async def step_details_submit(
 # Phase 2: Identity Verification
 @router.get("/step/kyc/{booking_id}", response_class=HTMLResponse)
 async def step_kyc_page(booking_id: int, request: Request, db: Session = Depends(database.get_db)):
+    user = get_current_user_from_session(request, db)
+    if not user:
+        return RedirectResponse(url=f"/auth/login?next=/bookings/step/kyc/{booking_id}")
+        
     booking = db.query(models.Booking).get(booking_id)
     if not booking: raise HTTPException(status_code=404)
-    user = get_current_user_from_session(request, db)
     return templates.TemplateResponse("customer/booking_wizard/step_kyc.html", {
         "request": request,
         "booking_id": booking_id,
