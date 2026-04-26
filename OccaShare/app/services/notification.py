@@ -164,12 +164,107 @@ class NotificationService:
         db.add(notif)
         db.commit()
 
-        # 2. SMS to Caterer
+        # 2. Email Receipt to Customer
+        EmailService.send_payment_receipt(
+            booking.user.email, 
+            booking.id, 
+            amount, 
+            booking.payment_reference or "N/A", 
+            payment_type
+        )
+
+        # 3. SMS to Caterer
         phone = caterer.contact_phone or user.phone_number
         if phone:
             sms_msg = f"OccaShare: {payment_type} of PhP{amount:,.2f} received for '{booking.event_name}'. Please verify proof in your dashboard."
             await NotificationService._send_sms(phone, sms_msg)
 
-        # 3. Real-time
+        # 4. Real-time
         await manager.broadcast_to_user(user.id, {"type": "dashboard_update", "message": "New payment received"})
 
+    @staticmethod
+    async def notify_proof_rejected(db: Session, booking: models.Booking, reason: str):
+        """Notifies customer that their payment proof was rejected."""
+        # 1. In-App
+        notif = models.Notification(
+            user_id=booking.user_id,
+            title="Action Required: Payment Proof Rejected",
+            message=f"Your payment proof for '{booking.event_name}' was rejected. Reason: {reason}",
+            type="warning",
+            link=f"/bookings/step/payment/{booking.id}"
+        )
+        db.add(notif)
+        db.commit()
+
+        # 2. Email
+        EmailService._send_email(
+            booking.user.email,
+            "ACTION REQUIRED: Payment Proof Rejected",
+            f"Hello,\n\nYour payment proof for Booking #{booking.id} ({booking.event_name}) was rejected for the following reason:\n\n\"{reason}\"\n\nPlease log in and upload a new, clear proof of payment to proceed."
+        )
+
+        # 3. Real-time
+        await manager.broadcast_to_user(booking.user_id, {
+            "type": "payment_rejected",
+            "message": f"Payment proof rejected: {reason}",
+            "booking_id": booking.id
+        })
+
+    @staticmethod
+    async def notify_booking_rejected(db: Session, booking: models.Booking, reason: str):
+        """Notifies customer that their booking was rejected by the caterer."""
+        # 1. In-App
+        notif = models.Notification(
+            user_id=booking.user_id,
+            title="Booking Rejected",
+            message=f"Your booking request for '{booking.event_name}' was rejected. Reason: {reason}",
+            type="error",
+            link="/customer/bookings"
+        )
+        db.add(notif)
+        db.commit()
+
+        # 2. Email
+        EmailService._send_email(
+            booking.user.email,
+            "Booking Request Update - OccaServe",
+            f"Hello,\n\nWe regret to inform you that your booking request for '{booking.event_name}' has been rejected by the caterer.\n\nReason: {reason}\n\nYou can browse other caterers on our platform."
+        )
+
+        # 3. Real-time
+        await manager.broadcast_to_user(booking.user_id, {
+            "type": "booking_rejected",
+            "message": f"Booking rejected: {reason}",
+            "booking_id": booking.id
+        })
+
+    @staticmethod
+    async def notify_booking_cancelled(db: Session, booking: models.Booking, reason: str, cancelled_by: str = "User"):
+        """Notifies the other party when a booking is cancelled."""
+        target_user_id = booking.caterer.user_id if cancelled_by == "Customer" else booking.user_id
+        target_email = booking.caterer.user.email if cancelled_by == "Customer" else booking.user.email
+        
+        # 1. In-App
+        notif = models.Notification(
+            user_id=target_user_id,
+            title="Booking Cancelled",
+            message=f"The booking for '{booking.event_name}' has been cancelled by the {cancelled_by}. Reason: {reason}",
+            type="warning",
+            link="/caterer/bookings" if cancelled_by == "Customer" else "/customer/bookings"
+        )
+        db.add(notif)
+        db.commit()
+
+        # 2. Email
+        EmailService._send_email(
+            target_email,
+            "Booking Cancellation Notice - OccaServe",
+            f"Hello,\n\nThis is to notify you that the booking for '{booking.event_name}' has been cancelled by the {cancelled_by}.\n\nReason: {reason}"
+        )
+
+        # 3. Real-time
+        await manager.broadcast_to_user(target_user_id, {
+            "type": "booking_cancelled",
+            "message": f"Booking cancelled by {cancelled_by}",
+            "booking_id": booking.id
+        })

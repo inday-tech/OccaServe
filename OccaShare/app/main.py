@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from .services.realtime import manager
 from sqlalchemy import text
 
+
 # Create tables (will be handled by releaseCommand on Railway, but kept here as fallback)
 # Base.metadata.create_all(bind=engine)
 
@@ -65,8 +66,12 @@ def get_website_config():
             db.commit()
             db.refresh(config)
         return config
+    except Exception as e:
+        print(f"[STARTUP ERROR] Website config fail: {e}")
+        return None
     finally:
         db.close()
+
 
 @app.exception_handler(HTTPException)
 async def custom_http_exception_handler(request: Request, exc: HTTPException):

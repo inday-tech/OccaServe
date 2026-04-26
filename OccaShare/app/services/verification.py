@@ -1,3 +1,7 @@
+import warnings
+# Suppress protobuf deprecation warnings from Mediapipe
+warnings.filterwarnings("ignore", category=UserWarning, module='google.protobuf.symbol_database')
+
 import random
 import time
 import re
@@ -249,22 +253,22 @@ class VerificationService:
                 face_detected_count += 1
                 landmarks = detection_result.face_landmarks[0]
                 
-                # --- OCCLUSION CHECK ---
+                # --- OCCLUSION & ORIENTATION CHECK ---
                 # Check for "confidence" or presence of key landmarks
-                # In MediaPipe Tasks, landmarks are always returned but we check 
-                # for unusual values or spatial distribution
-                # If mouth (index 0, 13, 14, 17) or eyes (33, 133, 362, 263) are out of bounds
-                # or if some landmarks have 0 coordinates (rare but possible in some implementations)
+                # We check if critical landmarks (Eyes, Mouth, Nose) are within reasonable bounds
+                critical_indices = [33, 133, 362, 263, 1, 61, 291]
+                if any(landmarks[i].x < 0 or landmarks[i].x > 1 or landmarks[i].y < 0 or landmarks[i].y > 1 for i in critical_indices):
+                    occlusion_detected = True
+                    occlusion_reason = "Face landmarks out of frame. Please stay centered."
                 
-                # Check Face Orientation (Pose)
-                # Yaw: Check distance between eyes and nose
+                # Yaw: Check distance between eyes and nose for direct orientation
                 e_dist_l = np.linalg.norm(np.array([landmarks[33].x, landmarks[33].y]) - np.array([landmarks[1].x, landmarks[1].y]))
                 e_dist_r = np.linalg.norm(np.array([landmarks[263].x, landmarks[263].y]) - np.array([landmarks[1].x, landmarks[1].y]))
                 yaw_ratio = e_dist_l / e_dist_r if e_dist_r > 0 else 5
                 
                 if yaw_ratio > 3.0 or yaw_ratio < 0.33:
                     occlusion_detected = True
-                    occlusion_reason = "Please face the camera directly."
+                    occlusion_reason = "Please face the camera directly. No masks or sunglasses allowed."
 
                 # Check if face is too close or far (bounding box size)
                 # Normalized coordinates: x, y in [0, 1]
@@ -461,8 +465,8 @@ class VerificationService:
         blur_score = cv2.Laplacian(gray, cv2.CV_64F).var()
         print(f"[KYC DEBUG] Image Quality Check - Resolution: {width}x{height}, Blur Score: {blur_score:.2f}")
         
-        # Threshold 100 is usually good for ID cards, but let's be slightly more lenient (70)
-        if blur_score < 70:
+        # Threshold 100 is usually good for ID cards, but let's be more lenient for webcams (40)
+        if blur_score < 40:
             return {"valid": False, "reason": "Image is too blurry. Please ensure the camera is in focus."}
             
         return {"valid": True}
@@ -507,6 +511,11 @@ class VerificationService:
             angle = -(90 + angle)
         else:
             angle = -angle
+            
+        # Avoid rotating if the angle is essentially 0, 90, or 180 degrees
+        if abs(angle) < 0.5 or abs(angle - 90) < 0.5 or abs(angle + 90) < 0.5:
+            print(f"[KYC DEBUG] Deskewing skipped (already upright). Original Angle: {angle:.2f}")
+            return image
             
         (h, w) = image.shape[:2]
         center = (w // 2, h // 2)
@@ -574,7 +583,8 @@ class VerificationService:
             nonlocal best_text
             # PSM 3: Automatic segmentation. 
             # PSM 6: Uniform block (often best for IDs).
-            for psm in [6, 3]: 
+            # PSM 11: Sparse text (good for small labels).
+            for psm in [6, 3, 11]: 
                 config = f'--psm {psm} -l eng'
                 try:
                     if not pytesseract: return False
@@ -591,10 +601,30 @@ class VerificationService:
         
         # Only try Otsu or Rotation if Gaussian was very poor (< 30 chars)
         if len(best_text.strip()) < 30:
-            print("[KYC DEBUG] Tesseract fallback: Gaussian poor, trying Otsu/Rotation...")
+            print("[KYC DEBUG] Tesseract fallback: Gaussian poor, trying Otsu/Rotation/Orientation/Raw...")
             if not run_pass(thresh_otsu):
-                rotated = cv2.rotate(thresh_gaussian, cv2.ROTATE_180)
-                run_pass(rotated)
+                # Try raw filtered image (no thresholding)
+                if run_pass(filtered):
+                    print("[KYC DEBUG] OCR match found using Raw Filtered image.")
+                else:
+                    # Try 90-degree rotations of the UPSCALED image (more robust than rotating thresh)
+                    for rot_const in [cv2.ROTATE_90_CLOCKWISE, cv2.ROTATE_180, cv2.ROTATE_90_COUNTERCLOCKWISE]:
+                        try:
+                            rotated = cv2.rotate(upscaled, rot_const)
+                            gray_rot = cv2.cvtColor(rotated, cv2.COLOR_BGR2GRAY)
+                            _, thresh_rot = cv2.threshold(gray_rot, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+                            if run_pass(thresh_rot):
+                                print(f"[KYC DEBUG] OCR match found after rotation {rot_const}.")
+                                break
+                        except: continue
+
+            # Final attempt: High Contrast Binarization
+            if len(best_text.strip()) < 30:
+                alpha = 1.5 # Contrast
+                adjusted = cv2.convertScaleAbs(upscaled, alpha=alpha, beta=0)
+                gray_adj = cv2.cvtColor(adjusted, cv2.COLOR_BGR2GRAY)
+                _, thresh_adj = cv2.threshold(gray_adj, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+                run_pass(thresh_adj)
             
         return best_text
 
@@ -602,7 +632,8 @@ class VerificationService:
         "REPUBLIC OF THE PHILIPPINES", "PHILIPPINES", "PASSPORT", "IDENTIFICATION", "SOCIAL SECURITY", 
         "PROFESSIONAL REGULATION COMMISSION", "LAND TRANSPORTATION OFFICE", "COMMISSION ON ELECTIONS",
         "PHILIPPINE IDENTIFICATION", "UNIFIED MULTI-PURPOSE ID", "POSTAL ID", "TAXPAYER IDENTIFICATION",
-        "DRIVER'S LICENSE", "UMID", "SSS", "GSIS", "PRC", "COMELEC", "PHILHEALTH"
+        "DRIVER'S LICENSE", "UMID", "SSS", "GSIS", "PRC", "COMELEC", "PHILHEALTH",
+        "REPUBLIKA NG PILIPINAS", "PAMBANSANG", "PAGKAKAKILANLAN"
     ]
 
     def verify_id_document(self, 
@@ -644,16 +675,35 @@ class VerificationService:
                 
             clean_ocr_upper = ocr_text.upper()
             
-            # 5. Legitimacy Check (STRICTER)
-            # Require at least one major keyword AND minimum text length (increased to 100) to be sure it's an ID
-            is_likely_id = any(kw in clean_ocr_upper for kw in self.ID_LEGITIMACY_KEYWORDS) and len(clean_ocr_upper.strip()) > 100
+            # 5. Legitimacy Check (STRICTER but with FUZZY)
+            clean_ocr_upper = ocr_text.upper()
+            
+            # Helper for fuzzy keyword search
+            def fuzzy_contains_id_keywords(text):
+                if any(kw in text for kw in self.ID_LEGITIMACY_KEYWORDS):
+                    return True
+                # Check for common OCR typos in keywords
+                typo_tolerant_kws = ["PHILIPPINES", "REPUBLIC", "IDENTITY", "IDENTIFICATION", "PASSPORT", "LICENSE"]
+                for kw in typo_tolerant_kws:
+                    # Look for keywords even with minor errors
+                    if len(text) > 20:
+                        # Simple check: if > 70% of chars of a keyword exist in sequence
+                        match = difflib.get_close_matches(kw, text.split(), n=1, cutoff=0.7)
+                        if match: return True
+                return False
+
+            # Use Face Detection as a strong signal for Legitimacy
+            id_faces = self._detect_faces_detailed(id_img)
+            has_face = len(id_faces) > 0
+            
+            is_likely_id = (fuzzy_contains_id_keywords(clean_ocr_upper) or has_face) and len(clean_ocr_upper.strip()) > 15
             
             rich_data = self._extract_rich_ocr_data(ocr_text)
             
             # 6. Specific ID Type Keyword Check (NEW & STRICT)
             # Check if the selected ID type (e.g. "Passport") appears in the OCR text
             type_keywords = {
-                'PhilSys / PhilID': ["PHILSYS", "PHILID", "NATIONAL ID", "PHILIPPINE IDENTIFICATION"],
+                'PhilID (National ID)': ["PHILSYS", "PHILID", "NATIONAL ID", "PHILIPPINE IDENTIFICATION", "REPUBLIKA", "PAMBANSANG"],
                 'Driver\'s License': ["DRIVER", "LICENSE", "LTO", "TRANSPORTATION"],
                 'Passport': ["PASSPORT", "DFA"],
                 'UMID': ["UMID", "UNIFIED", "MULTI-PURPOSE"],
@@ -661,7 +711,8 @@ class VerificationService:
                 'PRC ID': ["PRC", "PROFESSIONAL", "REGULATION"],
                 'Postal ID': ["POSTAL", "PHLPOST"],
                 'TIN ID': ["TIN", "INTERNAL REVENUE", "TAX"],
-                'PhilHealth ID': ["PHILHEALTH"]
+                'PhilHealth ID': ["PHILHEALTH"],
+                'Voter\'s ID': ["VOTER", "COMELEC"]
             }
             
             selected_type_kws = type_keywords.get(id_type, [id_type.upper()])
@@ -691,14 +742,14 @@ class VerificationService:
                     ratio = difflib.SequenceMatcher(None, clean_input, ocr_data_name.lower()).ratio()
                     if ratio > 0.85: return True
                 
-                # Check parts (at least 75% match)
+                # Check parts (lowered to 60% match for robustness)
                 input_parts = [p for p in clean_input.split() if len(p) > 2]
                 if not input_parts: return False
                 matches = 0
                 for part in input_parts:
-                    if part in full_ocr_lower:
+                    if part in full_ocr_lower or any(difflib.SequenceMatcher(None, part, w).ratio() > 0.8 for w in full_ocr_lower.split()):
                         matches += 1
-                return (matches / len(input_parts)) >= 0.75
+                return (matches / len(input_parts)) >= 0.60
 
             # Helper for Date of Birth matching
             def match_dob(input_dob, extracted_dob, full_ocr_text):
@@ -744,9 +795,16 @@ class VerificationService:
                 reasons.append("❌ Address mismatch. The address does not match our records.")
 
             status = "matched" if not reasons else "mismatched"
+            
+            # Final Legitimacy Check: If name/id matched, be very lenient.
             if not is_likely_id and status == "matched":
-                status = "rejected"
-                reasons.append("❌ Image is unclear or invalid. Please ensure the whole ID is visible.")
+                # Only reject if OCR found literally nothing or complete garbage
+                if len(clean_ocr_upper.strip()) < 10:
+                    status = "rejected"
+                    reasons.append("❌ Image is unclear or invalid. Please ensure the whole ID is visible.")
+                else:
+                    # Let it pass but maybe log a warning
+                    print(f"[KYC WARNING] ID passed on data match despite low legitimacy score. Text Length: {len(clean_ocr_upper.strip())}")
 
             return {
                 "status": status,

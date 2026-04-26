@@ -277,7 +277,15 @@
     };
 
     async function openScannerModalCat(type) {
-        const title = type === 'permit' ? 'Scan Business Permit' : (type === 'id' ? 'Scan Valid ID' : 'Identity Verification');
+        const idTypeSelect = document.getElementById('id_type');
+        const idType = idTypeSelect ? idTypeSelect.value : '';
+        
+        if (type === 'id' && !idType) {
+            Swal.fire('Requirement', 'Please select an ID Type first!', 'warning');
+            return;
+        }
+
+        const title = type === 'permit' ? 'Scan Business Permit' : (type === 'id' ? `Scan ${idType}` : 'Identity Verification');
         const icon = type === 'permit' ? 'fa-file-invoice' : (type === 'id' ? 'fa-id-card' : 'fa-user-astronaut');
 
         if (!window.Swal) return;
@@ -286,13 +294,14 @@
             title: title,
             html: `
                 <div class="scanner-modal-wrap">
+                    <div id="scannerInstructions" class="scanner-instruction-banner">Preparing Camera...</div>
                     <div class="scanner-preview-container">
                         <video id="modalWebcamVideo" autoplay playsinline></video>
                         <canvas id="modalWebcamCanvas" style="display:none;"></canvas>
                         <div class="scanner-laser"></div>
                         <div class="scanner-guide-frame ${type}"></div>
                     </div>
-                    <p class="scanner-hint">Position your ${type === 'selfie' ? 'face' : 'document'} within the frame</p>
+                    <p class="scanner-hint" id="scannerHint">Position your ${type === 'selfie' ? 'face' : 'document'} within the frame</p>
                 </div>
             `,
             showCancelButton: true,
@@ -303,18 +312,24 @@
             allowOutsideClick: false,
             didOpen: async () => {
                 const video = document.getElementById('modalWebcamVideo');
+                const instr = document.getElementById('scannerInstructions');
                 try {
                     streamCat = await navigator.mediaDevices.getUserMedia({
                         video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } }
                     });
                     video.srcObject = streamCat;
+                    if (instr) instr.innerText = type === 'selfie' ? "Center your face in the frame" : "Align document";
                 } catch (err) {
                     Swal.showValidationMessage(`Camera Error: ${err.message}`);
                     setTimeout(() => Swal.close(), 2000);
                 }
             },
-            preConfirm: () => {
-                return captureFromModalCat(type);
+            preConfirm: async () => {
+                if (type === 'selfie') {
+                    return await captureSequenceCat();
+                } else {
+                    return captureFromModalCat(type);
+                }
             },
             willClose: () => {
                 if (streamCat) {
@@ -323,6 +338,48 @@
                 }
             }
         });
+    }
+
+    async function captureSequenceCat() {
+        const instr = document.getElementById('scannerInstructions');
+        const frames = [];
+        const steps = [
+            { text: "Look directly at the camera", delay: 800 },
+            { text: "Now... BLINK your eyes", delay: 1000 },
+            { text: "Slightly move your head", delay: 800 }
+        ];
+
+        for (const step of steps) {
+            if (instr) {
+                instr.innerText = step.text;
+                instr.classList.add('active');
+            }
+            await new Promise(r => setTimeout(r, step.delay));
+            
+            const blob = await new Promise(resolve => {
+                const video = document.getElementById('modalWebcamVideo');
+                const canvas = document.getElementById('modalWebcamCanvas');
+                const context = canvas.getContext('2d');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob(resolve, 'image/jpeg', 0.9);
+            });
+            frames.push(blob);
+        }
+
+        const filename = `selfie_sequence_${Date.now()}.jpg`;
+        const files = frames.map((blob, i) => new File([blob], `frame_${i}_${filename}`, { type: "image/jpeg" }));
+        
+        // Show in UI
+        const nameEl = document.getElementById('selfieNameCat');
+        if (nameEl) {
+            nameEl.innerText = "Sequence Captured";
+        }
+
+        // Trigger processing with multi-file support
+        window.handleFileUploadCat(files, 'selfie');
+        return true;
     }
 
     function captureFromModalCat(type) {
@@ -360,18 +417,30 @@
         const statusId = type === 'permit' ? 'permitStatusCat' : (type === 'id' ? 'govIdStatusCat' : 'selfieStatusCat');
         const errorId = type === 'permit' ? 'permitOcrErrorCat' : (type === 'id' ? 'govIdOcrErrorCat' : 'selfieErrorCat');
         
-        const box = document.getElementById(boxId);
-        const statusLabel = document.getElementById(statusId);
-        const errorDiv = document.getElementById(errorId);
+        let box = document.getElementById(boxId) || document.getElementById(type === 'id' ? 'govIdBox' : (type === 'selfie' ? 'selfieBox' : 'permitBox'));
+        let statusLabel = document.getElementById(statusId) || document.getElementById(type === 'id' ? 'govIdStatus' : (type === 'selfie' ? 'selfieStatus' : 'permitStatus'));
+        let errorDiv = document.getElementById(errorId) || document.getElementById(type === 'id' ? 'govIdOcrError' : (type === 'selfie' ? 'selfieError' : 'permitOcrError'));
 
-        let file = null;
-        if (inputOrFile instanceof File) {
-            file = inputOrFile;
+        let files = [];
+        if (Array.isArray(inputOrFile)) {
+            files = inputOrFile;
+        } else if (inputOrFile instanceof File) {
+            files = [inputOrFile];
         } else if (inputOrFile.files && inputOrFile.files[0]) {
-            file = inputOrFile.files[0];
+            files = Array.from(inputOrFile.files);
         }
 
-        if (!file) return;
+        if (files.length === 0) return;
+        
+        // Populate the hidden input for form submission
+        const inputId = type === 'permit' ? 'permit_cat' : (type === 'id' ? 'gov_id_cat' : 'selfie_cat');
+        const altInputId = type === 'permit' ? 'permit' : (type === 'id' ? 'gov_id' : 'selfie');
+        const realInput = document.getElementById(inputId) || document.getElementById(altInputId);
+        if (realInput && files.length > 0) {
+            const dt = new DataTransfer();
+            files.forEach(f => dt.items.add(f));
+            realInput.files = dt.files;
+        }
         
         // Reset states to "Elite Scanning"
         box.classList.add('scanning');
@@ -395,7 +464,7 @@
         }
 
         const formData = new FormData();
-        formData.append('document', file);
+        files.forEach(f => formData.append('document', f));
         formData.append('doc_type', type);
         
         if (type === 'selfie' && lastUploadedIdPath) {
@@ -407,7 +476,10 @@
         
         formData.append('user_name', type === 'permit' ? businessName : fullName);
         if (type === 'permit') formData.append('owner_name', fullName);
-        if (type === 'id') formData.append('id_type', document.getElementById('id_type_cat')?.value);
+        if (type === 'id') {
+            formData.append('id_type', document.getElementById('id_type_cat')?.value || document.getElementById('id_type')?.value);
+            formData.append('id_number', document.getElementById('id_number_cat')?.value || document.getElementById('id_number')?.value || "");
+        }
 
         try {
             const response = await fetch('/auth/scan-document', {
@@ -425,8 +497,23 @@
             
             if (result.status === 'matched' || result.status === 'approved') {
                 box.classList.add('scanned-success');
-                statusLabel.innerText = type === 'selfie' ? "Identity Matched" : "Validation Passed";
+                statusLabel.innerText = type === 'selfie' ? "Identity Matched" : "Verification Passed";
                 
+                // Show Success Toast
+                if (window.Swal) {
+                    const Toast = Swal.mixin({
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
+                    Toast.fire({
+                        icon: 'success',
+                        title: `${type === 'id' ? 'ID' : (type === 'selfie' ? 'Face Scan' : 'Permit')} verified successfully!`
+                    });
+                }
+
                 if (type === 'id' && result.doc_path) {
                     lastUploadedIdPath = result.doc_path;
                 }

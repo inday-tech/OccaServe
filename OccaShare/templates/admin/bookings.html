@@ -4,39 +4,18 @@
 
 {% block extra_css %}
 <style>
-    :root {
-        --dm-primary: #f97316;
-        --dm-primary-light: #fff7ed;
-        --dm-secondary: #0f172a;
-        --dm-slate-50: #f8fafc;
-        --dm-slate-100: #f1f5f9;
-        --dm-slate-400: #94a3b8;
-        --dm-slate-600: #475569;
-    }
-
-    /* Standard Layout Alignment */
-    .main-content {
-        background: var(--dm-slate-50) !important;
-        padding: 2rem 3rem !important;
-    }
-
     /* Header Architecture */
     .terminal-header-top {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        margin-bottom: 2.5rem;
     }
 
     .terminal-header-top h1 {
-        font-size: 1.75rem;
-        font-weight: 800;
-        color: var(--dm-secondary);
         margin: 0;
     }
 
     .terminal-header-top p {
-        color: var(--dm-slate-400);
         margin-top: 4px;
     }
 
@@ -53,8 +32,6 @@
     .kpi-grid-clean {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
-        gap: 1.5rem;
-        margin-bottom: 2.5rem;
     }
 
     .kpi-card-clean {
@@ -78,17 +55,10 @@
     }
 
     .kpi-info h4 {
-        font-size: 0.7rem;
-        font-weight: 700;
-        color: var(--dm-slate-400);
-        text-transform: uppercase;
         margin: 0;
     }
 
     .kpi-info .kpi-value {
-        font-size: 1.5rem;
-        font-weight: 800;
-        color: var(--dm-secondary);
         margin-top: 4px;
         display: block;
     }
@@ -223,7 +193,8 @@
         justify-content: center;
         z-index: 2000;
         padding: 2rem;
-        overflow-y: auto; /* Fix: Allow scrolling for tall modals */
+        overflow-y: auto;
+        /* Fix: Allow scrolling for tall modals */
     }
 
     .admin-modal-overlay.active {
@@ -238,8 +209,10 @@
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
         overflow: hidden;
         animation: modalSlide 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        margin: auto; /* Center in scrollable overlay */
-        max-height: 95vh; /* Max height for the card itself */
+        margin: auto;
+        /* Center in scrollable overlay */
+        max-height: 95vh;
+        /* Max height for the card itself */
         display: flex;
         flex-direction: column;
     }
@@ -577,11 +550,14 @@
                 <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--dm-primary);"></i>
             </div>
         </div>
-        <div class="modal-footer-clean" style="padding: 1.5rem 2rem; background: var(--dm-slate-50); border-top: 1px solid var(--dm-slate-100); display: flex; justify-content: flex-end; gap: 1rem;">
-            <button class="dropdown-item" style="width: auto; padding: 0.75rem 1.5rem; background: white; border: 1px solid var(--dm-slate-100);"
+        <div class="modal-footer-clean"
+            style="padding: 1.5rem 2rem; background: var(--dm-slate-50); border-top: 1px solid var(--dm-slate-100); display: flex; justify-content: flex-end; gap: 1rem;">
+            <button class="dropdown-item"
+                style="width: auto; padding: 0.75rem 1.5rem; background: white; border: 1px solid var(--dm-slate-100);"
                 onclick="closeModal('bookingDetailModal')">Close</button>
-            <button class="btn-add-pro" style="padding: 0.75rem 1.5rem; background: var(--dm-primary); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;" onclick="window.print()"><i
-                    class="fas fa-print"></i> Export Record</button>
+            <button class="btn-add-pro"
+                style="padding: 0.75rem 1.5rem; background: var(--dm-primary); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;"
+                onclick="window.print()"><i class="fas fa-print"></i> Export Record</button>
         </div>
     </div>
 </div>
@@ -594,10 +570,10 @@
         event.stopPropagation();
         const menu = document.getElementById(`dropdown-${id}`);
         const isShown = menu.classList.contains('show');
-        
+
         // Close all other menus
         document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
-        
+
         if (!isShown) menu.classList.add('show');
     }
 
@@ -629,7 +605,7 @@
         try {
             const res = await fetch(`/admin/api/bookings/${id}/details`);
             const data = await res.json();
-            
+
             if (data.success) {
                 const b = data.booking;
                 const kyc = b.customer ? b.customer.kyc : null;
@@ -690,7 +666,7 @@
                     </div>
                     <div class="detail-item">
                         <div class="detail-label">Financial Status</div>
-                        <div class="detail-value">₱${b.total_amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                        <div class="detail-value">₱${b.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                         <div style="font-size: 0.8rem; color: #64748b;">Method: ${b.payment_method} | Status: ${b.payment_status}</div>
                     </div>
                 </div>

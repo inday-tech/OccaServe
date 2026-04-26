@@ -1871,6 +1871,7 @@ async def get_package_details_api(
 
 @router.post("/packages/{package_id}/update")
 async def update_package(
+    request: Request,
     package_id: int,
     name: str = Form(...),
     description: str = Form(...),
@@ -2128,6 +2129,7 @@ async def link_menu_to_package(
 
 @router.post("/menu/{item_id}/update")
 async def update_menu_item(
+    request: Request,
     item_id: int,
     name: str = Form(...),
     category: str = Form(...),

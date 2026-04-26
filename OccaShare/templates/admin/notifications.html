@@ -5,16 +5,6 @@
 
 {% block extra_css %}
 <style>
-    :root {
-        --dm-primary: #f97316;
-        --dm-primary-light: #fff7ed;
-        --dm-secondary: #0f172a;
-        --dm-slate-50: #f8fafc;
-        --dm-slate-100: #f1f5f9;
-        --dm-slate-200: #e2e8f0;
-        --dm-slate-400: #94a3b8;
-        --dm-slate-600: #475569;
-    }
 
     .main-content {
         background: var(--dm-slate-50) !important;
@@ -22,21 +12,16 @@
     }
 
     .page-header {
-        margin-bottom: 2rem;
         display: flex;
         justify-content: space-between;
         align-items: flex-end;
     }
 
     .page-header h1 {
-        font-size: 1.75rem;
-        font-weight: 800;
-        color: var(--dm-secondary);
         margin: 0;
     }
 
     .page-header p {
-        color: var(--dm-slate-400);
         margin-top: 4px;
     }
 
@@ -213,7 +198,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
+<div class="page-header-clean">
     <div>
         <h1>System Notifications</h1>
         <p>Operational alerts and administrative feedback loops.</p>

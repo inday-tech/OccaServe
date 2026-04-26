@@ -5,22 +5,33 @@ import hashlib
 from ..core.config import settings
 
 class PaymongoService:
-    def __init__(self):
-        self.secret_key = settings.PAYMONGO_SECRET_KEY
-        if not self.secret_key:
+    @property
+    def auth_token(self):
+        import os
+        from dotenv import load_dotenv
+        load_dotenv(override=True)
+        secret_key = os.getenv("PAYMONGO_SECRET_KEY")
+        if not secret_key:
             print("ERROR: PAYMONGO_SECRET_KEY is not set in .env! Paymongo link generation will fail.")
-            self.auth_token = ""
-        else:
-            # Paymongo uses Basic Auth with the secret key as the username and no password
-            auth_bytes = f"{self.secret_key}:".encode("utf-8")
-            self.auth_token = base64.b64encode(auth_bytes).decode("utf-8")
+            return ""
+        # Paymongo uses Basic Auth with the secret key as the username and no password
+        auth_bytes = f"{secret_key}:".encode("utf-8")
+        return base64.b64encode(auth_bytes).decode("utf-8")
 
-        self.headers = {
+
+
+    @property
+    def headers(self):
+        token = self.auth_token
+        return {
             "Accept": "application/json",
             "Content-Type": "application/json",
-            "Authorization": f"Basic {self.auth_token}" if self.auth_token else ""
+            "Authorization": f"Basic {token}" if token else ""
         }
-        self.base_url = "https://api.paymongo.com/v1"
+
+    def __init__(self):
+        self.base_url = "https://api.api.paymongo.com/v1" if hasattr(settings, 'PAYMONGO_BASE_URL') else "https://api.paymongo.com/v1"
+
 
     def create_payment_link(self, amount: float, description: str, remarks: str):
         """

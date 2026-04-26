@@ -56,8 +56,15 @@
     }
 
     @keyframes eliteEntrance {
-        from { opacity: 0; transform: translateY(30px) scale(0.98); }
-        to { opacity: 1; transform: translateY(0) scale(1); }
+        from {
+            opacity: 0;
+            transform: translateY(30px) scale(0.98);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
     }
 
     .professional-card {
@@ -182,7 +189,8 @@
     .form-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 1.618rem; /* Golden Ratio Base Spacing */
+        gap: 1.618rem;
+        /* Golden Ratio Base Spacing */
     }
 
     .form-group {
@@ -360,7 +368,7 @@
         align-items: center;
         width: 100%;
     }
-    
+
     .password-toggle-btn {
         position: absolute;
         right: 1rem;
@@ -375,7 +383,7 @@
         z-index: 10;
         transition: color 0.2s;
     }
-    
+
     .password-toggle-btn:hover {
         color: var(--primary);
     }
@@ -385,6 +393,7 @@
         border-color: var(--primary);
         pointer-events: none;
     }
+
     .file-upload-box.scanning::after {
         content: '';
         position: absolute;
@@ -397,18 +406,27 @@
         animation: scanLine 1.5s infinite linear;
         z-index: 10;
     }
+
     @keyframes scanLine {
-        0% { top: 0; }
-        100% { top: 100%; }
+        0% {
+            top: 0;
+        }
+
+        100% {
+            top: 100%;
+        }
     }
+
     .file-upload-box.scanned-success {
         border-color: #10b981;
         background: #ecfdf5;
     }
+
     .file-upload-box.scanned-error {
         border-color: #ef4444;
         background: #fef2f2;
     }
+
     .scan-status-badge {
         font-size: 0.65rem;
         font-weight: 700;
@@ -417,19 +435,24 @@
         margin-top: 5px;
         display: none;
     }
+
     .scanned-success .scan-status-badge {
         display: inline-block;
         background: #10b981;
         color: white;
     }
+
     .scanned-error .scan-status-badge {
         display: inline-block;
         background: #ef4444;
         color: white;
     }
+
     .file-upload-box {
-        height: 160px; /* Fixed height for stability */
+        height: 160px;
+        /* Fixed height for stability */
     }
+
     .ocr-error-text {
         font-size: 0.8rem;
         color: #ef4444;
@@ -440,7 +463,8 @@
         font-weight: 600;
         text-align: left;
     }
-    .file-upload-box.scanned-error + .ocr-error-text {
+
+    .file-upload-box.scanned-error+.ocr-error-text {
         display: block;
         animation: fadeInError 0.3s ease forwards;
     }
@@ -453,7 +477,7 @@
         width: 100%;
         margin-top: 1rem;
     }
-    
+
     .scanner-preview-container {
         position: relative;
         width: 100%;
@@ -484,8 +508,17 @@
     }
 
     @keyframes laserScan {
-        0%, 100% { top: 0%; opacity: 0.8; }
-        50% { top: 100%; opacity: 1; }
+
+        0%,
+        100% {
+            top: 0%;
+            opacity: 0.8;
+        }
+
+        50% {
+            top: 100%;
+            opacity: 1;
+        }
     }
 
     .scanner-guide-frame {
@@ -498,9 +531,23 @@
         pointer-events: none;
     }
 
-    .scanner-guide-frame.permit { width: 80%; height: 80%; border-radius: 4px; }
-    .scanner-guide-frame.id { width: 80%; height: 50%; border-radius: 8px; }
-    .scanner-guide-frame.selfie { width: 60%; height: 70%; border-radius: 50%; }
+    .scanner-guide-frame.permit {
+        width: 80%;
+        height: 80%;
+        border-radius: 4px;
+    }
+
+    .scanner-guide-frame.id {
+        width: 80%;
+        height: 50%;
+        border-radius: 8px;
+    }
+
+    .scanner-guide-frame.selfie {
+        width: 60%;
+        height: 70%;
+        border-radius: 50%;
+    }
 
     .scanner-hint {
         margin-top: 1rem;
@@ -523,7 +570,7 @@
         margin: 0 auto 0.5rem;
         border: 2px solid rgba(255, 123, 84, 0.2);
     }
-    
+
     .face-scan-overlay i {
         font-size: 1.5rem;
         color: var(--primary);
@@ -553,7 +600,7 @@
         color: #0c4a6e;
         line-height: 1.5;
     }
-    
+
     .verification-tips-box li {
         margin-bottom: 0.25rem;
     }
@@ -572,7 +619,7 @@
     }
 
     /* Target leading icons specifically to enforce a fixed width and prevent overlapping text */
-    .input-wrapper > i.fas:first-child {
+    .input-wrapper>i.fas:first-child {
         width: 1.25rem;
         text-align: center;
         z-index: 5;
@@ -591,8 +638,15 @@
     }
 
     @keyframes pop {
-        0% { transform: translateY(-50%) scale(0.5); opacity: 0; }
-        100% { transform: translateY(-50%) scale(1); opacity: 1; }
+        0% {
+            transform: translateY(-50%) scale(0.5);
+            opacity: 0;
+        }
+
+        100% {
+            transform: translateY(-50%) scale(1);
+            opacity: 1;
+        }
     }
 
     /* Responsive Design */
@@ -616,7 +670,8 @@
         }
 
         .step-label {
-            display: none; /* Hide labels on mobile to prevent overlap */
+            display: none;
+            /* Hide labels on mobile to prevent overlap */
         }
 
         .btn-container {
@@ -643,11 +698,12 @@
             height: 32px;
             font-size: 0.85rem;
         }
-        
+
         .file-upload-box {
             height: 120px;
         }
     }
+
     /* ===================================================
        ELITE KYC GRID & CARDS (Rock-Solid Stability)
        =================================================== */
@@ -710,8 +766,13 @@
         transition: all 0.3s;
     }
 
-    .kyc-card.scanned-success i { color: #10b981; }
-    .kyc-card.scanned-error i { color: #ef4444; }
+    .kyc-card.scanned-success i {
+        color: #10b981;
+    }
+
+    .kyc-card.scanned-error i {
+        color: #ef4444;
+    }
 
     .kyc-card .card-title {
         font-size: 1rem;
@@ -754,17 +815,43 @@
         text-transform: uppercase;
         letter-spacing: 0.05em;
         display: none;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
-    .kyc-card.scanning .kyc-badge.progress { display: block; background: var(--primary); color: white; animation: badgePulse 1.5s infinite; }
-    .kyc-card.scanned-success .kyc-badge.success { display: block; background: #10b981; color: white; }
-    .kyc-card.scanned-error .kyc-badge.error { display: block; background: #ef4444; color: white; }
+    .kyc-card.scanning .kyc-badge.progress {
+        display: block;
+        background: var(--primary);
+        color: white;
+        animation: badgePulse 1.5s infinite;
+    }
+
+    .kyc-card.scanned-success .kyc-badge.success {
+        display: block;
+        background: #10b981;
+        color: white;
+    }
+
+    .kyc-card.scanned-error .kyc-badge.error {
+        display: block;
+        background: #ef4444;
+        color: white;
+    }
 
     @keyframes badgePulse {
-        0% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.8; transform: scale(1.05); }
-        100% { opacity: 1; transform: scale(1); }
+        0% {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        50% {
+            opacity: 0.8;
+            transform: scale(1.05);
+        }
+
+        100% {
+            opacity: 1;
+            transform: scale(1);
+        }
     }
 
     /* Elite Error Drawer */
@@ -788,8 +875,13 @@
     }
 
     @keyframes slideUpError {
-        from { transform: translateY(100%); }
-        to { transform: translateY(0); }
+        from {
+            transform: translateY(100%);
+        }
+
+        to {
+            transform: translateY(0);
+        }
     }
 
     /* Scanning Animation Line */
@@ -806,8 +898,13 @@
     }
 
     @keyframes kycScanAnimation {
-        0% { top: 0; }
-        100% { top: 100%; }
+        0% {
+            top: 0;
+        }
+
+        100% {
+            top: 100%;
+        }
     }
 
     /* Mobile KYC Grid */
@@ -815,10 +912,12 @@
         .kyc-grid {
             grid-template-columns: 1fr;
         }
+
         .kyc-card {
             min-height: 200px;
         }
     }
+
     /* Elite Input Icons */
     .input-wrapper i.fas {
         transition: color 0.3s ease;
@@ -889,7 +988,7 @@
         .professional-card {
             padding: 2.5rem 1.5rem;
         }
-        
+
         .form-grid {
             grid-template-columns: 1fr;
         }
@@ -978,14 +1077,16 @@
                             <label for="password">Password</label>
                             <div class="input-wrapper" id="passwordWrapper">
                                 <div class="password-field-wrapper">
-                                    <input type="password" id="password" name="password" class="minimal-input has-toggle" required
-                                        placeholder="••••••••">
-                                    <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility(this)" tabindex="-1">
+                                    <input type="password" id="password" name="password"
+                                        class="minimal-input has-toggle" required placeholder="••••••••">
+                                    <button type="button" class="password-toggle-btn"
+                                        onclick="togglePasswordVisibility(this)" tabindex="-1">
                                         <i class="fas fa-eye"></i>
                                     </button>
                                 </div>
                                 <i class="fas fa-check-circle validation-icon success-icon" style="right: 3rem;"></i>
-                                <i class="fas fa-exclamation-circle validation-icon error-icon" style="right: 3rem;"></i>
+                                <i class="fas fa-exclamation-circle validation-icon error-icon"
+                                    style="right: 3rem;"></i>
                                 <div id="passwordError" class="error-drawer">Min 8 characters needed</div>
                             </div>
                         </div>
@@ -995,12 +1096,14 @@
                                 <div class="password-field-wrapper">
                                     <input type="password" id="confirm_password" name="confirm_password"
                                         class="minimal-input has-toggle" required placeholder="••••••••">
-                                    <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility(this)" tabindex="-1">
+                                    <button type="button" class="password-toggle-btn"
+                                        onclick="togglePasswordVisibility(this)" tabindex="-1">
                                         <i class="fas fa-eye"></i>
                                     </button>
                                 </div>
                                 <i class="fas fa-check-circle validation-icon success-icon" style="right: 3rem;"></i>
-                                <i class="fas fa-exclamation-circle validation-icon error-icon" style="right: 3rem;"></i>
+                                <i class="fas fa-exclamation-circle validation-icon error-icon"
+                                    style="right: 3rem;"></i>
                                 <div id="confirmError" class="error-drawer">Passwords do not match</div>
                             </div>
                         </div>
@@ -1063,11 +1166,12 @@
                                 <div id="barangayError" class="error-drawer">Required</div>
                             </div>
                         </div>
-                        
+
                         <div class="form-group full-width">
                             <label for="street_address">Street Address / Landmark <small>(Optional)</small></label>
                             <div class="input-wrapper" id="streetWrapper">
-                                <input type="text" id="street_address" class="minimal-input" placeholder="e.g. Unit 2A, Residencia Bldg">
+                                <input type="text" id="street_address" class="minimal-input"
+                                    placeholder="e.g. Unit 2A, Residencia Bldg">
                             </div>
                         </div>
 
@@ -1184,20 +1288,29 @@
                         </div>
 
                         <div class="form-group">
+                            <label for="id_number">ID Number</label>
+                            <div class="input-wrapper" id="idNumberWrapper">
+                                <i class="fas fa-hashtag field-icon"></i>
+                                <input type="text" id="id_number" name="id_number" class="minimal-input" placeholder="e.g. 1234-5678-9012" required>
+                                <div id="idNumberError" class="error-drawer"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
                             <label for="gov_id">Valid ID Photo</label>
-                            <div class="file-upload-box" id="govIdBox">
+                            <div class="file-upload-box" id="govIdBox" onclick="startUniversalScanCat('id')">
                                 <i class="fas fa-id-card" id="govIdIcon"></i>
                                 <p id="govIdName">GovID.pdf / jpg</p>
                                 <span class="scan-status-badge" id="govIdStatus">Verified</span>
                                 <div id="govIdOcrError" class="ocr-error-text"></div>
                                 <input type="file" id="gov_id" name="gov_id" accept=".pdf,image/*" required
-                                    onchange="handleFileUpload(this, 'id')">
+                                    onchange="handleFileUpload(this, 'id')" onclick="event.stopPropagation()">
                             </div>
                         </div>
 
                         <div class="form-group">
                             <label for="selfie">Smart Face Scan (Selfie)</label>
-                            <div class="file-upload-box" id="selfieBox">
+                            <div class="file-upload-box" id="selfieBox" onclick="startUniversalScanCat('selfie')">
                                 <div class="face-scan-overlay">
                                     <i class="fas fa-user-shield" id="selfieIcon"></i>
                                 </div>
@@ -1205,7 +1318,7 @@
                                 <span class="scan-status-badge" id="selfieStatus">Matched</span>
                                 <div id="selfieError" class="ocr-error-text"></div>
                                 <input type="file" id="selfie" name="selfie" accept="image/*" required
-                                    onchange="handleFileUpload(this, 'selfie')">
+                                    onchange="handleFileUpload(this, 'selfie')" onclick="event.stopPropagation()">
                             </div>
                         </div>
 
@@ -1292,8 +1405,8 @@
     function populateCities(province) {
         const citySelect = document.getElementById('city_select');
         const barangaySelect = document.getElementById('barangay_select');
-        if(!citySelect || !barangaySelect) return;
-        
+        if (!citySelect || !barangaySelect) return;
+
         citySelect.innerHTML = '<option value="">-- City --</option>';
         barangaySelect.innerHTML = '<option value="">-- Barangay --</option>';
 
@@ -1310,8 +1423,8 @@
 
     function populateBarangays(city) {
         const barangaySelect = document.getElementById('barangay_select');
-        if(!barangaySelect) return;
-        
+        if (!barangaySelect) return;
+
         barangaySelect.innerHTML = '<option value="">-- Barangay --</option>';
         if (city && LAGUNA_DATA[city]) {
             const barangays = LAGUNA_DATA[city].sort();
@@ -1330,13 +1443,13 @@
         const brgySelect = document.getElementById('barangay_select');
         const streetInput = document.getElementById('street_address');
         const hiddenAddr = document.getElementById('address_hidden');
-        if(!hiddenAddr) return;
+        if (!hiddenAddr) return;
 
         let addrPieces = [];
-        if(streetInput && streetInput.value.trim()) addrPieces.push(streetInput.value.trim());
-        if(brgySelect && brgySelect.value) addrPieces.push(brgySelect.value);
-        if(citySelect && citySelect.value) addrPieces.push(citySelect.value);
-        if(provSelect && provSelect.value) addrPieces.push(provSelect.value);
+        if (streetInput && streetInput.value.trim()) addrPieces.push(streetInput.value.trim());
+        if (brgySelect && brgySelect.value) addrPieces.push(brgySelect.value);
+        if (citySelect && citySelect.value) addrPieces.push(citySelect.value);
+        if (provSelect && provSelect.value) addrPieces.push(provSelect.value);
         hiddenAddr.value = addrPieces.join(', ');
     }
 
@@ -1507,7 +1620,7 @@
                     const p1 = parts[i];
                     const p2 = parts[j];
                     if (p1 === p2) {
-                        return { valid: false, message: "Avoid repetitive names (e.g. Pepito Pepito)" };
+                        return { valid: false, message: "Avoid repetitive names (e.g. John John)" };
                     }
                     if (p1.length > 3 && p2.length > 3 && getStringSimilarity(p1, p2) > 0.8) {
                         return { valid: false, message: "Names appear repetitive or contain typos" };
@@ -1607,8 +1720,8 @@
             if (!citySelect.value) { setError('city', "Required"); valid = false; }
             if (!brgySelect.value) { setError('barangay', "Required"); valid = false; }
             if (!bt.value) { setError('businessType', "Required"); valid = false; }
-            if (!years.value) { 
-                setError('years', "Required"); valid = false; 
+            if (!years.value) {
+                setError('years', "Required"); valid = false;
             } else if (Number(years.value) > 100) {
                 setError('years', "Max 100 years"); valid = false;
             } else if (Number(years.value) < 0) {
@@ -1720,11 +1833,11 @@
     // Add logic to populate select on load
     document.addEventListener('DOMContentLoaded', () => {
         const provSelect = document.getElementById('province_select');
-        if(provSelect && provSelect.value) {
+        if (provSelect && provSelect.value) {
             populateCities(provSelect.value);
         }
     });
-    
+
     document.getElementById('province_select')?.addEventListener('change', function () {
         populateCities(this.value);
         updateHiddenAddress();
@@ -1846,46 +1959,47 @@
         const statusId = type === 'permit' ? 'permitStatus' : (type === 'selfie' ? 'selfieStatus' : 'govIdStatus');
         const iconId = type === 'permit' ? 'permitIcon' : (type === 'selfie' ? 'selfieIcon' : 'govIdIcon');
         const errorId = type === 'permit' ? 'permitOcrError' : (type === 'selfie' ? 'selfieError' : (type === 'id' ? 'govIdOcrError' : null));
-        
+
         const box = document.getElementById(boxId);
         const statusBadge = document.getElementById(statusId);
         const icon = document.getElementById(iconId);
         const errorDiv = errorId ? document.getElementById(errorId) : null;
-        
+
         updateFileName(input, labelId);
-        
+
         if (!input.files || !input.files[0]) return;
-        
+
         // Only scan images for now (Tesseract/OpenCV needs pixels)
         const file = input.files[0];
         if (!file.type.startsWith('image/')) {
             box.classList.remove('scanning', 'scanned-success', 'scanned-error');
-            return; 
+            return;
         }
 
         // Prepare data for OCR
         const formData = new FormData();
         formData.append('document', file);
         formData.append('doc_type', type);
-        
+
         // Get name to match
         const fullNameInput = document.getElementById('full_name');
         const businessNameInput = document.getElementById('business_name');
         const userName = type === 'permit' ? businessNameInput.value : fullNameInput.value;
-            
+
         formData.append('user_name', userName || "Unknown");
         if (type === 'permit') {
             formData.append('owner_name', fullNameInput.value || "Unknown");
         }
         if (type === 'id') {
             formData.append('id_type', document.getElementById('id_type').value || "Passport");
+            formData.append('id_number', document.getElementById('id_number').value || "");
         }
 
         // Start animation
         box.classList.add('scanning');
         box.classList.remove('scanned-success', 'scanned-error');
         statusBadge.innerText = "Scanning...";
-        if(errorDiv) errorDiv.style.display = 'none';
+        if (errorDiv) errorDiv.style.display = 'none';
 
         try {
             const response = await fetch('/auth/scan-document', {
@@ -1893,22 +2007,22 @@
                 body: formData
             });
             const result = await response.json();
-            
+
             box.classList.remove('scanning');
-            
+
             if (result.status === 'matched' || result.status === 'approved') {
                 box.classList.add('scanned-success');
                 statusBadge.innerText = type === 'selfie' ? "Face Matched" : "Document Verified";
                 icon.className = "fas fa-check-circle";
                 icon.style.color = "#10b981";
-                if(errorDiv) errorDiv.style.display = 'none';
+                if (errorDiv) errorDiv.style.display = 'none';
             } else if (result.status === 'mismatched' || result.status === 'rejected' || result.status === 'error') {
                 box.classList.add('scanned-error');
                 statusBadge.innerText = "Validation Failed";
                 icon.className = "fas fa-exclamation-triangle";
                 icon.style.color = "#ef4444";
-                
-                if(errorDiv) {
+
+                if (errorDiv) {
                     errorDiv.innerText = result.failure_reason || "Verification failed. Please check the image quality.";
                     errorDiv.style.display = 'block';
                 }
