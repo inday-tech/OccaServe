@@ -211,6 +211,9 @@ def process_kyc_background(user_id, booking_id, id_path, selfie_paths, full_name
             kyc_record.verification_status = result["status"]
 
         kyc_record.fraud_score = result["fraud_score"]
+        kyc_record.match_score = result.get("face_match_confidence", 0.0)
+        kyc_record.face_detected = result.get("liveness_score", 0.0) > 0 or result.get("face_match_confidence", 0.0) > 0
+        kyc_record.id_detected = result.get("ocr_match", False) or result.get("ocr_data", {}).get("full_name") is not None
         kyc_record.failure_reason = result["failure_reason"]
         kyc_record.ocr_data = result.get("ocr_data", {})
         kyc_record.liveness_status = "passed" if result.get("liveness_score", 0.0) >= 0.4 else "failed"

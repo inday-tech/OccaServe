@@ -156,3 +156,44 @@ class EmailService:
         The OccaServe Team
         """
         return EmailService._send_email(email, subject, body)
+
+    @staticmethod
+    def send_kyc_approval_email(email: str, name: str):
+        subject = "ACCOUNT ACTIVATED: Your Identity Verification is Approved"
+        body = f"""
+        Hello {name},
+        
+        We are pleased to inform you that your identity verification has been successfully processed and approved by our compliance team.
+        
+        Your account is now fully activated. You can now access all features of the platform, including booking management and financial dashboards.
+        
+        Login to your dashboard here: {settings.SITE_URL}/auth/login
+        
+        Thank you for your cooperation during this security audit.
+        
+        Best regards,
+        OccaServe Compliance Department
+        """
+        return EmailService._send_email(email, subject, body)
+
+    @staticmethod
+    def send_kyc_rejection_email(email: str, name: str, reason: str):
+        subject = "SECURITY NOTICE: Identity Verification Unsuccessful"
+        body = f"""
+        Hello {name},
+        
+        This is a formal notice regarding your identity verification submission.
+        
+        After a detailed review by our compliance team, your application has been unsuccessful for the following reason:
+        
+        "{reason}"
+        
+        Due to this security finding, your access to the platform has been restricted. 
+        If you believe this is an error or wish to provide additional documentation, please contact our support team at {settings.SUPPORT_EMAIL}.
+        
+        Reference ID: AUDIT-TERMINATION-{email.split('@')[0].upper()}
+        
+        Best regards,
+        OccaServe Compliance Department
+        """
+        return EmailService._send_email(email, subject, body)

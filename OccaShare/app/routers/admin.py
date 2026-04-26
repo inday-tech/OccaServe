@@ -174,48 +174,6 @@ async def manage_caterers(
         "active_page": "caterers"
     })
 
-@router.get("/customers", response_class=HTMLResponse)
-async def manage_customers(
-    request: Request, 
-    db: Session = Depends(database.get_db),
-    user: models.User = Depends(admin_only)
-):
-    
-    customers = db.query(models.User).filter(models.User.role == 'customer', models.User.is_archived == False).all()
-    return templates.TemplateResponse("admin/customers.html", {
-        "request": request,
-        "user": user,
-        "customers": customers,
-        "active_page": "customers"
-    })
-
-@router.get("/bookings", response_class=HTMLResponse)
-async def all_bookings(
-    request: Request, 
-    page: int = 1,
-    limit: int = 5,
-    db: Session = Depends(database.get_db),
-    user: models.User = Depends(admin_only)
-):
-    offset = (page - 1) * limit
-    
-    # Filter out draft and archived bookings
-    query = db.query(models.Booking).filter(models.Booking.status != 'draft', models.Booking.is_archived == False)
-    
-    total_bookings = query.count()
-    bookings = query.order_by(models.Booking.created_at.desc()).offset(offset).limit(limit).all()
-    
-    total_pages = (total_bookings + limit - 1) // limit
-    
-    return templates.TemplateResponse("admin/bookings.html", {
-        "request": request,
-        "user": user,
-        "bookings": bookings,
-        "page": page,
-        "total_pages": total_pages,
-        "limit": limit,
-        "active_page": "bookings"
-    })
 
 @router.get("/payouts", response_class=HTMLResponse)
 async def manage_payouts(
@@ -854,7 +812,7 @@ def verify_customer(customer_id: int, action: str = Form(...), db: Session = Dep
     return RedirectResponse(url=f"/admin/customers?success_msg=Customer+{action}+successfully", status_code=status.HTTP_303_SEE_OTHER)
 
 @router.get("/verify/{user_id}", response_class=HTMLResponse)
-async def view_verification(
+async def review_verification(
     user_id: int,
     request: Request,
     db: Session = Depends(database.get_db),
@@ -863,18 +821,21 @@ async def view_verification(
     target_user = db.query(models.User).get(user_id)
     if not target_user:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    # Get identity verification or caterer profile
+        
     verification = target_user.identity_verification
-    caterer_profile = target_user.caterer_profile
-    
+    if not verification:
+        # Create a blank record if it doesn't exist but is requested for audit
+        verification = models.IdentityVerification(user_id=user_id)
+        db.add(verification)
+        db.commit()
+        db.refresh(verification)
+
     return templates.TemplateResponse("admin/verification_detail.html", {
         "request": request,
         "user": user,
         "target_user": target_user,
         "verification": verification,
-        "caterer_profile": caterer_profile,
-        "active_page": target_user.role + "s"
+        "active_page": "compliance"
     })
 
 @router.get("/kyc")
@@ -1346,3 +1307,175 @@ async def mark_notification_read(
         db.commit()
         
     return {"success": True}
+
+# ─── Booking Management ────────────────────────────────────────────────────────
+
+@router.get("/bookings", response_class=HTMLResponse)
+async def admin_bookings(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(admin_only)
+):
+    bookings = db.query(models.Booking).filter(models.Booking.is_archived == False).order_by(models.Booking.created_at.desc()).all()
+    
+    # Calculate metrics
+    total_revenue = sum((b.total_amount or 0.0) for b in bookings if b.status != 'cancelled')
+    pending_bookings = sum(1 for b in bookings if b.status == 'pending')
+    
+    metrics = {
+        "total_revenue": total_revenue,
+        "pending_bookings": pending_bookings,
+        "total_bookings": len(bookings)
+    }
+
+    return templates.TemplateResponse("admin/bookings.html", {
+        "request": request,
+        "user": user,
+        "bookings": bookings,
+        "metrics": metrics,
+        "active_page": "bookings"
+    })
+
+@router.get("/api/bookings/{booking_id}/details")
+async def api_booking_details(
+    booking_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(admin_only)
+):
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking:
+        return {"success": False, "message": "Booking not found"}
+        
+    customer_data = None
+    if booking.user:
+        v = booking.user.identity_verification
+        customer_data = {
+            "name": f"{booking.user.first_name} {booking.user.last_name}",
+            "email": booking.user.email,
+            "kyc": {
+                "status": v.verification_status if v else "Not Started",
+                "id_url": v.document_url if v else None,
+                "selfie_url": v.selfie_url if v else None,
+                # Defensive check for match_score to prevent AttributeError
+                "match_score": int(getattr(v, 'match_score', 0.0) * 100) if v else 0,
+                "liveness": getattr(v, 'liveness_status', "N/A") if v else "N/A",
+                "ocr_name": v.ocr_data.get("full_name") if v and v.ocr_data else "N/A"
+            } if v else None
+        }
+
+    return {
+        "success": True,
+        "booking": {
+            "id": booking.id,
+            "event_name": booking.event_name,
+            "event_type": booking.event_type,
+            "event_date": booking.event_date.strftime('%b %d, %Y') if booking.event_date else "TBD",
+            "event_time": booking.event_time.strftime('%I:%M %p') if booking.event_time else "TBD",
+            "venue_address": booking.venue_address,
+            "guest_count": booking.guest_count,
+            "status": booking.status,
+            "payment_status": booking.payment_status,
+            "payment_method": booking.payment_method,
+            "total_amount": float(booking.total_amount or 0),
+            "customer": customer_data,
+            "selected_items": [
+                {
+                    "name": item.menu_item.name if item.menu_item else "Deleted Item",
+                    "price": float(item.price or 0),
+                    "quantity": 1 # For now
+                } for item in (booking.selected_items or [])
+            ]
+        }
+    }
+
+# ─── Customer Management ───────────────────────────────────────────────────────
+
+@router.get("/customers", response_class=HTMLResponse)
+async def admin_customers(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(admin_only)
+):
+    customers = db.query(models.User).filter(
+        models.User.role == "customer",
+        models.User.is_archived == False
+    ).order_by(models.User.created_at.desc()).all()
+    
+    now = datetime.now()
+    start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    
+    metrics = {
+        "total_customers": len(customers),
+        "verified_customers": sum(1 for c in customers if c.is_verified),
+        "new_this_month": sum(1 for c in customers if c.created_at.replace(tzinfo=None) >= start_of_month)
+    }
+
+    return templates.TemplateResponse("admin/customers.html", {
+        "request": request,
+        "user": user,
+        "customers": customers,
+        "metrics": metrics,
+        "active_page": "customers"
+    })
+
+# ─── KYC Verification Terminal ────────────────────────────────────────────────
+
+@router.post("/verify/manual-action")
+async def kyc_manual_action(
+    target_user_id: int = Form(...),
+    action: str = Form(...),
+    reason: str = Form(...),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(admin_only),
+    background_tasks: BackgroundTasks = BackgroundTasks()
+):
+    target_user = db.query(models.User).get(target_user_id)
+    if not target_user:
+        return {"success": False, "message": "User not found"}
+        
+    kyc = target_user.identity_verification
+    if not kyc:
+        return {"success": False, "message": "KYC record not found"}
+        
+    if action == "approve":
+        kyc.verification_status = "approved"
+        target_user.is_verified = True
+        target_user.status = "active"
+        
+        # Log action
+        audit = models.AuditLog(
+            user_id=user.id,
+            action="KYC_APPROVE",
+            notes=f"Approved KYC for User ID {target_user_id}. Reason: {reason}"
+        )
+        db.add(audit)
+        
+        # Send Email notification
+        background_tasks.add_task(
+            EmailService.send_kyc_approval_email, 
+            target_user.email, 
+            target_user.first_name
+        )
+    else:
+        kyc.verification_status = "rejected"
+        kyc.failure_reason = reason
+        target_user.status = "suspended" # Terminate application usually means suspension
+        
+        # Log action
+        audit = models.AuditLog(
+            user_id=user.id,
+            action="KYC_REJECT",
+            notes=f"Rejected KYC for User ID {target_user_id}. Reason: {reason}"
+        )
+        db.add(audit)
+        
+        # Send Rejection Email
+        background_tasks.add_task(
+            EmailService.send_kyc_rejection_email,
+            target_user.email,
+            target_user.first_name,
+            reason
+        )
+        
+    db.commit()
+    return RedirectResponse(url="/admin/dashboard?success_msg=Action+completed+successfully", status_code=303)

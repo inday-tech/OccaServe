@@ -446,9 +446,12 @@ class IdentityVerification(Base):
     failure_reason = Column(Text, nullable=True)
     is_archived = Column(Boolean, default=False)
     fraud_score = Column(Integer, default=0)
+    match_score = Column(Float, default=0.0) # Face match confidence
+    face_detected = Column(Boolean, default=False)
+    id_detected = Column(Boolean, default=False)
     ip_address = Column(String, nullable=True)
     device_info = Column(JSONB, nullable=True)
-    liveness_status = Column(String, nullable=True)
+    liveness_status = Column(String, nullable=True) # passed, failed
     verified_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

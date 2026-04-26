@@ -179,13 +179,13 @@
     {% block extra_js %}{% endblock %}
 
     <script>
-        // Real-Time Admin Notifications
+        // Real-Time Admin Communications Hub
         (function () {
             const adminId = "{{ user.id }}";
             const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/user_${adminId}`;
             let socket;
             let reconnectAttempts = 0;
-            const maxAttempts = 5;
+            const maxAttempts = 10;
 
             function updateBadge(count) {
                 const badge = document.getElementById('adminNotifBadge');
@@ -196,13 +196,16 @@
             }
 
             function connectWebSocket() {
-                if (reconnectAttempts >= maxAttempts) return;
+                if (reconnectAttempts >= maxAttempts) {
+                    console.warn("WebSocket: Max reconnection attempts reached.");
+                    return;
+                }
+                
                 socket = new WebSocket(wsUrl);
 
                 socket.onopen = function () {
-                    console.log("Admin WebSocket connected.");
+                    console.log("Admin Intelligence Socket: Synchronized.");
                     reconnectAttempts = 0;
-                    // Fetch initial unread count
                     fetch('/admin/api/notifications/unread')
                         .then(r => r.json())
                         .then(data => data.success && updateBadge(data.unread_count))
@@ -212,23 +215,20 @@
                 socket.onmessage = function (event) {
                     try {
                         const data = JSON.parse(event.data);
+                        console.log("Real-time Event:", data.type);
+
+                        // 1. Handle Global Notifications
                         if (data.type === 'new_notification') {
                             updateBadge(data.count);
-                            // Show toast alert
                             if (typeof window.showSuccess === 'function') {
-                                window.showSuccess(data.message, "New Notification");
-                            } else if (typeof Swal !== 'undefined') {
-                                Swal.fire({
-                                    toast: true,
-                                    position: 'top-end',
-                                    icon: 'info',
-                                    title: "New Notification",
-                                    text: data.message,
-                                    showConfirmButton: false,
-                                    timer: 4000
-                                });
+                                window.showSuccess(data.message, "System Alert");
                             }
                         }
+
+                        // 2. Dispatch Custom Event for Page-Specific Real-time Updates
+                        // Pages like Dashboard, Caterers, and Customers can listen for this
+                        window.dispatchEvent(new CustomEvent('system_update', { detail: data }));
+
                     } catch (e) {
                         console.error('Failed to parse WebSocket message:', e);
                     }
@@ -236,7 +236,12 @@
 
                 socket.onclose = function () {
                     reconnectAttempts++;
+                    console.log(`WebSocket disconnected. Reconnecting attempt ${reconnectAttempts}...`);
                     setTimeout(connectWebSocket, 3000 * Math.min(reconnectAttempts, 5));
+                };
+
+                socket.onerror = function(err) {
+                    console.error("WebSocket error:", err);
                 };
             }
 

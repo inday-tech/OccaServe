@@ -3,301 +3,510 @@
 {% block title %}Audit Terminal: {{ target_user.first_name }} - OccaServe Admin{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/verification_detail.css') }}?v=1.1">
+<style>
+    :root {
+        --dm-primary: #f97316; /* Admin Orange */
+        --dm-primary-light: #fff7ed;
+        --dm-secondary: #0f172a;
+        --dm-slate-50: #f8fafc;
+        --dm-slate-100: #f1f5f9;
+        --dm-slate-200: #e2e8f0;
+        --dm-slate-400: #94a3b8;
+        --dm-slate-600: #475569;
+        --dm-orange-50: #fff7ed;
+        --dm-orange-100: #ffedd5;
+        --dm-orange-600: #ea580c;
+    }
+
+    .main-content { background: var(--dm-slate-50) !important; padding: 2.5rem 3.5rem !important; }
+
+    /* Header Architecture */
+    .audit-header-clean {
+        background: white;
+        padding: 2rem;
+        border-radius: 1.25rem;
+        border: 1px solid var(--dm-slate-100);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        border-left: 6px solid var(--dm-primary);
+    }
+    .audit-header-clean h1 { font-size: 1.65rem; font-weight: 700; color: var(--dm-secondary); margin: 0; }
+    .audit-header-clean p { color: var(--dm-slate-400); font-size: 0.9rem; margin-top: 4px; }
+    
+    .badge-clean {
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* Layout Grid */
+    .audit-workspace-grid {
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        gap: 2rem;
+    }
+
+    /* Section Cards */
+    .audit-card {
+        background: white;
+        border-radius: 1.25rem;
+        border: 1px solid var(--dm-slate-100);
+        padding: 2rem;
+        margin-bottom: 2rem;
+        transition: transform 0.2s;
+    }
+    .section-title-clean {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--dm-slate-600);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .section-title-clean i { color: var(--dm-primary); font-size: 1rem; }
+
+    /* Biometric Gauge */
+    .confidence-gauge-container {
+        background: var(--dm-orange-50);
+        padding: 1.5rem;
+        border-radius: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+        border: 1px solid var(--dm-orange-100);
+    }
+    .gauge-circle {
+        width: 70px;
+        height: 70px;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .gauge-circle svg { transform: rotate(-90deg); }
+    .gauge-circle .bg { fill: none; stroke: white; stroke-width: 6; }
+    .gauge-circle .fill { 
+        fill: none; 
+        stroke: var(--dm-primary); 
+        stroke-width: 6; 
+        stroke-linecap: round; 
+        stroke-dasharray: 188.4;
+        transition: stroke-dashoffset 1s ease-out;
+    }
+    .gauge-value { position: absolute; font-weight: 800; color: var(--dm-primary); font-size: 1.1rem; }
+
+    /* Comparison Viewport */
+    .comparison-grid-clean {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+    .img-audit-box {
+        background: var(--dm-slate-50);
+        border: 1.5px solid var(--dm-slate-100);
+        border-radius: 1rem;
+        overflow: hidden;
+        position: relative;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+    }
+    .img-audit-box label {
+        position: absolute;
+        top: 1rem;
+        left: 1rem;
+        background: rgba(15, 23, 42, 0.85);
+        color: white;
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 0.65rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        z-index: 10;
+        backdrop-filter: blur(8px);
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    }
+    .img-audit-box img { width: 100%; height: auto; display: block; transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+    .img-audit-box:hover img { transform: scale(1.05); }
+
+    /* Detection Indicators */
+    .detection-overlay {
+        position: absolute;
+        bottom: 1rem;
+        right: 1rem;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    .det-badge {
+        background: rgba(34, 197, 94, 0.9);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 0.6rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        backdrop-filter: blur(4px);
+    }
+    .det-badge.fail { background: rgba(239, 68, 68, 0.9); }
+
+    /* Comparison Table Matrix */
+    .matrix-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 8px;
+    }
+    .matrix-table th {
+        text-align: left;
+        font-size: 0.65rem;
+        font-weight: 700;
+        color: var(--dm-slate-400);
+        text-transform: uppercase;
+        padding: 0 1rem 0.5rem;
+    }
+    .matrix-row { background: var(--dm-slate-50); border-radius: 10px; }
+    .matrix-row td { padding: 1rem; font-size: 0.85rem; border-top: 1px solid var(--dm-slate-100); border-bottom: 1px solid var(--dm-slate-100); }
+    .matrix-row td:first-child { border-left: 1px solid var(--dm-slate-100); border-radius: 10px 0 0 10px; width: 30%; }
+    .matrix-row td:last-child { border-right: 1px solid var(--dm-slate-100); border-radius: 0 10px 10px 0; }
+    
+    .matrix-label { font-weight: 700; color: var(--dm-slate-600); }
+    .matrix-value { font-weight: 600; color: var(--dm-secondary); }
+    .matrix-status { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.7rem; }
+    .matrix-status.match { color: #10b981; }
+    .matrix-status.mismatch { color: #ef4444; }
+
+    /* Sidebar Adjudication */
+    .adjudication-sidebar { position: sticky; top: 2rem; }
+    .decision-textarea {
+        width: 100%;
+        padding: 1.25rem;
+        border: 1.5px solid var(--dm-slate-100);
+        border-radius: 12px;
+        font-size: 0.9rem;
+        resize: none;
+        background: var(--dm-slate-50);
+        transition: all 0.2s;
+    }
+    .decision-textarea:focus { outline: none; border-color: var(--dm-primary); background: white; box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.1); }
+
+    .btn-template {
+        width: 100%;
+        padding: 10px 14px;
+        background: white;
+        border: 1px solid var(--dm-slate-100);
+        border-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--dm-slate-600);
+        text-align: left;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .btn-template:hover { border-color: var(--dm-primary); color: var(--dm-primary); background: var(--dm-orange-50); }
+
+    .action-row { display: flex; gap: 12px; margin-top: 2rem; }
+    .btn-action-primary {
+        flex: 1;
+        padding: 1.1rem;
+        background: var(--dm-primary);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 0.2s;
+    }
+    .btn-action-secondary {
+        flex: 1;
+        padding: 1.1rem;
+        background: white;
+        color: #ef4444;
+        border: 2px solid #ef4444;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 0.2s;
+    }
+    .btn-action-primary:hover { background: var(--dm-orange-600); box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2); }
+    .btn-action-secondary:hover { background: #fef2f2; }
+</style>
 {% endblock %}
 
 {% block content %}
-<!-- High-Tech Biometric Comparison Terminal -->
-<div class="comparison-terminal-overlay" id="biometric-terminal">
-    <div class="terminal-header">
-        <div class="terminal-badge"><i class="fas fa-microchip"></i> ADVANCED BIOMETRIC ANALYSIS</div>
-        <button class="btn-close-terminal"><i class="fas fa-times"></i></button>
+<div class="audit-header-clean">
+    <div>
+        <span class="badge-clean" style="background: var(--dm-orange-50); color: var(--dm-primary); margin-bottom: 12px;">
+            <i class="fas fa-shield-check"></i> Admin Compliance Terminal
+        </span>
+        <h1 id="headerName">{{ target_user.business_name or target_user.first_name ~ ' ' ~ target_user.last_name }}</h1>
+        <p>Security Audit ID: #AUDIT-{{ target_user.id }}-{{ verification.id if verification else 'NA' }}</p>
     </div>
+    <div style="display: flex; align-items: center; gap: 1rem;">
+        {% set status = verification.verification_status if verification else 'PENDING' %}
+        <span class="badge-clean" style="background: {% if status == 'approved' %}#ecfdf5; color: #10b981;{% elif status == 'rejected' %}#fef2f2; color: #ef4444;{% else %}#fff7ed; color: #f97316;{% endif %} padding: 10px 20px; font-size: 0.85rem; border: 1px solid currentColor;">
+            <i class="fas fa-circle" style="font-size: 0.5rem;"></i> {{ status|upper }}
+        </span>
+    </div>
+</div>
 
-    <div class="terminal-workspace">
-        <div class="terminal-viewport side-by-side" id="terminal-viewport">
-            <div class="view-container id-view">
-                <div class="view-label">IDENTITY DOCUMENT</div>
-                <div class="img-wrapper">
-                    <img src="{{ verification.document_url }}" id="terminal-id-img">
+<div class="audit-workspace-grid">
+    <div class="audit-main">
+        {% if verification %}
+        <!-- Visual Detection Section -->
+        <div class="audit-card">
+            <div class="section-title-clean"><i class="fas fa-eye"></i> Visual Authentication Detection</div>
+            
+            <div class="confidence-gauge-container">
+                <div class="gauge-circle">
+                    <svg width="70" height="70">
+                        <circle class="bg" cx="35" cy="35" r="30"></circle>
+                        {% set score = (verification.match_score * 100)|int if verification.match_score else 0 %}
+                        <circle class="fill" cx="35" cy="35" r="30" style="stroke-dashoffset: {{ 188.4 * (1 - score/100) }}; stroke: {% if score < 50 %}#ef4444{% elif score < 80 %}#f97316{% else %}#10b981{% endif %};"></circle>
+                    </svg>
+                    <div class="gauge-value" style="color: {% if score < 50 %}#ef4444{% elif score < 80 %}#f97316{% else %}#10b981{% endif %};">{{ score|int }}%</div>
+                </div>
+                <div>
+                    <h3 style="margin: 0; color: var(--dm-secondary); font-size: 1.1rem;">Integrity Correlation Score</h3>
+                    <p style="margin: 4px 0 0; color: var(--dm-slate-400); font-size: 0.85rem;">
+                        Audit suggests a <strong>{% if score >= 80 %}High-Fidelity Match{% elif score >= 50 %}Partial Integrity{% else %}Critical Mismatch{% endif %}</strong> based on biometric and OCR extraction.
+                    </p>
                 </div>
             </div>
 
-            <div class="view-container selfie-view">
-                <div class="view-label">LIVE SELFIE</div>
-                <div class="img-wrapper">
-                    <img src="{{ verification.selfie_url }}" id="terminal-selfie-img">
+            <div class="comparison-grid-clean">
+                <div class="img-audit-box">
+                    <label>Identity Document</label>
+                    <div class="detection-overlay">
+                        <div class="det-badge {% if not verification.id_detected %}fail{% endif %}">
+                            <i class="fas {% if verification.id_detected %}fa-check-circle{% else %}fa-times-circle{% endif %}"></i> 
+                            {% if verification.id_detected %}ID DOCUMENT DETECTED{% else %}NO ID DETECTED{% endif %}
+                        </div>
+                    </div>
+                    <img src="{{ verification.document_url }}" alt="ID Document" style="min-height: 250px; object-fit: contain; background: #f1f5f9;">
+                </div>
+                <div class="img-audit-box">
+                    <label>Liveness Selfie</label>
+                    <div class="detection-overlay">
+                        <div class="det-badge {% if not verification.face_detected %}fail{% endif %}">
+                            <i class="fas {% if verification.face_detected %}fa-user-check{% else %}fa-user-slash{% endif %}"></i> 
+                            {% if verification.face_detected %}HUMAN FACE DETECTED{% else %}NO FACE FOUND{% endif %}
+                        </div>
+                    </div>
+                    <img src="{{ verification.selfie_url }}" alt="Liveness Selfie" style="min-height: 250px; object-fit: contain; background: #f1f5f9;">
                 </div>
             </div>
         </div>
+
+        <!-- Matrix Comparison Section -->
+        <div class="audit-card">
+            <div class="section-title-clean"><i class="fas fa-table"></i> Data Comparison Matrix</div>
+            
+            <table class="matrix-table">
+                <thead>
+                    <tr>
+                        <th>DATA POINT</th>
+                        <th>PLATFORM REGISTRY</th>
+                        <th>ID EXTRACTION</th>
+                        <th>CORRELATION</th>
+                    </tr>
+                </thead>
+                <tbody id="matrixBody">
+                    <tr class="matrix-row">
+                        <td><span class="matrix-label">Full Name</span></td>
+                        <td><div class="matrix-value" id="regName">{{ target_user.first_name }} {{ target_user.last_name }}</div></td>
+                        <td><div class="matrix-value">{{ verification.ocr_data.full_name if verification.ocr_data else 'N/A' }}</div></td>
+                        <td>
+                            {% if verification.ocr_data and verification.ocr_data.full_name and verification.ocr_data.name_match %}
+                                <div class="matrix-status match"><i class="fas fa-check-circle"></i> MATCH</div>
+                            {% else %}
+                                <div class="matrix-status mismatch"><i class="fas fa-times-circle"></i> MISMATCH</div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr class="matrix-row">
+                        <td><span class="matrix-label">ID Number</span></td>
+                        <td><div class="matrix-value" id="regIdNum">{{ verification.id_number or 'N/A' }}</div></td>
+                        <td><div class="matrix-value">{{ verification.ocr_data.id_number if verification.ocr_data else 'N/A' }}</div></td>
+                        <td>
+                             {% if verification.ocr_data and verification.ocr_data.id_found %}
+                                <div class="matrix-status match"><i class="fas fa-check-circle"></i> MATCH</div>
+                            {% else %}
+                                <div class="matrix-status mismatch"><i class="fas fa-times-circle"></i> MISMATCH</div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr class="matrix-row">
+                        <td><span class="matrix-label">Date of Birth</span></td>
+                        <td><div class="matrix-value">N/A</div></td>
+                        <td><div class="matrix-value">{{ verification.ocr_data.extracted_dob if verification.ocr_data else 'N/A' }}</div></td>
+                        <td><div class="matrix-status" style="color: var(--dm-slate-400);">INFO ONLY</div></td>
+                    </tr>
+                    <tr class="matrix-row">
+                        <td><span class="matrix-label">Address</span></td>
+                        <td><div class="matrix-value" id="regAddress">{{ target_user.address or 'N/A' }}</div></td>
+                        <td><div class="matrix-value">{{ verification.ocr_data.extracted_address if verification.ocr_data else 'N/A' }}</div></td>
+                        <td>
+                            {% if verification.ocr_data and verification.ocr_data.extracted_address and target_user.address in verification.ocr_data.extracted_address %}
+                                <div class="matrix-status match"><i class="fas fa-check-circle"></i> MATCH</div>
+                            {% else %}
+                                <div class="matrix-status mismatch"><i class="fas fa-exclamation-circle"></i> PARTIAL</div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr class="matrix-row">
+                        <td><span class="matrix-label">Phone Number</span></td>
+                        <td><div class="matrix-value" id="regPhone">{{ target_user.phone_number or 'N/A' }}</div></td>
+                        <td><div class="matrix-value">{{ verification.ocr_data.phone if verification.ocr_data else 'N/A' }}</div></td>
+                        <td><div class="matrix-status" style="color: var(--dm-slate-400);">REGISTRY VERIFIED</div></td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div style="margin-top: 1rem; padding: 1rem; background: #fffbeb; border-radius: 12px; border: 1px solid #fef3c7;">
+                <div style="font-size: 0.7rem; font-weight: 700; color: #92400e; text-transform: uppercase; margin-bottom: 4px;">Auditor Intelligence Insight</div>
+                <div style="font-size: 0.85rem; color: #b45309; line-height: 1.4;">
+                    Identity integrity is calculated via 128-point face landmarker comparison. If the **Integrity Correlation Score** is below 80%, please carefully review the **Visual Authentication** badges before proceeding with activation.
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="audit-card" style="text-align: center; padding: 5rem 2rem;">
+            <i class="fas fa-user-shield" style="font-size: 4rem; color: var(--dm-slate-100); margin-bottom: 1.5rem;"></i>
+            <h2 style="color: var(--dm-secondary);">Awaiting Verification</h2>
+            <p style="color: var(--dm-slate-400);">This user has not yet submitted their identity documents for review.</p>
+        </div>
+        {% endif %}
     </div>
 
-    <div class="terminal-controls">
-        <div class="ctrl-group">
-            <label><i class="fas fa-adjust"></i> OVERLAY OPACITY</label>
-            <input type="range" id="opacity-slider" min="0" max="100" value="0">
-        </div>
-        <div class="ctrl-group">
-            <label><i class="fas fa-search-plus"></i> ANALYSIS SCALE</label>
-            <input type="range" id="scale-slider" min="100" max="300" value="100">
-        </div>
-        <div class="ctrl-group buttons">
-            <button class="btn-terminal-action" id="btn-toggle-layout">
-                <i class="fas fa-columns"></i> TOGGLE VIEW
-            </button>
-            <button class="btn-terminal-action" id="btn-reset-terminal">
-                <i class="fas fa-undo"></i> RESET
-            </button>
+    <div class="adjudication-sidebar">
+        <div class="audit-card" style="border-top: 4px solid var(--dm-primary); position: sticky; top: 2rem;">
+            <div class="section-title-clean"><i class="fas fa-gavel"></i> Final Adjudication</div>
+            
+            <form action="/admin/kyc/{{ verification.id if verification else '0' }}/action" method="POST">
+                <label class="matrix-label" style="font-size: 0.7rem; text-transform: uppercase; margin-bottom: 8px; display: block;">Auditor Memorandum</label>
+                <textarea name="notes" class="decision-textarea" style="min-height: 120px;" placeholder="Enter findings and justification for decision..." required {% if not verification %}disabled{% endif %}></textarea>
+                
+                <div style="margin-top: 1.5rem;">
+                    <span class="matrix-label" style="font-size: 0.7rem; text-transform: uppercase; margin-bottom: 8px; display: block;">Command Templates</span>
+                    <button type="button" class="btn-template" data-template="IDENTITY VERIFIED: Document OCR and Biometric match 1:1. Approved for platform activation.">
+                        <i class="fas fa-check-circle" style="color: #10b981;"></i> Perfect Alignment
+                    </button>
+                    <button type="button" class="btn-template" data-template="REJECTION: The document provided is blurry or partially covered. Please re-upload a clear, full-view image of your ID.">
+                        <i class="fas fa-image" style="color: #f97316;"></i> Illegible Document
+                    </button>
+                    <button type="button" class="btn-template" data-template="REJECTION: Identity mismatch. The name on the provided ID does not match the registered account name.">
+                        <i class="fas fa-id-card-alt" style="color: #ef4444;"></i> Identity Mismatch
+                    </button>
+                    <button type="button" class="btn-template" data-template="REJECTION: Biometric failure. The face in the selfie does not match the photo on the ID document.">
+                        <i class="fas fa-user-times" style="color: #ef4444;"></i> Face Mismatch
+                    </button>
+                    <button type="button" class="btn-template" data-template="REJECTION: Liveness check failed. Please ensure you are in a well-lit area and facing the camera directly during the selfie.">
+                        <i class="fas fa-video-slash" style="color: #f97316;"></i> Liveness Failure
+                    </button>
+                </div>
+
+                <div class="action-row">
+                    <button type="submit" name="action" value="approve" class="btn-action-primary" 
+                            onclick="event.preventDefault(); window.showConfirm('AUTHORIZE ACTIVATION?', () => { const f = this.form; const h = document.createElement('input'); h.type='hidden'; h.name='action'; h.value='approve'; f.appendChild(h); f.submit(); }, 'Grant platform access to this user.', 'Yes, Authorize');"
+                            {% if not verification or status == 'approved' %}disabled{% endif %}>
+                        <i class="fas fa-shield-check"></i> Authorize
+                    </button>
+                    <button type="submit" name="action" value="reject" class="btn-action-secondary"
+                            onclick="event.preventDefault(); window.showConfirm('TERMINATE APPLICATION?', () => { const f = this.form; const h = document.createElement('input'); h.type='hidden'; h.name='action'; h.value='reject'; f.appendChild(h); f.submit(); }, 'Reject this application and suspend the account.', 'Yes, Terminate');"
+                            {% if not verification or status == 'rejected' %}disabled{% endif %}>
+                        <i class="fas fa-user-slash"></i> Terminate
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 
-<!-- Comparison Backdrop -->
-<div class="comparison-overlay-backdrop"></div>
-
-<div class="verification-page-container">
-    <div class="container-fluid" id="main-content-layout">
-        <!-- Standardized Admin Header -->
-        <header class="verification-header-card reveal-card">
-            <div class="header-title-group">
-                <span class="stat-label"><i class="fas fa-shield-halved mr-1" style="color: var(--primary-color);"></i>
-                    COMPLIANCE OVERSIGHT</span>
-                <h1>{{ target_user.business_name or target_user.first_name ~ ' ' ~ target_user.last_name }}</h1>
-                <p>Identity Validation & Biometric Review Terminal</p>
-            </div>
-
-            <div class="header-status-zone">
-                {% set status = verification.verification_status if verification else 'PENDING' %}
-                <div class="status-indicator-pill badge-{{ status|lower if status else 'pending' }}">
-                    <i class="fas fa-circle mr-2"></i> {{ status|replace('_', ' ')|upper }}
-                </div>
-            </div>
-        </header>
-
-        <div class="verification-review-grid">
-            <!-- Main Column -->
-            <div class="verification-main">
-                {% if verification %}
-
-                <!-- AI Confidence Banner -->
-                <div class="ai-confidence-banner reveal-card">
-                    <div class="confidence-score-circle">
-                        <svg width="80" height="80" viewBox="0 0 80 80">
-                            <circle class="gauge-bg" cx="40" cy="40" r="35"></circle>
-                            <circle class="gauge-fill" cx="40" cy="40" r="35" style="stroke: var(--primary-color);"
-                                data-score="{{ (verification.match_score * 100)|int if verification and verification.match_score else 85 }}">
-                            </circle>
-                        </svg>
-                        <div class="score-text">{{ (verification.match_score * 100)|int if verification and
-                            verification.match_score else 85 }}%</div>
-                    </div>
-                    <div class="confidence-info">
-                        <h3 style="color: var(--secondary-color);">Biometric Confidence Score</h3>
-                        <p>Face matching algorithm suggests a <strong>high probability</strong> of identity alignment.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="review-card reveal-card">
-                    <div class="d-flex justify-content-between align-items-center mb-5">
-                        <h3 class="audit-section-title mb-0">
-                            <i class="fas fa-id-card" style="color: var(--primary-color);"></i> Biometric
-                            Cross-Referencing
-                        </h3>
-                        <button type="button" class="btn-toggle-compare" id="launch-compare-btn">
-                            <i class="fas fa-expand-arrows-alt"></i> LAUNCH COMPARISON
-                        </button>
-                    </div>
-
-                    <div class="biometric-grid">
-                        <div class="comparison-box id-box">
-                            <label class="d-block mb-3 font-weight-black text-muted"
-                                style="letter-spacing: 0.05em; font-size: 0.75rem;">GOVERNMENT CREDENTIAL</label>
-                            <div class="img-preview-box">
-                                <div class="scan-line"></div>
-                                <div class="img-controls">
-                                    <button type="button" class="btn-ctrl btn-bright" title="Enhance Visibility"><i
-                                            class="fas fa-sun"></i></button>
-                                    <a href="{{ verification.document_url }}" target="_blank" class="btn-ctrl"><i
-                                            class="fas fa-expand-alt"></i></a>
-                                </div>
-                                <img src="{{ verification.document_url or 'https://placehold.co/600x800/f8fafc/cbd5e1?text=Awaiting+Render' }}"
-                                    class="img-fluid-fit">
-                            </div>
-                        </div>
-
-                        <div class="comparison-box selfie-box">
-                            <label class="d-block mb-3 font-weight-black text-muted"
-                                style="letter-spacing: 0.05em; font-size: 0.75rem;">LIVE PROOF OF LIFE</label>
-                            <div class="img-preview-box">
-                                <div class="scan-line"></div>
-                                <div class="img-controls">
-                                    <button type="button" class="btn-ctrl btn-bright" title="Enhance Visibility"><i
-                                            class="fas fa-sun"></i></button>
-                                    <a href="{{ verification.selfie_url }}" target="_blank" class="btn-ctrl"><i
-                                            class="fas fa-expand-alt"></i></a>
-                                </div>
-                                <img src="{{ verification.selfie_url or 'https://placehold.co/600x800/f8fafc/cbd5e1?text=Awaiting+Render' }}"
-                                    class="img-fluid-fit">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- OCR Data Block -->
-                    <div class="comparison-board mt-5 reveal-card">
-                        <div class="data-group ai-group">
-                            <div class="group-header" style="background: #f8fafc;">
-                                <i class="fas fa-microchip" style="color: var(--primary-color);"></i>
-                                <span style="color: var(--secondary-color);">AI EXTRACTION</span>
-                                <div class="live-sync-indicator">
-                                    <span class="pulse" style="background: #22c55e;"></span> LIVE SYNC
-                                </div>
-                            </div>
-                            <div class="data-rows">
-                                <div class="data-row">
-                                    <span class="label">FULL NAME</span>
-                                    <span class="value">{{ verification.ocr_data.full_name if verification and
-                                        verification.ocr_data else 'Awaiting Scan...' }}</span>
-                                </div>
-                                <div class="data-row">
-                                    <span class="label">DOCUMENT #</span>
-                                    <span class="value mono">{{ verification.ocr_data.id_number if verification and
-                                        verification.ocr_data else 'Awaiting Scan...' }}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="data-group system-group">
-                            <div class="group-header" style="background: #f8fafc;">
-                                <i class="fas fa-server" style="color: var(--secondary-color);"></i>
-                                <span style="color: var(--secondary-color);">SYSTEM RECORD</span>
-                            </div>
-                            <div class="data-rows">
-                                <div class="data-row">
-                                    <span class="label">ACCOUNT HOLDER</span>
-                                    <span class="value">{{ target_user.first_name }} {{ target_user.last_name }}</span>
-                                </div>
-                                <div class="data-row">
-                                    <span class="label">SYSTEM ROLE</span>
-                                    <span class="value">
-                                        <span class="badge-role"
-                                            style="background: var(--primary-color); color: white;">{{
-                                            target_user.role|upper }}</span>
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {% if target_user.role == 'caterer' and target_user.caterer_profile %}
-                <!-- Portfolio Details -->
-                <div class="review-card reveal-card">
-                    <h3 class="audit-section-title mb-4">
-                        <i class="fas fa-briefcase" style="color: var(--primary-color);"></i> Merchant Ecosystem Context
-                    </h3>
-                    <div class="biometric-grid mb-5">
-                        <div>
-                            <label class="d-block mb-3 font-weight-bold text-muted" style="font-size: 0.7rem;">BUSINESS
-                                PERMIT</label>
-                            <div class="img-preview-box" style="aspect-ratio: 16/9;">
-                                <img src="{{ target_user.caterer_profile.permit_url or 'https://placehold.co/800x450/f8fafc/cbd5e1?text=NOT+UPLOADED' }}"
-                                    class="img-fluid-fit">
-                            </div>
-                        </div>
-                        <div>
-                            <label class="d-block mb-3 font-weight-bold text-muted" style="font-size: 0.7rem;">CATERING
-                                SAMPLES</label>
-                            <div class="img-preview-box" style="aspect-ratio: 16/9;">
-                                <img src="{{ target_user.caterer_profile.sample_menu_url or 'https://placehold.co/800x450/f8fafc/cbd5e1?text=NOT+UPLOADED' }}"
-                                    class="img-fluid-fit">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="business-stats-grid">
-                        <div class="stat-pill"><label>INDUSTRY TENURE</label><span>{{
-                                target_user.caterer_profile.years_of_operation or '0' }} YEARS</span></div>
-                        <div class="stat-pill"><label>PARTNER STATUS</label><span
-                                style="color: var(--primary-color);">VERIFIED MERCHANT</span></div>
-                        <div class="stat-pill"><label>SECURE CONTACT</label><span>{{ target_user.email }}</span></div>
-                        <div class="stat-pill"><label>AUDIT ID</label><span>#E-{{ target_user.id }}</span></div>
-                    </div>
-                </div>
-                {% endif %}
-                {% else %}
-                <div class="review-card text-center py-5 reveal-card">
-                    <div class="mb-5 text-muted opacity-25"><i class="fas fa-user-lock fa-6x"></i></div>
-                    <h2 style="font-family: 'Poppins', sans-serif; color: var(--secondary-color);">Terminal Standby</h2>
-                    <p class="text-muted mx-auto" style="max-width: 450px;">Awaiting verification submission from
-                        applicant. Audit protocols are currently restricted.</p>
-                </div>
-                {% endif %}
-            </div>
-
-            <!-- Sidebar Adjudication -->
-            <div class="verification-sidebar">
-                <div class="review-card reveal-card"
-                    style="position: sticky; top: 2rem; border-top: 5px solid var(--leaf);">
-                    <h3 class="audit-section-title mb-4">
-                        <i class="fas fa-gavel"></i> Final Adjudication
-                    </h3>
-
-                    <form action="/admin/kyc/{{ verification.id if verification else '0' }}/action" method="POST">
-                        <div class="form-group mb-5">
-                            <label class="text-muted font-weight-bold uppercase tracking-wider d-block mb-3"
-                                style="font-size: 0.75rem; letter-spacing: 0.1em;">AUDITOR MEMORANDUM</label>
-                            <textarea name="notes" class="decision-textarea"
-                                style="min-height: 180px; border-radius: 1rem;"
-                                placeholder="Enter detailed audit findings..." required {% if not verification
-                                %}disabled{% endif %}></textarea>
-                        </div>
-
-                        <div class="decision-automation-area mb-5">
-                            <span class="d-block text-muted small font-weight-bold mb-4"
-                                style="letter-spacing: 0.05em;">COMMAND TEMPLATES</span>
-                            <div class="d-flex flex-column gap-3 mb-5">
-                                <button type="button" class="btn-template"
-                                    data-template="SECURITY AUDIT: Identity confirmed. Biometric and OCR data are a perfect 1:1 match. Proceed with activation."><i
-                                        class="fas fa-clipboard-check"></i> Perfect Alignment</button>
-                            </div>
-
-                            <span class="d-block text-muted small font-weight-bold mb-4"
-                                style="letter-spacing: 0.05em;">REJECTION PROTOCOLS</span>
-                            <div class="d-flex flex-column gap-3">
-                                <button type="button" class="btn-template text-danger"
-                                    data-template="REJECTION: Identity document is blurred beyond legibility. Re-upload required for audit."><i
-                                        class="fas fa-eye-slash"></i> Illegible
-                                    Credential</button>
-                                <button type="button" class="btn-template text-danger"
-                                    data-template="REJECTION: Facial biometric mismatch detected. Applicant does not match identity document."><i
-                                        class="fas fa-user-times"></i> Biometric
-                                    Mismatch</button>
-                            </div>
-                        </div>
-
-                        <div class="decision-actions mt-5 d-flex flex-column gap-3">
-                            <button type="submit" name="action" value="approve" class="btn-primary-action"
-                                onclick="event.preventDefault(); window.showConfirm('Are you sure you want to AUTHORIZE this caterer? This will grant them full platform access.', () => { const f = this.form; const h = document.createElement('input'); h.type='hidden'; h.name='action'; h.value='approve'; f.appendChild(h); f.submit(); }, 'Authorize Activation', 'Yes, Authorize');"
-                                {% if not verification or verification.verification_status=='approved' %}disabled{%
-                                endif %}>
-                                <i class="fas fa-shield-check mr-2"></i> AUTHORIZE ACTIVATION
-                            </button>
-                            <button type="submit" name="action" value="reject" class="btn-secondary-action"
-                                style="background: white; border: 2px solid #ef4444; border-radius: 1rem; padding: 1.25rem; font-weight: 800; color: #ef4444; cursor: pointer;"
-                                onclick="event.preventDefault(); window.showConfirm('Are you sure you want to REJECT this application? The caterer will be notified of the termination protocol.', () => { const f = this.form; const h = document.createElement('input'); h.type='hidden'; h.name='action'; h.value='reject'; f.appendChild(h); f.submit(); }, 'Terminate Application', 'Yes, Reject');"
-                                {% if not verification or verification.verification_status=='rejected' %}disabled{%
-                                endif %}>
-                                <i class="fas fa-times-circle mr-2"></i> TERMINATE APPLICATION
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', path='/js/admin/verification_detail.js') }}"></script>
+<script>
+    document.querySelectorAll('.btn-template').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const textarea = document.querySelector('.decision-textarea');
+            if (textarea && !textarea.disabled) {
+                textarea.value = btn.dataset.template;
+                textarea.focus();
+            }
+        });
+    });
+
+    function openEditModal() {
+        document.getElementById('editProfileModal').classList.add('active');
+    }
+
+    function closeEditModal() {
+        document.getElementById('editProfileModal').classList.remove('active');
+    }
+
+    async function saveProfile(e) {
+        e.preventDefault();
+        const form = e.target;
+        const formData = new FormData(form);
+        const btn = form.querySelector('button[type="submit"]');
+        const oldText = btn.innerText;
+        
+        btn.disabled = true;
+        btn.innerText = 'Saving...';
+
+        try {
+            const res = await fetch('/admin/api/customers/{{ target_user.id }}/edit', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                window.showAlert('Success', 'Profile updated successfully!', 'success');
+                // Update UI elements
+                const name = `${formData.get('first_name')} ${formData.get('last_name')}`;
+                document.getElementById('headerName').innerText = name;
+                document.getElementById('regName').innerText = name;
+                document.getElementById('regAddress').innerText = formData.get('address') || 'N/A';
+                document.getElementById('regPhone').innerText = formData.get('phone') || 'N/A';
+                closeEditModal();
+            } else {
+                window.showAlert('Error', data.message || 'Failed to update profile', 'error');
+            }
+        } catch (err) {
+            window.showAlert('Error', 'An unexpected error occurred.', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerText = oldText;
+        }
+    }
+</script>
 {% endblock %}

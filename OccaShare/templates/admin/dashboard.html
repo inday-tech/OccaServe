@@ -2,420 +2,634 @@
 
 {% block title %}Platform Overview - Admin Dashboard{% endblock %}
 
+{% block extra_css %}
 <style>
     :root {
-        --adm-primary: #4f46e5;
-        --adm-secondary: #0f172a;
-        --adm-accent: #10b981;
-        --adm-bg: #f8fafc;
-        --adm-card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+        --dm-primary: #f97316;
+        --dm-primary-light: #fff7ed;
+        --dm-secondary: #0f172a;
+        --dm-slate-50: #f8fafc;
+        --dm-slate-100: #f1f5f9;
+        --dm-slate-200: #e2e8f0;
+        --dm-slate-400: #94a3b8;
+        --dm-slate-600: #475569;
     }
 
-    body {
-        font-family: 'Poppins', sans-serif;
-        background: var(--adm-bg);
+    /* Standard Layout Alignment */
+    .main-content {
+        background: var(--dm-slate-50) !important;
+        padding: 2rem 3rem !important;
     }
 
-    .admin-dashboard-container {
-        padding: 2.5rem;
-        min-height: 100vh;
-    }
-
-    /* KYC-Style Header */
-    .dashboard-header-card {
+    /* Clean Header */
+    .dashboard-header-clean {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
         margin-bottom: 2.5rem;
     }
 
-    .stat-label-header {
-        display: block;
-        font-size: 0.7rem;
+    .dashboard-header-clean h1 {
+        font-size: 1.75rem;
         font-weight: 800;
-        color: var(--adm-primary);
-        letter-spacing: 0.15em;
-        text-transform: uppercase;
-        margin-bottom: 0.5rem;
-    }
-
-    .dashboard-header-card h1 {
-        font-size: 2.25rem;
-        font-weight: 800;
-        color: var(--adm-secondary);
+        color: var(--dm-secondary);
         margin: 0;
-        letter-spacing: -0.02em;
     }
 
-    .stat-card-premium {
-        background: white;
-        border-radius: 1.5rem;
-        padding: 1.75rem;
-        box-shadow: var(--adm-card-shadow);
-        border: 1px solid rgba(226, 232, 240, 0.8);
-        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    .dashboard-header-clean p {
+        color: var(--dm-slate-400);
+        margin-top: 4px;
+    }
+
+    .sync-status-clean {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--dm-slate-400);
         display: flex;
-        justify-content: space-between;
         align-items: center;
-        position: relative;
+        gap: 8px;
     }
 
-    .stat-card-premium:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    /* KPI Grid Architecture */
+    .kpi-grid-clean {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 2.5rem;
     }
 
-    .stat-value-dashboard {
-        font-size: 1.85rem;
-        font-weight: 800;
-        color: var(--adm-secondary);
-        margin: 0.25rem 0;
-        letter-spacing: -0.03em;
-    }
-
-    .stat-label-dashboard {
-        font-size: 0.65rem;
-        font-weight: 800;
-        color: #94a3b8;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-    }
-
-    .stat-icon-badge {
-        width: 56px;
-        height: 56px;
+    .kpi-card-clean {
+        background: white;
+        padding: 1.5rem;
         border-radius: 1.25rem;
+        border: 1px solid var(--dm-slate-100);
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .kpi-card-clean:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.03);
+    }
+
+    .kpi-icon-box {
+        width: 54px;
+        height: 54px;
+        border-radius: 14px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.5rem;
+        font-size: 1.25rem;
     }
 
-    .bg-indigo-soft { background: #eef2ff; color: #4f46e5; }
-    .bg-emerald-soft { background: #ecfdf5; color: #10b981; }
-    .bg-amber-soft { background: #fffbeb; color: #f59e0b; }
-    .bg-rose-soft { background: #fff1f2; color: #f43f5e; }
+    .kpi-info h4 {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--dm-slate-400);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin: 0;
+    }
 
-    .dashboard-grid-charts {
+    .kpi-info .kpi-value {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--dm-secondary);
+        margin-top: 4px;
+        display: block;
+    }
+
+    /* Main Analytics Split */
+    .analytics-split-clean {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr 380px;
         gap: 1.5rem;
+        margin-bottom: 2.5rem;
+    }
+
+    .card-clean {
+        background: white;
+        border-radius: 1.25rem;
+        padding: 2rem;
+        border: 1px solid var(--dm-slate-100);
+    }
+
+    .card-title-clean {
+        font-size: 0.9rem;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        color: var(--dm-secondary);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    /* Side Analytics List */
+    .metric-list-clean {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
         margin-top: 2rem;
     }
 
-    .c-card-premium {
-        background: white;
-        border-radius: 1.75rem;
-        padding: 2.25rem;
-        box-shadow: var(--adm-card-shadow);
-        border: 1px solid rgba(226, 232, 240, 0.8);
-    }
-
-    .chart-header {
+    .metric-item-clean {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 2rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--dm-slate-50);
     }
 
-    .chart-title {
-        font-weight: 800;
+    .metric-item-clean:last-child {
+        border-bottom: none;
+    }
+
+    .metric-item-clean .m-label {
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: var(--dm-slate-600);
+    }
+
+    .metric-item-clean .m-value {
         font-size: 0.9rem;
-        color: var(--adm-secondary);
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        letter-spacing: 0.02em;
+        font-weight: 700;
+        color: var(--dm-secondary);
+    }
+
+    /* Table & Actions */
+    .table-card-clean {
+        background: white;
+        border-radius: 1.25rem;
+        padding: 2rem;
+        border: 1px solid var(--dm-slate-100);
+    }
+
+    .clean-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .clean-table th {
+        text-align: left;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--dm-slate-400);
         text-transform: uppercase;
+        padding: 1rem;
+        border-bottom: 1px solid var(--dm-slate-100);
     }
 
-    .chart-legend-custom {
-        display: flex;
-        gap: 1.25rem;
+    .clean-table td {
+        padding: 1.25rem 1rem;
+        font-size: 0.9rem;
+        border-bottom: 1px solid var(--dm-slate-50);
     }
 
-    .legend-item {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
+    .badge-clean {
+        padding: 4px 12px;
+        border-radius: 6px;
         font-size: 0.7rem;
         font-weight: 700;
-        color: #64748b;
+        background: #fffbeb;
+        color: #d97706;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
     }
 
-    .legend-dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 3px;
+    .btn-clean {
+        background: var(--dm-primary);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: opacity 0.2s;
     }
 
-    /* Table Styles */
-    .admin-dashboard-table {
+    /* MODAL SYSTEM (Standardized) */
+    .admin-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.4);
+        backdrop-filter: blur(8px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+        padding: 2rem;
+    }
+
+    .admin-modal-overlay.active {
+        display: flex;
+    }
+
+    .admin-modal-card {
+        background: white;
         width: 100%;
-        border-collapse: separate;
-        border-spacing: 0 0.5rem;
+        max-width: 600px;
+        border-radius: 1.25rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+        overflow: hidden;
+        animation: modalSlide 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .admin-dashboard-table th {
-        font-size: 0.65rem;
-        font-weight: 800;
-        color: #94a3b8;
-        text-transform: uppercase;
-        padding: 0 1.25rem 0.75rem;
-        letter-spacing: 0.1em;
+    @keyframes modalSlide {
+        from {
+            opacity: 0;
+            transform: translateY(20px) scale(0.98);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
     }
 
-    .admin-dashboard-table tr td {
-        background: #ffffff;
-        padding: 1.25rem;
-        font-size: 0.95rem;
-        border-top: 1px solid #f1f5f9;
-        border-bottom: 1px solid #f1f5f9;
+    .modal-header-clean {
+        padding: 1.5rem 2rem;
+        background: var(--dm-slate-50);
+        border-bottom: 1px solid var(--dm-slate-100);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
 
-    .admin-dashboard-table tr td:first-child { border-left: 1px solid #f1f5f9; border-radius: 1rem 0 0 1rem; }
-    .admin-dashboard-table tr td:last-child { border-right: 1px solid #f1f5f9; border-radius: 0 1rem 1rem 0; }
-
-    .reveal-card {
-        animation: revealUp 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-        opacity: 0;
+    .modal-header-clean h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--dm-secondary);
+        display: flex;
+        align-items: center;
+        gap: 12px;
     }
 
-    @keyframes revealUp {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
+    .modal-header-clean h3 i {
+        color: var(--dm-primary);
     }
 
-    @media (max-width: 1024px) {
-        .dashboard-grid-charts { grid-template-columns: 1fr; }
+    .modal-close-btn {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: var(--dm-slate-400);
+        cursor: pointer;
+    }
+
+    .modal-body-clean {
+        padding: 2rem;
+    }
+
+    /* Pulse Live */
+    .pulse-live {
+        animation: pulse-live 2s infinite;
+    }
+
+    @keyframes pulse-live {
+        0% {
+            transform: scale(0.95);
+            opacity: 0.5;
+        }
+
+        50% {
+            transform: scale(1.1);
+            opacity: 1;
+        }
+
+        100% {
+            transform: scale(0.95);
+            opacity: 0.5;
+        }
+    }
+
+    @media (max-width: 1200px) {
+        .analytics-split-clean {
+            grid-template-columns: 1fr;
+        }
+
+        .kpi-grid-clean {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .kpi-grid-clean {
+            grid-template-columns: 1fr;
+        }
+
+        .dashboard-header-clean {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .admin-modal-card {
+            max-width: 100%;
+        }
     }
 </style>
+{% endblock %}
 
 {% block content %}
-<div class="admin-dashboard-container">
-    <!-- Standardized Admin Header (KYC Style) -->
-    <header class="dashboard-header-card reveal-card">
-        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-            <div>
-                <span class="stat-label-header"><i class="fas fa-shield-halved" style="margin-right: 8px;"></i> Command & Control Terminal</span>
-                <h1>System Overview</h1>
-                <p style="color: #64748b; margin: 8px 0 0; font-size: 0.95rem;">Welcome back, <strong>{{ user.first_name }}</strong>. Platform health is <span style="color: var(--adm-accent); font-weight: 700;">Optimal</span>.</p>
-            </div>
-            <div id="sync-status" style="font-size: 0.65rem; font-weight: 800; color: #94a3b8; background: white; padding: 10px 20px; border-radius: 2rem; box-shadow: var(--adm-card-shadow); border: 1px solid #f1f5f9; letter-spacing: 0.05em;">
-                <i class="fas fa-sync-alt fa-spin" style="margin-right: 8px; color: var(--adm-primary);"></i> LIVE SYNC ACTIVE
-            </div>
-        </div>
-    </header>
+<div class="dashboard-header-clean">
+    <div>
+        <h1>Dashboard Intelligence</h1>
+        <p>Holistic oversight of platform metrics, growth vectors, and operation health.</p>
+    </div>
+</div>
 
-    <!-- Stats Grid -->
-    <div class="stats-grid-dashboard reveal-card" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; animation-delay: 0.1s;">
-        <div class="stat-card-premium">
-            <div>
-                <span class="stat-label-dashboard">Platform Revenue</span>
-                <div class="stat-value-dashboard" id="stat-revenue">₱{{ "{:,.2f}".format(metrics.platform_earnings) }}</div>
-                <div style="font-size: 0.7rem; color: #10b981; font-weight: 700; letter-spacing: 0.02em;">NET EARNINGS</div>
-            </div>
-            <div class="stat-icon-badge bg-indigo-soft"><i class="fas fa-wallet"></i></div>
+<!-- KPI Grid -->
+<div class="kpi-grid-clean">
+    <div class="kpi-card-clean">
+        <div class="kpi-icon-box" style="background: #eff6ff; color: #3b82f6;"><i class="fas fa-vault"></i></div>
+        <div class="kpi-info">
+            <h4>Total Revenue</h4>
+            <span class="kpi-value" id="stat-revenue">₱{{ "{:,.0f}".format(metrics.platform_earnings) }}</span>
         </div>
-
-        <div class="stat-card-premium">
-            <div>
-                <span class="stat-label-dashboard">Total Bookings</span>
-                <div class="stat-value-dashboard" id="stat-bookings">{{ metrics.booking_count }}</div>
-                <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; letter-spacing: 0.02em;">GLOBAL VOLUME</div>
-            </div>
-            <div class="stat-icon-badge bg-emerald-soft"><i class="fas fa-calendar-check"></i></div>
+    </div>
+    <div class="kpi-card-clean">
+        <div class="kpi-icon-box" style="background: #fffbeb; color: #f59e0b;"><i class="fas fa-calendar-check"></i>
         </div>
-
-        <div class="stat-card-premium">
-            <div>
-                <span class="stat-label-dashboard">Merchant Reach</span>
-                <div class="stat-value-dashboard" id="stat-caterers">{{ metrics.approved_caterers_count }}</div>
-                <div style="font-size: 0.7rem; color: #f59e0b; font-weight: 700; letter-spacing: 0.02em;">VERIFIED PARTNERS</div>
-            </div>
-            <div class="stat-icon-badge bg-amber-soft"><i class="fas fa-store"></i></div>
+        <div class="kpi-info">
+            <h4>Bookings</h4>
+            <span class="kpi-value" id="stat-bookings">{{ metrics.booking_count }}</span>
         </div>
+    </div>
+    <div class="kpi-card-clean">
+        <div class="kpi-icon-box" style="background: #f0fdf4; color: #10b981;"><i class="fas fa-utensils"></i></div>
+        <div class="kpi-info">
+            <h4>Partners</h4>
+            <span class="kpi-value" id="stat-caterers">{{ metrics.approved_caterers_count }}</span>
+        </div>
+    </div>
+    <div class="kpi-card-clean">
+        <div class="kpi-icon-box" style="background: var(--dm-primary-light); color: var(--dm-primary);"><i
+                class="fas fa-users"></i></div>
+        <div class="kpi-info">
+            <h4>Users</h4>
+            <span class="kpi-value" id="stat-users">{{ metrics.user_count }}</span>
+        </div>
+    </div>
+</div>
 
-        <div class="stat-card-premium">
-            <div>
-                <span class="stat-label-dashboard">Total Membership</span>
-                <div class="stat-value-dashboard" id="stat-users">{{ metrics.user_count }}</div>
-                <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; letter-spacing: 0.02em;">ACTIVE ACCOUNTS</div>
-            </div>
-            <div class="stat-icon-badge bg-rose-soft"><i class="fas fa-users"></i></div>
+<!-- Analytics Split -->
+<div class="analytics-split-clean">
+    <div class="card-clean" onclick="showRevenueDetails()" style="cursor: pointer;">
+        <div class="card-title-clean">
+            <i class="fas fa-chart-line" style="color: var(--dm-primary);"></i>
+            Financial Trends
+        </div>
+        <div style="height: 350px; position: relative;">
+            <canvas id="revenueChart"></canvas>
         </div>
     </div>
 
-    <!-- Analytics Charts Row (Side by Side) -->
-    <div class="dashboard-grid-charts reveal-card" style="animation-delay: 0.2s;">
-        <!-- Revenue Growth -->
-        <div class="c-card-premium">
-            <div class="chart-header">
-                <div class="chart-title"><i class="fas fa-chart-line"></i> Revenue Trends</div>
-                <div class="chart-legend-custom">
-                    <div class="legend-item"><span class="legend-dot" style="background: var(--adm-primary);"></span> Earnings</div>
-                    <div class="legend-item"><span class="legend-dot" style="background: #e2e8f0;"></span> Sales</div>
-                </div>
-            </div>
-            <div style="height: 300px;">
-                <canvas id="revenueChart"></canvas>
-            </div>
+    <div class="card-clean" onclick="showStatusDetails()" style="cursor: pointer;">
+        <div class="card-title-clean">
+            <i class="fas fa-chart-pie" style="color: #10b981;"></i>
+            Status Intelligence
         </div>
-
-        <!-- Booking Status -->
-        <div class="c-card-premium">
-            <div class="chart-header">
-                <div class="chart-title"><i class="fas fa-chart-pie"></i> Operation Status</div>
+        <div style="height: 200px; margin: 1rem 0; position: relative;">
+            <canvas id="statusPieChart"></canvas>
+        </div>
+        <div class="metric-list-clean">
+            <div class="metric-item-clean">
+                <span class="m-label">Completed</span>
+                <span class="m-value" id="stat-completed">{{ completed_bookings_count }}</span>
             </div>
-            <div style="height: 230px; position: relative;">
-                <canvas id="statusPieChart"></canvas>
+            <div class="metric-item-clean">
+                <span class="m-label">Pending</span>
+                <span class="m-value" id="stat-pending">{{ pending_bookings_count }}</span>
             </div>
-            <div style="margin-top: 2rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                <div style="padding: 1.25rem; background: #f8fafc; border-radius: 1.25rem; text-align: center; border: 1px solid #f1f5f9;">
-                    <div style="font-size: 0.6rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px;">Completed</div>
-                    <div style="font-size: 1.5rem; font-weight: 800; color: #10b981;">{{ completed_bookings_count }}</div>
-                </div>
-                <div style="padding: 1.25rem; background: #f8fafc; border-radius: 1.25rem; text-align: center; border: 1px solid #f1f5f9;">
-                    <div style="font-size: 0.6rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px;">Pending</div>
-                    <div style="font-size: 1.5rem; font-weight: 800; color: #f59e0b;">{{ pending_bookings_count }}</div>
-                </div>
+            <div class="metric-item-clean">
+                <span class="m-label">Total Volume</span>
+                <span class="m-value" id="chart-total-bookings-val">{{ metrics.booking_count }}</span>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Full Width Table Area -->
-    <div class="c-card-premium reveal-card" style="margin-top: 2rem; animation-delay: 0.3s;">
-        <div class="chart-header">
-            <div class="chart-title"><i class="fas fa-id-badge"></i> Pending Verifications Queue</div>
-            <a href="/admin/caterers" style="font-size: 0.75rem; font-weight: 800; color: var(--adm-primary); text-decoration: none; text-transform: uppercase; letter-spacing: 0.05em;">View Full Registry <i class="fas fa-arrow-right" style="margin-left: 8px;"></i></a>
+<!-- Verification Table -->
+<div class="table-card-clean">
+    <div class="card-title-clean" style="justify-content: space-between;">
+        <span><i class="fas fa-shield-halved" style="color: #d97706;"></i> Compliance Queue</span>
+        <a href="/admin/caterers"
+            style="font-size: 0.75rem; color: var(--dm-primary); text-decoration: none; font-weight: 700;">Full
+            Directory</a>
+    </div>
+    <div style="overflow-x: auto;">
+        <table class="clean-table">
+            <thead>
+                <tr>
+                    <th>Service Partner</th>
+                    <th>Region</th>
+                    <th>Status</th>
+                    <th style="text-align: right;">Action</th>
+                </tr>
+            </thead>
+            <tbody id="pending-caterers-tbody">
+                {% if pending_caterers %}
+                {% for c in pending_caterers %}
+                <tr>
+                    <td style="font-weight: 700; color: var(--dm-secondary);">{{ c.business_name }}</td>
+                    <td style="color: var(--dm-slate-600);">{{ c.city }}</td>
+                    <td><span class="badge-clean">Awaiting Audit</span></td>
+                    <td style="text-align: right;">
+                        <a href="/admin/verify/{{ c.user_id }}" class="btn-clean">Start Audit</a>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="4" style="text-align: center; padding: 3rem; color: var(--dm-slate-400);">
+                        <i class="fas fa-check-circle"
+                            style="font-size: 1.5rem; color: #10b981; margin-bottom: 1rem; display: block;"></i>
+                        Compliance queue is clear.
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Standalone Analysis Modal -->
+<div id="analyticsModal" class="admin-modal-overlay">
+    <div class="admin-modal-card">
+        <div class="modal-header-clean">
+            <h3 id="modalTitle">Audit Intelligence</h3>
+            <button class="modal-close-btn" onclick="closeAnalyticsModal()">&times;</button>
         </div>
-        {% if pending_caterers %}
-        <div style="overflow-x: auto;">
-            <table class="admin-dashboard-table">
-                <thead>
-                    <tr>
-                        <th>Merchant Identity</th>
-                        <th>Location Hub</th>
-                        <th>Priority Status</th>
-                        <th style="text-align: right;">Terminal Access</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for c in pending_caterers %}
-                    <tr>
-                        <td style="font-weight: 800; color: var(--adm-secondary); font-size: 1rem;">{{ c.business_name }}</td>
-                        <td style="color: #64748b; font-weight: 500;">{{ c.city }}</td>
-                        <td><span style="background: #fffbeb; color: #f59e0b; padding: 6px 14px; border-radius: 2rem; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.05em; border: 1px solid rgba(245, 158, 11, 0.2);">AWAITING AUDIT</span></td>
-                        <td style="text-align: right;">
-                            <a href="/admin/verify/{{ c.user_id }}" style="background: var(--adm-primary); color: white; padding: 10px 20px; border-radius: 12px; font-size: 0.75rem; font-weight: 800; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);">
-                                OPEN TERMINAL <i class="fas fa-microchip" style="font-size: 0.7rem;"></i>
-                            </a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="modal-body-clean" id="modalBody"></div>
+        <div class="modal-footer-clean"
+            style="padding: 1.25rem 2rem; background: var(--dm-slate-50); border-top: 1px solid var(--dm-slate-100); display: flex; justify-content: flex-end;">
+            <button class="btn-clean" style="background: var(--dm-slate-200); color: var(--dm-secondary);"
+                onclick="closeAnalyticsModal()">Dismiss</button>
         </div>
-        {% else %}
-        <div style="text-align: center; padding: 4rem 0;">
-            <div style="width: 72px; height: 72px; background: #ecfdf5; color: #10b981; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 2rem; border: 2px solid #d1fae5;">
-                <i class="fas fa-check-double" style="font-size: 2rem;"></i>
-            </div>
-            <h2 style="font-weight: 800; color: var(--adm-secondary); font-size: 1.25rem;">Compliance Complete</h2>
-            <p style="color: #64748b; font-size: 0.9rem; margin-top: 8px;">No pending applications requiring biometric audit.</p>
-        </div>
-        {% endif %}
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const chartData = {{ chart_data | tojson }};
-        
-        // 1. Revenue & Growth Chart (Line/Area)
+    let revenueChart, statusPieChart;
+    let currentDashboardData = null;
+
+    // Real-time Engine
+    window.addEventListener('system_update', function (e) {
+        if (['new_signup', 'caterer_update', 'new_booking', 'payment_update', 'kyc_update'].includes(e.detail.type)) {
+            refreshAdminDashboard();
+        }
+    });
+
+    window.addEventListener('load', () => {
+        try {
+            const initialData = {{ chart_data | tojson | safe }};
+    initDashboardCharts(initialData);
+        } catch (e) { console.error("Chart Init Fail", e); }
+    });
+
+    function initDashboardCharts(data) {
         const ctxRev = document.getElementById('revenueChart').getContext('2d');
-        new Chart(ctxRev, {
+        const ctxStatus = document.getElementById('statusPieChart').getContext('2d');
+
+        if (revenueChart) revenueChart.destroy();
+        revenueChart = new Chart(ctxRev, {
             type: 'line',
             data: {
-                labels: chartData.months,
-                datasets: [
-                    {
-                        label: 'Platform Earnings',
-                        data: chartData.earnings,
-                        borderColor: '#4f46e5',
-                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
-                        fill: true,
-                        tension: 0.4,
-                        borderWidth: 3,
-                        pointRadius: 4,
-                        pointBackgroundColor: '#4f46e5'
-                    },
-                    {
-                        label: 'Total Sales',
-                        data: chartData.sales,
-                        borderColor: '#cbd5e1',
-                        borderDash: [5, 5],
-                        fill: false,
-                        tension: 0.4,
-                        borderWidth: 2,
-                        pointRadius: 0
-                    }
-                ]
+                labels: data.months,
+                datasets: [{
+                    label: 'Platform Net',
+                    data: data.earnings,
+                    borderColor: '#f97316',
+                    backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                    fill: true, tension: 0.4, borderWidth: 3
+                }, {
+                    label: 'Gross Volume',
+                    data: data.sales,
+                    borderColor: '#94a3b8',
+                    borderDash: [5, 5],
+                    fill: false, tension: 0.4, borderWidth: 2
+                }]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
+                responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false },
-                        ticks: { callback: value => '₱' + value.toLocaleString() }
-                    },
+                    y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
                     x: { grid: { display: false } }
                 }
             }
         });
 
-        // 2. Booking Status Pie Chart
-        const ctxStatus = document.getElementById('statusPieChart').getContext('2d');
-        new Chart(ctxStatus, {
+        if (statusPieChart) statusPieChart.destroy();
+        statusPieChart = new Chart(ctxStatus, {
             type: 'doughnut',
             data: {
                 labels: ['Completed', 'Confirmed', 'Pending'],
                 datasets: [{
                     data: [
-                        {{ completed_bookings_count }},
-                        {{ confirmed_bookings_count }},
-                        {{ pending_bookings_count }}
+                        {{ completed_bookings_count | default(0) }},
+                        {{ confirmed_bookings_count | default(0) }},
+                        {{ pending_bookings_count | default(0) }}
                     ],
-                    backgroundColor: ['#10b981', '#4f46e5', '#f59e0b'],
-                    borderWidth: 0,
-                    hoverOffset: 15
+    backgroundColor: ['#10b981', '#f97316', '#f59e0b'],
+        borderWidth: 0
                 }]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '75%',
+    options: {
+        responsive: true, maintainAspectRatio: false,
+            cutout: '80%',
                 plugins: { legend: { display: false } }
-            }
+    }
         });
+    }
 
-        // 3. Real-time Auto Refresh (Every 60 seconds)
-        setInterval(() => {
-            console.log("Admin Dashboard Refreshing...");
-            const syncStatus = document.getElementById('sync-status');
-            if (syncStatus) {
-                syncStatus.innerHTML = '<i class="fas fa-sync-alt fa-spin" style="margin-right: 8px; color: var(--adm-primary);"></i> SYNCING...';
+    async function refreshAdminDashboard() {
+        const syncStatus = document.getElementById('sync-status');
+        if (syncStatus) syncStatus.innerHTML = '<i class="fas fa-sync fa-spin" style="color: var(--dm-primary);"></i> SYNCING...';
+
+        try {
+            const res = await fetch('/admin/api/dashboard-overview');
+            const data = await res.json();
+            if (data.success) {
+                currentDashboardData = data;
+                document.getElementById('stat-revenue').innerText = '₱' + data.metrics.platform_earnings.toLocaleString();
+                document.getElementById('stat-bookings').innerText = data.metrics.booking_count;
+                document.getElementById('stat-caterers').innerText = data.metrics.approved_caterers_count;
+                document.getElementById('stat-users').innerText = data.metrics.user_count;
+
+                revenueChart.data.labels = data.chart_data.months;
+                revenueChart.data.datasets[0].data = data.chart_data.earnings;
+                revenueChart.data.datasets[1].data = data.chart_data.sales;
+                revenueChart.update();
+
+                statusPieChart.data.datasets[0].data = [data.completed_bookings_count, data.confirmed_bookings_count, data.pending_bookings_count];
+                statusPieChart.update();
+
+                updatePendingTable(data.pending_caterers);
+                if (syncStatus) syncStatus.innerHTML = '<i class="fas fa-circle pulse-live" style="font-size: 8px; color: var(--dm-primary);"></i> Live Intelligence Link Active';
             }
-            
-            setTimeout(() => {
-                if (syncStatus) syncStatus.innerHTML = '<i class="fas fa-check-circle" style="margin-right: 8px; color: #10b981;"></i> LIVE SYNC ACTIVE';
-            }, 2000);
-        }, 60000);
-    });
+        } catch (e) {
+            if (syncStatus) syncStatus.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i> SYNC OFFLINE';
+        }
+    }
+
+    function updatePendingTable(caterers) {
+        const tbody = document.getElementById('pending-caterers-tbody');
+        if (!caterers || caterers.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 3rem; color: var(--dm-slate-400);">Compliance queue is clear.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = caterers.map(c => `
+            <tr>
+                <td style="font-weight: 700; color: var(--dm-secondary);">${c.business_name}</td>
+                <td style="color: var(--dm-slate-600);">${c.city}</td>
+                <td><span class="badge-clean">Awaiting Audit</span></td>
+                <td style="text-align: right;"><a href="/admin/verify/${c.user_id}" class="btn-clean">Start Audit</a></td>
+            </tr>
+        `).join('');
+    }
+
+    function showRevenueDetails() {
+        const data = currentDashboardData || { chart_data: {{ chart_data | tojson | safe }}, metrics: { platform_earnings: {{ metrics.platform_earnings }} } };
+    const body = document.getElementById('modalBody');
+    document.getElementById('modalTitle').innerHTML = '<i class="fas fa-vault"></i> Financial Audit';
+
+    body.innerHTML = `
+            <div style="background: var(--dm-secondary); padding: 2rem; border-radius: 1.25rem; color: white; margin-bottom: 2rem;">
+                <div style="font-size: 0.7rem; text-transform: uppercase; opacity: 0.6; font-weight: 800;">Total Platform Net</div>
+                <div style="font-size: 2.25rem; font-weight: 800;">₱${data.metrics.platform_earnings.toLocaleString()}</div>
+            </div>
+            ${data.chart_data.months.map((m, i) => `
+                <div style="display: flex; justify-content: space-between; padding: 1rem 0; border-bottom: 1px solid var(--dm-slate-100);">
+                    <span style="font-weight: 700;">${m}</span>
+                    <span style="font-weight: 800; color: var(--dm-primary);">₱${data.chart_data.earnings[i].toLocaleString()}</span>
+                </div>
+            `).join('')}
+        `;
+    document.getElementById('analyticsModal').classList.add('active');
+    }
+
+    function showStatusDetails() {
+        const data = currentDashboardData || { completed_bookings_count: {{ completed_bookings_count }}, metrics: { booking_count: {{ metrics.booking_count }} } };
+    const body = document.getElementById('modalBody');
+    document.getElementById('modalTitle').innerHTML = '<i class="fas fa-chart-pie"></i> Operation Health';
+
+    const rate = Math.round((data.completed_bookings_count / (data.metrics.booking_count || 1)) * 100);
+    body.innerHTML = `
+            <div style="text-align: center; padding: 2rem;">
+                <div style="font-size: 4rem; font-weight: 800; color: var(--dm-primary);">${rate}%</div>
+                <div style="font-weight: 700; color: var(--dm-secondary); text-transform: uppercase;">Platform Success Rate</div>
+                <p style="color: var(--dm-slate-400); margin-top: 1rem;">Based on ${data.metrics.booking_count} managed events across the ecosystem.</p>
+            </div>
+        `;
+    document.getElementById('analyticsModal').classList.add('active');
+    }
+
+    function closeAnalyticsModal() { document.getElementById('analyticsModal').classList.remove('active'); }
 </script>
-{% endblock %}
+{% endblock %}

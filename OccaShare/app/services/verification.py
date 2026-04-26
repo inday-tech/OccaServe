@@ -350,9 +350,9 @@ class VerificationService:
         }
         
         lines = [l.strip() for l in text.split("\n") if l.strip()]
+        clean_text_upper = text.upper()
         
         # 1. Name Extraction (More robust heuristics)
-        # Often names are in the first few lines or near keywords
         potential_names = []
         for i, line in enumerate(lines):
             upper_line = line.upper()
@@ -363,34 +363,65 @@ class VerificationService:
                     potential_names.append(val.strip())
             
             # Lines that are 2-3 words, all caps, no symbols/digits
-            if 10 < len(line) < 40 and line.isupper() and re.match(r'^[A-Z ,.-]+$', line):
-                # Ignore legitimacy keywords
-                if not any(kw in line for kw in self.ID_LEGITIMACY_KEYWORDS):
+            if 10 < len(line) < 45 and line.isupper() and re.match(r'^[A-Z ,.-]+$', line):
+                # Ignore legitimacy keywords and address-like words
+                if not any(kw in line for kw in self.ID_LEGITIMACY_KEYWORDS) and not any(kw in line for kw in ["PUROK", "BRGY", "CITY", "PROVINCE", "STREET"]):
                     potential_names.append(line)
 
         if potential_names:
             # Heuristic: the most likely name is often the one that's not a category
             data["full_name"] = potential_names[0]
 
-        # 2. ID Number Extraction
-        for line in lines:
-            digits_only = re.sub(r'[^0-9]', '', line)
-            if len(digits_only) >= 9:
-                match = re.search(r'([A-Z0-9][-A-Z0-9 ]{8,20})', line)
-                if match:
-                    data["id_number"] = match.group(1).strip()
-                    break
+        # 2. ID Number Extraction (Aggressive regex)
+        id_patterns = [
+            r'(\d{4}-\d{4}-\d{4}-\d{4})', # PhilSys
+            r'([A-Z]\d{2}-\d{2}-\d{6})',    # Driver's License
+            r'([A-Z]\d{7}[A-Z])',           # Passport
+            r'(\d{2}-\d{7}-\d{1})',         # SSS
+            r'(\d{3}-\d{3}-\d{3}-\d{0,3})' # TIN
+        ]
+        for pattern in id_patterns:
+            match = re.search(pattern, clean_text_upper)
+            if match:
+                data["id_number"] = match.group(1).strip()
+                break
+        
+        if not data["id_number"]:
+            for line in lines:
+                digits_only = re.sub(r'[^0-9]', '', line)
+                if len(digits_only) >= 9:
+                    match = re.search(r'([A-Z0-9][-A-Z0-9 ]{8,20})', line)
+                    if match:
+                        data["id_number"] = match.group(1).strip()
+                        break
 
-        # 3. Date Extraction
-        date_pattern = r"(\d{2}[-/]\d{2}[-/]\d{4})"
-        dates = re.findall(date_pattern, text)
-        if dates:
-            try:
-                sorted_dates = sorted(dates, key=lambda d: time.strptime(d.replace("/", "-"), "%d-%m-%Y"))
-                data["extracted_dob"] = sorted_dates[0]
-                if len(sorted_dates) > 1:
-                    data["extracted_expiry"] = sorted_dates[-1]
-            except: pass
+        # 3. Date Extraction (DOB / Expiry)
+        date_pattern = r"(\d{2}[-/]\d{2}[-/]\d{4}|\b(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+\d{2},?\s+\d{4}\b)"
+        
+        dob_match = re.search(r'(?:DOB|BIRTH|BORN).*?(' + date_pattern + ')', clean_text_upper, re.IGNORECASE | re.DOTALL)
+        if dob_match:
+            data["extracted_dob"] = dob_match.group(1)
+        
+        exp_match = re.search(r'(?:EXP|VALID).*?(' + date_pattern + ')', clean_text_upper, re.IGNORECASE | re.DOTALL)
+        if exp_match:
+            data["extracted_expiry"] = exp_match.group(1)
+
+        if not data["extracted_dob"]:
+            dates = re.findall(date_pattern, text, re.IGNORECASE)
+            if dates:
+                try:
+                    data["extracted_dob"] = dates[0]
+                except: pass
+
+        # 4. Address Extraction
+        address_markers = ["PUROK", "BRGY", "BARANGAY", "CITY", "PROVINCE", "STREET", "SUBD", "MUNICIPALITY", "LAGUNA", "MANILA", "CAVITE", "BATANGAS"]
+        for i, line in enumerate(lines):
+            if any(marker in line.upper() for marker in address_markers):
+                address = line
+                if i+1 < len(lines) and any(marker in lines[i+1].upper() for marker in address_markers):
+                    address += " " + lines[i+1]
+                data["extracted_address"] = address.strip()
+                break
 
         return data
 
