@@ -112,6 +112,9 @@ def master_migration():
         id_ver_cols = [
             ("is_archived", "BOOLEAN DEFAULT FALSE"),
             ("fraud_score", "INTEGER DEFAULT 0"),
+            ("match_score", "FLOAT DEFAULT 0.0"),
+            ("face_detected", "BOOLEAN DEFAULT FALSE"),
+            ("id_detected", "BOOLEAN DEFAULT FALSE"),
             ("ip_address", "VARCHAR"),
             ("device_info", "JSONB"),
             ("liveness_status", "VARCHAR"),
