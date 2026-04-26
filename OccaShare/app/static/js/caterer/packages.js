@@ -649,7 +649,6 @@ document.addEventListener('DOMContentLoaded', () => {
             reader.readAsDataURL(imageFile);
         }
     }
-    }
 
     const manualPriceInput = document.getElementById('pkgManualPriceInput');
     if (manualPriceInput) {
