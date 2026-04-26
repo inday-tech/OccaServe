@@ -1,88 +1,419 @@
 {% extends "admin/layout.html" %}
 
-{% block title %}Inquiries Management - Admin Dashboard{% endblock %}
+{% block title %}Visitor Inquiries Terminal - OccaServe Admin{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/inquiries.css') }}">
+<style>
+    :root {
+        --dm-primary: #f97316;
+        --dm-primary-light: #fff7ed;
+        --dm-secondary: #0f172a;
+        --dm-slate-50: #f8fafc;
+        --dm-slate-100: #f1f5f9;
+        --dm-slate-200: #e2e8f0;
+        --dm-slate-400: #94a3b8;
+        --dm-slate-600: #475569;
+    }
+
+    /* Standard Layout Alignment - No Overlap */
+    .main-content {
+        background: var(--dm-slate-50) !important;
+        padding: 2rem 3rem !important;
+    }
+
+    /* KPI Stats Architecture */
+    .kpi-grid-clean {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 2.5rem;
+    }
+
+    .kpi-card-clean {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 1.25rem;
+        border: 1px solid var(--dm-slate-100);
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .kpi-icon-box {
+        width: 54px;
+        height: 54px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+
+    .kpi-info h4 {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--dm-slate-400);
+        text-transform: uppercase;
+        margin: 0;
+    }
+
+    .kpi-info .kpi-value {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--dm-secondary);
+        display: block;
+    }
+
+    /* Management Terminal */
+    .management-terminal {
+        background: white;
+        border-radius: 1.25rem;
+        border: 1px solid var(--dm-slate-100);
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    }
+
+    .terminal-header {
+        padding: 1.5rem 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--dm-slate-100);
+    }
+
+    .terminal-header h3 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--dm-secondary);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .header-controls {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+    }
+
+    .filter-select {
+        padding: 0.6rem 1rem;
+        border-radius: 10px;
+        border: 1px solid var(--dm-slate-200);
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--dm-slate-600);
+        background: white;
+        cursor: pointer;
+    }
+
+    .search-group {
+        position: relative;
+        width: 300px;
+    }
+
+    .search-group i {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--dm-slate-400);
+        font-size: 0.85rem;
+    }
+
+    .search-group input {
+        width: 100%;
+        padding: 0.6rem 1rem 0.6rem 2.5rem;
+        border-radius: 10px;
+        border: 1px solid var(--dm-slate-200);
+        font-size: 0.85rem;
+        transition: all 0.2s;
+    }
+
+    .search-group input:focus {
+        outline: none;
+        border-color: var(--dm-primary);
+        box-shadow: 0 0 0 3px var(--dm-primary-light);
+    }
+
+    /* Table Architecture */
+    .inquiry-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .inquiry-table th {
+        text-align: left;
+        padding: 1.25rem 2rem;
+        font-size: 0.7rem;
+        color: var(--dm-slate-400);
+        text-transform: uppercase;
+        border-bottom: 1px solid var(--dm-slate-100);
+        background: var(--dm-slate-50);
+    }
+
+    .inquiry-table td {
+        padding: 1.25rem 2rem;
+        border-bottom: 1px solid var(--dm-slate-50);
+    }
+
+    .sender-info .name {
+        font-weight: 700;
+        color: var(--dm-secondary);
+        display: block;
+    }
+
+    .sender-info .email {
+        font-size: 0.8rem;
+        color: var(--dm-slate-400);
+    }
+
+    .msg-snippet {
+        font-size: 0.85rem;
+        color: var(--dm-slate-600);
+        max-width: 300px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-style: italic;
+    }
+
+    .badge-clean {
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .badge-new {
+        background: #eff6ff;
+        color: #3b82f6;
+    }
+
+    .badge-responded {
+        background: #ecfdf5;
+        color: #10b981;
+    }
+
+    .btn-action {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        border: 1px solid var(--dm-slate-100);
+        background: white;
+        color: var(--dm-slate-400);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        text-decoration: none;
+    }
+
+    .btn-action:hover {
+        color: var(--dm-primary);
+        border-color: var(--dm-primary);
+        background: var(--dm-primary-light);
+    }
+
+    /* Thread Modal */
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(4px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+        padding: 2rem;
+    }
+
+    .modal-overlay.active {
+        display: flex;
+        animation: modalFade 0.3s ease;
+    }
+
+    .modal-card {
+        background: white;
+        border-radius: 1.5rem;
+        width: 100%;
+        max-width: 650px;
+        overflow: hidden;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+
+    .modal-header {
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid var(--dm-slate-100);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-body {
+        padding: 2rem;
+        max-height: 70vh;
+        overflow-y: auto;
+        background: var(--dm-slate-50);
+    }
+
+    .modal-footer {
+        padding: 1.5rem 2rem;
+        border-top: 1px solid var(--dm-slate-100);
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+    }
+
+    .chat-bubble {
+        background: white;
+        padding: 1.25rem;
+        border-radius: 1rem;
+        border: 1px solid var(--dm-slate-100);
+        margin-bottom: 1rem;
+        position: relative;
+    }
+
+    .chat-bubble .timestamp {
+        font-size: 0.65rem;
+        font-weight: 700;
+        color: var(--dm-slate-400);
+        text-transform: uppercase;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .chat-bubble .content {
+        font-size: 0.95rem;
+        color: var(--dm-secondary);
+        line-height: 1.6;
+    }
+
+    @keyframes modalFade {
+        from {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="page-header" style="margin-bottom: 2rem;">
-    <h1>Visitor Inquiries</h1>
-    <p>Manage all messages sent to the platform or caterers by potential clients.</p>
+<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2.5rem;">
+    <div class="page-header">
+        <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--dm-secondary);">Visitor Inquiries</h1>
+        <p style="color: var(--dm-slate-400);">Engagement Monitoring & Communication Terminal</p>
+    </div>
 </div>
 
-<div class="inquiries-management-wrapper">
-    <div class="management-header-flex">
-        <h3 class="management-title"><i class="fas fa-envelope-open-text"></i> Message Registry</h3>
-        <div class="header-controls-pro">
-            <select class="filter-select-pro" id="statusFilter" onchange="filterInquiries()">
-                <option value="">All Messages</option>
-                <option value="new">New / Unread</option>
+<div class="kpi-grid-clean">
+    <div class="kpi-card-clean">
+        <div class="kpi-icon-box" style="background: #eff6ff; color: #3b82f6;"><i class="fas fa-envelope-open-text"></i>
+        </div>
+        <div class="kpi-info">
+            <h4>Total Interactions</h4>
+            <span class="kpi-value">{{ senders|length }}</span>
+        </div>
+    </div>
+    <div class="kpi-card-clean">
+        <div class="kpi-icon-box" style="background: #fffbeb; color: #f59e0b;"><i class="fas fa-clock"></i></div>
+        <div class="kpi-info">
+            <h4>Awaiting Reply</h4>
+            <span class="kpi-value" id="kpi-pending">
+                {{ senders|selectattr('status', 'equalto', 'new')|list|length }}
+            </span>
+        </div>
+    </div>
+    <div class="kpi-card-clean">
+        <div class="kpi-icon-box" style="background: #ecfdf5; color: #10b981;"><i class="fas fa-check-double"></i></div>
+        <div class="kpi-info">
+            <h4>Resolved Threads</h4>
+            <span class="kpi-value">{{ senders|selectattr('status', 'equalto', 'responded')|list|length }}</span>
+        </div>
+    </div>
+</div>
+
+<div class="management-terminal">
+    <div class="terminal-header">
+        <h3><i class="fas fa-inbox" style="color: var(--dm-primary);"></i> Message Registry</h3>
+        <div class="header-controls">
+            <select class="filter-select" id="statusFilter" onchange="filterInquiries()">
+                <option value="">All Threads</option>
+                <option value="new">Unread / New</option>
                 <option value="responded">Responded</option>
-                <option value="archived">Archived</option>
             </select>
-            <div class="search-box-pro">
+            <div class="search-group">
                 <i class="fas fa-search"></i>
-                <input type="text" id="inquirySearchInput" placeholder="Search sender or message..."
+                <input type="text" id="searchInput" placeholder="Filter by sender or content..."
                     onkeyup="filterInquiries()">
             </div>
         </div>
     </div>
 
-    {% if senders %}
     <div style="overflow-x: auto;">
-        <table class="inquiries-list-table" id="inquiriesTable">
+        <table class="inquiry-table" id="inquiriesTable">
             <thead>
                 <tr>
-                    <th>Sender</th>
-                    <th>Latest Message Snippet</th>
-                    <th>Message Count</th>
-                    <th>Last Activity</th>
+                    <th>Potential Client</th>
+                    <th>Latest Interaction</th>
+                    <th>Intensity</th>
                     <th>Status</th>
-                    <th style="text-align: right;">Actions</th>
+                    <th style="text-align: right;">Action</th>
                 </tr>
             </thead>
             <tbody>
                 {% for s in senders %}
-                <tr class="inquiry-row" data-email="{{ s.email }}" data-status="{{ s.status }}">
+                <tr class="inquiry-row" data-status="{{ s.status }}">
                     <td>
-                        <div style="font-weight: 600; color: #1e293b;">{{ s.name }}</div>
-                        <div style="font-size: 0.8rem; color: #64748b;">{{ s.email }}</div>
-                    </td>
-                    <td>
-                        <div class="inquiry-snippet">{{ s.messages[0].message if s.messages else 'No message text' }}
+                        <div class="sender-info">
+                            <span class="name">{{ s.name }}</span>
+                            <span class="email">{{ s.email }}</span>
                         </div>
                     </td>
                     <td>
-                        <span
-                            style="background: #f1f5f9; padding: 0.25rem 0.625rem; border-radius: 0.5rem; font-weight: 700; font-size: 0.85rem; color: #475569;">
+                        <div class="msg-snippet">"{{ s.messages[0].message if s.messages else '---' }}"</div>
+                        <div style="font-size: 0.7rem; color: var(--dm-slate-400); margin-top: 4px;">
+                            {{ s.latest_date.strftime('%b %d, %Y • %I:%M %p') if s.latest_date else 'N/A' }}
+                        </div>
+                    </td>
+                    <td>
+                        <span style="font-weight: 700; color: var(--dm-slate-600); font-size: 0.85rem;">
                             {{ s.messages|length }} msg(s)
                         </span>
                     </td>
                     <td>
-                        <div style="font-size: 0.9rem; color: #64748b;">{{ s.latest_date.strftime('%b %d, %Y') if
-                            s.latest_date else 'N/A' }}</div>
+                        {% if s.status == 'new' %}
+                        <span class="badge-clean badge-new"><i class="fas fa-circle" style="font-size: 0.4rem;"></i>
+                            New</span>
+                        {% else %}
+                        <span class="badge-clean badge-responded"><i class="fas fa-check-circle"></i> Responded</span>
+                        {% endif %}
                     </td>
                     <td>
-                        <span class="status-badge-pill status-{{ s.status }}">
-                            <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
-                            {{ s.status|title }}
-                        </span>
-                    </td>
-                    <td style="text-align: right;">
-                        <div class="action-btn-group">
-                            <button class="btn-icon-only btn-primary" title="View Thread"
-                                onclick="viewThread('{{ s.email }}')">
+                        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                            <button class="btn-action" title="View Conversation" onclick="openThread('{{ s.email }}')">
                                 <i class="fas fa-comments"></i>
                             </button>
+                            {% if s.status == 'new' %}
                             <form action="/admin/inquiries/thread/{{ s.email }}/status?status=responded" method="POST"
-                                style="display:inline;"
-                                onsubmit="return confirm('Mark all messages from this sender as responded?')">
-                                <button type="submit" class="btn-icon-only" title="Mark Thread as Responded">
-                                    <i class="fas fa-check-double"></i>
+                                style="display: contents;">
+                                <button type="submit" class="btn-action" title="Mark as Resolved">
+                                    <i class="fas fa-check"></i>
                                 </button>
                             </form>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>
@@ -90,45 +421,30 @@
             </tbody>
         </table>
     </div>
-    {% else %}
-    <div style="text-align: center; padding: 5rem 2rem;">
-        <i class="fas fa-envelope-open-text" style="font-size: 3.5rem; color: #cbd5e1; margin-bottom: 1.5rem;"></i>
-        <h3 style="color: #1e293b; font-weight: 700; margin-bottom: 0.5rem;">No Inquiries Found</h3>
-        <p style="color: #64748b; font-size: 0.95rem;">All messages have been cleared or haven't arrived yet.</p>
-    </div>
-    {% endif %}
 </div>
 
-<!-- View Modal -->
-<div class="modal-overlay" id="viewInquiryModal" style="display: none;">
-    <div class="modal-content">
+<!-- Conversation Terminal Modal -->
+<div class="modal-overlay" id="threadModal">
+    <div class="modal-card">
         <div class="modal-header">
-            <h3 class="modal-title">Inquiry Details</h3>
-            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <div>
+                <h3 id="modalName" style="font-size: 1.1rem; font-weight: 800; color: var(--dm-secondary); margin: 0;">-
+                </h3>
+                <p id="modalEmail" style="font-size: 0.8rem; color: var(--dm-slate-400); margin: 4px 0 0 0;">-</p>
+            </div>
+            <button onclick="closeThread()"
+                style="background: none; border: none; font-size: 1.5rem; color: var(--dm-slate-400); cursor: pointer;">&times;</button>
         </div>
-        <div class="modal-body">
-            <div
-                style="display: flex; justify-content: space-between; margin-bottom: 1.5rem; background: #f8fafc; padding: 1rem; border-radius: 0.75rem;">
-                <div>
-                    <span class="info-label">Sender</span>
-                    <div class="info-value" id="modalName">-</div>
-                </div>
-                <div style="text-align: right;">
-                    <span class="info-label">Email</span>
-                    <div class="info-value"><a href="" id="modalEmail"
-                            style="color: #4f46e5; text-decoration: none;">-</a></div>
-                </div>
-            </div>
-
-            <span class="info-label">Message History</span>
-            <div id="threadContainer"
-                style="display: flex; flex-direction: column; gap: 1rem; margin-top: 0.5rem; max-height: 400px; overflow-y: auto; padding-right: 0.5rem;">
-                <!-- Messages will be injected here -->
-            </div>
+        <div class="modal-body" id="threadBody">
+            <!-- Messages injected here -->
         </div>
         <div class="modal-footer">
-            <button class="btn-secondary-pro" onclick="closeModal()">Close Window</button>
-            <a href="" id="modalReplyBtn" class="btn-primary-pro" style="text-decoration: none;">Reply via Email</a>
+            <button onclick="closeThread()"
+                style="padding: 0.8rem 1.5rem; border-radius: 12px; border: 1px solid var(--dm-slate-100); background: white; font-weight: 700; color: var(--dm-slate-600); cursor: pointer;">Dismiss</button>
+            <a id="replyBtn" href="#" class="btn-action"
+                style="width: auto; padding: 0.8rem 1.5rem; border-radius: 12px; background: var(--dm-primary); color: white; border: none; font-weight: 700;">
+                <i class="fas fa-paper-plane" style="margin-right: 8px;"></i> Reply via Email
+            </a>
         </div>
     </div>
 </div>
@@ -139,70 +455,70 @@
     const sendersData = {{ senders_json| safe if senders_json else '[]' }};
 
     function filterInquiries() {
-        const searchInput = document.getElementById('inquirySearchInput').value.toLowerCase();
-        const statusFilter = document.getElementById('statusFilter').value.toLowerCase();
-        const rows = document.querySelectorAll('#inquiriesTable tbody tr');
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        const status = document.getElementById('statusFilter').value.toLowerCase();
+        const rows = document.querySelectorAll('.inquiry-row');
 
         rows.forEach(row => {
-            const textContent = row.textContent || row.innerText;
-            const status = row.getAttribute('data-status');
+            const text = row.innerText.toLowerCase();
+            const rowStatus = row.dataset.status.toLowerCase();
 
-            let matchesSearch = textContent.toLowerCase().indexOf(searchInput) > -1;
-            let matchesStatus = statusFilter === "" || (statusFilter === "new" ? status === "new" : status === statusFilter);
+            const matchesSearch = text.includes(search);
+            const matchesStatus = status === '' || rowStatus === status;
 
-            if (matchesSearch && matchesStatus) {
-                row.style.display = "";
-            } else {
-                row.style.display = "none";
-            }
+            row.style.display = (matchesSearch && matchesStatus) ? '' : 'none';
         });
     }
 
-    function viewThread(email) {
+    function openThread(email) {
         const sender = sendersData.find(s => s.email === email);
-        if (sender) {
-            document.getElementById('modalName').textContent = sender.name;
-            document.getElementById('modalEmail').textContent = sender.email;
-            document.getElementById('modalEmail').href = `mailto:${sender.email}`;
+        if (!sender) return;
 
-            const threadContainer = document.getElementById('threadContainer');
-            threadContainer.innerHTML = '';
+        document.getElementById('modalName').innerText = sender.name;
+        document.getElementById('modalEmail').innerText = sender.email;
 
-            const messages = [...sender.messages].reverse();
+        const body = document.getElementById('threadBody');
+        body.innerHTML = '';
 
-            messages.forEach(msg => {
-                const msgEl = document.createElement('div');
-                msgEl.className = 'message-box';
-                msgEl.style.position = 'relative';
-                msgEl.style.paddingTop = '1.75rem';
-                msgEl.innerHTML = `
-                    <div style="position: absolute; top: 0.5rem; left: 1rem; font-size: 0.7rem; font-weight: 700; color: #94a3b8; text-transform: uppercase;">
-                        Sent on ${msg.created_at}
-                        ${msg.status === 'new' ? '<span style="color: #10b981; margin-left: 0.5rem;">● NEW</span>' : ''}
-                    </div>
-                    ${msg.message}
-                `;
-                threadContainer.appendChild(msgEl);
-            });
+        // Sort messages by date ascending for chat flow
+        const messages = [...sender.messages].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
-            document.getElementById('modalReplyBtn').href = `mailto:${sender.email}?subject=RE: OccaServe Inquiry`;
-            document.getElementById('viewInquiryModal').style.display = 'flex';
+        messages.forEach(msg => {
+            const div = document.createElement('div');
+            div.className = 'chat-bubble';
+            div.innerHTML = `
+                <span class="timestamp">${msg.created_at}</span>
+                <div class="content">${msg.message}</div>
+            `;
+            body.appendChild(div);
+        });
 
-            setTimeout(() => {
-                threadContainer.scrollTop = threadContainer.scrollHeight;
-            }, 50);
+        document.getElementById('replyBtn').href = `mailto:${sender.email}?subject=RE: OccaServe Inquiry`;
+        document.getElementById('threadModal').classList.add('active');
+        document.body.style.overflow = 'hidden';
+
+        setTimeout(() => {
+            body.scrollTop = body.scrollHeight;
+        }, 100);
+    }
+
+    function closeThread() {
+        document.getElementById('threadModal').classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    // Real-time listener
+    window.addEventListener('system_update', (e) => {
+        if (e.detail.type === 'inquiry_update' || e.detail.type === 'new_inquiry') {
+            const sync = document.getElementById('syncStatus');
+            if (sync) sync.innerHTML = '<i class="fas fa-rotate fa-spin" style="color: var(--dm-primary);"></i> Updating Feed...';
+            setTimeout(() => window.location.reload(), 1500);
         }
-    }
+    });
 
-    function closeModal() {
-        document.getElementById('viewInquiryModal').style.display = 'none';
-    }
-
-    window.onclick = function (event) {
-        const modal = document.getElementById('viewInquiryModal');
-        if (event.target == modal) {
-            closeModal();
-        }
-    }
+    // Close on escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeThread();
+    });
 </script>
 {% endblock %}

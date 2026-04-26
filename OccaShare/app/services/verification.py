@@ -10,6 +10,7 @@ from typing import List, Dict, Any
 from ..core.encryption import decrypt_data
 from PIL import Image, ImageOps
 from sqlalchemy.orm import Session
+from ..db import models
 
 # Graceful imports for heavy dependencies (may not be available on all cloud platforms)
 try:
@@ -353,8 +354,11 @@ class VerificationService:
         
         # 1. NAME EXTRACTION
         potential_names = []
+        name_keywords = ["NAME", "SURNAME", "GIVEN", "FIRST", "FULLNAME"]
+        
         for i, line in enumerate(lines):
             upper_line = line.upper()
+<<<<<<< HEAD
             # If line contains labels, look at the next line
             if any(k in upper_line for k in ["NAME", "SURNAME", "GIVEN", "FIRST"]):
                 val = lines[i+1] if i+1 < len(lines) else ""
@@ -369,16 +373,49 @@ class VerificationService:
 
         if potential_names:
             data["full_name"] = potential_names[0]
+=======
+            # Keywords indicating following or current line is a name
+            for k in name_keywords:
+                if k in upper_line:
+                    # Check same line after keyword
+                    val = re.sub(rf'.*?{k}[:\s]*', '', upper_line).strip()
+                    if len(val) > 5 and not any(char.isdigit() for char in val):
+                        potential_names.append(val)
+                    
+                    # Check next line
+                    val_next = lines[i+1] if i+1 < len(lines) else ""
+                    if len(val_next) > 5 and not any(char.isdigit() for char in val_next):
+                        potential_names.append(val_next.strip().upper())
+            
+            # Lines that are 2-3 words, all caps, no symbols/digits (Likely a name line)
+            if 10 < len(line) < 45 and line.isupper() and re.match(r'^[A-Z ,.-]+$', line):
+                # Ignore legitimacy keywords and address-like words
+                if not any(kw in upper_line for kw in self.ID_LEGITIMACY_KEYWORDS) and not any(kw in upper_line for kw in ["PUROK", "BRGY", "CITY", "PROVINCE", "STREET", "ADDRESS", "REPUBLIC"]):
+                    potential_names.append(upper_line)
+
+        if potential_names:
+            # Heuristic: deduplicate and pick the first one that doesn't look like a label
+            clean_names = [n for n in potential_names if n not in name_keywords]
+            if clean_names:
+                data["full_name"] = clean_names[0]
+>>>>>>> 50c1075a97d2f72a77a5e68fdcec783db54f4f05
 
         # 2. ID NUMBER EXTRACTION
         id_patterns = [
-            r'(\d{4}-\d{4}-\d{4}-\d{4})', # PhilSys
+            r'(\d{4}-\d{4}-\d{4}-\d{4})', # PhilSys / National ID
             r'([A-Z]\d{2}-\d{2}-\d{6})',    # Driver's License
             r'([A-Z]\d{7}[A-Z])',           # Passport
+<<<<<<< HEAD
             r'(\d{2}-\d{7}-\d{1})',         # SSS/UMID
             r'(\d{3}-\d{3}-\d{3}-\d{3})',  # TIN
             r'(\d{12})',                    # Postal ID
             r'(\d{2}-\d{9}-\d{1})'          # PhilHealth
+=======
+            r'(\d{2}-\d{7}-\d{1})',         # SSS / GSIS
+            r'(\d{3}-\d{3}-\d{3}-\d{0,3})', # TIN
+            r'(\d{12})',                    # UMID / Generic 12-digit
+            r'(\d{10})'                     # Postal ID / Generic 10-digit
+>>>>>>> 50c1075a97d2f72a77a5e68fdcec783db54f4f05
         ]
         for pattern in id_patterns:
             match = re.search(pattern, clean_text_upper)
@@ -443,10 +480,11 @@ class VerificationService:
 
     def check_duplicate_id(self, db: Session, id_number: str, current_user_id: int) -> bool:
         """Checks if the ID number is already associated with another verified user."""
-        existing = db.query(IdentityVerification).filter(
-            IdentityVerification.id_number == id_number,
-            IdentityVerification.user_id != current_user_id,
-            IdentityVerification.verification_status == 'approved'
+        if not id_number: return False
+        existing = db.query(models.IdentityVerification).filter(
+            models.IdentityVerification.id_number == id_number,
+            models.IdentityVerification.user_id != current_user_id,
+            models.IdentityVerification.verification_status == 'approved'
         ).first()
         return existing is not None
 
@@ -604,9 +642,9 @@ class VerificationService:
                 
             clean_ocr_upper = ocr_text.upper()
             
-            # 5. Legitimacy Check (STRICTER)
-            # Require at least one major keyword AND minimum text length (increased to 100) to be sure it's an ID
-            is_likely_id = any(kw in clean_ocr_upper for kw in self.ID_LEGITIMACY_KEYWORDS) and len(clean_ocr_upper.strip()) > 100
+            # 5. Legitimacy Check (Slightly relaxed)
+            # Require at least one major keyword OR minimum text length (decreased to 50)
+            is_likely_id = any(kw in clean_ocr_upper for kw in self.ID_LEGITIMACY_KEYWORDS) or len(clean_ocr_upper.strip()) > 50
             
             rich_data = self._extract_rich_ocr_data(ocr_text)
             
@@ -720,11 +758,41 @@ class VerificationService:
             if not is_likely_id:
                 return {
                     "status": "rejected",
+<<<<<<< HEAD
                     "failure_reason": "❌ Unable to read the ID. Please ensure the image is clear and the document is fully visible.",
                     "ocr_match": False
                 }
             
             if not ocr_match:
+=======
+                    "failure_reason": "❌ Image is unclear or invalid. Please upload a clear and complete ID.",
+                    "ocr_match": False,
+                    "is_likely_id": False,
+                    "ocr_data": {
+                        "raw_text": ocr_text,
+                        "full_name": rich_data.get("full_name") or "Not detected",
+                        "id_number": rich_data.get("id_number") or "",
+                        **rich_data
+                    }
+                }
+            
+            if not ocr_match:
+                # If everything is missing/mismatched, give a unified "invalid document" message
+                if not name_match and not id_found and not type_found_in_ocr:
+                    return {
+                        "status": "rejected",
+                        "ocr_match": False,
+                        "failure_reason": "❌ ID verification failed. Please check your details and try again.",
+                        "ocr_data": {
+                            "raw_text": ocr_text,
+                            "full_name": rich_data.get("full_name") or "Not detected",
+                            "id_number": rich_data.get("id_number") or "",
+                            **rich_data
+                        }
+                    }
+                
+                # Otherwise, specify what exactly was wrong
+>>>>>>> 50c1075a97d2f72a77a5e68fdcec783db54f4f05
                 if not name_match: 
                     reasons.append(f"❌ Name mismatch. The name on the ID does not match your registered account name.")
                 if not id_found:

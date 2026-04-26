@@ -132,19 +132,44 @@
         }
     }
 
-    /* Testimonials */
-    .testimonial-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 2rem;
+    /* Testimonial Slider Architecture */
+    .testimonial-viewport {
+        overflow: hidden;
+        padding: 2rem 0;
+        cursor: grab;
+        position: relative;
     }
+
+    .testimonial-viewport:active { cursor: grabbing; }
+
+    .testimonial-track {
+        display: flex;
+        gap: 2rem;
+        width: max-content;
+        animation: testimonialSlide 40s linear infinite;
+    }
+
+    .testimonial-track:hover { animation-play-state: paused; }
 
     .testimonial-card {
         background: #fff;
-        padding: 2rem;
-        border-radius: 1rem;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
-        position: relative;
+        padding: 2.5rem;
+        border-radius: 1.5rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+        width: 400px;
+        flex-shrink: 0;
+        border: 1px solid var(--lp-border, #f4f4f5);
+        transition: transform 0.3s ease, border-color 0.3s ease;
+    }
+
+    .testimonial-card:hover {
+        transform: translateY(-5px);
+        border-color: var(--lp-primary, #f97316);
+    }
+
+    @keyframes testimonialSlide {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(-50%); }
     }
 
     .testimonial-quote {
@@ -455,49 +480,40 @@
                 <p style="color: var(--lp-text-muted); font-size: 1.1rem;">Real reviews from our community.</p>
             </div>
 
-            <div class="testimonial-slider-container">
-                <div class="testimonial-grid animate-on-scroll slider-track">
+            <div class="testimonial-viewport">
+                <div class="testimonial-track" id="testimonialTrack">
                     {% if highlighted_reviews %}
-                    {% for review in highlighted_reviews %}
-                    {% set initials = (review.user.first_name[0] if review.user.first_name else '?') ~
-                    (review.user.last_name[0] if review.user.last_name else '') %}
-                    {% set full_name = ((review.user.first_name or '') ~ ' ' ~ (review.user.last_name or ''))|trim or
-                    review.user.email %}
-                    <div class="testimonial-card">
-                        <div class="testimonial-rating" style="margin-bottom: 1rem;">
-                            {% for i in range(review.rating) %}<i class="fas fa-star"></i>{% endfor %}
-                            {% for i in range(5 - review.rating) %}<i class="far fa-star" style="color: #d1d5db;"></i>{%
-                            endfor %}
-                        </div>
-                        <p class="testimonial-quote">"{{ review.comment }}"</p>
-                        <div class="testimonial-author">
-                            {% if review.user.profile_image_url %}
-                            <img src="{{ review.user.profile_image_url }}" class="testimonial-avatar"
-                                alt="{{ initials }}" style="object-fit: cover;">
-                            {% else %}
-                            <img src="https://ui-avatars.com/api/?name={{ full_name|urlencode }}&background=E67E22&color=fff"
-                                class="testimonial-avatar" alt="{{ initials }}">
-                            {% endif %}
-                            <div>
-                                <span style="display: block; font-weight: 600; color: var(--lp-secondary);">{{ full_name
-                                    }}</span>
-                                <span style="font-size: 0.85rem; color: var(--lp-text-muted);">{{
-                                    review.booking.event_type
-                                    if review.booking and review.booking.event_type else 'OccaServe Customer' }}</span>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
+                        {# We duplicate the items for seamless infinite scroll #}
+                        {% for i in range(2) %}
+                            {% for review in highlighted_reviews %}
+                                {% set full_name = ((review.user.first_name or '') ~ ' ' ~ (review.user.last_name or ''))|trim or review.user.email %}
+                                <div class="testimonial-card">
+                                    <div class="testimonial-rating" style="margin-bottom: 1.25rem;">
+                                        {% for i in range(review.rating) %}<i class="fas fa-star"></i>{% endfor %}
+                                        {% for i in range(5 - review.rating) %}<i class="far fa-star" style="color: #d1d5db;"></i>{% endfor %}
+                                    </div>
+                                    <p class="testimonial-quote">"{{ review.comment }}"</p>
+                                    <div class="testimonial-author">
+                                        {% if review.user.profile_image_url %}
+                                            <img src="{{ review.user.profile_image_url }}" class="testimonial-avatar" alt="User">
+                                        {% else %}
+                                            <img src="https://ui-avatars.com/api/?name={{ full_name|urlencode }}&background=f97316&color=fff" class="testimonial-avatar" alt="User">
+                                        {% endif %}
+                                        <div>
+                                            <span style="display: block; font-weight: 700; color: var(--lp-secondary);">{{ full_name }}</span>
+                                            <span style="font-size: 0.85rem; color: var(--lp-text-muted);">
+                                                {{ review.booking.event_type if review.booking and review.booking.event_type else 'Verified Client' }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% endfor %}
                     {% else %}
-                    <div style="grid-column: 1 / -1; text-align: center; padding: 4rem 2rem;">
-                        <div style="font-size: 3rem; color: #fcd34d; margin-bottom: 1rem;">⭐</div>
-                        <p style="color: var(--lp-text-muted); font-size: 1.1rem; font-weight: 600;">Be the first to
-                            leave a
-                            review!</p>
-                        <p style="color: var(--lp-text-muted); font-size: 0.95rem; margin-top: 0.5rem;">Book a caterer
-                            today
-                            and share your experience with our community.</p>
-                    </div>
+                        <div style="width: 100%; text-align: center; padding: 4rem 2rem;">
+                            <div style="font-size: 3rem; color: #fcd34d; margin-bottom: 1rem;">⭐</div>
+                            <p style="color: var(--lp-text-muted); font-size: 1.1rem; font-weight: 600;">Be the first to share your experience!</p>
+                        </div>
                     {% endif %}
                 </div>
             </div>

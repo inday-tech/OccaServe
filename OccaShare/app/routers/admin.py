@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import func
 import json, re
 from ..services.realtime import manager
+from ..services.verification import verification_service
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -142,11 +143,13 @@ async def admin_dashboard(
         "pending_caterers": pending_caterers,
         "active_page": "dashboard",
         "chart_data": chart_data,
+        "recent_notifications": db.query(models.Notification).filter(models.Notification.user_id == user.id).order_by(models.Notification.created_at.desc()).limit(5).all(),
         "avg_rating": avg_rating,
         "total_reviews": total_reviews,
         "pending_bookings_count": pending_bookings_count,
         "confirmed_bookings_count": confirmed_bookings_count,
         "completed_bookings_count": completed_bookings_count,
+        "pending_customers": pending_customers
     })
 
 @router.get("/caterers", response_class=HTMLResponse)
@@ -156,7 +159,11 @@ async def manage_caterers(
     user: models.User = Depends(admin_only)
 ):
     
-    caterers = db.query(models.CatererProfile).join(models.User).filter(models.User.is_archived == False).all()
+    # ONLY show Verified Caterers here. Pending/Rejected go to Compliance Queue.
+    caterers = db.query(models.CatererProfile).join(models.User).filter(
+        models.User.is_archived == False,
+        models.CatererProfile.verification_status == "Verified"
+    ).all()
     
     # Caterer Metrics for Summary
     metrics = {
@@ -844,21 +851,30 @@ async def view_kyc_queue(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
-    # Fetch all caterers (Pending + Recent Verified)
+    # 1. Fetch Pending Caterers (Always Action Required)
     pending_caterers = db.query(models.CatererProfile).filter(
         models.CatererProfile.verification_status == "Pending"
-    ).order_by(models.CatererProfile.created_at.desc()).all()
+    ).all()
 
-    verified_caterers = db.query(models.CatererProfile).filter(
-        models.CatererProfile.verification_status == "Verified"
-    ).order_by(models.CatererProfile.created_at.desc()).limit(50).all()
+    # 2. Fetch Pending Customers (Role is customer and not verified)
+    # We look for users who HAVE an IdentityVerification record that is not approved, 
+    # OR customers who haven't been verified yet.
+    pending_customers = db.query(models.User).filter(
+        models.User.role == "customer",
+        models.User.is_verified == False
+    ).all()
 
-    caterers = pending_caterers + verified_caterers
-    
+    # 3. Fetch Verified History (Last 20 for history tab)
+    recent_history = db.query(models.IdentityVerification).filter(
+        models.IdentityVerification.verification_status.in_(["approved", "rejected"])
+    ).order_by(models.IdentityVerification.created_at.desc()).limit(20).all()
+
     return templates.TemplateResponse("admin/kyc_logs.html", {
         "request": request,
         "user": user,
-        "caterers": caterers,
+        "pending_caterers": pending_caterers,
+        "pending_customers": pending_customers,
+        "recent_history": recent_history,
         "active_page": "kyc"
     })
 
@@ -898,27 +914,55 @@ async def view_booking_kyc(
         "active_page": "bookings"
     })
 
-@router.post("/kyc/{kyc_id}/action")
+@router.post("/kyc/user/{user_id}/action")
 async def kyc_manual_action(
-    kyc_id: int,
+    user_id: int,
     action: str = Form(...),
     notes: str = Form(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
-    kyc = db.query(models.IdentityVerification).get(kyc_id)
+    target_user = db.query(models.User).get(user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Target user not found")
+        
+    kyc = target_user.identity_verification
     if not kyc:
-        raise HTTPException(status_code=404, detail="KYC record not found")
+        # Create a placeholder if not exists to store the decision
+        kyc = models.IdentityVerification(user_id=user_id, verification_status="pending")
+        db.add(kyc)
+        db.flush()
     
     target_user = db.query(models.User).get(kyc.user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Target user not found")
+
+    full_name = f"{target_user.first_name} {target_user.last_name}"
     
     if action == "approve":
         kyc.verification_status = "approved"
+        kyc.failure_reason = None
         target_user.is_verified = True
         target_user.is_kyc_complete = True
+        target_user.status = "active"
+        
+        # If caterer, also update profile status
+        if target_user.role == "caterer" and target_user.caterer_profile:
+            target_user.caterer_profile.verification_status = "Verified"
+            
+        # Send Approval Email
+        EmailService.send_kyc_approval_email(target_user.email, full_name)
     else:
         kyc.verification_status = "rejected"
-        kyc.failure_reason = notes or "Rejected after manual review."
+        kyc.failure_reason = notes or "Identity verification failed security audit."
+        target_user.is_verified = False
+        target_user.status = "suspended" # Prevents login
+        
+        if target_user.role == "caterer" and target_user.caterer_profile:
+            target_user.caterer_profile.verification_status = "Rejected"
+            
+        # Send Rejection Email
+        EmailService.send_kyc_rejection_email(target_user.email, full_name, kyc.failure_reason)
     
     # Audit Log
     audit = models.AuditLog(
@@ -930,8 +974,18 @@ async def kyc_manual_action(
     )
     db.add(audit)
     db.commit()
+
+    # Real-time update for all connected admins
+    from ..services.realtime import manager
+    import asyncio
+    asyncio.create_task(manager.broadcast({
+        "type": "kyc_update",
+        "user_id": target_user.id,
+        "status": kyc.verification_status,
+        "message": f"KYC for {full_name} has been {action}d."
+    }))
     
-    return RedirectResponse(url="/admin/kyc?success_msg=KYC+action+processed", status_code=303)
+    return RedirectResponse(url=f"/admin/verify/{target_user.id}?success_msg=Action+processed+successfully", status_code=303)
 
 @router.post("/bookings/{booking_id}/flag")
 async def flag_booking(
@@ -1308,6 +1362,23 @@ async def mark_notification_read(
         
     return {"success": True}
 
+@router.post("/api/notifications/{notif_id}/delete")
+async def delete_notification(
+    notif_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(admin_only)
+):
+    notif = db.query(models.Notification).filter(
+        models.Notification.id == notif_id,
+        models.Notification.user_id == user.id
+    ).first()
+    
+    if notif:
+        db.delete(notif)
+        db.commit()
+        
+    return {"success": True}
+
 # ─── Booking Management ────────────────────────────────────────────────────────
 
 @router.get("/bookings", response_class=HTMLResponse)
@@ -1396,18 +1467,31 @@ async def admin_customers(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
+    # ONLY show Verified & KYC-Completed Customers here. 
+    # Unverified/Pending go to Compliance Queue.
     customers = db.query(models.User).filter(
         models.User.role == "customer",
-        models.User.is_archived == False
+        models.User.is_archived == False,
+        models.User.is_verified == True,
+        models.User.is_kyc_complete == True
     ).order_by(models.User.created_at.desc()).all()
+    
+    # Metrics should reflect the entire database for a complete overview
+    total_customers_all = db.query(models.User).filter(models.User.role == "customer", models.User.is_archived == False).count()
+    verified_customers_all = db.query(models.User).filter(models.User.role == "customer", models.User.is_archived == False, models.User.is_verified == True).count()
     
     now = datetime.now()
     start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     
     metrics = {
-        "total_customers": len(customers),
-        "verified_customers": sum(1 for c in customers if c.is_verified),
-        "new_this_month": sum(1 for c in customers if c.created_at.replace(tzinfo=None) >= start_of_month)
+        "total_customers": total_customers_all,
+        "verified_customers": verified_customers_all,
+        "active_customers": verified_customers_all, # Mapping for template
+        "new_this_month": db.query(models.User).filter(
+            models.User.role == "customer",
+            models.User.is_archived == False,
+            models.User.created_at >= start_of_month
+        ).count()
     }
 
     return templates.TemplateResponse("admin/customers.html", {
@@ -1419,6 +1503,51 @@ async def admin_customers(
     })
 
 # ─── KYC Verification Terminal ────────────────────────────────────────────────
+
+@router.post("/api/kyc/{kyc_id}/re-scan")
+async def rescan_kyc_document(
+    kyc_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(admin_only)
+):
+    kyc = db.query(models.IdentityVerification).get(kyc_id)
+    if not kyc or not kyc.document_url:
+        return {"success": False, "message": "Verification record or document not found."}
+    
+    target_user = db.query(models.User).get(kyc.user_id)
+    full_name = f"{target_user.first_name} {target_user.last_name}"
+    
+    try:
+        # Re-run OCR using the improved extraction service
+        result = verification_service.verify_id_document(
+            kyc.document_url, 
+            full_name, 
+            kyc.id_number or "", 
+            kyc.verification_type or "Passport",
+            db,
+            target_user.id
+        )
+        
+        if result["status"] == "error":
+            return {"success": False, "message": result["failure_reason"]}
+            
+        # Update KYC record with new findings
+        kyc.ocr_data = result.get("ocr_data", {})
+        kyc.id_detected = result.get("is_likely_id", False)
+        kyc.id_number = result.get("ocr_data", {}).get("id_number") or kyc.id_number
+        
+        # Update fraud and pattern status if available
+        if "pattern_valid" in result:
+            # We don't have a direct field for pattern_valid, but we can store it in notes or ocr_data
+            pass
+            
+        db.commit()
+        db.refresh(kyc)
+        
+        return {"success": True, "ocr_data": kyc.ocr_data}
+    except Exception as e:
+        print(f"[RE-SCAN ERROR] {e}")
+        return {"success": False, "message": str(e)}
 
 @router.post("/verify/manual-action")
 async def kyc_manual_action(
