@@ -581,6 +581,11 @@ document.addEventListener('DOMContentLoaded', () => {
         pkgForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = pkgForm.querySelector('button[type="submit"]');
+            // Sanitize all numeric inputs by stripping commas and spaces before creating FormData
+            pkgForm.querySelectorAll('.js-format-comma, input[type="number"], input[inputmode="numeric"]').forEach(input => {
+                input.value = input.value.replace(/[, \s]/g, '');
+            });
+
             const data = new FormData(pkgForm);
             
             if (window.apiAction) {

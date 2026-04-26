@@ -660,10 +660,10 @@
 
         const btn = this.querySelector('button[type="submit"]');
         
-        // Success - sanitize numeric inputs by stripping commas before creating FormData
-        this.querySelectorAll('.js-format-comma').forEach(input => {
+        // Success - sanitize all numeric inputs by stripping commas and spaces before creating FormData
+        this.querySelectorAll('.js-format-comma, input[type="number"], input[inputmode="numeric"]').forEach(input => {
             input.dataset.originalValue = input.value; // Store for potential rollback or UI update
-            input.value = input.value.replace(/,/g, '');
+            input.value = input.value.replace(/[, \s]/g, '');
         });
 
         const data = new FormData(this);
