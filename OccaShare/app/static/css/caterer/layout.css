@@ -786,11 +786,12 @@
     }
 
     .logout-link {
-        color: #ef4444 !important;
+        color: var(--primary-color, #ef4444) !important;
     }
 
     .logout-link:hover {
-        background: #fef2f2 !important;
+        background: rgba(var(--primary-color-rgb, 239, 68, 68), 0.1) !important;
+        color: var(--primary-color) !important;
     }
 
     /* =============================

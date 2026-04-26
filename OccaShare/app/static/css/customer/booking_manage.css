@@ -14,11 +14,18 @@
 .status-timeline {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin: 2rem auto 3rem;
+    align-items: flex-start;
+    margin: 1.5rem auto 2.5rem;
     max-width: 900px;
     position: relative;
-    padding: 0 2rem;
+    padding: 0 1rem;
+    overflow-x: auto;
+    scrollbar-width: none; /* Hide scrollbar for clean look */
+    -ms-overflow-style: none;
+}
+
+.status-timeline::-webkit-scrollbar {
+    display: none;
 }
 
 .timeline-track {
@@ -47,8 +54,9 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 60px;
+    min-width: 70px;
     text-align: center;
+    flex-shrink: 0;
 }
 
 .step-circle {
@@ -1194,7 +1202,62 @@ input[type="file"]#balance_proof {
     }
 
     .booking-id-text {
-        font-size: 1.75rem;
+        font-size: 1.5rem;
+        line-height: 1.2;
+    }
+
+    .stepper-card {
+        padding: 1.5rem 0.5rem;
+    }
+
+    /* Responsive Stepper Fix */
+    .status-timeline {
+        padding: 0 0.5rem;
+    }
+
+    .timeline-track, .timeline-progress {
+        top: 18px;
+        left: 2rem;
+        right: 2rem;
+    }
+
+    .timeline-step {
+        min-width: 60px;
+    }
+
+    .step-circle {
+        width: 36px;
+        height: 36px;
+        margin-bottom: 0.5rem;
+    }
+
+    .step-circle i {
+        font-size: 0.9rem;
+    }
+
+    .step-label {
+        font-size: 0.55rem;
+        letter-spacing: 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .timeline-step {
+        min-width: 55px;
+    }
+    
+    .timeline-track, .timeline-progress {
+        left: 1.5rem;
+        right: 1.5rem;
+    }
+
+    .manage-header-flex {
+        text-align: center;
+    }
+
+    .status-badge {
+        width: fit-content;
+        margin: 0 auto;
     }
 }
 
@@ -1581,11 +1644,38 @@ input[type="file"]#balance_proof {
 
 @media (max-width: 768px) {
 
+    .detail-row {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.25rem;
+        padding: 0.75rem 0 !important;
+    }
+
+    .detail-value {
+        text-align: left !important;
+        font-size: 0.9rem !important;
+    }
+
+    .detail-label {
+        font-size: 0.8rem !important;
+    }
+
     .review-prompt-land,
     .review-summary-land {
         flex-direction: column;
         text-align: center;
         gap: 1rem;
+    }
+    
+    .main-content {
+        padding: 0.85rem 0.9rem 2rem !important;
+        margin-left: 0 !important;
+        padding-top: 4.5rem !important; /* space for floating burger */
+    }
+
+    .back-navigation {
+        margin-left: 3.5rem !important; /* Clear the floating burger */
+        margin-bottom: 1.5rem !important;
     }
 }
 
@@ -1611,5 +1701,43 @@ input[type="file"]#balance_proof {
     .modal-overlay-p {
         background: none !important;
         backdrop-filter: none !important;
+    }
+}
+
+/* Financial Typography Pro */
+.text-primary-pro {
+    color: var(--primary-color);
+    font-weight: 800;
+}
+
+.text-success-pro {
+    color: #10b981;
+    font-weight: 800;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.verification-pending-badge {
+    font-size: 0.65rem;
+    color: #f59e0b;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-top: 2px;
+}
+
+.balance-value-pro {
+    color: var(--primary-color);
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+
+@media (max-width: 768px) {
+    .text-success-pro {
+        align-items: flex-start;
+    }
+    
+    .verification-pending-badge {
+        margin-top: 0;
     }
 }

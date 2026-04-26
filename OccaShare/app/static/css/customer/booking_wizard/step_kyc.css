@@ -168,7 +168,8 @@
 }
 
 .person-scanner {
-    max-width: 380px !important;
+    width: 90% !important;
+    max-width: 350px !important;
     aspect-ratio: 1/1 !important;
     border-radius: 50% !important;
     border: 6px solid var(--kyc-accent) !important;

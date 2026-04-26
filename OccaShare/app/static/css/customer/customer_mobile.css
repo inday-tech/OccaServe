@@ -13,6 +13,11 @@
         padding-top: 4.5rem !important; /* space for floating burger */
     }
 
+    .back-navigation {
+        margin-left: 3.5rem !important; /* Clear the floating burger */
+        margin-bottom: 1.5rem !important;
+    }
+
     /* ── 2. PAGE HEADER — all pages ── */
     .page-header,
     .page-header-standard,
