@@ -1620,6 +1620,7 @@ async def add_package(
         service_type=service_type,
         service_duration=service_duration,
         price_per_head=price_per_head,
+        price=price_per_head, # Sync for compatibility
         cost_price=cost_price,
         cost_breakdown=json.loads(cost_breakdown) if cost_breakdown else [],
         markup_type=markup_type,
@@ -1906,6 +1907,7 @@ async def update_package(
     package.service_type = service_type
     package.service_duration = service_duration
     package.price_per_head = price_per_head
+    package.price = price_per_head # Sync for compatibility
     package.cost_price = cost_price
     if cost_breakdown is not None:
         package.cost_breakdown = json.loads(cost_breakdown) if cost_breakdown else None
