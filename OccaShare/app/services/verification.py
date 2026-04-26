@@ -237,6 +237,9 @@ class VerificationService:
                 rgb_data = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) if CV2_AVAILABLE else img[:, :, ::-1]
                 mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_data)
                 detection_result = self.landmarker.detect(mp_image)
+            except Exception as e:
+                print(f"[KYC ERROR] MediaPipe detection failed: {e}")
+                continue
             
             if detection_result.face_landmarks:
                 face_detected_count += 1
@@ -334,6 +337,9 @@ class VerificationService:
                 mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_data)
                 res = self.landmarker.detect(mp_image)
                 if not res.face_landmarks: return None
+            except Exception as e:
+                print(f"[KYC ERROR] Face feature extraction failed: {e}")
+                return None
             # Return relative spatial distribution of key features
             lm = res.face_landmarks[0]
             # Normalize key points relative to nose (index 1)
