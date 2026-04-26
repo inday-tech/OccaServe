@@ -10,6 +10,7 @@ from typing import List, Dict, Any
 from ..core.encryption import decrypt_data
 from PIL import Image, ImageOps
 from sqlalchemy.orm import Session
+from ..db.models import IdentityVerification
 
 # Graceful imports for heavy dependencies (may not be available on all cloud platforms)
 try:
@@ -18,6 +19,7 @@ try:
 except ImportError:
     print("[KYC WARNING] OpenCV (cv2) not available. KYC verification will be limited.")
     CV2_AVAILABLE = False
+    cv2 = None
 
 try:
     import pytesseract
@@ -169,24 +171,34 @@ class VerificationService:
             pil_img = Image.open(io.BytesIO(decrypted_data))
             pil_img = ImageOps.exif_transpose(pil_img)
             
-            # Convert back to BGR for OpenCV
-            img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+            # Convert back to BGR for OpenCV compatibility
+            if CV2_AVAILABLE:
+                img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+            else:
+                # Manual RGB to BGR conversion using numpy if cv2 is missing
+                img = np.array(pil_img)[:, :, ::-1].copy()
             return img
         except Exception as e:
             print(f"[KYC DEBUG] Fatal error preparing image {filename}: {e}")
-            # Last resort fallback
-            try:
-                nparr = np.frombuffer(raw_data, np.uint8)
-                return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-            except:
-                raise e
+            if CV2_AVAILABLE and raw_data:
+                try:
+                    nparr = np.frombuffer(raw_data, np.uint8)
+                    return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                except: pass
+            raise e
 
     def _detect_faces_detailed(self, img: np.ndarray) -> List[Any]:
         """Detect faces using standard OpenCV Haar Cascades."""
-        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(gray, 1.1, 4)
-        return faces
+        if not CV2_AVAILABLE:
+            print("[KYC WARNING] Face detection skipped: OpenCV not available.")
+            return []
+        try:
+            face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+            return faces
+        except:
+            return []
 
     def _calculate_ear(self, landmarks, eye_indices):
         """Calculates Eye Aspect Ratio (EAR). Landmarks are MediaPipe NormalizedLandmark objects."""
@@ -218,8 +230,13 @@ class VerificationService:
         angles_h = [] # Horizontal (yaw)
 
         for img in img_list:
-            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-            detection_result = self.landmarker.detect(mp_image)
+            if not MEDIAPIPE_AVAILABLE or not CV2_AVAILABLE or not mp:
+                continue
+            
+            try:
+                rgb_data = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) if CV2_AVAILABLE else img[:, :, ::-1]
+                mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_data)
+                detection_result = self.landmarker.detect(mp_image)
             
             if detection_result.face_landmarks:
                 face_detected_count += 1
@@ -310,9 +327,13 @@ class VerificationService:
             return {"match": False, "confidence": 0.0, "error": "Landmarker offline"}
 
         def get_face_features(img):
-            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-            res = self.landmarker.detect(mp_image)
-            if not res.face_landmarks: return None
+            if not MEDIAPIPE_AVAILABLE or not CV2_AVAILABLE or not mp or not self.landmarker:
+                return None
+            try:
+                rgb_data = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) if CV2_AVAILABLE else img[:, :, ::-1]
+                mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_data)
+                res = self.landmarker.detect(mp_image)
+                if not res.face_landmarks: return None
             # Return relative spatial distribution of key features
             lm = res.face_landmarks[0]
             # Normalize key points relative to nose (index 1)
@@ -422,6 +443,10 @@ class VerificationService:
             return {"valid": False, "reason": f"Resolution too low ({width}x{height}). Please take a clearer photo."}
         
         # 2. Blur Detection (Laplacian Variance)
+        if not CV2_AVAILABLE:
+            print("[KYC WARNING] Skipping blur detection: OpenCV not available.")
+            return {"valid": True}
+        
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         blur_score = cv2.Laplacian(gray, cv2.CV_64F).var()
         print(f"[KYC DEBUG] Image Quality Check - Resolution: {width}x{height}, Blur Score: {blur_score:.2f}")
@@ -459,6 +484,8 @@ class VerificationService:
 
     def _deskew(self, image: np.ndarray) -> np.ndarray:
         """Corrects the rotation/tilt of an image."""
+        if not CV2_AVAILABLE: return image
+        
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         gray = cv2.bitwise_not(gray)
         thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
@@ -481,6 +508,7 @@ class VerificationService:
 
     def _enhance_for_ocr(self, img: np.ndarray) -> np.ndarray:
         """Applies contrast enhancement and sharpening to improve OCR."""
+        if not CV2_AVAILABLE: return img
         # Convert to grayscale
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         
@@ -496,6 +524,14 @@ class VerificationService:
 
     def _run_tesseract_multi_psm(self, image: np.ndarray) -> str:
         """Runs Tesseract with advanced preprocessing and multiple PSM modes."""
+        if not PYTESSERACT_AVAILABLE:
+            print("[KYC ERROR] OCR requested but pytesseract not available.")
+            return ""
+
+        if not CV2_AVAILABLE:
+            print("[KYC ERROR] OCR requested but OpenCV not available for preprocessing.")
+            return ""
+
         # 1. Deskew
         image = self._deskew(image)
         
@@ -531,6 +567,7 @@ class VerificationService:
             for psm in [6, 3]: 
                 config = f'--psm {psm} -l eng'
                 try:
+                    if not pytesseract: return False
                     current_text = pytesseract.image_to_string(img_pass, config=config)
                     if len(current_text.strip()) > len(best_text.strip()):
                         best_text = current_text
