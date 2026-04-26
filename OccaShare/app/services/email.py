@@ -1,6 +1,7 @@
 import smtplib
 import logging
 import traceback
+import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from ..core.config import settings
@@ -245,7 +246,7 @@ class EmailService:
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Date Processed</span>
-                        <span class="detail-value">{datetime.now().strftime('%B %d, %Y')}</span>
+                        <span class="detail-value">{datetime.datetime.now().strftime('%B %d, %Y')}</span>
                     </div>
 
                     <p style="margin-top: 30px; font-size: 14px;">You can view and download your full invoice by logging into your dashboard.</p>

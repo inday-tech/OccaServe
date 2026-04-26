@@ -6,16 +6,11 @@
 <link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}">
 {% endblock %}
 
-
-
 {% block content %}
 <div class="dashboard-header-clean" style="display: flex; justify-content: space-between; align-items: flex-start;">
     <div>
         <h1>Dashboard Intelligence</h1>
         <p>Holistic oversight of platform metrics, growth vectors, and operation health.</p>
-    </div>
-    <div id="sync-status" style="font-size: 0.7rem; font-weight: 700; color: var(--dm-slate-400); text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 8px; background: white; padding: 8px 16px; border-radius: 99px; border: 1px solid var(--dm-slate-100); box-shadow: var(--adm-shadow);">
-        <i class="fas fa-circle pulse-live" style="font-size: 8px; color: var(--dm-primary);"></i> Live Intelligence Link Active
     </div>
 </div>
 
@@ -68,21 +63,30 @@
     <div class="card-clean">
         <div class="card-title-clean" style="justify-content: space-between;">
             <span><i class="fas fa-bell" style="color: var(--dm-primary);"></i> Recent Activity</span>
-            <a href="/admin/notifications" style="font-size: 0.75rem; color: var(--dm-primary); text-decoration: none; font-weight: 700;">View All</a>
+            <a href="/admin/notifications"
+                style="font-size: 0.75rem; color: var(--dm-primary); text-decoration: none; font-weight: 700;">View
+                All</a>
         </div>
         <div class="metric-list-clean" id="recentNotifList">
             {% if recent_notifications %}
-                {% for n in recent_notifications %}
-                <div class="metric-item-clean" style="align-items: flex-start; gap: 12px; cursor: pointer;" onclick="window.location.href='/admin/notifications'">
-                    <div style="width: 8px; height: 8px; border-radius: 50%; background: {{ '#f97316' if not n.is_read else '#e2e8f0' }}; margin-top: 5px; flex-shrink: 0;"></div>
-                    <div style="flex: 1; min-width: 0;">
-                        <div style="font-size: 0.85rem; font-weight: 700; color: var(--dm-secondary); margin-bottom: 2px;">{{ n.title }}</div>
-                        <div style="font-size: 0.75rem; color: var(--dm-slate-400); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ n.message }}</div>
-                    </div>
+            {% for n in recent_notifications %}
+            <div class="metric-item-clean" style="align-items: flex-start; gap: 12px; cursor: pointer;"
+                onclick="window.location.href='/admin/notifications'">
+                <div
+                    style="width: 8px; height: 8px; border-radius: 50%; background: {{ '#f97316' if not n.is_read else '#e2e8f0' }}; margin-top: 5px; flex-shrink: 0;">
                 </div>
-                {% endfor %}
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-size: 0.85rem; font-weight: 700; color: var(--dm-secondary); margin-bottom: 2px;">
+                        {{ n.title }}</div>
+                    <div
+                        style="font-size: 0.75rem; color: var(--dm-slate-400); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        {{ n.message }}</div>
+                </div>
+            </div>
+            {% endfor %}
             {% else %}
-                <p style="text-align: center; color: var(--dm-slate-400); font-size: 0.85rem; margin-top: 2rem;">No recent activity recorded.</p>
+            <p style="text-align: center; color: var(--dm-slate-400); font-size: 0.85rem; margin-top: 2rem;">No recent
+                activity recorded.</p>
             {% endif %}
         </div>
     </div>
@@ -189,7 +193,7 @@
     window.addEventListener('load', () => {
         try {
             const initialData = {{ chart_data | tojson | safe }};
-    initDashboardCharts(initialData);
+            initDashboardCharts(initialData);
         } catch (e) { console.error("Chart Init Fail", e); }
     });
 
@@ -237,15 +241,15 @@
                         {{ confirmed_bookings_count | default(0) }},
                         {{ pending_bookings_count | default(0) }}
                     ],
-    backgroundColor: ['#10b981', '#f97316', '#f59e0b'],
-        borderWidth: 0
+                    backgroundColor: ['#10b981', '#f97316', '#f59e0b'],
+                    borderWidth: 0
                 }]
             },
-    options: {
-        responsive: true, maintainAspectRatio: false,
-            cutout: '80%',
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                cutout: '80%',
                 plugins: { legend: { display: false } }
-    }
+            }
         });
     }
 

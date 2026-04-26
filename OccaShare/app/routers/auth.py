@@ -29,34 +29,42 @@ from ..core.utils import (
 
 @router.post("/scan-document")
 async def scan_document(
-    document: UploadFile = File(...),
+    document: List[UploadFile] = File(...),
     doc_type: str = Form("id"), # "id" or "permit"
     user_name: str = Form(...), # Business Name or Full Name
     owner_name: Optional[str] = Form(None), # Added for Permit owners
     id_type: Optional[str] = Form(None),
+    id_number: Optional[str] = Form(None), # New: ID number for verification
     reference_doc: Optional[str] = Form(None), # URL of previously uploaded ID for comparison
     db: Session = Depends(database.get_db)
 ):
     """AJAX endpoint for real-time document scanning."""
     try:
-        content = await document.read()
-        temp_id = str(uuid.uuid4())
-        filename = f"temp_{temp_id}_{document.filename}"
-        path = os.path.join(UPLOAD_DIR, filename)
+        results = []
+        doc_urls = []
         
-        encrypted_content = encrypt_data(content)
-        with open(path, "wb") as f:
-            f.write(encrypted_content)
+        for doc in document:
+            content = await doc.read()
+            temp_id = str(uuid.uuid4())
+            filename = f"temp_{temp_id}_{doc.filename}"
+            path = os.path.join(UPLOAD_DIR, filename)
+            
+            encrypted_content = encrypt_data(content)
+            with open(path, "wb") as f:
+                f.write(encrypted_content)
+            
+            doc_urls.append(f"/static/uploads/verification/{filename}")
         
-        doc_url = f"/static/uploads/verification/{filename}"
+        doc_url = doc_urls[0]
         
         if doc_type == "permit":
             result = verification_service.verify_business_permit(
                 doc_url, user_name, owner_name=owner_name or user_name
             )
         elif doc_type == "selfie":
-            img = verification_service._prepare_image(doc_url)
-            liveness = verification_service._check_liveness_mediapipe([img])
+            imgs = [verification_service._prepare_image(u) for u in doc_urls]
+            liveness = verification_service._check_liveness_mediapipe(imgs)
+            img = imgs[0] # Use first image for face comparison
             
             if liveness.get("occlusion_detected"):
                 return {
@@ -74,7 +82,10 @@ async def scan_document(
                 except Exception as comp_err:
                     print(f"[KYC DEBUG] Comparison error: {comp_err}")
 
-            if liveness["score"] >= 0.4 and comparison["match"]:
+            # Liveness threshold: 0.4 for sequence (requires blink/move), 0.15 for single frame (just face detection)
+            threshold = 0.4 if len(doc_urls) > 1 else 0.15
+            
+            if liveness["score"] >= threshold and comparison["match"]:
                 result = {
                     "status": "approved",
                     "confidence": comparison["confidence"],
@@ -84,7 +95,7 @@ async def scan_document(
                 reason = "Face mismatch or poor quality."
                 if not comparison["match"]:
                     reason = "Face does not match the provided ID."
-                elif liveness["score"] < 0.4:
+                elif liveness["score"] < threshold:
                     reason = "Liveness check failed. Please blink or move slightly."
                 
                 result = {
@@ -93,7 +104,7 @@ async def scan_document(
                     "ocr_match": False
                 }
         else:
-            result = verification_service.verify_id_document(doc_url, user_name, "", id_type or "Passport")
+            result = verification_service.verify_id_document(doc_url, user_name, id_number or "", id_type or "Passport")
             # Return path to be used as reference
             result["doc_path"] = doc_url
             
@@ -160,6 +171,7 @@ async def register(
     gov_id: Optional[UploadFile] = File(None),
     selfie: Optional[UploadFile] = File(None), # NEW: Added Selfie
     id_type: Optional[str] = Form(None),
+    id_number: Optional[str] = Form(None),
     next_url: Optional[str] = Form(None),
     db: Session = Depends(database.get_db)
 ):
@@ -373,7 +385,8 @@ async def register(
             is_verified=False,
             is_email_verified=False,
             verification_code=otp,
-            otp_expires_at=datetime.now(timezone.utc) + timedelta(minutes=5)
+            otp_expires_at=datetime.now(timezone.utc) + timedelta(minutes=5),
+            profile_image_url=selfie_url if role == "caterer" else None
         )
         db.add(new_user)
         db.flush()
@@ -409,7 +422,7 @@ async def register(
                 try:
                     # 1. OCR for ID
                     id_res = verification_service.verify_id_document(
-                        gov_id_url, full_name, "", id_type or "Passport"
+                        gov_id_url, full_name, id_number or "", id_type or "Passport"
                     )
                     
                     # 2. OCR for Permit
@@ -421,7 +434,7 @@ async def register(
                     face_res = {"status": "skipped"}
                     if selfie_url:
                         face_res = verification_service.verify_identity_v2(
-                            gov_id_url, [selfie_url], full_name, "", id_type or "Passport", db, new_user.id
+                            gov_id_url, [selfie_url], full_name, id_number or "", id_type or "Passport", db, new_user.id
                         )
 
                     # --- BLOCKING LOGIC ---
@@ -429,8 +442,12 @@ async def register(
                         # If mismatched and blocking is enabled
                         db.rollback()
                         error_msg = "Security Check Failed: "
-                        if id_res["status"] != "matched": error_msg += f"ID Validation Error ({id_res.get('failure_reason')}). "
-                        if permit_res["status"] != "matched": error_msg += f"Permit Validation Error ({permit_res.get('failure_reason', 'Owner Name Mismatch')}). "
+                        if id_res["status"] != "matched": 
+                            error_msg += f"ID Validation Error ({id_res.get('failure_reason')}). "
+                            print(f"[KYC DEBUG] ID Validation Failed: {id_res.get('failure_reason')}")
+                        if permit_res["status"] != "matched": 
+                            error_msg += f"Permit Validation Error ({permit_res.get('failure_reason', 'Owner Name Mismatch')}). "
+                            print(f"[KYC DEBUG] Permit Validation Failed: {permit_res.get('failure_reason')}")
                         
                         if is_ajax:
                             return JSONResponse(status_code=400, content={"success": False, "message": error_msg})
