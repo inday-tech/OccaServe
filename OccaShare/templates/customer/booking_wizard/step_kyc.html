@@ -168,6 +168,7 @@
         background: var(--kyc-slate-50) !important;
         transition: all 0.25s ease !important;
         color: var(--kyc-slate-700) !important;
+        appearance: auto;
     }
 
     .modern-input:focus {
@@ -175,6 +176,39 @@
         border-color: var(--kyc-accent) !important;
         background: #fff !important;
         box-shadow: 0 0 0 4px var(--kyc-accent-soft) !important;
+    }
+
+    .modern-input.input-error {
+        border-color: #ef4444 !important;
+        background: #fff5f5 !important;
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+    }
+
+    .field-error-msg {
+        font-size: 0.72rem;
+        color: #ef4444;
+        font-weight: 700;
+        margin-top: 0.35rem;
+        display: none;
+        align-items: center;
+        gap: 0.3rem;
+    }
+
+    .field-error-msg.visible {
+        display: flex;
+    }
+
+    .address-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    @media (max-width: 600px) {
+        .address-grid {
+            grid-template-columns: 1fr;
+        }
     }
 
     /* ACTION CARDS */
@@ -440,52 +474,76 @@
                 style="display: {% if kyc_status in ['pending', 'failed', 'rejected'] %}block{% else %}none{% endif %};">
                 <div class="kyc-form-grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem;">
                     <div class="field-group">
-                        <label>Given Name</label>
-                        <input type="text" id="first_name" class="modern-input" placeholder="First Name" value="{{ user.first_name or '' }}">
+                        <label>Given Name <span style="color:#ef4444;">*</span></label>
+                        <input type="text" id="first_name" class="modern-input" placeholder="First Name" value="{{ user.first_name or '' }}" oninput="validateKycForm()">
+                        <div class="field-error-msg" id="err-first_name"><i class="fas fa-exclamation-circle"></i> Given name is required.</div>
                     </div>
                     <div class="field-group">
-                        <label>Middle Name</label>
+                        <label>Middle Name <span style="color:#94a3b8; font-size:0.7rem; font-weight:600;">(Optional)</span></label>
                         <input type="text" id="middle_name" class="modern-input" placeholder="Middle Name (Optional)" value="{{ user.middle_name or '' }}">
                     </div>
                     <div class="field-group">
-                        <label>Last Name</label>
-                        <input type="text" id="last_name" class="modern-input" placeholder="Last Name" value="{{ user.last_name or '' }}">
+                        <label>Last Name <span style="color:#ef4444;">*</span></label>
+                        <input type="text" id="last_name" class="modern-input" placeholder="Last Name" value="{{ user.last_name or '' }}" oninput="validateKycForm()">
+                        <div class="field-error-msg" id="err-last_name"><i class="fas fa-exclamation-circle"></i> Last name is required.</div>
                     </div>
                 </div>
 
                 <div class="kyc-form-grid">
                     <div class="field-group">
-                        <label>Date of Birth</label>
-                        <input type="date" id="dob" class="modern-input" value="{{ user.dob.strftime('%Y-%m-%d') if user.dob else '' }}">
+                        <label>Date of Birth <span style="color:#ef4444;">*</span></label>
+                        <input type="date" id="dob" class="modern-input" value="{{ user.dob.strftime('%Y-%m-%d') if user.dob else '' }}" onchange="validateKycForm()">
+                        <div class="field-error-msg" id="err-dob"><i class="fas fa-exclamation-circle"></i> Date of birth is required.</div>
                     </div>
-                    <div class="field-group">
-                        <label>Current Address</label>
-                        <input type="text" id="address" class="modern-input" placeholder="Street, City, Province" value="{{ user.address or '' }}">
+                </div>
+
+                <!-- CALABARZON Address -->
+                <div class="field-group" style="margin-bottom: 1.5rem;">
+                    <label>Current Address <span style="color:#ef4444;">*</span></label>
+                    <div class="address-grid">
+                        <div>
+                            <select id="address_province" class="modern-input" onchange="populateCities(); validateKycForm();">
+                                <option value="">-- Province --</option>
+                                <option value="Batangas">Batangas</option>
+                                <option value="Cavite">Cavite</option>
+                                <option value="Laguna">Laguna</option>
+                                <option value="Quezon">Quezon</option>
+                                <option value="Rizal">Rizal</option>
+                            </select>
+                            <div class="field-error-msg" id="err-province"><i class="fas fa-exclamation-circle"></i> Select a province.</div>
+                        </div>
+                        <div>
+                            <select id="address_city" class="modern-input" onchange="validateKycForm();" disabled>
+                                <option value="">-- City / Municipality --</option>
+                            </select>
+                            <div class="field-error-msg" id="err-city"><i class="fas fa-exclamation-circle"></i> Select a city.</div>
+                        </div>
                     </div>
+                    <input type="text" id="address_street" class="modern-input" style="margin-top: 0.75rem;"
+                        placeholder="House No., Street, Barangay" oninput="validateKycForm()">
+                    <div class="field-error-msg" id="err-street"><i class="fas fa-exclamation-circle"></i> Street / Barangay is required.</div>
+                    <!-- Hidden combined address field -->
+                    <input type="hidden" id="address">
                 </div>
 
                 <div class="kyc-form-grid">
                     <div class="field-group">
-                        <label>Select ID Type</label>
-                        <select id="id_type" class="modern-input" onchange="validateIdSelection()">
+                        <label>Select ID Type <span style="color:#ef4444;">*</span></label>
+                        <select id="id_type" class="modern-input" onchange="validateIdSelection(); validateKycForm();">
                             <option value="">-- Choose ID Type --</option>
                             <option value="PhilSys / PhilID">PhilSys / PhilID</option>
                             <option value="Driver's License">Philippine Driver's License</option>
                             <option value="Passport">Philippine Passport</option>
                             <option value="UMID">UMID</option>
-                            <option value="SSS ID">SSS ID</option>
-                            <option value="PRC ID">PRC ID</option>
-                            <option value="Postal ID">Postal ID</option>
-                            <option value="Voter's ID">Voter's ID</option>
-                            <option value="TIN ID">TIN ID</option>
                         </select>
+                        <div class="field-error-msg" id="err-id_type"><i class="fas fa-exclamation-circle"></i> Please select an ID type.</div>
                     </div>
                     <div class="field-group">
-                        <label>ID Number</label>
+                        <label>ID Number <span style="color:#ef4444;">*</span></label>
                         <input type="text" id="id_number" class="modern-input" placeholder="Enter ID number"
-                            oninput="validateIdSelection()">
-                        <div id="id-validation-msg" style="font-size: 0.75rem; margin-top: 0.25rem; height: 1rem;">
-                        </div>
+                            oninput="validateIdSelection(); validateKycForm();">
+                        <div id="id-validation-msg" style="font-size: 0.75rem; margin-top: 0.25rem; height: 1rem;"></div>
+                        <div class="field-error-msg" id="err-id_number"><i class="fas fa-exclamation-circle"></i> ID number is required.</div>
                     </div>
                 </div>
 
