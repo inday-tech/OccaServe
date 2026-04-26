@@ -1,5 +1,6 @@
 [phases.setup]
-nixPkgs = ["python311", "tesseract", "libglvnd", "libGL", "glib", "zlib"]
+nixPkgs = ["python310", "tesseract", "libglvnd", "libGL", "glib", "zlib"]
+
 aptPkgs = ["tesseract-ocr", "tesseract-ocr-eng", "libglvnd0", "libglib2.0-0", "libsm6", "libxrender1", "libxext6", "libgomp1"]
 
 [start]

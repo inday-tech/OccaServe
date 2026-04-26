@@ -47,7 +47,7 @@ kiwisolver==1.4.9
 MarkupSafe==2.1.5
 numpy==1.26.4
 mediapipe==0.10.32
-opencv-python-headless==4.13.0.92
+opencv-python-headless==4.8.1.78
 packaging==26.0
 passlib==1.7.4
 pillow==12.1.1
