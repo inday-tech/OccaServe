@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 import os, secrets, string, logging
 from ..db import database, models
 from ..core import security as auth
-from ..core.utils import is_dummy_email, is_dummy_name, is_dummy_phone, is_dummy_address
+from ..core.utils import is_dummy_email, is_dummy_name, is_dummy_phone, is_dummy_address, is_valid_person_name, is_valid_business_name
 from ..services.email import EmailService
 from datetime import datetime, timedelta
 from sqlalchemy import func
@@ -288,8 +288,6 @@ async def update_website_settings(
     config.twitter_link = tw_link
     if commission is not None:
         config.commission_rate = commission
-    if commission_fixed is not None:
-        config.commission_fixed_amount = commission_fixed
     if max_upload is not None:
         config.max_file_size_mb = max_upload
     config.maintenance_mode = True if maintenance_mode == "on" else False
@@ -490,6 +488,15 @@ def verify_caterer(
         caterer.is_verified = False
     
     db.commit()
+    
+    # Real-time update
+    asyncio.create_task(manager.broadcast({
+        "type": "caterer_update",
+        "caterer_id": caterer_id,
+        "action": action,
+        "status": caterer.verification_status
+    }))
+    
     return RedirectResponse(url=f"/admin/caterers?success_msg=Caterer+{action}+successfully", status_code=status.HTTP_303_SEE_OTHER)
 
 @router.post("/caterers/{caterer_id}/status")
@@ -511,6 +518,15 @@ def toggle_caterer_status(caterer_id: int, db: Session = Depends(database.get_db
                 caterer_user.is_verified = True
     
     db.commit()
+    
+    # Real-time update
+    asyncio.create_task(manager.broadcast({
+        "type": "caterer_update",
+        "caterer_id": caterer_id,
+        "action": "status_toggle",
+        "status": caterer_user.status if caterer.user_id else "unknown"
+    }))
+    
     return RedirectResponse(url="/admin/caterers?success_msg=Caterer+status+updated", status_code=status.HTTP_303_SEE_OTHER)
 
 @router.post("/caterers/{caterer_id}/delete")
@@ -554,6 +570,14 @@ def delete_caterer(caterer_id: int, db: Session = Depends(database.get_db), user
             db.delete(associated_user)
             
     db.commit()
+    
+    # Real-time update
+    asyncio.create_task(manager.broadcast({
+        "type": "user_archived",
+        "user_id": user_id,
+        "role": "caterer"
+    }))
+    
     return RedirectResponse(url="/admin/caterers?success_msg=Caterer+deleted+successfully", status_code=status.HTTP_303_SEE_OTHER)
 
 @router.post("/api/caterers/{caterer_id}/edit")
@@ -592,36 +616,63 @@ async def edit_caterer(
         caterer.user.phone_number = phone
         
     db.commit()
+    
+    # Real-time update
+    asyncio.create_task(manager.broadcast({
+        "type": "caterer_update",
+        "caterer_id": caterer_id,
+        "action": "edit"
+    }))
+    
     return {"success": True, "message": "Caterer details updated successfully."}
 
 @router.get("/caterers/check-availability")
 async def check_caterer_availability(
     email: Optional[str] = None,
     business_name: Optional[str] = None,
+    full_name: Optional[str] = None,
+    phone: Optional[str] = None,
     db: Session = Depends(database.get_db),
     admin: models.User = Depends(admin_only)
 ):
     results = {
         "email_taken": False,
-        "business_name_taken": False
+        "business_name_taken": False,
+        "name_taken": False,
+        "phone_taken": False
     }
     
     if email:
-        # Check against non-archived users
         existing_user = db.query(models.User).filter(
             models.User.email == email.strip().lower(),
             models.User.is_archived == False
         ).first()
-        if existing_user:
-            results["email_taken"] = True
+        results["email_taken"] = existing_user is not None
             
     if business_name:
-        # Check against all caterer profiles (usually business names are unique/important)
         existing_profile = db.query(models.CatererProfile).filter(
             func.lower(models.CatererProfile.business_name) == business_name.strip().lower()
         ).first()
-        if existing_profile:
-            results["business_name_taken"] = True
+        results["business_name_taken"] = existing_profile is not None
+
+    if full_name:
+        # Split and check against first_name + last_name
+        parts = full_name.strip().split(None, 1)
+        f_name = parts[0] if len(parts) > 0 else ""
+        l_name = parts[1] if len(parts) > 1 else ""
+        
+        existing_name = db.query(models.User).filter(
+            func.lower(models.User.first_name) == f_name.lower(),
+            func.lower(models.User.last_name) == l_name.lower(),
+            models.User.is_archived == False
+        ).first()
+        results["name_taken"] = existing_name is not None
+
+    if phone:
+        # Check both User table and CatererProfile table
+        existing_phone_user = db.query(models.User).filter(models.User.phone_number == phone.strip()).first()
+        existing_phone_profile = db.query(models.CatererProfile).filter(models.CatererProfile.contact_phone == phone.strip()).first()
+        results["phone_taken"] = (existing_phone_user is not None or existing_phone_profile is not None)
             
     return results
 
@@ -637,7 +688,7 @@ async def add_caterer(
     db: Session = Depends(database.get_db),
     admin: models.User = Depends(admin_only)
 ):
-    # 1. Server-side Validation
+    # 1. Server-side Validation (High Fidelity Adjudication)
     errors = {}
     
     # Email check
@@ -647,31 +698,55 @@ async def add_caterer(
     else:
         existing_user = db.query(models.User).filter(models.User.email == email).first()
         if existing_user:
-            errors['email'] = "Account with this email already exists."
+            errors['email'] = "This email identity is already registered."
 
-    # Name check
-    name_err = is_dummy_name(full_name)
-    if name_err:
-        errors['full_name'] = name_err
+    # Name check (Signatory)
+    parts = full_name.strip().split(None, 1)
+    f_name = parts[0] if len(parts) > 0 else ""
+    l_name = parts[1] if len(parts) > 1 else ""
+
+    f_err = is_valid_person_name(f_name)
+    if f_err: errors['full_name'] = f_err
+    
+    l_err = is_valid_person_name(l_name)
+    if l_err: errors['full_name'] = l_err
+
+    # Duplicate Signatory Check
+    existing_name = db.query(models.User).filter(
+        func.lower(models.User.first_name) == f_name.lower(),
+        func.lower(models.User.last_name) == l_name.lower(),
+        models.User.is_archived == False
+    ).first()
+    if existing_name:
+        errors['full_name'] = "This signatory is already registered as a partner."
 
     # Business Name check
-    if not business_name or len(business_name.strip()) < 3:
-        errors['business_name'] = "Business name must be at least 3 characters."
-    elif is_dummy_name(business_name): # Reuse name check for biz name
-        errors['business_name'] = "Please use a real business name."
+    biz_err = is_valid_business_name(business_name)
+    if biz_err:
+        errors['business_name'] = biz_err
+    else:
+        existing_profile = db.query(models.CatererProfile).filter(
+            func.lower(models.CatererProfile.business_name) == business_name.strip().lower()
+        ).first()
+        if existing_profile:
+            errors['business_name'] = "Business name already exists in our registry."
 
     # Phone check
     phone_err = is_dummy_phone(phone)
     if phone_err:
         errors['phone'] = phone_err
+    else:
+        existing_phone = db.query(models.User).filter(models.User.phone_number == phone.strip()).first()
+        if existing_phone:
+            errors['phone'] = "This mobile number is already linked to another account."
 
-    # City/Address check
-    addr_err = is_dummy_address(city)
-    if addr_err:
-        errors['city'] = addr_err
+    # Operational Domain Check (Laguna Enforcement)
+    if not city or "Laguna" not in city:
+        errors['city'] = "Operational domain must be within the Laguna jurisdiction."
 
     if errors:
-        return {"success": False, "errors": errors, "message": "Please correct the errors below."}
+        return {"success": False, "errors": errors, "message": "Identity verification failed."}
+
 
     # Split full_name into first and last
     parts = full_name.strip().split(None, 1)
@@ -717,8 +792,15 @@ async def add_caterer(
         db.add(new_profile)
         db.commit()
 
-        # 5. Send welcome email in background; failures are logged and never block account creation
+        # 5. Send welcome email
         background_tasks.add_task(_send_caterer_welcome_email, email, temp_password, business_name)
+
+        # Real-time update
+        asyncio.create_task(manager.broadcast({
+            "type": "new_signup",
+            "role": "caterer",
+            "name": business_name
+        }))
 
         return {"success": True, "message": "Caterer account created! The credentials have been sent to their email."}
 
@@ -761,6 +843,14 @@ async def edit_customer(
         customer.address = address.strip()
 
     db.commit()
+    
+    # Real-time update
+    asyncio.create_task(manager.broadcast({
+        "type": "customer_update",
+        "customer_id": customer_id,
+        "action": "edit"
+    }))
+    
     return {"success": True, "message": "Customer details updated successfully."}
 
 @router.post("/customers/{customer_id}/status")
@@ -777,6 +867,15 @@ def toggle_customer_status(customer_id: int, db: Session = Depends(database.get_
         customer.is_verified = True
         
     db.commit()
+    
+    # Real-time update
+    asyncio.create_task(manager.broadcast({
+        "type": "customer_update",
+        "customer_id": customer_id,
+        "action": "status_toggle",
+        "status": customer.status
+    }))
+    
     return RedirectResponse(url="/admin/customers?success_msg=Customer+status+updated", status_code=status.HTTP_303_SEE_OTHER)
 
 @router.post("/customers/{customer_id}/delete")
@@ -799,6 +898,13 @@ def delete_customer(customer_id: int, db: Session = Depends(database.get_db), us
     # Finally delete the user
     db.delete(customer)
     db.commit()
+    
+    # Real-time update
+    asyncio.create_task(manager.broadcast({
+        "type": "user_archived",
+        "user_id": customer_id,
+        "role": "customer"
+    }))
     
     return RedirectResponse(url="/admin/customers?success_msg=Customer+deleted+successfully", status_code=status.HTTP_303_SEE_OTHER)
 

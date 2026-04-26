@@ -24,6 +24,11 @@
     {% block extra_css %}{% endblock %}
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v=1.1">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}">
+
+    <style>
+        /* Essential Inline Overrides */
+        .no-transition, .no-transition * { transition: none !important; }
+    </style>
 </head>
 
 <body class="no-transition">
@@ -200,7 +205,7 @@
                     console.warn("WebSocket: Max reconnection attempts reached.");
                     return;
                 }
-                
+
                 socket = new WebSocket(wsUrl);
 
                 socket.onopen = function () {
@@ -240,7 +245,7 @@
                     setTimeout(connectWebSocket, 3000 * Math.min(reconnectAttempts, 5));
                 };
 
-                socket.onerror = function(err) {
+                socket.onerror = function (err) {
                     console.error("WebSocket error:", err);
                 };
             }

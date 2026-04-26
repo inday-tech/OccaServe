@@ -197,3 +197,66 @@ class EmailService:
         OccaServe Compliance Department
         """
         return EmailService._send_email(email, subject, body)
+
+    @staticmethod
+    def send_payment_receipt(email: str, booking_id: int, amount: float, ref: str, pay_type: str = "Downpayment"):
+
+        subject = f"Official Receipt: Payment for Booking #{booking_id}"
+        body = f"Hello,\n\nWe have received your payment of ₱{amount:,.2f} ({pay_type}) for Booking #{booking_id}. Your reference number is {ref}.\n\nThank you for your payment."
+        
+        html_body = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                .receipt-container {{ font-family: 'Inter', sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }}
+                .receipt-header {{ background: #1e293b; color: white; padding: 30px; text-align: center; }}
+                .receipt-body {{ padding: 40px; color: #334155; }}
+                .amount-box {{ text-align: center; margin: 20px 0; padding: 20px; background: #f8fafc; border-radius: 8px; }}
+                .amount-val {{ font-size: 32px; font-weight: 800; color: #f97316; }}
+                .detail-row {{ display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }}
+                .detail-label {{ color: #64748b; font-weight: 500; }}
+                .detail-value {{ font-weight: 700; color: #1e293b; }}
+                .footer {{ padding: 20px; background: #f1f5f9; text-align: center; font-size: 12px; color: #94a3b8; }}
+            </style>
+        </head>
+        <body>
+            <div class="receipt-container">
+                <div class="receipt-header">
+                    <h2 style="margin:0;">Payment Confirmation</h2>
+                    <p style="opacity:0.8; margin: 5px 0 0 0;">Booking #{booking_id}</p>
+                </div>
+                <div class="receipt-body">
+                    <p>Hello,</p>
+                    <p>Your payment has been successfully processed and verified. Below are your transaction details:</p>
+                    
+                    <div class="amount-box">
+                        <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; margin-bottom: 8px;">Total Paid</div>
+                        <div class="amount-val">₱{amount:,.2f}</div>
+                    </div>
+
+                    <div class="detail-row">
+                        <span class="detail-label">Payment Type</span>
+                        <span class="detail-value">{pay_type.replace('_', ' ').title()}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Reference Number</span>
+                        <span class="detail-value">{ref}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Date Processed</span>
+                        <span class="detail-value">{datetime.now().strftime('%B %d, %Y')}</span>
+                    </div>
+
+                    <p style="margin-top: 30px; font-size: 14px;">You can view and download your full invoice by logging into your dashboard.</p>
+                </div>
+                <div class="footer">
+                    OccaServe Philippines - Your Premium Event Marketplace<br>
+                    This is an automated system-generated receipt.
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        return EmailService._send_email(email, subject, body, html_body)
+

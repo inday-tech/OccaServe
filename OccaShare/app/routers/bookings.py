@@ -632,7 +632,10 @@ async def step_payment_submit(
         return RedirectResponse(url=f"/bookings/success/{booking.id}", status_code=303)
 
     # Paymongo Integration (Keep it if configured)
+    from dotenv import load_dotenv
+    load_dotenv(override=True)
     paymongo_secret = os.getenv("PAYMONGO_SECRET_KEY")
+
     if paymongo_secret and not proof_url: # Only use Paymongo if no manual proof uploaded
         url = "https://api.paymongo.com/v1/links"
         amount_cents = int((booking.reservation_fee or 0) * 100)

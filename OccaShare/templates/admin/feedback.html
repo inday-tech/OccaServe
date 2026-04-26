@@ -4,16 +4,6 @@
 
 {% block extra_css %}
 <style>
-    :root {
-        --dm-primary: #f97316;
-        --dm-primary-light: #fff7ed;
-        --dm-secondary: #0f172a;
-        --dm-slate-50: #f8fafc;
-        --dm-slate-100: #f1f5f9;
-        --dm-slate-200: #e2e8f0;
-        --dm-slate-400: #94a3b8;
-        --dm-slate-600: #475569;
-    }
 
     /* Standard Layout Alignment - No Overlap */
     .main-content {
@@ -25,271 +15,209 @@
     .kpi-grid-clean {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 1.25rem;
-        margin-bottom: 2rem;
     }
 
     .kpi-card-clean {
         background: white;
-        padding: 1.25rem;
-        border-radius: 1rem;
+        padding: 1.25rem 1.5rem;
+        border-radius: 1.25rem;
         border: 1px solid var(--dm-slate-100);
         display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .kpi-icon-box {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
     }
 
     .kpi-card-clean .label {
-        font-size: 0.65rem;
-        font-weight: 700;
-        color: var(--dm-slate-400);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
     }
 
     .kpi-card-clean .value {
-        font-size: 1.75rem;
-        font-weight: 800;
-        color: var(--dm-secondary);
-    }
-
-    .kpi-card-clean.highlight .value {
-        color: var(--dm-primary);
+        margin-top: 2px;
+        display: block;
     }
 
     /* Feedback Feed */
     .feedback-feed {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+        gap: 1.25rem;
     }
 
     .feedback-item {
         background: white;
-        border-radius: 1rem;
+        border-radius: 1.25rem;
         border: 1px solid var(--dm-slate-100);
         padding: 1.25rem;
         display: flex;
-        align-items: flex-start;
-        gap: 1.25rem;
-        transition: transform 0.2s;
-        position: relative;
+        flex-direction: column;
+        gap: 1rem;
+        transition: all 0.2s;
     }
 
     .feedback-item:hover {
-        transform: translateX(5px);
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.03);
         border-color: var(--dm-primary-light);
     }
 
-    .feedback-item.featured {
-        border-left: 4px solid #f59e0b;
-        background: #fffdf9;
-    }
-
     .user-avatar {
-        width: 44px;
-        height: 44px;
-        border-radius: 12px;
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
         background: var(--dm-slate-100);
         color: var(--dm-slate-400);
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 700;
-        font-size: 1rem;
+        font-size: 0.9rem;
         flex-shrink: 0;
-    }
-
-    .content-box {
-        flex: 1;
-        min-width: 0;
     }
 
     .meta-row {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 0.5rem;
+        align-items: center;
     }
 
     .user-meta .name {
         font-weight: 700;
         color: var(--dm-secondary);
-        font-size: 0.9rem;
-        display: block;
+        font-size: 0.85rem;
     }
 
     .user-meta .role {
         font-size: 0.65rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        padding: 2px 8px;
-        border-radius: 4px;
-        margin-top: 4px;
-        display: inline-block;
+        font-weight: 700;
+        color: var(--dm-slate-400);
+        margin-left: 8px;
     }
 
-    .role-customer {
-        background: #eff6ff;
-        color: #3b82f6;
-    }
-
-    .role-caterer {
-        background: #f0fdf4;
-        color: #16a34a;
-    }
-
-    .rating-badge {
-        font-size: 0.85rem;
-        font-weight: 800;
+    .rating-stars {
         color: #f59e0b;
+        font-size: 0.75rem;
         display: flex;
-        align-items: center;
-        gap: 4px;
-        background: #fffbeb;
-        padding: 4px 10px;
-        border-radius: 8px;
-        border: 1px solid #fef3c7;
+        gap: 2px;
     }
 
     .comment-text {
-        font-size: 0.95rem;
+        font-size: 0.875rem;
         color: var(--dm-slate-600);
         line-height: 1.5;
         font-style: italic;
-        margin: 0.5rem 0;
+        margin: 0;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
     }
 
     .footer-row {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-top: 0.75rem;
-        padding-top: 0.75rem;
-        border-top: 1px dashed var(--dm-slate-100);
+        margin-top: auto;
+        padding-top: 1rem;
+        border-top: 1px solid var(--dm-slate-50);
     }
 
     .date-text {
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         color: var(--dm-slate-400);
         font-weight: 600;
     }
 
-    .btn-feature {
-        padding: 6px 12px;
-        border-radius: 8px;
-        border: 1.5px solid var(--dm-slate-100);
-        background: white;
-        color: var(--dm-slate-400);
-        font-size: 0.75rem;
-        font-weight: 700;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        transition: all 0.2s;
-    }
-
-    .btn-feature:hover {
-        border-color: var(--dm-primary);
-        color: var(--dm-primary);
-    }
-
-    .btn-feature.active {
-        background: #f59e0b;
-        border-color: #f59e0b;
-        color: white;
-    }
-
-    /* Featured Tag */
-    .featured-tag {
-        position: absolute;
-        top: -10px;
-        right: 1.25rem;
-        background: #f59e0b;
-        color: white;
-        font-size: 0.6rem;
+    .badge-visible {
+        font-size: 0.65rem;
         font-weight: 800;
-        padding: 2px 10px;
-        border-radius: 4px;
+        color: #10b981;
+        background: #ecfdf5;
+        padding: 4px 10px;
+        border-radius: 6px;
         text-transform: uppercase;
-        box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.2);
-    }
-
-    .empty-state {
-        text-align: center;
-        padding: 4rem 2rem;
-        color: var(--dm-slate-400);
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem;">
+<div class="page-header-clean">
     <div class="page-header">
-        <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--dm-secondary);">Platform Feedback</h1>
-        <p style="color: var(--dm-slate-400);">Public Sentiment & Testimonial Pipeline</p>
+        <h1>Platform Feedback</h1>
+        <p>Aggregate Customer & Partner Testimonials</p>
     </div>
 </div>
 
 <div class="kpi-grid-clean">
-    <div class="kpi-card-clean highlight">
-        <span class="label">Gross Submissions</span>
-        <span class="value">{{ total_count }}</span>
+    <div class="kpi-card-clean">
+        <div class="kpi-icon-box" style="background: #eff6ff; color: #3b82f6;"><i class="fas fa-comments"></i></div>
+        <div>
+            <span class="label">Total Records</span>
+            <span class="value">{{ total_count }}</span>
+        </div>
     </div>
     <div class="kpi-card-clean">
-        <span class="label">Elite Ratings (4-5★)</span>
-        <span class="value">{{ high_rated_count }}</span>
+        <div class="kpi-icon-box" style="background: #fffbeb; color: #f59e0b;"><i class="fas fa-star"></i></div>
+        <div>
+            <span class="label">Elite Ratings</span>
+            <span class="value">{{ high_rated_count }}</span>
+        </div>
     </div>
     <div class="kpi-card-clean">
-        <span class="label">System Average</span>
-        <span class="value">{{ avg_rating }} <i class="fas fa-star" style="font-size: 1rem; color: #f59e0b;"></i></span>
+        <div class="kpi-icon-box" style="background: #ecfdf5; color: #10b981;"><i class="fas fa-chart-line"></i></div>
+        <div>
+            <span class="label">Platform Avg</span>
+            <span class="value">{{ avg_rating }} <i class="fas fa-star" style="font-size: 0.9rem; color: #f59e0b;"></i></span>
+        </div>
     </div>
 </div>
 
 <div class="feedback-feed" id="feedbackList">
     {% for fb in feedbacks %}
-    <div class="feedback-item {{ 'featured' if fb.is_highlighted else '' }}">
-        <div class="user-avatar">
-            {% if fb.user and fb.user.profile_image_url %}
-            <img src="{{ fb.user.profile_image_url }}"
-                style="width: 100%; height: 100%; object-fit: cover; border-radius: inherit;">
-            {% else %}
-            {{ fb.user.first_name[0] if fb.user else 'U' }}
-            {% endif %}
+    <div class="feedback-item">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <div class="user-avatar">
+                {% if fb.user and fb.user.profile_image_url %}
+                <img src="{{ fb.user.profile_image_url }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: inherit;">
+                {% else %}
+                {{ fb.user.first_name[0] if fb.user else 'U' }}
+                {% endif %}
+            </div>
+            <div class="user-meta">
+                <span class="name">{{ fb.user.first_name if fb.user else 'System' }} {{ fb.user.last_name if fb.user else 'User' }}</span>
+                <span class="role">{{ 'Caterer Partner' if fb.role == 'caterer' else 'Customer' }}</span>
+            </div>
+            <div style="margin-left: auto;">
+                <div class="rating-stars">
+                    {% for i in range(fb.rating|int) %}<i class="fas fa-star"></i>{% endfor %}
+                    {% for i in range(5 - fb.rating|int) %}<i class="far fa-star"></i>{% endfor %}
+                </div>
+            </div>
         </div>
 
-        <div class="content-box">
-            <div class="meta-row">
-                <div class="user-meta">
-                    <span class="name">{{ fb.user.first_name if fb.user else 'Deleted' }} {{ fb.user.last_name if
-                        fb.user else 'User' }}</span>
-                    <span class="role {{ 'role-caterer' if fb.role == 'caterer' else 'role-customer' }}">
-                        {{ 'Caterer Partner' if fb.role == 'caterer' else 'Customer' }}
-                    </span>
-                </div>
-                <div class="rating-badge">
-                    {{ fb.rating }}.0 <i class="fas fa-star"></i>
-                </div>
-            </div>
+        <p class="comment-text">"{{ fb.comment }}"</p>
 
-            <p class="comment-text">"{{ fb.comment }}"</p>
-
-            <div class="footer-row">
-                <span class="date-text">
-                    <i class="far fa-calendar-alt"></i> {{ fb.created_at.strftime('%b %d, %Y') if fb.created_at else
-                    '---' }}
-                </span>
-                <div class="action-row">
-                    <span class="badge-clean" style="background: #ecfdf5; color: #10b981; font-size: 0.65rem;">
-                        <i class="fas fa-eye"></i> Publicly Visible
-                    </span>
-                </div>
-            </div>
+        <div class="footer-row">
+            <span class="date-text">
+                <i class="far fa-calendar-alt" style="margin-right: 4px;"></i> 
+                {{ fb.created_at.strftime('%b %d, %Y') if fb.created_at else '---' }}
+            </span>
+            <span class="badge-visible">
+                <i class="fas fa-eye" style="margin-right: 4px;"></i> Public
+            </span>
         </div>
     </div>
     {% else %}
-    <div class="empty-state">
+    <div class="empty-state" style="grid-column: 1 / -1;">
         <i class="fas fa-comments-slash" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
         <h3>No Feedback Captured</h3>
         <p>Verified participant reviews will appear here once submitted.</p>

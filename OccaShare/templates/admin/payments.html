@@ -5,13 +5,6 @@
 {% block extra_css %}
 <style>
     :root {
-        --dm-primary: #f97316;
-        --dm-primary-light: #fff7ed;
-        --dm-secondary: #0f172a;
-        --dm-slate-50: #f8fafc;
-        --dm-slate-100: #f1f5f9;
-        --dm-slate-400: #94a3b8;
-        --dm-slate-600: #475569;
         --dm-emerald-500: #10b981;
     }
 
@@ -21,18 +14,13 @@
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        margin-bottom: 2.5rem;
     }
 
     .terminal-header-clean h1 {
-        font-size: 1.75rem;
-        font-weight: 800;
-        color: var(--dm-secondary);
         margin: 0;
     }
 
     .terminal-header-clean p {
-        color: var(--dm-slate-400);
         margin-top: 4px;
     }
 
@@ -40,8 +28,6 @@
     .kpi-grid-clean {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 1.5rem;
-        margin-bottom: 2.5rem;
     }
 
     .kpi-card-clean {
@@ -61,17 +47,12 @@
     }
 
     .kpi-label {
-        font-size: 0.75rem;
-        font-weight: 700;
-        color: var(--dm-slate-400);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
     }
 
     .kpi-value {
         font-size: 1.75rem;
         font-weight: 800;
-        color: var(--dm-secondary);
     }
 
     .kpi-trend {
@@ -247,10 +228,11 @@
 </div>
 
 <div class="finance-terminal-card">
-    <div class="card-header-clean">
-        <h3><i class="fas fa-receipt"></i> Commission Transaction Ledger</h3>
-        <button class="btn-review" style="padding: 6px 12px; font-size: 0.75rem;" onclick="window.print()">
-            <i class="fas fa-file-export"></i> Export Ledger
+    <div class="card-header-clean" style="padding: 1.25rem 2rem; background: var(--dm-slate-50); border-bottom: 1px solid var(--dm-slate-100);">
+        <h3><i class="fas fa-receipt" style="color: var(--dm-primary);"></i> Financial Ledger</h3>
+        <button class="btn-save" style="padding: 0.6rem 1.25rem; font-size: 0.75rem; border-radius: 10px; display: flex; align-items: center; gap: 8px;" onclick="exportLedgerCSV()">
+            <i class="fas fa-file-csv" style="font-size: 1rem;"></i> 
+            <span>Download Financial Data</span>
         </button>
     </div>
     <div style="overflow-x: auto;">
@@ -321,5 +303,49 @@
             setTimeout(() => window.location.reload(), 1500);
         }
     });
+
+    function exportLedgerCSV() {
+        const rows = [
+            ["Transaction ID", "Date", "Customer", "Caterer", "Gross Amount (PHP)", "Commission (PHP)", "Net to Partner (PHP)", "Status"]
+        ];
+
+        const tableRows = document.querySelectorAll('.finance-table tbody tr');
+        if (tableRows.length === 0) {
+            alert("No data available to export.");
+            return;
+        }
+
+        tableRows.forEach(tr => {
+            const idCell = tr.querySelector('td:nth-child(1)');
+            const partiesCell = tr.querySelector('td:nth-child(2)');
+            
+            const id = idCell.querySelector('div:first-child').innerText.trim();
+            const date = idCell.querySelector('div:last-child').innerText.trim();
+            
+            // Handle multiline text in parties cell
+            const partiesText = partiesCell.querySelector('div').innerText.trim();
+            const partiesLines = partiesText.split('\n').map(l => l.trim());
+            const customer = partiesLines[0].replace(/^F:\s*/, '');
+            const caterer = partiesLines[1].replace(/^T:\s*/, '');
+
+            const gross = tr.querySelector('td:nth-child(3)').innerText.replace(/[^0-9.]/g, '');
+            const comm = tr.querySelector('td:nth-child(4)').innerText.replace(/[^0-9.]/g, '');
+            const net = tr.querySelector('td:nth-child(5)').innerText.replace(/[^0-9.]/g, '');
+            const status = tr.querySelector('td:nth-child(6)').innerText.trim();
+
+            rows.push([id, date, `"${customer}"`, `"${caterer}"`, gross, comm, net, status]);
+        });
+
+        const csvContent = "data:text/csv;charset=utf-8," 
+            + rows.map(e => e.join(",")).join("\n");
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `OccaServe_Finance_Ledger_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
 </script>
 {% endblock %}

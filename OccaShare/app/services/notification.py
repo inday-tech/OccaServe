@@ -164,12 +164,22 @@ class NotificationService:
         db.add(notif)
         db.commit()
 
-        # 2. SMS to Caterer
+        # 2. Email Receipt to Customer
+        EmailService.send_payment_receipt(
+            booking.user.email, 
+            booking.id, 
+            amount, 
+            booking.payment_reference or "N/A", 
+            payment_type
+        )
+
+        # 3. SMS to Caterer
         phone = caterer.contact_phone or user.phone_number
         if phone:
             sms_msg = f"OccaShare: {payment_type} of PhP{amount:,.2f} received for '{booking.event_name}'. Please verify proof in your dashboard."
             await NotificationService._send_sms(phone, sms_msg)
 
-        # 3. Real-time
+        # 4. Real-time
         await manager.broadcast_to_user(user.id, {"type": "dashboard_update", "message": "New payment received"})
+
 

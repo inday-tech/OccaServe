@@ -3,340 +3,19 @@
 {% block title %}Platform Overview - Admin Dashboard{% endblock %}
 
 {% block extra_css %}
-<style>
-    :root {
-        --dm-primary: #f97316;
-        --dm-primary-light: #fff7ed;
-        --dm-secondary: #0f172a;
-        --dm-slate-50: #f8fafc;
-        --dm-slate-100: #f1f5f9;
-        --dm-slate-200: #e2e8f0;
-        --dm-slate-400: #94a3b8;
-        --dm-slate-600: #475569;
-    }
-
-    /* Standard Layout Alignment */
-    .main-content {
-        background: var(--dm-slate-50) !important;
-        padding: 2rem 3rem !important;
-    }
-
-    /* Clean Header */
-    .dashboard-header-clean {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 2.5rem;
-    }
-
-    .dashboard-header-clean h1 {
-        font-size: 1.75rem;
-        font-weight: 800;
-        color: var(--dm-secondary);
-        margin: 0;
-    }
-
-    .dashboard-header-clean p {
-        color: var(--dm-slate-400);
-        margin-top: 4px;
-    }
-
-    .sync-status-clean {
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: var(--dm-slate-400);
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    /* KPI Grid Architecture */
-    .kpi-grid-clean {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 1.5rem;
-        margin-bottom: 2.5rem;
-    }
-
-    .kpi-card-clean {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 1.25rem;
-        border: 1px solid var(--dm-slate-100);
-        display: flex;
-        align-items: center;
-        gap: 1.25rem;
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
-
-    .kpi-card-clean:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.03);
-    }
-
-    .kpi-icon-box {
-        width: 54px;
-        height: 54px;
-        border-radius: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.25rem;
-    }
-
-    .kpi-info h4 {
-        font-size: 0.75rem;
-        font-weight: 700;
-        color: var(--dm-slate-400);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin: 0;
-    }
-
-    .kpi-info .kpi-value {
-        font-size: 1.5rem;
-        font-weight: 800;
-        color: var(--dm-secondary);
-        margin-top: 4px;
-        display: block;
-    }
-
-    /* Main Analytics Split */
-    .analytics-split-clean {
-        display: grid;
-        grid-template-columns: 1fr 380px;
-        gap: 1.5rem;
-        margin-bottom: 2.5rem;
-    }
-
-    .card-clean {
-        background: white;
-        border-radius: 1.25rem;
-        padding: 2rem;
-        border: 1px solid var(--dm-slate-100);
-    }
-
-    .card-title-clean {
-        font-size: 0.9rem;
-        font-weight: 700;
-        margin-bottom: 1.5rem;
-        color: var(--dm-secondary);
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    /* Side Analytics List */
-    .metric-list-clean {
-        display: flex;
-        flex-direction: column;
-        gap: 1.25rem;
-        margin-top: 2rem;
-    }
-
-    .metric-item-clean {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding-bottom: 0.75rem;
-        border-bottom: 1px solid var(--dm-slate-50);
-    }
-
-    .metric-item-clean:last-child {
-        border-bottom: none;
-    }
-
-    .metric-item-clean .m-label {
-        font-size: 0.8rem;
-        font-weight: 500;
-        color: var(--dm-slate-600);
-    }
-
-    .metric-item-clean .m-value {
-        font-size: 0.9rem;
-        font-weight: 700;
-        color: var(--dm-secondary);
-    }
-
-    /* Table & Actions */
-    .table-card-clean {
-        background: white;
-        border-radius: 1.25rem;
-        padding: 2rem;
-        border: 1px solid var(--dm-slate-100);
-    }
-
-    .clean-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .clean-table th {
-        text-align: left;
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: var(--dm-slate-400);
-        text-transform: uppercase;
-        padding: 1rem;
-        border-bottom: 1px solid var(--dm-slate-100);
-    }
-
-    .clean-table td {
-        padding: 1.25rem 1rem;
-        font-size: 0.9rem;
-        border-bottom: 1px solid var(--dm-slate-50);
-    }
-
-    .badge-clean {
-        padding: 4px 12px;
-        border-radius: 6px;
-        font-size: 0.7rem;
-        font-weight: 700;
-        background: #fffbeb;
-        color: #d97706;
-        text-transform: uppercase;
-    }
-
-    .btn-clean {
-        background: var(--dm-primary);
-        color: white;
-        padding: 8px 16px;
-        border-radius: 8px;
-        font-size: 0.8rem;
-        font-weight: 700;
-        text-decoration: none;
-        transition: opacity 0.2s;
-    }
-
-    /* MODAL SYSTEM (Standardized) */
-    .admin-modal-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(15, 23, 42, 0.4);
-        backdrop-filter: blur(8px);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 2000;
-        padding: 2rem;
-    }
-
-    .admin-modal-overlay.active {
-        display: flex;
-    }
-
-    .admin-modal-card {
-        background: white;
-        width: 100%;
-        max-width: 600px;
-        border-radius: 1.25rem;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-        overflow: hidden;
-        animation: modalSlide 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    @keyframes modalSlide {
-        from {
-            opacity: 0;
-            transform: translateY(20px) scale(0.98);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-        }
-    }
-
-    .modal-header-clean {
-        padding: 1.5rem 2rem;
-        background: var(--dm-slate-50);
-        border-bottom: 1px solid var(--dm-slate-100);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .modal-header-clean h3 {
-        margin: 0;
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: var(--dm-secondary);
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .modal-header-clean h3 i {
-        color: var(--dm-primary);
-    }
-
-    .modal-close-btn {
-        background: none;
-        border: none;
-        font-size: 1.5rem;
-        color: var(--dm-slate-400);
-        cursor: pointer;
-    }
-
-    .modal-body-clean {
-        padding: 2rem;
-    }
-
-    /* Pulse Live */
-    .pulse-live {
-        animation: pulse-live 2s infinite;
-    }
-
-    @keyframes pulse-live {
-        0% {
-            transform: scale(0.95);
-            opacity: 0.5;
-        }
-
-        50% {
-            transform: scale(1.1);
-            opacity: 1;
-        }
-
-        100% {
-            transform: scale(0.95);
-            opacity: 0.5;
-        }
-    }
-
-    @media (max-width: 1200px) {
-        .analytics-split-clean {
-            grid-template-columns: 1fr;
-        }
-
-        .kpi-grid-clean {
-            grid-template-columns: repeat(2, 1fr);
-        }
-    }
-
-    @media (max-width: 768px) {
-        .kpi-grid-clean {
-            grid-template-columns: 1fr;
-        }
-
-        .dashboard-header-clean {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 10px;
-        }
-
-        .admin-modal-card {
-            max-width: 100%;
-        }
-    }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}">
 {% endblock %}
 
+
+
 {% block content %}
-<div class="dashboard-header-clean">
+<div class="dashboard-header-clean" style="display: flex; justify-content: space-between; align-items: flex-start;">
     <div>
         <h1>Dashboard Intelligence</h1>
         <p>Holistic oversight of platform metrics, growth vectors, and operation health.</p>
+    </div>
+    <div id="sync-status" style="font-size: 0.7rem; font-weight: 700; color: var(--dm-slate-400); text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 8px; background: white; padding: 8px 16px; border-radius: 99px; border: 1px solid var(--dm-slate-100); box-shadow: var(--adm-shadow);">
+        <i class="fas fa-circle pulse-live" style="font-size: 8px; color: var(--dm-primary);"></i> Live Intelligence Link Active
     </div>
 </div>
 
@@ -378,10 +57,10 @@
 <div class="analytics-split-clean">
     <div class="card-clean" onclick="showRevenueDetails()" style="cursor: pointer;">
         <div class="card-title-clean">
-            <i class="fas fa-chart-line" style="color: var(--dm-primary);"></i>
+            <i class="fas fa-chart-line" style="color: var(--adm-primary);"></i>
             Financial Trends
         </div>
-        <div style="height: 350px; position: relative;">
+        <div class="chart-container-clean">
             <canvas id="revenueChart"></canvas>
         </div>
     </div>
@@ -410,7 +89,7 @@
 </div>
 
 <!-- Bottom Intelligence Split -->
-<div class="analytics-split-clean" style="grid-template-columns: 1fr 380px;">
+<div class="analytics-split-clean bottom-split">
     <!-- Verification Table -->
     <div class="table-card-clean">
         <div class="card-title-clean" style="justify-content: space-between;">
@@ -461,7 +140,7 @@
             <i class="fas fa-chart-pie" style="color: #10b981;"></i>
             Status Intelligence
         </div>
-        <div style="height: 180px; margin: 1rem 0; position: relative;">
+        <div class="chart-container-clean pie-chart">
             <canvas id="statusPieChart"></canvas>
         </div>
         <div class="metric-list-clean">
@@ -618,64 +297,72 @@
 
     function showRevenueDetails() {
         const data = currentDashboardData || { chart_data: {{ chart_data | tojson | safe }}, metrics: { platform_earnings: {{ metrics.platform_earnings }} } };
-    const body = document.getElementById('modalBody');
-    document.getElementById('modalTitle').innerHTML = '<i class="fas fa-vault"></i> Financial Audit';
+        const body = document.getElementById('modalBody');
+        document.getElementById('modalTitle').innerHTML = '<i class="fas fa-vault"></i> Financial Audit';
 
-    body.innerHTML = `
-        <div style="background: var(--dm-secondary); padding: 2.5rem; border-radius: 1.5rem; color: white; margin-bottom: 2rem; position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.2);">
-            <div style="position: absolute; top: -20px; right: -20px; font-size: 8rem; opacity: 0.05; transform: rotate(-15deg);"><i class="fas fa-coins"></i></div>
-            <div style="font-size: 0.75rem; text-transform: uppercase; opacity: 0.7; font-weight: 800; letter-spacing: 0.1em; margin-bottom: 0.5rem;">System Net Liquidation</div>
-            <div style="font-size: 2.75rem; font-weight: 800; font-family: 'Poppins', sans-serif;">₱${data.metrics.platform_earnings.toLocaleString()}</div>
-            <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
-                <span style="background: rgba(255,255,255,0.1); padding: 4px 12px; border-radius: 6px; font-size: 0.7rem; font-weight: 700;">Live Ledger</span>
-                <span style="background: rgba(255,255,255,0.1); padding: 4px 12px; border-radius: 6px; font-size: 0.7rem; font-weight: 700;">Admin Verified</span>
-            </div>
-        </div>
-        <div class="metric-list-clean" style="max-height: 300px; overflow-y: auto; padding-right: 10px;">
-            ${data.chart_data.months.map((m, i) => `
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 0; border-bottom: 1px solid var(--dm-slate-100);">
-                    <div style="display: flex; align-items: center; gap: 1rem;">
-                        <div style="width: 32px; height: 32px; border-radius: 8px; background: var(--dm-slate-50); color: var(--dm-slate-400); display: flex; align-items: center; justify-content: center; font-size: 0.75rem;"><i class="far fa-calendar"></i></div>
-                        <span style="font-weight: 700; color: var(--dm-secondary);">${m}</span>
-                    </div>
-                    <span style="font-weight: 800; color: var(--dm-primary); font-size: 1rem;">₱${data.chart_data.earnings[i].toLocaleString()}</span>
+        body.innerHTML = `
+            <div class="premium-stat-banner">
+                <div class="banner-icon-bg"><i class="fas fa-money-bill-trend-up"></i></div>
+                <div class="banner-label">Cumulative Platform Revenue</div>
+                <div class="banner-value">₱${data.metrics.platform_earnings.toLocaleString()}</div>
+                <div class="banner-badges">
+                    <span class="badge-live">● Live Ledger</span>
+                    <span class="badge-verified">● Admin Verified</span>
                 </div>
-            `).join('')}
-        </div>
-    `;
-    document.getElementById('analyticsModal').classList.add('active');
+            </div>
+
+            <div class="modal-section-title">Monthly Liquidation Breakdown</div>
+            <div class="modal-scroll-area">
+                ${data.chart_data.months.map((m, i) => `
+                    <div class="liquidation-item">
+                        <div class="item-meta">
+                            <div class="item-icon"><i class="far fa-calendar"></i></div>
+                            <div>
+                                <div class="item-name">${m}</div>
+                                <div class="item-sub">Net Monthly Commission</div>
+                            </div>
+                        </div>
+                        <span class="item-amount">₱${data.chart_data.earnings[i].toLocaleString()}</span>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        document.getElementById('analyticsModal').classList.add('active');
     }
 
     function showStatusDetails() {
-        const data = currentDashboardData || { completed_bookings_count: {{ completed_bookings_count }}, metrics: { booking_count: {{ metrics.booking_count }} } };
-    const body = document.getElementById('modalBody');
-    document.getElementById('modalTitle').innerHTML = '<i class="fas fa-chart-pie"></i> Operation Health';
+        const data = currentDashboardData || { completed_bookings_count: {{ completed_bookings_count }}, metrics: { booking_count: {{ metrics.booking_count }} }, pending_bookings_count: {{ pending_bookings_count }} };
+        const body = document.getElementById('modalBody');
+        document.getElementById('modalTitle').innerHTML = '<i class="fas fa-chart-pie"></i> Operation Health';
 
-    const rate = Math.round((data.completed_bookings_count / (data.metrics.booking_count || 1)) * 100);
-    body.innerHTML = `
-        <div style="text-align: center; padding: 3rem 1rem;">
-            <div style="position: relative; width: 140px; height: 140px; margin: 0 auto 2rem;">
-                <svg viewBox="0 0 36 36" style="width: 100%; height: 100%;">
-                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#f1f5f9" stroke-width="3" />
-                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--dm-primary)" stroke-width="3" stroke-dasharray="${rate}, 100" />
-                </svg>
-                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 2rem; font-weight: 800; color: var(--dm-secondary);">${rate}%</div>
-            </div>
-            <h4 style="margin: 0; font-weight: 800; color: var(--dm-secondary); text-transform: uppercase; letter-spacing: 0.1em;">Platform Success Matrix</h4>
-            <p style="color: var(--dm-slate-400); margin-top: 1rem; font-size: 0.95rem; line-height: 1.6;">Based on <b>${data.metrics.booking_count}</b> managed events across the OccaServe ecosystem.</p>
-            <div style="margin-top: 2rem; display: flex; justify-content: center; gap: 2rem;">
-                <div style="text-align: center;">
-                    <div style="font-size: 1.25rem; font-weight: 800; color: #10b981;">${data.completed_bookings_count}</div>
-                    <div style="font-size: 0.65rem; font-weight: 700; color: var(--dm-slate-400); text-transform: uppercase;">Successful</div>
+        const rate = Math.round((data.completed_bookings_count / (data.metrics.booking_count || 1)) * 100);
+        body.innerHTML = `
+            <div class="fulfillment-analysis">
+                <div class="fulfillment-chart-box">
+                    <svg viewBox="0 0 36 36" class="circular-chart">
+                        <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path class="circle" stroke-dasharray="${rate}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                    </svg>
+                    <div class="percentage">${rate}%</div>
                 </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 1.25rem; font-weight: 800; color: #f59e0b;">${data.pending_bookings_count}</div>
-                    <div style="font-size: 0.65rem; font-weight: 700; color: var(--dm-slate-400); text-transform: uppercase;">In Pipeline</div>
+                <h4 class="analysis-title">Platform Fulfillment Rate</h4>
+                <p class="analysis-desc">Aggregated success matrix based on <b>${data.metrics.booking_count}</b> managed events across the ecosystem.</p>
+                
+                <div class="analysis-grid">
+                    <div class="analysis-card success">
+                        <div class="card-label">Completed</div>
+                        <div class="card-value">${data.completed_bookings_count}</div>
+                        <div class="card-sub">Successfully Fulfilled</div>
+                    </div>
+                    <div class="analysis-card warning">
+                        <div class="card-label">In Pipeline</div>
+                        <div class="card-value">${data.pending_bookings_count}</div>
+                        <div class="card-sub">Awaiting Resolution</div>
+                    </div>
                 </div>
             </div>
-        </div>
-    `;
-    document.getElementById('analyticsModal').classList.add('active');
+        `;
+        document.getElementById('analyticsModal').classList.add('active');
     }
 
     function closeAnalyticsModal() { document.getElementById('analyticsModal').classList.remove('active'); }

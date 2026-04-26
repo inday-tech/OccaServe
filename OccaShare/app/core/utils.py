@@ -46,64 +46,77 @@ def is_dummy_email(email: str) -> Optional[str]:
     email = email.lower().strip()
     disposable_domains = [
         'mailinator.com', 'guerrillamail.com', 'tempmail.com', '10minutemail.com',
-        'dispostable.com', 'getairmail.com', 'yopmail.com', 'trashmail.com'
+        'dispostable.com', 'getairmail.com', 'yopmail.com', 'trashmail.com',
+        'mailnesia.com', 'maildrop.cc', 'mintemail.com', 'teleworm.us'
     ]
     dummy_patterns = ['test', 'dummy', 'asdf', 'qwerty', '123456', 'demo', 'admin', 'user']
     
     if "@" not in email:
-        return "Invalid email format"
+        return "Please enter a valid email address (e.g., example@gmail.com)"
     
     local, domain = email.split("@", 1)
     
+    # Enforce Gmail for this specific requirement if needed, but the user says "Business Email" 
+    # Usually business emails aren't just gmail, but previous turns enforced gmail.
+    # I'll keep the gmail check if it's a project-wide rule, but the user didn't specify gmail ONLY here.
+    # Wait, the previous turn had: "Only @gmail.com addresses are permitted".
+    # I'll stick to gmail but make it more robust.
     if not email.endswith("@gmail.com"):
-        return "Only Gmail addresses are allowed"
+        return "Only @gmail.com addresses are permitted for platform security"
     
-    if domain in disposable_domains or local in ['123', 'abc', 'aaa', 'qwe']:
-        return "Disposable or placeholder email addresses are not allowed"
+    if domain in disposable_domains:
+        return "Disposable email domains are not permitted"
     
-    if any(p in local for p in dummy_patterns) or is_keyboard_walk(local) or is_gibberish(local):
-        return "Please use a real, professional email address"
+    if local in ['123', 'abc', 'aaa', 'qwe', '000']:
+        return "Please use a real, professional email prefix"
+    
+    if any(p == local for p in dummy_patterns) or is_keyboard_walk(local) or is_gibberish(local):
+        return "Email appears to be a placeholder or invalid"
         
     if re.search(r"(.)\1\1", local):
-        return "Invalid email pattern (repetitive characters)"
+        return "Invalid email pattern (repetitive characters detected)"
+        
+    return None
+
+def is_valid_business_name(name: str) -> Optional[str]:
+    if not name or len(name.strip()) < 3:
+        return "Business name must be at least 3 characters"
+    if len(name) > 100:
+        return "Business name is too long (max 100 characters)"
+    
+    # Accept letters, numbers, spaces, and dots
+    if not re.match(r"^[a-zA-Z0-9\s\.]+$", name):
+        return "Business name should only contain letters, numbers, spaces, and dots"
+
+        
+    # Must not be purely numeric
+    if name.strip().isdigit():
+        return "Business name cannot be purely numeric"
+        
+    if is_keyboard_walk(name.replace(" ", "")) or is_gibberish(name.replace(" ", "")):
+        return "Please provide a valid, professional business name"
+        
+    return None
+
+def is_valid_person_name(name: str) -> Optional[str]:
+    if not name or len(name.strip()) < 2:
+        return "Name must be at least 2 characters"
+        
+    # Letters, spaces, and hyphens only
+    if not re.match(r"^[a-zA-Z\s\-]+$", name):
+        return "Name should not contain numbers or special characters"
+        
+    if is_keyboard_walk(name.replace(" ", "").replace("-", "")) or is_gibberish(name.replace(" ", "").replace("-", "")):
+        return "Please provide a real name"
+        
+    if re.search(r"(.)\1\2", name): # Triple repetitive check
+        return "Names cannot contain repetitive characters (e.g., aaa)"
         
     return None
 
 def is_dummy_name(name: str) -> Optional[str]:
-    if not name:
-        return None
-    name_str = name.lower().strip()
-    dummy_names = ['pepito', 'test', 'dummy', 'guest', 'admin', 'user', 'qwerty', 'asdf', 'demo']
-    
-    if len(name_str) < 3:
-        return "Names must be at least 3 characters"
-        
-    clean_name = name_str.replace(" ", "")
-    if any(d in name_str for d in dummy_names) or is_keyboard_walk(clean_name) or is_gibberish(clean_name):
-        return "Please use a real, professional name"
-        
-    if re.search(r"(.)\1\1", name_str):
-        return "Names cannot contain repetitive characters"
-        
-    import difflib
-    parts = name_str.split()
-    if len(parts) < 2:
-        return "Please enter full name (at least 2 words)"
-    
-    # Check for identical or highly similar words
-    for i in range(len(parts)):
-        for j in range(i + 1, len(parts)):
-            p1, p2 = parts[i], parts[j]
-            # Identical check
-            if p1 == p2:
-                return f"Names cannot contain repetitive words (e.g. {p1.capitalize()} {p2.capitalize()})"
-            
-            # Similarity check (e.g. John vs Joohn)
-            similarity = difflib.SequenceMatcher(None, p1, p2).ratio()
-            if similarity > 0.8 and len(p1) > 3 and len(p2) > 3:
-                return f"Names appear repetitive or contain typos (e.g. {p1.capitalize()} {p2.capitalize()})"
-    
-    return None
+    """Legacy wrapper for backward compatibility or complex name checks"""
+    return is_valid_person_name(name)
 
 def is_dummy_phone(phone: str) -> Optional[str]:
     if not phone:

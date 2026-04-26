@@ -25,8 +25,6 @@
     .kpi-grid-clean {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 1.5rem;
-        margin-bottom: 2.5rem;
     }
 
     .kpi-card-clean {
@@ -51,17 +49,10 @@
     }
 
     .kpi-info h4 {
-        font-size: 0.75rem;
-        font-weight: 700;
-        color: var(--dm-slate-400);
-        text-transform: uppercase;
         margin: 0;
     }
 
     .kpi-info .kpi-value {
-        font-size: 1.5rem;
-        font-weight: 800;
-        color: var(--dm-secondary);
         display: block;
     }
 
@@ -83,10 +74,6 @@
     }
 
     .terminal-header h3 {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: var(--dm-secondary);
-        margin: 0;
         display: flex;
         align-items: center;
         gap: 10px;
@@ -223,98 +210,101 @@
     }
 
     /* Thread Modal */
-    .modal-overlay {
+    .admin-modal-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(15, 23, 42, 0.6);
-        backdrop-filter: blur(4px);
+        background: rgba(15, 23, 42, 0.4);
+        backdrop-filter: blur(8px);
         display: none;
         align-items: center;
         justify-content: center;
         z-index: 2000;
         padding: 2rem;
     }
+    .admin-modal-overlay.active { display: flex; }
 
-    .modal-overlay.active {
-        display: flex;
-        animation: modalFade 0.3s ease;
-    }
-
-    .modal-card {
+    .admin-modal-card {
         background: white;
-        border-radius: 1.5rem;
         width: 100%;
         max-width: 650px;
+        border-radius: 1.5rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
         overflow: hidden;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        animation: modalSlide 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    @keyframes modalSlide {
+        from { opacity: 0; transform: translateY(20px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
-    .modal-header {
+    .modal-header-clean {
         padding: 1.5rem 2rem;
+        background: var(--dm-slate-50);
         border-bottom: 1px solid var(--dm-slate-100);
         display: flex;
         justify-content: space-between;
         align-items: center;
     }
 
-    .modal-body {
-        padding: 2rem;
-        max-height: 70vh;
+    .modal-body-clean {
+        padding: 1.5rem;
+        max-height: 60vh;
         overflow-y: auto;
-        background: var(--dm-slate-50);
+        background: white;
     }
 
-    .modal-footer {
-        padding: 1.5rem 2rem;
+    .chat-timeline {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .chat-bubble {
+        background: var(--dm-slate-50);
+        padding: 1rem 1.25rem;
+        border-radius: 14px;
+        border: 1px solid var(--dm-slate-100);
+        position: relative;
+        max-width: 90%;
+    }
+
+    .chat-bubble.visitor {
+        align-self: flex-start;
+        border-bottom-left-radius: 4px;
+    }
+
+    .chat-bubble .timestamp {
+        font-size: 0.6rem;
+        font-weight: 800;
+        color: var(--dm-slate-400);
+        text-transform: uppercase;
+        margin-bottom: 4px;
+        display: block;
+    }
+
+    .chat-bubble .content {
+        font-size: 0.9rem;
+        color: var(--dm-secondary);
+        line-height: 1.5;
+        font-weight: 500;
+    }
+
+    .modal-footer-clean {
+        padding: 1.25rem 2rem;
+        background: var(--dm-slate-50);
         border-top: 1px solid var(--dm-slate-100);
         display: flex;
         justify-content: flex-end;
         gap: 12px;
     }
-
-    .chat-bubble {
-        background: white;
-        padding: 1.25rem;
-        border-radius: 1rem;
-        border: 1px solid var(--dm-slate-100);
-        margin-bottom: 1rem;
-        position: relative;
-    }
-
-    .chat-bubble .timestamp {
-        font-size: 0.65rem;
-        font-weight: 700;
-        color: var(--dm-slate-400);
-        text-transform: uppercase;
-        margin-bottom: 8px;
-        display: block;
-    }
-
-    .chat-bubble .content {
-        font-size: 0.95rem;
-        color: var(--dm-secondary);
-        line-height: 1.6;
-    }
-
-    @keyframes modalFade {
-        from {
-            opacity: 0;
-            transform: scale(0.95);
-        }
-
-        to {
-            opacity: 1;
-            transform: scale(1);
-        }
-    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2.5rem;">
+<div class="page-header-clean">
     <div class="page-header">
-        <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--dm-secondary);">Visitor Inquiries</h1>
-        <p style="color: var(--dm-slate-400);">Engagement Monitoring & Communication Terminal</p>
+        <h1>Visitor Inquiries</h1>
+        <p>Engagement Monitoring & Communication Terminal</p>
     </div>
 </div>
 
@@ -424,25 +414,35 @@
 </div>
 
 <!-- Conversation Terminal Modal -->
-<div class="modal-overlay" id="threadModal">
-    <div class="modal-card">
-        <div class="modal-header">
+<div class="admin-modal-overlay" id="threadModal">
+    <div class="admin-modal-card">
+        <div class="modal-header-clean">
             <div>
-                <h3 id="modalName" style="font-size: 1.1rem; font-weight: 800; color: var(--dm-secondary); margin: 0;">-
-                </h3>
+                <h3 id="modalName" style="font-size: 1.1rem; font-weight: 800; color: var(--dm-secondary); margin: 0;">-</h3>
                 <p id="modalEmail" style="font-size: 0.8rem; color: var(--dm-slate-400); margin: 4px 0 0 0;">-</p>
             </div>
-            <button onclick="closeThread()"
-                style="background: none; border: none; font-size: 1.5rem; color: var(--dm-slate-400); cursor: pointer;">&times;</button>
+            <button onclick="closeThread()" class="modal-close-btn">&times;</button>
         </div>
-        <div class="modal-body" id="threadBody">
-            <!-- Messages injected here -->
+        <div class="modal-body-clean">
+            <div id="threadBody" class="chat-timeline">
+                <!-- Messages injected here -->
+            </div>
+
+            <div style="margin-top: 2rem; padding: 1rem; background: var(--dm-primary-light); border-radius: 12px; border: 1px solid rgba(249, 115, 22, 0.1);">
+                <div style="display: flex; gap: 12px; align-items: flex-start;">
+                    <i class="fas fa-info-circle" style="color: var(--dm-primary); margin-top: 2px;"></i>
+                    <div style="flex: 1;">
+                        <div style="font-size: 0.7rem; font-weight: 800; color: var(--dm-primary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Engagement Memo</div>
+                        <div style="font-size: 0.8rem; color: var(--dm-secondary); line-height: 1.4; font-weight: 500;">
+                            These inquiries originate from unauthenticated visitors. Direct communication via email is recommended for conversion.
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="modal-footer">
-            <button onclick="closeThread()"
-                style="padding: 0.8rem 1.5rem; border-radius: 12px; border: 1px solid var(--dm-slate-100); background: white; font-weight: 700; color: var(--dm-slate-600); cursor: pointer;">Dismiss</button>
-            <a id="replyBtn" href="#" class="btn-action"
-                style="width: auto; padding: 0.8rem 1.5rem; border-radius: 12px; background: var(--dm-primary); color: white; border: none; font-weight: 700;">
+        <div class="modal-footer-clean">
+            <button onclick="closeThread()" style="padding: 0.75rem 1.5rem; border-radius: 10px; border: none; background: var(--dm-slate-100); font-weight: 700; color: var(--dm-slate-600); cursor: pointer;">Dismiss</button>
+            <a id="replyBtn" href="#" class="btn-action" style="width: auto; height: auto; padding: 0.75rem 1.5rem; border-radius: 10px; background: var(--dm-primary); color: white; border: none; font-weight: 700;">
                 <i class="fas fa-paper-plane" style="margin-right: 8px;"></i> Reply via Email
             </a>
         </div>
@@ -480,12 +480,11 @@
         const body = document.getElementById('threadBody');
         body.innerHTML = '';
 
-        // Sort messages by date ascending for chat flow
         const messages = [...sender.messages].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
         messages.forEach(msg => {
             const div = document.createElement('div');
-            div.className = 'chat-bubble';
+            div.className = 'chat-bubble visitor';
             div.innerHTML = `
                 <span class="timestamp">${msg.created_at}</span>
                 <div class="content">${msg.message}</div>
@@ -497,9 +496,8 @@
         document.getElementById('threadModal').classList.add('active');
         document.body.style.overflow = 'hidden';
 
-        setTimeout(() => {
-            body.scrollTop = body.scrollHeight;
-        }, 100);
+        const modalBody = document.querySelector('.modal-body-clean');
+        setTimeout(() => { modalBody.scrollTop = modalBody.scrollHeight; }, 100);
     }
 
     function closeThread() {
