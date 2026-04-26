@@ -34,18 +34,15 @@ async def social_login(request: Request, provider: str):
     if provider != 'google':
         return RedirectResponse(url=f"/?auth_modal=login&error=invalid_provider")
 
-    # Construct redirect_uri using SITE_URL from config
-    # We prioritize the configured SITE_URL for callback safety
+    # Construct redirect_uri and FORCE https
     site_url = settings.SITE_URL.rstrip('/')
-    
-    # Force HTTPS on production
-    if not site_url.startswith("http"):
-        site_url = f"https://{site_url}"
-    elif "railway.app" in site_url and site_url.startswith("http:"):
+    if site_url.startswith("http:"):
         site_url = site_url.replace("http:", "https:")
+    elif not site_url.startswith("https:"):
+        site_url = f"https://{site_url}"
 
     redirect_uri = f"{site_url}/auth/callback/{provider}"
-    print(f"[OAUTH] Initiating {provider} login. Redirect URI: {redirect_uri}")
+    print(f"[OAUTH DEBUG] Sending Redirect URI to Google: {redirect_uri}")
     
     client = oauth.create_client(provider)
     if not client or not settings.GOOGLE_CLIENT_ID:
