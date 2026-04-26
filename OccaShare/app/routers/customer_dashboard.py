@@ -235,11 +235,23 @@ async def manage_booking(
     is_food_order = booking.package_id is None
     
     if is_food_order:
-        # Auto-fix for legacy bookings with 0 reservation fee
-        if (booking.reservation_fee is None or booking.reservation_fee == 0) and (booking.total_amount and booking.total_amount > 0):
-            booking.reservation_fee = booking.total_amount
-            db.commit()
-            db.refresh(booking)
+        # Auto-fix for legacy bookings with 0 reservation fee (ONLY if not CASH/COD)
+        is_cash = booking.payment_method in ["CASH", "COD"]
+        
+        if is_cash:
+            # UNDO: If it was incorrectly set to total_amount, reset to 0
+            if booking.reservation_fee != 0:
+                booking.reservation_fee = 0
+                if booking.status == 'pending_payment':
+                    booking.status = 'confirmed'
+                db.commit()
+                db.refresh(booking)
+        else:
+            # FIX: If it was missing but should be full amount (GCASH)
+            if (booking.reservation_fee is None or booking.reservation_fee == 0) and (booking.total_amount and booking.total_amount > 0):
+                booking.reservation_fee = booking.total_amount
+                db.commit()
+                db.refresh(booking)
 
         # 8-Step Food Order Flow
         if current_status in ["pending", "pending_quotation", "awaiting_caterer", "draft"]:

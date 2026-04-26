@@ -174,7 +174,7 @@ async def alacarte_checkout_submit(
         event_time_obj = datetime.strptime(delivery_time, "%H:%M").time()
         
         # New Payment Logic for Ala Carte:
-        if payment_method == "CASH":
+        if payment_method in ["CASH", "COD"]:
             reservation_fee = 0
             status = "confirmed"
         else:
