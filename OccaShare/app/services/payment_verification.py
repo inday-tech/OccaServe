@@ -30,16 +30,20 @@ class PaymentVerificationService:
         if not PYTESSERACT_AVAILABLE:
             print("[PaymentVerify] pytesseract not available. Payment OCR disabled.")
             return
-        # Configure Tesseract Path (following verification.py patterns)
-        TESSERACT_PATHS = [
-            r"C:\Program Files\Tesseract-OCR\tesseract.exe",
-            r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
-            os.path.join(os.environ.get("LOCALAPPDATA", ""), r"Programs\Tesseract-OCR\tesseract.exe")
-        ]
-        for path in TESSERACT_PATHS:
-            if os.path.exists(path):
-                pytesseract.pytesseract.tesseract_cmd = path
-                break
+        # Configure Tesseract Path
+        if os.name != "nt":  # Linux (Railway)
+            pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
+            print("[PaymentVerify DEBUG] Using Linux Tesseract path: /usr/bin/tesseract")
+        else:
+            TESSERACT_PATHS = [
+                r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+                r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+                os.path.join(os.environ.get("LOCALAPPDATA", ""), r"Programs\Tesseract-OCR\tesseract.exe")
+            ]
+            for path in TESSERACT_PATHS:
+                if os.path.exists(path):
+                    pytesseract.pytesseract.tesseract_cmd = path
+                    break
 
     def get_image_hash(self, file_path: str) -> str:
         """Generates a SHA-256 hash of the image file to detect exact duplicates."""

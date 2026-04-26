@@ -37,21 +37,25 @@ except ImportError:
     MEDIAPIPE_AVAILABLE = False
     mp = None
 
-# Configure Tesseract Path for Windows (only if available)
+# Configure Tesseract Path for Windows and Linux
 if PYTESSERACT_AVAILABLE:
-    TESSERACT_PATHS = [
-        r"C:\Program Files\Tesseract-OCR\tesseract.exe",
-        r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
-        os.path.join(os.environ.get("LOCALAPPDATA", ""), r"Programs\Tesseract-OCR\tesseract.exe")
-    ]
-
-    for path in TESSERACT_PATHS:
-        if os.path.exists(path):
-            pytesseract.pytesseract.tesseract_cmd = path
-            print(f"[KYC DEBUG] Tesseract found at: {path}")
-            break
+    if os.name != "nt":  # Linux (Railway)
+        pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
+        print("[KYC DEBUG] Using Linux Tesseract path: /usr/bin/tesseract")
     else:
-        print("[KYC DEBUG] Tesseract NOT found in common Windows paths. Using system default.")
+        TESSERACT_PATHS = [
+            r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+            r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+            os.path.join(os.environ.get("LOCALAPPDATA", ""), r"Programs\Tesseract-OCR\tesseract.exe")
+        ]
+
+        for path in TESSERACT_PATHS:
+            if os.path.exists(path):
+                pytesseract.pytesseract.tesseract_cmd = path
+                print(f"[KYC DEBUG] Tesseract found at: {path}")
+                break
+        else:
+            print("[KYC DEBUG] Tesseract NOT found in common Windows paths. Using system default.")
 
 class VerificationService:
     # ID Patterns (Regular Expressions)
