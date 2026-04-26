@@ -386,12 +386,82 @@
         </div>
     </div>
 
+    <div class="card-clean">
+        <div class="card-title-clean" style="justify-content: space-between;">
+            <span><i class="fas fa-bell" style="color: var(--dm-primary);"></i> Recent Activity</span>
+            <a href="/admin/notifications" style="font-size: 0.75rem; color: var(--dm-primary); text-decoration: none; font-weight: 700;">View All</a>
+        </div>
+        <div class="metric-list-clean" id="recentNotifList">
+            {% if recent_notifications %}
+                {% for n in recent_notifications %}
+                <div class="metric-item-clean" style="align-items: flex-start; gap: 12px; cursor: pointer;" onclick="window.location.href='/admin/notifications'">
+                    <div style="width: 8px; height: 8px; border-radius: 50%; background: {{ '#f97316' if not n.is_read else '#e2e8f0' }}; margin-top: 5px; flex-shrink: 0;"></div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-size: 0.85rem; font-weight: 700; color: var(--dm-secondary); margin-bottom: 2px;">{{ n.title }}</div>
+                        <div style="font-size: 0.75rem; color: var(--dm-slate-400); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ n.message }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p style="text-align: center; color: var(--dm-slate-400); font-size: 0.85rem; margin-top: 2rem;">No recent activity recorded.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Bottom Intelligence Split -->
+<div class="analytics-split-clean" style="grid-template-columns: 1fr 380px;">
+    <!-- Verification Table -->
+    <div class="table-card-clean">
+        <div class="card-title-clean" style="justify-content: space-between;">
+            <span><i class="fas fa-shield-halved" style="color: #d97706;"></i> Compliance Queue</span>
+            <a href="/admin/caterers"
+                style="font-size: 0.75rem; color: var(--dm-primary); text-decoration: none; font-weight: 700;">Full
+                Directory</a>
+        </div>
+        <div style="overflow-x: auto;">
+            <table class="clean-table">
+                <thead>
+                    <tr>
+                        <th>Service Partner</th>
+                        <th>Region</th>
+                        <th>Status</th>
+                        <th style="text-align: right;">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="pending-caterers-tbody">
+                    {% if pending_caterers %}
+                    {% for c in pending_caterers %}
+                    <tr>
+                        <td style="font-weight: 700; color: var(--dm-secondary);">{{ c.business_name }}</td>
+                        <td style="color: var(--dm-slate-600);">{{ c.city }}</td>
+                        <td><span class="badge-clean">Awaiting Audit</span></td>
+                        <td style="text-align: right;">
+                            <a href="/admin/verify/{{ c.user_id }}" class="btn-clean">Start Audit</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; padding: 3rem; color: var(--dm-slate-400);">
+                            <i class="fas fa-check-circle"
+                                style="font-size: 1.5rem; color: #10b981; margin-bottom: 1rem; display: block;"></i>
+                            Compliance queue is clear.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Status Pie -->
     <div class="card-clean" onclick="showStatusDetails()" style="cursor: pointer;">
         <div class="card-title-clean">
             <i class="fas fa-chart-pie" style="color: #10b981;"></i>
             Status Intelligence
         </div>
-        <div style="height: 200px; margin: 1rem 0; position: relative;">
+        <div style="height: 180px; margin: 1rem 0; position: relative;">
             <canvas id="statusPieChart"></canvas>
         </div>
         <div class="metric-list-clean">
@@ -403,55 +473,7 @@
                 <span class="m-label">Pending</span>
                 <span class="m-value" id="stat-pending">{{ pending_bookings_count }}</span>
             </div>
-            <div class="metric-item-clean">
-                <span class="m-label">Total Volume</span>
-                <span class="m-value" id="chart-total-bookings-val">{{ metrics.booking_count }}</span>
-            </div>
         </div>
-    </div>
-</div>
-
-<!-- Verification Table -->
-<div class="table-card-clean">
-    <div class="card-title-clean" style="justify-content: space-between;">
-        <span><i class="fas fa-shield-halved" style="color: #d97706;"></i> Compliance Queue</span>
-        <a href="/admin/caterers"
-            style="font-size: 0.75rem; color: var(--dm-primary); text-decoration: none; font-weight: 700;">Full
-            Directory</a>
-    </div>
-    <div style="overflow-x: auto;">
-        <table class="clean-table">
-            <thead>
-                <tr>
-                    <th>Service Partner</th>
-                    <th>Region</th>
-                    <th>Status</th>
-                    <th style="text-align: right;">Action</th>
-                </tr>
-            </thead>
-            <tbody id="pending-caterers-tbody">
-                {% if pending_caterers %}
-                {% for c in pending_caterers %}
-                <tr>
-                    <td style="font-weight: 700; color: var(--dm-secondary);">{{ c.business_name }}</td>
-                    <td style="color: var(--dm-slate-600);">{{ c.city }}</td>
-                    <td><span class="badge-clean">Awaiting Audit</span></td>
-                    <td style="text-align: right;">
-                        <a href="/admin/verify/{{ c.user_id }}" class="btn-clean">Start Audit</a>
-                    </td>
-                </tr>
-                {% endfor %}
-                {% else %}
-                <tr>
-                    <td colspan="4" style="text-align: center; padding: 3rem; color: var(--dm-slate-400);">
-                        <i class="fas fa-check-circle"
-                            style="font-size: 1.5rem; color: #10b981; margin-bottom: 1rem; display: block;"></i>
-                        Compliance queue is clear.
-                    </td>
-                </tr>
-                {% endif %}
-            </tbody>
-        </table>
     </div>
 </div>
 
@@ -600,17 +622,27 @@
     document.getElementById('modalTitle').innerHTML = '<i class="fas fa-vault"></i> Financial Audit';
 
     body.innerHTML = `
-            <div style="background: var(--dm-secondary); padding: 2rem; border-radius: 1.25rem; color: white; margin-bottom: 2rem;">
-                <div style="font-size: 0.7rem; text-transform: uppercase; opacity: 0.6; font-weight: 800;">Total Platform Net</div>
-                <div style="font-size: 2.25rem; font-weight: 800;">₱${data.metrics.platform_earnings.toLocaleString()}</div>
+        <div style="background: var(--dm-secondary); padding: 2.5rem; border-radius: 1.5rem; color: white; margin-bottom: 2rem; position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.2);">
+            <div style="position: absolute; top: -20px; right: -20px; font-size: 8rem; opacity: 0.05; transform: rotate(-15deg);"><i class="fas fa-coins"></i></div>
+            <div style="font-size: 0.75rem; text-transform: uppercase; opacity: 0.7; font-weight: 800; letter-spacing: 0.1em; margin-bottom: 0.5rem;">System Net Liquidation</div>
+            <div style="font-size: 2.75rem; font-weight: 800; font-family: 'Poppins', sans-serif;">₱${data.metrics.platform_earnings.toLocaleString()}</div>
+            <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
+                <span style="background: rgba(255,255,255,0.1); padding: 4px 12px; border-radius: 6px; font-size: 0.7rem; font-weight: 700;">Live Ledger</span>
+                <span style="background: rgba(255,255,255,0.1); padding: 4px 12px; border-radius: 6px; font-size: 0.7rem; font-weight: 700;">Admin Verified</span>
             </div>
+        </div>
+        <div class="metric-list-clean" style="max-height: 300px; overflow-y: auto; padding-right: 10px;">
             ${data.chart_data.months.map((m, i) => `
-                <div style="display: flex; justify-content: space-between; padding: 1rem 0; border-bottom: 1px solid var(--dm-slate-100);">
-                    <span style="font-weight: 700;">${m}</span>
-                    <span style="font-weight: 800; color: var(--dm-primary);">₱${data.chart_data.earnings[i].toLocaleString()}</span>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 0; border-bottom: 1px solid var(--dm-slate-100);">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div style="width: 32px; height: 32px; border-radius: 8px; background: var(--dm-slate-50); color: var(--dm-slate-400); display: flex; align-items: center; justify-content: center; font-size: 0.75rem;"><i class="far fa-calendar"></i></div>
+                        <span style="font-weight: 700; color: var(--dm-secondary);">${m}</span>
+                    </div>
+                    <span style="font-weight: 800; color: var(--dm-primary); font-size: 1rem;">₱${data.chart_data.earnings[i].toLocaleString()}</span>
                 </div>
             `).join('')}
-        `;
+        </div>
+    `;
     document.getElementById('analyticsModal').classList.add('active');
     }
 
@@ -621,12 +653,28 @@
 
     const rate = Math.round((data.completed_bookings_count / (data.metrics.booking_count || 1)) * 100);
     body.innerHTML = `
-            <div style="text-align: center; padding: 2rem;">
-                <div style="font-size: 4rem; font-weight: 800; color: var(--dm-primary);">${rate}%</div>
-                <div style="font-weight: 700; color: var(--dm-secondary); text-transform: uppercase;">Platform Success Rate</div>
-                <p style="color: var(--dm-slate-400); margin-top: 1rem;">Based on ${data.metrics.booking_count} managed events across the ecosystem.</p>
+        <div style="text-align: center; padding: 3rem 1rem;">
+            <div style="position: relative; width: 140px; height: 140px; margin: 0 auto 2rem;">
+                <svg viewBox="0 0 36 36" style="width: 100%; height: 100%;">
+                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#f1f5f9" stroke-width="3" />
+                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--dm-primary)" stroke-width="3" stroke-dasharray="${rate}, 100" />
+                </svg>
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 2rem; font-weight: 800; color: var(--dm-secondary);">${rate}%</div>
             </div>
-        `;
+            <h4 style="margin: 0; font-weight: 800; color: var(--dm-secondary); text-transform: uppercase; letter-spacing: 0.1em;">Platform Success Matrix</h4>
+            <p style="color: var(--dm-slate-400); margin-top: 1rem; font-size: 0.95rem; line-height: 1.6;">Based on <b>${data.metrics.booking_count}</b> managed events across the OccaServe ecosystem.</p>
+            <div style="margin-top: 2rem; display: flex; justify-content: center; gap: 2rem;">
+                <div style="text-align: center;">
+                    <div style="font-size: 1.25rem; font-weight: 800; color: #10b981;">${data.completed_bookings_count}</div>
+                    <div style="font-size: 0.65rem; font-weight: 700; color: var(--dm-slate-400); text-transform: uppercase;">Successful</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 1.25rem; font-weight: 800; color: #f59e0b;">${data.pending_bookings_count}</div>
+                    <div style="font-size: 0.65rem; font-weight: 700; color: var(--dm-slate-400); text-transform: uppercase;">In Pipeline</div>
+                </div>
+            </div>
+        </div>
+    `;
     document.getElementById('analyticsModal').classList.add('active');
     }
 

@@ -25,11 +25,9 @@ async def read_root(request: Request, db: Session = Depends(database.get_db)):
     packages = db.query(models.CateringPackage).filter(models.CateringPackage.is_active == True).limit(3).all()
     caterers = db.query(models.CatererProfile).order_by(models.CatererProfile.rating.desc()).limit(5).all()
 
-    # Pull highlighted Platform Feedback (testimonials about OccaServe itself)
     highlighted_reviews = db.query(models.PlatformFeedback).filter(
-        models.PlatformFeedback.is_highlighted == True,
         models.PlatformFeedback.is_archived == False
-    ).order_by(models.PlatformFeedback.created_at.desc()).limit(6).all()
+    ).order_by(models.PlatformFeedback.created_at.desc()).limit(15).all()
 
     # Fallback: show highly-rated caterer reviews if no platform feedback is featured yet
     if not highlighted_reviews:

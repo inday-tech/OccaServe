@@ -1,324 +1,298 @@
 {% extends "admin/layout.html" %}
 
-{% block title %}Platform Feedback - Admin Dashboard{% endblock %}
+{% block title %}Platform Feedback Terminal - OccaServe Admin{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/reviews.css') }}?v=2.0">
 <style>
-    .feedback-stat-grid {
+    :root {
+        --dm-primary: #f97316;
+        --dm-primary-light: #fff7ed;
+        --dm-secondary: #0f172a;
+        --dm-slate-50: #f8fafc;
+        --dm-slate-100: #f1f5f9;
+        --dm-slate-200: #e2e8f0;
+        --dm-slate-400: #94a3b8;
+        --dm-slate-600: #475569;
+    }
+
+    /* Standard Layout Alignment - No Overlap */
+    .main-content {
+        background: var(--dm-slate-50) !important;
+        padding: 2rem 3rem !important;
+    }
+
+    /* KPI Stats Architecture */
+    .kpi-grid-clean {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        grid-template-columns: repeat(3, 1fr);
         gap: 1.25rem;
         margin-bottom: 2rem;
     }
 
-    .feedback-stat-card {
+    .kpi-card-clean {
         background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 16px;
-        padding: 1.5rem;
+        padding: 1.25rem;
+        border-radius: 1rem;
+        border: 1px solid var(--dm-slate-100);
         display: flex;
         flex-direction: column;
-        gap: 0.4rem;
+        gap: 0.25rem;
     }
 
-    .feedback-stat-card .label {
-        font-size: 0.72rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: #94a3b8;
-        font-weight: 600;
-    }
-
-    .feedback-stat-card .value {
-        font-size: 2rem;
-        font-weight: 800;
-        color: #0f172a;
-    }
-
-    .feedback-stat-card.highlight .value {
-        color: var(--primary-color, #FF7B54);
-    }
-
-    .feedback-list {
-        display: flex;
-        flex-direction: column;
-        gap: 1.25rem;
-    }
-
-    .feedback-card {
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 16px;
-        padding: 1.5rem 1.75rem;
-        position: relative;
-        transition: box-shadow 0.2s;
-    }
-
-    .feedback-card:hover {
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
-    }
-
-    .feedback-card.is-featured {
-        border-color: #f59e0b;
-        background: #fffdf4;
-    }
-
-    .featured-badge {
-        position: absolute;
-        top: -10px;
-        right: 18px;
-        background: #f59e0b;
-        color: white;
-        font-size: 0.7rem;
+    .kpi-card-clean .label {
+        font-size: 0.65rem;
         font-weight: 700;
-        padding: 4px 12px;
-        border-radius: 6px;
-        letter-spacing: 0.04em;
-        box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
+        color: var(--dm-slate-400);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
     }
 
-    .feedback-header {
+    .kpi-card-clean .value {
+        font-size: 1.75rem;
+        font-weight: 800;
+        color: var(--dm-secondary);
+    }
+
+    .kpi-card-clean.highlight .value {
+        color: var(--dm-primary);
+    }
+
+    /* Feedback Feed */
+    .feedback-feed {
         display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
+        flex-direction: column;
         gap: 1rem;
-        margin-bottom: 1rem;
     }
 
-    .feedback-user-info {
+    .feedback-item {
+        background: white;
+        border-radius: 1rem;
+        border: 1px solid var(--dm-slate-100);
+        padding: 1.25rem;
         display: flex;
-        align-items: center;
-        gap: 0.85rem;
+        align-items: flex-start;
+        gap: 1.25rem;
+        transition: transform 0.2s;
+        position: relative;
     }
 
-    .feedback-avatar {
+    .feedback-item:hover {
+        transform: translateX(5px);
+        border-color: var(--dm-primary-light);
+    }
+
+    .feedback-item.featured {
+        border-left: 4px solid #f59e0b;
+        background: #fffdf9;
+    }
+
+    .user-avatar {
         width: 44px;
         height: 44px;
-        border-radius: 50%;
-        object-fit: cover;
-        background: #f1f5f9;
+        border-radius: 12px;
+        background: var(--dm-slate-100);
+        color: var(--dm-slate-400);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1rem;
         flex-shrink: 0;
     }
 
-    .feedback-user-text h4 {
-        font-size: 0.95rem;
-        font-weight: 700;
-        color: #0f172a;
-        margin: 0;
+    .content-box {
+        flex: 1;
+        min-width: 0;
     }
 
-    .feedback-user-text span {
-        font-size: 0.78rem;
-        color: #64748b;
+    .meta-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.5rem;
     }
 
-    .feedback-role-badge {
-        font-size: 0.68rem;
+    .user-meta .name {
         font-weight: 700;
-        padding: 3px 8px;
-        border-radius: 5px;
-        margin-top: 3px;
+        color: var(--dm-secondary);
+        font-size: 0.9rem;
+        display: block;
+    }
+
+    .user-meta .role {
+        font-size: 0.65rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        padding: 2px 8px;
+        border-radius: 4px;
+        margin-top: 4px;
         display: inline-block;
     }
 
     .role-customer {
-        background: #dbeafe;
-        color: #1d4ed8;
+        background: #eff6ff;
+        color: #3b82f6;
     }
 
     .role-caterer {
-        background: #dcfce7;
-        color: #15803d;
+        background: #f0fdf4;
+        color: #16a34a;
     }
 
-    .feedback-rating {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 0.9rem;
-        font-weight: 700;
+    .rating-badge {
+        font-size: 0.85rem;
+        font-weight: 800;
         color: #f59e0b;
+        display: flex;
+        align-items: center;
+        gap: 4px;
         background: #fffbeb;
-        border: 1px solid #fde68a;
-        padding: 0.4rem 0.9rem;
+        padding: 4px 10px;
         border-radius: 8px;
+        border: 1px solid #fef3c7;
     }
 
-    .feedback-comment {
-        font-size: 0.97rem;
-        line-height: 1.7;
-        color: #334155;
+    .comment-text {
+        font-size: 0.95rem;
+        color: var(--dm-slate-600);
+        line-height: 1.5;
         font-style: italic;
-        margin: 0.5rem 0 1.25rem 0;
+        margin: 0.5rem 0;
     }
 
-    .feedback-footer {
+    .footer-row {
         display: flex;
-        align-items: center;
         justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-        border-top: 1px dashed #e2e8f0;
-        padding-top: 1rem;
-    }
-
-    .feedback-date {
-        font-size: 0.78rem;
-        color: #94a3b8;
-    }
-
-    .feedback-actions {
-        display: flex;
-        gap: 0.6rem;
         align-items: center;
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px dashed var(--dm-slate-100);
     }
 
-    .btn-feedback-action {
-        width: 36px;
-        height: 36px;
-        border-radius: 10px;
-        border: 1.5px solid #e2e8f0;
+    .date-text {
+        font-size: 0.75rem;
+        color: var(--dm-slate-400);
+        font-weight: 600;
+    }
+
+    .btn-feature {
+        padding: 6px 12px;
+        border-radius: 8px;
+        border: 1.5px solid var(--dm-slate-100);
         background: white;
+        color: var(--dm-slate-400);
+        font-size: 0.75rem;
+        font-weight: 700;
         cursor: pointer;
         display: flex;
         align-items: center;
-        justify-content: center;
-        font-size: 0.85rem;
-        color: #64748b;
+        gap: 6px;
         transition: all 0.2s;
     }
 
-    .btn-feedback-action:hover {
-        border-color: #cbd5e1;
-        background: #f8fafc;
+    .btn-feature:hover {
+        border-color: var(--dm-primary);
+        color: var(--dm-primary);
     }
 
-    .btn-feedback-action.active {
+    .btn-feature.active {
         background: #f59e0b;
         border-color: #f59e0b;
         color: white;
     }
 
-    .btn-feedback-action.danger:hover {
-        background: #fef2f2;
-        border-color: #fca5a5;
-        color: #ef4444;
+    /* Featured Tag */
+    .featured-tag {
+        position: absolute;
+        top: -10px;
+        right: 1.25rem;
+        background: #f59e0b;
+        color: white;
+        font-size: 0.6rem;
+        font-weight: 800;
+        padding: 2px 10px;
+        border-radius: 4px;
+        text-transform: uppercase;
+        box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.2);
     }
 
-    .empty-feedback {
+    .empty-state {
         text-align: center;
-        padding: 5rem 2rem;
-        background: white;
-        border-radius: 16px;
-        border: 1px solid #e2e8f0;
-    }
-
-    .empty-feedback i {
-        font-size: 3rem;
-        color: #cbd5e1;
-        display: block;
-        margin-bottom: 1rem;
-    }
-
-    .empty-feedback h3 {
-        color: #475569;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-    }
-
-    .empty-feedback p {
-        color: #94a3b8;
-    }
-
-    .stars {
-        color: #f59e0b;
-        font-size: 0.85rem;
+        padding: 4rem 2rem;
+        color: var(--dm-slate-400);
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>Platform Feedback</h1>
-    <p>Manage testimonials from users and caterers about their experience with OccaServe. Featured feedback appears on
-        the homepage.</p>
+<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem;">
+    <div class="page-header">
+        <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--dm-secondary);">Platform Feedback</h1>
+        <p style="color: var(--dm-slate-400);">Public Sentiment & Testimonial Pipeline</p>
+    </div>
 </div>
 
-<div class="feedback-stat-grid">
-    <div class="feedback-stat-card highlight">
-        <span class="label">Total Submissions</span>
+<div class="kpi-grid-clean">
+    <div class="kpi-card-clean highlight">
+        <span class="label">Gross Submissions</span>
         <span class="value">{{ total_count }}</span>
     </div>
-    <div class="feedback-stat-card">
-        <span class="label">High Rated (4–5 ★)</span>
+    <div class="kpi-card-clean">
+        <span class="label">Elite Ratings (4-5★)</span>
         <span class="value">{{ high_rated_count }}</span>
     </div>
-    <div class="feedback-stat-card">
-        <span class="label">Featured on Site</span>
-        <span class="value">{{ highlighted_count }}</span>
-    </div>
-    <div class="feedback-stat-card">
-        <span class="label">Avg. Rating</span>
-        <span class="value">{{ avg_rating }} ★</span>
+    <div class="kpi-card-clean">
+        <span class="label">System Average</span>
+        <span class="value">{{ avg_rating }} <i class="fas fa-star" style="font-size: 1rem; color: #f59e0b;"></i></span>
     </div>
 </div>
 
-<div class="feedback-list" id="feedbackList">
+<div class="feedback-feed" id="feedbackList">
     {% for fb in feedbacks %}
-    <div class="feedback-card {{ 'is-featured' if fb.is_highlighted else '' }}">
-        {% if fb.is_highlighted %}
-        <div class="featured-badge"><i class="fas fa-star"></i> Featured on Site</div>
-        {% endif %}
+    <div class="feedback-item {{ 'featured' if fb.is_highlighted else '' }}">
+        <div class="user-avatar">
+            {% if fb.user and fb.user.profile_image_url %}
+            <img src="{{ fb.user.profile_image_url }}"
+                style="width: 100%; height: 100%; object-fit: cover; border-radius: inherit;">
+            {% else %}
+            {{ fb.user.first_name[0] if fb.user else 'U' }}
+            {% endif %}
+        </div>
 
-        <div class="feedback-header">
-            <div class="feedback-user-info">
-                <img src="{{ fb.user.profile_image_url if (fb.user and fb.user.profile_image_url) else url_for('static', path='/images/default-avatar.png') }}"
-                    class="feedback-avatar" alt="User">
-                <div class="feedback-user-text">
-                    <h4>{{ fb.user.first_name if fb.user else 'Deleted' }} {{ fb.user.last_name if fb.user else 'User'
-                        }}</h4>
-                    <span>{{ fb.user.email if fb.user else 'N/A' }}</span>
-                    <span class="feedback-role-badge {{ 'role-caterer' if fb.role == 'caterer' else 'role-customer' }}">
+        <div class="content-box">
+            <div class="meta-row">
+                <div class="user-meta">
+                    <span class="name">{{ fb.user.first_name if fb.user else 'Deleted' }} {{ fb.user.last_name if
+                        fb.user else 'User' }}</span>
+                    <span class="role {{ 'role-caterer' if fb.role == 'caterer' else 'role-customer' }}">
                         {{ 'Caterer Partner' if fb.role == 'caterer' else 'Customer' }}
                     </span>
                 </div>
+                <div class="rating-badge">
+                    {{ fb.rating }}.0 <i class="fas fa-star"></i>
+                </div>
             </div>
-            <div class="feedback-rating">
-                <i class="fas fa-star"></i>
-                {{ fb.rating }}.0
-            </div>
-        </div>
 
-        <p class="feedback-comment">"{{ fb.comment }}"</p>
+            <p class="comment-text">"{{ fb.comment }}"</p>
 
-        <div class="feedback-footer">
-            <span class="feedback-date">
-                <i class="fas fa-clock" style="margin-right: 4px;"></i>
-                {{ fb.created_at.strftime('%b %d, %Y') if fb.created_at else 'Unknown date' }}
-            </span>
-            <div class="feedback-actions">
-                <form action="/admin/feedback/{{ fb.id }}/highlight" method="POST" style="display: contents;">
-                    <button type="submit" class="btn-feedback-action {{ 'active' if fb.is_highlighted else '' }}"
-                        title="{{ 'Remove from Landing Page' if fb.is_highlighted else 'Feature on Landing Page' }}">
-                        <i class="fas {{ 'fa-star' if fb.is_highlighted else 'fa-thumbtack' }}"></i>
-                    </button>
-                </form>
-                <form action="/admin/feedback/{{ fb.id }}/archive" method="POST" style="display: contents;"
-                    onsubmit="event.preventDefault(); showConfirm('Archive this feedback?', () => this.submit(), 'Confirm Archive', 'Yes, Archive');">
-                    <button type="submit" class="btn-feedback-action danger" title="Archive Feedback">
-                        <i class="fas fa-archive"></i>
-                    </button>
-                </form>
+            <div class="footer-row">
+                <span class="date-text">
+                    <i class="far fa-calendar-alt"></i> {{ fb.created_at.strftime('%b %d, %Y') if fb.created_at else
+                    '---' }}
+                </span>
+                <div class="action-row">
+                    <span class="badge-clean" style="background: #ecfdf5; color: #10b981; font-size: 0.65rem;">
+                        <i class="fas fa-eye"></i> Publicly Visible
+                    </span>
+                </div>
             </div>
         </div>
     </div>
     {% else %}
-    <div class="empty-feedback">
-        <i class="fas fa-comment-slash"></i>
-        <h3>No Platform Feedback Yet</h3>
-        <p>Feedback submitted by customers and caterers will appear here for moderation.</p>
+    <div class="empty-state">
+        <i class="fas fa-comments-slash" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+        <h3>No Feedback Captured</h3>
+        <p>Verified participant reviews will appear here once submitted.</p>
     </div>
     {% endfor %}
 </div>
@@ -326,189 +300,27 @@
 
 {% block extra_js %}
 <script>
-    // ── Staggered card animation on page load ──────────────────────────────
-    document.addEventListener('DOMContentLoaded', function () {
-        const cards = document.querySelectorAll('.feedback-card');
-        cards.forEach((card, index) => {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(16px)';
-            setTimeout(() => {
-                card.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
-                card.style.opacity = '1';
-                card.style.transform = 'translateY(0)';
-            }, index * 60);
-        });
+    // Real-time Update Listener
+    window.addEventListener('system_update', (e) => {
+        if (e.detail.type === 'feedback_update' || e.detail.type === 'new_platform_feedback') {
+            const sync = document.getElementById('syncStatus');
+            if (sync) sync.innerHTML = '<i class="fas fa-rotate fa-spin" style="color: var(--dm-primary);"></i> Synchronizing Feed...';
+            setTimeout(() => window.location.reload(), 1500);
+        }
     });
 
-    // ── Real-Time WebSocket for new feedback ───────────────────────────────
-    (function () {
-        const adminId = 'admin_feedback_{{ user.id }}';
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws/${adminId}`;
-        let socket, reconnectDelay = 1000;
-
-        function connect() {
-            socket = new WebSocket(wsUrl);
-
-            socket.onopen = () => {
-                console.log('[FeedbackWS] Connected');
-                reconnectDelay = 1000;
-            };
-
-            socket.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    if (data.type === 'new_platform_feedback') {
-                        prependFeedbackCard(data);
-                        updateStats(data.rating);
-                    }
-                } catch (e) { console.warn('[FeedbackWS] Parse error', e); }
-            };
-
-            socket.onclose = () => {
-                console.log('[FeedbackWS] Closed. Reconnecting in', reconnectDelay, 'ms');
-                setTimeout(connect, reconnectDelay);
-                reconnectDelay = Math.min(reconnectDelay * 2, 15000);
-            };
-
-            socket.onerror = (err) => console.error('[FeedbackWS] Error', err);
-        }
-
-        function buildStars(rating) {
-            let html = '';
-            for (let i = 1; i <= 5; i++) {
-                html += i <= rating
-                    ? '<i class="fas fa-star"></i>'
-                    : '<i class="far fa-star" style="color:#e2e8f0;"></i>';
-            }
-            return html;
-        }
-
-        function prependFeedbackCard(fb) {
-            const list = document.getElementById('feedbackList');
-            if (!list) return;
-
-            // Remove empty state if present
-            const empty = list.querySelector('.empty-feedback');
-            if (empty) empty.remove();
-
-            const roleCls = fb.role === 'caterer' ? 'role-caterer' : 'role-customer';
-            const roleLabel = fb.role === 'caterer' ? 'Caterer Partner' : 'Customer';
-            const initial = fb.user_name ? fb.user_name[0].toUpperCase() : '?';
-
-            const card = document.createElement('div');
-            card.className = 'feedback-card';
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(-16px)';
-            card.innerHTML = `
-                <div class="feedback-header">
-                    <div class="feedback-user-info">
-                        <div class="feedback-avatar" style="background:#667eea; color:white; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1rem;">${initial}</div>
-                        <div class="feedback-user-text">
-                            <h4>${escHtml(fb.user_name)}</h4>
-                            <span>${escHtml(fb.user_email)}</span>
-                            <span class="feedback-role-badge ${roleCls}">${roleLabel}</span>
-                        </div>
-                    </div>
-                    <div class="feedback-rating">
-                        <i class="fas fa-star"></i>
-                        ${fb.rating}.0
-                    </div>
-                </div>
-                <p class="feedback-comment">"${escHtml(fb.comment)}"</p>
-                <div class="feedback-footer">
-                    <span class="feedback-date"><i class="fas fa-clock" style="margin-right:4px;"></i>${escHtml(fb.created_at)}</span>
-                    <div class="feedback-actions">
-                        <form action="/admin/feedback/${fb.id}/highlight" method="POST" style="display:contents;">
-                            <button type="submit" class="btn-feedback-action" title="Feature on Landing Page">
-                                <i class="fas fa-thumbtack"></i>
-                            </button>
-                        </form>
-                        <form action="/admin/feedback/${fb.id}/archive" method="POST" style="display:contents;"
-                            onsubmit="event.preventDefault(); showConfirm('Archive this feedback?', () => this.submit(), 'Confirm Archive', 'Yes, Archive');">
-                            <button type="submit" class="btn-feedback-action danger" title="Archive">
-                                <i class="fas fa-archive"></i>
-                            </button>
-                        </form>
-                    </div>
-                </div>
-                <div style="position:absolute; top:-10px; left:18px; background:#10b981; color:white; font-size:0.68rem; font-weight:700; padding:3px 10px; border-radius:6px; box-shadow:0 2px 8px rgba(16,185,129,0.3);">
-                    <i class="fas fa-circle" style="font-size:0.5rem; margin-right:4px; animation:pulse 1s infinite;"></i> NEW
-                </div>
-            `;
-
-            list.prepend(card);
-
-            // Animate in
-            requestAnimationFrame(() => {
-                card.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
-                card.style.opacity = '1';
-                card.style.transform = 'translateY(0)';
-            });
-
-            // Show toast notification
-            showToast(`New ${roleLabel} feedback received — ${fb.rating}★`, 'success');
-        }
-
-        function updateStats(rating) {
-            // Increment total count
-            const totalEl = document.querySelector('.feedback-stat-card.highlight .value');
-            if (totalEl) totalEl.textContent = parseInt(totalEl.textContent || 0) + 1;
-
-            // Increment high rated if >= 4
-            if (rating >= 4) {
-                const highEl = document.querySelectorAll('.feedback-stat-card')[1]?.querySelector('.value');
-                if (highEl) highEl.textContent = parseInt(highEl.textContent || 0) + 1;
-            }
-        }
-
-        function escHtml(str) {
-            const d = document.createElement('div');
-            d.appendChild(document.createTextNode(str || ''));
-            return d.innerHTML;
-        }
-
-        function showToast(msg, type) {
-            const toast = document.createElement('div');
-            toast.style.cssText = `
-                position:fixed; bottom:24px; right:24px; z-index:99999;
-                background:${type === 'success' ? '#10b981' : '#ef4444'};
-                color:white; padding:14px 20px; border-radius:14px;
-                font-size:0.88rem; font-weight:700; box-shadow:0 8px 30px rgba(0,0,0,0.2);
-                display:flex; align-items:center; gap:10px;
-                animation: slideInRight 0.3s ease;
-            `;
-            toast.innerHTML = `<i class="fas fa-comment-dots"></i>${msg}`;
-            document.body.appendChild(toast);
-            setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.4s'; setTimeout(() => toast.remove(), 400); }, 4000);
-        }
-
-        connect();
-    })();
+    // Fade-in animation for feed items
+    document.addEventListener('DOMContentLoaded', () => {
+        const items = document.querySelectorAll('.feedback-item');
+        items.forEach((item, index) => {
+            item.style.opacity = '0';
+            item.style.transform = 'translateY(10px)';
+            setTimeout(() => {
+                item.style.transition = 'all 0.4s ease';
+                item.style.opacity = '1';
+                item.style.transform = 'translateY(0)';
+            }, index * 50);
+        });
+    });
 </script>
-<style>
-    @keyframes pulse {
-
-        0%,
-        100% {
-            opacity: 1;
-        }
-
-        50% {
-            opacity: 0.4;
-        }
-    }
-
-    @keyframes slideInRight {
-        from {
-            transform: translateX(80px);
-            opacity: 0;
-        }
-
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
-    }
-</style>
 {% endblock %}

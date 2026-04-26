@@ -1,28 +1,193 @@
+{% set active_page = 'settings' %}
 {% extends "admin/layout.html" %}
 
-{% block title %}Website Settings - OccaShare Admin{% endblock %}
+{% block title %}Platform Configuration - OccaServe Admin{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/settings.css') }}">
 <style>
-    @keyframes shake {
-
-        0%,
-        100% {
-            transform: translateX(0);
-        }
-
-        25% {
-            transform: translateX(-5px);
-        }
-
-        75% {
-            transform: translateX(5px);
-        }
+    :root {
+        --dm-primary: #f97316;
+        --dm-primary-light: #fff7ed;
+        --dm-secondary: #0f172a;
+        --dm-slate-50: #f8fafc;
+        --dm-slate-100: #f1f5f9;
+        --dm-slate-200: #e2e8f0;
+        --dm-slate-400: #94a3b8;
+        --dm-slate-600: #475569;
     }
 
-    .error-shake.active {
-        animation: shake 0.2s ease-in-out 0s 2;
+    .main-content {
+        background: var(--dm-slate-50) !important;
+        padding: 2rem 3rem !important;
+    }
+
+    .settings-container {
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        gap: 2rem;
+        align-items: start;
+    }
+
+    /* Sidebar Navigation */
+    .settings-nav {
+        background: white;
+        border-radius: 1.25rem;
+        border: 1px solid var(--dm-slate-100);
+        padding: 1rem;
+        position: sticky;
+        top: 2rem;
+    }
+
+    .nav-btn {
+        width: 100%;
+        padding: 1rem 1.25rem;
+        border-radius: 12px;
+        border: none;
+        background: none;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        color: var(--dm-slate-600);
+        font-weight: 700;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: left;
+    }
+
+    .nav-btn i { font-size: 1.1rem; width: 20px; text-align: center; }
+    .nav-btn:hover { background: var(--dm-slate-50); color: var(--dm-secondary); }
+    .nav-btn.active { background: var(--dm-primary-light); color: var(--dm-primary); }
+
+    /* Content Area */
+    .settings-form-card {
+        background: white;
+        border-radius: 1.5rem;
+        border: 1px solid var(--dm-slate-100);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+        overflow: hidden;
+    }
+
+    .panel-header {
+        padding: 2rem 2.5rem;
+        border-bottom: 1px solid var(--dm-slate-100);
+        background: var(--dm-slate-50);
+    }
+
+    .panel-header h2 { font-size: 1.25rem; font-weight: 800; color: var(--dm-secondary); margin: 0; }
+    .panel-header p { font-size: 0.85rem; color: var(--dm-slate-400); margin-top: 4px; }
+
+    .panel-body { padding: 2.5rem; }
+
+    .settings-group { margin-bottom: 2rem; }
+    .settings-group:last-child { margin-bottom: 0; }
+
+    .label-clean {
+        display: block;
+        font-size: 0.8rem;
+        font-weight: 800;
+        color: var(--dm-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.75rem;
+    }
+
+    .input-clean {
+        width: 100%;
+        padding: 0.85rem 1.25rem;
+        border-radius: 12px;
+        border: 1.5px solid var(--dm-slate-200);
+        font-size: 0.95rem;
+        color: var(--dm-secondary);
+        transition: all 0.2s;
+        background: var(--dm-slate-50);
+    }
+
+    .input-clean:focus {
+        outline: none;
+        border-color: var(--dm-primary);
+        background: white;
+        box-shadow: 0 0 0 4px var(--dm-primary-light);
+    }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+
+    /* Custom Switch */
+    .switch-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1.25rem;
+        background: var(--dm-slate-50);
+        border-radius: 12px;
+        border: 1px solid var(--dm-slate-100);
+    }
+
+    .switch-label h4 { margin: 0; font-size: 0.95rem; font-weight: 800; color: var(--dm-secondary); }
+    .switch-label p { margin: 4px 0 0; font-size: 0.8rem; color: var(--dm-slate-400); }
+
+    .switch-toggle {
+        width: 52px; height: 28px; background: var(--dm-slate-200);
+        border-radius: 20px; position: relative; cursor: pointer; transition: all 0.3s;
+    }
+    .switch-toggle::after {
+        content: ''; position: absolute; top: 4px; left: 4px;
+        width: 20px; height: 20px; background: white; border-radius: 50%; transition: all 0.3s;
+    }
+    .switch-toggle.active { background: var(--dm-primary); }
+    .switch-toggle.active::after { left: calc(100% - 24px); }
+
+    /* Upload Box */
+    .upload-zone {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        padding: 1.5rem;
+        border: 2px dashed var(--dm-slate-200);
+        border-radius: 16px;
+        background: var(--dm-slate-50);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .upload-zone:hover { border-color: var(--dm-primary); background: var(--dm-primary-light); }
+    .preview-circle {
+        width: 64px; height: 64px; border-radius: 12px;
+        background: white; border: 1px solid var(--dm-slate-200);
+        display: flex; align-items: center; justify-content: center; overflow: hidden;
+    }
+    .preview-circle img { width: 100%; height: 100%; object-fit: contain; }
+
+    .settings-footer {
+        padding: 1.5rem 2.5rem;
+        background: white;
+        border-top: 1px solid var(--dm-slate-100);
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+    }
+
+    .btn-save {
+        background: var(--dm-primary);
+        color: white;
+        border: none;
+        padding: 0.85rem 2rem;
+        border-radius: 12px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
+    }
+    .btn-save:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(249, 115, 22, 0.3); }
+
+    .settings-panel { display: none; }
+    .settings-panel.active { display: block; animation: fadeIn 0.3s ease; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+    @media (max-width: 1024px) {
+        .settings-container { grid-template-columns: 1fr; }
+        .settings-nav { position: static; display: flex; overflow-x: auto; gap: 0.5rem; padding: 0.5rem; }
+        .nav-btn { white-space: nowrap; width: auto; }
     }
 </style>
 {% endblock %}
@@ -30,269 +195,194 @@
 {% block content %}
 <div class="page-header" style="margin-bottom: 2rem;">
     <h1>Platform Configuration</h1>
-    <p>Manage global website settings, appearances, and system behavior.</p>
+    <p>Calibrate system behaviors, visual identifiers, and financial parameters.</p>
 </div>
 
-<div class="settings-container-grid">
-    <!-- Side Tabs -->
-    <aside class="settings-tabs-nav">
-        <button class="settings-tab-btn active" onclick="switchTab(event, 'general')">
-            <i class="fas fa-cog"></i> <span>General Info</span>
+<div class="settings-container">
+    <aside class="settings-nav">
+        <button class="nav-btn active" onclick="switchTab('general', this)">
+            <i class="fas fa-sliders"></i> General
         </button>
-        <button class="settings-tab-btn" onclick="switchTab(event, 'appearance')">
-            <i class="fas fa-palette"></i> <span>Appearance</span>
+        <button class="nav-btn" onclick="switchTab('appearance', this)">
+            <i class="fas fa-palette"></i> Appearance
         </button>
-        <button class="settings-tab-btn" onclick="switchTab(event, 'social')">
-            <i class="fas fa-share-nodes"></i> <span>Social Media</span>
+        <button class="nav-btn" onclick="switchTab('social', this)">
+            <i class="fas fa-share-nodes"></i> Social Links
         </button>
-        <button class="settings-tab-btn" onclick="switchTab(event, 'maintenance')">
-            <i class="fas fa-screwdriver-wrench"></i> <span>Maintenance</span>
+        <button class="nav-btn" onclick="switchTab('maintenance', this)">
+            <i class="fas fa-screwdriver-wrench"></i> Maintenance
         </button>
-        <button class="settings-tab-btn" onclick="switchTab(event, 'security')">
-            <i class="fas fa-shield-halved"></i> <span>Security</span>
+        <button class="nav-btn" onclick="switchTab('security', this)">
+            <i class="fas fa-shield-halved"></i> Security
         </button>
     </aside>
 
-    <!-- Content Area -->
-    <form class="settings-content-area"
-        action="/admin/settings/update?success_msg=Website+settings+updated+successfully" method="POST"
-        enctype="multipart/form-data">
+    <form class="settings-form-card" action="/admin/settings/update" method="POST" enctype="multipart/form-data">
         <!-- General Panel -->
         <div id="general" class="settings-panel active">
             <div class="panel-header">
-                <h2>General Configuration</h2>
-                <p>Basic platform details and contact information.</p>
+                <h2>General Intelligence</h2>
+                <p>Core platform identity and standard operational rates.</p>
             </div>
-            <div class="settings-grid-2">
-                <div class="settings-group">
-                    <label class="settings-label">Website Name</label>
-                    <input type="text" name="site_name" class="settings-control" value="{{ config.site_name }}"
-                        required>
+            <div class="panel-body">
+                <div class="grid-2">
+                    <div class="settings-group">
+                        <label class="label-clean">Platform Name</label>
+                        <input type="text" name="site_name" class="input-clean" value="{{ config.site_name }}" required>
+                    </div>
+                    <div class="settings-group">
+                        <label class="label-clean">Support Gateway</label>
+                        <input type="email" name="support_email" class="input-clean" value="{{ config.support_email }}" required>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="settings-group">
+                        <label class="label-clean">Commission Rate (%)</label>
+                        <input type="number" step="0.1" name="commission" class="input-clean" value="{{ config.commission_rate }}">
+                    </div>
+                    <div class="settings-group">
+                        <label class="label-clean">Fixed Escrow Fee (₱)</label>
+                        <input type="number" step="1" name="commission_fixed" class="input-clean" value="{{ config.commission_fixed_amount }}">
+                    </div>
                 </div>
                 <div class="settings-group">
-                    <label class="settings-label">Support Email</label>
-                    <input type="email" name="support_email" class="settings-control" value="{{ config.support_email }}"
-                        required>
+                    <label class="label-clean">Meta Description (SEO)</label>
+                    <textarea name="seo_desc" class="input-clean" rows="3" required>{{ config.seo_description }}</textarea>
                 </div>
-            </div>
-            <div class="settings-grid-2">
-                <div class="settings-group">
-                    <label class="settings-label">Platform Commission (%)</label>
-                    <input type="number" step="0.1" name="commission" class="settings-control"
-                        value="{{ config.commission_rate }}">
-                    <span class="file-hint">Standard percentage commission for older bookings.</span>
-                </div>
-                <div class="settings-group">
-                    <label class="settings-label">Fixed Escrow Fee (₱)</label>
-                    <input type="number" step="1" name="commission_fixed" class="settings-control"
-                        value="{{ config.commission_fixed_amount }}">
-                    <span class="file-hint">The new fixed fee deducted per booking (e.g. ₱20).</span>
-                </div>
-            </div>
-            <div class="settings-group">
-                <label class="settings-label">SEO Meta Description</label>
-                <textarea name="seo_desc" class="settings-control" rows="3"
-                    required>{{ config.seo_description }}</textarea>
             </div>
         </div>
 
         <!-- Appearance Panel -->
         <div id="appearance" class="settings-panel">
             <div class="panel-header">
-                <h2>Visual Appearance</h2>
-                <p>Customize how the platform looks to users.</p>
+                <h2>Visual Assets</h2>
+                <p>Manage the platform's public branding and browser identifiers.</p>
             </div>
-            <div class="settings-group">
-                <label class="settings-label">Platform Logo</label>
-                <div class="visual-upload-box">
-                    <img src="{{ config.logo_url if config.logo_url else url_for('static', path='/images/logo.png') }}"
-                        class="preview-img" id="logo-preview">
-                    <div class="file-input-wrapper">
-                        <input type="file" name="logo" class="settings-control-file" accept="image/*"
-                            onchange="updateImagePreview(this, 'logo-preview')">
-                        <span class="file-hint">Click to upload logo (PNG/JPG)</span>
-                    </div>
+            <div class="panel-body">
+                <div class="settings-group">
+                    <label class="label-clean">Primary Platform Logo</label>
+                    <label class="upload-zone">
+                        <div class="preview-circle">
+                            <img src="{{ config.logo_url if config.logo_url else '/static/images/logo.png' }}" id="logo-preview">
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 800; color: var(--dm-secondary);">Replace Logo</div>
+                            <div style="font-size: 0.75rem; color: var(--dm-slate-400);">Recommended: 512x128px PNG</div>
+                        </div>
+                        <input type="file" name="logo" style="display: none;" onchange="previewImg(this, 'logo-preview')">
+                    </label>
                 </div>
-            </div>
-            <div class="settings-group">
-                <label class="settings-label">Favicon</label>
-                <div class="visual-upload-box">
-                    <img src="{{ config.favicon_url if config.favicon_url else url_for('static', path='/favicon.ico') }}"
-                        class="preview-img" id="favicon-preview">
-                    <div class="file-input-wrapper">
-                        <input type="file" name="favicon" class="settings-control-file" accept="image/x-icon,image/png"
-                            onchange="updateImagePreview(this, 'favicon-preview')">
-                        <span class="file-hint">Click to upload favicon (ICO/PNG)</span>
-                    </div>
+                <div class="settings-group">
+                    <label class="label-clean">Browser Favicon</label>
+                    <label class="upload-zone">
+                        <div class="preview-circle">
+                            <img src="{{ config.favicon_url if config.favicon_url else '/favicon.ico' }}" id="fav-preview">
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 800; color: var(--dm-secondary);">Replace Favicon</div>
+                            <div style="font-size: 0.75rem; color: var(--dm-slate-400);">Recommended: 32x32px ICO/PNG</div>
+                        </div>
+                        <input type="file" name="favicon" style="display: none;" onchange="previewImg(this, 'fav-preview')">
+                    </label>
                 </div>
             </div>
         </div>
 
-        <!-- Social Media Panel -->
+        <!-- Social Panel -->
         <div id="social" class="settings-panel">
             <div class="panel-header">
-                <h2>Social Integration</h2>
-                <p>Connect your platform's social media handles.</p>
+                <h2>External Connectivity</h2>
+                <p>Sync your platform with official social media channels.</p>
             </div>
-            <div class="social-input-group">
-                <div class="social-icon-circle facebook-bg"><i class="fab fa-facebook-f"></i></div>
-                <input type="text" name="fb_link" class="settings-control" placeholder="Facebook Profile URL"
-                    value="{{ config.facebook_link or '' }}">
-            </div>
-            <div class="social-input-group">
-                <div class="social-icon-circle instagram-bg"><i class="fab fa-instagram"></i></div>
-                <input type="text" name="ig_link" class="settings-control" placeholder="Instagram Profile URL"
-                    value="{{ config.instagram_link or '' }}">
-            </div>
-            <div class="social-input-group">
-                <div class="social-icon-circle twitter-bg"><i class="fa-brands fa-x-twitter"></i></div>
-                <input type="text" name="tw_link" class="settings-control" placeholder="X (formerly Twitter) URL"
-                    value="{{ config.twitter_link or '' }}">
+            <div class="panel-body">
+                <div class="settings-group">
+                    <label class="label-clean">Facebook Handle</label>
+                    <input type="text" name="fb_link" class="input-clean" placeholder="https://facebook.com/..." value="{{ config.facebook_link or '' }}">
+                </div>
+                <div class="settings-group">
+                    <label class="label-clean">Instagram Handle</label>
+                    <input type="text" name="ig_link" class="input-clean" placeholder="https://instagram.com/..." value="{{ config.instagram_link or '' }}">
+                </div>
+                <div class="settings-group">
+                    <label class="label-clean">X (Twitter) Handle</label>
+                    <input type="text" name="tw_link" class="input-clean" placeholder="https://x.com/..." value="{{ config.twitter_link or '' }}">
+                </div>
             </div>
         </div>
-
 
         <!-- Maintenance Panel -->
         <div id="maintenance" class="settings-panel">
             <div class="panel-header">
-                <h2>System Status</h2>
-                <p>Control platform availability for maintenance.</p>
+                <h2>Operation Control</h2>
+                <p>Throttle public access during critical system maintenance.</p>
             </div>
-            <div class="maintenance-toggle">
-                <div class="maintenance-info">
-                    <h4>Maintenance Mode</h4>
-                    <p>Toggle to restrict user access during updates.</p>
+            <div class="panel-body">
+                <div class="settings-group">
+                    <div class="switch-container">
+                        <div class="switch-label">
+                            <h4>Maintenance Mode</h4>
+                            <p>Restrict all non-admin traffic to the platform.</p>
+                        </div>
+                        <div class="switch-toggle {{ 'active' if config.maintenance_mode else '' }}" id="maintSwitch" onclick="toggleMaint(this)">
+                            <input type="hidden" name="maintenance_mode" id="maintVal" value="{{ 'on' if config.maintenance_mode else 'off' }}">
+                        </div>
+                    </div>
                 </div>
-                <div class="switch-box {{ 'active' if config.maintenance_mode else '' }}" id="maintenance-switch"
-                    onclick="toggleSwitch(this)">
-                    <input type="hidden" name="maintenance_mode" id="maintenance_val"
-                        value="{{ 'on' if config.maintenance_mode else 'off' }}">
-                    <div class="switch-circle"></div>
+                <div class="settings-group">
+                    <label class="label-clean">Maintenance Interstitial Message</label>
+                    <textarea name="maint_msg" class="input-clean" rows="4">{{ config.maintenance_message }}</textarea>
                 </div>
-            </div>
-            <div class="settings-group">
-                <label class="settings-label">Custom Maintenance Message</label>
-                <textarea name="maint_msg" class="settings-control" rows="4">{{ config.maintenance_message }}</textarea>
             </div>
         </div>
 
         <!-- Security Panel -->
         <div id="security" class="settings-panel">
             <div class="panel-header">
-                <h2>Security & Account</h2>
-                <p>Manage your administrative access and credentials.</p>
+                <h2>Administrative Shield</h2>
+                <p>Update your credential layer to maintain system security.</p>
             </div>
-            <div class="dm-standard-card" style="padding: 2rem; display: block !important;">
-                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
-                    <div
-                        style="width: 50px; height: 50px; border-radius: 12px; background: #fff7ed; color: #FF6B00; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
-                        <i class="fas fa-lock"></i>
-                    </div>
-                    <div>
-                        <h4 style="margin: 0; font-weight: 800; color: var(--dm-navy);">Account Password</h4>
-                        <p style="margin: 0; font-size: 0.85rem; color: var(--dm-muted);">Protect your admin account by
-                            regularly updating your password.</p>
-                    </div>
-                </div>
-                <button type="button" onclick="openPasswordModal()"
-                    style="background: #ffffff; border: 1.5px solid #e2e8f0; color: var(--dm-navy); padding: 0.75rem 1.5rem; border-radius: 12px; font-weight: 800; font-size: 0.9rem; display: flex; align-items: center; gap: 0.75rem; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
-                    <div
-                        style="width: 32px; height: 32px; border-radius: 8px; background: #fff7ed; color: #FF6B00; display: flex; align-items: center; justify-content: center; font-size: 0.85rem;">
+            <div class="panel-body">
+                <div style="background: #f8fafc; border-radius: 16px; padding: 2rem; border: 1px solid #e2e8f0; text-align: center;">
+                    <div style="width: 56px; height: 56px; border-radius: 14px; background: white; color: var(--dm-primary); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin: 0 auto 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
                         <i class="fas fa-key"></i>
                     </div>
-                    Change Admin Password
-                </button>
+                    <h3 style="margin: 0; font-weight: 800; color: var(--dm-secondary);">Change Admin Password</h3>
+                    <p style="color: var(--dm-slate-400); font-size: 0.9rem; margin: 0.5rem 0 1.5rem;">Protect your administrative gateway by cycling your credentials.</p>
+                    <button type="button" class="btn-save" style="background: white; border: 1.5px solid var(--dm-slate-200); color: var(--dm-secondary); box-shadow: none;" onclick="openPassModal()">Update Password</button>
+                </div>
             </div>
         </div>
 
         <div class="settings-footer">
-            <button type="reset" class="btn-outline">Reset Changes</button>
-            <button type="submit" class="btn-premium-save shadow-orange">Save Configurations</button>
+            <button type="reset" class="nav-btn" style="width: auto; background: var(--dm-slate-100); color: var(--dm-slate-600);">Discard Changes</button>
+            <button type="submit" class="btn-save">Sync Configuration</button>
         </div>
     </form>
 </div>
 
-<!-- Admin Password Change Modal -->
-<div id="passwordModal" class="admin-modal-overlay">
+<!-- Password Modal -->
+<div id="passModal" class="admin-modal-overlay">
     <div class="admin-modal-card" style="max-width: 450px;">
-        <div class="modal-header-pro">
-            <h3><i class="fas fa-key" style="color: #FF6B00; margin-right: 0.5rem;"></i> Update Admin Password</h3>
-            <button type="button" class="modal-close-btn" onclick="closePasswordModal()">&times;</button>
+        <div class="modal-header-clean">
+            <h3><i class="fas fa-shield-halved"></i> Update Gateway Credentials</h3>
+            <button class="modal-close-btn" onclick="closePassModal()">&times;</button>
         </div>
-
-        <form id="changePasswordForm" onsubmit="handlePasswordChange(event)" style="padding: 2rem;">
-            <!-- Global Error -->
-            <div id="passwordFormError" class="error-shake"
-                style="display: none; background: #fff1f2; color: #e11d48; padding: 1rem 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; font-size: 0.85rem; font-weight: 700; border: 1.5px solid #ffe4e6; align-items: center; gap: 0.75rem; box-shadow: 0 4px 12px rgba(225, 29, 72, 0.08);">
-                <div
-                    style="width: 24px; height: 24px; border-radius: 50%; background: #fb7185; color: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.75rem;">
-                    <i class="fas fa-exclamation"></i>
-                </div>
-                <span id="passwordFormErrorText"></span>
-            </div>
-
+        <form id="passForm" onsubmit="handlePass(event)" style="padding: 2rem;">
             <div class="settings-group">
-                <label class="settings-label">Current Password</label>
-                <div style="position: relative;">
-                    <input type="password" name="current_password" class="settings-control" required
-                        placeholder="Enter current password" style="padding-right: 3rem;">
-                    <button type="button" class="toggle-password" onclick="togglePass(this)"
-                        style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--dm-muted); cursor: pointer;">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                </div>
+                <label class="label-clean">Current Password</label>
+                <input type="password" name="current_password" class="input-clean" required>
             </div>
-
             <div class="settings-group">
-                <label class="settings-label">New Password</label>
-                <div style="position: relative; margin-bottom: 0.75rem;">
-                    <input type="password" name="new_password" id="new_password" class="settings-control" required
-                        placeholder="Min. 8 characters" onkeyup="checkPasswordStrength(this.value)"
-                        style="padding-right: 3rem;">
-                    <button type="button" class="toggle-password" onclick="togglePass(this)"
-                        style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--dm-muted); cursor: pointer;">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                </div>
-
-                <!-- Validation Checklist -->
-                <div class="password-check-grid"
-                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; background: #f8fafc; padding: 0.75rem; border-radius: 10px; border: 1px solid #f1f5f9; margin-bottom: 0.5rem;">
-                    <div class="check-item" id="check-length"
-                        style="font-size: 0.7rem; font-weight: 700; color: var(--dm-muted); display: flex; align-items: center; gap: 0.4rem;">
-                        <i class="fas fa-circle-dot" style="font-size: 0.5rem;"></i> 8+ Characters
-                    </div>
-                    <div class="check-item" id="check-upper"
-                        style="font-size: 0.7rem; font-weight: 700; color: var(--dm-muted); display: flex; align-items: center; gap: 0.4rem;">
-                        <i class="fas fa-circle-dot" style="font-size: 0.5rem;"></i> Uppercase
-                    </div>
-                    <div class="check-item" id="check-lower"
-                        style="font-size: 0.7rem; font-weight: 700; color: var(--dm-muted); display: flex; align-items: center; gap: 0.4rem;">
-                        <i class="fas fa-circle-dot" style="font-size: 0.5rem;"></i> Lowercase
-                    </div>
-                    <div class="check-item" id="check-number"
-                        style="font-size: 0.7rem; font-weight: 700; color: var(--dm-muted); display: flex; align-items: center; gap: 0.4rem;">
-                        <i class="fas fa-circle-dot" style="font-size: 0.5rem;"></i> Number
-                    </div>
-                    <div class="check-item" id="check-symbol"
-                        style="font-size: 0.7rem; font-weight: 700; color: var(--dm-muted); display: flex; align-items: center; gap: 0.4rem;">
-                        <i class="fas fa-circle-dot" style="font-size: 0.5rem;"></i> Symbol
-                    </div>
-                </div>
+                <label class="label-clean">New Secure Password</label>
+                <input type="password" name="new_password" class="input-clean" required>
             </div>
-
             <div class="settings-group" style="margin-bottom: 2rem;">
-                <label class="settings-label">Confirm New Password</label>
-                <input type="password" name="confirm_password" id="confirm_password" class="settings-control" required
-                    placeholder="Retype new password">
+                <label class="label-clean">Confirm New Password</label>
+                <input type="password" name="confirm_password" class="input-clean" required>
             </div>
-
             <div style="display: flex; gap: 1rem;">
-                <button type="button" onclick="closePasswordModal()"
-                    style="flex: 1; height: 50px; border-radius: 12px; font-weight: 800; color: var(--dm-muted); background: #f1f5f9; border: none; cursor: pointer; transition: all 0.2s;">Cancel</button>
-                <button type="submit" id="submitPasswordBtn" class="btn-premium-save shadow-orange"
-                    style="flex: 2; height: 50px; margin: 0; font-weight: 800; font-size: 0.95rem;">Save New
-                    Password</button>
+                <button type="button" class="btn-save" style="flex: 1; background: var(--dm-slate-100); color: var(--dm-slate-600); box-shadow: none;" onclick="closePassModal()">Cancel</button>
+                <button type="submit" class="btn-save" style="flex: 1.5;">Update Password</button>
             </div>
         </form>
     </div>
@@ -301,144 +391,47 @@
 
 {% block extra_js %}
 <script>
-    function switchTab(evt, tabId) {
-        // Toggle Buttons
-        document.querySelectorAll('.settings-tab-btn').forEach(btn => btn.classList.remove('active'));
-        evt.currentTarget.classList.add('active');
+    function switchTab(tabId, btn) {
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
 
-        // Toggle Panels
-        document.querySelectorAll('.settings-panel').forEach(panel => panel.classList.remove('active'));
+        document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
         document.getElementById(tabId).classList.add('active');
-
-        // Scroll content area back to top on mobile
-        if (window.innerWidth <= 1024) {
-            window.scrollTo({
-                top: document.querySelector('.settings-content-area').offsetTop - 100,
-                behavior: 'smooth'
-            });
-        }
     }
 
-    function toggleSwitch(el) {
+    function toggleMaint(el) {
         el.classList.toggle('active');
-        const hiddenInput = el.querySelector('input');
-        hiddenInput.value = el.classList.contains('active') ? 'on' : 'off';
+        document.getElementById('maintVal').value = el.classList.contains('active') ? 'on' : 'off';
     }
 
-    function updateImagePreview(input, imgId) {
+    function previewImg(input, previewId) {
         if (input.files && input.files[0]) {
             const reader = new FileReader();
-            reader.onload = function (e) {
-                document.getElementById(imgId).src = e.target.result;
-            }
+            reader.onload = e => document.getElementById(previewId).src = e.target.result;
             reader.readAsDataURL(input.files[0]);
         }
     }
 
-    /* --- Password Modal Logic --- */
-    function openPasswordModal() {
-        const modal = document.getElementById('passwordModal');
-        modal.classList.add('active');
-        document.body.style.overflow = 'hidden';
-    }
+    function openPassModal() { document.getElementById('passModal').classList.add('active'); }
+    function closePassModal() { document.getElementById('passModal').classList.remove('active'); }
 
-    function closePasswordModal() {
-        const modal = document.getElementById('passwordModal');
-        modal.classList.remove('active');
-        document.body.style.overflow = 'auto';
-        document.getElementById('changePasswordForm').reset();
-        document.getElementById('passwordFormError').style.display = 'none';
-
-        // Reset checkmarks
-        document.querySelectorAll('.check-item').forEach(item => {
-            item.style.color = 'var(--dm-muted)';
-            item.querySelector('i').className = 'fas fa-circle-dot';
-        });
-    }
-
-    function togglePass(btn) {
-        const input = btn.parentElement.querySelector('input');
-        const icon = btn.querySelector('i');
-        if (input.type === 'password') {
-            input.type = 'text';
-            icon.className = 'fas fa-eye-slash';
-        } else {
-            input.type = 'password';
-            icon.className = 'fas fa-eye';
-        }
-    }
-
-    function checkPasswordStrength(val) {
-        const checks = {
-            length: val.length >= 8,
-            upper: /[A-Z]/.test(val),
-            lower: /[a-z]/.test(val),
-            number: /[0-9]/.test(val),
-            symbol: /[!@#$%^&*(),.?":{}|<>]/.test(val)
-        };
-
-        for (const [key, met] of Object.entries(checks)) {
-            const item = document.getElementById(`check-${key}`);
-            const icon = item.querySelector('i');
-            if (met) {
-                item.style.color = '#10b981';
-                icon.className = 'fas fa-check-circle';
-            } else {
-                item.style.color = 'var(--dm-muted)';
-                icon.className = 'fas fa-circle-dot';
-            }
-        }
-    }
-
-    async function handlePasswordChange(event) {
-        event.preventDefault();
-        const form = event.target;
-        const newPass = document.getElementById('new_password').value;
-        const confPass = document.getElementById('confirm_password').value;
-        const errorContainer = document.getElementById('passwordFormError');
-        const errorText = document.getElementById('passwordFormErrorText');
-        const submitBtn = document.getElementById('submitPasswordBtn');
-
-        function showError(msg) {
-            errorText.innerText = msg;
-            errorContainer.style.display = 'flex';
-            errorContainer.classList.remove('active');
-            void errorContainer.offsetWidth; // Trigger reflow
-            errorContainer.classList.add('active');
-        }
-
-        if (newPass !== confPass) {
-            showError('New passwords do not match.');
-            return;
-        }
-
-        errorContainer.style.display = 'none';
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    async function handlePass(e) {
+        e.preventDefault();
+        const btn = e.target.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-rotate fa-spin"></i> Processing...';
 
         try {
-            const formData = new FormData(form);
-            const response = await fetch('/admin/profile/change-password', {
-                method: 'POST',
-                body: formData
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                window.showSuccess('Password updated successfully!');
-                closePasswordModal();
+            const res = await fetch('/admin/profile/change-password', { method: 'POST', body: new FormData(e.target) });
+            const data = await res.json();
+            if (data.success) {
+                alert('Password updated successfully!');
+                closePassModal();
             } else {
-                showError(result.message || 'Failed to update password.');
+                alert(data.message || 'Failed to update password.');
             }
-        } catch (error) {
-            console.error('Error:', error);
-            showError('An error occurred. Please try again.');
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = 'Save New Password';
-        }
+        } catch (err) { alert('An error occurred.'); }
+        finally { btn.disabled = false; btn.innerHTML = 'Update Password'; }
     }
-</script>
 </script>
 {% endblock %}
