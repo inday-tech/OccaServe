@@ -264,8 +264,8 @@ window.handleSocialLogin = function (provider) {
         btn.innerHTML = `<i class="fas fa-circle-notch fa-spin"></i> <span>Processing...</span>`;
     }
 
-    // Direct redirection to backend OAuth route
-    window.location.href = `/auth/login/${provider}`;
+    // Direct redirection to backend OAuth route (Using /social prefix to avoid auth router conflicts)
+    window.location.href = `/social/login/${provider}`;
 };
 
 

@@ -11,7 +11,7 @@ from ..core import security as auth, utils
 from ..core.config import settings
 
 # Initialize Router
-router = APIRouter(prefix="/auth", tags=["social-auth"])
+router = APIRouter(prefix="/social", tags=["social-auth"])
 
 # Initialize Authlib
 oauth = OAuth()
@@ -41,7 +41,8 @@ async def social_login(request: Request, provider: str):
     elif not site_url.startswith("https:"):
         site_url = f"https://{site_url}"
 
-    redirect_uri = f"{site_url}/auth/callback/{provider}"
+    # Use /social prefix for callback
+    redirect_uri = f"{site_url}/social/callback/{provider}"
     print(f"[OAUTH DEBUG] Sending Redirect URI to Google: {redirect_uri}")
     
     client = oauth.create_client(provider)
