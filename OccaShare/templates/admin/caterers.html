@@ -3,17 +3,288 @@
 {% block title %}Manage Caterers - Admin Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/caterers.css') }}?v=1.6">
 <style>
-    /* Final refinement for form inputs to match Diamond Auth style */
+    :root {
+        --dm-primary: #f97316;
+        --dm-primary-light: #fff7ed;
+        --dm-secondary: #0f172a;
+        --dm-slate-50: #f8fafc;
+        --dm-slate-100: #f1f5f9;
+        --dm-slate-200: #e2e8f0;
+        --dm-slate-400: #94a3b8;
+        --dm-slate-600: #475569;
+    }
+
+    /* Standard Layout Alignment */
+    .main-content {
+        background: var(--dm-slate-50) !important;
+        padding: 2rem 3rem !important;
+    }
+
+    /* Header Architecture */
+    .terminal-header-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 2.5rem;
+    }
+
+    .terminal-header-top h1 {
+        font-size: 1.75rem;
+        font-weight: 800;
+        color: var(--dm-secondary);
+        margin: 0;
+    }
+
+    .terminal-header-top p {
+        color: var(--dm-slate-400);
+        margin-top: 4px;
+    }
+
+    .sync-status-clean {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--dm-slate-400);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-add-pro {
+        background: var(--dm-primary);
+        color: white;
+        padding: 0.8rem 1.5rem;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        border: none;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+
+    .btn-add-pro:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(249, 115, 22, 0.3);
+    }
+
+    /* KPI Grid */
+    .kpi-grid-clean {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 2.5rem;
+    }
+
+    .kpi-card-clean {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 1.25rem;
+        border: 1px solid var(--dm-slate-100);
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+    }
+
+    .kpi-icon-box {
+        width: 54px;
+        height: 54px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+
+    .kpi-info h4 {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--dm-slate-400);
+        text-transform: uppercase;
+        margin: 0;
+    }
+
+    .kpi-info .kpi-value {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--dm-secondary);
+        margin-top: 4px;
+        display: block;
+    }
+
+    /* Management Terminal */
+    .management-terminal {
+        background: white;
+        border-radius: 1.25rem;
+        border: 1px solid var(--dm-slate-100);
+        padding: 2rem;
+    }
+
+    .terminal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .search-group-pro {
+        position: relative;
+        width: 320px;
+    }
+
+    .search-group-pro i {
+        position: absolute;
+        left: 1.25rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--dm-slate-400);
+        font-size: 0.9rem;
+    }
+
+    .search-group-pro input {
+        width: 100%;
+        padding: 0.75rem 1rem 0.75rem 3rem;
+        border: 1.5px solid var(--dm-slate-100);
+        border-radius: 12px;
+        font-size: 0.85rem;
+        outline: none;
+        background: var(--dm-slate-50);
+        transition: all 0.2s;
+    }
+
+    .search-group-pro input:focus {
+        border-color: var(--dm-primary);
+        background: white;
+    }
+
+    /* Standardized Table */
+    .cust-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .cust-table th {
+        text-align: left;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--dm-slate-400);
+        text-transform: uppercase;
+        padding: 1rem;
+        border-bottom: 1px solid var(--dm-slate-100);
+    }
+
+    .cust-table td {
+        padding: 1.25rem 1rem;
+        border-bottom: 1px solid var(--dm-slate-50);
+        vertical-align: middle;
+    }
+
+    .cust-row:hover {
+        background: #fcfcfc;
+    }
+
+    .badge-clean {
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    /* MODAL SYSTEM (Standardized) */
+    .admin-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.4);
+        backdrop-filter: blur(8px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+        padding: 2rem;
+    }
+
+    .admin-modal-overlay.active {
+        display: flex;
+    }
+
+    .admin-modal-card {
+        background: white;
+        width: 100%;
+        max-width: 650px;
+        border-radius: 1.25rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+        overflow: hidden;
+        animation: modalSlide 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @keyframes modalSlide {
+        from {
+            opacity: 0;
+            transform: translateY(20px) scale(0.98);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    .modal-header-clean {
+        padding: 1.5rem 2rem;
+        background: var(--dm-slate-50);
+        border-bottom: 1px solid var(--dm-slate-100);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header-clean h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--dm-secondary);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .modal-header-clean h3 i {
+        color: var(--dm-primary);
+    }
+
+    .modal-close-btn {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: var(--dm-slate-400);
+        cursor: pointer;
+    }
+
+    .modal-body-clean {
+        padding: 2rem;
+    }
+
+    .modal-footer-clean {
+        padding: 1.25rem 2rem;
+        background: var(--dm-slate-50);
+        border-top: 1px solid var(--dm-slate-100);
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+    }
+
+    /* Form Pro */
     .admin-form-pro label {
         display: block;
-        margin-bottom: 0.5rem;
-        font-weight: 800;
-        color: #475569;
         font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--dm-slate-600);
         text-transform: uppercase;
-        letter-spacing: 0.08em;
+        margin-bottom: 6px;
+        padding-left: 4px;
     }
 
     .dm-input-group {
@@ -24,255 +295,287 @@
     .dm-input-group i {
         position: absolute;
         left: 1.25rem;
-        top: 1.1rem;
-        color: #94a3b8;
+        top: 1rem;
+        color: var(--dm-slate-400);
         font-size: 0.9rem;
-        transition: color 0.3s;
     }
 
-    .dm-input-group input {
-        width: 100%;
-        padding: 0.9rem 1.25rem 0.9rem 3rem;
-        border: 1.5px solid #e2e8f0;
-        border-radius: 14px;
-        font-size: 0.95rem;
-        font-weight: 500;
-        transition: all 0.3s;
-    }
-
-    .dm-input-group input:focus {
-        outline: none;
-        border-color: var(--dm-orange);
-        box-shadow: 0 0 0 4px rgba(255, 107, 0, 0.1);
-    }
-
-    .dm-input-group input:focus+i,
-    .dm-input-group select:focus+i {
-        color: var(--dm-orange);
-    }
-
+    .dm-input-group input,
     .dm-input-group select {
         width: 100%;
-        padding: 0.9rem 1.25rem 0.9rem 3rem;
-        border: 1.5px solid #e2e8f0;
-        border-radius: 14px;
+        padding: 0.85rem 1.25rem 0.85rem 3rem;
+        border: 1.5px solid var(--dm-slate-100);
+        border-radius: 12px;
         font-size: 0.95rem;
         font-weight: 500;
-        transition: all 0.3s;
-        appearance: none;
         background: white;
-        cursor: pointer;
+        transition: all 0.2s;
     }
 
+    .dm-input-group input:focus,
     .dm-input-group select:focus {
         outline: none;
-        border-color: var(--dm-orange);
-        box-shadow: 0 0 0 4px rgba(255, 107, 0, 0.1);
+        border-color: var(--dm-primary);
+        box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.08);
     }
 
-    .dm-input-group .select-arrow {
+    /* Action Dropdown */
+    .actions-dropdown {
+        position: relative;
+        display: inline-block;
+    }
+
+    .dropdown-trigger {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        border: 1px solid var(--dm-slate-100);
+        background: white;
+        color: var(--dm-slate-400);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .dropdown-trigger:hover,
+    .dropdown-trigger.active {
+        color: var(--dm-primary);
+        border-color: var(--dm-primary);
+    }
+
+    .dropdown-menu {
         position: absolute;
-        right: 1.25rem;
-        top: 1.1rem;
-        color: #94a3b8;
-        pointer-events: none;
-    }
-
-    /* Validation Styles */
-    .field-error-msg {
-        color: #ef4444;
-        font-size: 0.7rem;
-        font-weight: 700;
-        margin-top: 0.25rem;
-        margin-left: 0.5rem;
+        top: 100%;
+        right: 0;
+        width: 210px;
+        background: white;
+        border: 1px solid var(--dm-slate-100);
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         display: none;
-        animation: fadeInDown 0.2s ease-out;
+        z-index: 1000;
+        padding: 0.5rem;
+        margin-top: 8px;
     }
 
-    .dm-input-group.has-error input,
-    .dm-input-group.has-error select {
-        border-color: #ef4444 !important;
-        background-color: #fff1f2 !important;
+    .dropdown-menu.show {
+        display: block;
     }
 
-    .dm-input-group.has-error i {
-        color: #ef4444 !important;
+    .dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        color: var(--dm-slate-600);
+        font-size: 0.85rem;
+        font-weight: 600;
+        width: 100%;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        text-align: left;
     }
 
-    @keyframes fadeInDown {
-        from {
-            opacity: 0;
-            transform: translateY(-5px);
+    .dropdown-item:hover {
+        background: var(--dm-slate-50);
+        color: var(--dm-primary);
+    }
+
+    .dropdown-item.danger {
+        color: #ef4444;
+    }
+
+    .dropdown-item.danger:hover {
+        background: #fef2f2;
+    }
+
+    .pulse-live {
+        animation: pulse-live 2s infinite;
+    }
+
+    @keyframes pulse-live {
+        0% {
+            transform: scale(0.95);
+            opacity: 0.5;
         }
 
-        to {
+        50% {
+            transform: scale(1.1);
             opacity: 1;
-            transform: translateY(0);
+        }
+
+        100% {
+            transform: scale(0.95);
+            opacity: 0.5;
+        }
+    }
+
+    @media (max-width: 1200px) {
+        .kpi-grid-clean {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .kpi-grid-clean {
+            grid-template-columns: 1fr;
+        }
+
+        .terminal-header-top {
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .terminal-header {
+            flex-direction: column;
+            gap: 1rem;
+            align-items: flex-start;
+        }
+
+        .search-group-pro {
+            width: 100%;
+        }
+
+        .cust-table th:nth-child(3),
+        .cust-table td:nth-child(3) {
+            display: none;
         }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div class="header-main">
-        <h1>Manage Caterers</h1>
-        <p>Review caterer profiles, manage verification status, and monitor member activity.</p>
+<div class="terminal-header-top">
+    <div>
+        <h1>Catering Partners</h1>
+        <p>Manage and onboard professional service providers across the ecosystem.</p>
     </div>
-    <button class="btn-add-caterer-trigger" onclick="openAddCatererModal()">
-        <i class="fas fa-plus-circle"></i> Add New Caterer
-    </button>
-</div>
-
-<!-- Caterer Stats Grid (Uniform Diamond Pattern) -->
-<div class="caterer-stats-grid">
-    <div class="dm-standard-card" style="display: flex; align-items: center; gap: 1.25rem;">
-        <div class="stat-icon-badge total"><i class="fas fa-store"></i></div>
-        <div class="stat-info-group">
-            <span class="label">Total Listings</span>
-            <div class="value">{{ metrics.total_caterers }}</div>
-        </div>
-    </div>
-    <div class="dm-standard-card" style="display: flex; align-items: center; gap: 1.25rem;">
-        <div class="stat-icon-badge pending"><i class="fas fa-clock"></i></div>
-        <div class="stat-info-group">
-            <span class="label">Pending Review</span>
-            <div class="value">{{ metrics.pending_caterers_count }}</div>
-        </div>
-    </div>
-    <div class="dm-standard-card" style="display: flex; align-items: center; gap: 1.25rem;">
-        <div class="stat-icon-badge approved"><i class="fas fa-check-circle"></i></div>
-        <div class="stat-info-group">
-            <span class="label">Verified Partners</span>
-            <div class="value">{{ metrics.approved_caterers_count }}</div>
-        </div>
-    </div>
-    <div class="dm-standard-card" style="display: flex; align-items: center; gap: 1.25rem;">
-        <div class="stat-icon-badge rejected"><i class="fas fa-times-circle"></i></div>
-        <div class="stat-info-group">
-            <span class="label">Rejected</span>
-            <div class="value">{{ metrics.rejected_caterers_count }}</div>
-        </div>
+    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 1rem;">
+        <button class="btn-add-pro" onclick="openAddCatererModal()">
+            <i class="fas fa-plus"></i> Add New Partner
+        </button>
     </div>
 </div>
 
-<div class="dm-standard-card" style="padding: 1.75rem;">
-    <div class="management-header">
-        <h3 class="management-title">
-            <div class="title-icon"><i class="fas fa-briefcase"></i></div>
-            Application Management
-        </h3>
-        <div class="search-box-diamond">
-            <i class="fas fa-search" style="color: #94a3b8;"></i>
-            <input type="text" id="catererSearchInput" placeholder="Search businesses, owners, or emails..."
+<!-- KPI Dashboard -->
+<div class="kpi-grid-clean">
+    <div class="kpi-card-clean">
+        <div class="kpi-icon-box" style="background: #eff6ff; color: #3b82f6;"><i class="fas fa-store"></i></div>
+        <div class="kpi-info">
+            <h4>Total Listings</h4>
+            <span class="kpi-value" id="kpi-total">{{ metrics.total_caterers }}</span>
+        </div>
+    </div>
+    <div class="kpi-card-clean">
+        <div class="kpi-icon-box" style="background: #fffbeb; color: #f59e0b;"><i class="fas fa-hourglass-half"></i>
+        </div>
+        <div class="kpi-info">
+            <h4>Pending Review</h4>
+            <span class="kpi-value" id="kpi-pending">{{ metrics.pending_caterers_count }}</span>
+        </div>
+    </div>
+    <div class="kpi-card-clean">
+        <div class="kpi-icon-box" style="background: #ecfdf5; color: #10b981;"><i class="fas fa-check-double"></i></div>
+        <div class="kpi-info">
+            <h4>Verified</h4>
+            <span class="kpi-value" id="kpi-verified">{{ metrics.approved_caterers_count }}</span>
+        </div>
+    </div>
+    <div class="kpi-card-clean">
+        <div class="kpi-icon-box" style="background: #fef2f2; color: #ef4444;"><i class="fas fa-ban"></i></div>
+        <div class="kpi-info">
+            <h4>Rejected</h4>
+            <span class="kpi-value">{{ metrics.rejected_caterers_count }}</span>
+        </div>
+    </div>
+</div>
+
+<div class="management-terminal">
+    <div class="terminal-header">
+        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--dm-secondary);">Partner Registry</h3>
+        <div class="search-group-pro">
+            <i class="fas fa-search"></i>
+            <input type="text" id="catererSearchInput" placeholder="Search businesses, owners, or regions..."
                 onkeyup="filterCaterers()">
         </div>
     </div>
 
-    {% if caterers %}
-    <div class="admin-table-container">
-        <table class="caterers-list-table" id="caterersTable">
+    <div style="overflow-x: auto;">
+        <table class="cust-table" id="caterersTable">
             <thead>
                 <tr>
-                    <th style="padding-left: 0;">Business Name</th>
-                    <th>Owner Info</th>
-                    <th>Service Area</th>
+                    <th>Business & Domain</th>
+                    <th>Representative</th>
+                    <th>Region</th>
                     <th>Status</th>
-                    <th style="text-align: right; padding-right: 0;">Actions</th>
+                    <th style="text-align: right;">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for caterer in caterers %}
-                <tr class="caterer-row">
+                <tr class="cust-row">
                     <td>
-                        <div style="font-weight: 800; color: var(--dm-navy); font-size: 1rem; margin-bottom: 0.15rem;">
-                            {{ caterer.business_name }}</div>
-                        <div style="font-size: 0.75rem; color: var(--dm-muted); font-weight: 500;">Joined {{
+                        <div style="font-weight: 700; color: var(--dm-secondary);">{{ caterer.business_name }}</div>
+                        <div style="font-size: 0.75rem; color: var(--dm-slate-400);">Joined {{
                             caterer.created_at.strftime('%b %d, %Y') if caterer.created_at else 'TBD' }}</div>
                     </td>
                     <td>
-                        <div style="font-weight: 700; color: var(--dm-navy); font-size: 0.9rem;">{{
-                            caterer.user.first_name }} {{ caterer.user.last_name }}</div>
-                        <div style="font-size: 0.8rem; color: var(--dm-muted); font-weight: 400;">{{ caterer.user.email
-                            }}</div>
+                        <div style="font-weight: 600;">{{ caterer.user.first_name }} {{ caterer.user.last_name }}</div>
+                        <div style="font-size: 0.8rem; color: var(--dm-slate-400);">{{ caterer.user.email }}</div>
                     </td>
                     <td>
-                        <span style="font-size: 0.9rem; font-weight: 600; color: var(--dm-navy);"><i
-                                class="fas fa-map-marker-alt"
-                                style="margin-right: 0.4rem; font-size: 0.8rem; color: var(--dm-muted);"></i>{{
-                            caterer.city }}</span>
+                        <span style="color: var(--dm-slate-600); font-weight: 500;"><i class="fas fa-map-marker-alt"
+                                style="margin-right: 6px; color: var(--dm-primary); opacity: 0.7;"></i>{{ caterer.city
+                            }}</span>
                     </td>
                     <td>
-                        <span
-                            style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.8rem; border-radius: 10px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; background: {% if caterer.verification_status == 'Verified' %}#f0fdf4; color: #10b981;{% elif caterer.verification_status == 'Pending' %}#fff7ed; color: #f97316;{% elif caterer.verification_status == 'Rejected' %}#fef2f2; color: #ef4444;{% else %}#f8fafc; color: #64748b;{% endif %}">
-                            <i
-                                class="fas {% if caterer.verification_status == 'Verified' %}fa-check-circle{% elif caterer.verification_status == 'Pending' %}fa-clock{% else %}fa-times-circle{% endif %}"></i>
+                        <span class="badge-clean"
+                            style="background: {% if caterer.verification_status == 'Verified' %}#ecfdf5; color: #10b981;{% elif caterer.verification_status == 'Pending' %}#fff7ed; color: #f97316;{% else %}#fef2f2; color: #ef4444;{% endif %}">
                             {{ caterer.verification_status }}
                         </span>
                     </td>
-                    <td style="text-align: right; padding-right: 0;">
-                        <!-- Desktop Actions (Dropdown) -->
+                    <td style="text-align: right;">
                         <div class="actions-dropdown">
-                            <button class="dropdown-trigger"
-                                style="width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid #e2e8f0; background: white; color: #64748b; cursor: pointer; display: flex; align-items: center; justify-content: center;"><i
-                                    class="fas fa-ellipsis-v"></i></button>
+                            <button class="dropdown-trigger" onclick="toggleDropdown(this, event)">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
                             <div class="dropdown-menu">
-                                <button type="button" class="dropdown-item" data-id="{{ caterer.id }}"
-                                    data-business="{{ caterer.business_name | e }}"
+                                <button class="dropdown-item" data-business="{{ caterer.business_name | e }}"
                                     data-owner="{{ caterer.user.first_name }} {{ caterer.user.last_name }}"
-                                    data-email="{{ caterer.user.email }}"
-                                    data-phone="{{ caterer.user.phone_number if caterer.user.phone_number else 'N/A' }}"
-                                    data-city="{{ caterer.city if caterer.city else 'N/A' }}"
+                                    data-email="{{ caterer.user.email }}" data-city="{{ caterer.city }}"
                                     data-status="{{ caterer.verification_status }}"
-                                    data-joined="{{ caterer.created_at.strftime('%b %d, %Y') if caterer.created_at else 'N/A' }}"
-                                    data-startprice="{{ '%.2f'|format(caterer.starting_price) if caterer.starting_price else 'N/A' }}"
-                                    onclick="openViewCatererModal(this)"><i class="fas fa-eye"></i> View
-                                    Profile</button>
+                                    onclick="openViewCatererModal(this)">
+                                    <i class="fas fa-eye"></i> View Profile
+                                </button>
 
                                 {% if caterer.verification_status == 'Pending' %}
                                 <a href="/admin/verify/{{ caterer.user.id }}" class="dropdown-item"
-                                    style="color: var(--dm-orange);"><i class="fas fa-file-contract"></i> Review
-                                    Verifications</a>
+                                    style="color: var(--dm-primary);">
+                                    <i class="fas fa-file-contract"></i> Review Audit
+                                </a>
                                 {% endif %}
 
-                                <button type="button" class="dropdown-item" data-id="{{ caterer.id }}"
+                                <button class="dropdown-item" data-id="{{ caterer.id }}"
                                     data-business="{{ caterer.business_name }}"
                                     data-first="{{ caterer.user.first_name }}" data-last="{{ caterer.user.last_name }}"
                                     data-email="{{ caterer.user.email }}" data-phone="{{ caterer.user.phone_number }}"
-                                    data-city="{{ caterer.city }}" onclick="openEditCatererModal(this)"><i
-                                        class="fas fa-user-edit"></i> Update Account</button>
-                                <div class="dropdown-divider"></div>
+                                    data-city="{{ caterer.city }}" onclick="openEditCatererModal(this)">
+                                    <i class="fas fa-edit"></i> Edit Details
+                                </button>
+
+                                <div class="dropdown-divider"
+                                    style="height: 1px; background: var(--dm-slate-50); margin: 6px 8px;"></div>
+
                                 <form action="/admin/caterers/{{ caterer.id }}/archive" method="POST"
-                                    onsubmit="event.preventDefault(); window.showConfirm('Archive this caterer? They will be hidden from the marketplace but their data remains.', () => this.submit(), 'Confirm Archive', 'Archive');">
-                                    <button type="submit" class="dropdown-item" style="color: #ef4444;"><i
-                                            class="fas fa-archive"></i> Archive Caterer</button>
+                                    onsubmit="event.preventDefault(); window.showConfirm('Archive this partner profile?', () => this.submit());">
+                                    <button type="submit" class="dropdown-item danger">
+                                        <i class="fas fa-trash-alt"></i> Archive Profile
+                                    </button>
                                 </form>
                             </div>
-                        </div>
-
-                        <!-- Mobile Actions (Badge Row) -->
-                        <div class="actions-cell-mobile">
-                            <button type="button" class="mobile-action-btn" onclick="openViewCatererModal(this)"
-                                data-business="{{ caterer.business_name | e }}"
-                                data-owner="{{ caterer.user.first_name }} {{ caterer.user.last_name }}"
-                                data-email="{{ caterer.user.email }}"
-                                data-phone="{{ caterer.user.phone_number if caterer.user.phone_number else 'N/A' }}"
-                                data-city="{{ caterer.city if caterer.city else 'N/A' }}"
-                                data-status="{{ caterer.verification_status }}"
-                                data-joined="{{ caterer.created_at.strftime('%b %d, %Y') if caterer.created_at else 'N/A' }}"
-                                data-startprice="{{ '%.2f'|format(caterer.starting_price) if caterer.starting_price else 'N/A' }}"><i
-                                    class="fas fa-eye"></i> View</button>
-
-                            {% if caterer.verification_status == 'Pending' %}
-                            <a href="/admin/verify/{{ caterer.user.id }}" class="mobile-action-btn primary"><i
-                                    class="fas fa-file-contract"></i> Review</a>
-                            {% endif %}
-
-                            <button type="button" class="mobile-action-btn" onclick="openEditCatererModal(this)"
-                                data-id="{{ caterer.id }}" data-business="{{ caterer.business_name }}"
-                                data-first="{{ caterer.user.first_name }}" data-last="{{ caterer.user.last_name }}"
-                                data-email="{{ caterer.user.email }}" data-phone="{{ caterer.user.phone_number }}"
-                                data-city="{{ caterer.city }}"><i class="fas fa-edit"></i> Edit</button>
                         </div>
                     </td>
                 </tr>
@@ -280,130 +583,73 @@
             </tbody>
         </table>
     </div>
-
-    <!-- Detailed Pagination -->
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9;"
-        id="paginationBox">
-        <div style="font-size: 0.85rem; color: var(--dm-muted); font-weight: 500;" id="paginationInfo">Showing 1 to 5 of
-            {{ caterers|length }} entries</div>
-        <div style="display: flex; gap: 0.5rem;" id="paginationControls"></div>
-    </div>
-    {% else %}
-    <div style="text-align: center; padding: 5rem 2.5rem;">
-        <div
-            style="width: 72px; height: 72px; background: #f8fafc; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem;">
-            <i class="fas fa-store-slash" style="color: #cbd5e1; font-size: 2rem;"></i>
-        </div>
-        <h3 style="color: var(--dm-navy); font-weight: 800; margin-bottom: 0.5rem;">No Onboarded Caterers</h3>
-        <p style="color: var(--dm-muted); font-size: 0.9rem;">Start growing your marketplace by adding your first
-            caterer partner.</p>
-    </div>
-    {% endif %}
 </div>
 
-<!-- Modal Overlays (Restored and Higher-Fidelity) -->
+<!-- Standardized Modals -->
 <div id="viewCatererModal" class="admin-modal-overlay">
     <div class="admin-modal-card">
-        <div
-            style="padding: 1.75rem 2rem; border-bottom: 1.5px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
-            <h3
-                style="margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--dm-navy); display: flex; align-items: center; gap: 0.75rem;">
-                <i class="fas fa-address-card" style="color: var(--dm-orange);"></i> Caterer Profile
-            </h3>
-            <button onclick="closeViewCatererModal()"
-                style="background: none; border: none; font-size: 1.5rem; color: #94a3b8; cursor: pointer;">&times;</button>
+        <div class="modal-header-clean">
+            <h3><i class="fas fa-id-card-clip"></i> Partner Identity Summary</h3>
+            <button class="modal-close-btn" onclick="closeViewCatererModal()">&times;</button>
         </div>
-        <div style="padding: 2rem;" id="viewCatererBody"></div>
-        <div
-            style="padding: 1.5rem 2rem; background: #f8fafc; border-top: 1.5px solid #f1f5f9; display: flex; justify-content: flex-end;">
-            <button onclick="closeViewCatererModal()"
-                style="background: #e2e8f0; color: #475569; border: none; padding: 0.75rem 1.5rem; border-radius: 12px; font-weight: 700; cursor: pointer;">Close
-                Details</button>
+        <div class="modal-body-clean" id="viewCatererBody"></div>
+        <div class="modal-footer-clean">
+            <button class="btn-add-pro" style="background: var(--dm-slate-100); color: var(--dm-slate-600);"
+                onclick="closeViewCatererModal()">Dismiss</button>
         </div>
     </div>
 </div>
 
 <div id="addCatererModal" class="admin-modal-overlay">
     <div class="admin-modal-card">
-        <div
-            style="padding: 1.75rem 2rem; border-bottom: 1.5px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
-            <h3
-                style="margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--dm-navy); display: flex; align-items: center; gap: 0.75rem;">
-                <i class="fas fa-plus-circle" style="color: var(--dm-orange);"></i> Onboard Partner
-            </h3>
-            <button onclick="closeAddCatererModal()"
-                style="background: none; border: none; font-size: 1.5rem; color: #94a3b8; cursor: pointer;">&times;</button>
+        <div class="modal-header-clean">
+            <h3><i class="fas fa-plus-circle"></i> Onboard New Partner</h3>
+            <button class="modal-close-btn" onclick="closeAddCatererModal()">&times;</button>
         </div>
-        <form id="addCatererForm" style="padding: 2rem;" novalidate>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
-                <div style="grid-column: span 2;">
-                    <label>Business Name</label>
-                    <div class="dm-input-group">
-                        <i class="fas fa-store"></i>
-                        <input type="text" name="business_name" id="businessNameInput"
-                            placeholder="e.g. Skyline Catering" required>
+        <form id="addCatererForm" class="admin-form-pro">
+            <div class="modal-body-clean">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                    <div style="grid-column: span 2;">
+                        <label>Business Identity Name</label>
+                        <div class="dm-input-group"><i class="fas fa-store"></i><input type="text" name="business_name"
+                                required></div>
                     </div>
-                    <span class="field-error-msg" id="error-business_name">Business name is required</span>
-                </div>
-                <div style="grid-column: span 2;">
-                    <label>Owner Full Name</label>
-                    <div class="dm-input-group">
-                        <i class="fas fa-user"></i>
-                        <input type="text" name="full_name" id="fullNameInput" placeholder="First and Last Name"
-                            required>
+                    <div style="grid-column: span 2;">
+                        <label>Authorized Signatory (Full Name)</label>
+                        <div class="dm-input-group"><i class="fas fa-user-tie"></i><input type="text" name="full_name"
+                                required></div>
                     </div>
-                    <span class="field-error-msg" id="error-full_name">Please enter a valid full name</span>
-                </div>
-                <div>
-                    <label>Email Address</label>
-                    <div class="dm-input-group">
-                        <i class="fas fa-envelope"></i>
-                        <input type="email" name="email" id="emailInput" placeholder="caterer@gmail.com" required>
+                    <div>
+                        <label>Business Email</label>
+                        <div class="dm-input-group"><i class="fas fa-envelope"></i><input type="email" name="email"
+                                required></div>
                     </div>
-                    <span class="field-error-msg" id="error-email">Invalid email format</span>
-                </div>
-                <div>
-                    <label>Contact Phone</label>
-                    <div class="dm-input-group">
-                        <i class="fas fa-phone"></i>
-                        <input type="tel" name="phone" id="phoneInput" placeholder="09xxxxxxxxx" maxlength="11"
-                            required>
+                    <div>
+                        <label>Primary Hotline</label>
+                        <div class="dm-input-group"><i class="fas fa-phone"></i><input type="tel" name="phone" required>
+                        </div>
                     </div>
-                    <span class="field-error-msg" id="error-phone">Must be 11 digits (e.g. 09123456789)</span>
-                </div>
-                <div style="grid-column: span 2;">
-                    <label>Service Area/City (Sta Cruz Area Only)</label>
-                    <div class="dm-input-group">
-                        <i class="fas fa-map-marker-alt"></i>
-                        <select name="city" id="cityInput" required>
-                            <option value="" disabled selected>Select Area in Santa Cruz...</option>
-                            <option value="Santa Cruz - Poblacion">Poblacion (I, II, III, IV, V)</option>
-                            <option value="Santa Cruz - Bagumbayan">Bagumbayan</option>
-                            <option value="Santa Cruz - Bubukal">Bubukal</option>
-                            <option value="Santa Cruz - Calios">Calios</option>
-                            <option value="Santa Cruz - Duhat">Duhat</option>
-                            <option value="Santa Cruz - Gatid">Gatid</option>
-                            <option value="Santa Cruz - Labuin">Labuin</option>
-                            <option value="Santa Cruz - Pagsawitan">Pagsawitan</option>
-                            <option value="Santa Cruz - Patimbao">Patimbao</option>
-                            <option value="Santa Cruz - San Jose">San Jose</option>
-                            <option value="Santa Cruz - San Juan">San Juan</option>
-                            <option value="Santa Cruz - San Pablo">San Pablo (Norte/Sur)</option>
-                            <option value="Santa Cruz - Santisima Cruz">Santisima Cruz</option>
-                            <option value="Santa Cruz - Sto. Angel">Santo Angel (Norte/Central/Sur)</option>
-                        </select>
-                        <i class="fas fa-chevron-down select-arrow"></i>
+                    <div style="grid-column: span 2;">
+                        <label>Operational Domain (Sta Cruz Only)</label>
+                        <div class="dm-input-group">
+                            <i class="fas fa-map-marked-alt"></i>
+                            <select name="city" required>
+                                <option value="" disabled selected>Select Region...</option>
+                                <option value="Santa Cruz - Poblacion">Poblacion</option>
+                                <option value="Santa Cruz - Bagumbayan">Bagumbayan</option>
+                                <option value="Santa Cruz - Bubukal">Bubukal</option>
+                                <option value="Santa Cruz - Calios">Calios</option>
+                                <option value="Santa Cruz - San Jose">San Jose</option>
+                                <option value="Santa Cruz - Sto. Angel">Santo Angel</option>
+                            </select>
+                        </div>
                     </div>
-                    <span class="field-error-msg" id="error-city">Please select a service area</span>
                 </div>
             </div>
-            <div
-                style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1.5px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 1rem;">
-                <button type="button" onclick="closeAddCatererModal()"
-                    style="background: white; color: #64748b; border: 1.5px solid #e2e8f0; padding: 0.8rem 1.75rem; border-radius: 12px; font-weight: 700; cursor: pointer;">Cancel</button>
-                <button type="submit"
-                    style="background: var(--dm-orange); color: white; border: none; padding: 0.8rem 2.5rem; border-radius: 12px; font-weight: 800; cursor: pointer; box-shadow: 0 8px 20px rgba(255,107,0,0.2);">Create
-                    Account</button>
+            <div class="modal-footer-clean">
+                <button type="button" class="dropdown-item" style="width: auto; padding: 0.75rem 1.5rem;"
+                    onclick="closeAddCatererModal()">Cancel</button>
+                <button type="submit" class="btn-add-pro">Initialize Profile</button>
             </div>
         </form>
     </div>
@@ -411,73 +657,54 @@
 
 <div id="editCatererModal" class="admin-modal-overlay">
     <div class="admin-modal-card">
-        <div
-            style="padding: 1.75rem 2rem; border-bottom: 1.5px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
-            <h3
-                style="margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--dm-navy); display: flex; align-items: center; gap: 0.75rem;">
-                <i class="fas fa-user-edit" style="color: var(--dm-orange);"></i> Update Record
-            </h3>
-            <button onclick="closeEditCatererModal()"
-                style="background: none; border: none; font-size: 1.5rem; color: #94a3b8; cursor: pointer;">&times;</button>
+        <div class="modal-header-clean">
+            <h3><i class="fas fa-user-shield"></i> Adjudicate Partner Identity</h3>
+            <button class="modal-close-btn" onclick="closeEditCatererModal()">&times;</button>
         </div>
-        <form id="editCatererForm" style="padding: 2rem;">
+        <form id="editCatererForm" class="admin-form-pro">
             <input type="hidden" name="caterer_id" id="editCatererId">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
-                <div style="grid-column: span 2;">
-                    <label>Business Name</label>
-                    <div class="dm-input-group"><i class="fas fa-store"></i><input type="text" name="business_name"
-                            id="editBusinessNameInput" required></div>
-                </div>
-                <div style="grid-column: span 2;">
-                    <label>Owner Name</label>
-                    <div class="dm-input-group"><i class="fas fa-user"></i><input type="text" name="full_name"
-                            id="editFullNameInput" required></div>
-                </div>
-                <!-- Other fields shortened for brevity but follow the same pattern -->
-                <div>
-                    <label>Email</label>
-                    <div class="dm-input-group"><i class="fas fa-envelope"></i><input type="email" name="email"
-                            id="editEmailInput" required></div>
-                </div>
-                <div>
-                    <label>Phone</label>
-                    <div class="dm-input-group">
-                        <i class="fas fa-phone"></i>
-                        <input type="tel" name="phone" id="editPhoneInput" pattern="09[0-9]{9}"
-                            title="Phone must be 11 digits starting with 09" required>
+            <div class="modal-body-clean">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                    <div style="grid-column: span 2;">
+                        <label>Business Identity</label>
+                        <div class="dm-input-group"><i class="fas fa-store"></i><input type="text" name="business_name"
+                                id="editBusinessName" required></div>
                     </div>
-                </div>
-                <div style="grid-column: span 2;">
-                    <label>Location (Sta Cruz Area)</label>
-                    <div class="dm-input-group">
-                        <i class="fas fa-map-marker-alt"></i>
-                        <select name="city" id="editCityInput" required>
-                            <option value="Santa Cruz - Poblacion">Poblacion (I, II, III, IV, V)</option>
-                            <option value="Santa Cruz - Bagumbayan">Bagumbayan</option>
-                            <option value="Santa Cruz - Bubukal">Bubukal</option>
-                            <option value="Santa Cruz - Calios">Calios</option>
-                            <option value="Santa Cruz - Duhat">Duhat</option>
-                            <option value="Santa Cruz - Gatid">Gatid</option>
-                            <option value="Santa Cruz - Labuin">Labuin</option>
-                            <option value="Santa Cruz - Pagsawitan">Pagsawitan</option>
-                            <option value="Santa Cruz - Patimbao">Patimbao</option>
-                            <option value="Santa Cruz - San Jose">San Jose</option>
-                            <option value="Santa Cruz - San Juan">San Juan</option>
-                            <option value="Santa Cruz - San Pablo">San Pablo (Norte/Sur)</option>
-                            <option value="Santa Cruz - Santisima Cruz">Santisima Cruz</option>
-                            <option value="Santa Cruz - Sto. Angel">Santo Angel (Norte/Central/Sur)</option>
-                        </select>
-                        <i class="fas fa-chevron-down select-arrow"></i>
+                    <div style="grid-column: span 2;">
+                        <label>Authorized Signatory</label>
+                        <div class="dm-input-group"><i class="fas fa-user-tie"></i><input type="text" name="full_name"
+                                id="editFullName" required></div>
+                    </div>
+                    <div>
+                        <label>Business Email Identity</label>
+                        <div class="dm-input-group"><i class="fas fa-envelope-open"></i><input type="email" name="email"
+                                id="editEmail" required></div>
+                    </div>
+                    <div>
+                        <label>Primary Hotline</label>
+                        <div class="dm-input-group"><i class="fas fa-phone-square"></i><input type="tel" name="phone"
+                                id="editPhone" required></div>
+                    </div>
+                    <div style="grid-column: span 2;">
+                        <label>Operational Domain</label>
+                        <div class="dm-input-group">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <select name="city" id="editCity" required>
+                                <option value="Santa Cruz - Poblacion">Poblacion</option>
+                                <option value="Santa Cruz - Bagumbayan">Bagumbayan</option>
+                                <option value="Santa Cruz - Bubukal">Bubukal</option>
+                                <option value="Santa Cruz - Calios">Calios</option>
+                                <option value="Santa Cruz - San Jose">San Jose</option>
+                                <option value="Santa Cruz - Sto. Angel">Santo Angel</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div
-                style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1.5px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 1rem;">
-                <button type="button" onclick="closeEditCatererModal()"
-                    style="background: white; color: #64748b; border: 1.5px solid #e2e8f0; padding: 0.8rem 1.75rem; border-radius: 12px; font-weight: 700; cursor: pointer;">Cancel</button>
-                <button type="submit"
-                    style="background: var(--dm-orange); color: white; border: none; padding: 0.8rem 2.5rem; border-radius: 12px; font-weight: 800; cursor: pointer;">Save
-                    Changes</button>
+            <div class="modal-footer-clean">
+                <button type="button" class="dropdown-item" style="width: auto; padding: 0.75rem 1.5rem;"
+                    onclick="closeEditCatererModal()">Abort</button>
+                <button type="submit" class="btn-add-pro">Commit Changes</button>
             </div>
         </form>
     </div>
@@ -486,72 +713,135 @@
 
 {% block extra_js %}
 <script>
-    // ─── Core Pagination ──────────────────────────────────────────────────
-    let currentPage = 1;
-    let rowsPerPage = 5;
-    let filteredRows = [];
+    // Real-time Hub
+    window.addEventListener('system_update', function (e) {
+        if (['new_signup', 'kyc_update', 'caterer_update', 'user_archived'].includes(e.detail.type)) {
+            refreshCaterersTerminal();
+        }
+    });
 
-    function initPagination() {
-        const table = document.getElementById('caterersTable');
-        if (!table) return;
-        const rows = Array.from(table.querySelectorAll('tbody tr'));
-        filteredRows = rows;
-        updateTableDisplay();
-    }
+    async function refreshCaterersTerminal() {
+        const statusEl = document.getElementById('caterer-sync-status');
+        if (statusEl) statusEl.innerHTML = '<i class="fas fa-sync fa-spin" style="color: var(--dm-primary);"></i> SYNCING...';
 
-    function updateTableDisplay() {
-        const startIndex = (currentPage - 1) * rowsPerPage;
-        const endIndex = startIndex + rowsPerPage;
-        filteredRows.forEach((row, index) => {
-            row.style.display = (index >= startIndex && index < endIndex) ? '' : 'none';
-        });
-        renderPaginationControls();
-    }
+        try {
+            const res = await fetch('/admin/api/caterers-overview');
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('kpi-total').innerText = data.metrics.total_caterers;
+                document.getElementById('kpi-pending').innerText = data.metrics.pending_caterers_count;
+                document.getElementById('kpi-verified').innerText = data.metrics.approved_caterers_count;
 
-    function renderPaginationControls() {
-        const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
-        const controls = document.getElementById('paginationControls');
-        if (!controls) return;
-        controls.innerHTML = '';
-        if (totalPages <= 1) { document.getElementById('paginationBox').style.display = 'none'; return; }
-        else { document.getElementById('paginationBox').style.display = 'flex'; }
-
-        for (let i = 1; i <= totalPages; i++) {
-            const btn = document.createElement('button');
-            btn.style = `width:36px; height:36px; border-radius:10px; border:1px solid #e2e8f0; font-weight:700; font-size:0.8rem; cursor:pointer; background:${i === currentPage ? 'var(--dm-orange)' : 'white'}; color:${i === currentPage ? 'white' : '#64748b'}`;
-            btn.innerText = i;
-            btn.onclick = () => { currentPage = i; updateTableDisplay(); };
-            controls.appendChild(btn);
+                const tbody = document.querySelector('#caterersTable tbody');
+                tbody.innerHTML = data.caterers.map(c => `
+                    <tr class="cust-row">
+                        <td>
+                            <div style="font-weight: 700; color: var(--dm-secondary);">${c.business_name}</div>
+                            <div style="font-size: 0.75rem; color: var(--dm-slate-400);">Joined ${c.created_at}</div>
+                        </td>
+                        <td>
+                            <div style="font-weight: 600;">${c.first_name} ${c.last_name}</div>
+                            <div style="font-size: 0.8rem; color: var(--dm-slate-400);">${c.email}</div>
+                        </td>
+                        <td>
+                            <span style="color: var(--dm-slate-600); font-weight: 500;"><i class="fas fa-map-marker-alt" style="margin-right: 6px; color: var(--dm-primary); opacity: 0.7;"></i>${c.city}</span>
+                        </td>
+                        <td>
+                            <span class="badge-clean" style="background: ${c.verification_status === 'Verified' ? '#ecfdf5; color: #10b981;' : (c.verification_status === 'Pending' ? '#fff7ed; color: #f97316;' : '#fef2f2; color: #ef4444;')}">
+                                ${c.verification_status}
+                            </span>
+                        </td>
+                        <td style="text-align: right;">
+                            <div class="actions-dropdown">
+                                <button class="dropdown-trigger" onclick="toggleDropdown(this, event)"><i class="fas fa-ellipsis-v"></i></button>
+                                <div class="dropdown-menu">
+                                    <button class="dropdown-item" 
+                                            data-business="${c.business_name}"
+                                            data-owner="${c.first_name} ${c.last_name}"
+                                            data-email="${c.email}"
+                                            data-city="${c.city}"
+                                            data-status="${c.verification_status}"
+                                            onclick="openViewCatererModal(this)">
+                                        <i class="fas fa-eye"></i> View Profile
+                                    </button>
+                                    ${c.verification_status === 'Pending' ? `<a href="/admin/verify/${c.user_id}" class="dropdown-item" style="color: var(--dm-primary);"><i class="fas fa-file-contract"></i> Review Audit</a>` : ''}
+                                    <button class="dropdown-item" 
+                                            data-id="${c.id}" data-business="${c.business_name}"
+                                            data-first="${c.first_name}" data-last="${c.last_name}"
+                                            data-email="${c.email}" data-phone="${c.contact_phone}" data-city="${c.city}" 
+                                            onclick="openEditCatererModal(this)">
+                                        <i class="fas fa-edit"></i> Edit Details
+                                    </button>
+                                    <div class="dropdown-divider" style="height: 1px; background: var(--dm-slate-50); margin: 6px 8px;"></div>
+                                    <form action="/admin/caterers/${c.id}/archive" method="POST" onsubmit="event.preventDefault(); window.showConfirm('Archive this partner profile?', () => this.submit());">
+                                        <button type="submit" class="dropdown-item danger"><i class="fas fa-trash-alt"></i> Archive Profile</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+                if (statusEl) statusEl.innerHTML = '<i class="fas fa-circle pulse-live" style="font-size: 8px; color: var(--dm-primary);"></i> Live Partner Sync Active';
+            }
+        } catch (err) {
+            if (statusEl) statusEl.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i> SYNC OFFLINE';
         }
     }
 
-    function filterCaterers() {
-        const input = document.getElementById('catererSearchInput');
-        const filter = input.value.toLowerCase();
-        const table = document.getElementById('caterersTable');
-        const rows = Array.from(table.querySelectorAll('tbody tr'));
-        filteredRows = rows.filter(row => row.textContent.toLowerCase().includes(filter));
-        currentPage = 1;
-        updateTableDisplay();
+    function toggleDropdown(btn, event) {
+        event.stopPropagation();
+        document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
+            if (menu !== btn.nextElementSibling) {
+                menu.classList.remove('show');
+                menu.previousElementSibling.classList.remove('active');
+            }
+        });
+        btn.nextElementSibling.classList.toggle('show');
+        btn.classList.toggle('active');
     }
 
-    // ─── Modal Handlers ──────────────────────────────────────────────────
+    window.addEventListener('click', () => {
+        document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
+            menu.classList.remove('show');
+            menu.previousElementSibling.classList.remove('active');
+        });
+    });
+
+    function filterCaterers() {
+        const query = document.getElementById('catererSearchInput').value.toLowerCase();
+        const rows = document.querySelectorAll('.cust-row');
+        rows.forEach(row => { row.style.display = row.innerText.toLowerCase().includes(query) ? '' : 'none'; });
+    }
+
     function openAddCatererModal() { document.getElementById('addCatererModal').classList.add('active'); document.body.style.overflow = 'hidden'; }
     function closeAddCatererModal() { document.getElementById('addCatererModal').classList.remove('active'); document.body.style.overflow = ''; }
     function closeViewCatererModal() { document.getElementById('viewCatererModal').classList.remove('active'); document.body.style.overflow = ''; }
     function closeEditCatererModal() { document.getElementById('editCatererModal').classList.remove('active'); document.body.style.overflow = ''; }
 
     function openViewCatererModal(btn) {
-        const body = document.getElementById('viewCatererBody');
-        body.innerHTML = `
-            <div class="view-section-title">Business Intelligence</div>
-            <div class="view-detail-row"><span class="view-detail-label">Store Name</span><span class="view-detail-value">${btn.dataset.business}</span></div>
-            <div class="view-detail-row"><span class="view-detail-label">Service Area</span><span class="view-detail-value">${btn.dataset.city}</span></div>
-            
-            <div class="view-section-title" style="margin-top:1.5rem">Administrative Data</div>
-            <div class="view-detail-row"><span class="view-detail-label">Owner Name</span><span class="view-detail-value">${btn.dataset.owner}</span></div>
-            <div class="view-detail-row"><span class="view-detail-label">Email</span><span class="view-detail-value">${btn.dataset.email}</span></div>
-            <div class="view-detail-row"><span class="view-detail-label">Status</span><span class="view-detail-value" style="font-weight:800; color:#10b981">${btn.dataset.status}</span></div>
+        document.getElementById('viewCatererBody').innerHTML = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div style="grid-column: span 2;">
+                    <span style="font-size: 0.65rem; font-weight: 800; color: var(--dm-slate-400); text-transform: uppercase;">Business Identity</span>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--dm-secondary);"><i class="fas fa-store" style="color: var(--dm-primary); margin-right: 10px;"></i> ${btn.dataset.business}</div>
+                </div>
+                <div>
+                    <span style="font-size: 0.65rem; font-weight: 800; color: var(--dm-slate-400); text-transform: uppercase;">Authorized Signatory</span>
+                    <div style="font-weight: 600;">${btn.dataset.owner}</div>
+                </div>
+                <div>
+                    <span style="font-size: 0.65rem; font-weight: 800; color: var(--dm-slate-400); text-transform: uppercase;">Primary Email</span>
+                    <div style="font-weight: 600;">${btn.dataset.email}</div>
+                </div>
+                <div>
+                    <span style="font-size: 0.65rem; font-weight: 800; color: var(--dm-slate-400); text-transform: uppercase;">Region</span>
+                    <div style="font-weight: 600;">${btn.dataset.city}</div>
+                </div>
+                <div>
+                    <span style="font-size: 0.65rem; font-weight: 800; color: var(--dm-slate-400); text-transform: uppercase;">Status</span>
+                    <div><span class="badge-clean" style="background: var(--dm-primary-light); color: var(--dm-primary);">${btn.dataset.status}</span></div>
+                </div>
+            </div>
         `;
         document.getElementById('viewCatererModal').classList.add('active');
         document.body.style.overflow = 'hidden';
@@ -559,250 +849,13 @@
 
     function openEditCatererModal(btn) {
         document.getElementById('editCatererId').value = btn.dataset.id;
-        document.getElementById('editBusinessNameInput').value = btn.dataset.business;
-        document.getElementById('editFullNameInput').value = btn.dataset.first + " " + btn.dataset.last;
-        document.getElementById('editEmailInput').value = btn.dataset.email;
-        document.getElementById('editPhoneInput').value = btn.dataset.phone;
-
-        // Match dropdown value
-        const citySelect = document.getElementById('editCityInput');
-        const cityValue = btn.dataset.city;
-        let matched = false;
-        for (let option of citySelect.options) {
-            if (option.value === cityValue) {
-                citySelect.value = cityValue;
-                matched = true;
-                break;
-            }
-        }
-        if (!matched) {
-            // If not in dropdown, add it temporarily or set to first
-            console.warn("City not in dropdown:", cityValue);
-        }
-
+        document.getElementById('editBusinessName').value = btn.dataset.business;
+        document.getElementById('editFullName').value = btn.dataset.first + " " + btn.dataset.last;
+        document.getElementById('editEmail').value = btn.dataset.email;
+        document.getElementById('editPhone').value = btn.dataset.phone;
+        document.getElementById('editCity').value = btn.dataset.city;
         document.getElementById('editCatererModal').classList.add('active');
         document.body.style.overflow = 'hidden';
     }
-
-    // ─── High-Grade Validation ──────────────────────────────────────────
-    console.log("[Admin] Initializing Onboarding Validation...");
-
-    const onboardingForm = document.getElementById('addCatererForm');
-    if (!onboardingForm) {
-        console.error("[Admin] onboardingForm not found!");
-    } else {
-        const onboardInputs = {
-            business_name: document.getElementById('businessNameInput'),
-            full_name: document.getElementById('fullNameInput'),
-            email: document.getElementById('emailInput'),
-            phone: document.getElementById('phoneInput'),
-            city: document.getElementById('cityInput')
-        };
-
-        function setFieldError(fieldId, message) {
-            const errorSpan = document.getElementById(`error-${fieldId}`);
-            const input = onboardInputs[fieldId];
-            const inputGroup = input ? input.closest('.dm-input-group') : null;
-
-            if (errorSpan) {
-                errorSpan.innerText = message;
-                errorSpan.style.display = 'block';
-            }
-            if (inputGroup) {
-                inputGroup.classList.add('has-error');
-            }
-        }
-
-        function clearFieldError(fieldId) {
-            const errorSpan = document.getElementById(`error-${fieldId}`);
-            const input = onboardInputs[fieldId];
-            const inputGroup = input ? input.closest('.dm-input-group') : null;
-
-            if (errorSpan) errorSpan.style.display = 'none';
-            if (inputGroup) inputGroup.classList.remove('has-error');
-        }
-
-        // Real-time constraints
-        onboardInputs.full_name.addEventListener('input', function () {
-            // Allow letters and spaces only
-            this.value = this.value.replace(/[^a-zA-Z\s]/g, '');
-            validateOnboardField('full_name');
-        });
-
-        onboardInputs.phone.addEventListener('input', function () {
-            this.value = this.value.replace(/[^0-9]/g, '');
-            // Limit to 11 digits
-            if (this.value.length > 11) this.value = this.value.slice(0, 11);
-            validateOnboardField('phone');
-        });
-
-        onboardInputs.email.addEventListener('input', () => validateOnboardField('email'));
-        onboardInputs.business_name.addEventListener('input', () => validateOnboardField('business_name'));
-        onboardInputs.city.addEventListener('change', () => validateOnboardField('city'));
-
-        function validateOnboardField(fieldId) {
-            const input = onboardInputs[fieldId];
-            const val = input.value.trim();
-
-            clearFieldError(fieldId);
-
-            if (fieldId === 'business_name' && !val) {
-                setFieldError('business_name', 'Business name is required');
-                return false;
-            }
-
-            if (fieldId === 'full_name') {
-                if (!val) { setFieldError('full_name', 'Full name is required'); return false; }
-
-                // Rule: Letters and spaces only
-                if (/[^a-zA-Z\s]/.test(val)) {
-                    setFieldError('full_name', 'Full name must contain letters only');
-                    return false;
-                }
-
-                if (val.length < 5) { setFieldError('full_name', 'Please enter a valid full name'); return false; }
-
-                const words = val.toLowerCase().split(/\s+/).filter(w => w.length > 0);
-                if (words.length < 2) {
-                    setFieldError('full_name', 'Please enter a valid full name (First and Last Name)');
-                    return false;
-                }
-
-                // Identical words check (Rule: pepito pepito -> INVALID)
-                const firstWord = words[0];
-                if (words.every(w => w === firstWord)) {
-                    setFieldError('full_name', 'Full name should NOT be identical words');
-                    return false;
-                }
-            }
-
-            if (fieldId === 'email') {
-                const emailVal = val.toLowerCase();
-                if (!val) {
-                    setFieldError('email', 'Email is required');
-                    return false;
-                }
-
-                if (!emailVal.endsWith('@gmail.com')) {
-                    setFieldError('email', 'Only Gmail addresses are accepted (e.g. example@gmail.com)');
-                    return false;
-                }
-
-                const regex = /^[a-z0-9](\.?[a-z0-9]){4,}@gmail\.com$/;
-                if (!regex.test(emailVal)) {
-                    setFieldError('email', 'Invalid Gmail format');
-                    return false;
-                }
-            }
-
-            if (fieldId === 'phone') {
-                if (!val) { setFieldError('phone', 'Contact number is required'); return false; }
-                if (!val.startsWith('09')) { setFieldError('phone', 'Invalid phone number (Must start with 09)'); return false; }
-                if (val.length !== 11) { setFieldError('phone', 'Must be 11 digits (e.g. 09123456789)'); return false; }
-            }
-
-            if (fieldId === 'city' && !onboardInputs.city.value) {
-                setFieldError('city', 'Please select a service area');
-                return false;
-            }
-
-            return true;
-        }
-
-        onboardingForm.addEventListener('submit', async function (e) {
-            e.preventDefault();
-            console.log("[Admin] Submit triggered. Validating...");
-
-            let isValid = true;
-            let firstError = null;
-
-            const fields = ['business_name', 'full_name', 'email', 'phone', 'city'];
-            for (const field of fields) {
-                if (!validateOnboardField(field)) {
-                    isValid = false;
-                    if (!firstError) firstError = onboardInputs[field];
-                }
-            }
-
-            if (!isValid) {
-                console.warn("[Admin] Validation failed.");
-                if (firstError) firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                if (window.showToast) window.showToast('Please fix the errors before submitting', 'error');
-                return;
-            }
-
-            const formData = new FormData(this);
-            const submitBtn = this.querySelector('button[type="submit"]');
-            const originalText = submitBtn.innerText;
-
-            submitBtn.innerText = "Creating...";
-            submitBtn.disabled = true;
-
-            try {
-                const response = await fetch('/admin/caterers/add', {
-                    method: 'POST',
-                    body: formData
-                });
-                const result = await response.json();
-
-                if (result.success) {
-                    if (window.showToast) window.showToast('Account created successfully!', 'success');
-                    else Swal.fire('Success', 'Account created successfully!', 'success');
-                    setTimeout(() => window.location.reload(), 1500);
-                } else {
-                    if (result.errors && result.errors.email) {
-                        setFieldError('email', 'Email is already registered');
-                        onboardInputs.email.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    } else {
-                        Swal.fire('Onboarding Failed', result.message || 'Failed to add caterer', 'error');
-                    }
-                }
-            } catch (error) {
-                console.error("[Admin] Submission error:", error);
-                Swal.fire('Error', 'An unexpected error occurred.', 'error');
-            } finally {
-                submitBtn.innerText = originalText;
-                submitBtn.disabled = false;
-            }
-        });
-    }
-
-    document.getElementById('editCatererForm').addEventListener('submit', async function (e) {
-        e.preventDefault();
-        const formData = new FormData(this);
-        const id = document.getElementById('editCatererId').value;
-        const submitBtn = this.querySelector('button[type="submit"]');
-        const originalText = submitBtn.innerText;
-
-        submitBtn.innerText = "Saving...";
-        submitBtn.disabled = true;
-
-        try {
-            const response = await fetch(`/admin/api/caterers/${id}/edit`, {
-                method: 'POST',
-                body: formData
-            });
-            const result = await response.json();
-
-            if (result.success) {
-                if (window.showToast) {
-                    window.showToast('Caterer record updated.', 'success');
-                    setTimeout(() => window.location.reload(), 1200);
-                } else {
-                    Swal.fire('Updated', 'Caterer record has been updated.', 'success')
-                        .then(() => window.location.reload());
-                }
-            } else {
-                Swal.fire('Error', result.message || 'Failed to update record', 'error');
-            }
-        } catch (error) {
-            Swal.fire('Error', 'An unexpected error occurred.', 'error');
-        } finally {
-            submitBtn.innerText = originalText;
-            submitBtn.disabled = false;
-        }
-    });
-
-    window.addEventListener('load', initPagination);
 </script>
 {% endblock %}

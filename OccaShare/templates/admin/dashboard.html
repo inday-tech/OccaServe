@@ -3,165 +3,633 @@
 {% block title %}Platform Overview - Admin Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v=1.4">
+<style>
+    :root {
+        --dm-primary: #f97316;
+        --dm-primary-light: #fff7ed;
+        --dm-secondary: #0f172a;
+        --dm-slate-50: #f8fafc;
+        --dm-slate-100: #f1f5f9;
+        --dm-slate-200: #e2e8f0;
+        --dm-slate-400: #94a3b8;
+        --dm-slate-600: #475569;
+    }
+
+    /* Standard Layout Alignment */
+    .main-content {
+        background: var(--dm-slate-50) !important;
+        padding: 2rem 3rem !important;
+    }
+
+    /* Clean Header */
+    .dashboard-header-clean {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 2.5rem;
+    }
+
+    .dashboard-header-clean h1 {
+        font-size: 1.75rem;
+        font-weight: 800;
+        color: var(--dm-secondary);
+        margin: 0;
+    }
+
+    .dashboard-header-clean p {
+        color: var(--dm-slate-400);
+        margin-top: 4px;
+    }
+
+    .sync-status-clean {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--dm-slate-400);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* KPI Grid Architecture */
+    .kpi-grid-clean {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 2.5rem;
+    }
+
+    .kpi-card-clean {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 1.25rem;
+        border: 1px solid var(--dm-slate-100);
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .kpi-card-clean:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.03);
+    }
+
+    .kpi-icon-box {
+        width: 54px;
+        height: 54px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+
+    .kpi-info h4 {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--dm-slate-400);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin: 0;
+    }
+
+    .kpi-info .kpi-value {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--dm-secondary);
+        margin-top: 4px;
+        display: block;
+    }
+
+    /* Main Analytics Split */
+    .analytics-split-clean {
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        gap: 1.5rem;
+        margin-bottom: 2.5rem;
+    }
+
+    .card-clean {
+        background: white;
+        border-radius: 1.25rem;
+        padding: 2rem;
+        border: 1px solid var(--dm-slate-100);
+    }
+
+    .card-title-clean {
+        font-size: 0.9rem;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        color: var(--dm-secondary);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    /* Side Analytics List */
+    .metric-list-clean {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+        margin-top: 2rem;
+    }
+
+    .metric-item-clean {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--dm-slate-50);
+    }
+
+    .metric-item-clean:last-child {
+        border-bottom: none;
+    }
+
+    .metric-item-clean .m-label {
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: var(--dm-slate-600);
+    }
+
+    .metric-item-clean .m-value {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--dm-secondary);
+    }
+
+    /* Table & Actions */
+    .table-card-clean {
+        background: white;
+        border-radius: 1.25rem;
+        padding: 2rem;
+        border: 1px solid var(--dm-slate-100);
+    }
+
+    .clean-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .clean-table th {
+        text-align: left;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--dm-slate-400);
+        text-transform: uppercase;
+        padding: 1rem;
+        border-bottom: 1px solid var(--dm-slate-100);
+    }
+
+    .clean-table td {
+        padding: 1.25rem 1rem;
+        font-size: 0.9rem;
+        border-bottom: 1px solid var(--dm-slate-50);
+    }
+
+    .badge-clean {
+        padding: 4px 12px;
+        border-radius: 6px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        background: #fffbeb;
+        color: #d97706;
+        text-transform: uppercase;
+    }
+
+    .btn-clean {
+        background: var(--dm-primary);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: opacity 0.2s;
+    }
+
+    /* MODAL SYSTEM (Standardized) */
+    .admin-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.4);
+        backdrop-filter: blur(8px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+        padding: 2rem;
+    }
+
+    .admin-modal-overlay.active {
+        display: flex;
+    }
+
+    .admin-modal-card {
+        background: white;
+        width: 100%;
+        max-width: 600px;
+        border-radius: 1.25rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+        overflow: hidden;
+        animation: modalSlide 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @keyframes modalSlide {
+        from {
+            opacity: 0;
+            transform: translateY(20px) scale(0.98);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    .modal-header-clean {
+        padding: 1.5rem 2rem;
+        background: var(--dm-slate-50);
+        border-bottom: 1px solid var(--dm-slate-100);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header-clean h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--dm-secondary);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .modal-header-clean h3 i {
+        color: var(--dm-primary);
+    }
+
+    .modal-close-btn {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: var(--dm-slate-400);
+        cursor: pointer;
+    }
+
+    .modal-body-clean {
+        padding: 2rem;
+    }
+
+    /* Pulse Live */
+    .pulse-live {
+        animation: pulse-live 2s infinite;
+    }
+
+    @keyframes pulse-live {
+        0% {
+            transform: scale(0.95);
+            opacity: 0.5;
+        }
+
+        50% {
+            transform: scale(1.1);
+            opacity: 1;
+        }
+
+        100% {
+            transform: scale(0.95);
+            opacity: 0.5;
+        }
+    }
+
+    @media (max-width: 1200px) {
+        .analytics-split-clean {
+            grid-template-columns: 1fr;
+        }
+
+        .kpi-grid-clean {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .kpi-grid-clean {
+            grid-template-columns: 1fr;
+        }
+
+        .dashboard-header-clean {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .admin-modal-card {
+            max-width: 100%;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>Welcome back, <span class="accent-text">{{ user.first_name }}!</span></h1>
-    <p>Here's what's happening across the platform today.</p>
+<div class="dashboard-header-clean">
+    <div>
+        <h1>Dashboard Intelligence</h1>
+        <p>Holistic oversight of platform metrics, growth vectors, and operation health.</p>
+    </div>
 </div>
 
-<!-- Dashboard Grid (1 column mobile, 2 tablet, 4 desktop) -->
-<div class="stats-grid-dashboard">
-    <!-- Revenue Card -->
-    <div class="stat-card-premium">
-        <div class="stat-info">
-            <span class="stat-label-dashboard">PLATFORM REVENUE</span>
-            <div class="stat-value-dashboard">₱{{ "{:,.2f}".format(metrics.platform_earnings) }}</div>
-            <span class="stat-hint-dashboard">Net earnings</span>
-        </div>
-        <div class="stat-icon-badge bg-orange-soft">
-            <i class="fas fa-wallet"></i>
+<!-- KPI Grid -->
+<div class="kpi-grid-clean">
+    <div class="kpi-card-clean">
+        <div class="kpi-icon-box" style="background: #eff6ff; color: #3b82f6;"><i class="fas fa-vault"></i></div>
+        <div class="kpi-info">
+            <h4>Total Revenue</h4>
+            <span class="kpi-value" id="stat-revenue">₱{{ "{:,.0f}".format(metrics.platform_earnings) }}</span>
         </div>
     </div>
-
-    <!-- Users Card -->
-    <div class="stat-card-premium">
-        <div class="stat-info">
-            <span class="stat-label-dashboard">TOTAL USERS</span>
-            <div class="stat-value-dashboard">{{ metrics.user_count }}</div>
-            <span class="stat-hint-dashboard">Lifetime registered</span>
+    <div class="kpi-card-clean">
+        <div class="kpi-icon-box" style="background: #fffbeb; color: #f59e0b;"><i class="fas fa-calendar-check"></i>
         </div>
-        <div class="stat-icon-badge bg-purple-soft">
-            <i class="fas fa-users"></i>
+        <div class="kpi-info">
+            <h4>Bookings</h4>
+            <span class="kpi-value" id="stat-bookings">{{ metrics.booking_count }}</span>
         </div>
     </div>
-
-    <!-- Caterers Card -->
-    <div class="stat-card-premium">
-        <div class="stat-info">
-            <span class="stat-label-dashboard">ACTIVE CATERERS</span>
-            <div class="stat-value-dashboard">{{ metrics.approved_caterers_count }}</div>
-            <span class="stat-hint-dashboard">Verified partners</span>
-        </div>
-        <div class="stat-icon-badge bg-gold-soft">
-            <i class="fas fa-store"></i>
+    <div class="kpi-card-clean">
+        <div class="kpi-icon-box" style="background: #f0fdf4; color: #10b981;"><i class="fas fa-utensils"></i></div>
+        <div class="kpi-info">
+            <h4>Partners</h4>
+            <span class="kpi-value" id="stat-caterers">{{ metrics.approved_caterers_count }}</span>
         </div>
     </div>
-
-    <!-- Bookings Card -->
-    <div class="stat-card-premium">
-        <div class="stat-info">
-            <span class="stat-label-dashboard">TOTAL BOOKINGS</span>
-            <div class="stat-value-dashboard">{{ metrics.booking_count }}</div>
-            <span class="stat-hint-dashboard">Successful orders</span>
-        </div>
-        <div class="stat-icon-badge bg-blue-soft">
-            <i class="fas fa-calendar-check"></i>
+    <div class="kpi-card-clean">
+        <div class="kpi-icon-box" style="background: var(--dm-primary-light); color: var(--dm-primary);"><i
+                class="fas fa-users"></i></div>
+        <div class="kpi-info">
+            <h4>Users</h4>
+            <span class="kpi-value" id="stat-users">{{ metrics.user_count }}</span>
         </div>
     </div>
 </div>
 
-<div class="dashboard-content-split">
-    <!-- Pending Verifications Section -->
-    <div class="c-card-premium">
-        <div class="verifications-header-flex">
-            <h3 class="verifications-title">
-                <div class="section-icon"><i class="fas fa-id-badge"></i></div>
-                Pending Verifications
-            </h3>
-            <a href="/admin/caterers" class="manage-all-link">
-                Manage All <i class="fas fa-chevron-right"></i>
-            </a>
+<!-- Analytics Split -->
+<div class="analytics-split-clean">
+    <div class="card-clean" onclick="showRevenueDetails()" style="cursor: pointer;">
+        <div class="card-title-clean">
+            <i class="fas fa-chart-line" style="color: var(--dm-primary);"></i>
+            Financial Trends
         </div>
-
-        {% if pending_caterers %}
-        <div class="admin-table-container">
-            <table class="admin-dashboard-table">
-                <thead>
-                    <tr>
-                        <th style="padding-left: 0;">Business Name</th>
-                        <th>City</th>
-                        <th style="text-align: right; padding-right: 0;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for c in pending_caterers %}
-                    <tr>
-                        <td class="business-name-cell">{{ c.business_name }}</td>
-                        <td class="location-cell">{{ c.city }}</td>
-                        <td style="text-align: right; padding-right: 0;">
-                            <div style="display: flex; gap: 0.75rem; justify-content: flex-end; align-items: center;">
-                                <a href="/admin/verify/{{ c.user_id }}"
-                                    style="color: var(--adm-primary); font-size: 1.1rem; text-decoration: none;"
-                                    title="Review Documents">
-                                    <i class="fas fa-file-signature"></i>
-                                </a>
-                                <form action="/admin/caterers/{{ c.id }}/archive" method="POST" style="display: inline;"
-                                    onsubmit="event.preventDefault(); window.showConfirm('Archive this request?', () => this.submit(), 'Confirm Archive', 'Archive');">
-                                    <button type="submit"
-                                        style="background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 1.1rem;">
-                                        <i class="fas fa-archive"></i>
-                                    </button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div style="height: 350px; position: relative;">
+            <canvas id="revenueChart"></canvas>
         </div>
+    </div>
 
-        <!-- Mobile List View -->
-        <div class="admin-mobile-list">
-            {% for c in pending_caterers %}
-            <div class="mobile-list-item">
-                <div class="item-info">
-                    <div class="item-title">{{ c.business_name }}</div>
-                    <div class="item-subtitle"><i class="fas fa-location-dot"></i> {{ c.city }}</div>
+    <div class="card-clean" onclick="showStatusDetails()" style="cursor: pointer;">
+        <div class="card-title-clean">
+            <i class="fas fa-chart-pie" style="color: #10b981;"></i>
+            Status Intelligence
+        </div>
+        <div style="height: 200px; margin: 1rem 0; position: relative;">
+            <canvas id="statusPieChart"></canvas>
+        </div>
+        <div class="metric-list-clean">
+            <div class="metric-item-clean">
+                <span class="m-label">Completed</span>
+                <span class="m-value" id="stat-completed">{{ completed_bookings_count }}</span>
+            </div>
+            <div class="metric-item-clean">
+                <span class="m-label">Pending</span>
+                <span class="m-value" id="stat-pending">{{ pending_bookings_count }}</span>
+            </div>
+            <div class="metric-item-clean">
+                <span class="m-label">Total Volume</span>
+                <span class="m-value" id="chart-total-bookings-val">{{ metrics.booking_count }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Verification Table -->
+<div class="table-card-clean">
+    <div class="card-title-clean" style="justify-content: space-between;">
+        <span><i class="fas fa-shield-halved" style="color: #d97706;"></i> Compliance Queue</span>
+        <a href="/admin/caterers"
+            style="font-size: 0.75rem; color: var(--dm-primary); text-decoration: none; font-weight: 700;">Full
+            Directory</a>
+    </div>
+    <div style="overflow-x: auto;">
+        <table class="clean-table">
+            <thead>
+                <tr>
+                    <th>Service Partner</th>
+                    <th>Region</th>
+                    <th>Status</th>
+                    <th style="text-align: right;">Action</th>
+                </tr>
+            </thead>
+            <tbody id="pending-caterers-tbody">
+                {% if pending_caterers %}
+                {% for c in pending_caterers %}
+                <tr>
+                    <td style="font-weight: 700; color: var(--dm-secondary);">{{ c.business_name }}</td>
+                    <td style="color: var(--dm-slate-600);">{{ c.city }}</td>
+                    <td><span class="badge-clean">Awaiting Audit</span></td>
+                    <td style="text-align: right;">
+                        <a href="/admin/verify/{{ c.user_id }}" class="btn-clean">Start Audit</a>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="4" style="text-align: center; padding: 3rem; color: var(--dm-slate-400);">
+                        <i class="fas fa-check-circle"
+                            style="font-size: 1.5rem; color: #10b981; margin-bottom: 1rem; display: block;"></i>
+                        Compliance queue is clear.
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Standalone Analysis Modal -->
+<div id="analyticsModal" class="admin-modal-overlay">
+    <div class="admin-modal-card">
+        <div class="modal-header-clean">
+            <h3 id="modalTitle">Audit Intelligence</h3>
+            <button class="modal-close-btn" onclick="closeAnalyticsModal()">&times;</button>
+        </div>
+        <div class="modal-body-clean" id="modalBody"></div>
+        <div class="modal-footer-clean"
+            style="padding: 1.25rem 2rem; background: var(--dm-slate-50); border-top: 1px solid var(--dm-slate-100); display: flex; justify-content: flex-end;">
+            <button class="btn-clean" style="background: var(--dm-slate-200); color: var(--dm-secondary);"
+                onclick="closeAnalyticsModal()">Dismiss</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+    let revenueChart, statusPieChart;
+    let currentDashboardData = null;
+
+    // Real-time Engine
+    window.addEventListener('system_update', function (e) {
+        if (['new_signup', 'caterer_update', 'new_booking', 'payment_update', 'kyc_update'].includes(e.detail.type)) {
+            refreshAdminDashboard();
+        }
+    });
+
+    window.addEventListener('load', () => {
+        try {
+            const initialData = {{ chart_data | tojson | safe }};
+    initDashboardCharts(initialData);
+        } catch (e) { console.error("Chart Init Fail", e); }
+    });
+
+    function initDashboardCharts(data) {
+        const ctxRev = document.getElementById('revenueChart').getContext('2d');
+        const ctxStatus = document.getElementById('statusPieChart').getContext('2d');
+
+        if (revenueChart) revenueChart.destroy();
+        revenueChart = new Chart(ctxRev, {
+            type: 'line',
+            data: {
+                labels: data.months,
+                datasets: [{
+                    label: 'Platform Net',
+                    data: data.earnings,
+                    borderColor: '#f97316',
+                    backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                    fill: true, tension: 0.4, borderWidth: 3
+                }, {
+                    label: 'Gross Volume',
+                    data: data.sales,
+                    borderColor: '#94a3b8',
+                    borderDash: [5, 5],
+                    fill: false, tension: 0.4, borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        if (statusPieChart) statusPieChart.destroy();
+        statusPieChart = new Chart(ctxStatus, {
+            type: 'doughnut',
+            data: {
+                labels: ['Completed', 'Confirmed', 'Pending'],
+                datasets: [{
+                    data: [
+                        {{ completed_bookings_count | default(0) }},
+                        {{ confirmed_bookings_count | default(0) }},
+                        {{ pending_bookings_count | default(0) }}
+                    ],
+    backgroundColor: ['#10b981', '#f97316', '#f59e0b'],
+        borderWidth: 0
+                }]
+            },
+    options: {
+        responsive: true, maintainAspectRatio: false,
+            cutout: '80%',
+                plugins: { legend: { display: false } }
+    }
+        });
+    }
+
+    async function refreshAdminDashboard() {
+        const syncStatus = document.getElementById('sync-status');
+        if (syncStatus) syncStatus.innerHTML = '<i class="fas fa-sync fa-spin" style="color: var(--dm-primary);"></i> SYNCING...';
+
+        try {
+            const res = await fetch('/admin/api/dashboard-overview');
+            const data = await res.json();
+            if (data.success) {
+                currentDashboardData = data;
+                document.getElementById('stat-revenue').innerText = '₱' + data.metrics.platform_earnings.toLocaleString();
+                document.getElementById('stat-bookings').innerText = data.metrics.booking_count;
+                document.getElementById('stat-caterers').innerText = data.metrics.approved_caterers_count;
+                document.getElementById('stat-users').innerText = data.metrics.user_count;
+
+                revenueChart.data.labels = data.chart_data.months;
+                revenueChart.data.datasets[0].data = data.chart_data.earnings;
+                revenueChart.data.datasets[1].data = data.chart_data.sales;
+                revenueChart.update();
+
+                statusPieChart.data.datasets[0].data = [data.completed_bookings_count, data.confirmed_bookings_count, data.pending_bookings_count];
+                statusPieChart.update();
+
+                updatePendingTable(data.pending_caterers);
+                if (syncStatus) syncStatus.innerHTML = '<i class="fas fa-circle pulse-live" style="font-size: 8px; color: var(--dm-primary);"></i> Live Intelligence Link Active';
+            }
+        } catch (e) {
+            if (syncStatus) syncStatus.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i> SYNC OFFLINE';
+        }
+    }
+
+    function updatePendingTable(caterers) {
+        const tbody = document.getElementById('pending-caterers-tbody');
+        if (!caterers || caterers.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 3rem; color: var(--dm-slate-400);">Compliance queue is clear.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = caterers.map(c => `
+            <tr>
+                <td style="font-weight: 700; color: var(--dm-secondary);">${c.business_name}</td>
+                <td style="color: var(--dm-slate-600);">${c.city}</td>
+                <td><span class="badge-clean">Awaiting Audit</span></td>
+                <td style="text-align: right;"><a href="/admin/verify/${c.user_id}" class="btn-clean">Start Audit</a></td>
+            </tr>
+        `).join('');
+    }
+
+    function showRevenueDetails() {
+        const data = currentDashboardData || { chart_data: {{ chart_data | tojson | safe }}, metrics: { platform_earnings: {{ metrics.platform_earnings }} } };
+    const body = document.getElementById('modalBody');
+    document.getElementById('modalTitle').innerHTML = '<i class="fas fa-vault"></i> Financial Audit';
+
+    body.innerHTML = `
+            <div style="background: var(--dm-secondary); padding: 2rem; border-radius: 1.25rem; color: white; margin-bottom: 2rem;">
+                <div style="font-size: 0.7rem; text-transform: uppercase; opacity: 0.6; font-weight: 800;">Total Platform Net</div>
+                <div style="font-size: 2.25rem; font-weight: 800;">₱${data.metrics.platform_earnings.toLocaleString()}</div>
+            </div>
+            ${data.chart_data.months.map((m, i) => `
+                <div style="display: flex; justify-content: space-between; padding: 1rem 0; border-bottom: 1px solid var(--dm-slate-100);">
+                    <span style="font-weight: 700;">${m}</span>
+                    <span style="font-weight: 800; color: var(--dm-primary);">₱${data.chart_data.earnings[i].toLocaleString()}</span>
                 </div>
-                <div class="item-actions">
-                    <a href="/admin/verify/{{ c.user_id }}" class="btn-action-mobile"
-                        style="color: var(--adm-primary);">
-                        <i class="fas fa-file-signature"></i>
-                    </a>
-                    <form action="/admin/caterers/{{ c.id }}/archive" method="POST" style="display: inline;"
-                        onsubmit="event.preventDefault(); window.showConfirm('Archive this request?', () => this.submit(), 'Confirm Archive', 'Archive');">
-                        <button type="submit" style="background: none; border: none; color: #94a3b8;">
-                            <i class="fas fa-archive"></i>
-                        </button>
-                    </form>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-        {% else %}
-        <div style="text-align: center; padding: 3rem 1.5rem;">
-            <div
-                style="width: 56px; height: 56px; background: #ecfdf5; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem;">
-                <i class="fas fa-check" style="color: #10b981; font-size: 1.5rem;"></i>
-            </div>
-            <p style="font-weight: 800; color: var(--adm-navy); margin-bottom: 0.25rem;">All caught up!</p>
-            <p style="color: var(--adm-muted); font-size: 0.85rem;">No pending caterer verifications found.</p>
-        </div>
-        {% endif %}
-    </div>
+            `).join('')}
+        `;
+    document.getElementById('analyticsModal').classList.add('active');
+    }
 
-    <!-- Status Column -->
-    <div class="sidebar-widgets-column">
-        <div class="system-status-widget">
-            <div class="system-status-title">System Status</div>
-            <div class="system-online-indicator">
-                <span class="status-dot-pulse"></span>
-                Infrastracture Online
+    function showStatusDetails() {
+        const data = currentDashboardData || { completed_bookings_count: {{ completed_bookings_count }}, metrics: { booking_count: {{ metrics.booking_count }} } };
+    const body = document.getElementById('modalBody');
+    document.getElementById('modalTitle').innerHTML = '<i class="fas fa-chart-pie"></i> Operation Health';
+
+    const rate = Math.round((data.completed_bookings_count / (data.metrics.booking_count || 1)) * 100);
+    body.innerHTML = `
+            <div style="text-align: center; padding: 2rem;">
+                <div style="font-size: 4rem; font-weight: 800; color: var(--dm-primary);">${rate}%</div>
+                <div style="font-weight: 700; color: var(--dm-secondary); text-transform: uppercase;">Platform Success Rate</div>
+                <p style="color: var(--dm-slate-400); margin-top: 1rem;">Based on ${data.metrics.booking_count} managed events across the ecosystem.</p>
             </div>
-            <div
-                style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; opacity: 0.5;">
-                <span style="font-size: 0.65rem; font-weight: 700;">v4.0.2-diamond</span>
-                <i class="fas fa-shield-check" style="font-size: 0.8rem;"></i>
-            </div>
-        </div>
-    </div>
-</div>
+        `;
+    document.getElementById('analyticsModal').classList.add('active');
+    }
+
+    function closeAnalyticsModal() { document.getElementById('analyticsModal').classList.remove('active'); }
+</script>
 {% endblock %}

@@ -4,13 +4,188 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/index.css') }}?v=2.0">
+<style>
+    :root {
+        --chart-profit: #10b981;
+        --chart-expenses: #ef4444;
+        --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Dashboard Layout Cleanup */
+    .dashboard-main-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 380px;
+        gap: 24px;
+        align-items: start;
+        width: 100%;
+    }
+
+    .dashboard-analytics-area {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .dashboard-sidebar-area {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    @media (max-width: 1300px) {
+        .dashboard-main-layout {
+            grid-template-columns: 1fr;
+        }
+        .dashboard-sidebar-area {
+            width: 100%;
+        }
+    }
+
+    /* Live Badge */
+    .live-status-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+        padding: 8px 16px;
+        border-radius: 50px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        margin-bottom: 16px;
+        border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .pulse-dot {
+        width: 10px;
+        height: 10px;
+        background: #10b981;
+        border-radius: 50%;
+        position: relative;
+    }
+
+    .pulse-dot::after {
+        content: '';
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background: inherit;
+        border-radius: 50%;
+        animation: livePulse 2s infinite;
+    }
+
+    @keyframes livePulse {
+        0% { transform: scale(1); opacity: 1; }
+        100% { transform: scale(2.5); opacity: 0; }
+    }
+
+    /* Pie Chart & Metrics Alignment */
+    .chart-flex-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 3rem;
+        padding: 2rem 1rem;
+        flex-wrap: wrap;
+    }
+
+    .pie-chart-container {
+        position: relative;
+        width: 240px;
+        height: 240px;
+        flex-shrink: 0;
+    }
+
+    .pie-center-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        z-index: 1;
+    }
+
+    .pie-center-text #pie-roi-value {
+        font-size: 2.25rem;
+        font-weight: 900;
+        color: var(--secondary-color);
+        line-height: 1;
+    }
+
+    .pie-center-text span {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .pie-legend {
+        flex: 1;
+        min-width: 200px;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+    }
+
+    .pie-legend .roi-metric-item {
+        background: #f8fafc;
+        border: 1px solid #f1f5f9;
+        padding: 1.25rem;
+        border-radius: 1rem;
+        transition: transform 0.2s;
+    }
+    .pie-legend .roi-metric-item:hover { transform: translateX(5px); }
+
+    /* Stat Cards */
+    .stats-grid-dashboard {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .stat-card-premium {
+        background: white;
+        padding: 24px;
+        border-radius: 1.25rem;
+        box-shadow: var(--card-shadow);
+        border: 1px solid #f1f5f9;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Clean List Styles */
+    .profitability-row {
+        padding: 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    @media (max-width: 1200px) {
+        .dashboard-main-layout { grid-template-columns: 1fr; }
+        .stats-grid-dashboard { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 768px) {
+        .stats-grid-dashboard { grid-template-columns: 1fr; }
+        .chart-flex-container { gap: 1.5rem; }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="page-header" id="page-header">
-    <div>
+    <div class="header-left">
         <h1>Welcome back, {{ user.first_name }}!</h1>
-        <p>Here's how your business is performing.</p>
+        <p style="margin-bottom: 4px;">Your business overview as of {{ now().strftime('%B %d, %Y') if now else 'today' }}</p>
+        <div id="last-updated-tag" style="font-size: 0.75rem; color: #94a3b8; font-weight: 600;">
+            <i class="fas fa-sync-alt fa-spin" style="margin-right: 5px; font-size: 0.65rem;"></i> Real-time Sync Active
+        </div>
     </div>
 
     <div class="timeframe-selector" id="dashboard-timeframe">
@@ -63,19 +238,19 @@
 </div>
 
 <div class="dashboard-main-layout">
-    <!-- Main Content Area: Analytics and Performance -->
+    <!-- Left Column: Primary Analytics -->
     <div class="dashboard-analytics-area">
-        <!-- ROI Deep Dive Section -->
-        <div class="roi-breakdown-card c-card-premium animate-up">
+        <!-- Profit Efficiency Section -->
+        <div class="roi-breakdown-card c-card-premium animate-up" style="margin-bottom: 24px;">
             <div class="roi-header">
                 <div>
-                    <h3><i class="fas fa-wallet"></i> Financial Performance</h3>
-                    <p>Breakdown of realized and projected profitability</p>
+                    <h3><i class="fas fa-chart-pie"></i> Profit Efficiency</h3>
+                    <p>Profit vs. Expenses distribution</p>
                 </div>
-                <div id="roi-status-badge" class="roi-badge-premium {{ 'status-loss-alert' if net_profit and net_profit < 0 else '' }}" 
+                <div id="roi-status-badge" class="roi-badge-premium" 
                      style="{% if net_profit and net_profit < 0 %}background:#ef4444; color:white;{% elif roi_percentage and roi_percentage < 15 %}background:rgba(245, 158, 11, 0.1); color:#f59e0b;{% else %}background:rgba(16, 185, 129, 0.1); color:#10b981;{% endif %}">
                     {% if net_profit and net_profit < 0 %}
-                    <i class="fas fa-exclamation-triangle"></i> AT LOSS
+                    <i class="fas fa-exclamation-triangle"></i> LOSS
                     {% elif roi_percentage and roi_percentage < 15 %}
                     <i class="fas fa-info-circle"></i> LOW MARGIN
                     {% else %}
@@ -84,172 +259,149 @@
                 </div>
             </div>
 
-            <div class="roi-metric-grid">
-                <div class="roi-metric-item">
-                    <div class="roi-metric-label">Realized Revenue</div>
-                    <div class="roi-metric-value" id="roi-breakdown-revenue" style="color: var(--secondary-color);">₱{{ "{:,.2f}".format(total_revenue|default(0.0)) }}</div>
-                </div>
-                <div class="roi-metric-item">
-                    <div class="roi-metric-label">Operating Expenses</div>
-                    <div class="roi-metric-value" id="roi-breakdown-expenses" style="color: #e11d48;">₱{{ "{:,.2f}".format(actual_expenses|default(0.0)) }}</div>
-                </div>
-                <div class="roi-metric-item">
-                    <div class="roi-metric-label">Actual Net Profit</div>
-                    <div class="roi-metric-value" id="roi-breakdown-profit" style="color: {{ '#ef4444' if net_profit and net_profit < 0 else '#059669' }};">₱{{ "{:,.2f}".format(net_profit|default(0.0)) }}</div>
-                </div>
-            </div>
-
-            <div class="roi-trend-section">
-                <div class="roi-trend-header">
-                    <div>
-                        <h4>ROI Trend Analysis %</h4>
-                        <p>Performance over the selected timeframe</p>
-                    </div>
-                    <div class="chart-legend-custom">
-                        <div class="legend-item"><span class="legend-dot" style="background: #10b981;"></span> ROI %</div>
-                        <div class="legend-item"><span class="legend-dot" style="background: var(--primary-color);"></span> Revenue</div>
+            <div class="chart-flex-container" style="padding: 1rem 0;">
+                <div class="pie-chart-container" style="width: 200px; height: 200px;">
+                    <canvas id="financialPieChart"></canvas>
+                    <div class="pie-center-text">
+                        <div id="pie-roi-value" style="font-size: 1.75rem;">{{ roi_percentage|default(0) }}%</div>
+                        <span style="font-size: 0.65rem;">ROI</span>
                     </div>
                 </div>
-                <div class="chart-container">
-                    <canvas id="roiTrendChart"></canvas>
+                <div class="pie-legend">
+                    <div class="roi-metric-item" style="padding: 0.75rem 0; background: transparent; border-radius: 0; border: none; border-bottom: 1px solid #f1f5f9;">
+                        <div class="roi-metric-label" style="font-size: 0.6rem;">Gross Revenue</div>
+                        <div class="roi-metric-value" id="roi-breakdown-revenue" style="color: var(--secondary-color); font-size: 1rem;">₱{{ "{:,.2f}".format(total_revenue|default(0.0)) }}</div>
+                    </div>
+                    <div class="roi-metric-item" style="padding: 0.75rem 0; background: transparent; border-radius: 0; border: none; border-bottom: 1px solid #f1f5f9;">
+                        <div class="roi-metric-label" style="font-size: 0.6rem;">Net Profit</div>
+                        <div class="roi-metric-value" id="roi-breakdown-profit" style="color: #10b981; font-size: 1rem;">₱{{ "{:,.2f}".format(net_profit|default(0.0)) }}</div>
+                    </div>
+                    <div class="roi-metric-item" style="padding: 0.75rem 0; background: transparent; border-radius: 0; border: none;">
+                        <div class="roi-metric-label" style="font-size: 0.6rem;">Expenses</div>
+                        <div class="roi-metric-value" id="roi-breakdown-expenses" style="color: #ef4444; font-size: 1rem;">₱{{ "{:,.2f}".format(actual_expenses|default(0.0)) }}</div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Secondary Analytics Row -->
-        <div class="analytics-secondary-grid">
-            <!-- Bookings Chart Card -->
-            <div class="roi-breakdown-card c-card-premium animate-up">
-                <h3 style="margin:0 0 1rem 0; font-weight: 800; color: var(--secondary-color); font-size: 1rem;"><i class="fas fa-calendar-check" style="margin-right: 0.5rem;"></i> Bookings Volume</h3>
-                <div class="chart-container" style="height: 250px;">
-                    <canvas id="bookingsChart"></canvas>
-                </div>
+        <!-- Bookings Volume Chart -->
+        <div class="roi-breakdown-card c-card-premium animate-up">
+            <h3 style="margin:0 0 1rem 0; font-weight: 800; color: var(--secondary-color); font-size: 1rem;"><i class="fas fa-calendar-check" style="margin-right: 0.5rem;"></i> Bookings Volume</h3>
+            <div class="chart-container" style="height: 250px;">
+                <canvas id="bookingsChart"></canvas>
             </div>
-
-            <!-- Most Profitable Packages -->
-            <div class="roi-breakdown-card c-card-premium animate-up">
-                <h3 style="margin:0 0 1rem 0; font-weight: 800; color: var(--secondary-color); font-size: 1rem;"><i class="fas fa-fire" style="margin-right: 0.5rem; color: #f59e0b;"></i> Efficiency by Package</h3>
-                <div id="profitable-packages-list">
-                    {% if popular_packages %}
-                    {% for p in popular_packages %}
-                    <div class="profitability-row">
-                        <div>
-                            <div>{{ p.name }}</div>
-                            <div>{{ p.orders }} orders</div>
-                        </div>
-                        <div class="profitability-details">
-                            <div style="font-weight: 800; color: var(--secondary-color); font-size: 1rem;">{{ p.roi }}%
-                            </div>
-                            <div
-                                class="profit-indicator {{ 'indicator-positive' if p.roi > 15 else 'indicator-negative' }}">
-                                {{ 'High Margin' if p.roi > 15 else 'Low Margin' }}
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                    {% else %}
-                    <p style="text-align:center; padding: 2rem; color: #94a3b8;">No package data available.</p>
-                    {% endif %}
-                </div>
+            <div class="chart-legend-custom" style="margin-top: 1.5rem;">
+                <div class="legend-item"><span class="legend-dot" style="background: #10b981;"></span> Completed</div>
+                <div class="legend-item"><span class="legend-dot" style="background: #94a3b8;"></span> Pending</div>
             </div>
         </div>
     </div>
 
-    <!-- Sidebar Area: Operations and Messaging -->
+    <!-- Right Column: Operations & Efficiency (Sidebar) -->
     <div class="dashboard-sidebar-area">
         <!-- Upcoming Events -->
-        <div class="sidebar-card-dashboard upcoming-events-card c-card-premium animate-up">
-            <h3 class="sidebar-card-title" style="padding: 0 0 8px 0;">Upcoming Events</h3>
-            <div>
-                {% if upcoming_events %}
-                <div class="event-list-dashboard" id="upcoming-events-container">
-                    {% for event in upcoming_events %}
-                    <div class="upcoming-item-row">
-                        <div class="event-date-box">
-                            <span class="month">{{ event.event_date.strftime('%b') if event.event_date else '???' }}</span>
-                            <span class="day">{{ event.event_date.strftime('%d') if event.event_date else '??' }}</span>
-                        </div>
-                        <div class="event-details-box">
-                            <div class="event-head-box">
-                                <span class="event-title-text">{{ event.event_name or 'Event Title' }}</span>
-                                <span class="event-status">{{ event.status|replace('_', ' ')|capitalize }}</span>
-                            </div>
-                            <div class="event-meta-text">
-                                <span><i class="far fa-clock"></i> {{ event.event_time.strftime('%I:%M %p') if event.event_time else 'TBD' }}</span>
-                            </div>
-                        </div>
+        <div class="sidebar-card-dashboard upcoming-events-card c-card-premium animate-up" style="padding: 1.5rem; border-radius: 1.25rem; margin-bottom: 24px;">
+            <h3 class="sidebar-card-title" style="padding: 0 0 12px 0; font-size: 1rem;">Upcoming Events</h3>
+            {% if upcoming_events %}
+            <div class="event-list-dashboard" id="upcoming-events-container">
+                {% for event in upcoming_events %}
+                <div class="upcoming-item-row" style="padding: 0.75rem; background: #f8fafc; border: 1px solid #f1f5f9; border-radius: 0.75rem; margin-bottom: 0.5rem;">
+                    <div class="event-date-box" style="width: 40px; height: 40px; background: white; border: 1px solid #e2e8f0;">
+                        <span class="month" style="font-size: 0.6rem;">{{ event.event_date.strftime('%b') if event.event_date else '???' }}</span>
+                        <span class="day" style="font-size: 0.9rem;">{{ event.event_date.strftime('%d') if event.event_date else '??' }}</span>
                     </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <p style="color: var(--color-neutral-400); font-size: 0.85rem; padding: 1rem 0;">No upcoming events.</p>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Messages Widget -->
-        <div class="c-card-premium animate-up" style="border-radius: 1.25rem; overflow: hidden;">
-            {% include "shared/dashboard_messages_widget.html" %}
-        </div>
-
-        <!-- Popular Packages Summary -->
-        <div class="sidebar-card-dashboard c-card-premium animate-up">
-            <h3 class="sidebar-card-title">Bookings by Package</h3>
-            {% if popular_packages %}
-            <div id="popular-packages-container">
-                {% for p in popular_packages %}
-                {% set pct = [((p.orders / popular_packages[0].orders) * 100), 100]|min if popular_packages[0].orders > 0 else 0 %}
-                <div class="popular-item-row">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.85rem;">
-                        <span style="font-weight: 600;">{{ p.name }}</span>
-                        <span style="color: var(--color-neutral-500);">{{ p.orders }} orders</span>
-                    </div>
-                    <div class="progress-bar-container">
-                        <div class="progress-bar-fill" style="width: {{ pct }}%;"></div>
+                    <div class="event-details-box">
+                        <div class="event-head-box" style="margin-bottom: 2px;">
+                            <span class="event-title-text" style="font-size: 0.85rem;">{{ event.event_name or 'Event' }}</span>
+                        </div>
+                        <div class="event-meta-text" style="font-size: 0.7rem;">
+                            <span><i class="far fa-clock"></i> {{ event.event_time.strftime('%I:%M %p') if event.event_time else 'TBD' }}</span>
+                        </div>
                     </div>
                 </div>
                 {% endfor %}
             </div>
+            {% else %}
+            <p style="color: #94a3b8; font-size: 0.8rem; padding: 0.5rem 0;">No upcoming events.</p>
             {% endif %}
+        </div>
+
+        <!-- Package Efficiency -->
+        <div class="sidebar-card-dashboard c-card-premium animate-up" style="padding: 1.5rem; border-radius: 1.25rem; margin-bottom: 24px;">
+            <h3 style="margin:0 0 1.25rem 0; font-weight: 800; color: var(--secondary-color); font-size: 1rem;"><i class="fas fa-fire" style="margin-right: 0.5rem; color: #f59e0b;"></i> Package Efficiency</h3>
+            <div id="profitable-packages-list">
+                {% if popular_packages %}
+                {% for p in popular_packages %}
+                <div class="profitability-row" style="padding: 0.75rem 0; border-bottom: 1px solid #f1f5f9;">
+                    <div>
+                        <div style="font-weight: 700; color: var(--secondary-color); font-size: 0.85rem;">{{ p.name }}</div>
+                        <div style="font-size: 0.7rem; color: #64748b;">{{ p.orders }} orders</div>
+                    </div>
+                    <div class="profitability-details">
+                        <div style="font-weight: 800; color: var(--secondary-color); font-size: 0.9rem;">{{ p.roi }}%</div>
+                        <div class="profit-indicator {{ 'indicator-positive' if p.roi > 15 else 'indicator-negative' }}" style="padding: 2px 8px; font-size: 0.6rem;">
+                            {{ 'High' if p.roi > 15 else 'Low' }}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p style="text-align:center; padding: 1rem; color: #94a3b8; font-size: 0.8rem;">No data.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Live Messages -->
+        <div class="c-card-premium animate-up" style="border-radius: 1.25rem; overflow: hidden; height: 350px;">
+            {% include "shared/dashboard_messages_widget.html" %}
         </div>
     </div>
 </div>
 
-<!-- Recent Transactions / Orders Focus Section -->
-<div class="recent-requests-card c-card-premium animate-up">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-lg); flex-wrap: wrap; gap: var(--space-md);">
-        <h3 style="margin:0; font-weight: 800; color: var(--secondary-color); font-size: 1.15rem;"><i class="fas fa-history" style="margin-right: 0.5rem; color: var(--color-neutral-400);"></i> Recent Orders History</h3>
-        <a href="{{ url_for('manage_bookings') }}" style="font-size: 0.85rem; font-weight: 700; color: var(--primary-color);">View All <i class="fas fa-arrow-right"></i></a>
+<!-- Recent Transactions / Orders Focus Section (Bottom Full Width) -->
+<div class="recent-requests-card c-card-premium animate-up" style="margin-top: 30px; border-radius: 1.5rem; padding: 2rem; overflow: hidden;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h3 style="margin:0; font-weight: 800; color: var(--secondary-color); font-size: 1.25rem;"><i class="fas fa-history" style="margin-right: 0.75rem; color: #94a3b8;"></i> Recent Orders</h3>
+            <p style="margin: 4px 0 0; color: #64748b; font-size: 0.85rem;">Latest transactions and event bookings</p>
+        </div>
+        <a href="{{ url_for('manage_bookings') }}" class="view-all-btn" style="background: #f8fafc; padding: 10px 20px; border-radius: 12px; font-size: 0.85rem; font-weight: 700; color: var(--primary-color); border: 1px solid #f1f5f9; text-decoration: none; transition: all 0.2s;">
+            View All Bookings <i class="fas fa-chevron-right" style="font-size: 0.75rem; margin-left: 5px;"></i>
+        </a>
     </div>
     {% if recent_orders %}
-    <div class="recent-orders-list" id="recent-orders-container">
-        {% for booking in recent_orders %}
-        <div class="recent-order-row">
-            <div class="ro-avatar">
-                {% if booking.user %}
-                {{ booking.user.first_name[0] | upper }}{{ booking.user.last_name[0] | upper }}
-                {% else %}WI{% endif %}
-            </div>
-            <div class="ro-details">
-                <div class="ro-name">
-                    {% if booking.user %}{{ booking.user.first_name }} {{ booking.user.last_name }}{% else %}Walk-in Customer{% endif %}
+    <div style="overflow-x: auto; width: 100%;">
+        <div class="recent-orders-list" id="recent-orders-container" style="min-width: 800px;">
+            {% for booking in recent_orders %}
+            <div class="recent-order-row" style="background: white; border: 1px solid #f1f5f9; margin-bottom: 12px; padding: 1rem 1.5rem; border-radius: 1.25rem; display: grid; grid-template-columns: 60px 1fr 200px 150px; align-items: center;">
+                <div class="ro-avatar" style="background: #f1f5f9; color: #475569; font-size: 0.9rem; margin-right: 0;">
+                    {% if booking.user %}
+                    {{ booking.user.first_name[0] | upper }}{{ booking.user.last_name[0] | upper }}
+                    {% else %}WI{% endif %}
                 </div>
-                <div class="ro-event">{{ booking.event_type }} • {{ booking.package.name if booking.package else 'Custom' }}</div>
+                <div class="ro-details">
+                    <div class="ro-name" style="font-size: 1rem; font-weight: 700; color: var(--secondary-color);">
+                        {% if booking.user %}{{ booking.user.first_name }} {{ booking.user.last_name }}{% else %}Walk-in Customer{% endif %}
+                    </div>
+                    <div class="ro-event" style="color: #64748b; font-weight: 500; font-size: 0.85rem;">{{ event_type_map[booking.event_type] if booking.event_type in event_type_map else booking.event_type }} • {{ booking.package.name if booking.package else 'Custom Menu' }}</div>
+                </div>
+                <div class="ro-price-date" style="text-align: right;">
+                    <div class="ro-amount" style="font-size: 1.1rem; font-weight: 800; color: var(--secondary-color);">₱{{ "{:,.2f}".format(booking.total_amount) if booking.total_amount else '0.00' }}</div>
+                    <div class="ro-date" style="font-weight: 600; font-size: 0.85rem; color: #94a3b8;">{{ booking.event_date.strftime('%b %d, %Y') if booking.event_date else '' }}</div>
+                </div>
+                <div class="ro-status" style="text-align: right;">
+                    <span class="ro-badge ro-status-{{ booking.status }}" style="font-weight: 800; letter-spacing: 0.5px; font-size: 0.75rem;">{{ booking.status|replace('_', ' ')|capitalize }}</span>
+                </div>
             </div>
-            <div class="ro-price-date">
-                <div class="ro-amount">₱{{ "{:,.2f}".format(booking.total_amount) if booking.total_amount else 'TBD' }}</div>
-                <div class="ro-date">{{ booking.event_date.strftime('%b %d, %Y') if booking.event_date else '' }}</div>
-            </div>
-            <div class="ro-status">
-                <span class="ro-badge ro-status-{{ booking.status }}">{{ booking.status|replace('_', ' ')|capitalize }}</span>
-            </div>
+            {% endfor %}
         </div>
-        {% endfor %}
     </div>
     {% else %}
-    <div style="text-align:center; padding: 3rem 0;">
-        <i class="fas fa-clipboard-list" style="font-size: 2.5rem; color: var(--color-neutral-100); margin-bottom: 1rem; display: block;"></i>
-        <p style="color: var(--color-neutral-400);">No orders recorded yet.</p>
+    <div style="text-align:center; padding: 4rem 0;">
+        <div style="width: 64px; height: 64px; background: #f8fafc; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+            <i class="fas fa-clipboard-list" style="font-size: 1.5rem; color: #cbd5e1;"></i>
+        </div>
+        <p style="color: #64748b; font-weight: 600;">No orders recorded yet.</p>
     </div>
     {% endif %}
 </div>
@@ -258,7 +410,7 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    let roiTrendChart = null;
+    let financialPieChart = null;
     let bookingsChart = null;
     let currentTimeframe = 'month';
 
@@ -266,63 +418,28 @@
         const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#FF7B54';
         const highlightColor = getComputedStyle(document.documentElement).getPropertyValue('--highlight-color').trim() || '#10b981';
 
-        // 1. ROI Trend Chart (Combined ROI % and Revenue)
-        const ctxRoi = document.getElementById('roiTrendChart').getContext('2d');
-        const gradientRev = ctxRoi.createLinearGradient(0, 0, 0, 300);
-        gradientRev.addColorStop(0, 'rgba(255, 123, 84, 0.2)');
-        gradientRev.addColorStop(1, 'rgba(255, 123, 84, 0.0)');
-
-        roiTrendChart = new Chart(ctxRoi, {
-            type: 'line',
+        // 1. Financial Pie Chart
+        const ctxPie = document.getElementById('financialPieChart').getContext('2d');
+        const netProfit = {{ net_profit|default(0) }};
+        const expenses = {{ actual_expenses|default(0) }};
+        
+        financialPieChart = new Chart(ctxPie, {
+            type: 'doughnut',
             data: {
-                labels: data.roi_trend_data.map(d => d.label),
-                datasets: [
-                    {
-                        label: 'ROI %',
-                        data: data.roi_trend_data.map(d => d.roi),
-                        borderColor: '#10b981',
-                        backgroundColor: 'transparent',
-                        borderWidth: 3,
-                        tension: 0.4,
-                        yAxisID: 'yROI',
-                        pointBackgroundColor: '#10b981',
-                        pointBorderColor: '#fff',
-                        pointHoverRadius: 6
-                    },
-                    {
-                        label: 'Gross Revenue (₱)',
-                        data: data.chart_data.map(d => d.revenue),
-                        borderColor: primaryColor,
-                        backgroundColor: gradientRev,
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.4,
-                        yAxisID: 'yRev',
-                        pointBackgroundColor: primaryColor,
-                        pointBorderColor: '#fff'
-                    }
-                ]
+                labels: ['Net Profit', 'Expenses'],
+                datasets: [{
+                    data: [Math.max(0, netProfit), Math.max(0.1, expenses)],
+                    backgroundColor: [highlightColor, '#ef4444'],
+                    borderWidth: 0,
+                    hoverOffset: 10
+                }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    yROI: {
-                        type: 'linear',
-                        position: 'left',
-                        title: { display: true, text: 'ROI (%)', font: { size: 10, weight: 'bold' } },
-                        grid: { color: 'rgba(0,0,0,0.03)' },
-                        ticks: { callback: v => v + '%' }
-                    },
-                    yRev: {
-                        type: 'linear',
-                        position: 'right',
-                        title: { display: true, text: 'Revenue (₱)', font: { size: 10, weight: 'bold' } },
-                        grid: { display: false },
-                        ticks: { callback: v => '₱' + (v >= 1000 ? v / 1000 + 'k' : v) }
-                    },
-                    x: { grid: { display: false } }
+                cutout: '75%',
+                plugins: {
+                    legend: { display: false }
                 }
             }
         });
@@ -407,12 +524,15 @@
                     }
                 }
 
-                // 4. Update ROI Trend Chart
-                if (roiTrendChart) {
-                    roiTrendChart.data.labels = data.roi_trend_data.map(d => d.label);
-                    roiTrendChart.data.datasets[0].data = data.roi_trend_data.map(d => d.roi);
-                    roiTrendChart.data.datasets[1].data = data.chart_data.map(d => d.revenue);
-                    roiTrendChart.update('none'); // Update without full re-animation for smoothness
+                // 4. Update Pie Chart
+                if (financialPieChart) {
+                    const profitVal = Math.max(0, data.net_profit || 0);
+                    const expensesVal = Math.max(0.1, data.actual_expenses || 0);
+                    financialPieChart.data.datasets[0].data = [profitVal, expensesVal];
+                    financialPieChart.update();
+                    
+                    const roiEl = document.getElementById('pie-roi-value');
+                    if (roiEl) roiEl.innerText = (data.roi_percentage || 0) + '%';
                 }
 
                 // 5. Update Bookings Chart
@@ -427,11 +547,23 @@
                 updateProfitablePackages(data.popular_packages);
                 updateUpcomingEvents(data.upcoming_events);
                 updateRecentOrders(data.recent_orders);
+
+                // 7. Update Timestamp
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                const tag = document.getElementById('last-updated-tag');
+                if (tag) tag.innerHTML = `<i class="fas fa-check-circle" style="color: #10b981; margin-right: 5px;"></i> Accurate as of ${timeStr}`;
+                
+                if (analyticsArea) analyticsArea.classList.remove('loading-shimmer');
+                if (statsGrid) statsGrid.classList.remove('loading-shimmer');
             })
             .catch(err => {
                 console.error("Filter Refresh Error:", err);
                 if (analyticsArea) analyticsArea.classList.remove('loading-shimmer');
                 if (statsGrid) statsGrid.classList.remove('loading-shimmer');
+                
+                const tag = document.getElementById('last-updated-tag');
+                if (tag) tag.innerHTML = `<i class="fas fa-exclamation-circle" style="color: #ef4444; margin-right: 5px;"></i> Sync Error - Retrying...`;
             });
     }
 
@@ -546,6 +678,12 @@
             refreshDashboardData(this.dataset.timeframe);
         });
     });
+
+    // Start real-time sync interval (Every 60 seconds)
+    setInterval(() => {
+        console.log("Real-time Dashboard Syncing...");
+        refreshDashboardData(currentTimeframe);
+    }, 60000);
     });
 
     window.refreshDashboardData = () => refreshDashboardData(currentTimeframe);
