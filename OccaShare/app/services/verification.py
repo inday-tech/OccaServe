@@ -10,7 +10,7 @@ from typing import List, Dict, Any
 from ..core.encryption import decrypt_data
 from PIL import Image, ImageOps
 from sqlalchemy.orm import Session
-from ..db import models
+from ..db.models import IdentityVerification
 
 # Graceful imports for heavy dependencies (may not be available on all cloud platforms)
 try:
@@ -19,6 +19,7 @@ try:
 except ImportError:
     print("[KYC WARNING] OpenCV (cv2) not available. KYC verification will be limited.")
     CV2_AVAILABLE = False
+    cv2 = None
 
 try:
     import pytesseract
@@ -36,21 +37,25 @@ except ImportError:
     MEDIAPIPE_AVAILABLE = False
     mp = None
 
-# Configure Tesseract Path for Windows (only if available)
+# Configure Tesseract Path for Windows and Linux
 if PYTESSERACT_AVAILABLE:
-    TESSERACT_PATHS = [
-        r"C:\Program Files\Tesseract-OCR\tesseract.exe",
-        r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
-        os.path.join(os.environ.get("LOCALAPPDATA", ""), r"Programs\Tesseract-OCR\tesseract.exe")
-    ]
-
-    for path in TESSERACT_PATHS:
-        if os.path.exists(path):
-            pytesseract.pytesseract.tesseract_cmd = path
-            print(f"[KYC DEBUG] Tesseract found at: {path}")
-            break
+    if os.name != "nt":  # Linux (Railway)
+        pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
+        print("[KYC DEBUG] Using Linux Tesseract path: /usr/bin/tesseract")
     else:
-        print("[KYC DEBUG] Tesseract NOT found in common Windows paths. Using system default.")
+        TESSERACT_PATHS = [
+            r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+            r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+            os.path.join(os.environ.get("LOCALAPPDATA", ""), r"Programs\Tesseract-OCR\tesseract.exe")
+        ]
+
+        for path in TESSERACT_PATHS:
+            if os.path.exists(path):
+                pytesseract.pytesseract.tesseract_cmd = path
+                print(f"[KYC DEBUG] Tesseract found at: {path}")
+                break
+        else:
+            print("[KYC DEBUG] Tesseract NOT found in common Windows paths. Using system default.")
 
 class VerificationService:
     # ID Patterns (Regular Expressions)
@@ -170,24 +175,34 @@ class VerificationService:
             pil_img = Image.open(io.BytesIO(decrypted_data))
             pil_img = ImageOps.exif_transpose(pil_img)
             
-            # Convert back to BGR for OpenCV
-            img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+            # Convert back to BGR for OpenCV compatibility
+            if CV2_AVAILABLE:
+                img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+            else:
+                # Manual RGB to BGR conversion using numpy if cv2 is missing
+                img = np.array(pil_img)[:, :, ::-1].copy()
             return img
         except Exception as e:
             print(f"[KYC DEBUG] Fatal error preparing image {filename}: {e}")
-            # Last resort fallback
-            try:
-                nparr = np.frombuffer(raw_data, np.uint8)
-                return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-            except:
-                raise e
+            if CV2_AVAILABLE and raw_data:
+                try:
+                    nparr = np.frombuffer(raw_data, np.uint8)
+                    return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                except: pass
+            raise e
 
     def _detect_faces_detailed(self, img: np.ndarray) -> List[Any]:
         """Detect faces using standard OpenCV Haar Cascades."""
-        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(gray, 1.1, 4)
-        return faces
+        if not CV2_AVAILABLE:
+            print("[KYC WARNING] Face detection skipped: OpenCV not available.")
+            return []
+        try:
+            face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+            return faces
+        except:
+            return []
 
     def _calculate_ear(self, landmarks, eye_indices):
         """Calculates Eye Aspect Ratio (EAR). Landmarks are MediaPipe NormalizedLandmark objects."""
@@ -219,8 +234,16 @@ class VerificationService:
         angles_h = [] # Horizontal (yaw)
 
         for img in img_list:
-            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-            detection_result = self.landmarker.detect(mp_image)
+            if not MEDIAPIPE_AVAILABLE or not CV2_AVAILABLE or not mp:
+                continue
+            
+            try:
+                rgb_data = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) if CV2_AVAILABLE else img[:, :, ::-1]
+                mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_data)
+                detection_result = self.landmarker.detect(mp_image)
+            except Exception as e:
+                print(f"[KYC ERROR] MediaPipe detection failed: {e}")
+                continue
             
             if detection_result.face_landmarks:
                 face_detected_count += 1
@@ -311,9 +334,16 @@ class VerificationService:
             return {"match": False, "confidence": 0.0, "error": "Landmarker offline"}
 
         def get_face_features(img):
-            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-            res = self.landmarker.detect(mp_image)
-            if not res.face_landmarks: return None
+            if not MEDIAPIPE_AVAILABLE or not CV2_AVAILABLE or not mp or not self.landmarker:
+                return None
+            try:
+                rgb_data = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) if CV2_AVAILABLE else img[:, :, ::-1]
+                mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_data)
+                res = self.landmarker.detect(mp_image)
+                if not res.face_landmarks: return None
+            except Exception as e:
+                print(f"[KYC ERROR] Face feature extraction failed: {e}")
+                return None
             # Return relative spatial distribution of key features
             lm = res.face_landmarks[0]
             # Normalize key points relative to nose (index 1)
@@ -353,89 +383,64 @@ class VerificationService:
         lines = [l.strip() for l in text.split("\n") if l.strip()]
         clean_text_upper = text.upper()
         
-        # 1. Name Extraction (More robust heuristics)
+        # 1. Name Extraction (Improved Heuristics)
         potential_names = []
-        name_keywords = ["NAME", "SURNAME", "GIVEN", "FIRST", "FULLNAME"]
-        
         for i, line in enumerate(lines):
             upper_line = line.upper()
-            # Keywords indicating following or current line is a name
-            for k in name_keywords:
-                if k in upper_line:
-                    # Check same line after keyword
-                    val = re.sub(rf'.*?{k}[:\s]*', '', upper_line).strip()
-                    if len(val) > 5 and not any(char.isdigit() for char in val):
-                        potential_names.append(val)
-                    
-                    # Check next line
-                    val_next = lines[i+1] if i+1 < len(lines) else ""
-                    if len(val_next) > 5 and not any(char.isdigit() for char in val_next):
-                        potential_names.append(val_next.strip().upper())
+            if any(k in upper_line for k in ["NAME", "SURNAME", "GIVEN", "FIRST", "MAIDEN"]):
+                val = lines[i+1] if i+1 < len(lines) else ""
+                if len(val) > 4 and not any(char.isdigit() for char in val):
+                    potential_names.append(val.strip())
             
-            # Lines that are 2-3 words, all caps, no symbols/digits (Likely a name line)
-            if 10 < len(line) < 45 and line.isupper() and re.match(r'^[A-Z ,.-]+$', line):
-                # Ignore legitimacy keywords and address-like words
-                if not any(kw in upper_line for kw in self.ID_LEGITIMACY_KEYWORDS) and not any(kw in upper_line for kw in ["PUROK", "BRGY", "CITY", "PROVINCE", "STREET", "ADDRESS", "REPUBLIC"]):
-                    potential_names.append(upper_line)
+            # Look for typical 2-3 word name format in all caps
+            if 10 < len(line) < 50 and line.isupper() and re.match(r'^[A-Z ,.-]+$', line):
+                if not any(kw in line for kw in self.ID_LEGITIMACY_KEYWORDS) and \
+                   not any(kw in line for kw in ["PUROK", "BRGY", "CITY", "PROVINCE", "STREET", "BARANGAY"]):
+                    potential_names.append(line)
 
         if potential_names:
-            # Heuristic: deduplicate and pick the first one that doesn't look like a label
-            clean_names = [n for n in potential_names if n not in name_keywords]
-            if clean_names:
-                data["full_name"] = clean_names[0]
+            data["full_name"] = potential_names[0]
 
-        # 2. ID Number Extraction (Aggressive regex)
+        # 2. ID Number Extraction
         id_patterns = [
-            r'(\d{4}-\d{4}-\d{4}-\d{4})', # PhilSys / National ID
+            r'(\d{4}-\d{4}-\d{4}-\d{4})', # PhilID
             r'([A-Z]\d{2}-\d{2}-\d{6})',    # Driver's License
-            r'([A-Z]\d{7}[A-Z])',           # Passport
-            r'(\d{2}-\d{7}-\d{1})',         # SSS / GSIS
+            r'([A-Z]\d{7,8}[A-Z]?)',         # Passport
+            r'(\d{2}-\d{7}-\d{1})',         # SSS
             r'(\d{3}-\d{3}-\d{3}-\d{0,3})', # TIN
-            r'(\d{12})',                    # UMID / Generic 12-digit
-            r'(\d{10})'                     # Postal ID / Generic 10-digit
+            r'(\d{4}-\d{7}-\d{1})'          # UMID
         ]
         for pattern in id_patterns:
             match = re.search(pattern, clean_text_upper)
             if match:
                 data["id_number"] = match.group(1).strip()
                 break
-        
-        if not data["id_number"]:
-            for line in lines:
-                digits_only = re.sub(r'[^0-9]', '', line)
-                if len(digits_only) >= 9:
-                    match = re.search(r'([A-Z0-9][-A-Z0-9 ]{8,20})', line)
-                    if match:
-                        data["id_number"] = match.group(1).strip()
-                        break
 
-        # 3. Date Extraction (DOB / Expiry)
-        date_pattern = r"(\d{2}[-/]\d{2}[-/]\d{4}|\b(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+\d{2},?\s+\d{4}\b)"
-        
-        dob_match = re.search(r'(?:DOB|BIRTH|BORN).*?(' + date_pattern + ')', clean_text_upper, re.IGNORECASE | re.DOTALL)
-        if dob_match:
-            data["extracted_dob"] = dob_match.group(1)
-        
-        exp_match = re.search(r'(?:EXP|VALID).*?(' + date_pattern + ')', clean_text_upper, re.IGNORECASE | re.DOTALL)
-        if exp_match:
-            data["extracted_expiry"] = exp_match.group(1)
-
-        if not data["extracted_dob"]:
-            dates = re.findall(date_pattern, text, re.IGNORECASE)
-            if dates:
-                try:
-                    data["extracted_dob"] = dates[0]
-                except: pass
-
-        # 4. Address Extraction
-        address_markers = ["PUROK", "BRGY", "BARANGAY", "CITY", "PROVINCE", "STREET", "SUBD", "MUNICIPALITY", "LAGUNA", "MANILA", "CAVITE", "BATANGAS"]
-        for i, line in enumerate(lines):
-            if any(marker in line.upper() for marker in address_markers):
-                address = line
-                if i+1 < len(lines) and any(marker in lines[i+1].upper() for marker in address_markers):
-                    address += " " + lines[i+1]
-                data["extracted_address"] = address.strip()
+        # 3. Birth Date Detection (Aggressive)
+        date_pattern = r"(\b(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z.]*\s+\d{1,2},?\s+\d{4}\b|\d{2}[-/]\d{2}[-/]\d{4}|\d{4}[-/]\d{2}[-/]\d{2})"
+        dob_keywords = ["DATE OF BIRTH", "BIRTH DATE", "DOB", "BORN", "BIRTH", "DATE DE NAISSANCE"]
+        for kw in dob_keywords:
+            match = re.search(re.escape(kw) + r".{1,30}(" + date_pattern + r")", clean_text_upper, re.DOTALL)
+            if match:
+                data["extracted_dob"] = match.group(1)
                 break
+        
+        # 4. Address Detection (Philippine Specific)
+        address_parts = []
+        address_markers = ["PUROK", "BRGY", "BARANGAY", "CITY", "PROVINCE", "STREET", "SUBD", "MUNICIPALITY", "DISTRICT", "PHASE"]
+        for i, line in enumerate(lines):
+            line_upper = line.upper()
+            if any(marker in line_upper for marker in address_markers):
+                address_parts.append(line)
+                if i+1 < len(lines) and (lines[i+1].isupper() or len(lines[i+1]) < 30):
+                    if not any(kw in lines[i+1].upper() for kw in self.ID_LEGITIMACY_KEYWORDS):
+                        address_parts.append(lines[i+1])
+                break
+        
+        if address_parts:
+            data["extracted_address"] = ", ".join(address_parts)
+
+        return data
 
         return data
 
@@ -448,6 +453,10 @@ class VerificationService:
             return {"valid": False, "reason": f"Resolution too low ({width}x{height}). Please take a clearer photo."}
         
         # 2. Blur Detection (Laplacian Variance)
+        if not CV2_AVAILABLE:
+            print("[KYC WARNING] Skipping blur detection: OpenCV not available.")
+            return {"valid": True}
+        
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         blur_score = cv2.Laplacian(gray, cv2.CV_64F).var()
         print(f"[KYC DEBUG] Image Quality Check - Resolution: {width}x{height}, Blur Score: {blur_score:.2f}")
@@ -460,11 +469,10 @@ class VerificationService:
 
     def check_duplicate_id(self, db: Session, id_number: str, current_user_id: int) -> bool:
         """Checks if the ID number is already associated with another verified user."""
-        if not id_number: return False
-        existing = db.query(models.IdentityVerification).filter(
-            models.IdentityVerification.id_number == id_number,
-            models.IdentityVerification.user_id != current_user_id,
-            models.IdentityVerification.verification_status == 'approved'
+        existing = db.query(IdentityVerification).filter(
+            IdentityVerification.id_number == id_number,
+            IdentityVerification.user_id != current_user_id,
+            IdentityVerification.verification_status == 'approved'
         ).first()
         return existing is not None
 
@@ -486,6 +494,8 @@ class VerificationService:
 
     def _deskew(self, image: np.ndarray) -> np.ndarray:
         """Corrects the rotation/tilt of an image."""
+        if not CV2_AVAILABLE: return image
+        
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         gray = cv2.bitwise_not(gray)
         thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
@@ -508,6 +518,7 @@ class VerificationService:
 
     def _enhance_for_ocr(self, img: np.ndarray) -> np.ndarray:
         """Applies contrast enhancement and sharpening to improve OCR."""
+        if not CV2_AVAILABLE: return img
         # Convert to grayscale
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         
@@ -523,6 +534,14 @@ class VerificationService:
 
     def _run_tesseract_multi_psm(self, image: np.ndarray) -> str:
         """Runs Tesseract with advanced preprocessing and multiple PSM modes."""
+        if not PYTESSERACT_AVAILABLE:
+            print("[KYC ERROR] OCR requested but pytesseract not available.")
+            return ""
+
+        if not CV2_AVAILABLE:
+            print("[KYC ERROR] OCR requested but OpenCV not available for preprocessing.")
+            return ""
+
         # 1. Deskew
         image = self._deskew(image)
         
@@ -558,6 +577,7 @@ class VerificationService:
             for psm in [6, 3]: 
                 config = f'--psm {psm} -l eng'
                 try:
+                    if not pytesseract: return False
                     current_text = pytesseract.image_to_string(img_pass, config=config)
                     if len(current_text.strip()) > len(best_text.strip()):
                         best_text = current_text
@@ -591,7 +611,9 @@ class VerificationService:
                            id_number: str, 
                            id_type: str,
                            db: Session = None,
-                           user_id: int = None) -> Dict[str, Any]:
+                           user_id: int = None,
+                           dob: str = None,
+                           address: str = None) -> Dict[str, Any]:
         """Strictly validates the ID document (Quality + OCR + Patterns) synchronously."""
         try:
             # 1. Duplicate Check (Fraud Prevention)
@@ -622,9 +644,9 @@ class VerificationService:
                 
             clean_ocr_upper = ocr_text.upper()
             
-            # 5. Legitimacy Check (Slightly relaxed)
-            # Require at least one major keyword OR minimum text length (decreased to 50)
-            is_likely_id = any(kw in clean_ocr_upper for kw in self.ID_LEGITIMACY_KEYWORDS) or len(clean_ocr_upper.strip()) > 50
+            # 5. Legitimacy Check (STRICTER)
+            # Require at least one major keyword AND minimum text length (increased to 100) to be sure it's an ID
+            is_likely_id = any(kw in clean_ocr_upper for kw in self.ID_LEGITIMACY_KEYWORDS) and len(clean_ocr_upper.strip()) > 100
             
             rich_data = self._extract_rich_ocr_data(ocr_text)
             
@@ -651,134 +673,93 @@ class VerificationService:
                     type_found_in_ocr = True
                     break
             
-            # 7. Robust Matching Logic
-            clean_name = " ".join(full_name.lower().split())
-            clean_ocr = " ".join(ocr_text.lower().split())
-            
-            def ocr_normalize(s):
-                """Normalizes common OCR misreads in names/IDs for robust matching."""
-                if not s: return ""
-                subs = {
-                    '0': 'o', '1': 'i', '2': 'z', '5': 's', '8': 'b',
-                    '|': 'i', '[': 'i', ']': 'i', '(': 'i', ')': 'i',
-                    'ç': 'c', 'ñ': 'n', 'Ñ': 'n', '—': '-', '–': '-'
-                }
-                res = s.lower().strip()
-                for k, v in subs.items():
-                    res = res.replace(k, v)
-                res = re.sub(r'[^a-z0-9 ]', '', res)
-                return " ".join(res.split())
-
-            def normalize_id(s): return re.sub(r'[^a-zA-Z0-9]', '', s).lower() if s else ""
-            
-            name_parts = [p for p in clean_name.replace(",", " ").split() if len(p) > 2] # Use longer parts for precision
-            norm_id_input = normalize_id(id_number)
-            
-            print(f"[KYC DEBUG] Strict Matching - Name: '{clean_name}', ID: '{norm_id_input}', Type: '{id_type}'")
-            
-            # --- FUZZY NAME MATCHING ---
-            matches_count = 0
-            norm_ocr_for_names = ocr_normalize(clean_ocr)
-            norm_name_parts = [ocr_normalize(p) for p in name_parts]
-            
-            for part in norm_name_parts:
-                if len(part) < 2: continue
-                if part in norm_ocr_for_names:
-                    matches_count += 1
-                    continue
-                
-                ocr_words = norm_ocr_for_names.split()
-                best_ratio = 0
-                for word in ocr_words:
-                    if len(word) < 2: continue
-                    ratio = difflib.SequenceMatcher(None, part, word).ratio()
-                    if ratio > best_ratio: best_ratio = ratio
-                
-                if best_ratio > 0.85:
-                    matches_count += 1
-                
-            # Stricter Name Match Threshold (80%)
-            name_match = (matches_count / len(name_parts) >= 0.8) if name_parts else False
-            
-            # Fuzzy ID check refinement
-            id_found = True # Default to True if no ID number provided (e.g. during registration extraction)
-            best_id_ratio = 0
-            if norm_id_input:
-                id_found = False
-                norm_ocr_for_id = re.sub(r'[^a-z0-9]', '', norm_ocr_for_names)
-                id_len = len(norm_id_input)
-                # Check for exact or highly similar substring
-                if norm_id_input in norm_ocr_for_id:
-                    id_found = True
-                else:
-                    for i in range(len(norm_ocr_for_id) - id_len + 1):
-                        window = norm_ocr_for_id[i:i+id_len]
-                        ratio = difflib.SequenceMatcher(None, norm_id_input, window).ratio()
-                        if ratio > best_id_ratio: best_id_ratio = ratio
-                    if best_id_ratio >= 0.9: # Increased from 0.8 for strictness
-                        id_found = True
-            
-            # STRICT REQUIREMENT: Name Match AND ID Found AND Type Found
-            ocr_match = name_match and id_found and type_found_in_ocr
-            status = "matched" if (ocr_match and is_likely_id) else "mismatched"
+            # 7. SMART MATCHING LOGIC (FOLLOWING USER'S PSEUDO-CODE)
             reasons = []
             
-            if not is_likely_id:
-                return {
-                    "status": "rejected",
-                    "failure_reason": "❌ Image is unclear or invalid. Please upload a clear and complete ID.",
-                    "ocr_match": False,
-                    "is_likely_id": False,
-                    "ocr_data": {
-                        "raw_text": ocr_text,
-                        "full_name": rich_data.get("full_name") or "Not detected",
-                        "id_number": rich_data.get("id_number") or "",
-                        **rich_data
-                    }
-                }
-            
-            if not ocr_match:
-                # If everything is missing/mismatched, give a unified "invalid document" message
-                if not name_match and not id_found and not type_found_in_ocr:
-                    return {
-                        "status": "rejected",
-                        "ocr_match": False,
-                        "failure_reason": "❌ ID verification failed. Please check your details and try again.",
-                        "ocr_data": {
-                            "raw_text": ocr_text,
-                            "full_name": rich_data.get("full_name") or "Not detected",
-                            "id_number": rich_data.get("id_number") or "",
-                            **rich_data
-                        }
-                    }
+            # Helper for name matching (Case insensitive, ignore extra spaces, typo tolerance)
+            def match_name(input_name, ocr_data_name, full_ocr_text):
+                if not input_name: return False
+                clean_input = " ".join(input_name.lower().split())
+                full_ocr_lower = full_ocr_text.lower()
                 
-                # Otherwise, specify what exactly was wrong
-                if not name_match: 
-                    reasons.append(f"❌ The name on the ID does not match your account name.")
+                # Try exact match first
+                if (ocr_data_name and clean_input in ocr_data_name.lower()) or clean_input in full_ocr_lower:
+                    return True
+                
+                # Typo tolerance (Fuzzy)
+                if ocr_data_name:
+                    ratio = difflib.SequenceMatcher(None, clean_input, ocr_data_name.lower()).ratio()
+                    if ratio > 0.85: return True
+                
+                # Check parts (at least 75% match)
+                input_parts = [p for p in clean_input.split() if len(p) > 2]
+                if not input_parts: return False
+                matches = 0
+                for part in input_parts:
+                    if part in full_ocr_lower:
+                        matches += 1
+                return (matches / len(input_parts)) >= 0.75
 
-                if not type_found_in_ocr:
-                    reasons.append(f"❌ Uploaded ID does not match the selected ID type.")
-                    
-                if not id_found:
-                    reasons.append(f"❌ The ID number does not match the uploaded ID.")
-
-            if not pattern_valid: 
-                reasons.append(f"❌ Invalid ID number format for selected ID type.")
+            # Helper for Date of Birth matching
+            def match_dob(input_dob, extracted_dob, full_ocr_text):
+                if not input_dob: return True
+                # Format check (YYYY-MM-DD)
+                clean_input = input_dob.replace("-", "").replace("/", "")
+                clean_ocr = re.sub(r'[^0-9]', '', full_ocr_text)
+                return clean_input in clean_ocr or input_dob in full_ocr_text
+            # Helper for Address matching
+            def match_address(input_addr, extracted_addr, full_ocr_text):
+                if not input_addr: return True
+                clean_input = re.sub(r'[^a-z0-9]', '', input_addr.lower())
+                clean_ocr_norm = re.sub(r'[^a-z0-9]', '', full_ocr_text.lower())
+                if clean_input in clean_ocr_norm: return True
+                # Fuzzy word match
+                input_words = [w for w in input_addr.lower().split() if len(w) > 3]
+                if not input_words: return True
+                found = 0
+                for w in input_words:
+                    if w in clean_ocr_norm: found += 1
+                return (found / len(input_words)) >= 0.5
+            # --- EXECUTE VALIDATIONS ---
+            # 1. ID Type Check
+            if not type_found_in_ocr:
+                reasons.append("❌ ID type mismatch. The selected ID type does not match the registered ID.")
             
+            # 2. ID Number Check (Strict)
+            norm_id_input = re.sub(r'[^a-z0-9]', '', id_number.lower())
+            norm_id_ocr = re.sub(r'[^a-z0-9]', '', ocr_text.lower())
+            if norm_id_input not in norm_id_ocr:
+                reasons.append("❌ ID number mismatch. The ID number does not match our records.")
+            
+            # 3. Name Check
+            if not match_name(full_name, rich_data.get("full_name", ""), ocr_text):
+                reasons.append("❌ Name mismatch. The name on the ID does not match our records.")
+            
+            # 4. DOB Check
+            if dob and not match_dob(dob, rich_data.get("extracted_dob", ""), ocr_text):
+                reasons.append("❌ Date of birth mismatch. The date of birth does not match our records.")
+            
+            # 5. Address Check
+            if address and not match_address(address, rich_data.get("extracted_address", ""), ocr_text):
+                reasons.append("❌ Address mismatch. The address does not match our records.")
+
+            status = "matched" if not reasons else "mismatched"
+            if not is_likely_id and status == "matched":
+                status = "rejected"
+                reasons.append("❌ Image is unclear or invalid. Please ensure the whole ID is visible.")
+
             return {
                 "status": status,
-                "ocr_match": ocr_match and is_likely_id,
+                "ocr_match": status == "matched",
                 "is_likely_id": is_likely_id,
                 "pattern_valid": pattern_valid,
-                "failure_reason": "; ".join(reasons) if reasons else None,
+                "failure_reason": " ".join(reasons) if reasons else None,
                 "extracted_text_preview": ocr_text[:200],
                 "ocr_data": {
                     "raw_text": ocr_text,
-                    "full_name": rich_data.get("full_name") or "Not detected",
-                    "id_number": rich_data.get("id_number") or self.normalize_id(ocr_text),
-                    "name_match": name_match,
-                    "id_found": id_found,
-                    "type_found": type_found_in_ocr,
+                    "full_name_extracted": rich_data.get("full_name"),
+                    "dob_extracted": rich_data.get("extracted_dob"),
+                    "address_extracted": rich_data.get("extracted_address"),
                     **rich_data
                 }
             }
@@ -793,11 +774,13 @@ class VerificationService:
                            id_number: str, 
                            id_type: str, 
                            db: Session = None,
-                           user_id: int = None) -> Dict[str, Any]:
+                           user_id: int = None,
+                           dob: str = None,
+                           address: str = None) -> Dict[str, Any]:
         """Refactored full verification logic using verify_id_document."""
         try:
             # 1. Document Verification (Now just re-using the method)
-            id_result = self.verify_id_document(id_path, full_name, id_number, id_type, db, user_id)
+            id_result = self.verify_id_document(id_path, full_name, id_number, id_type, db, user_id, dob, address)
             if id_result["status"] == "error":
                 return id_result # Bubble up error
 

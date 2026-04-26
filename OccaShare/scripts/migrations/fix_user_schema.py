@@ -22,6 +22,9 @@ def migrate():
         print("Checking for missing columns in 'users' table...")
         
         columns_to_add = [
+            ("first_name", "VARCHAR"),
+            ("middle_name", "VARCHAR"),
+            ("last_name", "VARCHAR"),
             ("address", "TEXT"),
             ("facebook_id", "VARCHAR UNIQUE"),
             ("google_id", "VARCHAR UNIQUE"),
@@ -40,6 +43,7 @@ def migrate():
             ("last_login", "TIMESTAMP WITH TIME ZONE"),
             ("created_at", "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"),
             ("updated_at", "TIMESTAMP WITH TIME ZONE"),
+            ("must_change_password", "BOOLEAN DEFAULT FALSE"),
         ]
 
         for col_name, col_type in columns_to_add:

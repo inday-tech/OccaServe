@@ -709,7 +709,29 @@ def login(
         
     user = db.query(models.User).filter(func.lower(models.User.email) == search_email.lower().strip()).first()
 
-    if not user or not security_auth.verify_password(password, user.password_hash):
+    if not user:
+        if is_ajax:
+            return JSONResponse(status_code=401, content={"success": False, "error": "Invalid credentials"})
+        return templates.TemplateResponse("auth/login.html", {
+            "request": request,
+            "error": "Invalid credentials",
+            "next_url": next_url
+        })
+    
+    # Check if password matches
+    if not security_auth.verify_password(password, user.password_hash):
+        # If password fails, check if this is a social user who hasn't set a password yet
+        if user.auth_provider != 'email':
+            provider_name = user.auth_provider.capitalize()
+            error_msg = f"This account is linked with {provider_name}. Please use the 'Sign in with {provider_name}' button."
+            if is_ajax:
+                return JSONResponse(status_code=403, content={"success": False, "error": error_msg})
+            return templates.TemplateResponse("auth/login.html", {
+                "request": request,
+                "error": error_msg,
+                "next_url": next_url
+            })
+            
         if is_ajax:
             return JSONResponse(status_code=401, content={"success": False, "error": "Invalid credentials"})
         return templates.TemplateResponse("auth/login.html", {

@@ -12,7 +12,9 @@ class User(Base):
     password_hash = Column(String)
     role = Column(String, default="customer") # 'admin', 'caterer', 'customer'
     first_name = Column(String, nullable=True)
+    middle_name = Column(String, nullable=True)
     last_name = Column(String, nullable=True)
+    dob = Column(Date, nullable=True)
     phone_number = Column(String, nullable=True)
     address = Column(Text, nullable=True)
     profile_image_url = Column(String, nullable=True)

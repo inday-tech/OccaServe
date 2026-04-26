@@ -27,6 +27,11 @@ async def upload_id(
     booking_id: int,
     id_type: str = Form(...),
     id_number: str = Form(...),
+    first_name: str = Form(...),
+    middle_name: str = Form(None),
+    last_name: str = Form(...),
+    dob: str = Form(...),
+    address: str = Form(...),
     id_document: UploadFile = File(...),
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
@@ -89,22 +94,41 @@ async def upload_id(
     kyc_record.verification_status = "pending"
     kyc_record.failure_reason = None
     
+    # Update User Profile with provided KYC data (The "Registered" Data)
+    current_user.first_name = first_name
+    current_user.middle_name = middle_name
+    current_user.last_name = last_name
+    current_user.address = address
+    
+    try:
+        from datetime import datetime
+        current_user.dob = datetime.strptime(dob, '%Y-%m-%d').date()
+    except Exception:
+        raise HTTPException(status_code=400, detail="❌ Invalid date of birth format. Use YYYY-MM-DD.")
+
     kyc_record.document_url = id_url
     kyc_record.id_number = id_number
     kyc_record.verification_type = id_type
-    # Remove the 'processing' status here as it's synchronous
-    db.commit() # Commit so service can read it
+    db.commit() 
 
     # --- STRICT SYNCHRONOUS VALIDATION ---
     print(f"[KYC] Performing synchronous ID validation for User {current_user.id}...")
-    full_name = f"{current_user.first_name} {current_user.last_name}"
+    
+    # Construct full name as per user's pseudo-code logic: Given + Middle + Last
+    full_name_parts = [first_name]
+    if middle_name: full_name_parts.append(middle_name)
+    full_name_parts.append(last_name)
+    full_name = " ".join(full_name_parts)
+
     id_result = verification_service.verify_id_document(
         id_url, 
         full_name, 
         id_number, 
         id_type,
         db=db,
-        user_id=current_user.id
+        user_id=current_user.id,
+        dob=dob,
+        address=address
     )
     
     if id_result["status"] in ["mismatched", "rejected"]:
@@ -173,20 +197,30 @@ async def verify_full(
     db.commit()
 
     # Add background task for fintech logic
+    # Retrieve data from user profile for background comparison
+    dob_str = current_user.dob.strftime('%Y-%m-%d') if current_user.dob else None
+    
+    full_name_parts = [current_user.first_name]
+    if current_user.middle_name: full_name_parts.append(current_user.middle_name)
+    full_name_parts.append(current_user.last_name)
+    full_name = " ".join(full_name_parts)
+
     background_tasks.add_task(
         process_kyc_background,
         current_user.id,
         booking_id,
         kyc_record.document_url,
         selfie_urls,
-        f"{current_user.first_name} {current_user.last_name}",
+        full_name,
         kyc_record.id_number,
-        kyc_record.verification_type
+        kyc_record.verification_type,
+        dob_str,
+        current_user.address
     )
 
     return {"status": "processing", "message": "Verification started. Please wait."}
 
-def process_kyc_background(user_id, booking_id, id_path, selfie_paths, full_name, id_number, id_type):
+def process_kyc_background(user_id, booking_id, id_path, selfie_paths, full_name, id_number, id_type, dob, address):
     # This simulates the Celery worker / Background task logic
     db = next(database.get_db())
     try:
@@ -198,7 +232,7 @@ def process_kyc_background(user_id, booking_id, id_path, selfie_paths, full_name
         # Simulate processing time
         time.sleep(0.5)
         
-        result = verification_service.verify_identity_v2(id_path, selfie_paths, full_name, id_number, id_type)
+        result = verification_service.verify_identity_v2(id_path, selfie_paths, full_name, id_number, id_type, db, user_id, dob, address)
         
         print(f"[KYC BACKGROUND] Verification Service result: {result.get('status')}")
         

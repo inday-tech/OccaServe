@@ -184,9 +184,139 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
+    // ─── CALABARZON City Data ───────────────────────────────────────────────────
+    const calabarzonCities = {
+        'Batangas': [
+            'Agoncillo','Alitagtag','Balayan','Balete','Batangas City','Bauan',
+            'Calaca','Calatagan','Cuenca','Ibaan','Laurel','Lemery','Lian',
+            'Lipa City','Lobo','Mabini','Malvar','Mataas na Kahoy','Nasugbu',
+            'Padre Garcia','Rosario','San Jose','San Juan','San Luis','San Nicolas',
+            'San Pascual','Santa Teresita','Santo Tomas','Taal','Talisay',
+            'Taysan','Tingloy','Tuy'
+        ],
+        'Cavite': [
+            'Alfonso','Amadeo','Bacoor','Carmona','Cavite City','Dasmariñas',
+            'General Emilio Aguinaldo','General Mariano Alvarez','General Trias',
+            'Imus','Indang','Kawit','Magallanes','Maragondon','Mendez',
+            'Naic','Noveleta','Rosario','Silang','Tagaytay City','Tanza',
+            'Ternate','Trece Martires City'
+        ],
+        'Laguna': [
+            'Alaminos','Bay','Biñan','Cabuyao','Calamba City','Cavinti',
+            'Famy','Kalayaan','Liliw','Los Baños','Luisiana','Lumban',
+            'Mabitac','Magdalena','Majayjay','Nagcarlan','Paete','Pagsanjan',
+            'Pakil','Pangil','Pila','Rizal','San Pablo City','San Pedro',
+            'Santa Cruz','Santa Maria','Santa Rosa City','Siniloan','Victoria'
+        ],
+        'Quezon': [
+            'Agdangan','Alabat','Atimonan','Buenavista','Burdeos','Calauag',
+            'Candelaria','Catanauan','Dolores','General Luna','General Nakar',
+            'Guinayangan','Gumaca','Infanta','Jomalig','Lopez','Lucban',
+            'Lucena City','Macalelon','Mauban','Mulanay','Padre Burgos',
+            'Pagbilao','Panukulan','Patnanungan','Perez','Pitogo','Plaridel',
+            'Polillo','Quezon','Real','Sampaloc','San Andres','San Antonio',
+            'San Francisco','San Narciso','Sariaya','Tagkawayan','Tayabas City',
+            'Tiaong','Unisan'
+        ],
+        'Rizal': [
+            'Angono','Antipolo City','Baras','Binangonan','Cainta','Cardona',
+            'Jala-Jala','Morong','Pililla','Rodriguez','San Mateo','Tanay',
+            'Taytay','Teresa'
+        ]
+    };
+
+    window.populateCities = function () {
+        const province = document.getElementById('address_province').value;
+        const citySelect = document.getElementById('address_city');
+        citySelect.innerHTML = '<option value="">-- City / Municipality --</option>';
+        if (province && calabarzonCities[province]) {
+            calabarzonCities[province].forEach(city => {
+                const opt = document.createElement('option');
+                opt.value = city;
+                opt.textContent = city;
+                citySelect.appendChild(opt);
+            });
+            citySelect.disabled = false;
+        } else {
+            citySelect.disabled = true;
+        }
+    };
+
+    // Helper: assemble and set the hidden #address field
+    function assembleAddress() {
+        const province = (document.getElementById('address_province')?.value || '').trim();
+        const city     = (document.getElementById('address_city')?.value || '').trim();
+        const street   = (document.getElementById('address_street')?.value || '').trim();
+        const combined = [street, city, province].filter(Boolean).join(', ');
+        const hiddenAddr = document.getElementById('address');
+        if (hiddenAddr) hiddenAddr.value = combined;
+        return combined;
+    }
+
+    // ─── Full-form Validation ────────────────────────────────────────────────────
+    window.validateKycForm = function () {
+        const fields = [
+            { id: 'first_name',       errId: 'err-first_name', required: true },
+            { id: 'last_name',        errId: 'err-last_name',  required: true },
+            { id: 'dob',              errId: 'err-dob',        required: true },
+            { id: 'address_province', errId: 'err-province',   required: true },
+            { id: 'address_city',     errId: 'err-city',       required: true },
+            { id: 'address_street',   errId: 'err-street',     required: true },
+            { id: 'id_type',          errId: 'err-id_type',    required: true },
+            { id: 'id_number',        errId: 'err-id_number',  required: true },
+        ];
+
+        let allValid = true;
+        fields.forEach(f => {
+            const el  = document.getElementById(f.id);
+            const err = document.getElementById(f.errId);
+            if (!el) return;
+            const isEmpty = !el.value.trim();
+            if (f.required && isEmpty) {
+                el.classList.add('input-error');
+                if (err) err.classList.add('visible');
+                allValid = false;
+            } else {
+                el.classList.remove('input-error');
+                if (err) err.classList.remove('visible');
+            }
+        });
+
+        // Also update the hidden combined address
+        assembleAddress();
+
+        const scanBox   = document.getElementById('option-scan');
+        const uploadBox = document.getElementById('option-upload');
+        // Cards enabled only when ALL required fields are valid AND ID format passes
+        const idFormatOk = !document.getElementById('option-scan').classList.contains('disabled') ||
+                           (document.getElementById('id_type').value && document.getElementById('id_number').value.trim());
+        if (allValid && document.getElementById('id_type').value && document.getElementById('id_number').value.trim()) {
+            // Leave enablement to validateIdSelection which handles format check
+        } else {
+            scanBox.classList.add('disabled');
+            uploadBox.classList.add('disabled');
+        }
+
+        return allValid;
+    };
+
     window.handleUploadClick = function () {
-        const idType = document.getElementById('id_type').value;
+        assembleAddress();
+        const idType   = document.getElementById('id_type').value;
         const idNumber = document.getElementById('id_number').value.trim();
+        const firstName = document.getElementById('first_name').value.trim();
+        const lastName  = document.getElementById('last_name').value.trim();
+        const dob       = document.getElementById('dob').value;
+        const province  = document.getElementById('address_province').value;
+        const city      = document.getElementById('address_city').value;
+        const street    = document.getElementById('address_street').value.trim();
+
+        if (!firstName || !lastName || !dob || !province || !city || !street) {
+            validateKycForm(); // Show inline errors
+            const msg = '❌ Please complete all required fields before proceeding.';
+            if (window.showError) window.showError(msg, 'Incomplete Data'); else alert(msg);
+            return;
+        }
 
         if (!idType) {
             if (window.showError) window.showError('❌ Please select an ID type.', 'Incomplete Data'); else alert('❌ Please select an ID type.');
@@ -226,6 +356,8 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     window.proceedToCamera = async function () {
+        // Assemble combined address into hidden field before submitting
+        assembleAddress();
         const idType = document.getElementById('id_type').value;
         const idNumber = document.getElementById('id_number').value.trim();
 
@@ -246,6 +378,11 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('id_type', idType);
         formData.append('id_number', idNumber);
         formData.append('id_document', idFile);
+        formData.append('first_name', document.getElementById('first_name').value.trim());
+        formData.append('middle_name', document.getElementById('middle_name').value.trim());
+        formData.append('last_name', document.getElementById('last_name').value.trim());
+        formData.append('dob', document.getElementById('dob').value);
+        formData.append('address', document.getElementById('address').value.trim());
 
         try {
             // Simulated sequence for better UX
@@ -260,6 +397,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }, 1200);
 
             const res = await fetch(`/api/bookings/${bookingId}/upload-id`, { method: 'POST', body: formData });
+            const data = await res.json();
+
             if (res.ok) {
                 document.getElementById('qc-ocr').style.color = 'var(--kyc-accent)';
                 document.getElementById('qc-ocr').querySelector('i').className = 'fas fa-check-circle';
@@ -270,8 +409,18 @@ document.addEventListener('DOMContentLoaded', function () {
                     updateStatusTracker(3);
                 }, 800);
             } else {
-                const data = await res.json();
-                if (window.showError) window.showError('Verification Error: ' + (data.detail || 'Failed to process ID'), 'Error'); else alert('Verification Error: ' + (data.detail || 'Failed to process ID'));
+                console.error("[KYC] ID Processing Failed:", data);
+                // Extract error message - prioritize 'detail', then 'message', then fallback
+                const errorMsg = data.detail || data.message || 'Failed to process ID. Please ensure the image is clear.';
+                
+                if (window.showError) {
+                    window.showError(errorMsg, 'Verification Error');
+                } else if (window.showToast) {
+                    window.showToast(errorMsg, 'error');
+                } else {
+                    alert('Verification Error: ' + errorMsg);
+                }
+                
                 document.getElementById('ocr-loading').style.display = 'none';
                 document.getElementById('id-preview').style.display = 'block';
                 updateStatusTracker(1);
@@ -540,6 +689,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const idType = document.getElementById('id_type').value;
         const idNumber = document.getElementById('id_number').value.trim();
+        const firstName = document.getElementById('first_name').value.trim();
+        const lastName  = document.getElementById('last_name').value.trim();
+        const dob       = document.getElementById('dob').value;
+        const province  = document.getElementById('address_province').value;
+        const city      = document.getElementById('address_city').value;
+        const street    = document.getElementById('address_street').value.trim();
+
+        if (!firstName || !lastName || !dob || !province || !city || !street) {
+            validateKycForm();
+            const msg = '❌ Please complete all required fields before scanning.';
+            if (window.showError) window.showError(msg, 'Missing Fields'); else alert(msg);
+            return;
+        }
 
         if (!idType) {
             if (window.showError) window.showError('❌ Please select an ID type.', 'Missing Fields'); else alert('❌ Please select an ID type.');

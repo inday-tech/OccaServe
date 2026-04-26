@@ -106,11 +106,11 @@ app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
+app.include_router(social_auth.router) # Priority for OAuth callbacks
 app.include_router(website.router)
 app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(bookings.router)
-app.include_router(social_auth.router)
 app.include_router(caterers.router)
 app.include_router(packages.router)
 

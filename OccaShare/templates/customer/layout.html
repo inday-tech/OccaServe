@@ -223,15 +223,16 @@
 <script src="{{ url_for('static', path='/js/caterer/notifications.js') }}?v=1.4"></script>
 
 <!-- Inactivity Auto-Logout -->
-<div id="inactivityModal" class="modal modal-overlay" style="display: none;">
-    <div class="modal-content-card">
-        <div class="modal-icon-container">
+<div id="inactivityModal" class="premium-modal-overlay">
+    <div class="premium-modal-container">
+        <div class="modal-icon-wrapper" style="background: #fffbeb; color: #f59e0b;">
             <i class="fas fa-exclamation-triangle"></i>
         </div>
         <h2 class="modal-title">Session Expiring Soon</h2>
-        <p class="modal-text">You've been inactive for a while. Your session will expire in 1 minute. Would you like
-            to stay logged in?</p>
-        <button id="stayLoggedInBtn" class="btn-primary modal-button-full">Yes, keep me logged in</button>
+        <p class="modal-message">You've been inactive for a while. Your session will expire in 1 minute. Would you like to stay logged in?</p>
+        <div class="modal-actions">
+            <button id="stayLoggedInBtn" class="modal-btn btn-confirm-main">Yes, keep me logged in</button>
+        </div>
     </div>
 </div>
 
