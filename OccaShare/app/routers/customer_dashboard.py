@@ -235,6 +235,12 @@ async def manage_booking(
     is_food_order = booking.package_id is None
     
     if is_food_order:
+        # Auto-fix for legacy bookings with 0 reservation fee
+        if (booking.reservation_fee is None or booking.reservation_fee == 0) and (booking.total_amount and booking.total_amount > 0):
+            booking.reservation_fee = booking.total_amount
+            db.commit()
+            db.refresh(booking)
+
         # 8-Step Food Order Flow
         if current_status in ["pending", "pending_quotation", "awaiting_caterer", "draft"]:
             current_step_idx = 1 # Pending

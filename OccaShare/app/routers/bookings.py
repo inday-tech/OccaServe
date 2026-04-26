@@ -126,6 +126,7 @@ async def alacarte_checkout_draft(
             guest_count=quantity,
             total_amount=total_amount,
             total_price=total_amount,
+            reservation_fee=total_amount,
             status="draft" 
         )
         db.add(new_booking)
@@ -183,6 +184,7 @@ async def alacarte_checkout_submit(
                 booking.venue_address = address if fulfillment == "delivery" else "PICKUP"
                 booking.special_requests = landmark
                 booking.total_amount = total_amount
+                booking.reservation_fee = total_amount
         
         if not booking:
             booking = models.Booking(
@@ -196,6 +198,7 @@ async def alacarte_checkout_submit(
                 guest_count=quantity,
                 total_amount=total_amount,
                 total_price=total_amount,
+                reservation_fee=total_amount,
                 status=status,
                 payment_method=payment_method,
                 special_requests=landmark

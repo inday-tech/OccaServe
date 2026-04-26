@@ -18,10 +18,16 @@ async def process_payment(
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
     
-    amount = float(booking.reservation_fee) if payment_type == "dp" else float((booking.total_amount or 0) - (booking.reservation_fee or 0))
-    
-    if amount <= 0:
-        raise HTTPException(status_code=400, detail="Invalid payment amount")
+    try:
+        res_fee = float(booking.reservation_fee or 0)
+        total = float(booking.total_amount or 0)
+        
+        amount = res_fee if payment_type == "dp" else (total - res_fee)
+        
+        if amount <= 0:
+            return {"success": False, "message": f"Invalid payment amount: ₱{amount:,.2f}. Please contact support."}
+    except Exception as e:
+        return {"success": False, "message": f"Calculation error: {str(e)}"}
 
     from ..services.paymongo import paymongo_service
     description = f"Payment for {booking.event_name or 'Event'} ({payment_type.upper()})"

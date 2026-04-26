@@ -353,13 +353,13 @@ async function initiatePaymongo(type) {
         if (data.success && data.checkout_url) {
             window.location.href = data.checkout_url;
         } else {
-            alert(data.message || 'Failed to generate payment link. Please try again.');
+            alert(data.message || data.detail || 'Failed to generate payment link. Please try again.');
             btn.disabled = false;
             loading.style.display = 'none';
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('A connection error occurred. Please check your internet.');
+        alert('An unexpected error occurred. Please refresh and try again.');
         btn.disabled = false;
         loading.style.display = 'none';
     }
