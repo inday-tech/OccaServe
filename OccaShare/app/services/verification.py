@@ -10,7 +10,6 @@ from typing import List, Dict, Any
 from ..core.encryption import decrypt_data
 from PIL import Image, ImageOps
 from sqlalchemy.orm import Session
-from ..db import models
 
 # Graceful imports for heavy dependencies (may not be available on all cloud platforms)
 try:
@@ -341,119 +340,74 @@ class VerificationService:
         }
 
     def _extract_rich_ocr_data(self, text: str) -> Dict[str, Any]:
-        """Enhanced extraction for Full Name, ID Number, DOB, and Address."""
+        """Extracts Full Name, ID Number, DOB, Expiry, and Address using regex."""
         data = {
             "full_name": "",
             "id_number": "",
             "extracted_dob": "",
+            "extracted_expiry": "",
             "extracted_address": ""
         }
         
         lines = [l.strip() for l in text.split("\n") if l.strip()]
         clean_text_upper = text.upper()
         
-        # 1. NAME EXTRACTION
+        # 1. Name Extraction (Improved Heuristics)
         potential_names = []
-        name_keywords = ["NAME", "SURNAME", "GIVEN", "FIRST", "FULLNAME"]
-        
         for i, line in enumerate(lines):
             upper_line = line.upper()
-<<<<<<< HEAD
-            # If line contains labels, look at the next line
-            if any(k in upper_line for k in ["NAME", "SURNAME", "GIVEN", "FIRST"]):
+            if any(k in upper_line for k in ["NAME", "SURNAME", "GIVEN", "FIRST", "MAIDEN"]):
                 val = lines[i+1] if i+1 < len(lines) else ""
-                if len(val) > 5 and not any(char.isdigit() for char in val):
+                if len(val) > 4 and not any(char.isdigit() for char in val):
                     potential_names.append(val.strip())
             
-            # Look for lines that look like a Filipino name (usually 3 words, ALL CAPS)
-            if 8 < len(line) < 45 and line.isupper() and re.match(r'^[A-Z ,.-]+$', line):
-                # Ignore common ID labels
-                if not any(kw in line for kw in self.ID_LEGITIMACY_KEYWORDS) and not any(kw in line for kw in ["PUROK", "BRGY", "CITY", "STREET", "ADDRESS"]):
+            # Look for typical 2-3 word name format in all caps
+            if 10 < len(line) < 50 and line.isupper() and re.match(r'^[A-Z ,.-]+$', line):
+                if not any(kw in line for kw in self.ID_LEGITIMACY_KEYWORDS) and \
+                   not any(kw in line for kw in ["PUROK", "BRGY", "CITY", "PROVINCE", "STREET", "BARANGAY"]):
                     potential_names.append(line)
 
         if potential_names:
             data["full_name"] = potential_names[0]
-=======
-            # Keywords indicating following or current line is a name
-            for k in name_keywords:
-                if k in upper_line:
-                    # Check same line after keyword
-                    val = re.sub(rf'.*?{k}[:\s]*', '', upper_line).strip()
-                    if len(val) > 5 and not any(char.isdigit() for char in val):
-                        potential_names.append(val)
-                    
-                    # Check next line
-                    val_next = lines[i+1] if i+1 < len(lines) else ""
-                    if len(val_next) > 5 and not any(char.isdigit() for char in val_next):
-                        potential_names.append(val_next.strip().upper())
-            
-            # Lines that are 2-3 words, all caps, no symbols/digits (Likely a name line)
-            if 10 < len(line) < 45 and line.isupper() and re.match(r'^[A-Z ,.-]+$', line):
-                # Ignore legitimacy keywords and address-like words
-                if not any(kw in upper_line for kw in self.ID_LEGITIMACY_KEYWORDS) and not any(kw in upper_line for kw in ["PUROK", "BRGY", "CITY", "PROVINCE", "STREET", "ADDRESS", "REPUBLIC"]):
-                    potential_names.append(upper_line)
 
-        if potential_names:
-            # Heuristic: deduplicate and pick the first one that doesn't look like a label
-            clean_names = [n for n in potential_names if n not in name_keywords]
-            if clean_names:
-                data["full_name"] = clean_names[0]
->>>>>>> 50c1075a97d2f72a77a5e68fdcec783db54f4f05
-
-        # 2. ID NUMBER EXTRACTION
+        # 2. ID Number Extraction
         id_patterns = [
-            r'(\d{4}-\d{4}-\d{4}-\d{4})', # PhilSys / National ID
+            r'(\d{4}-\d{4}-\d{4}-\d{4})', # PhilID
             r'([A-Z]\d{2}-\d{2}-\d{6})',    # Driver's License
-            r'([A-Z]\d{7}[A-Z])',           # Passport
-<<<<<<< HEAD
-            r'(\d{2}-\d{7}-\d{1})',         # SSS/UMID
-            r'(\d{3}-\d{3}-\d{3}-\d{3})',  # TIN
-            r'(\d{12})',                    # Postal ID
-            r'(\d{2}-\d{9}-\d{1})'          # PhilHealth
-=======
-            r'(\d{2}-\d{7}-\d{1})',         # SSS / GSIS
+            r'([A-Z]\d{7,8}[A-Z]?)',         # Passport
+            r'(\d{2}-\d{7}-\d{1})',         # SSS
             r'(\d{3}-\d{3}-\d{3}-\d{0,3})', # TIN
-            r'(\d{12})',                    # UMID / Generic 12-digit
-            r'(\d{10})'                     # Postal ID / Generic 10-digit
->>>>>>> 50c1075a97d2f72a77a5e68fdcec783db54f4f05
+            r'(\d{4}-\d{7}-\d{1})'          # UMID
         ]
         for pattern in id_patterns:
             match = re.search(pattern, clean_text_upper)
             if match:
                 data["id_number"] = match.group(1).strip()
                 break
-        
-        # 3. BIRTH DATE EXTRACTION (DOB)
-        # Look for standard date formats near DOB keywords
-        dob_keywords = ["DOB", "DATE OF BIRTH", "BIRTH DATE", "DATE DE NAISSANCE", "BORN", "BIRTH", "DATE OF BORN"]
-        date_pattern = r"(\b(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+\d{1,2},?\s+\d{4}\b|\d{2}[-/]\d{2}[-/]\d{4})"
-        
+
+        # 3. Birth Date Detection (Aggressive)
+        date_pattern = r"(\b(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z.]*\s+\d{1,2},?\s+\d{4}\b|\d{2}[-/]\d{2}[-/]\d{4}|\d{4}[-/]\d{2}[-/]\d{2})"
+        dob_keywords = ["DATE OF BIRTH", "BIRTH DATE", "DOB", "BORN", "BIRTH", "DATE DE NAISSANCE"]
         for kw in dob_keywords:
-            match = re.search(re.escape(kw) + r'.*?(' + date_pattern + r')', clean_text_upper, re.DOTALL)
+            match = re.search(re.escape(kw) + r".{1,30}(" + date_pattern + r")", clean_text_upper, re.DOTALL)
             if match:
                 data["extracted_dob"] = match.group(1)
                 break
         
-        # Fallback for DOB: Any date that is > 18 years ago
-        if not data["extracted_dob"]:
-            all_dates = re.findall(date_pattern, clean_text_upper)
-            for d in all_dates:
-                # Basic heuristic: DOB is usually the first date on a card or older year
-                if "19" in d or "200" in d:
-                    data["extracted_dob"] = d
-                    break
-
-        # 4. ADDRESS EXTRACTION
-        address_markers = ["PUROK", "BRGY", "BARANGAY", "CITY", "PROVINCE", "STREET", "SUBD", "SUBDIVISION", "MUNICIPALITY", "LOT", "BLK", "BLOCK"]
+        # 4. Address Detection (Philippine Specific)
+        address_parts = []
+        address_markers = ["PUROK", "BRGY", "BARANGAY", "CITY", "PROVINCE", "STREET", "SUBD", "MUNICIPALITY", "DISTRICT", "PHASE"]
         for i, line in enumerate(lines):
-            upper_line = line.upper()
-            if any(marker in upper_line for marker in address_markers):
-                # Take this line and potentially the next one
-                address = line
-                if i+1 < len(lines) and len(lines[i+1]) > 5:
-                    address += ", " + lines[i+1]
-                data["extracted_address"] = address.strip()
+            line_upper = line.upper()
+            if any(marker in line_upper for marker in address_markers):
+                address_parts.append(line)
+                if i+1 < len(lines) and (lines[i+1].isupper() or len(lines[i+1]) < 30):
+                    if not any(kw in lines[i+1].upper() for kw in self.ID_LEGITIMACY_KEYWORDS):
+                        address_parts.append(lines[i+1])
                 break
+        
+        if address_parts:
+            data["extracted_address"] = ", ".join(address_parts)
 
         return data
 
@@ -480,11 +434,10 @@ class VerificationService:
 
     def check_duplicate_id(self, db: Session, id_number: str, current_user_id: int) -> bool:
         """Checks if the ID number is already associated with another verified user."""
-        if not id_number: return False
-        existing = db.query(models.IdentityVerification).filter(
-            models.IdentityVerification.id_number == id_number,
-            models.IdentityVerification.user_id != current_user_id,
-            models.IdentityVerification.verification_status == 'approved'
+        existing = db.query(IdentityVerification).filter(
+            IdentityVerification.id_number == id_number,
+            IdentityVerification.user_id != current_user_id,
+            IdentityVerification.verification_status == 'approved'
         ).first()
         return existing is not None
 
@@ -642,9 +595,9 @@ class VerificationService:
                 
             clean_ocr_upper = ocr_text.upper()
             
-            # 5. Legitimacy Check (Slightly relaxed)
-            # Require at least one major keyword OR minimum text length (decreased to 50)
-            is_likely_id = any(kw in clean_ocr_upper for kw in self.ID_LEGITIMACY_KEYWORDS) or len(clean_ocr_upper.strip()) > 50
+            # 5. Legitimacy Check (STRICTER)
+            # Require at least one major keyword AND minimum text length (increased to 100) to be sure it's an ID
+            is_likely_id = any(kw in clean_ocr_upper for kw in self.ID_LEGITIMACY_KEYWORDS) and len(clean_ocr_upper.strip()) > 100
             
             rich_data = self._extract_rich_ocr_data(ocr_text)
             
@@ -678,6 +631,7 @@ class VerificationService:
             def ocr_normalize(s):
                 """Normalizes common OCR misreads in names/IDs for robust matching."""
                 if not s: return ""
+                # Map similar looking characters that OCR often confuses
                 subs = {
                     '0': 'o', 'O': 'o', 'Q': 'o', 'D': 'o',
                     '1': 'i', 'I': 'i', 'L': 'i', '|': 'i', '!': 'i',
@@ -687,14 +641,18 @@ class VerificationService:
                 res = s.lower().strip()
                 for k, v in subs.items():
                     res = res.replace(k.lower(), v.lower())
+                # Keep only alphanumeric for core comparison
                 res = re.sub(r'[^a-z0-9 ]', '', res)
                 return " ".join(res.split())
 
             def normalize_id(s): 
+                # For IDs, we are even stricter: only letters and numbers
                 return re.sub(r'[^a-z0-9]', '', s.lower()) if s else ""
             
             name_parts = [p for p in clean_name.replace(",", " ").split() if len(p) > 2]
             norm_id_input = normalize_id(id_number)
+            
+            print(f"[KYC DEBUG] Smart Matching - Name: '{clean_name}', ID: '{norm_id_input}'")
             
             # --- FUZZY NAME MATCHING ---
             matches_count = 0
@@ -703,10 +661,12 @@ class VerificationService:
             
             for part in norm_name_parts:
                 if len(part) < 2: continue
+                # Check for exact normalized match
                 if part in norm_ocr_for_names:
                     matches_count += 1
                     continue
                 
+                # Check for fuzzy word match
                 ocr_words = norm_ocr_for_names.split()
                 best_ratio = 0
                 for word in ocr_words:
@@ -714,43 +674,47 @@ class VerificationService:
                     ratio = difflib.SequenceMatcher(None, part, word).ratio()
                     if ratio > best_ratio: best_ratio = ratio
                 
-                if best_ratio > 0.8:
+                if best_ratio > 0.8: # Adjusted from 0.85 to be more lenient
                     matches_count += 1
                 
+            # Name Match Threshold: At least 75% of name parts found
             name_match = (matches_count / len(name_parts) >= 0.75) if name_parts else False
             
             # --- SMART ID NUMBER CHECK ---
             id_found = False
             best_id_ratio = 0
             if norm_id_input:
+                # Remove all symbols from OCR for ID search
                 norm_ocr_for_id = normalize_id(ocr_text)
+                
+                # 1. Exact Substring Match (Normalized)
                 if norm_id_input in norm_ocr_for_id:
                     id_found = True
                 else:
+                    # 2. Sliding Window Fuzzy Match (to handle missing/extra chars)
                     id_len = len(norm_id_input)
                     for i in range(len(norm_ocr_for_id) - id_len + 1):
                         window = norm_ocr_for_id[i:i+id_len]
                         ratio = difflib.SequenceMatcher(None, norm_id_input, window).ratio()
                         if ratio > best_id_ratio: best_id_ratio = ratio
+                    
+                    # If 85% match, we consider it the same ID (handles common OCR noise)
                     if best_id_ratio >= 0.85: 
                         id_found = True
             else:
-                id_found = True
+                id_found = True # Skip if no ID number provided for extraction
             
             # --- BROAD TYPE MATCHING ---
+            # If the scanner is poor, we check if ANY of the keywords exist even partially
             type_found_in_ocr = False
             for kw in selected_type_kws:
                 if kw.lower() in clean_ocr.lower():
                     type_found_in_ocr = True
                     break
             
-            # --- DOB & ADDRESS DETECTION CHECK ---
-            dob_detected = bool(rich_data.get("extracted_dob"))
-            address_detected = bool(rich_data.get("extracted_address"))
-
-            # FINAL DECISION LOGIC
-            # To proceed, we need Name, ID Number, Type, DOB, and Address to be valid/detected
-            ocr_match = name_match and id_found and dob_detected and address_detected
+            # FINAL DECISION: If Name matches and ID matches, we are 90% sure it's valid
+            # Even if the "ID Type" string was missed by OCR, we can be lenient if name/ID are solid
+            ocr_match = name_match and id_found
             
             status = "matched" if (ocr_match and is_likely_id) else "mismatched"
             reasons = []
@@ -758,54 +722,22 @@ class VerificationService:
             if not is_likely_id:
                 return {
                     "status": "rejected",
-<<<<<<< HEAD
-                    "failure_reason": "❌ Unable to read the ID. Please ensure the image is clear and the document is fully visible.",
-                    "ocr_match": False
-                }
-            
-            if not ocr_match:
-=======
-                    "failure_reason": "❌ Image is unclear or invalid. Please upload a clear and complete ID.",
+                    "failure_reason": "❌ Image is unclear or invalid. Please ensure the whole ID is visible.",
                     "ocr_match": False,
-                    "is_likely_id": False,
-                    "ocr_data": {
-                        "raw_text": ocr_text,
-                        "full_name": rich_data.get("full_name") or "Not detected",
-                        "id_number": rich_data.get("id_number") or "",
-                        **rich_data
-                    }
+                    "is_likely_id": False
                 }
             
             if not ocr_match:
-                # If everything is missing/mismatched, give a unified "invalid document" message
-                if not name_match and not id_found and not type_found_in_ocr:
-                    return {
-                        "status": "rejected",
-                        "ocr_match": False,
-                        "failure_reason": "❌ ID verification failed. Please check your details and try again.",
-                        "ocr_data": {
-                            "raw_text": ocr_text,
-                            "full_name": rich_data.get("full_name") or "Not detected",
-                            "id_number": rich_data.get("id_number") or "",
-                            **rich_data
-                        }
-                    }
-                
-                # Otherwise, specify what exactly was wrong
->>>>>>> 50c1075a97d2f72a77a5e68fdcec783db54f4f05
                 if not name_match: 
-                    reasons.append(f"❌ Name mismatch. The name on the ID does not match your registered account name.")
+                    reasons.append(f"❌ Name mismatch. Detected: '{rich_data.get('full_name') or 'Unknown'}'")
                 if not id_found:
-                    reasons.append(f"❌ ID Number mismatch. The number on the ID does not match your input.")
-                if not dob_detected:
-                    reasons.append(f"❌ Birth Date not detected. We could not find a clear birth date on the uploaded ID.")
-                if not address_detected:
-                    reasons.append(f"❌ Address not detected. We could not find a clear address on the uploaded ID.")
+                    reasons.append(f"❌ ID number mismatch. Please check if it's correct.")
                 if not type_found_in_ocr:
-                    reasons.append(f"❌ ID Type mismatch. The uploaded document does not match the selected ID category.")
+                    # Just a warning for type if other fields match
+                    print(f"[KYC WARNING] ID Type '{id_type}' not clearly found in OCR.")
 
             if not pattern_valid: 
-                reasons.append(f"❌ Invalid ID number format.")
+                reasons.append(f"❌ Invalid ID format.")
             
             return {
                 "status": status,
@@ -813,16 +745,15 @@ class VerificationService:
                 "is_likely_id": is_likely_id,
                 "pattern_valid": pattern_valid,
                 "failure_reason": "; ".join(reasons) if reasons else None,
+                "extracted_text_preview": ocr_text[:200],
                 "ocr_data": {
                     "raw_text": ocr_text,
                     "full_name": rich_data.get("full_name") or "Not detected",
                     "id_number": rich_data.get("id_number") or id_number,
-                    "dob": rich_data.get("extracted_dob") or "Not detected",
-                    "address": rich_data.get("extracted_address") or "Not detected",
                     "name_match": name_match,
                     "id_found": id_found,
-                    "dob_found": dob_detected,
-                    "address_found": address_detected,
+                    "type_found": type_found_in_ocr,
+                    "best_id_ratio": best_id_ratio,
                     **rich_data
                 }
             }
