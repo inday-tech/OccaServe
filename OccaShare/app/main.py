@@ -106,7 +106,16 @@ app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
-app.include_router(social_auth.router) # Priority for OAuth callbacks
+# DEBUG MIDDLEWARE: Log all incoming requests to find the 404 culprit
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    print(f"[DEBUG LOG] Request: {request.method} {request.url}")
+    response = await call_next(request)
+    print(f"[DEBUG LOG] Response: {response.status_code} for {request.url.path}")
+    return response
+
+from .routers.social_auth import router as social_router
+app.include_router(social_router)
 app.include_router(website.router)
 app.include_router(auth.router)
 app.include_router(admin.router)

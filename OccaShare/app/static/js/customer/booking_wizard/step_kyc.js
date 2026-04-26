@@ -327,6 +327,8 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        // Re-check format state before relying on disabled class
+        validateIdSelection();
         const scanBox = document.getElementById('option-upload');
         if (scanBox.classList.contains('disabled')) {
             if (window.showError) window.showError('❌ Invalid ID number format for selected ID type.', 'Format Error'); else alert('❌ Invalid ID number format for selected ID type.');
@@ -712,6 +714,8 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        // Re-check format state before relying on disabled class
+        validateIdSelection();
         if (document.getElementById('option-scan').classList.contains('disabled')) {
             if (window.showError) window.showError('❌ Invalid ID number format for selected ID type.', 'Format Error'); else alert('❌ Invalid ID number format for selected ID type.');
             return;
