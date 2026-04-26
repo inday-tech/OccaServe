@@ -260,6 +260,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }, 1200);
 
             const res = await fetch(`/api/bookings/${bookingId}/upload-id`, { method: 'POST', body: formData });
+            const data = await res.json();
+
             if (res.ok) {
                 document.getElementById('qc-ocr').style.color = 'var(--kyc-accent)';
                 document.getElementById('qc-ocr').querySelector('i').className = 'fas fa-check-circle';
@@ -270,8 +272,18 @@ document.addEventListener('DOMContentLoaded', function () {
                     updateStatusTracker(3);
                 }, 800);
             } else {
-                const data = await res.json();
-                if (window.showError) window.showError('Verification Error: ' + (data.detail || 'Failed to process ID'), 'Error'); else alert('Verification Error: ' + (data.detail || 'Failed to process ID'));
+                console.error("[KYC] ID Processing Failed:", data);
+                // Extract error message - prioritize 'detail', then 'message', then fallback
+                const errorMsg = data.detail || data.message || 'Failed to process ID. Please ensure the image is clear.';
+                
+                if (window.showError) {
+                    window.showError(errorMsg, 'Verification Error');
+                } else if (window.showToast) {
+                    window.showToast(errorMsg, 'error');
+                } else {
+                    alert('Verification Error: ' + errorMsg);
+                }
+                
                 document.getElementById('ocr-loading').style.display = 'none';
                 document.getElementById('id-preview').style.display = 'block';
                 updateStatusTracker(1);
