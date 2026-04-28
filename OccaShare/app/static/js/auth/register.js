@@ -344,11 +344,23 @@
     if (regForm) {
         regForm.onsubmit = async function (e) {
             e.preventDefault();
-            const fullNameEl = regForm.querySelector('input[name="full_name"]');
+            const firstNameEl = regForm.querySelector('input[name="first_name"]') || regForm.querySelector('input[name="full_name"]');
+            const lastNameEl = regForm.querySelector('input[name="last_name"]');
             const emailEl = regForm.querySelector('input[name="email"]');
             const passEl = regForm.querySelector('input[name="password"]');
             const confirmEl = regForm.querySelector('input[name="confirm_password"]');
             const mobileEl = regForm.querySelector('input[name="mobile_number"]');
+
+            if (firstNameEl && lastNameEl) {
+                const fnVal = firstNameEl.value.trim().toLowerCase();
+                const lnVal = lastNameEl.value.trim().toLowerCase();
+                if (fnVal && lnVal && fnVal === lnVal) {
+                    firstNameEl.style.borderColor = '#ef4444';
+                    lastNameEl.style.borderColor = '#ef4444';
+                    alert("❌ Mismatch Detected: First Name and Last Name cannot be identical (e.g., Pepito Pepito).");
+                    return false;
+                }
+            }
 
             const pass = passEl ? passEl.value : "social_login_auto";
             const confirm = confirmEl ? confirmEl.value : "social_login_auto";
@@ -399,14 +411,23 @@
                 return false;
             }
 
-            const fullName = fullNameEl?.value || "";
-            const nameParts = fullName.trim().split(/\s+/);
-            const firstName = nameParts[0] || "";
-            const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : ".";
+            let firstName = "";
+            let lastName = "";
+
+            if (firstNameEl && lastNameEl) {
+                firstName = firstNameEl.value.trim();
+                lastName = lastNameEl.value.trim();
+            } else {
+                const fullName = (typeof fullNameEl !== 'undefined' && fullNameEl) ? fullNameEl.value : "";
+                const nameParts = fullName.trim().split(/\s+/);
+                firstName = nameParts[0] || "";
+                lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : ".";
+            }
 
             const formData = new FormData(regForm);
             formData.set('first_name', firstName);
             formData.set('last_name', lastName);
+            formData.set('full_name', `${firstName} ${lastName}`);
 
             const submitBtn = regForm.querySelector('button[type="submit"]');
             const originalBtnText = submitBtn.innerHTML;

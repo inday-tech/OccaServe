@@ -14,18 +14,30 @@
     </div>
     {% endif %}
 
-    <form action="/auth/register" method="post" id="regForm">
+    <form action="/auth/register" method="post" id="regForm" onsubmit="return validateCustomerSignup()">
         {% if next_url %}
         <input type="hidden" name="next_url" value="{{ next_url }}">
         {% endif %}
         <input type="hidden" name="role" id="roleInput" value="customer">
 
-        <div class="form-group">
-            <label for="full_name">Full Name</label>
-            <div class="input-wrapper" id="nameWrapper">
-                <input type="text" id="full_name" name="full_name" class="minimal-input" required placeholder="John Doe"
-                    value="{{ user.full_name if user else (submitted_data.full_name if submitted_data else '') }}">
-                <div id="nameError" class="error-drawer">Required</div>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-top: 1.5rem; margin-bottom: 1rem; position: relative; z-index: 1;">
+            <div class="form-group">
+                <label for="first_name">First Name</label>
+                <div class="input-wrapper">
+                    <input type="text" id="first_name" name="first_name" class="minimal-input" required placeholder="e.g. Juan">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="middle_name">Middle Name</label>
+                <div class="input-wrapper">
+                    <input type="text" id="middle_name" name="middle_name" class="minimal-input" placeholder="e.g. Mercado">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="last_name">Last Name</label>
+                <div class="input-wrapper">
+                    <input type="text" id="last_name" name="last_name" class="minimal-input" required placeholder="e.g. Dela Cruz">
+                </div>
             </div>
         </div>
 
@@ -49,7 +61,48 @@
             </div>
         </div>
 
-        <div class="grid-2">
+        <!-- Address Fields -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem; position: relative; z-index: 1;">
+            <div class="form-group">
+                <label for="province_cust">Province</label>
+                <div class="input-wrapper">
+                    <select id="province_cust" class="minimal-input" required>
+                        <option value="">-- Province --</option>
+                        <option value="Laguna">Laguna</option>
+                        <option value="Batangas">Batangas</option>
+                        <option value="Cavite">Cavite</option>
+                        <option value="Rizal">Rizal</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="city_cust">City / Municipality</label>
+                <div class="input-wrapper">
+                    <select id="city_cust" class="minimal-input" required disabled>
+                        <option value="">-- City --</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem; position: relative; z-index: 1;">
+            <div class="form-group">
+                <label for="barangay_cust">Barangay</label>
+                <div class="input-wrapper">
+                    <select id="barangay_cust" class="minimal-input" required disabled>
+                        <option value="">-- Barangay --</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="street_cust">Street / Landmark</label>
+                <div class="input-wrapper">
+                    <input type="text" id="street_cust" class="minimal-input" placeholder="e.g. Unit 12A, Diamond Bldg" required>
+                </div>
+            </div>
+        </div>
+        <input type="hidden" name="address" id="address_cust_hidden">
+
+        <div class="grid-2" style="position: relative; z-index: 1;">
             <div class="form-group">
                 <label for="password">Password</label>
                 <div class="input-wrapper" id="passwordWrapper">
@@ -110,3 +163,110 @@
         </div>
     </div>
 </div>
+
+<script>
+    window.validateCustomerSignup = function() {
+        const fn = document.getElementById('first_name');
+        const ln = document.getElementById('last_name');
+        if (fn && ln) {
+            const firstName = fn.value.trim().toLowerCase();
+            const lastName = ln.value.trim().toLowerCase();
+            if (firstName && lastName && firstName === lastName) {
+                fn.style.borderColor = '#ef4444';
+                ln.style.borderColor = '#ef4444';
+                alert("❌ Mismatch Detected: First Name and Last Name cannot be identical (e.g., Pepito Pepito). Please use your real name.");
+                return false;
+            }
+        }
+        return true;
+    };
+
+    (function() {
+        const form = document.getElementById('regForm');
+        const provSelect = document.getElementById('province_cust');
+        const citySelect = document.getElementById('city_cust');
+        const brgySelect = document.getElementById('barangay_cust');
+        const streetInput = document.getElementById('street_cust');
+        const hiddenAddress = document.getElementById('address_cust_hidden');
+
+        if (form) {
+                form.addEventListener('submit', (e) => {
+                    const fn = document.getElementById('first_name');
+                    const ln = document.getElementById('last_name');
+                    if (fn && ln) {
+                        const firstName = fn.value.trim().toLowerCase();
+                        const lastName = ln.value.trim().toLowerCase();
+                        if (firstName && lastName && firstName === lastName) {
+                            e.preventDefault();
+                            fn.style.borderColor = '#ef4444';
+                            ln.style.borderColor = '#ef4444';
+                            alert("❌ Mismatch Detected: First Name and Last Name cannot be identical (e.g., Pepito Pepito). Please use your real name.");
+                            return false;
+                        }
+                    }
+                });
+            }
+
+            function updateHiddenAddress() {
+                if(hiddenAddress) {
+                    hiddenAddress.value = `${streetInput?.value || ''}, ${brgySelect?.value || ''}, ${citySelect?.value || ''}, ${provSelect?.value || ''}`;
+                }
+            }
+
+            if (provSelect && citySelect) {
+                provSelect.addEventListener('change', () => {
+                    citySelect.disabled = false;
+                    citySelect.innerHTML = '<option value="">-- City --</option>';
+                    if (brgySelect) {
+                        brgySelect.disabled = false; 
+                        brgySelect.innerHTML = '<option value="">-- Barangay --</option>';
+                    }
+                    
+                    const prov = provSelect.value;
+                    if (prov && typeof LOCATION_DATA !== 'undefined' && LOCATION_DATA[prov]) {
+                        const cities = Object.keys(LOCATION_DATA[prov]).sort();
+                        cities.forEach(city => {
+                            const opt = document.createElement('option');
+                            opt.value = opt.textContent = city;
+                            citySelect.appendChild(opt);
+                        });
+
+                        // Automatically populate barangays for the default first city
+                        if (cities.length > 0 && brgySelect) {
+                            const firstCity = cities[0];
+                            citySelect.value = firstCity; // Force update
+                            
+                            if (LOCATION_DATA[prov][firstCity]) {
+                                LOCATION_DATA[prov][firstCity].sort().forEach(b => {
+                                    const opt = document.createElement('option');
+                                    opt.value = opt.textContent = b;
+                                    brgySelect.appendChild(opt);
+                                });
+                            }
+                        }
+                    }
+                    updateHiddenAddress();
+                });
+
+                citySelect.addEventListener('change', () => {
+                    if (brgySelect) {
+                        brgySelect.disabled = false;
+                        brgySelect.innerHTML = '<option value="">-- Barangay --</option>';
+                        const prov = provSelect.value;
+                        const city = citySelect.value;
+                        if (prov && city && typeof LOCATION_DATA !== 'undefined' && LOCATION_DATA[prov] && LOCATION_DATA[prov][city]) {
+                            LOCATION_DATA[prov][city].sort().forEach(b => {
+                                const opt = document.createElement('option');
+                                opt.value = opt.textContent = b;
+                                brgySelect.appendChild(opt);
+                            });
+                        }
+                    }
+                    updateHiddenAddress();
+                });
+            }
+
+            if (brgySelect) brgySelect.addEventListener('change', updateHiddenAddress);
+            if (streetInput) streetInput.addEventListener('input', updateHiddenAddress);
+    })();
+</script>

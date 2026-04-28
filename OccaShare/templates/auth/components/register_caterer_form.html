@@ -40,13 +40,24 @@
         <!-- Step 1: Basic Account Information -->
         <div class="form-step active" id="step-1">
             <div class="form-grid">
-                <div class="form-group full-width">
-                    <label for="full_name_cat">Full Name</label>
-                    <div class="input-wrapper" id="fullNameCatWrapper">
-                        <input type="text" id="full_name_cat" name="full_name" class="minimal-input" required
-                            placeholder="Juan Dela Cruz"
-                            value="{{ user.first_name ~ ' ' ~ user.last_name if user else '' }}">
-                        <div id="fullNameCatError" class="error-drawer">Required</div>
+                <div class="form-group" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; width: 100%; grid-column: 1 / -1; margin-top: 1.5rem;">
+                    <div class="form-group">
+                        <label for="first_name_cat">First Name</label>
+                        <div class="input-wrapper">
+                            <input type="text" id="first_name_cat" name="first_name" class="minimal-input" required placeholder="e.g. Juan">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="middle_name_cat">Middle Name</label>
+                        <div class="input-wrapper">
+                            <input type="text" id="middle_name_cat" name="middle_name" class="minimal-input" placeholder="e.g. Mercado">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="last_name_cat">Last Name</label>
+                        <div class="input-wrapper">
+                            <input type="text" id="last_name_cat" name="last_name" class="minimal-input" required placeholder="e.g. Dela Cruz">
+                        </div>
                     </div>
                 </div>
                 <div class="form-group">
@@ -104,7 +115,7 @@
         <!-- Step 2: Business Information -->
         <div class="form-step" id="step-2">
             <div class="form-grid">
-                <div class="form-group full-width">
+                <div class="form-group full-width" style="margin-top: 1.5rem;">
                     <label for="business_name">Business Name</label>
                     <div class="input-wrapper" id="businessNameWrapper">
                         <input type="text" id="business_name" name="business_name" class="minimal-input"
@@ -118,6 +129,9 @@
                         <select id="province_cat" class="minimal-input" required>
                             <option value="">-- Province --</option>
                             <option value="Laguna" selected>Laguna</option>
+                            <option value="Batangas">Batangas</option>
+                            <option value="Cavite">Cavite</option>
+                            <option value="Rizal">Rizal</option>
                         </select>
                         <div id="provinceCatError" class="error-drawer">Required</div>
                     </div>
@@ -128,6 +142,7 @@
                         <select name="city" id="city_cat" class="minimal-input" required>
                             <option value="">-- City --</option>
                         </select>
+                        <input type="text" id="city_cat_text" class="minimal-input" placeholder="e.g. Makati City" style="display: none;">
                         <div id="cityCatError" class="error-drawer">Required</div>
                     </div>
                 </div>
@@ -137,6 +152,7 @@
                         <select id="barangay_cat" class="minimal-input" required>
                             <option value="">-- Barangay --</option>
                         </select>
+                        <input type="text" id="barangay_cat_text" class="minimal-input" placeholder="e.g. Brgy. San Lorenzo" style="display: none;">
                         <div id="barangayCatError" class="error-drawer">Required</div>
                     </div>
                 </div>
@@ -182,7 +198,7 @@
         <!-- Step 3: Services -->
         <div class="form-step" id="step-3">
             <div class="form-grid">
-                <div class="form-group full-width">
+                <div class="form-group full-width" style="margin-top: 1.5rem;">
                     <label>Type of Events Supported</label>
                     <div class="checkbox-group">
                         <label class="checkbox-item {{ 'checked' if 'Wedding' in event_types else '' }}">
@@ -232,61 +248,102 @@
         </div>
 
         <!-- Step 4: Verification -->
+        <style>
+            .file-upload-box {
+                height: 150px !important;
+                min-height: 150px !important;
+                justify-content: center !important;
+                align-items: center !important;
+                overflow: hidden !important;
+            }
+            .file-upload-box p {
+                width: 100%;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                overflow: hidden;
+                padding: 0 10px;
+            }
+            .ocr-error-text {
+                color: #ef4444;
+                font-size: 0.75rem;
+                font-weight: 600;
+                margin-top: 0.5rem;
+                background: #fff5f5;
+                border: 1px solid rgba(239, 68, 68, 0.2);
+                padding: 0.5rem 0.75rem;
+                border-radius: 0.5rem;
+                display: none;
+            }
+            .full-width-grid {
+                grid-template-columns: 1fr !important;
+            }
+        </style>
         <div class="form-step" id="step-4">
-            <div class="form-grid">
-                <div class="form-group">
+            <div class="form-grid full-width-grid" style="grid-template-columns: 1fr !important;">
+                <div class="form-group full-width" style="margin-top: 1.5rem;">
+                    <label for="id_type_cat">Valid ID Type <span style="color:#ef4444;">*</span></label>
+                    <select id="id_type_cat" name="id_type" class="minimal-input">
+                        <option value="">-- Choose ID Type --</option>
+                        <option value="PhilID (National ID)">PhilSys / PhilID</option>
+                        <option value="Driver's License">Philippine Driver's License</option>
+                        <option value="Passport">Philippine Passport</option>
+                        <option value="UMID">UMID</option>
+                    </select>
+                </div>
+                <div class="form-group full-width">
+                    <label for="id_number_cat">ID Number <span style="color:#ef4444;">*</span></label>
+                    <input type="text" id="id_number_cat" name="id_number" class="minimal-input" placeholder="Enter ID number">
+                </div>
+
+                <div class="form-group full-width">
                     <label for="permit_cat">Business Permit / DTI</label>
-                    <div class="file-upload-box" id="permitBoxCat">
+                    <div class="file-upload-box" id="permitBoxCat" onclick="document.getElementById('permit_cat').click()">
                         <div id="permitInitialViewCat" style="text-align: center; width: 100%;">
                             <i class="fas fa-file-invoice" style="font-size: 1.5rem; color: var(--primary); margin-bottom: 0.5rem;"></i>
                             <p id="permitNameCat" style="font-size: 0.8rem; font-weight: 600; margin-bottom: 0.5rem;">Business Permit / DTI</p>
-                            <button type="button" class="btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.75rem; width: auto;" onclick="startUniversalScanCat('permit')">
-                                Start Scan
-                            </button>
+                            <span style="font-size: 0.7rem; color: var(--auth-slate-400);">Click to Upload (JPEG/PNG)</span>
                         </div>
                         <span id="permitStatusCat" class="scan-status-badge"></span>
-                        <input type="file" id="permit_cat" name="permit" capture="environment" accept=".pdf,image/*" style="display:none;"
+                        <input type="file" id="permit_cat" name="permit" accept="image/*" style="display:none;"
                             onchange="updateFileNameCat(this, 'permitNameCat'); handleFileUploadCat(this, 'permit');">
                     </div>
                     <div id="permitOcrErrorCat" class="ocr-error-text"></div>
                 </div>
-                <div class="form-group">
+
+                <div class="form-group full-width">
                     <label for="gov_id_cat">Valid Government ID</label>
-                    <div class="file-upload-box" id="govIdBoxCat">
+                    <div class="file-upload-box" id="govIdBoxCat" onclick="document.getElementById('gov_id_cat').click()">
                         <div id="govIdInitialViewCat" style="text-align: center; width: 100%;">
                             <i class="fas fa-id-card" style="font-size: 1.5rem; color: var(--primary); margin-bottom: 0.5rem;"></i>
                             <p id="govIdNameCat" style="font-size: 0.8rem; font-weight: 600; margin-bottom: 0.5rem;">Government ID</p>
-                            <button type="button" class="btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.75rem; width: auto;" onclick="startUniversalScanCat('id')">
-                                Start Scan
-                            </button>
+                            <span style="font-size: 0.7rem; color: var(--auth-slate-400);">Click to Upload (JPEG/PNG)</span>
                         </div>
                         <span id="govIdStatusCat" class="scan-status-badge"></span>
-                        <input type="file" id="gov_id_cat" name="gov_id" capture="environment" accept=".pdf,image/*" style="display:none;"
+                        <input type="file" id="gov_id_cat" name="gov_id" accept="image/*" style="display:none;"
                             onchange="updateFileNameCat(this, 'govIdNameCat'); handleFileUploadCat(this, 'id');">
                     </div>
                     <div id="govIdOcrErrorCat" class="ocr-error-text"></div>
                 </div>
-                <div class="form-group">
+
+                <div class="form-group full-width">
                     <label for="logo_cat">Business Logo / Brand Picture</label>
-                    <div class="file-upload-box" id="logoBoxCat">
-                        <img id="logoPreviewCat" class="logo-preview" style="display:none;">
-                        <span id="logoDefaultIcon"><i class="fas fa-user-circle"></i></span>
-                        <p id="uploadTextCat">Upload or Drag Store Logo</p>
+                    <div class="file-upload-box" id="logoBoxCat" onclick="document.getElementById('logo_cat').click()">
+                        <img id="logoPreviewCat" class="logo-preview" style="display:none; height: 80px; border-radius: 50%;">
+                        <span id="logoDefaultIcon"><i class="fas fa-user-circle" style="font-size: 2rem; color: var(--auth-slate-300);"></i></span>
+                        <p id="uploadTextCat" style="font-size: 0.8rem; font-weight: 600; margin-top: 0.5rem;">Upload Brand Logo</p>
                         <span id="logoStatusCat" class="scan-status-badge"></span>
-                        <input type="file" id="logo_cat" name="logo" accept="image/*" onchange="previewLogoCat(this)">
+                        <input type="file" id="logo_cat" name="logo" accept="image/*" style="display:none;" onchange="previewLogoCat(this)">
                     </div>
                     <div id="logoErrorCat" class="ocr-error-text"></div>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group full-width">
                     <label>Live Identity Verification (Selfie)</label>
-                    <div class="file-upload-box" id="selfieBoxCat">
+                    <div class="file-upload-box" id="selfieBoxCat" onclick="startUniversalScanCat('selfie')">
                         <div id="selfieInitialViewCat" style="text-align: center; width: 100%;">
                             <i class="fas fa-camera" style="font-size: 1.5rem; color: var(--primary); margin-bottom: 0.5rem;"></i>
                             <p id="selfieNameCat" style="font-size: 0.8rem; font-weight: 600; margin-bottom: 0.5rem;">Live Identity Verification</p>
-                            <button type="button" class="btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.75rem; width: auto;" onclick="startUniversalScanCat('selfie')">
-                                Start Scan
-                            </button>
+                            <span style="font-size: 0.7rem; color: var(--auth-slate-400);">Click to Start Camera Scan</span>
                         </div>
                         <span id="selfieStatusCat" class="scan-status-badge"></span>
                         <input type="file" id="selfie_cat" name="selfie" capture="user" accept="image/*" style="display:none;" 
@@ -309,3 +366,107 @@
         <p><a href="#" onclick="openAuthModal('signup'); return false;" id="catCustomerLink" style="color: var(--auth-slate-700); font-weight: 500; font-size: 0.9rem; text-decoration: underline;">Wait, I'm a regular customer</a></p>
     </div>
 </div>
+
+<script>
+    (function() {
+        let currentStepCat = 1;
+        const totalStepsCat = 4;
+
+        window.changeStepCat = function(n) {
+            const form = document.getElementById('catererForm');
+            if (!form) return;
+            const steps = form.querySelectorAll('.form-step');
+            const pSteps = document.querySelectorAll('.progress-step');
+            
+            if (n === 1 && !validateStepCat(currentStepCat)) return;
+            
+            steps[currentStepCat - 1].classList.remove('active');
+            if (pSteps[currentStepCat - 1]) pSteps[currentStepCat - 1].classList.remove('active');
+            
+            currentStepCat += n;
+            
+            if (currentStepCat > totalStepsCat) {
+                form.submit();
+                return;
+            }
+            
+            steps[currentStepCat - 1].classList.add('active');
+            if (pSteps[currentStepCat - 1]) pSteps[currentStepCat - 1].classList.add('active');
+            
+            document.getElementById('prevBtnCat').style.display = currentStepCat === 1 ? 'none' : 'block';
+            document.getElementById('nextBtnCat').textContent = currentStepCat === totalStepsCat ? 'Submit Application' : 'Next';
+        };
+
+        function validateStepCat(step) {
+            let isValid = true;
+            const currentStepEl = document.getElementById(`step-${step}`);
+            if (!currentStepEl) return true;
+            
+            const requiredInputs = currentStepEl.querySelectorAll('[required]');
+            requiredInputs.forEach(input => {
+                if (!input.value || input.value.trim() === '') {
+                    isValid = false;
+                    input.classList.add('input-error');
+                } else {
+                    input.classList.remove('input-error');
+                }
+            });
+            return isValid;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const provSelect = document.getElementById('province_cat');
+            const citySelect = document.getElementById('city_cat');
+            const brgySelect = document.getElementById('barangay_cat');
+
+            if (provSelect && citySelect) {
+                provSelect.addEventListener('change', () => {
+                    citySelect.innerHTML = '<option value="">-- City --</option>';
+                    if (brgySelect) brgySelect.innerHTML = '<option value="">-- Barangay --</option>';
+                    
+                    const prov = provSelect.value;
+                    if (prov && typeof LOCATION_DATA !== 'undefined' && LOCATION_DATA[prov]) {
+                        const cities = Object.keys(LOCATION_DATA[prov]).sort();
+                        cities.forEach(city => {
+                            const opt = document.createElement('option');
+                            opt.value = opt.textContent = city;
+                            citySelect.appendChild(opt);
+                        });
+
+                        // Automatically populate barangays for the default first city
+                        if (cities.length > 0 && brgySelect) {
+                            const firstCity = cities[0];
+                            citySelect.value = firstCity; // Force value update
+                            
+                            if (LOCATION_DATA[prov][firstCity]) {
+                                LOCATION_DATA[prov][firstCity].sort().forEach(b => {
+                                    const opt = document.createElement('option');
+                                    opt.value = opt.textContent = b;
+                                    brgySelect.appendChild(opt);
+                                });
+                            }
+                        }
+                    }
+                });
+                
+                citySelect.addEventListener('change', () => {
+                    if (brgySelect) brgySelect.innerHTML = '<option value="">-- Barangay --</option>';
+                    const prov = provSelect.value;
+                    const city = citySelect.value;
+                    
+                    if (prov && city && typeof LOCATION_DATA !== 'undefined' && LOCATION_DATA[prov] && LOCATION_DATA[prov][city]) {
+                        LOCATION_DATA[prov][city].sort().forEach(b => {
+                            const opt = document.createElement('option');
+                            opt.value = opt.textContent = b;
+                            brgySelect.appendChild(opt);
+                        });
+                    }
+                });
+
+                if (provSelect.value) {
+                    provSelect.dispatchEvent(new Event('change'));
+                }
+            }
+        });
+    })();
+</script>

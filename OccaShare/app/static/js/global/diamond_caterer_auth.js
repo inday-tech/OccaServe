@@ -293,20 +293,29 @@
         Swal.fire({
             title: title,
             html: `
-                <div class="scanner-modal-wrap">
-                    <div id="scannerInstructions" class="scanner-instruction-banner">Preparing Camera...</div>
-                    <div class="scanner-preview-container">
-                        <video id="modalWebcamVideo" autoplay playsinline></video>
+                <div class="scanner-modal-wrap" style="display: flex; flex-direction: column; align-items: center; padding: 1rem;">
+                    <div id="scannerInstructions" class="scanner-instruction-banner" style="background: #f0fdf4; color: #15803d; font-size: 0.85rem; font-weight: 600; padding: 0.5rem 1rem; border-radius: 999px; margin-bottom: 1.25rem; border: 1px solid rgba(21, 128, 61, 0.2);">Preparing Camera...</div>
+                    <div class="scanner-preview-container" style="position: relative; width: 100%; max-width: 360px; aspect-ratio: 4/3; border-radius: 1.5rem; overflow: hidden; border: 4px solid var(--auth-slate-200); box-shadow: var(--auth-shadow);">
+                        <video id="modalWebcamVideo" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
                         <canvas id="modalWebcamCanvas" style="display:none;"></canvas>
-                        <div class="scanner-laser"></div>
-                        <div class="scanner-guide-frame ${type}"></div>
+                        <div class="scanner-laser" style="position: absolute; width: 100%; height: 3px; background: #f97316; box-shadow: 0 0 12px #f97316; opacity: 0.8; left: 0; top: 0; animation: scan-laser-move 2s infinite ease-in-out;"></div>
+                        <div class="scanner-guide-frame ${type}" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 2px dashed rgba(255, 255, 255, 0.7); pointer-events: none; z-index: 10;
+                            ${type === 'selfie' ? 'width: 180px; height: 180px; border-radius: 50%;' : 'width: 80%; height: 60%; border-radius: 0.5rem;'}"></div>
                     </div>
-                    <p class="scanner-hint" id="scannerHint">Position your ${type === 'selfie' ? 'face' : 'document'} within the frame</p>
+                    <p class="scanner-hint" id="scannerHint" style="font-size: 0.8rem; color: #64748b; font-weight: 500; margin-top: 1.25rem;">Align your ${type === 'selfie' ? 'face' : 'document'} comfortably inside the bounds.</p>
+                    
+                    <style>
+                        @keyframes scan-laser-move {
+                            0% { top: 0%; }
+                            50% { top: 100%; }
+                            100% { top: 0%; }
+                        }
+                    </style>
                 </div>
             `,
             showCancelButton: true,
-            confirmButtonText: 'Capture',
-            confirmButtonColor: '#FF7B54',
+            confirmButtonText: '📸 Capture',
+            confirmButtonColor: '#f97316',
             cancelButtonText: 'Cancel',
             reverseButtons: true,
             allowOutsideClick: false,
@@ -452,13 +461,29 @@
         // NEW: Full Screen Blocking Spinner
         if (window.Swal) {
             Swal.fire({
-                title: 'Verifying Document',
-                html: 'Our AI is actively analyzing your ' + (type === 'permit' ? 'Business Permit' : (type === 'id' ? 'ID Card' : 'Facial Scan')) + '...',
+                title: '🔒 Secure AI Verification',
+                html: `
+                    <div style="margin-top: 1rem;">
+                        <div class="spinner-container" style="display: flex; justify-content: center; margin-bottom: 1.5rem;">
+                            <div style="width: 50px; height: 50px; border: 4px solid rgba(249, 115, 22, 0.1); border-top-color: #f97316; border-radius: 50%; animation: spin-premium 1s linear infinite;"></div>
+                        </div>
+                        <p style="font-size: 0.95rem; font-weight: 600; color: #1e293b; margin-bottom: 0.5rem;">Analyzing your ${type === 'permit' ? 'Business Permit' : (type === 'id' ? 'ID Card' : 'Facial Scan')}...</p>
+                        <p style="font-size: 0.8rem; color: #64748b;">This process is fully encrypted and secure.</p>
+                        <style>
+                            @keyframes spin-premium {
+                                0% { transform: rotate(0deg); }
+                                100% { transform: rotate(360deg); }
+                            }
+                        </style>
+                    </div>
+                `,
                 allowOutsideClick: false,
                 allowEscapeKey: false,
                 showConfirmButton: false,
-                didOpen: () => {
-                    Swal.showLoading();
+                background: '#ffffff',
+                backdrop: 'rgba(15, 23, 42, 0.6)',
+                customClass: {
+                    popup: 'premium-auth-swal',
                 }
             });
         }
@@ -572,33 +597,6 @@
     };
 
     window.initCatererGeoDropdowns = function() {
-        const citySelect = document.getElementById('city_cat');
-        const brgySelect = document.getElementById('barangay_cat');
-        
-        if (citySelect && brgySelect) {
-            // Clear and populate cities
-            citySelect.innerHTML = '<option value="">-- City --</option>';
-            Object.keys(LAGUNA_DATA).sort().forEach(city => {
-                const opt = document.createElement('option');
-                opt.value = opt.textContent = city;
-                citySelect.appendChild(opt);
-            });
-            
-            citySelect.onchange = () => {
-                brgySelect.innerHTML = '<option value="">-- Barangay --</option>';
-                const city = citySelect.value;
-                if (city && LAGUNA_DATA[city]) {
-                    LAGUNA_DATA[city].sort().forEach(b => {
-                        const opt = document.createElement('option');
-                        opt.value = opt.textContent = b;
-                        brgySelect.appendChild(opt);
-                    });
-                }
-            };
-        }
+        // Relying on inline location_data.js script logic in template forms
     };
-
-    document.addEventListener('DOMContentLoaded', () => {
-        window.initCatererGeoDropdowns();
-    });
 })();

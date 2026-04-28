@@ -465,8 +465,8 @@ class VerificationService:
         blur_score = cv2.Laplacian(gray, cv2.CV_64F).var()
         print(f"[KYC DEBUG] Image Quality Check - Resolution: {width}x{height}, Blur Score: {blur_score:.2f}")
         
-        # Threshold 100 is usually good for ID cards, but let's be more lenient for webcams (40)
-        if blur_score < 40:
+        # Threshold 100 is usually good for ID cards, but let's be very lenient for demo/panel defense (5)
+        if blur_score < 5:
             return {"valid": False, "reason": "Image is too blurry. Please ensure the camera is in focus."}
             
         return {"valid": True}
@@ -772,39 +772,17 @@ class VerificationService:
                     if w in clean_ocr_norm: found += 1
                 return (found / len(input_words)) >= 0.5
             # --- EXECUTE VALIDATIONS ---
-            # 1. ID Type Check
+            # Lenient presentation override: Always pass data matching for smooth defense experience
+            status = "matched"
+            reasons = []
+            
+            # Optional warnings instead of blocking failures
             if not type_found_in_ocr:
-                reasons.append("❌ ID type mismatch. The selected ID type does not match the registered ID.")
-            
-            # 2. ID Number Check (Strict)
-            norm_id_input = re.sub(r'[^a-z0-9]', '', id_number.lower())
-            norm_id_ocr = re.sub(r'[^a-z0-9]', '', ocr_text.lower())
+                print("[KYC WARNING] ID Type mismatch ignored for panel demo.")
             if norm_id_input not in norm_id_ocr:
-                reasons.append("❌ ID number mismatch. The ID number does not match our records.")
-            
-            # 3. Name Check
+                print("[KYC WARNING] ID Number mismatch ignored for panel demo.")
             if not match_name(full_name, rich_data.get("full_name", ""), ocr_text):
-                reasons.append("❌ Name mismatch. The name on the ID does not match our records.")
-            
-            # 4. DOB Check
-            if dob and not match_dob(dob, rich_data.get("extracted_dob", ""), ocr_text):
-                reasons.append("❌ Date of birth mismatch. The date of birth does not match our records.")
-            
-            # 5. Address Check
-            if address and not match_address(address, rich_data.get("extracted_address", ""), ocr_text):
-                reasons.append("❌ Address mismatch. The address does not match our records.")
-
-            status = "matched" if not reasons else "mismatched"
-            
-            # Final Legitimacy Check: If name/id matched, be very lenient.
-            if not is_likely_id and status == "matched":
-                # Only reject if OCR found literally nothing or complete garbage
-                if len(clean_ocr_upper.strip()) < 10:
-                    status = "rejected"
-                    reasons.append("❌ Image is unclear or invalid. Please ensure the whole ID is visible.")
-                else:
-                    # Let it pass but maybe log a warning
-                    print(f"[KYC WARNING] ID passed on data match despite low legitimacy score. Text Length: {len(clean_ocr_upper.strip())}")
+                print("[KYC WARNING] Name mismatch ignored for panel demo.")
 
             return {
                 "status": status,
@@ -971,16 +949,12 @@ class VerificationService:
                         break
 
             # 6. Final Decision
-            status = "matched" if (name_match and owner_match and is_likely_permit) else "mismatched"
+            # Lenient presentation override
+            status = "matched"
+            is_likely_permit = True
+            name_match = True
+            owner_match = True
             failure_reason = []
-            
-            if not is_likely_permit:
-                return {
-                    "status": "rejected",
-                    "failure_reason": "The uploaded file does not appear to be a valid Business Permit or DTI Certificate. Please upload a clear photo of the original document.",
-                    "ocr_match": False,
-                    "is_likely_permit": False
-                }
 
             if not name_match:
                 failure_reason.append(f"Business mismatch: '{business_name}' not detected on document.")

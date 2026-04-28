@@ -2,15 +2,35 @@
     let currentStepCat = 1;
     const totalStepsCat = 4;
 
-    const LAGUNA_DATA = {
-        "Alaminos": ["Barangay I", "Barangay II", "Barangay III", "Barangay IV", "Del Carmen", "Palma", "San Agustin", "San Andres", "San Benito", "San Gregorio", "San Juan", "San Miguel", "San Roque", "Santa Rosa", "Victoria"],
-        "Bay": ["Bitin", "Calo", "Dila", "Maitim", "Puypuy", "San Antonio", "San Isidro", "Santa Cruz", "Santo Domingo", "Tagapo"],
-        "Biñan": ["Biñan (Poblacion)", "Bungahan", "Canlalay", "Casile", "De La Paz", "Dela Paz", "Ganado", "Langkiwa", "Loma", "Malaban", "Malamig", "Mamplasan", "Platero", "Poblacion", "San Antonio", "San Francisco", "San Jose", "San Vicente", "Santo Niño", "Santo Tomas", "Soro-soro", "Timbao", "Tubigan", "Zapote"],
-        "Cabuyao": ["Baclaran", "Banay-Banay", "Banlic", "Bigaa", "Butong", "Casile", "Diezmo", "Gulod", "Mamatid", "Marinig", "Niugan", "Pittland", "Pulo", "Sala", "San Isidro"],
-        "Calamba": ["Bagong Kalsada", "Bañadero", "Banlic", "Barandal", "Barangay 1", "Barangay 2", "Barangay 3", "Barangay 4", "Barangay 5", "Barangay 6", "Barangay 7", "Batino", "Bubuyan", "Bucal", "Bunggo", "Burol", "Camaligan", "Canlubang", "Halang", "Hornalan", "Kay-Anlog", "Laguerta", "La Mesa", "Lawa", "Lecheria", "Lingga", "Looc", "Mabato", "Majada Labas", "Makiling", "Mapagong", "Masili", "Maunong", "Mayapa", "Milagrosa", "Palingon", "Palo-Alto", "Pansol", "Parian", "Prinza", "Punta", "Putho Tuntungin", "Real", "Saimsim", "Sampiruhan", "San Cristobal", "San Jose", "San Juan", "Sirang Lupa", "Sucol", "Turbina", "Uwisan"],
-        "Santa Rosa": ["Aplaya", "Balibago", "Caingin", "Dila", "Ditam", "Don Jose", "Ibaba", "Kanluran", "Labas", "Macabling", "Malitlit", "Market Area", "Pook", "Pulong Santa Cruz", "Santo Domingo", "Sinalhan", "Tagapo"],
-        "Los Baños": ["Anos", "Bagong Silang", "Bambang", "Batong Malake", "Baybayin", "Bayog", "Lalakay", "Maahas", "Malinta", "Mayondon", "Putho Tuntungin", "San Antonio", "Tadlac", "Timugan"],
-        "San Pedro": ["Bagong Silang", "Chrysanthemum", "Cuyab", "Estrella", "Fatima", "G.S.I.S.", "Holiday Hills", "Lハンドゥング", "Langgam", "Laram", "Magsaysay", "Maharlika", "Narra", "Nueva", "Pacita 1", "Pacita 2", "Poblacion", "Riverside", "Sampaguita Village", "San Antonio", "San Roque", "San Vicente", "Santa Felomina", "Santo Niño", "United Bayanihan", "United Better Living", "Vicente Leyos"]
+    const LOCATION_DATA = {
+        "Laguna": {
+            "Alaminos": ["Barangay I", "Barangay II", "Barangay III", "Barangay IV", "Del Carmen", "Palma", "San Agustin", "San Andres", "San Benito", "San Gregorio", "San Juan", "San Miguel", "San Roque", "Santa Rosa", "Victoria"],
+            "Bay": ["Bitin", "Calo", "Dila", "Maitim", "Puypuy", "San Antonio", "San Isidro", "Santa Cruz", "Santo Domingo", "Tagapo"],
+            "Biñan": ["Biñan (Poblacion)", "Bungahan", "Canlalay", "Casile", "De La Paz", "Dela Paz", "Ganado", "Langkiwa", "Loma", "Malaban", "Malamig", "Mamplasan", "Platero", "Poblacion", "San Antonio", "San Francisco", "San Jose", "San Vicente", "Santo Niño", "Santo Tomas", "Soro-soro", "Timbao", "Tubigan", "Zapote"],
+            "Cabuyao": ["Baclaran", "Banay-Banay", "Banlic", "Bigaa", "Butong", "Casile", "Diezmo", "Gulod", "Mamatid", "Marinig", "Niugan", "Pittland", "Pulo", "Sala", "San Isidro"],
+            "Calamba": ["Bagong Kalsada", "Bañadero", "Banlic", "Barandal", "Barangay 1", "Barangay 2", "Barangay 3", "Barangay 4", "Barangay 5", "Barangay 6", "Barangay 7", "Batino", "Bubuyan", "Bucal", "Bunggo", "Burol", "Camaligan", "Canlubang", "Halang", "Hornalan", "Kay-Anlog", "Laguerta", "La Mesa", "Lawa", "Lecheria", "Lingga", "Looc", "Mabato", "Majada Labas", "Makiling", "Mapagong", "Masili", "Maunong", "Mayapa", "Milagrosa", "Palingon", "Palo-Alto", "Pansol", "Parian", "Prinza", "Punta", "Putho Tuntungin", "Real", "Saimsim", "Sampiruhan", "San Cristobal", "San Jose", "San Juan", "Sirang Lupa", "Sucol", "Turbina", "Uwisan"],
+            "Santa Rosa": ["Aplaya", "Balibago", "Caingin", "Dila", "Ditam", "Don Jose", "Ibaba", "Kanluran", "Labas", "Macabling", "Malitlit", "Market Area", "Pook", "Pulong Santa Cruz", "Santo Domingo", "Sinalhan", "Tagapo"],
+            "Los Baños": ["Anos", "Bagong Silang", "Bambang", "Batong Malake", "Baybayin", "Bayog", "Lalakay", "Maahas", "Malinta", "Mayondon", "Putho Tuntungin", "San Antonio", "Tadlac", "Timugan"],
+            "San Pedro": ["Bagong Silang", "Chrysanthemum", "Cuyab", "Estrella", "Fatima", "G.S.I.S.", "Holiday Hills", "Lハンドゥング", "Langgam", "Laram", "Magsaysay", "Maharlika", "Narra", "Nueva", "Pacita 1", "Pacita 2", "Poblacion", "Riverside", "Sampaguita Village", "San Antonio", "San Roque", "San Vicente", "Santa Felomina", "Santo Niño", "United Bayanihan", "United Better Living", "Vicente Leyos"]
+        },
+        "Cavite": {
+            "Bacoor": ["Molino I", "Molino II", "Molino III", "Molino IV", "San Nicolas"],
+            "Dasmariñas": ["Salawag", "Paliparan I", "Paliparan II", "Sampaloc I", "Sampaloc II"],
+            "Imus": ["Anabu I", "Anabu II", "Bucandala I", "Bucandala II", "Poblacion"],
+            "Tagaytay": ["Mendez", "San Jose", "Sungay East", "Sungay West", "Silang Junction"]
+        },
+        "Batangas": {
+            "Batangas City": ["Bolbok", "Calicanto", "Kumintang Ibaba", "Kumintang Ilaya", "Poblacion"],
+            "Lipa": ["Balintawak", "Marawoy", "Sabang", "Tambo", "Poblacion"],
+            "Tanauan": ["Poblacion I", "Poblacion II", "Darasa", "Bagumbayan", "Trapiche"],
+            "Sto. Tomas": ["San Bartolome", "San Felix", "San Jose", "San Roque", "Poblacion"]
+        },
+        "Rizal": {
+            "Antipolo": ["San Jose", "San Roque", "Dela Paz", "Dalig", "Mayamot"],
+            "Cainta": ["San Andres", "San Juan", "San Roque", "Santo Domingo", "Santa Rosa"],
+            "Taytay": ["Dolores", "Muzon", "San Juan", "Santa Ana", "San Isidro"],
+            "Binangonan": ["Calumpang", "Layunan", "Libid", "Pila-pila", "Tatala"]
+        }
     };
 
     window.changeStepCat = function(n) {
@@ -72,6 +92,37 @@
                 input.style.borderColor = '';
             }
         });
+
+        // Strict Name Validation Rule for Presentation
+        if (currentStepCat === 1) {
+            const fn = document.getElementById('first_name_cat');
+            const ln = document.getElementById('last_name_cat');
+            if (fn && ln) {
+                const firstName = fn.value.trim().toLowerCase();
+                const lastName = ln.value.trim().toLowerCase();
+                if (firstName && lastName && firstName === lastName) {
+                    valid = false;
+                    fn.style.borderColor = '#ef4444';
+                    ln.style.borderColor = '#ef4444';
+                    alert("❌ Mismatch Detected: First Name and Last Name cannot be identical (e.g., Pepito Pepito). Please use your real name.");
+                }
+            }
+        }
+
+        // Security Verification Validation Rule
+        if (currentStepCat === 4) {
+            const permitBox = document.getElementById('permitBoxCat');
+            const govIdBox = document.getElementById('govIdBoxCat');
+            
+            const permitVerified = permitBox && permitBox.classList.contains('scanned-success');
+            const idVerified = govIdBox && govIdBox.classList.contains('scanned-success');
+
+            if (!permitVerified || !idVerified) {
+                valid = false;
+                alert("⚠️ Verification Required: Please upload and successfully scan your Business Permit and Government ID first.");
+            }
+        }
+
         return valid;
     }
 
@@ -84,6 +135,20 @@
         
         if (submitBtn) submitBtn.disabled = true;
         if (btnText) btnText.innerText = 'Creating Account...';
+
+        // Security Check: Ensure no duplicate names
+        const fn = document.getElementById('first_name_cat');
+        const ln = document.getElementById('last_name_cat');
+        if (fn && ln) {
+            const firstName = fn.value.trim().toLowerCase();
+            const lastName = ln.value.trim().toLowerCase();
+            if (firstName && lastName && firstName === lastName) {
+                if (submitBtn) submitBtn.disabled = false;
+                if (btnText) btnText.innerText = originalText;
+                alert("❌ Mismatch Detected: First Name and Last Name cannot be identical (e.g., Pepito Pepito).");
+                return false;
+            }
+        }
 
         try {
             updateAddressCat();
@@ -167,30 +232,7 @@
         }
     };
 
-    document.addEventListener('DOMContentLoaded', () => {
-        const citySelect = document.getElementById('city_cat');
-        const brgySelect = document.getElementById('barangay_cat');
-        
-        if (citySelect) {
-            Object.keys(LAGUNA_DATA).sort().forEach(city => {
-                const opt = document.createElement('option');
-                opt.value = opt.textContent = city;
-                citySelect.appendChild(opt);
-            });
-            
-            citySelect.onchange = () => {
-                if (brgySelect) brgySelect.innerHTML = '<option value="">-- Barangay --</option>';
-                const city = citySelect.value;
-                if (city && LAGUNA_DATA[city] && brgySelect) {
-                    LAGUNA_DATA[city].sort().forEach(b => {
-                        const opt = document.createElement('option');
-                        opt.value = opt.textContent = b;
-                        brgySelect.appendChild(opt);
-                    });
-                }
-            };
-        }
-    });
+    // Relying on inline location_data.js script logic in template forms
 
     // Make functions available globally for modal buttons
     window.changeStepCat = changeStepCat;
