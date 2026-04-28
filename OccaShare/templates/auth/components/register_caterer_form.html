@@ -1,14 +1,12 @@
-<div class="professional-card" id="catererRegFormContainer">
-    <div class="icon-header" style="background: transparent; box-shadow: none; width: auto; height: auto; display: flex; align-items: center; justify-content: center; margin-bottom: 2rem;">
-        {% set wconfig = website_config() %}
-        {% if wconfig and wconfig.logo_url %}
-        <img src="{{ wconfig.logo_url }}" alt="Logo" style="height: 55px; object-fit: contain;">
-        {% else %}
-        <span style="font-size: 2.2rem; font-weight: 800; color: var(--auth-primary); letter-spacing: -0.02em;">OccaServe</span>
-        {% endif %}
+<div class="professional-card" id="catererRegFormContainer" style="padding-bottom: 2.5rem; position: relative; overflow: hidden;">
+    {% set wconfig = website_config() %}
+    {% if wconfig and wconfig.logo_url %}
+    <div class="modal-bg-watermark" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(1.2); width: 90%; height: 90%; background-image: url('{{ wconfig.logo_url }}'); background-repeat: no-repeat; background-position: center; background-size: contain; opacity: 0.15; pointer-events: none; z-index: 0;"></div>
+    {% endif %}
+    <div class="icon-header" style="position: relative; z-index: 1; background: transparent; box-shadow: none; width: auto; height: auto; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
     </div>
-    <h2 class="auth-title">Partner with OccaServe</h2>
-    <p class="auth-subtitle">Register your catering business today and reach elite customers.</p>
+    <h2 class="auth-title" style="position: relative; z-index: 1;">Partner with OccaServe</h2>
+    <p class="auth-subtitle" style="position: relative; z-index: 1;">Register your catering business today and reach elite customers.</p>
 
     <!-- Progress Tracker -->
     <div class="progress-container">

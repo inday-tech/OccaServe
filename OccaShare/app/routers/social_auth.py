@@ -34,10 +34,14 @@ async def social_login(request: Request, provider: str):
     # Dynamically determine the base URL from the request
     # This ensures it works for both .com and .railway.app
     host = request.headers.get("host", "occaserve.up.railway.app")
-    proto = request.headers.get("x-forwarded-proto", "https")
-    
-    # Force HTTPS for the redirect URI
-    redirect_uri = f"https://{host}/social/callback/{provider}"
+    # Determine protocol scheme (Allow HTTP on local dev instances)
+    scheme = "https"
+    if "127.0.0.1" in host or "localhost" in host:
+        scheme = "http"
+    else:
+        scheme = request.headers.get("x-forwarded-proto", "https")
+        
+    redirect_uri = f"{scheme}://{host}/social/callback/{provider}"
     print(f"[OAUTH DEBUG] Initiating login. Dynamic Redirect URI: {redirect_uri}")
     
     client = oauth.create_client(provider)
