@@ -4,10 +4,10 @@
 {% block title %}Browse Caterers - OccaServe{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/marketplace.css') }}?v=1.5">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/landing_neutral.css') }}?v=9">
 <style>
     .mkt-hero-section {
-        padding: 6rem 0 3rem; /* 80px nav + 16px gap */
+        padding: 6rem 0 3rem;
         background: #f8fafc;
     }
 </style>
@@ -17,67 +17,60 @@
 <div class="mkt-body-wrapper" style="background: #f8fafc; min-height: 100vh;">
     <section class="mkt-hero-section">
         <div class="container">
-            <div class="page-header" style="margin-bottom: 0;">
-                <h1 style="font-size: 2.25rem; font-weight: 800; color: #000000; letter-spacing: -0.02em;">Discover Elite Caterers</h1>
-                <p style="color: #000000; opacity: 0.8; font-size: 1.1rem;">Hand-picked professionals for your unforgettable events.</p>
+            <div style="text-align: center; margin-bottom: 0;">
+                <h1 style="font-size: 2.15rem; font-weight: 800; color: #0f172a; letter-spacing: -0.03em; line-height: 1.15;">Discover Elite Caterers</h1>
+                <p style="color: #64748b; font-size: 1rem; margin-top: 0.35rem;">Hand-picked professionals for your unforgettable events.</p>
             </div>
         </div>
     </section>
 
     <div class="container" style="padding-bottom: 8rem;">
-        <div class="packages-grid-pro" style="padding-top: 1rem;">
+        <div class="caterer-grid-new" style="padding-top: 1rem;">
             {% for caterer in caterers %}
-            <article class="caterer-card-premium animate-up">
-                <div class="card-image-wrapper">
+            <div class="caterer-elite-card animate-on-scroll visible">
+                <div class="elite-card-image">
                     <img src="{{ caterer.cover_image_url if caterer.cover_image_url else 'https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=800&auto=format&fit=crop' }}"
-                        class="card-img" alt="{{ caterer.business_name }}" loading="lazy">
-
-                    {% if caterer.is_verified %}
-                    <div class="status-pill-small active" style="position: absolute; top: 1rem; left: 1rem; z-index: 2;">
-                        VERIFIED
-                    </div>
-                    {% endif %}
+                        alt="{{ caterer.business_name }}" loading="lazy">
                 </div>
 
-                <div class="card-body-premium">
-                    <h3 class="card-title">{{ caterer.business_name }}</h3>
-
-                    <div class="package-stats-minimal" style="margin-top: 0.5rem;">
-                        <span class="rating-pro"><i class="fas fa-star"></i> {{ "%.1f"|format(caterer.rating or 4.9) }}</span>
-                        <span class="bookings-count-pro" style="margin-left: 0.25rem;">({{ caterer.reviews|length if caterer.reviews else 0 }} reviews)</span>
+                <div class="elite-card-body">
+                    <div class="elite-name-row">
+                        <h3>{{ caterer.business_name }}</h3>
+                        {% if caterer.is_verified %}
+                        <span class="elite-verified-badge" title="Verified Caterer"><i class="fas fa-check-circle"></i></span>
+                        {% endif %}
                     </div>
 
-                    <p class="card-description">
-                        {{ (caterer.description or "Exquisite culinary experiences tailored for your special occasions.")|truncate(120) }}
+                    <div class="elite-card-rating">
+                        <i class="fas fa-star"></i>
+                        {{ "%.1f"|format(caterer.rating) if caterer.rating else 'New' }}
+                        <span>({{ caterer.review_count or 0 }} reviews)</span>
+                    </div>
+
+                    <p class="elite-card-desc">
+                        {{ (caterer.description or "Exquisite culinary experiences tailored for your special occasions.")|truncate(100) }}
                     </p>
 
-                    <div class="package-price-pro">
-                        <span class="price-val">₱{{ "{:,.0f}".format(caterer.starting_price or 150) }}</span>
-                        <span class="price-type">starting</span>
-                    </div>
-
-                    <div class="package-specs-minimal">
-                        <div class="spec-item-min">
+                    <div class="elite-card-footer">
+                        <div class="elite-footer-item">
                             <i class="fas fa-map-marker-alt"></i>
-                            <span>{{ caterer.city or "Manila" }}</span>
+                            {{ caterer.city or "Location TBD" }}
                         </div>
-                        <div class="spec-item-min">
-                            <i class="fas fa-users"></i>
-                            <span>{{ caterer.min_pax or 20 }}+ guests</span>
+                        <div class="elite-footer-item">
+                            <i class="fas fa-eye"></i>
+                            {{ "{:,}".format(caterer.profile_views or 0) }} views
                         </div>
                     </div>
 
-                    <div class="package-footer-pro-new" style="margin-top: 1rem;">
-                        <a href="/caterers/{{ caterer.id }}" class="btn-edit-full" style="text-decoration: none;">
-                            <i class="fas fa-eye"></i> View Profile
-                        </a>
-                    </div>
+                    <a href="/caterers/{{ caterer.id }}" class="elite-view-btn">
+                        <i class="fas fa-arrow-right"></i> Visit Profile
+                    </a>
                 </div>
-            </article>
+            </div>
             {% else %}
             <div class="empty-results-state py-5 text-center" style="grid-column: 1/-1;">
                 <div class="empty-icon-box" style="margin: 0 auto 1.5rem;">
-                    <i class="fas fa-utensils"></i>
+                    <i class="fas fa-search" style="font-size: 3rem; color: #e2e8f0;"></i>
                 </div>
                 <h2 style="font-weight: 800;">No caterers found</h2>
                 <p class="text-muted">We're currently expanding our network. Check back soon!</p>

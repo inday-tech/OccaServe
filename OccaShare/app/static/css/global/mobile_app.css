@@ -66,37 +66,32 @@
     }
 
     .elite-card-image {
-        height: 160px !important;
+        height: 180px !important;
     }
 
     .elite-card-body {
-        padding: 1.25rem !important;
+        padding: 1rem !important;
     }
 
     .elite-card-body h3 {
-        font-size: 1.2rem !important;
+        font-size: 1rem !important;
         margin-bottom: 0.5rem !important;
     }
 
     .elite-card-desc {
-        font-size: 0.85rem !important;
-        margin-bottom: 1rem !important;
+        font-size: 0.82rem !important;
+        margin-bottom: 0.65rem !important;
         line-height: 1.5 !important;
     }
 
-    .elite-card-price {
-        font-size: 1.1rem !important;
-        margin-bottom: 1rem !important;
-    }
-
     .elite-card-footer {
-        gap: 0.75rem !important;
-        padding-top: 1rem !important;
-        margin-bottom: 1.25rem !important;
+        gap: 0.85rem !important;
+        padding-top: 0.85rem !important;
+        margin-bottom: 0.85rem !important;
     }
 
     .elite-footer-item {
-        font-size: 0.8rem !important;
+        font-size: 0.78rem !important;
     }
 
     /* Event Category Cards Mobile Refinement */

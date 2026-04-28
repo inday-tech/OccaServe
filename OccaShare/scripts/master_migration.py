@@ -70,7 +70,8 @@ def master_migration():
             ("font_family", "VARCHAR DEFAULT 'Inter'"),
             ("border_radius", "INTEGER DEFAULT 12"),
             ("sidebar_mode", "VARCHAR DEFAULT 'full'"),
-            ("show_platform_logo", "BOOLEAN DEFAULT TRUE")
+            ("show_platform_logo", "BOOLEAN DEFAULT TRUE"),
+            ("profile_views", "INTEGER DEFAULT 0")
         ]
         
         # Menu Items
@@ -188,6 +189,29 @@ def master_migration():
             print("  Table social_posts checked/created.")
         except Exception as e:
             print(f"    Warning: social_posts creation failed: {e}")
+
+        # Create Profile Views table for unique view tracking
+        try:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS profile_views (
+                    id SERIAL PRIMARY KEY,
+                    caterer_id INTEGER NOT NULL REFERENCES caterer_profiles(id) ON DELETE CASCADE,
+                    viewer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
+            """))
+            print("  Table profile_views checked/created.")
+            # Add unique constraint to ensure one view per user per caterer
+            try:
+                conn.execute(text("""
+                    CREATE UNIQUE INDEX IF NOT EXISTS uix_profile_views_caterer_viewer
+                    ON profile_views (caterer_id, viewer_id);
+                """))
+                print("  Unique index on profile_views created.")
+            except Exception as e:
+                print(f"    Warning: profile_views unique index: {e}")
+        except Exception as e:
+            print(f"    Warning: profile_views creation failed: {e}")
 
     print("Master migration completed successfully.")
 

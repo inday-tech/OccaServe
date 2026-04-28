@@ -524,13 +524,42 @@ async def customer_marketplace(
     ).outerjoin(stats_subquery, models.CatererProfile.id == stats_subquery.c.caterer_id)\
      .filter(models.CatererProfile.verification_status == "Verified")
 
-    # Search filter
+    # Search filter (deep unified search across all fields)
     if q:
         search_filter = f"%{q}%"
+        from sqlalchemy import or_, distinct
+
+        # Subquery: caterer IDs matching via menu item names
+        menu_match_sq = db.query(
+            distinct(models.MenuItem.caterer_id)
+        ).filter(
+            models.MenuItem.name.ilike(search_filter),
+            models.MenuItem.is_archived == False
+        ).subquery()
+
+        # Subquery: caterer IDs matching via package name or service_type
+        pkg_match_sq = db.query(
+            distinct(models.CateringPackage.caterer_id)
+        ).filter(
+            or_(
+                models.CateringPackage.name.ilike(search_filter),
+                models.CateringPackage.service_type.ilike(search_filter)
+            ),
+            models.CateringPackage.is_active == True
+        ).subquery()
+
         query = query.filter(
-            (models.CatererProfile.business_name.ilike(search_filter)) |
-            (models.CatererProfile.description.ilike(search_filter)) |
-            (models.CatererProfile.city.ilike(search_filter))
+            or_(
+                models.CatererProfile.business_name.ilike(search_filter),
+                models.CatererProfile.description.ilike(search_filter),
+                models.CatererProfile.city.ilike(search_filter),
+                models.CatererProfile.contact_address.ilike(search_filter),
+                models.CatererProfile.coverage_area.ilike(search_filter),
+                func.coalesce(func.array_to_string(models.CatererProfile.event_types, ','), '').ilike(search_filter),
+                func.coalesce(func.array_to_string(models.CatererProfile.cuisine_types, ','), '').ilike(search_filter),
+                models.CatererProfile.id.in_(menu_match_sq),
+                models.CatererProfile.id.in_(pkg_match_sq),
+            )
         )
     
     # Category filter
@@ -612,6 +641,19 @@ async def caterer_detail(
     if not caterer:
         raise HTTPException(status_code=404, detail="Caterer not found")
     
+    # Unique views per account — only count once per user per caterer
+    existing_view = db.query(models.ProfileView).filter(
+        models.ProfileView.caterer_id == caterer_id,
+        models.ProfileView.viewer_id == user.id
+    ).first()
+    
+    if not existing_view:
+        # First-time view from this account — record it and increment
+        new_view = models.ProfileView(caterer_id=caterer_id, viewer_id=user.id)
+        db.add(new_view)
+        caterer.profile_views = (caterer.profile_views or 0) + 1
+        db.commit()
+
     return templates.TemplateResponse("customer/caterer_profile_view.html", {
         "request": request, 
         "caterer": caterer,

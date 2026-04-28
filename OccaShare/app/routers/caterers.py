@@ -42,6 +42,22 @@ def get_caterer_profile(request: Request, caterer_id: int, db: Session = Depends
     if not caterer:
         raise HTTPException(status_code=404, detail="Caterer not found")
     
+    # Unique views per account — only count once per logged-in user
+    if user:
+        existing_view = db.query(models.ProfileView).filter(
+            models.ProfileView.caterer_id == caterer_id,
+            models.ProfileView.viewer_id == user.id
+        ).first()
+        if not existing_view:
+            new_view = models.ProfileView(caterer_id=caterer_id, viewer_id=user.id)
+            db.add(new_view)
+            caterer.profile_views = (caterer.profile_views or 0) + 1
+            db.commit()
+    else:
+        # Guest views still increment (no account to track)
+        caterer.profile_views = (caterer.profile_views or 0) + 1
+        db.commit()
+    
     # If the user is a logged-in customer, show the dashboard-integrated view
     if user and user.role == "customer":
         return templates.TemplateResponse("customer/caterer_profile_view.html", {
@@ -93,25 +109,80 @@ def get_caterer_by_slug(request: Request, slug: str, db: Session = Depends(datab
         "nav_page": "caterers"
     })
 
-@router.get("/api/filter", response_class=HTMLResponse)
-def filter_caterers_api(request: Request, type: str = None, q: str = None, location: str = None, db: Session = Depends(database.get_db)):
-    query = db.query(models.CatererProfile)
-    
-    if type and type.strip():
-        query = query.filter(models.CatererProfile.service_type.ilike(f"%{type}%"))
-    
+@router.get("/api/search", response_class=HTMLResponse)
+def unified_search_api(request: Request, q: str = "", db: Session = Depends(database.get_db)):
+    """Unified deep search across all caterer-related fields with real pricing."""
+    from sqlalchemy import or_, func, distinct
+
+    # Subquery for minimum active package price per caterer
+    price_sq = db.query(
+        models.CateringPackage.caterer_id,
+        func.min(models.CateringPackage.price).label("min_price")
+    ).filter(
+        models.CateringPackage.is_active == True,
+        models.CateringPackage.status == 'active'
+    ).group_by(models.CateringPackage.caterer_id).subquery()
+
+    query = db.query(
+        models.CatererProfile, price_sq.c.min_price
+    ).outerjoin(
+        price_sq, models.CatererProfile.id == price_sq.c.caterer_id
+    )
+
     if q and q.strip():
+        search_term = f"%{q.strip()}%"
+
+        # Subquery: caterer IDs matching via menu item names
+        menu_match = db.query(
+            distinct(models.MenuItem.caterer_id)
+        ).filter(
+            models.MenuItem.name.ilike(search_term),
+            models.MenuItem.is_archived == False
+        ).subquery()
+
+        # Subquery: caterer IDs matching via package name or service_type
+        pkg_match = db.query(
+            distinct(models.CateringPackage.caterer_id)
+        ).filter(
+            or_(
+                models.CateringPackage.name.ilike(search_term),
+                models.CateringPackage.service_type.ilike(search_term)
+            ),
+            models.CateringPackage.is_active == True
+        ).subquery()
+
+        # Main filter: OR across all caterer fields + subquery matches
         query = query.filter(
-            (models.CatererProfile.business_name.ilike(f"%{q}%")) | 
-            (models.CatererProfile.description.ilike(f"%{q}%"))
+            or_(
+                models.CatererProfile.business_name.ilike(search_term),
+                models.CatererProfile.description.ilike(search_term),
+                models.CatererProfile.city.ilike(search_term),
+                models.CatererProfile.contact_address.ilike(search_term),
+                models.CatererProfile.coverage_area.ilike(search_term),
+                # PostgreSQL ARRAY search via array_to_string
+                func.coalesce(func.array_to_string(models.CatererProfile.event_types, ','), '').ilike(search_term),
+                func.coalesce(func.array_to_string(models.CatererProfile.cuisine_types, ','), '').ilike(search_term),
+                # Related entity matches
+                models.CatererProfile.id.in_(menu_match),
+                models.CatererProfile.id.in_(pkg_match),
+            )
         )
-        
-    if location and location.strip():
-        query = query.filter(models.CatererProfile.city.ilike(f"%{location}%"))
-    
-    caterers = query.order_by(models.CatererProfile.rating.desc()).all()
-    
+
+    results = query.order_by(models.CatererProfile.rating.desc()).all()
+
+    # Attach computed min price to each caterer object
+    caterers = []
+    for profile, min_p in results:
+        profile.min_package_price = min_p or profile.starting_price or 0
+        caterers.append(profile)
+
     return templates.TemplateResponse("caterer/components/caterer_card_grid.html", {
         "request": request,
         "caterers": caterers
     })
+
+@router.get("/api/filter", response_class=HTMLResponse)
+def filter_caterers_api(request: Request, type: str = None, q: str = None, location: str = None, db: Session = Depends(database.get_db)):
+    """Legacy filter endpoint — redirects to unified search."""
+    combined = " ".join(filter(None, [q, location, type]))
+    return unified_search_api(request=request, q=combined, db=db)

@@ -556,28 +556,49 @@
 }
 
 /* ============================================================
-   ELITE CATERER CARDS
+   ELITE CATERER CARDS — Premium Landing Page Redesign v2
    ============================================================ */
 .caterer-elite-card {
     background: #ffffff;
-    border-radius: 1.5rem;
+    border-radius: 1.125rem;
     overflow: hidden;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-    transition: var(--lp-trans);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 6px 16px rgba(0, 0, 0, 0.03);
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
     border: 1px solid #f1f5f9;
     height: 100%;
-    max-width: 320px;
-    /* Capping width strictly */
-    margin: 0 auto;
+    position: relative;
+}
+
+.caterer-elite-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #f97316, #fb923c, #fdba74);
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    z-index: 3;
+}
+
+.caterer-elite-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(249, 115, 22, 0.08);
+    border-color: rgba(249, 115, 22, 0.15);
+}
+
+.caterer-elite-card:hover::before {
+    opacity: 1;
 }
 
 /* Ensure the grid doesn't force a single card to stretch too much */
 .caterer-grid-new {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 320px));
-    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.75rem;
     justify-content: center;
     max-width: 1200px;
     margin: 0 auto;
@@ -585,30 +606,64 @@
 
 .elite-card-image {
     position: relative;
-    height: 180px;
+    height: 200px;
     width: 100%;
+    overflow: hidden;
+    background: linear-gradient(135deg, #fef3c7 0%, #f8fafc 100%);
+}
+
+.elite-card-image::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.2), transparent);
+    z-index: 1;
+    pointer-events: none;
 }
 
 .elite-card-image img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.elite-badge-verified {
-    position: absolute;
-    top: 1.25rem;
-    left: 1.25rem;
-    background: #f97316;
-    color: #fff;
-    padding: 0.35rem 1rem;
-    border-radius: 0.5rem;
-    font-size: 0.7rem;
-    font-weight: 800;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    box-shadow: 0 4px 10px rgba(249, 115, 22, 0.3);
-    z-index: 2;
+.caterer-elite-card:hover .elite-card-image img {
+    transform: scale(1.06);
+}
+
+/* Name row — name + verified badge inline */
+.elite-name-row {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 0.5rem;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.elite-name-row h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: -0.01em;
+}
+
+.elite-verified-badge {
+    flex-shrink: 0;
+    color: #f97316;
+    font-size: 1rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
 }
 
 .elite-card-body {
@@ -618,106 +673,111 @@
     flex: 1;
 }
 
-.elite-card-body h3 {
-    font-size: 1.25rem;
-    font-weight: 800;
-    color: #171717;
-    margin-bottom: 0.5rem;
-    line-height: 1.2;
-}
+
 
 .elite-card-rating {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 1.5rem;
-    font-weight: 600;
-    color: #171717;
+    gap: 0.3rem;
+    margin-bottom: 0.75rem;
+    font-weight: 700;
+    font-size: 0.82rem;
+    color: #f59e0b;
+    background: #fffbeb;
+    padding: 0.2rem 0.55rem;
+    border-radius: 0.5rem;
+    border: 1px solid #fef3c7;
+    width: fit-content;
 }
 
 .elite-card-rating i {
     color: #f59e0b;
+    font-size: 0.72rem;
 }
 
 .elite-card-rating span {
-    color: #64748b;
-    font-weight: 400;
-    font-size: 0.95rem;
+    color: #94a3b8;
+    font-weight: 500;
+    font-size: 0.78rem;
+    margin-left: 0.25rem;
 }
 
 .elite-card-desc {
     color: #64748b;
-    font-size: 0.9rem;
-    line-height: 1.5;
-    margin-bottom: 1.25rem;
+    font-size: 0.85rem;
+    line-height: 1.55;
+    margin-bottom: 0.85rem;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
-}
-
-.elite-card-price {
-    font-size: 1.4rem;
-    font-weight: 800;
-    color: #171717;
-    margin-bottom: 1.25rem;
-}
-
-.elite-card-price span {
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: #64748b;
-    margin-left: 0.25rem;
+    text-overflow: ellipsis;
+    min-height: 2.6rem;
 }
 
 .elite-card-footer {
     display: flex;
     align-items: center;
     gap: 1.25rem;
-    margin-bottom: 1.25rem;
-    padding-top: 1.25rem;
+    margin-top: auto;
+    padding-top: 0.85rem;
     border-top: 1px solid #f1f5f9;
+    margin-bottom: 0.85rem;
 }
 
 .elite-footer-item {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    font-size: 0.9rem;
+    gap: 0.4rem;
+    font-size: 0.8rem;
     color: #64748b;
     font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .elite-footer-item i {
-    color: var(--lp-primary);
+    color: #94a3b8;
+    font-size: 0.82rem;
 }
 
 .elite-view-btn {
     width: 100%;
-    padding: 1rem;
-    border: 1px solid #e2e8f0;
+    padding: 0.7rem;
+    border: 1.5px solid #e2e8f0;
     border-radius: 0.75rem;
     background: #ffffff;
-    color: #171717;
-    font-weight: 700;
-    font-size: 1rem;
+    color: #0f172a;
+    font-weight: 600;
+    font-size: 0.88rem;
     text-align: center;
     text-decoration: none;
-    transition: var(--lp-trans);
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-}
-
-.elite-view-btn:hover {
-    background: #f8fafc;
-    border-color: #cbd5e1;
-    transform: translateY(-2px);
+    cursor: pointer;
+    letter-spacing: 0.01em;
 }
 
 .elite-view-btn i {
-    font-size: 1.1rem;
+    font-size: 0.88rem;
+    transition: transform 0.3s ease;
+}
+
+.elite-view-btn:hover {
+    background: linear-gradient(135deg, #f97316, #ea580c);
+    border-color: #f97316;
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(249, 115, 22, 0.25);
+}
+
+.elite-view-btn:hover i {
+    color: #ffffff;
+    transform: translateX(2px);
 }
 
 @media (max-width: 768px) {
@@ -725,10 +785,28 @@
         grid-template-columns: 1fr;
         padding: 0 1rem;
     }
+
+    .elite-card-image {
+        height: 180px;
+    }
+
+    .elite-card-body {
+        padding: 1rem;
+    }
+
+    .elite-card-body h3 {
+        font-size: 1rem;
+    }
+
+    .elite-view-btn {
+        padding: 0.65rem;
+        font-size: 0.85rem;
+        min-height: 44px;
+    }
 }
 
 /* ============================================================
-   PREMIUM FULL-WIDTH HERO (CENTERED)
+   PREMIUM FULL-WIDTH HERO — Auto-Rotating Slideshow
    ============================================================ */
 .page-hero-premium-full {
     position: relative;
@@ -736,30 +814,92 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    /* Centered horizontally */
     text-align: center;
-    /* Centered text */
     padding: 8rem 2rem;
     margin-top: 70px;
-    background-image: url('../images/bg_image.jpg');
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
-    /* Parallax Effect */
     overflow: hidden;
+    background: #0f172a;
 }
 
-.page-hero-premium-full::before {
-    content: '';
+/* Slideshow container */
+.hero-slideshow {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    /* Heavy dark overlay for cinematic effect */
-    background: rgba(0, 0, 0, 0.6);
+    z-index: 0;
+}
+
+/* Individual slides — stacked, crossfade via opacity */
+.hero-slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    opacity: 0;
+    transition: opacity 1.2s ease-in-out;
+    will-change: opacity, transform;
+    transform: scale(1);
+}
+
+.hero-slide.active {
+    opacity: 1;
+    animation: heroKenBurns 6s ease-in-out forwards;
+}
+
+@keyframes heroKenBurns {
+    0%   { transform: scale(1); }
+    100% { transform: scale(1.06); }
+}
+
+/* Dark overlay for text readability */
+.hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0.55) 0%,
+        rgba(0, 0, 0, 0.5) 50%,
+        rgba(0, 0, 0, 0.65) 100%
+    );
     z-index: 1;
 }
+
+/* Event type pill badge */
+.hero-event-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(249, 115, 22, 0.15);
+    border: 1px solid rgba(249, 115, 22, 0.3);
+    color: #fb923c;
+    padding: 0.45rem 1.25rem;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    margin-bottom: 1.5rem;
+    backdrop-filter: blur(10px);
+    transition: all 0.4s ease;
+}
+
+.hero-event-pill i {
+    font-size: 0.8rem;
+}
+
+/* Pill fade animation on label change */
+.hero-event-pill.switching {
+    opacity: 0;
+    transform: translateY(-8px);
+}
+
 
 .hero-content-centered {
     position: relative;

@@ -1,34 +1,34 @@
 {% for caterer in caterers %}
 <div class="caterer-elite-card animate-on-scroll visible">
     <div class="elite-card-image">
-        <div class="elite-badge-verified">Verified</div>
-        <img src="{{ caterer.logo_url if (caterer.logo_url and 'http' in caterer.logo_url) else 'https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=800&auto=format&fit=crop' }}"
+        <img src="{{ caterer.cover_image_url if caterer.cover_image_url else (caterer.logo_url if (caterer.logo_url and 'http' in caterer.logo_url) else 'https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=800&auto=format&fit=crop') }}"
             alt="{{ caterer.business_name }}">
     </div>
     <div class="elite-card-body">
-        <h3>{{ caterer.business_name }}</h3>
+        <div class="elite-name-row">
+            <h3>{{ caterer.business_name }}</h3>
+            {% if caterer.is_verified %}
+            <span class="elite-verified-badge" title="Verified Caterer"><i class="fas fa-check-circle"></i></span>
+            {% endif %}
+        </div>
         <div class="elite-card-rating">
             <i class="fas fa-star"></i>
-            {{ caterer.rating if caterer.rating else '4.9' }}
-            <span>(0 reviews)</span>
+            {{ "%.1f"|format(caterer.rating) if caterer.rating else 'New' }}
+            <span>({{ caterer.review_count or 0 }} reviews)</span>
         </div>
         <p class="elite-card-desc">
-            {{ (caterer.description or 'Catering services provide exceptional food and beverage
-            preparation, delivery, and presentation for all your special events.')[:120] }}...
+            {{ (caterer.description or 'Exquisite culinary experiences tailored for your special occasions.')|truncate(100) }}
         </p>
-        <div class="elite-card-price">
-            ₱300 <span>starting</span>
-        </div>
         <div class="elite-card-footer">
             <div class="elite-footer-item">
-                <i class="fas fa-map-marker-alt"></i> {{ caterer.city if caterer.city else 'Santa Cruz' }}
+                <i class="fas fa-map-marker-alt"></i> {{ caterer.city or "Location TBD" }}
             </div>
             <div class="elite-footer-item">
-                <i class="fas fa-users"></i> 50+ guests
+                <i class="fas fa-eye"></i> {{ "{:,}".format(caterer.profile_views or 0) }} views
             </div>
         </div>
         <a href="/caterers/{{ caterer.id }}" class="elite-view-btn">
-            <i class="far fa-eye"></i> View Profile
+            <i class="fas fa-arrow-right"></i> Visit Profile
         </a>
     </div>
 </div>

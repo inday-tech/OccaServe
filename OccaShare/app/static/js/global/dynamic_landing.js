@@ -31,7 +31,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 3. AJAX CATEGORY FILTERING
+    // 3. AJAX CATEGORY FILTERING (injects into unified search)
+    const unifiedInput = document.getElementById('unifiedSearchInput');
+    const searchLoader = document.getElementById('searchLoader');
+
     categoryLinks.forEach(link => {
         link.addEventListener('click', async (e) => {
             if (window.location.pathname !== '/' || e.ctrlKey || e.metaKey) return;
@@ -40,13 +43,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const url = new URL(link.href);
             const type = url.searchParams.get('type');
             
-            const typeSelect = document.getElementById('eventTypeSelect');
-            if (typeSelect) typeSelect.value = type || '';
+            // Inject into unified search input
+            if (unifiedInput && type) {
+                unifiedInput.value = type;
+                unifiedInput.focus();
+            }
             
             const section = document.getElementById('caterers');
             if (section) section.scrollIntoView({ behavior: 'smooth' });
             
-            await performDeepSearch();
+            await performUnifiedSearch();
         });
     });
 
@@ -86,58 +92,62 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (statsSection) statsObserver.observe(statsSection);
 
-    // 5. LIVE SEARCH & DEEP SEARCH
-    const searchInput = document.getElementById('catererSearchInput');
-    const locationInput = document.getElementById('locationSearchInput');
-    const typeSelect = document.getElementById('eventTypeSelect');
-    
+    // 5. UNIFIED LIVE SEARCH (single input, deep search)
     let searchTimeout;
-    const triggerSearch = () => {
+    const triggerUnifiedSearch = () => {
         clearTimeout(searchTimeout);
+        if (searchLoader) searchLoader.style.display = 'flex';
+        // Hide hint once user starts typing
+        const hint = document.querySelector('.search-hint');
+        if (hint && unifiedInput && unifiedInput.value.length > 0) {
+            hint.style.display = 'none';
+        } else if (hint) {
+            hint.style.display = '';
+        }
         searchTimeout = setTimeout(() => {
-            performDeepSearch();
-        }, 500);
+            performUnifiedSearch();
+        }, 350);
     };
 
-    if (searchInput) searchInput.addEventListener('input', triggerSearch);
-    if (locationInput) locationInput.addEventListener('input', triggerSearch);
-    if (typeSelect) typeSelect.addEventListener('change', performDeepSearch);
+    if (unifiedInput) unifiedInput.addEventListener('input', triggerUnifiedSearch);
 
-    window.performDeepSearch = async () => {
+    async function performUnifiedSearch() {
         if (!catererGrid) return;
 
-        const q = searchInput ? searchInput.value : '';
-        const loc = locationInput ? locationInput.value : '';
-        const type = typeSelect ? typeSelect.value : '';
+        const q = unifiedInput ? unifiedInput.value.trim() : '';
 
-        // Show Skeleton placeholders
-        catererGrid.style.opacity = '0.7';
-        
+        catererGrid.style.transition = 'opacity 0.2s ease';
+        catererGrid.style.opacity = '0.5';
+
         try {
-            const params = new URLSearchParams({ q, location: loc, type });
-            const response = await fetch(`/caterers/api/filter?${params.toString()}`, {
+            const params = new URLSearchParams({ q });
+            const response = await fetch(`/caterers/api/search?${params.toString()}`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
 
             if (!response.ok) throw new Error('Search failed');
             const html = await response.text();
-            
-            catererGrid.style.transition = 'opacity 0.2s ease';
+
             catererGrid.style.opacity = '0';
-            
+
             setTimeout(() => {
                 catererGrid.innerHTML = html;
                 catererGrid.style.opacity = '1';
-                
-                // Refresh Scroll Animations for new results
+                // Refresh scroll animations for new results
                 catererGrid.querySelectorAll('.animate-on-scroll').forEach(el => window.observer.observe(el));
             }, 200);
 
         } catch (err) {
             console.error('Search error:', err);
             catererGrid.style.opacity = '1';
+        } finally {
+            if (searchLoader) searchLoader.style.display = 'none';
         }
-    };
+    }
+
+    // Expose globally for backward compat
+    window.performUnifiedSearch = performUnifiedSearch;
+    window.performDeepSearch = performUnifiedSearch;
 
     // 6. CONTACT FORM SUBMISSION (AJAX)
     window.submitContactForm = async (event) => {

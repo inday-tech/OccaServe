@@ -78,6 +78,7 @@ class CatererProfile(Base):
     event_types = Column(ARRAY(String)) # Supported events like Wedding, Birthday, etc.
     rating = Column(Float, default=0.0)
     review_count = Column(Integer, default=0)
+    profile_views = Column(Integer, default=0)  # Total profile page visits
     payout_method = Column(String, nullable=True) # General field (legacy/fallback)
     payout_account_name = Column(String, nullable=True) # General field (legacy/fallback)
     payout_account_number = Column(String, nullable=True) # General field (legacy/fallback)
@@ -633,3 +634,17 @@ class SocialPost(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     caterer = relationship("CatererProfile", back_populates="social_posts")
+
+class ProfileView(Base):
+    """Track unique profile views per user per caterer.
+    Each customer account can only count as ONE view per caterer profile.
+    """
+    __tablename__ = "profile_views"
+
+    id = Column(Integer, primary_key=True, index=True)
+    caterer_id = Column(Integer, ForeignKey("caterer_profiles.id"), nullable=False)
+    viewer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    caterer = relationship("CatererProfile")
+    viewer = relationship("User")

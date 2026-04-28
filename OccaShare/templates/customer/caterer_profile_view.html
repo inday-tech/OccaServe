@@ -5,7 +5,6 @@
 
 {% block extra_css %}
 <style>
-    /* Ensure Poppins global font */
     .profile-container {
         font-family: 'Poppins', sans-serif;
         max-width: 1200px;
@@ -26,11 +25,10 @@
 
     .profile-title-row {
         display: flex;
-        flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 0.75rem;
-        margin-bottom: 1.25rem;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
     }
 
     .profile-title {
@@ -39,23 +37,13 @@
         color: #0f172a;
         margin: 0;
         letter-spacing: -0.03em;
-        line-height: 1.1;
-        max-width: 800px;
     }
 
     .verified-badge {
-        background: #f97316;
-        color: white;
-        padding: 0.35rem 0.85rem;
-        border-radius: 2rem;
-        font-size: 0.7rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
+        color: #f97316;
+        font-size: 1.5rem;
         display: inline-flex;
         align-items: center;
-        gap: 0.4rem;
-        box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
     }
 
     .profile-meta-row {
@@ -74,12 +62,10 @@
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        white-space: nowrap;
     }
 
     .profile-meta-item i {
         color: #f97316;
-        font-size: 1rem;
     }
 
     .profile-desc {
@@ -88,67 +74,6 @@
         line-height: 1.7;
         max-width: 720px;
         margin: 0 auto 2rem;
-        padding: 0 1rem;
-        font-weight: 400;
-    }
-
-    .profile-tags {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 0.75rem;
-    }
-
-    .profile-tag {
-        background: #f8fafc;
-        border: 1px solid #f1f5f9;
-        color: #64748b;
-        height: 44px;
-        padding: 0 1.25rem;
-        border-radius: 0.75rem;
-        font-size: 0.78rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s;
-        letter-spacing: 0.025em;
-    }
-
-    .profile-tag:hover {
-        background: #fff;
-        border-color: #f97316;
-        color: #f97316;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(249, 115, 22, 0.05);
-    }
-
-    @media (max-width: 480px) {
-        .profile-header {
-            padding: 2.25rem 1rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .profile-title {
-            font-size: 1.85rem;
-        }
-
-        .profile-meta-row {
-            gap: 0.75rem 1rem;
-            font-size: 0.85rem;
-        }
-
-        .profile-desc {
-            font-size: 0.95rem;
-            padding: 0 0.25rem;
-        }
-
-        .profile-tag {
-            height: 40px;
-            padding: 0 1rem;
-            font-size: 0.72rem;
-        }
     }
 
     .profile-grid {
@@ -164,7 +89,6 @@
         }
     }
 
-    /* Stats Row */
     .profile-stats-grid {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
@@ -204,36 +128,44 @@
         text-transform: uppercase;
     }
 
-    /* Section Headers */
-    .section-title-wrapper {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        margin-bottom: 1.5rem;
-    }
-
-    .section-title-wrapper i {
-        color: #f97316;
-        font-size: 1.1rem;
-    }
-
-    .section-title {
-        font-size: 1.1rem;
-        font-weight: 800;
-        color: #1e293b;
-        text-transform: uppercase;
-        margin: 0;
-    }
-
-    /* Small Grids inside cards */
-    .item-grid {
+    /* Compact Grids for Menu */
+    .menu-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
         gap: 1rem;
     }
 
-    /* General Premium Card Item */
-    .premium-item-card {
+    .compact-item-card {
+        background: #fff;
+        border: 1px solid #f1f5f9;
+        border-radius: 0.75rem;
+        padding: 0.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .compact-item-card:hover {
+        border-color: #f97316;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    }
+
+    .compact-img {
+        width: 100%;
+        height: 120px;
+        object-fit: cover;
+        border-radius: 0.5rem;
+    }
+
+    /* Package Cards */
+    .pkg-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .pkg-card {
         background: #fff;
         border: 1px solid #f1f5f9;
         border-radius: 1rem;
@@ -243,80 +175,63 @@
         transition: all 0.3s ease;
     }
 
-    .premium-item-card:hover {
+    .pkg-card:hover {
         transform: translateY(-4px);
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.05);
         border-color: #f97316;
     }
 
-    .item-img-container {
-        height: 160px;
-        position: relative;
-        background: #f8fafc;
-    }
-
-    .item-img {
+    .pkg-img {
         width: 100%;
-        height: 100%;
+        height: 160px;
         object-fit: cover;
     }
 
-    .item-badge {
-        position: absolute;
-        top: 0.5rem;
-        left: 0.5rem;
-        background: #f97316;
-        color: white;
-        padding: 0.2rem 0.5rem;
-        border-radius: 0.25rem;
-        font-size: 0.65rem;
-        font-weight: 800;
-        text-transform: uppercase;
-    }
-
-    .item-body {
-        padding: 1rem;
+    .pkg-body {
+        padding: 1.25rem;
         flex: 1;
         display: flex;
         flex-direction: column;
     }
 
-    .item-title {
-        font-size: 0.95rem;
+    .pkg-title {
+        font-size: 1.1rem;
         font-weight: 800;
         color: #1e293b;
         margin-bottom: 0.5rem;
-        line-height: 1.3;
-        text-transform: uppercase;
     }
 
-    .item-price {
-        font-size: 1.1rem;
+    .pkg-price {
+        font-size: 1.25rem;
         font-weight: 800;
         color: #f97316;
-        margin-top: auto;
+        margin-bottom: 0.75rem;
     }
 
-    .item-meta-list {
-        list-style: none;
-        padding: 0;
-        margin: 0 0 1rem 0;
-        font-size: 0.8rem;
-        color: #64748b;
-        font-weight: 500;
+    /* Gallery */
+    .gallery-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 1rem;
     }
 
-    .item-meta-list li {
-        margin-bottom: 0.35rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
+    .gallery-item {
+        height: 160px;
+        border-radius: 0.75rem;
+        overflow: hidden;
+        border: 1px solid #f1f5f9;
+        cursor: pointer;
+        transition: transform 0.2s ease;
     }
 
-    .item-meta-list i {
-        color: #f97316;
-        width: 14px;
-        text-align: center;
+    .gallery-item:hover {
+        transform: scale(1.03);
+    }
+
+    .gallery-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
     }
 
     /* Sidebar Widget */
@@ -333,52 +248,6 @@
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
     }
 
-    .price-large {
-        font-size: 2.25rem;
-        font-weight: 800;
-        color: #f97316;
-        line-height: 1;
-        margin-bottom: 1.5rem;
-    }
-
-    .perks-list {
-        display: flex;
-        flex-direction: column;
-        gap: 1.25rem;
-        margin-bottom: 1.5rem;
-    }
-
-    .perk-item {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.75rem;
-    }
-
-    .perk-icon {
-        color: #f97316;
-        background: #f8fafc;
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.9rem;
-        flex-shrink: 0;
-    }
-
-    .perk-title {
-        font-size: 0.85rem;
-        font-weight: 800;
-        color: #1e293b;
-        text-transform: uppercase;
-    }
-
-    .perk-desc {
-        font-size: 0.75rem;
-        color: #64748b;
-    }
-
     .btn-orange-full {
         width: 100%;
         background: #f97316;
@@ -392,6 +261,10 @@
         transition: all 0.2s;
         box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
         margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
     }
 
     .btn-orange-full:hover {
@@ -422,7 +295,7 @@
         color: white;
     }
 
-    /* Modal styles */
+    /* Modals */
     .modal-overlay {
         display: none;
         position: fixed;
@@ -437,11 +310,13 @@
     .modal-box {
         background: white;
         width: 90%;
-        max-width: 500px;
+        max-width: 600px;
         border-radius: 1.25rem;
         padding: 2rem;
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
         position: relative;
+        max-height: 90vh;
+        overflow-y: auto;
     }
 
     .modal-close {
@@ -455,116 +330,90 @@
         cursor: pointer;
     }
 </style>
-<link rel="stylesheet" href="{{ url_for('static', path='/css/shared/dashboard_premium.css') }}?v=1.1">
 {% endblock %}
 
 {% block content %}
 <div class="profile-container">
+    <!-- Header -->
     <div class="profile-header">
         <div class="profile-title-row">
-            <h1 class="profile-title">{{ caterer.business_name or 'Darwin\'s Catering Services' }}</h1>
-            <span class="verified-badge"><i class="fas fa-check-circle"></i> VERIFIED</span>
+            <h1 class="profile-title">{{ caterer.business_name }}</h1>
+            {% if caterer.is_verified %}
+            <span class="verified-badge" title="Verified Caterer"><i class="fas fa-check-circle"></i></span>
+            {% endif %}
         </div>
 
         <div class="profile-meta-row">
             <div class="profile-meta-item">
                 <i class="fas fa-map-marker-alt"></i>
-                <span>{{ caterer.city or 'Santa Cruz' }}</span>
-            </div>
-            <div class="profile-meta-item">
-                <i class="fas fa-users"></i>
-                <span>{{ caterer.min_pax or 50 }}-{{ caterer.max_pax or 100 }} pax</span>
+                <span>{{ caterer.city or 'Location not specified' }}</span>
             </div>
             <div class="profile-meta-item">
                 <i class="fas fa-star"></i>
-                <span>New Partnership</span>
+                <span>{{ "%.1f"|format(caterer.rating) if caterer.rating else 'New Partner' }} ({{ caterer.review_count or 0 }} reviews)</span>
+            </div>
+            <div class="profile-meta-item">
+                <i class="fas fa-eye"></i>
+                <span>{{ caterer.profile_views or 0 }} Views</span>
             </div>
         </div>
 
         <p class="profile-desc">
-            {{ caterer.description if caterer.description else 'Caterer specialized in providing premium food and
-            beverage preparation, delivery, and presentation for events to ensure a smooth and enjoyable dining
-            experience for guests.' }}
+            {{ caterer.description or 'Exquisite culinary experiences tailored for your special occasions.' }}
         </p>
-
-        <div class="profile-tags">
-            <span class="profile-tag">PREMIUM SERVICES</span>
-            <span class="profile-tag">REVIEWS</span>
-            <span class="profile-tag">SETTINGS</span>
-            <span class="profile-tag">CORPORATE</span>
-            <span class="profile-tag">PRIVATE PARTY</span>
-            <span class="profile-tag">ANNIVERSARY</span>
-            <span class="profile-tag">DEBUT/BIRTHDAY</span>
-        </div>
     </div>
 
     <div class="profile-grid">
-        <div class="profile-main-content" style="display: flex; flex-direction: column; gap: 1.5rem;">
-
-            <!-- About Section -->
+        <!-- Main Content -->
+        <div style="display: flex; flex-direction: column; gap: 2rem;">
+            
+            <!-- Overview Stats -->
             <div class="c-card-premium" style="padding: 1.5rem;">
-                <div class="section-title-wrapper">
-                    <i class="fas fa-info-circle"></i>
-                    <h2 class="section-title">About the Caterer</h2>
-                </div>
+                <h2 style="font-size: 1.1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; text-transform: uppercase;">Overview</h2>
                 <div class="profile-stats-grid">
                     <div class="profile-stat-box">
                         <div class="stat-icon"><i class="far fa-clock"></i></div>
-                        <div class="stat-value">{{ caterer.years_of_operation or 5 }}+</div>
+                        <div class="stat-value">{{ caterer.years_of_operation or 1 }}+</div>
                         <div class="stat-label">Years</div>
                     </div>
                     <div class="profile-stat-box">
-                        <div class="stat-icon"><i class="fas fa-users-cog"></i></div>
-                        <div class="stat-value">500+</div>
-                        <div class="stat-label">Events</div>
-                    </div>
-                    <div class="profile-stat-box">
-                        <div class="stat-icon"><i class="far fa-star"></i></div>
-                        <div class="stat-value">{{ "%.1f"|format(caterer.rating or 4.9) }}</div>
-                        <div class="stat-label">Rating</div>
-                    </div>
-                    <div class="profile-stat-box">
                         <div class="stat-icon"><i class="fas fa-utensils"></i></div>
-                        <div class="stat-value">50+</div>
-                        <div class="stat-label">Menus</div>
+                        <div class="stat-value">{{ caterer.menu_items|length }}</div>
+                        <div class="stat-label">Dishes</div>
+                    </div>
+                    <div class="profile-stat-box">
+                        <div class="stat-icon"><i class="fas fa-gift"></i></div>
+                        <div class="stat-value">{{ packages|length }}</div>
+                        <div class="stat-label">Packages</div>
+                    </div>
+                    <div class="profile-stat-box">
+                        <div class="stat-icon"><i class="fas fa-clipboard-check"></i></div>
+                        <div class="stat-value">100%</div>
+                        <div class="stat-label">Legit</div>
                     </div>
                 </div>
             </div>
 
-            <!-- A La Carte & Menus -->
+            <!-- Menu Items (Compact) -->
             {% if caterer.menu_items %}
             <div class="c-card-premium" style="padding: 1.5rem;">
-                <div class="section-title-wrapper">
-                    <i class="fas fa-concierge-bell"></i>
-                    <h2 class="section-title">A La Carte Options</h2>
-                    <span
-                        style="margin-left:auto; font-size: 0.8rem; font-weight: 600; color: #f97316; background: #fff7ed; padding: 0.3rem 0.8rem; border-radius: 2rem;">Food
-                        Only Booking</span>
-                </div>
-                <div class="item-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
-                    {% for item in caterer.menu_items %}
-                    <div class="premium-item-card">
-                        <div class="item-img-container">
-                            {% if item.image_url %}
-                            <img src="{{ item.image_url }}" class="item-img">
-                            {% else %}
-                            <div
-                                style="display: flex; align-items: center; justify-content: center; height: 100%; color: #cbd5e1; background: #f8fafc;">
-                                <i class="fas fa-utensils fa-3x"></i>
-                            </div>
-                            {% endif %}
-                            <span class="item-badge" style="background: #10b981;">A LA CARTE</span>
+                <h2 style="font-size: 1.1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; text-transform: uppercase;">Culinary Menu</h2>
+                <div class="menu-grid">
+                    {% for item in caterer.menu_items if not item.is_archived %}
+                    <div class="compact-item-card">
+                        {% if item.image_url %}
+                        <img src="{{ item.image_url }}" class="compact-img" alt="{{ item.name }}">
+                        {% else %}
+                        <div style="height: 120px; background: #f8fafc; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; color: #cbd5e1;">
+                            <i class="fas fa-utensils fa-2x"></i>
                         </div>
-                        <div class="item-body">
-                            <div
-                                style="font-size: 0.7rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">
-                                Menu Item</div>
-                            <h3 class="item-title">{{ item.name }}</h3>
-                            <div class="item-price" style="margin-bottom: 1rem;">₱{{ "{:,.0f}".format(item.price) if
-                                item.price else '1,500' }}</div>
-                            <button onclick="showPkgModal('menu-modal-{{ item.id }}')" class="btn-outline-full"
-                                style="margin-top: auto; padding: 0.6rem; font-size: 0.8rem;">Select A La Carte</button>
-                        </div>
+                        {% endif %}
+                        <div style="font-weight: 700; font-size: 0.9rem; color: #1e293b;">{{ item.name }}</div>
+                        <div style="font-size: 0.75rem; color: #64748b; flex: 1;">{{ item.description|truncate(60) if item.description else 'Freshly prepared dish.' }}</div>
+                        {% if item.serving_size %}
+                        <div style="font-size: 0.7rem; font-weight: 600; color: #94a3b8; margin-bottom: 0.25rem;"><i class="fas fa-users"></i> {{ item.serving_size }}</div>
+                        {% endif %}
+                        <div style="font-weight: 800; color: #f97316; font-size: 0.95rem;">₱{{ "{:,.2f}".format(item.price if item.price else 0) }}</div>
                     </div>
                     {% endfor %}
                 </div>
@@ -572,372 +421,244 @@
             {% endif %}
 
             <!-- Packages -->
+            {% if packages %}
             <div class="c-card-premium" style="padding: 1.5rem;">
-                <div class="section-title-wrapper">
-                    <i class="fas fa-gift"></i>
-                    <h2 class="section-title">Packages</h2>
-                </div>
-                <div class="item-grid">
-                    {% for pkg in packages[:3] %}
-                    <div class="premium-item-card">
-                        <div class="item-img-container">
-                            {% if pkg.image_url %}
-                            <img src="{{ pkg.image_url }}" class="item-img">
-                            {% else %}
-                            <img src="https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=400"
-                                class="item-img">
-                            {% endif %}
-                            <span class="item-badge">FEATURED</span>
-                        </div>
-                        <div class="item-body">
-                            <h3 class="item-title">{{ pkg.name }}</h3>
-                            <ul class="item-meta-list">
-                                <li><i class="fas fa-users"></i> {{ pkg.min_guests or 50 }}-{{ pkg.max_guests or
-                                    '100' }} Guests</li>
-                                <li><i class="far fa-clock"></i> {{ pkg.service_duration or 4 }} Hours Serivce</li>
-                                <li><i class="fas fa-utensils"></i> Wedding Food</li>
-                            </ul>
-                            <button onclick="viewPackageDetails({{ pkg.id }})" class="btn-outline-full"
-                                style="margin-top: auto; text-align: center; text-decoration: none;">View
-                                Details</button>
+                <h2 style="font-size: 1.1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; text-transform: uppercase;">Catering Packages</h2>
+                <div class="pkg-grid">
+                    {% for pkg in packages %}
+                    <div class="pkg-card">
+                        {% if pkg.image_url %}
+                        <img src="{{ pkg.image_url }}" class="pkg-img" alt="{{ pkg.name }}">
+                        {% else %}
+                        <img src="https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=500" class="pkg-img" alt="{{ pkg.name }}">
+                        {% endif %}
+                        <div class="pkg-body">
+                            <div class="pkg-title">{{ pkg.name }}</div>
+                            <div class="pkg-price">₱{{ "{:,.2f}".format(pkg.price if pkg.price else 0) }}</div>
+                            <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem; flex: 1;">{{ pkg.description|truncate(80) }}</div>
+                            <button onclick="openPkgDetails({{ pkg.id }})" class="btn-outline-full">View Inclusions</button>
                         </div>
                     </div>
                     {% endfor %}
                 </div>
             </div>
+            {% endif %}
 
             <!-- Gallery -->
+            {% if gallery_items %}
             <div class="c-card-premium" style="padding: 1.5rem;">
-                <div class="section-title-wrapper">
-                    <i class="fas fa-camera"></i>
-                    <h2 class="section-title">Gallery</h2>
-                </div>
-                <div class="item-grid"
-                    style="grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.75rem;">
-                    {% for i in range(1, 7) %}
-                    <div
-                        style="height: 120px; border-radius: 0.5rem; overflow: hidden; background: #f8fafc; border: 1px solid #f1f5f9;">
-                        {% if gallery_items and gallery_items[i-1] %}
-                        <img src="{{ gallery_items[i-1].media_url }}"
-                            style="width: 100%; height: 100%; object-fit: cover;">
-                        {% else %}
-                        <img src="https://via.placeholder.com/150"
-                            style="width: 100%; height: 100%; object-fit: cover; filter: grayscale(100%); opacity: 0.5;">
-                        {% endif %}
+                <h2 style="font-size: 1.1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; text-transform: uppercase;">Gallery</h2>
+                <div class="gallery-grid">
+                    {% for item in gallery_items %}
+                    <div class="gallery-item" onclick="viewImage('{{ item.media_url }}')">
+                        <img src="{{ item.media_url }}" class="gallery-img" alt="Caterer photo">
                     </div>
                     {% endfor %}
                 </div>
-                <div class="stat-icon"><i class="far fa-calendar-check" style="font-size: 1.2rem;"></i>
-                </div>
-                <div class="item-title" style="margin-bottom: 0.25rem;">Booking Policy</div>
-                <div style="font-size: 0.8rem; color: #64748b; line-height: 1.5;">Reservations should be
-                    made in advance. Contact the caterer for specific lead time requirements.</div>
             </div>
-            <div class="profile-stat-box" style="text-align: left;">
-                <div class="stat-icon"><i class="far fa-credit-card" style="font-size: 1.2rem;"></i></div>
-                <div class="item-title" style="margin-bottom: 0.25rem;">Payment Policy</div>
-                <div style="font-size: 0.8rem; color: #64748b; line-height: 1.5;">A downpayment is typically
-                    required to secure your booking date.</div>
-            </div>
-            <div class="profile-stat-box" style="text-align: left;">
-                <div class="stat-icon"><i class="far fa-clock" style="font-size: 1.2rem;"></i></div>
-                <div class="item-title" style="margin-bottom: 0.25rem;">Cancellation Policy</div>
-                <div style="font-size: 0.8rem; color: #64748b; line-height: 1.5;">Please coordinate with the
-                    caterer regarding cancellations and refund eligibility.</div>
-            </div>
+            {% endif %}
 
-            <!-- Customer Reviews Section -->
-            {% if reviews %}
-            <div class="c-card-premium" style="padding: 1.5rem;" id="reviews-section">
-                <div class="section-title-wrapper">
-                    <i class="fas fa-star"></i>
-                    <h2 class="section-title">Customer Reviews</h2>
-                    <span
-                        style="margin-left:auto; font-size: 0.8rem; font-weight: 700; color: #f97316; background: #fff7ed; padding: 0.3rem 0.8rem; border-radius: 2rem;">
-                        {{ reviews|length }} Review{{ 's' if reviews|length != 1 else '' }}
-                    </span>
-                </div>
-
-                <!-- Average Rating Bar -->
-                {% set avg = (reviews | map(attribute='rating') | sum) / (reviews | length) %}
-                <div
-                    style="display:flex; align-items:center; gap:1.25rem; padding:1rem 1.25rem; background:#fff7ed; border-radius:14px; margin-bottom:1.5rem; border:1px solid #fed7aa;">
-                    <div style="text-align:center; flex-shrink:0;">
-                        <div style="font-size:2.5rem; font-weight:900; color:#f97316; line-height:1;">{{
-                            "%.1f"|format(avg) }}</div>
-                        <div style="color:#f59e0b; font-size:0.85rem; margin-top:2px;">
-                            {% for i in range(avg|int) %}<i class="fas fa-star"></i>{% endfor %}
-                            {% if avg % 1 >= 0.5 %}<i class="fas fa-star-half-alt"></i>{% endif %}
-                        </div>
-                        <div style="font-size:0.72rem; color:#94a3b8; font-weight:600; margin-top:4px;">Out of 5.0</div>
+            <!-- Legitimacy / Business Permits -->
+            <div class="c-card-premium" style="padding: 1.5rem;">
+                <h2 style="font-size: 1.1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; text-transform: uppercase;">Verification & Legal Documents</h2>
+                <p style="color: #64748b; font-size: 0.88rem; margin-bottom: 1.5rem;">To ensure customer safety, OccaServe verifies all registered caterers. Below are the official credentials provided by this caterer.</p>
+                
+                <div style="display: flex; flex-wrap: wrap; gap: 1.5rem;">
+                    {% if caterer.permit_url %}
+                    <div style="flex: 1; min-width: 250px; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 1rem; text-align: center; background: #f8fafc;">
+                        <i class="fas fa-file-invoice fa-3x" style="color: #f97316; margin-bottom: 0.75rem;"></i>
+                        <div style="font-weight: 700; color: #1e293b; margin-bottom: 0.5rem;">Business Permit / DTI</div>
+                        <a href="{{ caterer.permit_url }}" target="_blank" class="btn-outline-full" style="padding: 0.5rem;">View Document</a>
                     </div>
-                    <div style="flex:1; font-size:0.82rem; color:#64748b; font-weight:500;">
-                        Based on <strong style="color:#0f172a;">{{ reviews|length }}</strong> verified booking review{{
-                        's' if reviews|length != 1 else '' }}
-                    </div>
-                </div>
-
-                <!-- Review Cards -->
-                <div style="display:flex; flex-direction:column; gap:1.25rem;">
-                    {% for review in reviews|sort(attribute='is_highlighted', reverse=True) %}
-                    <div
-                        style="padding:1.5rem; background:#fafafa; border-radius:18px; border:1px solid {% if review.is_highlighted %}#fed7aa{% else %}#f1f5f9{% endif %}; position:relative; {% if review.is_highlighted %}box-shadow: 0 4px 20px rgba(249,115,22,0.05);{% endif %}">
-                        {% if review.is_highlighted %}
-                        <div
-                            style="position:absolute; top:0; right:0; background:#f97316; color:white; padding:4px 12px; font-size:0.65rem; font-weight:800; border-bottom-left-radius:12px; display:flex; align-items:center; gap:4px; text-transform:uppercase;">
-                            <i class="fas fa-thumbtack" style="font-size:0.6rem;"></i> Featured Review
-                        </div>
-                        {% endif %}
-                        <div
-                            style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
-                            <div style="display:flex; align-items:center; gap:0.75rem;">
-                                <div
-                                    style="width:38px; height:38px; border-radius:50%; background:#f97316; color:white; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.9rem; flex-shrink:0;">
-                                    {{ review.user.first_name[0] if review.user and review.user.first_name else '?' }}{{
-                                    review.user.last_name[0] if review.user and review.user.last_name else '' }}
-                                </div>
-                                <div>
-                                    <div style="font-weight:700; font-size:0.9rem; color:#0f172a;">
-                                        {{ review.user.first_name if review.user else 'Anonymous' }} {{
-                                        review.user.last_name[0] if review.user and review.user.last_name else '' }}.
-                                    </div>
-                                    <div style="font-size:0.72rem; color:#94a3b8;">{{ review.created_at.strftime('%B
-                                        %Y') if review.created_at else '' }}</div>
-                                </div>
-                            </div>
-                            <div style="display:flex; gap:2px; color:#f59e0b; font-size:0.78rem;">
-                                {% for i in range(review.rating or 0) %}<i class="fas fa-star"></i>{% endfor %}
-                                {% for i in range(5 - (review.rating or 0)) %}<i class="far fa-star"
-                                    style="color:#e2e8f0;"></i>{% endfor %}
-                            </div>
-                        </div>
-                        <p style="margin:0; font-size:0.9rem; color:#475569; line-height:1.65; font-style:italic;">"{{
-                            review.comment }}"</p>
-                        {% if review.recommend %}
-                        <div style="margin-top:0.65rem; font-size:0.75rem; color:#16a34a; font-weight:700;"><i
-                                class="fas fa-thumbs-up" style="margin-right:4px;"></i>Recommends this caterer</div>
-                        {% endif %}
-
-                        {% if review.caterer_reply %}
-                        <div
-                            style="margin-top:1.25rem; padding:1rem; background:#fff7ed; border-radius:12px; border-left:3px solid #f97316;">
-                            <div
-                                style="font-size:0.75rem; font-weight:800; color:#f97316; margin-bottom:0.4rem; text-transform:uppercase; letter-spacing:0.025em;">
-                                Caterer's Response</div>
-                            <p style="margin:0; font-size:0.88rem; color:#475569; line-height:1.5;">{{
-                                review.caterer_reply }}</p>
-                        </div>
-                        {% endif %}
-                    </div>
-                    {% endfor %}
-
-                    {% if reviews|length > 5 %}
-                    <div style="text-align:center; padding:0.75rem; font-size:0.82rem; color:#64748b;">
-                        + {{ reviews|length - 5 }} more review{{ 's' if reviews|length - 5 != 1 else '' }}
+                    {% else %}
+                    <div style="width: 100%; text-align: center; color: #94a3b8; padding: 2rem 0;">
+                        <i class="fas fa-shield-alt fa-3x" style="margin-bottom: 0.75rem;"></i>
+                        <div>Caterer is internally verified via physical address checking.</div>
                     </div>
                     {% endif %}
                 </div>
             </div>
-            {% endif %}
 
         </div>
 
         <!-- Sidebar -->
         <div class="sidebar-widget">
             <div class="sidebar-inner-card">
-                <div class="stat-label" style="margin-bottom: 0.5rem;">Starting Price</div>
-                <div class="price-large">₱{{ "{:,.0f}".format(caterer.starting_price or 15000) }}</div>
-
-                <div class="perks-list">
-                    <div class="perk-item">
-                        <div class="perk-icon"><i class="fas fa-bolt"></i></div>
-                        <div>
-                            <div class="perk-title">Rapid Response</div>
-                            <div class="perk-desc">Typically replies within 1 hour</div>
-                        </div>
+                <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <i class="fas fa-calendar-alt" style="color: #f97316;"></i>
+                        <span style="font-size: 0.88rem; font-weight: 600; color: #475569;">Availability Checked</span>
                     </div>
-                    <div class="perk-item">
-                        <div class="perk-icon"><i class="fas fa-check-circle"></i></div>
-                        <div>
-                            <div class="perk-title">Verified</div>
-                            <div class="perk-desc">Identity & Business Checked</div>
-                        </div>
-                    </div>
-                    <div class="perk-item">
-                        <div class="perk-icon"><i class="far fa-star"></i></div>
-                        <div>
-                            <div class="perk-title">Top Rated</div>
-                            <div class="perk-desc">5.0 Stars</div>
-                        </div>
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <i class="fas fa-truck" style="color: #f97316;"></i>
+                        <span style="font-size: 0.88rem; font-weight: 600; color: #475569;">Full Event Setup Available</span>
                     </div>
                 </div>
 
-                <div style="margin-top: 1.5rem;">
-                    <button onclick="window.location.href='/bookings/start/{{ caterer.id }}'"
-                        class="btn-orange-full">Book
-                        Now</button>
-                    <button onclick="showPkgModal('contact-modal-{{ caterer.id }}')" class="btn-outline-full"><i
-                            class="far fa-comment-dots"></i> Contact Us</button>
-                </div>
-
-                <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 1.5rem;">
-                    <button
-                        style="background: none; border: none; font-size: 0.8rem; font-weight: 700; color: #94a3b8; cursor: pointer;"><i
-                            class="far fa-heart"></i> Save</button>
-                    <button
-                        style="background: none; border: none; font-size: 0.8rem; font-weight: 700; color: #94a3b8; cursor: pointer;"><i
-                            class="fas fa-share-alt"></i> Share</button>
-                </div>
+                <!-- Book Now button triggers checkout if customer, else handled in route -->
+                <button onclick="handleBooking({{ caterer.id }})" class="btn-orange-full" style="margin-bottom: 0.75rem;">
+                    <i class="fas fa-calendar-check"></i> Book Now
+                </button>
+                
+                <button onclick="openInquiryModal()" class="btn-outline-full">
+                    <i class="far fa-comment-dots"></i> Send Inquiry
+                </button>
             </div>
         </div>
     </div>
 </div>
 
-
-{% if caterer.menu_items %}
-{% for item in caterer.menu_items %}
-<div id="menu-modal-{{ item.id }}" class="modal-overlay">
+<!-- Inquiry Modal -->
+<div id="inquiry-modal" class="modal-overlay">
     <div class="modal-box">
-        <button class="modal-close" onclick="closePkgModal('menu-modal-{{ item.id }}')"><i
-                class="fas fa-times"></i></button>
-        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
-            <h2 style="font-size: 1.5rem; font-weight: 800; color: #1e293b; margin: 0;">{{ item.name }}</h2>
-            <span
-                style="background: #10b981; color: white; padding: 0.2rem 0.6rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700;">A
-                LA CARTE</span>
-        </div>
-        <p style="color: #64748b; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem;">{{ item.description if
-            item.description else 'Special a la carte selection prepared fresh for your attendees. Book this
-            specifically if you only need food without the full service packages.' }}</p>
-        <div style="font-size: 1.5rem; font-weight: 800; color: #f97316; margin-bottom: 2rem;">
-            ₱{{ "{:,.0f}".format(item.price) if item.price else '1,500' }}
-        </div>
-        <button onclick="window.location.href='/bookings/alacarte/checkout/{{ caterer.id }}?menu_id={{ item.id }}'"
-            class="btn-orange-full" style="margin-bottom: 0;"><i class="fas fa-shopping-basket"></i> Order Food
-            Only</button>
-    </div>
-</div>
-{% endfor %}
-{% endif %}
-
-<div id="contact-modal-{{ caterer.id }}" class="modal-overlay">
-    <div class="modal-box">
-        <button class="modal-close" onclick="closePkgModal('contact-modal-{{ caterer.id }}')"><i
-                class="fas fa-times"></i></button>
-        <h2 style="font-size: 1.5rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem;">Contact Us</h2>
-        <p style="color: #64748b; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem;">Send a direct message to
-            {{ caterer.business_name }}. They typically reply within 1 hour.</p>
-
-        <form onsubmit="submitContactInquiry(event, '{{ caterer.id }}', '{{ caterer.business_name }}')"
-            style="display: flex; flex-direction: column; gap: 1rem;">
-            <input type="text" placeholder="Your Name" value="{{ user.first_name }} {{ user.last_name }}" required
-                style="padding: 0.85rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-family: 'Poppins', sans-serif;">
-            <input type="email" placeholder="Your Email Address" value="{{ user.email }}" required
-                style="padding: 0.85rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-family: 'Poppins', sans-serif;">
-            <textarea placeholder="How can we help make your event special?" rows="4" required
-                style="padding: 0.85rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-family: 'Poppins', sans-serif; resize: none;"></textarea>
-            <button type="submit" class="btn-orange-full" style="margin-bottom: 0;">Send Message</button>
+        <button class="modal-close" onclick="closeInquiryModal()"><i class="fas fa-times"></i></button>
+        <h2 style="font-size: 1.25rem; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem;">Send Direct Message</h2>
+        <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 1.5rem;">Ask about schedules, menus, or custom packages.</p>
+        
+        <form id="inquiry-form" onsubmit="submitInquiry(event, {{ caterer.user_id }})">
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.25rem;">Message</label>
+                <textarea id="inquiry-msg" required placeholder="Hi! I would like to inquire about your services for an upcoming event..." style="width: 100%; height: 120px; border: 1px solid #cbd5e1; border-radius: 0.5rem; padding: 0.75rem; font-family: 'Poppins', sans-serif; resize: none;"></textarea>
+            </div>
+            <button type="submit" id="inquiry-btn" class="btn-orange-full">Send Message</button>
         </form>
     </div>
 </div>
 
-
-<!-- Package Details Modal (Dynamic) -->
-<div id="pkg-details-modal" class="modal-overlay" style="z-index: 1100;">
-    <div class="modal-box" style="padding: 0; max-width: 600px; overflow: hidden; border: none;">
-        <button class="modal-close" onclick="closePkgModal('pkg-details-modal')"
-            style="z-index: 10; background: white; width: 32px; height: 32px; border-radius: 50%; top: 1rem; right: 1rem; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-            <i class="fas fa-times"></i>
-        </button>
-        <div id="pkg-modal-body">
-            <div style="padding: 4rem 2rem; text-align: center;">
-                <div class="spinner-border text-orange" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <p style="margin-top: 1rem; color: #64748b; font-weight: 600;">Loading package details...</p>
-            </div>
+<!-- Package Details Modal -->
+<div id="pkg-details-modal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 500px;">
+        <button class="modal-close" onclick="closePkgDetails()"><i class="fas fa-times"></i></button>
+        <div id="pkg-details-content">
+            <!-- Populated by JS -->
         </div>
     </div>
 </div>
 
-<script>
-    function showPkgModal(id) {
-        var m = document.getElementById(id);
-        if (m) { m.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
-    }
-    function closePkgModal(id) {
-        var m = document.getElementById(id);
-        if (m) { m.style.display = 'none'; document.body.style.overflow = ''; }
-    }
+<!-- Image Preview Modal -->
+<div id="image-modal" class="modal-overlay" onclick="closeImageModal()">
+    <div style="max-width: 80%; max-height: 80%;">
+        <img id="image-preview" src="" style="width: 100%; height: 100%; object-fit: contain; border-radius: 0.75rem;">
+    </div>
+</div>
 
-    async function viewPackageDetails(packageId) {
-        showPkgModal('pkg-details-modal');
-        const body = document.getElementById('pkg-modal-body');
-        body.innerHTML = `
-            <div style="padding: 4rem 2rem; text-align: center;">
-                <i class="fas fa-circle-notch fa-spin fa-2x" style="color: #f97316;"></i>
-                <p style="margin-top: 1rem; color: #64748b; font-weight: 600;">Loading package details...</p>
+<script>
+    // Manage Package details mapping
+    const packages = {
+        {% for pkg in packages %}
+        "{{ pkg.id }}": {
+            name: "{{ pkg.name }}",
+            price: '₱{{ "{:,.2f}".format(pkg.price if pkg.price else 0) }}',
+            description: `{{ pkg.description or 'Premium package.' }}`,
+            inclusions: [
+                {% if pkg.menu_items %}
+                    {% for m in pkg.menu_items %}
+                        "Dish: {{ m.name }} ({{ m.category }})",
+                    {% endfor %}
+                {% endif %}
+                {% if pkg.inclusions and pkg.inclusions is iterable %}
+                    {% for inc in pkg.inclusions %}
+                        "{{ inc }}",
+                    {% endfor %}
+                {% endif %}
+            ],
+            service_duration: "{{ pkg.service_duration or 4 }} Hours",
+            service_type: "{{ pkg.service_type or 'General' }}"
+        },
+        {% endfor %}
+    };
+
+    function openPkgDetails(id) {
+        const pkg = packages[id];
+        if(!pkg) return;
+        
+        let incHtml = "";
+        const defaultInclusions = ["Full Event Setup & Cleanup", "Premium Buffet Table Design", "Professional Uniformed Servers", "Standard Sound System", "Complete Dining Utensils"];
+        const displayInclusions = (pkg.inclusions && pkg.inclusions.length > 0) ? pkg.inclusions : defaultInclusions;
+
+        incHtml = `<ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem;">
+            ${displayInclusions.map(i => `<li style="font-size: 0.88rem; color: #475569; display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-check-circle" style="color: #f97316;"></i> ${i}</li>`).join('')}
+        </ul>`;
+
+        const content = `
+            <h2 style="font-size: 1.25rem; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem;">${pkg.name}</h2>
+            <div style="font-size: 1.5rem; font-weight: 800; color: #f97316; margin-bottom: 1rem;">${pkg.price}</div>
+            <div style="font-size: 0.88rem; color: #475569; line-height: 1.6; margin-bottom: 1.5rem;">${pkg.description}</div>
+            
+            <div style="margin-bottom: 1.5rem; border-top: 1px solid #f1f5f9; padding-top: 1rem;">
+                <div style="font-weight: 700; color: #1e293b; margin-bottom: 0.75rem; font-size: 0.9rem; text-transform: uppercase;">What's Included:</div>
+                ${incHtml}
+            </div>
+            
+            <div style="font-size: 0.8rem; color: #64748b; display: flex; flex-direction: column; gap: 0.25rem; border-top: 1px solid #f1f5f9; padding-top: 1rem;">
+                <div><strong>Service Type:</strong> ${pkg.service_type}</div>
+                <div><strong>Duration:</strong> ${pkg.service_duration}</div>
             </div>
         `;
+        document.getElementById('pkg-details-content').innerHTML = content;
+        document.getElementById('pkg-details-modal').style.display = 'flex';
+    }
+
+    function closePkgDetails() {
+        document.getElementById('pkg-details-modal').style.display = 'none';
+    }
+
+    // Booking
+    function handleBooking(catererId) {
+        window.location.href = `/customer/marketplace/${catererId}/checkout`;
+    }
+
+    // Inquiry
+    function openInquiryModal() {
+        document.getElementById('inquiry-modal').style.display = 'flex';
+    }
+
+    function closeInquiryModal() {
+        document.getElementById('inquiry-modal').style.display = 'none';
+    }
+
+    async function submitInquiry(event, catererUserId) {
+        event.preventDefault();
+        const btn = document.getElementById('inquiry-btn');
+        const msg = document.getElementById('inquiry-msg').value;
+        
+        btn.disabled = true;
+        btn.innerText = 'Sending...';
 
         try {
-            const response = await fetch(`/packages/${packageId}/modal`);
+            const response = await fetch('/api/chat/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    receiver_id: catererUserId,
+                    content: msg,
+                    message_type: 'text'
+                })
+            });
+            
             if (response.ok) {
-                const html = await response.text();
-                body.innerHTML = html;
+                alert('Message sent successfully! You can track responses in your Chat dashboard.');
+                closeInquiryModal();
+                document.getElementById('inquiry-msg').value = '';
             } else {
-                body.innerHTML = '<div style="padding: 4rem 2rem; text-align: center; color: #ef4444;">Failed to load details. Please try again.</div>';
+                alert('Failed to send message. Please try again.');
             }
-        } catch (e) {
-            body.innerHTML = '<div style="padding: 4rem 2rem; text-align: center; color: #ef4444;">An error occurred while fetching package information.</div>';
+        } catch (error) {
+            alert('An error occurred. Please check your internet connection.');
+        } finally {
+            btn.disabled = false;
+            btn.innerText = 'Send Message';
         }
     }
 
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            document.querySelectorAll('.modal-overlay').forEach(modal => modal.style.display = 'none');
-            document.body.style.overflow = '';
-        }
-    });
+    // Image View
+    function viewImage(url) {
+        document.getElementById('image-preview').src = url;
+        document.getElementById('image-modal').style.display = 'flex';
+    }
 
-    async function submitContactInquiry(event, catererId, catererName) {
-        // ... (previous function implementation remains same)
-        event.preventDefault();
-        const form = event.target;
-        const submitBtn = form.querySelector('button[type="submit"]');
-        const name = form.querySelector('input[type="text"]').value;
-        const email = form.querySelector('input[type="email"]').value;
-        const rawMessage = form.querySelector('textarea').value;
-        const message = `[Inquiry to Caterer: ${catererName}]\n\n${rawMessage}`;
-
-        submitBtn.disabled = true;
-        const originalText = submitBtn.innerText;
-        submitBtn.innerText = 'Sending...';
-
-        try {
-            const formData = new FormData();
-            formData.append('name', name);
-            formData.append('email', email);
-            formData.append('message', message);
-
-            const response = await fetch('/contact/api', {
-                method: 'POST',
-                body: formData
-            });
-
-            if (response.ok) {
-                alert('Inquiry sent successfully! The admin has been notified.');
-                closePkgModal('contact-modal-' + catererId);
-            } else {
-                alert('Failed to send inquiry. Please try again.');
-            }
-        } catch (e) {
-            alert('An error occurred while sending the message.');
-            console.error(e);
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.innerText = originalText;
-        }
+    function closeImageModal() {
+        document.getElementById('image-modal').style.display = 'none';
     }
 </script>
 {% endblock %}

@@ -4,54 +4,100 @@
 {% block title %}OccaServe - Book the Best Catering Services Near You{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/landing_neutral.css') }}?v=8">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/landing_neutral.css') }}?v=10">
 <style>
     /* Specific styles for single-page layout */
     html {
         scroll-behavior: smooth;
     }
 
-    /* Search Bar UI */
-    .search-filter-bar {
-        background: var(--lp-bg-white, #fff);
-        padding: 1.5rem;
-        border-radius: 1rem;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr auto;
-        gap: 1rem;
-        margin-bottom: 3rem;
+    /* ── Unified Search Bar ── */
+    .unified-search-bar {
+        max-width: 720px;
+        margin: 0 auto 3rem;
+    }
+
+    .unified-search-inner {
+        display: flex;
+        align-items: center;
+        background: #fff;
+        border: 2px solid #f0f0f0;
+        border-radius: 100px;
+        padding: 1rem 1.75rem;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+        transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+        gap: 0.875rem;
+    }
+
+    .unified-search-inner:focus-within {
+        border-color: var(--lp-primary, #f97316);
+        box-shadow: 0 8px 40px rgba(249, 115, 22, 0.13);
+        transform: translateY(-2px);
+    }
+
+    .unified-search-icon {
+        color: var(--lp-primary, #f97316);
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+
+    .unified-search-inner input {
+        border: none;
+        outline: none;
+        background: transparent;
+        flex: 1;
+        font-size: 1.05rem;
+        font-family: inherit;
+        color: #1e293b;
+        min-width: 0;
+    }
+
+    .unified-search-inner input::placeholder {
+        color: #94a3b8;
+        font-weight: 400;
+    }
+
+    .unified-search-loader {
+        color: var(--lp-primary, #f97316);
+        font-size: 1.15rem;
+        flex-shrink: 0;
+        display: flex;
         align-items: center;
     }
 
-    .search-filter-item {
-        display: flex;
-        flex-direction: column;
-    }
-
-    .search-filter-item label {
-        font-size: 0.8rem;
-        color: var(--lp-text-muted, #52525B);
-        margin-bottom: 0.3rem;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    .search-filter-item select,
-    .search-filter-item input {
-        border: 1px solid var(--lp-border, #f4f4f5);
-        padding: 0.75rem;
-        border-radius: 0.5rem;
+    .search-hint {
+        background: #f1f5f9;
+        color: #94a3b8;
+        padding: 0.2rem 0.65rem;
+        border-radius: 5px;
+        font-size: 0.7rem;
         font-family: inherit;
-        font-size: 1rem;
-        outline: none;
-        transition: border-color 0.2s;
+        border: 1px solid #e2e8f0;
+        white-space: nowrap;
+        flex-shrink: 0;
     }
 
-    .search-filter-item select:focus,
-    .search-filter-item input:focus {
-        border-color: var(--lp-primary, #f97316);
+    @media (max-width: 768px) {
+        .unified-search-bar {
+            max-width: 100%;
+            padding: 0 1rem;
+        }
+        .unified-search-inner {
+            padding: 0.75rem 1.25rem;
+        }
+        .unified-search-inner input {
+            font-size: 0.95rem;
+        }
+        .search-hint {
+            display: none;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .unified-search-inner {
+            padding: 0.625rem 1rem;
+            border-radius: 14px;
+        }
     }
 
     /* Event Categories Clickable Cards */
@@ -281,10 +327,27 @@
 {% block content %}
 <div class="landing-container">
 
-    {# ======= 1. HERO SECTION ======= #}
-    <header id="home" class="page-hero-premium-full section-clean"
-        style="background-image: url('{{ url_for('static', path='/images/bg_image.jpg') }}');">
+    {# ======= 1. HERO SECTION — Auto-rotating Event Slideshow ======= #}
+    <header id="home" class="page-hero-premium-full section-clean">
+        {# Background slideshow images — one per event type #}
+        <div class="hero-slideshow">
+            <div class="hero-slide active" style="background-image: url('https://images.unsplash.com/photo-1519225421980-715cb0215aed?q=80&w=1920&auto=format&fit=crop');"></div>
+            <div class="hero-slide" style="background-image: url('https://images.unsplash.com/photo-1530103862676-de8c9debad1d?q=80&w=1920&auto=format&fit=crop');"></div>
+            <div class="hero-slide" style="background-image: url('https://images.unsplash.com/photo-1414235077428-338989a2e8c0?q=80&w=1920&auto=format&fit=crop');"></div>
+            <div class="hero-slide" style="background-image: url('https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=1920&auto=format&fit=crop');"></div>
+            <div class="hero-slide" style="background-image: url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1920&auto=format&fit=crop');"></div>
+            <div class="hero-slide" style="background-image: url('https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=1920&auto=format&fit=crop');"></div>
+            <div class="hero-slide" style="background-image: url('https://images.unsplash.com/photo-1482575832494-771f74bf6857?q=80&w=1920&auto=format&fit=crop');"></div>
+            <div class="hero-slide" style="background-image: url('https://images.unsplash.com/photo-1467810563316-b5476525c0f9?q=80&w=1920&auto=format&fit=crop');"></div>
+            <div class="hero-slide" style="background-image: url('https://images.unsplash.com/photo-1518199266791-5375a83190b7?q=80&w=1920&auto=format&fit=crop');"></div>
+            <div class="hero-slide" style="background-image: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1920&auto=format&fit=crop');"></div>
+        </div>
+        <div class="hero-overlay"></div>
+
         <div class="hero-content-centered animate-on-scroll">
+            <div class="hero-event-pill" id="heroEventPill">
+                <i class="fas fa-ring"></i> <span id="heroEventLabel">Weddings</span>
+            </div>
             <h1 class="hero-title-main">
                 Make Every Occasion <span>Easy</span> and Memorable
             </h1>
@@ -330,35 +393,18 @@
                     trusted by hundreds of clients.</p>
             </div>
 
-            {# DYNAMIC SEARCH BAR #}
-            <div class="search-filter-bar animate-on-scroll">
-                <div class="search-filter-item">
-                    <label>Keyword</label>
-                    <input type="text" id="catererSearchInput" placeholder="Search by name or specialty...">
-                </div>
-                <div class="search-filter-item">
-                    <label>Location</label>
-                    <input type="text" id="locationSearchInput" placeholder="Enter city (e.g. Santa Cruz)">
-                </div>
-                <div class="search-filter-item">
-                    <label>Event Type</label>
-                    <select id="eventTypeSelect">
-                        <option value="">All Categories</option>
-                        <option value="wedding">Wedding</option>
-                        <option value="birthday">Birthday</option>
-                        <option value="corporate">Corporate</option>
-                        <option value="debut">Debut</option>
-                        <option value="baptism">Baptism</option>
-                        <option value="private">Private Party</option>
-                        <option value="fiesta">Fiesta</option>
-                        <option value="holiday">Holiday</option>
-                    </select>
-                </div>
-                <div class="search-filter-item">
-                    <label>&nbsp;</label>
-                    <button class="btn-cta-main" style="padding: 0.75rem 1.5rem;" onclick="performDeepSearch()">
-                        <i class="fas fa-search"></i>
-                    </button>
+            {# UNIFIED SEARCH BAR #}
+            <div class="unified-search-bar animate-on-scroll">
+                <div class="unified-search-inner">
+                    <i class="fas fa-search unified-search-icon"></i>
+                    <input type="text"
+                           id="unifiedSearchInput"
+                           placeholder="Search caterers, menus, locations, event types..."
+                           autocomplete="off">
+                    <div class="unified-search-loader" id="searchLoader" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                    <kbd class="search-hint">Just start typing</kbd>
                 </div>
             </div>
 
@@ -611,4 +657,54 @@
         </div>
     </section><!-- Scripts are now managed via dynamic_landing.js -->
 </div>
+
+<script>
+/* ============================================
+   HERO SLIDESHOW — Auto-rotating Event Backgrounds
+   ============================================ */
+(function() {
+    const slides = document.querySelectorAll('.hero-slide');
+    const pill = document.getElementById('heroEventPill');
+    const label = document.getElementById('heroEventLabel');
+    if (!slides.length || !pill || !label) return;
+
+    const events = [
+        { name: 'Weddings',           icon: 'fas fa-ring' },
+        { name: 'Birthdays',          icon: 'fas fa-birthday-cake' },
+        { name: 'Fine Dining',        icon: 'fas fa-wine-glass-alt' },
+        { name: 'Corporate Events',   icon: 'fas fa-briefcase' },
+        { name: 'Fiestas',            icon: 'fas fa-utensils' },
+        { name: 'Private Parties',    icon: 'fas fa-glass-cheers' },
+        { name: 'Christmas Parties',  icon: 'fas fa-tree' },
+        { name: 'New Year Celebrations', icon: 'fas fa-champagne-glasses' },
+        { name: 'Valentines Day',     icon: 'fas fa-heart' },
+        { name: 'Summer Events',      icon: 'fas fa-sun' },
+    ];
+
+    let current = 0;
+    const INTERVAL = 5000; // 5 seconds per slide
+
+    function nextSlide() {
+        // Remove active from current
+        slides[current].classList.remove('active');
+
+        // Move to next
+        current = (current + 1) % slides.length;
+
+        // Activate next slide
+        slides[current].classList.add('active');
+
+        // Animate pill label change
+        pill.classList.add('switching');
+        setTimeout(() => {
+            const ev = events[current];
+            label.textContent = ev.name;
+            pill.querySelector('i').className = ev.icon;
+            pill.classList.remove('switching');
+        }, 300);
+    }
+
+    setInterval(nextSlide, INTERVAL);
+})();
+</script>
 {% endblock %}
