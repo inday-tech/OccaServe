@@ -328,6 +328,82 @@
         };
     }
 
+    const validateSingleName = (input, fieldId, isRequired = true) => {
+        if (!input) return { valid: true };
+        const val = input.value.trim();
+        
+        if (!val) {
+            if (isRequired && input.classList.contains('touched')) {
+                setError(fieldId, "Required");
+                return { valid: false };
+            } else {
+                setError(fieldId, "", false);
+                return { valid: true };
+            }
+        }
+
+        const result = validateName(val);
+        if (!result.valid) {
+            setError(fieldId, result.message);
+            return { valid: false };
+        } else {
+            setError(fieldId, "", false);
+            return { valid: true };
+        }
+    };
+
+    const performNameValidation = (e) => {
+        const fnInput = document.getElementById('first_name');
+        const mnInput = document.getElementById('middle_name');
+        const lnInput = document.getElementById('last_name');
+
+        if (e && e.target) {
+            e.target.classList.add('touched');
+        }
+
+        const fnVal = fnInput ? fnInput.value.trim() : '';
+        const lnVal = lnInput ? lnInput.value.trim() : '';
+
+        const fnValid = validateSingleName(fnInput, 'firstName', true);
+        const lnValid = validateSingleName(lnInput, 'lastName', true);
+        validateSingleName(mnInput, 'middleName', false);
+
+        if (fnVal && lnVal) {
+            if (fnVal.toLowerCase() === lnVal.toLowerCase()) {
+                setError('firstName', "First Name and Last Name cannot be identical");
+                setError('lastName', "First Name and Last Name cannot be identical");
+            } else {
+                if (fnValid.valid) setError('firstName', "", false);
+                if (lnValid.valid) setError('lastName', "", false);
+            }
+        }
+    };
+
+    const attachNameListeners = () => {
+        const fnInput = document.getElementById('first_name');
+        const mnInput = document.getElementById('middle_name');
+        const lnInput = document.getElementById('last_name');
+
+        if (fnInput) {
+            fnInput.addEventListener('input', performNameValidation);
+            fnInput.addEventListener('blur', performNameValidation);
+        }
+        if (mnInput) {
+            mnInput.addEventListener('input', performNameValidation);
+            mnInput.addEventListener('blur', performNameValidation);
+        }
+        if (lnInput) {
+            lnInput.addEventListener('input', performNameValidation);
+            lnInput.addEventListener('blur', performNameValidation);
+        }
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attachNameListeners);
+    } else {
+        attachNameListeners();
+    }
+
     const addressInput = document.getElementById('address');
     if (addressInput) {
         addressInput.oninput = function () {

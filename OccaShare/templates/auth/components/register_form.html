@@ -23,20 +23,23 @@
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-top: 1.5rem; margin-bottom: 1rem; position: relative; z-index: 1;">
             <div class="form-group">
                 <label for="first_name">First Name</label>
-                <div class="input-wrapper">
+                <div class="input-wrapper" id="firstNameWrapper">
                     <input type="text" id="first_name" name="first_name" class="minimal-input" required placeholder="e.g. Juan">
+                    <div id="firstNameError" class="error-drawer"></div>
                 </div>
             </div>
             <div class="form-group">
                 <label for="middle_name">Middle Name</label>
-                <div class="input-wrapper">
+                <div class="input-wrapper" id="middleNameWrapper">
                     <input type="text" id="middle_name" name="middle_name" class="minimal-input" placeholder="e.g. Mercado">
+                    <div id="middleNameError" class="error-drawer"></div>
                 </div>
             </div>
             <div class="form-group">
                 <label for="last_name">Last Name</label>
-                <div class="input-wrapper">
+                <div class="input-wrapper" id="lastNameWrapper">
                     <input type="text" id="last_name" name="last_name" class="minimal-input" required placeholder="e.g. Dela Cruz">
+                    <div id="lastNameError" class="error-drawer"></div>
                 </div>
             </div>
         </div>
@@ -166,15 +169,16 @@
 
 <script>
     window.validateCustomerSignup = function() {
-        const fn = document.getElementById('first_name');
-        const ln = document.getElementById('last_name');
-        if (fn && ln) {
-            const firstName = fn.value.trim().toLowerCase();
-            const lastName = ln.value.trim().toLowerCase();
-            if (firstName && lastName && firstName === lastName) {
-                fn.style.borderColor = '#ef4444';
-                ln.style.borderColor = '#ef4444';
-                alert("❌ Mismatch Detected: First Name and Last Name cannot be identical (e.g., Pepito Pepito). Please use your real name.");
+        const form = document.getElementById('regForm');
+        if (form) {
+            const nameInputs = form.querySelectorAll('#first_name, #middle_name, #last_name');
+            nameInputs.forEach(input => {
+                input.classList.add('touched');
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+            });
+            
+            const errorWrappers = form.querySelectorAll('.input-wrapper.error');
+            if (errorWrappers.length > 0) {
                 return false;
             }
         }
@@ -188,24 +192,6 @@
         const brgySelect = document.getElementById('barangay_cust');
         const streetInput = document.getElementById('street_cust');
         const hiddenAddress = document.getElementById('address_cust_hidden');
-
-        if (form) {
-                form.addEventListener('submit', (e) => {
-                    const fn = document.getElementById('first_name');
-                    const ln = document.getElementById('last_name');
-                    if (fn && ln) {
-                        const firstName = fn.value.trim().toLowerCase();
-                        const lastName = ln.value.trim().toLowerCase();
-                        if (firstName && lastName && firstName === lastName) {
-                            e.preventDefault();
-                            fn.style.borderColor = '#ef4444';
-                            ln.style.borderColor = '#ef4444';
-                            alert("❌ Mismatch Detected: First Name and Last Name cannot be identical (e.g., Pepito Pepito). Please use your real name.");
-                            return false;
-                        }
-                    }
-                });
-            }
 
             function updateHiddenAddress() {
                 if(hiddenAddress) {

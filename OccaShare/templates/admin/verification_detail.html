@@ -280,6 +280,10 @@
 <div class="audit-workspace-grid">
     <div class="audit-main">
         {% if verification %}
+        {% set ocr = verification.ocr_data %}
+        {% if ocr and 'id_verification' in ocr %}
+            {% set ocr = ocr.id_verification.ocr_data %}
+        {% endif %}
         <!-- Visual Detection Section -->
         <div class="audit-card">
             <div class="section-title-clean"><i class="fas fa-eye"></i> Visual Authentication Detection</div>
@@ -301,7 +305,7 @@
                 </div>
             </div>
 
-            <div class="comparison-grid-clean">
+            <div class="comparison-grid-clean" style="{% if target_user.role == 'caterer' %}grid-template-columns: 1fr 1fr 1fr;{% endif %}">
                 <div class="img-audit-box">
                     <label>Identity Document</label>
                     <div class="detection-overlay">
@@ -322,6 +326,19 @@
                     </div>
                     <img src="{{ verification.selfie_url }}" alt="Liveness Selfie" style="min-height: 250px; object-fit: contain; background: #f1f5f9;">
                 </div>
+                {% if target_user.role == 'caterer' and target_user.caterer_profile and target_user.caterer_profile.permit_url %}
+                <div class="img-audit-box">
+                    <label>Business Permit / DTI</label>
+                    <div class="detection-overlay">
+                        {% set permit_res = verification.ocr_data.permit_verification if (verification and verification.ocr_data and 'permit_verification' in verification.ocr_data) else none %}
+                        <div class="det-badge {% if permit_res and permit_res.status != 'matched' %}fail{% endif %}">
+                            <i class="fas {% if permit_res and permit_res.status == 'matched' %}fa-file-contract{% else %}fa-exclamation-triangle{% endif %}"></i> 
+                            {% if permit_res and permit_res.status == 'matched' %}PERMIT DETECTED{% else %}PERMIT REQUIRED{% endif %}
+                        </div>
+                    </div>
+                    <img src="{{ target_user.caterer_profile.permit_url }}" alt="Business Permit" style="min-height: 250px; object-fit: contain; background: #f1f5f9;">
+                </div>
+                {% endif %}
             </div>
         </div>
 
@@ -342,10 +359,10 @@
                     <tr class="matrix-row">
                         <td><span class="matrix-label">Full Name</span></td>
                         <td><div class="matrix-value" id="regName">{{ target_user.first_name }} {{ target_user.last_name }}</div></td>
-                        <td><div class="matrix-value" style="font-weight: 700; color: var(--dm-secondary);">{{ verification.ocr_data.full_name if (verification and verification.ocr_data and verification.ocr_data.full_name) else 'NOT EXTRACTED' }}</div></td>
+                        <td><div class="matrix-value" style="font-weight: 700; color: var(--dm-secondary);">{{ ocr.full_name if (ocr and ocr.full_name) else 'NOT EXTRACTED' }}</div></td>
                         <td>
-                            {% if verification and verification.ocr_data and verification.ocr_data.full_name %}
-                                {% set extracted = verification.ocr_data.full_name|lower %}
+                            {% if ocr and ocr.full_name %}
+                                {% set extracted = ocr.full_name|lower %}
                                 {% set registered = (target_user.first_name ~ ' ' ~ target_user.last_name)|lower %}
                                 {% if target_user.first_name|lower in extracted or target_user.last_name|lower in extracted %}
                                     <div class="matrix-status match"><i class="fas fa-check-circle"></i> MATCH</div>
@@ -360,10 +377,10 @@
                     <tr class="matrix-row">
                         <td><span class="matrix-label">ID Number</span></td>
                         <td><div class="matrix-value" id="regIdNum">{{ verification.id_number or 'N/A' }}</div></td>
-                        <td><div class="matrix-value" style="font-family: monospace; letter-spacing: 1px;">{{ verification.ocr_data.id_number if (verification and verification.ocr_data and verification.ocr_data.id_number) else 'NOT EXTRACTED' }}</div></td>
+                        <td><div class="matrix-value" style="font-family: monospace; letter-spacing: 1px;">{{ ocr.id_number if (ocr and ocr.id_number) else 'NOT EXTRACTED' }}</div></td>
                         <td>
-                             {% if verification and verification.ocr_data and verification.ocr_data.id_number %}
-                                {% if verification.id_number and verification.id_number in verification.ocr_data.id_number %}
+                             {% if ocr and ocr.id_number %}
+                                {% if verification.id_number and verification.id_number in ocr.id_number %}
                                     <div class="matrix-status match"><i class="fas fa-check-circle"></i> MATCH</div>
                                 {% else %}
                                     <div class="matrix-status mismatch"><i class="fas fa-exclamation-triangle"></i> REVIEW</div>
@@ -376,16 +393,16 @@
                     <tr class="matrix-row">
                         <td><span class="matrix-label">Date of Birth</span></td>
                         <td><div class="matrix-value">N/A</div></td>
-                        <td><div class="matrix-value">{{ verification.ocr_data.extracted_dob if (verification and verification.ocr_data and verification.ocr_data.extracted_dob) else 'NOT EXTRACTED' }}</div></td>
+                        <td><div class="matrix-value">{{ ocr.extracted_dob if (ocr and ocr.extracted_dob) else 'NOT EXTRACTED' }}</div></td>
                         <td><div class="matrix-status" style="color: var(--dm-slate-400);">INFO ONLY</div></td>
                     </tr>
                     <tr class="matrix-row">
                         <td><span class="matrix-label">Address</span></td>
                         <td><div class="matrix-value" id="regAddress" style="font-size: 0.75rem;">{{ target_user.address or 'N/A' }}</div></td>
-                        <td><div class="matrix-value" style="font-size: 0.75rem;">{{ verification.ocr_data.extracted_address if (verification and verification.ocr_data and verification.ocr_data.extracted_address) else 'NOT EXTRACTED' }}</div></td>
+                        <td><div class="matrix-value" style="font-size: 0.75rem;">{{ ocr.extracted_address if (ocr and ocr.extracted_address) else 'NOT EXTRACTED' }}</div></td>
                         <td>
-                            {% if verification and verification.ocr_data and verification.ocr_data.extracted_address and target_user.address %}
-                                {% if target_user.address|lower in verification.ocr_data.extracted_address|lower or verification.ocr_data.extracted_address|lower in target_user.address|lower %}
+                            {% if ocr and ocr.extracted_address and target_user.address %}
+                                {% if target_user.address|lower in ocr.extracted_address|lower or ocr.extracted_address|lower in target_user.address|lower %}
                                     <div class="matrix-status match"><i class="fas fa-check-circle"></i> MATCH</div>
                                 {% else %}
                                     <div class="matrix-status mismatch"><i class="fas fa-exclamation-circle"></i> PARTIAL</div>
@@ -398,9 +415,25 @@
                     <tr class="matrix-row">
                         <td><span class="matrix-label">Phone Number</span></td>
                         <td><div class="matrix-value" id="regPhone">{{ target_user.phone_number or 'N/A' }}</div></td>
-                        <td><div class="matrix-value">{{ verification.ocr_data.phone if (verification and verification.ocr_data and verification.ocr_data.phone) else 'REGISTRY ONLY' }}</div></td>
+                        <td><div class="matrix-value">{{ ocr.phone if (ocr and ocr.phone) else 'REGISTRY ONLY' }}</div></td>
                         <td><div class="matrix-status" style="color: var(--dm-slate-400);">REGISTRY VERIFIED</div></td>
                     </tr>
+                    
+                    {% if target_user.role == 'caterer' %}
+                    {% set permit_data = verification.ocr_data.permit_verification if (verification and verification.ocr_data and 'permit_verification' in verification.ocr_data) else none %}
+                    <tr class="matrix-row">
+                        <td><span class="matrix-label">Business Name</span></td>
+                        <td><div class="matrix-value">{{ target_user.business_name }}</div></td>
+                        <td><div class="matrix-value">{{ target_user.business_name if (permit_data and permit_data.ocr_match) else 'NOT DETECTED' }}</div></td>
+                        <td>
+                            {% if permit_data and permit_data.ocr_match %}
+                                <div class="matrix-status match"><i class="fas fa-check-circle"></i> MATCH</div>
+                            {% else %}
+                                <div class="matrix-status mismatch"><i class="fas fa-times-circle"></i> MISMATCH</div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
                 </tbody>
             </table>
             

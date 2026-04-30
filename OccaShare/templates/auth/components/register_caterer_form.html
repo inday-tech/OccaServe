@@ -43,20 +43,23 @@
                 <div class="form-group" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; width: 100%; grid-column: 1 / -1; margin-top: 1.5rem;">
                     <div class="form-group">
                         <label for="first_name_cat">First Name</label>
-                        <div class="input-wrapper">
+                        <div class="input-wrapper" id="firstNameCatWrapper">
                             <input type="text" id="first_name_cat" name="first_name" class="minimal-input" required placeholder="e.g. Juan">
+                            <div id="firstNameCatError" class="error-drawer"></div>
                         </div>
                     </div>
                     <div class="form-group">
                         <label for="middle_name_cat">Middle Name</label>
-                        <div class="input-wrapper">
+                        <div class="input-wrapper" id="middleNameCatWrapper">
                             <input type="text" id="middle_name_cat" name="middle_name" class="minimal-input" placeholder="e.g. Mercado">
+                            <div id="middleNameCatError" class="error-drawer"></div>
                         </div>
                     </div>
                     <div class="form-group">
                         <label for="last_name_cat">Last Name</label>
-                        <div class="input-wrapper">
+                        <div class="input-wrapper" id="lastNameCatWrapper">
                             <input type="text" id="last_name_cat" name="last_name" class="minimal-input" required placeholder="e.g. Dela Cruz">
+                            <div id="lastNameCatError" class="error-drawer"></div>
                         </div>
                     </div>
                 </div>
@@ -411,6 +414,22 @@
                     input.classList.remove('input-error');
                 }
             });
+
+            // Mark name fields as touched and trigger validation
+            if (step === 1) {
+                const nameInputs = currentStepEl.querySelectorAll('#first_name_cat, #middle_name_cat, #last_name_cat');
+                nameInputs.forEach(input => {
+                    input.classList.add('touched');
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                });
+            }
+
+            // Check for real-time validation errors
+            const errorWrappers = currentStepEl.querySelectorAll('.input-wrapper.error');
+            if (errorWrappers.length > 0) {
+                isValid = false;
+            }
+
             return isValid;
         }
 

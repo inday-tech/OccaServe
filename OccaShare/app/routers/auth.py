@@ -201,7 +201,15 @@ async def register(
         errors["full_name"] = "Full name is required"
     else:
         name_error = is_dummy_name(full_name)
-        if name_error: errors["full_name"] = name_error
+        if name_error: 
+            errors["full_name"] = name_error
+            
+        if first_name and last_name and first_name.lower() == last_name.lower():
+            errors["full_name"] = "First Name and Last Name cannot be identical"
+            
+        name_parts = full_name.lower().split()
+        if len(name_parts) > 1 and len(set(name_parts)) < len(name_parts):
+            errors["full_name"] = "Name contains repetitive parts (e.g., John John)"
 
     if not mobile_number.isdigit():
         errors["mobile_number"] = "Mobile number must contain only digits"

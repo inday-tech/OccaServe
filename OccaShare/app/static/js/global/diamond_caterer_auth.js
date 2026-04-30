@@ -323,16 +323,29 @@
                 const video = document.getElementById('modalWebcamVideo');
                 const instr = document.getElementById('scannerInstructions');
                 try {
-                    streamCat = await navigator.mediaDevices.getUserMedia({
-                        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } }
-                    });
-                    video.srcObject = streamCat;
+                    try {
+                        streamCat = await navigator.mediaDevices.getUserMedia({
+                            video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } }
+                        });
+                    } catch (e) {
+                        console.warn("Failed to load with ideal constraints, falling back to default video.");
+                        streamCat = await navigator.mediaDevices.getUserMedia({ video: true });
+                    }
+                    if (video) {
+                        video.srcObject = streamCat;
+                        video.setAttribute("playsinline", true);
+                        video.setAttribute("autoplay", true);
+                        video.onloadedmetadata = () => {
+                            video.play().catch(err => console.error("Error playing video:", err));
+                        };
+                    }
                     if (instr) instr.innerText = type === 'selfie' ? "Center your face in the frame" : "Align document";
                 } catch (err) {
                     Swal.showValidationMessage(`Camera Error: ${err.message}`);
                     setTimeout(() => Swal.close(), 2000);
                 }
             },
+
             preConfirm: async () => {
                 if (type === 'selfie') {
                     return await captureSequenceCat();
@@ -351,45 +364,198 @@
 
     async function captureSequenceCat() {
         const instr = document.getElementById('scannerInstructions');
-        const frames = [];
-        const steps = [
-            { text: "Look directly at the camera", delay: 800 },
-            { text: "Now... BLINK your eyes", delay: 1000 },
-            { text: "Slightly move your head", delay: 800 }
-        ];
-
-        for (const step of steps) {
-            if (instr) {
-                instr.innerText = step.text;
-                instr.classList.add('active');
-            }
-            await new Promise(r => setTimeout(r, step.delay));
-            
-            const blob = await new Promise(resolve => {
-                const video = document.getElementById('modalWebcamVideo');
-                const canvas = document.getElementById('modalWebcamCanvas');
-                const context = canvas.getContext('2d');
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                canvas.toBlob(resolve, 'image/jpeg', 0.9);
-            });
-            frames.push(blob);
-        }
-
-        const filename = `selfie_sequence_${Date.now()}.jpg`;
-        const files = frames.map((blob, i) => new File([blob], `frame_${i}_${filename}`, { type: "image/jpeg" }));
+        const video = document.getElementById('modalWebcamVideo');
+        const canvas = document.getElementById('modalWebcamCanvas');
         
-        // Show in UI
-        const nameEl = document.getElementById('selfieNameCat');
-        if (nameEl) {
-            nameEl.innerText = "Sequence Captured";
+        if (!video || !canvas) return false;
+        
+        if (typeof FaceMesh !== 'undefined') {
+            if (instr) {
+                instr.innerText = "Initializing AI Scanner...";
+                instr.style.background = "#f0fdf4";
+                instr.style.color = "#15803d";
+            }
+            
+            return new Promise((resolve) => {
+                const frames = [];
+                let currentStep = 1; 
+                let lookStraightStartTime = 0;
+                
+                const faceMesh = new FaceMesh({
+                    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+                });
+                
+                faceMesh.setOptions({
+                    maxNumFaces: 1,
+                    refineLandmarks: true,
+                    minDetectionConfidence: 0.6,
+                    minTrackingConfidence: 0.6
+                });
+                
+                function getEAR(landmarks, eyeIndices) {
+                    const p1 = landmarks[eyeIndices[0]];
+                    const p2 = landmarks[eyeIndices[1]];
+                    const p3 = landmarks[eyeIndices[2]];
+                    const p4 = landmarks[eyeIndices[3]];
+                    const p5 = landmarks[eyeIndices[4]];
+                    const p6 = landmarks[eyeIndices[5]];
+                    
+                    const v1 = Math.hypot(p2.x - p6.x, p2.y - p6.y);
+                    const v2 = Math.hypot(p3.x - p5.x, p3.y - p5.y);
+                    const h = Math.hypot(p1.x - p4.x, p1.y - p4.y);
+                    
+                    return h > 0 ? (v1 + v2) / (2.0 * h) : 0;
+                }
+                
+                faceMesh.onResults((results) => {
+                    if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
+                        if (instr) {
+                            instr.innerText = "No face detected. Please face the camera.";
+                            instr.style.background = "#fee2e2";
+                            instr.style.color = "#991b1b";
+                        }
+                        return;
+                    }
+                    
+                    const landmarks = results.multiFaceLandmarks[0];
+                    
+                    // Occlusion & Obstruction Detection
+                    const criticalPoints = [1, 33, 263, 61, 291];
+                    const boundsCheck = criticalPoints.some(idx => !landmarks[idx] || landmarks[idx].x < 0 || landmarks[idx].x > 1 || landmarks[idx].y < 0 || landmarks[idx].y > 1);
+                    
+                    // Calculate Nose Centering
+                    const nose = landmarks[1];
+                    const leftEye = landmarks[33];
+                    const rightEye = landmarks[263];
+                    
+                    let yawRatio = 1.0;
+                    if (nose && leftEye && rightEye) {
+                        const distL = Math.hypot(nose.x - leftEye.x, nose.y - leftEye.y);
+                        const distR = Math.hypot(nose.x - rightEye.x, nose.y - rightEye.y);
+                        yawRatio = distR > 0 ? distL / distR : 5;
+                    }
+                    
+                    if (boundsCheck || yawRatio > 2.5 || yawRatio < 0.4) {
+                        if (instr) {
+                            instr.innerText = "⚠️ Tanggalin yung mga nakaharang sa mukha";
+                            instr.style.background = "#fee2e2";
+                            instr.style.color = "#991b1b";
+                        }
+                        return;
+                    }
+                    
+                    const leftEAR = getEAR(landmarks, [33, 160, 158, 133, 153, 144]);
+                    const rightEAR = getEAR(landmarks, [362, 385, 387, 263, 373, 380]);
+                    const avgEAR = (leftEAR + rightEAR) / 2.0;
+                    
+                    if (currentStep === 1) {
+                        if (instr) {
+                            instr.innerText = "👀 Step 1: Harap o tingin sa camera";
+                            instr.style.background = "#dbeafe";
+                            instr.style.color = "#1e40af";
+                        }
+                        
+                        if (yawRatio >= 0.7 && yawRatio <= 1.4) {
+                            if (lookStraightStartTime === 0) lookStraightStartTime = Date.now();
+                            if (Date.now() - lookStraightStartTime > 1200) {
+                                captureFrame();
+                                currentStep = 2;
+                                lookStraightStartTime = 0;
+                            }
+                        } else {
+                            lookStraightStartTime = 0;
+                        }
+                    } else if (currentStep === 2) {
+                        if (instr) {
+                            instr.innerText = "😉 Step 2: Ngayon, i-BLINK ang iyong mga mata";
+                            instr.style.background = "#fef3c7";
+                            instr.style.color = "#92400e";
+                        }
+                        
+                        if (avgEAR < 0.18) {
+                            captureFrame();
+                            currentStep = 3;
+                            captureFrame();
+                            
+                            faceMesh.close();
+                            finishSequence();
+                        }
+                    }
+                });
+                
+                function captureFrame() {
+                    const context = canvas.getContext('2d');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob((blob) => {
+                        frames.push(blob);
+                    }, 'image/jpeg', 0.9);
+                }
+                
+                function finishSequence() {
+                    setTimeout(() => {
+                        const filename = `selfie_sequence_${Date.now()}.jpg`;
+                        const files = frames.map((blob, i) => new File([blob], `frame_${i}_${filename}`, { type: "image/jpeg" }));
+                        
+                        const nameEl = document.getElementById('selfieNameCat');
+                        if (nameEl) nameEl.innerText = "Real-time Scan Completed";
+                        
+                        window.handleFileUploadCat(files, 'selfie');
+                        resolve(true);
+                    }, 500);
+                }
+                
+                const analyzeFrame = async () => {
+                    if (video.readyState >= 2 && currentStep <= 2) {
+                        try {
+                            await faceMesh.send({ image: video });
+                        } catch (e) {}
+                    }
+                    if (currentStep <= 2) {
+                        requestAnimationFrame(analyzeFrame);
+                    }
+                };
+                
+                analyzeFrame();
+            });
+        } else {
+            console.warn("[KYC] MediaPipe not loaded. Falling back to countdown mode.");
+            const frames = [];
+            const steps = [
+                { text: "Look directly at the camera", delay: 800 },
+                { text: "Now... BLINK your eyes", delay: 1000 },
+                { text: "Hold still...", delay: 800 }
+            ];
+            
+            for (const step of steps) {
+                if (instr) {
+                    instr.innerText = step.text;
+                    instr.classList.add('active');
+                }
+                await new Promise(r => setTimeout(r, step.delay));
+                
+                const blob = await new Promise(resolve => {
+                    const context = canvas.getContext('2d');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob(resolve, 'image/jpeg', 0.9);
+                });
+                frames.push(blob);
+            }
+            
+            const filename = `selfie_sequence_${Date.now()}.jpg`;
+            const files = frames.map((blob, i) => new File([blob], `frame_${i}_${filename}`, { type: "image/jpeg" }));
+            
+            const nameEl = document.getElementById('selfieNameCat');
+            if (nameEl) nameEl.innerText = "Sequence Captured";
+            
+            window.handleFileUploadCat(files, 'selfie');
+            return true;
         }
-
-        // Trigger processing with multi-file support
-        window.handleFileUploadCat(files, 'selfie');
-        return true;
     }
+
 
     function captureFromModalCat(type) {
         const video = document.getElementById('modalWebcamVideo');

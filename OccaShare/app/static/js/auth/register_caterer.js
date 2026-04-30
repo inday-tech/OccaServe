@@ -2,6 +2,131 @@
     let currentStepCat = 1;
     const totalStepsCat = 4;
 
+    function setError(fieldId, message, isError = true) {
+        const wrapper = document.getElementById(fieldId + 'Wrapper');
+        const drawer = document.getElementById(fieldId + 'Error');
+        if (!wrapper || !drawer) return;
+
+        if (isError) {
+            wrapper.classList.add('error');
+            drawer.innerText = message;
+            drawer.style.display = 'block';
+            const input = wrapper.querySelector('input');
+            if (input) input.style.borderColor = '#ef4444';
+        } else {
+            wrapper.classList.remove('error');
+            drawer.style.display = 'none';
+            const input = wrapper.querySelector('input');
+            if (input) input.style.borderColor = '';
+        }
+    }
+
+    const validateName = (name) => {
+        const nameRegex = /^[a-zA-Z\s\.\-']{2,60}$/;
+        const dummyNames = ['test', 'dummy', 'guest', 'demo'];
+        const lowerName = name.toLowerCase().trim();
+
+        if (!name.trim()) return { valid: false, message: "Required" };
+        if (name.length < 2) return { valid: false, message: "Too short" };
+        if (name.length > 60) return { valid: false, message: "Too long" };
+        if (!nameRegex.test(name)) return { valid: false, message: "Letters/spaces/dots only" };
+
+        if (dummyNames.includes(lowerName)) {
+            return { valid: false, message: "Please use your real name" };
+        }
+
+        const parts = lowerName.split(/\s+/).filter(p => p.length > 0);
+        if (parts.length >= 2) {
+            for (let i = 0; i < parts.length; i++) {
+                for (let j = i + 1; j < parts.length; j++) {
+                    const p1 = parts[i];
+                    const p2 = parts[j];
+                    if (p1 === p2) {
+                        return { valid: false, message: "Avoid repetitive names (e.g. Pepito Pepito)" };
+                    }
+                }
+            }
+        }
+
+        return { valid: true };
+    };
+
+    const validateSingleName = (input, fieldId, isRequired = true) => {
+        if (!input) return { valid: true };
+        const val = input.value.trim();
+        
+        if (!val) {
+            if (isRequired && input.classList.contains('touched')) {
+                setError(fieldId, "Required");
+                return { valid: false };
+            } else {
+                setError(fieldId, "", false);
+                return { valid: true };
+            }
+        }
+
+        const result = validateName(val);
+        if (!result.valid) {
+            setError(fieldId, result.message);
+            return { valid: false };
+        } else {
+            setError(fieldId, "", false);
+            return { valid: true };
+        }
+    };
+
+    const performNameValidation = (e) => {
+        const fnInput = document.getElementById('first_name_cat');
+        const mnInput = document.getElementById('middle_name_cat');
+        const lnInput = document.getElementById('last_name_cat');
+
+        if (e && e.target) {
+            e.target.classList.add('touched');
+        }
+
+        const fnVal = fnInput ? fnInput.value.trim() : '';
+        const lnVal = lnInput ? lnInput.value.trim() : '';
+
+        const fnValid = validateSingleName(fnInput, 'firstNameCat', true);
+        const lnValid = validateSingleName(lnInput, 'lastNameCat', true);
+        validateSingleName(mnInput, 'middleNameCat', false);
+
+        if (fnVal && lnVal) {
+            if (fnVal.toLowerCase() === lnVal.toLowerCase()) {
+                setError('firstNameCat', "First Name and Last Name cannot be identical");
+                setError('lastNameCat', "First Name and Last Name cannot be identical");
+            } else {
+                if (fnValid.valid) setError('firstNameCat', "", false);
+                if (lnValid.valid) setError('lastNameCat', "", false);
+            }
+        }
+    };
+
+    const attachNameListeners = () => {
+        const fnInput = document.getElementById('first_name_cat');
+        const mnInput = document.getElementById('middle_name_cat');
+        const lnInput = document.getElementById('last_name_cat');
+
+        if (fnInput) {
+            fnInput.addEventListener('input', performNameValidation);
+            fnInput.addEventListener('blur', performNameValidation);
+        }
+        if (mnInput) {
+            mnInput.addEventListener('input', performNameValidation);
+            mnInput.addEventListener('blur', performNameValidation);
+        }
+        if (lnInput) {
+            lnInput.addEventListener('input', performNameValidation);
+            lnInput.addEventListener('blur', performNameValidation);
+        }
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attachNameListeners);
+    } else {
+        attachNameListeners();
+    }
+
     const LOCATION_DATA = {
         "Laguna": {
             "Alaminos": ["Barangay I", "Barangay II", "Barangay III", "Barangay IV", "Del Carmen", "Palma", "San Agustin", "San Andres", "San Benito", "San Gregorio", "San Juan", "San Miguel", "San Roque", "Santa Rosa", "Victoria"],
@@ -93,20 +218,10 @@
             }
         });
 
-        // Strict Name Validation Rule for Presentation
-        if (currentStepCat === 1) {
-            const fn = document.getElementById('first_name_cat');
-            const ln = document.getElementById('last_name_cat');
-            if (fn && ln) {
-                const firstName = fn.value.trim().toLowerCase();
-                const lastName = ln.value.trim().toLowerCase();
-                if (firstName && lastName && firstName === lastName) {
-                    valid = false;
-                    fn.style.borderColor = '#ef4444';
-                    ln.style.borderColor = '#ef4444';
-                    alert("❌ Mismatch Detected: First Name and Last Name cannot be identical (e.g., Pepito Pepito). Please use your real name.");
-                }
-            }
+        // Check for real-time validation errors
+        const errorWrappers = step.querySelectorAll('.input-wrapper.error');
+        if (errorWrappers.length > 0) {
+            valid = false;
         }
 
         // Security Verification Validation Rule
@@ -136,22 +251,21 @@
         if (submitBtn) submitBtn.disabled = true;
         if (btnText) btnText.innerText = 'Creating Account...';
 
-        // Security Check: Ensure no duplicate names
-        const fn = document.getElementById('first_name_cat');
-        const ln = document.getElementById('last_name_cat');
-        if (fn && ln) {
-            const firstName = fn.value.trim().toLowerCase();
-            const lastName = ln.value.trim().toLowerCase();
-            if (firstName && lastName && firstName === lastName) {
-                if (submitBtn) submitBtn.disabled = false;
-                if (btnText) btnText.innerText = originalText;
-                alert("❌ Mismatch Detected: First Name and Last Name cannot be identical (e.g., Pepito Pepito).");
-                return false;
-            }
+        // Check for real-time validation errors
+        const errorWrappers = form.querySelectorAll('.input-wrapper.error');
+        if (errorWrappers.length > 0) {
+            if (submitBtn) submitBtn.disabled = false;
+            if (btnText) btnText.innerText = originalText;
+            return false;
         }
 
         try {
             updateAddressCat();
+            
+            const fn = document.getElementById('first_name_cat')?.value.trim() || '';
+            const ln = document.getElementById('last_name_cat')?.value.trim() || '';
+            formData.set('full_name', `${fn} ${ln}`);
+
             const response = await fetch('/auth/register', {
                 method: 'POST',
                 body: formData
