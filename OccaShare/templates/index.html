@@ -320,7 +320,6 @@
         }
     }
 
-    }
 </style>
 {% endblock %}
 
@@ -385,15 +384,14 @@
     </section>
 
     {# ======= 2. BROWSE CATERERS ======= #}
-    <section id="caterers" class="section-clean section-white" style="padding: 6rem 0;">
+    <section id="caterers" class="section-clean section-white" style="padding: 4rem 0;">
         <div class="container">
-            <div class="section-header" style="text-align: center; margin-bottom: 3rem;">
-                <h2 style="font-size: 2.5rem; margin-bottom: 1rem; color: var(--lp-secondary);">Browse Caterers</h2>
+            <div class="section-header" style="text-align: center; margin-bottom: 1.5rem;">
+                <h2 style="font-size: 2.5rem; margin-bottom: 0.5rem; color: var(--lp-secondary);">Browse Caterers</h2>
                 <p style="color: var(--lp-text-muted); font-size: 1.1rem;">Discover handpicked catering professionals
                     trusted by hundreds of clients.</p>
             </div>
 
-            {# UNIFIED SEARCH BAR #}
             <div class="unified-search-bar animate-on-scroll">
                 <div class="unified-search-inner">
                     <i class="fas fa-search unified-search-icon"></i>
@@ -413,7 +411,6 @@
                 {% include "caterer/components/caterer_card_grid.html" %}
             </div>
 
-            {# 'View All' button removed as requested #}
         </div>
     </section>
 
@@ -703,8 +700,9 @@
             pill.classList.remove('switching');
         }, 300);
     }
-
     setInterval(nextSlide, INTERVAL);
 })();
+
+
 </script>
 {% endblock %}

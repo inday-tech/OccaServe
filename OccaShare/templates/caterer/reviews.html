@@ -15,10 +15,8 @@
             <p>Monitor your professional reputation and customer feedback.</p>
         </div>
         <div class="header-actions">
-            <div class="search-box-pro">
-                <i class="fas fa-search"></i>
-                <input type="text" id="reviewSearch" placeholder="Search reviews..." onkeyup="filterReviews()">
-            </div>
+            <!-- Local search removed, using global header search -->
+            <input type="hidden" id="reviewSearch">
         </div>
     </div>
 
@@ -185,6 +183,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initial load
     filteredItems = [...allItems];
     updateDisplay();
+
+    // Listen to global header search
+    window.addEventListener('globalSearch', function(e) {
+        if (searchInput) {
+            searchInput.value = e.detail.value;
+            window.filterReviews();
+        }
+    });
 });
 </script>
 {% endblock %}

@@ -10,7 +10,8 @@ import io
 import difflib
 import numpy as np
 import traceback
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+from datetime import datetime
 from ..core.encryption import decrypt_data
 from PIL import Image, ImageOps
 from sqlalchemy.orm import Session
@@ -951,9 +952,50 @@ class VerificationService:
                 "ocr_data": {}
             }
 
-    def verify_business_permit(self, permit_path: str, business_name: str, owner_name: str = None, db: Session = None) -> Dict[str, Any]:
+    def _parse_date(self, date_str: str) -> Optional[datetime]:
+        """Attempts to parse a date string from OCR into a datetime object."""
+        if not date_str:
+            return None
+        
+        # Clean string
+        clean_date = re.sub(r'(?i)EXPIRY|EXPIRES|DATE|UNTIL|VALID|THRU|[:.\-\s]', ' ', date_str).strip()
+        
+        # Try various formats
+        formats = [
+            "%b %d %Y", "%B %d %Y", "%m %d %Y", "%d %b %Y", "%d %B %Y",
+            "%Y %m %d", "%m/%d/%Y", "%d/%m/%Y", "%Y-%m-%d"
+        ]
+        
+        # Try to find a year in the string first to narrow it down
+        year_match = re.search(r'\b(20\d{2})\b', date_str)
+        if not year_match:
+            return None
+            
+        for fmt in formats:
+            try:
+                # We use fuzzy matching by trying to parse parts of the string
+                return datetime.strptime(clean_date, fmt)
+            except ValueError:
+                continue
+        
+        # Last resort: search for YYYY-MM-DD or MM/DD/YYYY in the raw string
+        iso_match = re.search(r'(\d{4})[-/](\d{1,2})[-/](\d{1,2})', date_str)
+        if iso_match:
+            try:
+                return datetime(int(iso_match.group(1)), int(iso_match.group(2)), int(iso_match.group(3)))
+            except: pass
+            
+        us_match = re.search(r'(\d{1,2})[-/](\d{1,2})[-/](\d{4})', date_str)
+        if us_match:
+            try:
+                # Assume MM/DD/YYYY for Philippine permits (common)
+                return datetime(int(us_match.group(3)), int(us_match.group(1)), int(us_match.group(2)))
+            except: pass
+            
+        return None
 
-        """OCR Verification for Business Permits with Owner Matching."""
+    def verify_business_permit(self, permit_path: str, business_name: str, owner_name: str = None, db: Session = None) -> Dict[str, Any]:
+        """OCR Verification for Business Permits with Owner, Format, and Expiry Matching."""
         try:
             # 1. Image Loading & Quality Check
             img = self._prepare_image(permit_path)
@@ -964,27 +1006,33 @@ class VerificationService:
             # 2. Perform OCR via Gemini API (if key available) or fallback to Tesseract
             gemini_prompt = (
                 f"Extract data from this Business Permit or Mayor's Permit. Target Business Name: '{business_name}'. "
-                "Return a JSON object with keys: 'document_type_detected', 'business_name', 'permit_number', 'expiration_date', 'owner_name', 'confidence_score' (0-1)."
+                "Return a JSON object with keys: 'document_type_detected', 'business_name', 'permit_number', 'expiration_date', 'owner_name', 'confidence_score' (0-1). "
+                "The expiration_date should be in YYYY-MM-DD format if possible."
             )
             gemini_data = self._call_gemini_ocr_sync(permit_path, gemini_prompt)
             
             permit_number = ""
-            expiration_date = ""
+            expiration_date_str = ""
             
             if gemini_data and gemini_data.get("business_name"):
                 print(f"[KYC DEBUG] Gemini OCR Succeeded for Business Permit.")
                 ocr_text = f"GEMINI OCR RESULT: Business: {gemini_data.get('business_name')}, Owner: {gemini_data.get('owner_name')}, Type: {gemini_data.get('document_type_detected')}"
                 clean_ocr = ocr_text.lower()
-                permit_number = gemini_data.get("permit_number", "").strip()
-                expiration_date = gemini_data.get("expiration_date", "").strip()
+                permit_number = str(gemini_data.get("permit_number", "")).strip()
+                expiration_date_str = str(gemini_data.get("expiration_date", "")).strip()
             else:
                 ocr_text = self._run_tesseract_multi_psm(img)
                 clean_ocr = " ".join(ocr_text.lower().split())
                 
-                # Fallback regex for Permit Number
-                permit_no_match = re.search(r'(?:PERMIT|LICENSE)\s*(?:NO|NUMBER)?[:.\s]+([A-Z0-9-]+)', ocr_text.upper())
+                # Fallback regex for Permit Number (Standard PH Format: YYYY-NNNNN or similar)
+                permit_no_match = re.search(r'(?:PERMIT|LICENSE|BP|ACCOUNT)\s*(?:NO|NUMBER)?[:.\s]+([A-Z0-9-]{4,20})', ocr_text.upper())
                 if permit_no_match:
                     permit_number = permit_no_match.group(1)
+                
+                # Fallback for Expiration Date
+                expiry_match = re.search(r'(?:EXPIRY|EXPIRES|VALID UNTIL|DATE OF EXPIRATION)[:.\s]+([A-Z0-9,\s/-]{6,30})', ocr_text.upper())
+                if expiry_match:
+                    expiration_date_str = expiry_match.group(1).strip()
                 
             target_name = " ".join(business_name.lower().split())
 
@@ -995,31 +1043,53 @@ class VerificationService:
             permit_checks_failed = []
             
             # 1. Check required permit fields
-            if not permit_number:
+            if not permit_number or len(permit_number) < 4:
                 permit_checks_failed.append("Permit number could not be extracted.")
             
-            # 2. Enforce Permit Number Format
+            # 2. Enforce Permit Number Format (Philippines standard usually involves Year or Account No)
+            # We allow alphanumeric with dashes, but must be substantial
             if permit_number and not re.match(r'^[A-Z0-9-]{4,30}$', permit_number.replace(" ", "").upper()):
                 permit_checks_failed.append(f"Invalid Permit Number format: '{permit_number}'.")
 
-            # 3. Detect Duplicates (Fraud Prevention)
+            # 3. Expiration Date Check (NEW)
+            is_expired = False
+            if expiration_date_str:
+                from datetime import datetime
+                parsed_expiry = self._parse_date(expiration_date_str)
+                if parsed_expiry:
+                    if parsed_expiry < datetime.now():
+                        is_expired = True
+                        permit_checks_failed.append(f"The permit expired on {parsed_expiry.strftime('%Y-%m-%d')}.")
+                else:
+                    # If we have a string but can't parse it, we'll flag it for manual review or be lenient
+                    print(f"[KYC WARNING] Could not parse expiration date: {expiration_date_str}")
+            else:
+                permit_checks_failed.append("Expiration date could not be extracted.")
+
+            # 4. Detect Duplicates (Fraud Prevention)
             if db and permit_number:
-                # Search in CatererProfiles if permit url exists and is different (placeholder for exact mapping)
-                from ..models import IdentityVerification
+                from ..db.models import IdentityVerification
+                from sqlalchemy import String, cast
+                
+                # Search specifically in ocr_data JSONB
                 existing_v = db.query(IdentityVerification).filter(
                     IdentityVerification.verification_status == "approved",
-                    IdentityVerification.ocr_data.cast(String).contains(permit_number)
+                    cast(IdentityVerification.ocr_data, String).contains(permit_number)
                 ).first()
+                
                 if existing_v:
-                    permit_checks_failed.append("This Business Permit has already been registered.")
+                    permit_checks_failed.append("This Business Permit is already registered by another caterer.")
 
-            # 3. Keyword Check (Is it even a permit?)
+            # 5. Keyword Check (Is it even a permit?)
             is_likely_permit = any(kw.lower() in clean_ocr for kw in self.BUSINESS_PERMIT_KEYWORDS)
             if not is_likely_permit and len(clean_ocr.strip()) > 20:
-                is_likely_permit = True # Give benefit if Gemini succeeded
+                # If Gemini was confident about the type, we trust it
+                if gemini_data and "PERMIT" in str(gemini_data.get("document_type_detected", "")).upper():
+                    is_likely_permit = True
+                elif "PERMIT" in clean_ocr.upper() or "MAYOR" in clean_ocr.upper():
+                     is_likely_permit = True
 
-
-            # 4. Fuzzy Matching for Business Name
+            # 6. Fuzzy Matching for Business Name
             name_parts = [p for p in target_name.split() if len(p) > 2]
             matches = 0
             for part in name_parts:
@@ -1035,7 +1105,7 @@ class VerificationService:
             match_ratio = matches / len(name_parts) if name_parts else 0
             name_match = match_ratio >= 0.5 
 
-            # 5. Owner Name Matching (NEW)
+            # 7. Owner Name Matching
             owner_match = True
             owner_found_in_ocr = ""
             if owner_name:
@@ -1059,38 +1129,38 @@ class VerificationService:
                 for label in self.OWNER_NAME_LABELS:
                     label_pos = ocr_text.upper().find(label)
                     if label_pos != -1:
-                        # Take next 50 characters
                         snippet = ocr_text[label_pos + len(label):label_pos + len(label) + 50].strip()
                         owner_found_in_ocr = snippet.split('\n')[0].strip()
                         break
 
-            # 6. Final Decision
-            failure_reason = []
+            # 8. Final Decision
+            failure_reasons = []
             if not is_likely_permit:
-                failure_reason.append("The uploaded document does not look like a valid Business Permit.")
-
+                failure_reasons.append("The uploaded document does not look like a valid Business Permit.")
             if not name_match:
-                failure_reason.append(f"Business mismatch: '{business_name}' not detected on document.")
+                failure_reasons.append(f"Business mismatch: '{business_name}' not detected on document.")
             if not owner_match:
-                failure_reason.append(f"Owner mismatch: '{owner_name}' not detected on document.")
-                
+                failure_reasons.append(f"Owner mismatch: '{owner_name}' not detected on document.")
             if permit_checks_failed:
-                failure_reason.extend(permit_checks_failed)
+                failure_reasons.extend(permit_checks_failed)
 
             status = "matched" if (name_match and owner_match and is_likely_permit and not permit_checks_failed) else "rejected"
-
-
 
             return {
                 "status": status,
                 "ocr_match": name_match and owner_match,
                 "is_likely_permit": is_likely_permit,
-                "failure_reason": "; ".join(failure_reason) if failure_reason else None,
+                "permit_number": permit_number,
+                "expiration_date": expiration_date_str,
+                "failure_reason": " ".join(failure_reasons) if failure_reasons else None,
                 "extracted_text_preview": ocr_text[:300],
                 "ocr_data": {
                     "raw_text": ocr_text,
                     "business_name_match": name_match,
                     "owner_name_match": owner_match,
+                    "permit_number": permit_number,
+                    "expiration_date": expiration_date_str,
+                    "is_expired": is_expired,
                     "match_ratio": match_ratio,
                     "owner_found": owner_found_in_ocr
                 }

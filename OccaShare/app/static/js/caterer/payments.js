@@ -30,6 +30,11 @@ document.addEventListener('DOMContentLoaded', function() {
             row.style.display = '';
         });
 
+        const noResults = document.getElementById('noPaymentResults');
+        if (noResults) {
+            noResults.style.display = filteredRows.length === 0 ? 'flex' : 'none';
+        }
+
         renderPaginationControls(totalPages);
         updatePaginationInfo(startIdx, endIdx);
     }

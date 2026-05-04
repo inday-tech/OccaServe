@@ -93,9 +93,13 @@
                         <div style="font-size: 0.8rem; color: var(--dm-slate-400);">{{ caterer.user.email }}</div>
                     </td>
                     <td>
-                        <span style="color: var(--dm-slate-600); font-weight: 500;"><i class="fas fa-map-marker-alt"
-                                style="margin-right: 6px; color: var(--dm-primary); opacity: 0.7;"></i>{{ caterer.city
-                            }}</span>
+                        <div style="font-weight: 500; color: var(--dm-slate-700); font-size: 0.9rem;">
+                            <i class="fas fa-map-marker-alt" style="margin-right: 6px; color: var(--dm-primary); opacity: 0.7;"></i>
+                            {{ caterer.contact_address if caterer.contact_address else 'No detailed address' }}
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--dm-slate-400); margin-left: 20px;">
+                            {{ caterer.city }}
+                        </div>
                     </td>
                     <td>
                         <span class="badge-clean"
@@ -116,6 +120,7 @@
                                     data-email="{{ caterer.user.email }}" 
                                     data-phone="{{ caterer.user.phone_number }}"
                                     data-city="{{ caterer.city }}"
+                                    data-address="{{ caterer.contact_address or 'Not Specified' }}"
                                     data-joined="{{ caterer.created_at.strftime('%b %d, %Y') if caterer.created_at else 'TBD' }}"
                                     data-status="{{ caterer.verification_status }}"
                                     onclick="openViewCatererModal(this)">
@@ -133,7 +138,11 @@
                                     data-business="{{ caterer.business_name }}"
                                     data-first="{{ caterer.user.first_name }}" data-last="{{ caterer.user.last_name }}"
                                     data-email="{{ caterer.user.email }}" data-phone="{{ caterer.user.phone_number }}"
-                                    data-city="{{ caterer.city }}" onclick="openEditCatererModal(this)">
+                                    data-city="{{ caterer.city }}" 
+                                    data-address="{{ caterer.contact_address or '' }}"
+                                    data-lat="{{ caterer.latitude or '' }}"
+                                    data-lon="{{ caterer.longitude or '' }}"
+                                    onclick="openEditCatererModal(this)">
                                     <i class="fas fa-edit"></i> Edit Details
                                 </button>
 
@@ -224,10 +233,18 @@
                     </div>
 
                     <div class="form-row-pro">
+                        <label>Detailed Address (Purok, Barangay, Street)</label>
+                        <div class="dm-input-group">
+                            <i class="fas fa-location-dot"></i>
+                            <textarea name="contact_address" id="val-address" placeholder="e.g. Purok 4, Brgy. San Juan" required rows="2"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-row-pro">
                         <label>Operational Domain (Laguna Regions)</label>
                         <div class="dm-input-group">
                             <i class="fas fa-map-location-dot"></i>
-                            <select name="city" required>
+                            <select name="city" id="val-city" required>
                                 <option value="" disabled selected>Select Municipality...</option>
                                 <optgroup label="Core Districts">
                                     <option value="Sta. Cruz, Laguna">Sta. Cruz (Capital)</option>
@@ -248,6 +265,9 @@
                             </select>
                         </div>
                     </div>
+
+                    <input type="hidden" name="latitude" id="admin-add-lat">
+                    <input type="hidden" name="longitude" id="admin-add-lon">
 
                 </div>
             </div>
@@ -299,7 +319,17 @@
                             <div class="dm-input-group">
                                 <i class="fas fa-phone-square"></i>
                                 <input type="tel" name="phone" id="editPhone" placeholder="Phone Number" required>
+                            <div style="margin-top: 1.5rem;">
+                                <div id="adminViewMap" style="height: 250px; width: 100%; border-radius: 12px; border: 1.5px solid #fff7ed;"></div>
                             </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row-pro">
+                        <label>Detailed Address (Purok, Barangay, Street)</label>
+                        <div class="dm-input-group">
+                            <i class="fas fa-location-dot"></i>
+                            <textarea name="contact_address" id="editAddress" placeholder="e.g. Purok 1, Brgy. Malabanan" required rows="2"></textarea>
                         </div>
                     </div>
 
@@ -322,6 +352,9 @@
                         </div>
                     </div>
 
+                    <input type="hidden" name="latitude" id="admin-edit-lat">
+                    <input type="hidden" name="longitude" id="admin-edit-lon">
+
                 </div>
             </div>
             <div class="modal-footer-clean">
@@ -335,6 +368,44 @@
 
 {% block extra_js %}
 <script>
+    // --- ADMIN AUTO-GEO FETCH LOGIC ---
+    let adminGeoTimeout;
+    async function adminFetchGeo(addressId, cityId, latId, lonId) {
+        clearTimeout(adminGeoTimeout);
+        adminGeoTimeout = setTimeout(async () => {
+            const addr = document.getElementById(addressId).value.trim();
+            const city = document.getElementById(cityId).value.trim();
+            const full = `${addr} ${city}`.trim();
+            if (full.length < 5) return;
+
+            console.log(\"[ADMIN GEO] Fetching for: \", full);
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(full)}&limit=1`);
+                const data = await res.json();
+                if (data && data.length > 0) {
+                    document.getElementById(latId).value = data[0].lat;
+                    document.getElementById(lonId).value = data[0].lon;
+                    console.log(\"[ADMIN GEO] Linked to coordinates: \", data[0].lat, data[0].lon);
+                }
+            } catch (err) {
+                console.error(\"[ADMIN GEO] Error: \", err);
+            }
+        }, 1500);
+    }
+
+    // Attach to Add Modal
+    setTimeout(() => {
+        const addAddr = document.getElementById('val-address');
+        const addCity = document.getElementById('val-city');
+        if(addAddr) addAddr.oninput = () => adminFetchGeo('val-address', 'val-city', 'admin-add-lat', 'admin-add-lon');
+        if(addCity) addCity.onchange = () => adminFetchGeo('val-address', 'val-city', 'admin-add-lat', 'admin-add-lon');
+
+        const editAddr = document.getElementById('editAddress');
+        const editCity = document.getElementById('editCity');
+        if(editAddr) editAddr.oninput = () => adminFetchGeo('editAddress', 'editCity', 'admin-edit-lat', 'admin-edit-lon');
+        if(editCity) editCity.onchange = () => adminFetchGeo('editAddress', 'editCity', 'admin-edit-lat', 'admin-edit-lon');
+    }, 1000);
+
     // Real-time Hub
     window.addEventListener('system_update', function (e) {
         if (['new_signup', 'kyc_update', 'caterer_update', 'user_archived'].includes(e.detail.type)) {
@@ -390,7 +461,11 @@
                                     <button class="dropdown-item" 
                                             data-id="${c.id}" data-business="${c.business_name}"
                                             data-first="${c.first_name}" data-last="${c.last_name}"
-                                            data-email="${c.email}" data-phone="${c.contact_phone}" data-city="${c.city}" 
+                                            data-email="${c.email}" data-phone="${c.contact_phone}" 
+                                            data-city="${c.city}" 
+                                            data-address="${c.contact_address || ''}"
+                                            data-lat="${c.latitude || ''}"
+                                            data-lon="${c.longitude || ''}"
                                             onclick="openEditCatererModal(this)">
                                         <i class="fas fa-edit"></i> Edit Details
                                     </button>
@@ -497,12 +572,13 @@
             </div>
 
             <div style="margin-bottom: 2rem; padding: 0 1rem;">
-                <div style="font-size: 0.65rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Authorized Representative & Address</div>
+                <div style="font-size: 0.65rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Authorized Representative & Operational Address</div>
                 <div style="display: flex; align-items: flex-start; gap: 8px; font-weight: 700; color: var(--dm-secondary); line-height: 1.4;">
                     <i class="fas fa-map-location-dot" style="color: #f97316; font-size: 0.9rem; margin-top: 3px;"></i>
                     <div>
                         <div>${btn.dataset.owner}</div>
-                        <div style="font-size: 0.85rem; font-weight: 500; color: #64748b;">${btn.dataset.city}</div>
+                        <div style="font-size: 0.85rem; font-weight: 600; color: var(--dm-secondary);">${btn.dataset.address}</div>
+                        <div style="font-size: 0.75rem; font-weight: 500; color: #64748b;">${btn.dataset.city}</div>
                     </div>
                 </div>
             </div>
@@ -521,6 +597,25 @@
         `;
         document.getElementById('viewCatererModal').classList.add('active');
         document.body.style.overflow = 'hidden';
+
+        // Initialize Map in Modal
+        setTimeout(() => {
+            const lat = parseFloat(btn.dataset.lat) || 14.2811;
+            const lng = parseFloat(btn.dataset.lon) || 121.4150;
+            const mapPos = { lat, lng };
+            const map = new google.maps.Map(document.getElementById('adminViewMap'), {
+                zoom: 15,
+                center: mapPos,
+                mapId: "DEMO_MAP_ID",
+                disableDefaultUI: true,
+                zoomControl: true
+            });
+            new google.maps.Marker({
+                position: mapPos,
+                map: map,
+                title: btn.dataset.business
+            });
+        }, 300);
     }
 
     function openEditCatererModal(btn) {
@@ -530,8 +625,35 @@
         document.getElementById('editEmail').value = btn.dataset.email;
         document.getElementById('editPhone').value = btn.dataset.phone;
         document.getElementById('editCity').value = btn.dataset.city;
+        document.getElementById('editAddress').value = btn.dataset.address;
+        document.getElementById('admin-edit-lat').value = btn.dataset.lat;
+        document.getElementById('admin-edit-lon').value = btn.dataset.lon;
         document.getElementById('editCatererModal').classList.add('active');
         document.body.style.overflow = 'hidden';
+    }
+
+    const editForm = document.getElementById('editCatererForm');
+    if (editForm) {
+        editForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const catererId = document.getElementById('editCatererId').value;
+            const formData = new FormData(editForm);
+            
+            try {
+                const res = await fetch(`/admin/api/caterers/${catererId}/edit`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'Update failed');
+                }
+            } catch (err) {
+                alert('Connection Error: Unable to update partner.');
+            }
+        };
     }
 
     // --- Smart Real-time Validation Engine (High Fidelity) ---

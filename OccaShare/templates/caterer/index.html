@@ -14,7 +14,7 @@
     /* Dashboard Layout Cleanup */
     .dashboard-main-layout {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 380px;
+        grid-template-columns: minmax(0, 1.8fr) 1fr;
         gap: 24px;
         align-items: start;
         width: 100%;
@@ -38,9 +38,6 @@
         .dashboard-main-layout {
             grid-template-columns: 1fr;
         }
-        .dashboard-sidebar-area {
-            width: 100%;
-        }
     }
 
     /* Live Badge */
@@ -48,21 +45,19 @@
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        background: rgba(16, 185, 129, 0.1);
-        color: #10b981;
-        padding: 8px 16px;
+        background: rgba(var(--primary-color-rgb), 0.05);
+        color: var(--primary-color);
+        padding: 6px 12px;
         border-radius: 50px;
-        font-size: 0.75rem;
-        font-weight: 800;
-        letter-spacing: 0.05em;
-        margin-bottom: 16px;
-        border: 1px solid rgba(16, 185, 129, 0.2);
+        font-size: 0.7rem;
+        font-weight: 700;
+        border: 1px solid rgba(var(--primary-color-rgb), 0.1);
     }
 
     .pulse-dot {
-        width: 10px;
-        height: 10px;
-        background: #10b981;
+        width: 8px;
+        height: 8px;
+        background: var(--primary-color);
         border-radius: 50%;
         position: relative;
     }
@@ -78,8 +73,15 @@
     }
 
     @keyframes livePulse {
-        0% { transform: scale(1); opacity: 1; }
-        100% { transform: scale(2.5); opacity: 0; }
+        0% {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        100% {
+            transform: scale(2.5);
+            opacity: 0;
+        }
     }
 
     /* Pie Chart & Metrics Alignment */
@@ -138,7 +140,10 @@
         border-radius: 1rem;
         transition: transform 0.2s;
     }
-    .pie-legend .roi-metric-item:hover { transform: translateX(5px); }
+
+    .pie-legend .roi-metric-item:hover {
+        transform: translateX(5px);
+    }
 
     /* Stat Cards */
     .stats-grid-dashboard {
@@ -168,31 +173,42 @@
     }
 
     @media (max-width: 1200px) {
-        .dashboard-main-layout { grid-template-columns: 1fr; }
-        .stats-grid-dashboard { grid-template-columns: repeat(2, 1fr); }
+        .dashboard-main-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .stats-grid-dashboard {
+            grid-template-columns: repeat(2, 1fr);
+        }
     }
+
     @media (max-width: 768px) {
-        .stats-grid-dashboard { grid-template-columns: 1fr; }
-        .chart-flex-container { gap: 1.5rem; }
+        .stats-grid-dashboard {
+            grid-template-columns: 1fr;
+        }
+
+        .chart-flex-container {
+            gap: 1.5rem;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="page-header" id="page-header">
-    <div class="header-left">
+    <div class="header-welcome-section">
         <h1>Welcome back, {{ user.first_name }}!</h1>
-        <p style="margin-bottom: 4px;">Your business overview as of {{ now().strftime('%B %d, %Y') if now else 'today' }}</p>
-        <div id="last-updated-tag" style="font-size: 0.75rem; color: #94a3b8; font-weight: 600;">
-            <i class="fas fa-sync-alt fa-spin" style="margin-right: 5px; font-size: 0.65rem;"></i> Real-time Sync Active
-        </div>
+        <p class="header-subtitle">Your business overview as of <strong>{{ now().strftime('%B %d, %Y') if now else
+                'today' }}</strong></p>
     </div>
 
-    <div class="timeframe-selector" id="dashboard-timeframe">
-        <button class="timeframe-btn" data-timeframe="day">Daily</button>
-        <button class="timeframe-btn" data-timeframe="week">Weekly</button>
-        <button class="timeframe-btn active" data-timeframe="month">Monthly</button>
-        <button class="timeframe-btn" data-timeframe="year">Yearly</button>
+    <div class="header-action-section">
+        <div class="timeframe-selector" id="dashboard-timeframe">
+            <button class="timeframe-btn" data-timeframe="day">Daily</button>
+            <button class="timeframe-btn" data-timeframe="week">Weekly</button>
+            <button class="timeframe-btn active" data-timeframe="month">Monthly</button>
+            <button class="timeframe-btn" data-timeframe="year">Yearly</button>
+        </div>
     </div>
 </div>
 
@@ -207,7 +223,8 @@
 
     <div class="stat-card-premium c-card-premium stat-card-white animate-up stat-roi-card {{ 'card-loss-warning' if net_profit and net_profit < 0 else '' }}"
         style="border-left: 4px solid {{ '#ef4444' if net_profit and net_profit < 0 else '#10b981' }} !important;">
-        <div class="stat-icon-bg" style="color: {{ '#ef4444' if net_profit and net_profit < 0 else '#10b981' }};"><i class="fas fa-chart-line"></i></div>
+        <div class="stat-icon-bg" style="color: {{ '#ef4444' if net_profit and net_profit < 0 else '#10b981' }};"><i
+                class="fas fa-chart-line"></i></div>
         <div class="stat-label-dashboard">
             Business ROI
             <span class="roi-tooltip">
@@ -215,7 +232,9 @@
                 <span class="tooltip-text">Calculated as: ((Revenue - Expenses) / Expenses) × 100</span>
             </span>
         </div>
-        <div class="stat-value-dashboard {{ 'text-danger-pulse' if net_profit and net_profit < 0 else '' }}" id="stat-roi" style="color: {{ '#ef4444' if net_profit and net_profit < 0 else '#10b981' }};">{{ roi_percentage|default(0) }}%</div>
+        <div class="stat-value-dashboard {{ 'text-danger-pulse' if net_profit and net_profit < 0 else '' }}"
+            id="stat-roi" style="color: {{ '#ef4444' if net_profit and net_profit < 0 else '#10b981' }};">{{
+            roi_percentage|default(0) }}%</div>
         <div class="stat-hint-dashboard">
             <span id="stat-margin-text">{{ ((net_profit / total_revenue * 100)|round if total_revenue and total_revenue
                 > 0 else 0)|int }}% Net Margin</span>
@@ -225,7 +244,9 @@
     <div class="stat-card-premium c-card-premium stat-card-white animate-up">
         <div class="stat-icon-bg" style="color: #059669;"><i class="fas fa-hand-holding-usd"></i></div>
         <div class="stat-label-dashboard">Net Profit</div>
-        <div class="stat-value-dashboard" id="stat-profit" style="color: {{ '#ef4444' if net_profit and net_profit < 0 else '#059669' }};">₱{{ "{:,.2f}".format(net_profit|default(0.0)) }}</div>
+        <div class="stat-value-dashboard" id="stat-profit"
+            style="color: {{ '#ef4444' if net_profit and net_profit < 0 else '#059669' }};">₱{{
+            "{:,.2f}".format(net_profit|default(0.0)) }}</div>
         <div class="stat-hint-dashboard">Earnings after costs</div>
     </div>
 
@@ -247,15 +268,13 @@
                     <h3><i class="fas fa-chart-pie"></i> Profit Efficiency</h3>
                     <p>Profit vs. Expenses distribution</p>
                 </div>
-                <div id="roi-status-badge" class="roi-badge-premium" 
-                     style="{% if net_profit and net_profit < 0 %}background:#ef4444; color:white;{% elif roi_percentage and roi_percentage < 15 %}background:rgba(245, 158, 11, 0.1); color:#f59e0b;{% else %}background:rgba(16, 185, 129, 0.1); color:#10b981;{% endif %}">
-                    {% if net_profit and net_profit < 0 %}
-                    <i class="fas fa-exclamation-triangle"></i> LOSS
-                    {% elif roi_percentage and roi_percentage < 15 %}
-                    <i class="fas fa-info-circle"></i> LOW MARGIN
-                    {% else %}
-                    <i class="fas fa-check-circle"></i> PROFITABLE
-                    {% endif %}
+                <div id="roi-status-badge" class="roi-badge-premium"
+                    style="{% if net_profit and net_profit < 0 %}background:#ef4444; color:white;{% elif roi_percentage and roi_percentage < 15 %}background:rgba(245, 158, 11, 0.1); color:#f59e0b;{% else %}background:rgba(16, 185, 129, 0.1); color:#10b981;{% endif %}">
+                    {% if net_profit and net_profit < 0 %} <i class="fas fa-exclamation-triangle"></i> LOSS
+                        {% elif roi_percentage and roi_percentage < 15 %} <i class="fas fa-info-circle"></i> LOW MARGIN
+                            {% else %}
+                            <i class="fas fa-check-circle"></i> PROFITABLE
+                            {% endif %}
                 </div>
             </div>
 
@@ -268,17 +287,26 @@
                     </div>
                 </div>
                 <div class="pie-legend">
-                    <div class="roi-metric-item" style="padding: 0.75rem 0; background: transparent; border-radius: 0; border: none; border-bottom: 1px solid #f1f5f9;">
+                    <div class="roi-metric-item"
+                        style="padding: 0.75rem 0; background: transparent; border-radius: 0; border: none; border-bottom: 1px solid #f1f5f9;">
                         <div class="roi-metric-label" style="font-size: 0.6rem;">Gross Revenue</div>
-                        <div class="roi-metric-value" id="roi-breakdown-revenue" style="color: var(--secondary-color); font-size: 1rem;">₱{{ "{:,.2f}".format(total_revenue|default(0.0)) }}</div>
+                        <div class="roi-metric-value" id="roi-breakdown-revenue"
+                            style="color: var(--secondary-color); font-size: 1rem;">₱{{
+                            "{:,.2f}".format(total_revenue|default(0.0)) }}</div>
                     </div>
-                    <div class="roi-metric-item" style="padding: 0.75rem 0; background: transparent; border-radius: 0; border: none; border-bottom: 1px solid #f1f5f9;">
+                    <div class="roi-metric-item"
+                        style="padding: 0.75rem 0; background: transparent; border-radius: 0; border: none; border-bottom: 1px solid #f1f5f9;">
                         <div class="roi-metric-label" style="font-size: 0.6rem;">Net Profit</div>
-                        <div class="roi-metric-value" id="roi-breakdown-profit" style="color: #10b981; font-size: 1rem;">₱{{ "{:,.2f}".format(net_profit|default(0.0)) }}</div>
+                        <div class="roi-metric-value" id="roi-breakdown-profit"
+                            style="color: #10b981; font-size: 1rem;">₱{{ "{:,.2f}".format(net_profit|default(0.0)) }}
+                        </div>
                     </div>
-                    <div class="roi-metric-item" style="padding: 0.75rem 0; background: transparent; border-radius: 0; border: none;">
+                    <div class="roi-metric-item"
+                        style="padding: 0.75rem 0; background: transparent; border-radius: 0; border: none;">
                         <div class="roi-metric-label" style="font-size: 0.6rem;">Expenses</div>
-                        <div class="roi-metric-value" id="roi-breakdown-expenses" style="color: #ef4444; font-size: 1rem;">₱{{ "{:,.2f}".format(actual_expenses|default(0.0)) }}</div>
+                        <div class="roi-metric-value" id="roi-breakdown-expenses"
+                            style="color: #ef4444; font-size: 1rem;">₱{{ "{:,.2f}".format(actual_expenses|default(0.0))
+                            }}</div>
                     </div>
                 </div>
             </div>
@@ -286,7 +314,8 @@
 
         <!-- Bookings Volume Chart -->
         <div class="roi-breakdown-card c-card-premium animate-up">
-            <h3 style="margin:0 0 1rem 0; font-weight: 800; color: var(--secondary-color); font-size: 1rem;"><i class="fas fa-calendar-check" style="margin-right: 0.5rem;"></i> Bookings Volume</h3>
+            <h3 style="margin:0 0 1rem 0; font-weight: 800; color: var(--secondary-color); font-size: 1rem;"><i
+                    class="fas fa-calendar-check" style="margin-right: 0.5rem;"></i> Bookings Volume</h3>
             <div class="chart-container" style="height: 250px;">
                 <canvas id="bookingsChart"></canvas>
             </div>
@@ -297,75 +326,87 @@
         </div>
     </div>
 
-    <!-- Right Column: Operations & Efficiency (Sidebar) -->
     <div class="dashboard-sidebar-area">
         <!-- Upcoming Events -->
-        <div class="sidebar-card-dashboard upcoming-events-card c-card-premium animate-up" style="padding: 1.5rem; border-radius: 1.25rem; margin-bottom: 24px;">
-            <h3 class="sidebar-card-title" style="padding: 0 0 12px 0; font-size: 1rem;">Upcoming Events</h3>
+        <div class="sidebar-card-dashboard c-card-premium animate-up">
+            <h3 class="sidebar-card-title"><i class="fas fa-calendar-alt"></i> Upcoming Events</h3>
             {% if upcoming_events %}
             <div class="event-list-dashboard" id="upcoming-events-container">
                 {% for event in upcoming_events %}
-                <div class="upcoming-item-row" style="padding: 0.75rem; background: #f8fafc; border: 1px solid #f1f5f9; border-radius: 0.75rem; margin-bottom: 0.5rem;">
-                    <div class="event-date-box" style="width: 40px; height: 40px; background: white; border: 1px solid #e2e8f0;">
-                        <span class="month" style="font-size: 0.6rem;">{{ event.event_date.strftime('%b') if event.event_date else '???' }}</span>
-                        <span class="day" style="font-size: 0.9rem;">{{ event.event_date.strftime('%d') if event.event_date else '??' }}</span>
+                <div class="upcoming-item-row">
+                    <div class="event-date-box">
+                        <span class="month">{{ event.event_date.strftime('%b') if event.event_date else '???' }}</span>
+                        <span class="day">{{ event.event_date.strftime('%d') if event.event_date else '??' }}</span>
                     </div>
                     <div class="event-details-box">
-                        <div class="event-head-box" style="margin-bottom: 2px;">
-                            <span class="event-title-text" style="font-size: 0.85rem;">{{ event.event_name or 'Event' }}</span>
+                        <div class="event-head-box">
+                            <span class="event-title-text">{{ event.event_name or 'Event' }}</span>
                         </div>
-                        <div class="event-meta-text" style="font-size: 0.7rem;">
-                            <span><i class="far fa-clock"></i> {{ event.event_time.strftime('%I:%M %p') if event.event_time else 'TBD' }}</span>
+                        <div class="event-meta-text">
+                            <span><i class="far fa-clock"></i> {{ event.event_time.strftime('%I:%M %p') if
+                                event.event_time else 'TBD' }}</span>
                         </div>
                     </div>
                 </div>
                 {% endfor %}
             </div>
             {% else %}
-            <p style="color: #94a3b8; font-size: 0.8rem; padding: 0.5rem 0;">No upcoming events.</p>
+            <div class="empty-state-small">
+                <i class="fas fa-calendar-day"></i>
+                <p>No upcoming events.</p>
+            </div>
             {% endif %}
         </div>
 
         <!-- Package Efficiency -->
-        <div class="sidebar-card-dashboard c-card-premium animate-up" style="padding: 1.5rem; border-radius: 1.25rem; margin-bottom: 24px;">
-            <h3 style="margin:0 0 1.25rem 0; font-weight: 800; color: var(--secondary-color); font-size: 1rem;"><i class="fas fa-fire" style="margin-right: 0.5rem; color: #f59e0b;"></i> Package Efficiency</h3>
+        <div class="sidebar-card-dashboard c-card-premium animate-up">
+            <h3 class="sidebar-card-title"><i class="fas fa-fire" style="color: #f59e0b;"></i> Package Efficiency</h3>
             <div id="profitable-packages-list">
                 {% if popular_packages %}
                 {% for p in popular_packages %}
-                <div class="profitability-row" style="padding: 0.75rem 0; border-bottom: 1px solid #f1f5f9;">
-                    <div>
-                        <div style="font-weight: 700; color: var(--secondary-color); font-size: 0.85rem;">{{ p.name }}</div>
-                        <div style="font-size: 0.7rem; color: #64748b;">{{ p.orders }} orders</div>
+                <div class="profitability-row">
+                    <div class="profit-info">
+                        <div class="package-name">{{ p.name }}</div>
+                        <div class="package-meta">{{ p.orders }} orders</div>
                     </div>
                     <div class="profitability-details">
-                        <div style="font-weight: 800; color: var(--secondary-color); font-size: 0.9rem;">{{ p.roi }}%</div>
-                        <div class="profit-indicator {{ 'indicator-positive' if p.roi > 15 else 'indicator-negative' }}" style="padding: 2px 8px; font-size: 0.6rem;">
+                        <div class="profit-value">{{ p.roi }}%</div>
+                        <div
+                            class="profit-indicator {{ 'indicator-positive' if p.roi > 15 else 'indicator-negative' }}">
                             {{ 'High' if p.roi > 15 else 'Low' }}
                         </div>
                     </div>
                 </div>
                 {% endfor %}
                 {% else %}
-                <p style="text-align:center; padding: 1rem; color: #94a3b8; font-size: 0.8rem;">No data.</p>
+                <div class="empty-state-small">
+                    <i class="fas fa-chart-line"></i>
+                    <p>No data yet.</p>
+                </div>
                 {% endif %}
             </div>
         </div>
 
         <!-- Live Messages -->
-        <div class="c-card-premium animate-up" style="border-radius: 1.25rem; overflow: hidden; height: 350px;">
+        <div class="sidebar-card-dashboard c-card-premium animate-up"
+            style="padding: 0; overflow: hidden; height: 380px;">
             {% include "shared/dashboard_messages_widget.html" %}
         </div>
     </div>
 </div>
 
 <!-- Recent Transactions / Orders Focus Section (Bottom Full Width) -->
-<div class="recent-requests-card c-card-premium animate-up" style="margin-top: 30px; border-radius: 1.5rem; padding: 2rem; overflow: hidden;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+<div class="recent-requests-card c-card-premium animate-up"
+    style="margin-top: 30px; border-radius: 1.5rem; padding: 2rem; overflow: hidden;">
+    <div
+        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
         <div>
-            <h3 style="margin:0; font-weight: 800; color: var(--secondary-color); font-size: 1.25rem;"><i class="fas fa-history" style="margin-right: 0.75rem; color: #94a3b8;"></i> Recent Orders</h3>
+            <h3 style="margin:0; font-weight: 800; color: var(--secondary-color); font-size: 1.25rem;"><i
+                    class="fas fa-history" style="margin-right: 0.75rem; color: #94a3b8;"></i> Recent Orders</h3>
             <p style="margin: 4px 0 0; color: #64748b; font-size: 0.85rem;">Latest transactions and event bookings</p>
         </div>
-        <a href="{{ url_for('manage_bookings') }}" class="view-all-btn" style="background: #f8fafc; padding: 10px 20px; border-radius: 12px; font-size: 0.85rem; font-weight: 700; color: var(--primary-color); border: 1px solid #f1f5f9; text-decoration: none; transition: all 0.2s;">
+        <a href="{{ url_for('manage_bookings') }}" class="view-all-btn"
+            style="background: #f8fafc; padding: 10px 20px; border-radius: 12px; font-size: 0.85rem; font-weight: 700; color: var(--primary-color); border: 1px solid #f1f5f9; text-decoration: none; transition: all 0.2s;">
             View All Bookings <i class="fas fa-chevron-right" style="font-size: 0.75rem; margin-left: 5px;"></i>
         </a>
     </div>
@@ -373,7 +414,8 @@
     <div style="overflow-x: auto; width: 100%;">
         <div class="recent-orders-list" id="recent-orders-container" style="min-width: 800px;">
             {% for booking in recent_orders %}
-            <div class="recent-order-row" style="background: white; border: 1px solid #f1f5f9; margin-bottom: 12px; padding: 1rem 1.5rem; border-radius: 1.25rem; display: grid; grid-template-columns: 60px 1fr 200px 150px; align-items: center;">
+            <div class="recent-order-row"
+                style="background: white; border: 1px solid #f1f5f9; margin-bottom: 12px; padding: 1rem 1.5rem; border-radius: 1.25rem; display: grid; grid-template-columns: 60px 1fr 200px 150px; align-items: center;">
                 <div class="ro-avatar" style="background: #f1f5f9; color: #475569; font-size: 0.9rem; margin-right: 0;">
                     {% if booking.user %}
                     {{ booking.user.first_name[0] | upper }}{{ booking.user.last_name[0] | upper }}
@@ -381,16 +423,23 @@
                 </div>
                 <div class="ro-details">
                     <div class="ro-name" style="font-size: 1rem; font-weight: 700; color: var(--secondary-color);">
-                        {% if booking.user %}{{ booking.user.first_name }} {{ booking.user.last_name }}{% else %}Walk-in Customer{% endif %}
+                        {% if booking.user %}{{ booking.user.first_name }} {{ booking.user.last_name }}{% else %}Walk-in
+                        Customer{% endif %}
                     </div>
-                    <div class="ro-event" style="color: #64748b; font-weight: 500; font-size: 0.85rem;">{{ event_type_map[booking.event_type] if booking.event_type in event_type_map else booking.event_type }} • {{ booking.package.name if booking.package else 'Custom Menu' }}</div>
+                    <div class="ro-event" style="color: #64748b; font-weight: 500; font-size: 0.85rem;">{{
+                        event_type_map[booking.event_type] if booking.event_type in event_type_map else
+                        booking.event_type }} • {{ booking.package.name if booking.package else 'Custom Menu' }}</div>
                 </div>
                 <div class="ro-price-date" style="text-align: right;">
-                    <div class="ro-amount" style="font-size: 1.1rem; font-weight: 800; color: var(--secondary-color);">₱{{ "{:,.2f}".format(booking.total_amount) if booking.total_amount else '0.00' }}</div>
-                    <div class="ro-date" style="font-weight: 600; font-size: 0.85rem; color: #94a3b8;">{{ booking.event_date.strftime('%b %d, %Y') if booking.event_date else '' }}</div>
+                    <div class="ro-amount" style="font-size: 1.1rem; font-weight: 800; color: var(--secondary-color);">
+                        ₱{{ "{:,.2f}".format(booking.total_amount) if booking.total_amount else '0.00' }}</div>
+                    <div class="ro-date" style="font-weight: 600; font-size: 0.85rem; color: #94a3b8;">{{
+                        booking.event_date.strftime('%b %d, %Y') if booking.event_date else '' }}</div>
                 </div>
                 <div class="ro-status" style="text-align: right;">
-                    <span class="ro-badge ro-status-{{ booking.status }}" style="font-weight: 800; letter-spacing: 0.5px; font-size: 0.75rem;">{{ booking.status|replace('_', ' ')|capitalize }}</span>
+                    <span class="ro-badge ro-status-{{ booking.status }}"
+                        style="font-weight: 800; letter-spacing: 0.5px; font-size: 0.75rem;">{{
+                        booking.status|replace('_', ' ')|capitalize }}</span>
                 </div>
             </div>
             {% endfor %}
@@ -398,7 +447,8 @@
     </div>
     {% else %}
     <div style="text-align:center; padding: 4rem 0;">
-        <div style="width: 64px; height: 64px; background: #f8fafc; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+        <div
+            style="width: 64px; height: 64px; background: #f8fafc; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
             <i class="fas fa-clipboard-list" style="font-size: 1.5rem; color: #cbd5e1;"></i>
         </div>
         <p style="color: #64748b; font-weight: 600;">No orders recorded yet.</p>
@@ -420,51 +470,52 @@
 
         // 1. Financial Pie Chart
         const ctxPie = document.getElementById('financialPieChart').getContext('2d');
-        const netProfit = {{ net_profit|default(0) }};
-        const expenses = {{ actual_expenses|default(0) }};
-        
-        financialPieChart = new Chart(ctxPie, {
-            type: 'doughnut',
-            data: {
-                labels: ['Net Profit', 'Expenses'],
-                datasets: [{
-                    data: [Math.max(0, netProfit), Math.max(0.1, expenses)],
-                    backgroundColor: [highlightColor, '#ef4444'],
-                    borderWidth: 0,
-                    hoverOffset: 10
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '75%',
-                plugins: {
-                    legend: { display: false }
-                }
-            }
-        });
+        const netProfit = {{ net_profit|default (0)
+    }};
+    const expenses = {{ actual_expenses|default (0) }};
 
-        // 2. Bookings vs Revenue Chart
-        const ctxBook = document.getElementById('bookingsChart').getContext('2d');
-        bookingsChart = new Chart(ctxBook, {
-            type: 'bar',
-            data: {
-                labels: data.bookings_chart_data.map(d => d.label),
-                datasets: [
-                    { label: 'Completed', data: data.bookings_chart_data.map(d => d.completed), backgroundColor: highlightColor, borderRadius: 6, barThickness: 12 },
-                    { label: 'Pending', data: data.bookings_chart_data.map(d => d.pending), backgroundColor: '#94a3b8', borderRadius: 6, barThickness: 12 }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false } },
-                    x: { grid: { display: false } }
-                }
+    financialPieChart = new Chart(ctxPie, {
+        type: 'doughnut',
+        data: {
+            labels: ['Net Profit', 'Expenses'],
+            datasets: [{
+                data: [Math.max(0, netProfit), Math.max(0.1, expenses)],
+                backgroundColor: [highlightColor, '#ef4444'],
+                borderWidth: 0,
+                hoverOffset: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '75%',
+            plugins: {
+                legend: { display: false }
             }
-        });
+        }
+    });
+
+    // 2. Bookings vs Revenue Chart
+    const ctxBook = document.getElementById('bookingsChart').getContext('2d');
+    bookingsChart = new Chart(ctxBook, {
+        type: 'bar',
+        data: {
+            labels: data.bookings_chart_data.map(d => d.label),
+            datasets: [
+                { label: 'Completed', data: data.bookings_chart_data.map(d => d.completed), backgroundColor: highlightColor, borderRadius: 6, barThickness: 12 },
+                { label: 'Pending', data: data.bookings_chart_data.map(d => d.pending), backgroundColor: '#94a3b8', borderRadius: 6, barThickness: 12 }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
     }
 
     function refreshDashboardData(timeframe) {
@@ -530,7 +581,7 @@
                     const expensesVal = Math.max(0.1, data.actual_expenses || 0);
                     financialPieChart.data.datasets[0].data = [profitVal, expensesVal];
                     financialPieChart.update();
-                    
+
                     const roiEl = document.getElementById('pie-roi-value');
                     if (roiEl) roiEl.innerText = (data.roi_percentage || 0) + '%';
                 }
@@ -553,7 +604,7 @@
                 const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                 const tag = document.getElementById('last-updated-tag');
                 if (tag) tag.innerHTML = `<i class="fas fa-check-circle" style="color: #10b981; margin-right: 5px;"></i> Accurate as of ${timeStr}`;
-                
+
                 if (analyticsArea) analyticsArea.classList.remove('loading-shimmer');
                 if (statsGrid) statsGrid.classList.remove('loading-shimmer');
             })
@@ -561,7 +612,7 @@
                 console.error("Filter Refresh Error:", err);
                 if (analyticsArea) analyticsArea.classList.remove('loading-shimmer');
                 if (statsGrid) statsGrid.classList.remove('loading-shimmer');
-                
+
                 const tag = document.getElementById('last-updated-tag');
                 if (tag) tag.innerHTML = `<i class="fas fa-exclamation-circle" style="color: #ef4444; margin-right: 5px;"></i> Sync Error - Retrying...`;
             });
@@ -662,9 +713,10 @@
     document.addEventListener('DOMContentLoaded', function () {
         // Initial Data from Template
         const initialData = {
-            roi_trend_data: {{ roi_trend_data | tojson if roi_trend_data is defined else '[]' }},
-            chart_data: {{ chart_data | tojson if chart_data is defined else '[]' }},
-            bookings_chart_data: {{ bookings_chart_data | tojson if bookings_chart_data is defined else '[]' }}
+            roi_trend_data: {{ roi_trend_data | tojson if roi_trend_data is defined else '[]'
+    }},
+        chart_data: {{ chart_data | tojson if chart_data is defined else '[]' }},
+    bookings_chart_data: { { bookings_chart_data | tojson if bookings_chart_data is defined else '[]' } }
         };
 
     initCharts(initialData);

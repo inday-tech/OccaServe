@@ -522,7 +522,7 @@
 }
 
 .pay-empty-state i {
-    font-size: 2.5rem;
+    font-size: var(--text-2xl);
     margin-bottom: var(--space-sm);
 }
 
@@ -680,7 +680,7 @@
 }
 
 .pay-details-key-label {
-    font-size: 10px;
+    font-size: var(--text-xs);
     text-transform: uppercase;
     color: var(--color-neutral-400);
     font-weight: 700;

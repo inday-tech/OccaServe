@@ -33,7 +33,15 @@
     .card-premium {
         @apply bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-300;
     }
+    #map {
+        height: 300px;
+        width: 100%;
+        border-radius: 0.75rem;
+        z-index: 10;
+    }
 </style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 {% endblock %}
 
 {% block content %}
@@ -49,7 +57,7 @@
         </div>
 
         <div class="flex items-center justify-center gap-6 text-sm text-slate-500 font-semibold mb-4">
-            <span class="flex items-center gap-1.5"><i class="fas fa-map-marker-alt text-[#f97316]"></i> {{ caterer.city or 'Location' }}</span>
+            <span class="flex items-center gap-1.5"><i class="fas fa-map-marker-alt text-[#f97316]"></i> {{ caterer.contact_address if caterer.contact_address else (caterer.city or 'Location') }}</span>
             <span class="flex items-center gap-1.5"><i class="fas fa-star text-[#f97316]"></i> {{ "%.1f"|format(caterer.rating) if caterer.rating else 'New Partner' }}</span>
             <span class="flex items-center gap-1.5"><i class="fas fa-eye text-[#f97316]"></i> {{ caterer.profile_views or 0 }} Views</span>
         </div>
@@ -176,6 +184,58 @@
                     </div>
                     {% endif %}
                 </div>
+            </section>
+            
+            <!-- Accurate Location Map -->
+            <section class="card-premium p-6">
+                <h2 class="text-base font-bold text-slate-800 uppercase tracking-wider mb-4">Accurate Business Location</h2>
+                <p class="text-slate-500 text-xs leading-relaxed mb-4">View the exact location of this caterer for better event coordination.</p>
+                <div id="map"></div>
+                <div class="mt-3 flex items-center gap-2 text-xs font-semibold text-slate-500">
+                    <i class="fas fa-map-marker-alt text-[#f97316]"></i>
+                    <span>{{ caterer.contact_address or caterer.city or 'Location available upon inquiry' }}</span>
+                </div>
+            </section>
+
+            <!-- Reviews Section -->
+            <section class="card-premium p-6">
+                <h2 class="text-base font-bold text-slate-800 uppercase tracking-wider mb-6">Customer Reviews</h2>
+                {% if caterer.reviews %}
+                    <div class="space-y-6">
+                        {% for review in caterer.reviews %}
+                        <div class="border-b border-slate-100 last:border-0 pb-6 last:pb-0">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-[#f97316] font-bold text-xs">
+                                        {{ review.user.first_name[0] if review.user.first_name else 'U' }}
+                                    </div>
+                                    <div>
+                                        <div class="text-xs font-bold text-slate-800">{{ review.user.first_name }} {{ review.user.last_name }}</div>
+                                        <div class="text-[10px] text-slate-400">{{ review.created_at.strftime('%B %d, %Y') }}</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-1 text-[#f97316] text-xs">
+                                    {% for i in range(review.rating) %}
+                                    <i class="fas fa-star"></i>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <p class="text-xs text-slate-600 leading-relaxed italic">"{{ review.comment }}"</p>
+                            {% if review.caterer_reply %}
+                            <div class="mt-3 ml-6 p-3 bg-slate-50 rounded-lg border-l-4 border-orange-200">
+                                <div class="text-[10px] font-bold text-slate-800 mb-1">Caterer's Response:</div>
+                                <p class="text-[10px] text-slate-500 italic">{{ review.caterer_reply }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-8">
+                        <i class="far fa-star fa-3x text-slate-100 mb-3"></i>
+                        <p class="text-xs text-slate-400 font-medium">No reviews yet. Be the first to book and share your experience!</p>
+                    </div>
+                {% endif %}
             </section>
 
         </div>
@@ -331,5 +391,25 @@
         document.getElementById('public-img-modal').classList.add('hidden');
         document.getElementById('public-img-modal').classList.remove('flex');
     }
+
+    // Initialize Real-time Map
+    document.addEventListener('DOMContentLoaded', function() {
+        const lat = {{ caterer.latitude if caterer.latitude else 14.1989 }};
+        const lon = {{ caterer.longitude if caterer.longitude else 121.4286 }};
+        const businessName = "{{ caterer.business_name }}";
+        
+        const map = L.map('map').setView([lat, lon], 13);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        L.marker([lat, lon]).addTo(map)
+            .bindPopup(`<b>${businessName}</b><br>Accurate Location`)
+            .openPopup();
+            
+        // Force resize fix for Leaflet
+        setTimeout(() => map.invalidateSize(), 500);
+    });
 </script>
 {% endblock %}

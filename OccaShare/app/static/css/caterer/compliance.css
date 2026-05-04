@@ -232,7 +232,7 @@
 .kyc-multi-badge {
     background: rgba(var(--primary-color-rgb), 0.1);
     color: var(--primary-color);
-    font-size: 0.65rem;
+    font-size: var(--text-xs);
     padding: 2px 8px;
     border-radius: 4px;
     font-weight: 800;

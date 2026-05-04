@@ -1171,15 +1171,17 @@
                         </div>
 
                         <div class="form-group full-width">
-                            <label for="street_address">Street Address / Landmark <small>(Optional)</small></label>
+                            <label for="street_address">Purok / Street / Landmark <small>(Optional)</small></label>
                             <div class="input-wrapper" id="streetWrapper">
                                 <input type="text" id="street_address" class="minimal-input"
-                                    placeholder="e.g. Unit 2A, Residencia Bldg">
+                                    placeholder="e.g. Purok 4, Unit 2A, Residencia Bldg">
                             </div>
                         </div>
 
                         <!-- Hidden input to construct backend 'address' field -->
                         <input type="hidden" name="address" id="address_hidden">
+                        <input type="hidden" name="latitude" id="reg_latitude">
+                        <input type="hidden" name="longitude" id="reg_longitude">
                         <div class="form-group">
                             <label for="business_type">Business Type</label>
                             <div class="input-wrapper" id="businessTypeWrapper">
@@ -1440,21 +1442,58 @@
         }
     }
 
-    function updateHiddenAddress() {
+    function updateAddressHidden() {
         const provSelect = document.getElementById('province_select');
         const citySelect = document.getElementById('city_select');
         const brgySelect = document.getElementById('barangay_select');
         const streetInput = document.getElementById('street_address');
         const hiddenAddr = document.getElementById('address_hidden');
-        if (!hiddenAddr) return;
+        if (!hiddenAddr) return "";
 
         let addrPieces = [];
         if (streetInput && streetInput.value.trim()) addrPieces.push(streetInput.value.trim());
         if (brgySelect && brgySelect.value) addrPieces.push(brgySelect.value);
         if (citySelect && citySelect.value) addrPieces.push(citySelect.value);
         if (provSelect && provSelect.value) addrPieces.push(provSelect.value);
-        hiddenAddr.value = addrPieces.join(', ');
+        const full = addrPieces.join(', ');
+        hiddenAddr.value = full;
+        return full;
     }
+
+    // --- AUTOMATIC GEOLOCATION FETCH ---
+    let geoTimeout;
+    async function autoFetchGeo() {
+        const fullAddress = updateAddressHidden();
+        if (fullAddress.length < 10) return;
+
+        clearTimeout(geoTimeout);
+        geoTimeout = setTimeout(async () => {
+            console.log("[GEO] Auto-fetching for: ", fullAddress);
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fullAddress)}&limit=1`);
+                const data = await res.json();
+                if (data && data.length > 0) {
+                    document.getElementById('reg_latitude').value = data[0].lat;
+                    document.getElementById('reg_longitude').value = data[0].lon;
+                    console.log("[GEO] Success: ", data[0].lat, data[0].lon);
+                }
+            } catch (err) {
+                console.error("[GEO] Error: ", err);
+            }
+        }, 2000);
+    }
+
+    // Add listeners (Check if they exist first)
+    setTimeout(() => {
+        const provSelect = document.getElementById('province_select');
+        const citySelect = document.getElementById('city_select');
+        const brgySelect = document.getElementById('barangay_select');
+        const streetInput = document.getElementById('street_address');
+        if (provSelect) provSelect.addEventListener('change', autoFetchGeo);
+        if (citySelect) citySelect.addEventListener('change', autoFetchGeo);
+        if (brgySelect) brgySelect.addEventListener('change', autoFetchGeo);
+        if (streetInput) streetInput.addEventListener('input', autoFetchGeo);
+    }, 500);
 
 
     // Utility for debouncing

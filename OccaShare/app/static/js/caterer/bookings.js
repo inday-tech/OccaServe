@@ -263,6 +263,11 @@ function showPage(page) {
     document.querySelectorAll('.bookings-list-table tbody tr.booking-row-item').forEach(function(r) { r.style.display = 'none'; });
     filteredRows.slice(startIdx, endIdx).forEach(function(r) { r.style.display = ''; });
 
+    const searchEmpty = document.getElementById('searchEmptyState');
+    if (searchEmpty) {
+        searchEmpty.style.display = filteredRows.length === 0 ? '' : 'none';
+    }
+
     renderPaginationControls(totalPages);
 
     var s = document.getElementById('startRange');

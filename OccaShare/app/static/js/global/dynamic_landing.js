@@ -115,12 +115,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!catererGrid) return;
 
         const q = unifiedInput ? unifiedInput.value.trim() : '';
+        
+        // Get user location from sessionStorage if available
+        const userLat = sessionStorage.getItem('user_lat');
+        const userLon = sessionStorage.getItem('user_lon');
 
         catererGrid.style.transition = 'opacity 0.2s ease';
         catererGrid.style.opacity = '0.5';
 
         try {
             const params = new URLSearchParams({ q });
+            if (userLat && userLon) {
+                params.append('lat', userLat);
+                params.append('lon', userLon);
+            }
+
             const response = await fetch(`/caterers/api/search?${params.toString()}`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
@@ -135,6 +144,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 catererGrid.style.opacity = '1';
                 // Refresh scroll animations for new results
                 catererGrid.querySelectorAll('.animate-on-scroll').forEach(el => window.observer.observe(el));
+                
+                // If location was used, show a subtle hint
+                if (userLat && userLon && !q) {
+                    const header = document.querySelector('#caterers .section-header p');
+                    if (header && !header.innerText.includes('near you')) {
+                        header.innerHTML = '<i class="fas fa-location-dot" style="color:#f97316;"></i> Showing elite caterers <span style="color:#f97316; font-weight:700;">near you</span> first.';
+                    }
+                }
             }, 200);
 
         } catch (err) {
@@ -193,4 +210,5 @@ document.addEventListener('DOMContentLoaded', () => {
             submitBtn.disabled = false;
         }
     };
+
 });

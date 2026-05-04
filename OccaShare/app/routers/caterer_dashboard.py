@@ -1764,6 +1764,9 @@ async def update_profile(
     border_radius: Optional[int] = Form(None),
     sidebar_mode: Optional[str] = Form("full"),
     show_platform_logo: bool = Form(False),
+    latitude: Optional[float] = Form(None),
+    longitude: Optional[float] = Form(None),
+    contact_address: Optional[str] = Form(None),
     gallery: Optional[List[UploadFile]] = File(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
@@ -1779,6 +1782,8 @@ async def update_profile(
     profile.business_name = business_name
     profile.description = description
     profile.city = city
+    if contact_address:
+        profile.contact_address = contact_address
     profile.contact_phone = contact_phone
     profile.gcash_number = gcash_number
     profile.maya_number = maya_number
@@ -1800,6 +1805,11 @@ async def update_profile(
     profile.border_radius = border_radius
     profile.sidebar_mode = sidebar_mode
     profile.show_platform_logo = show_platform_logo
+    
+    if latitude is not None:
+        profile.latitude = latitude
+    if longitude is not None:
+        profile.longitude = longitude
 
     # Handle Single File Uploads
     for field_name, file_obj in [("logo", logo), ("cover_image", cover_image), ("gcash_qr", gcash_qr), ("maya_qr", maya_qr), ("bank_qr", bank_qr)]:

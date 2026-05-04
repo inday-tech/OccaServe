@@ -588,6 +588,9 @@ async def edit_caterer(
     email: str = Form(...),
     phone: str = Form(...),
     city: str = Form(...),
+    contact_address: str = Form(...),
+    latitude: Optional[float] = Form(None),
+    longitude: Optional[float] = Form(None),
     db: Session = Depends(database.get_db),
     admin: models.User = Depends(admin_only)
 ):
@@ -607,7 +610,10 @@ async def edit_caterer(
         
     caterer.business_name = business_name
     caterer.city = city
+    caterer.contact_address = contact_address
     caterer.contact_phone = phone
+    caterer.latitude = latitude
+    caterer.longitude = longitude
     
     if caterer.user:
         caterer.user.first_name = first_name
@@ -685,6 +691,9 @@ async def add_caterer(
     full_name: str = Form(...),
     phone: str = Form(...),
     city: str = Form(...),
+    contact_address: str = Form(...),
+    latitude: Optional[float] = Form(None),
+    longitude: Optional[float] = Form(None),
     db: Session = Depends(database.get_db),
     admin: models.User = Depends(admin_only)
 ):
@@ -784,7 +793,10 @@ async def add_caterer(
             user_id=new_user.id,
             business_name=business_name,
             contact_phone=phone,
+            contact_address=contact_address,
             city=city,
+            latitude=latitude,
+            longitude=longitude,
             verification_status="Verified",
             is_verified=True,
             slug=business_name.lower().replace(" ", "-") + f"-{new_user.id}"

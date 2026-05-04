@@ -503,6 +503,8 @@ async def customer_marketplace(
     max_price: Optional[float] = None,
     rating: Optional[float] = None,
     city: Optional[str] = None,
+    lat: Optional[float] = None,
+    lon: Optional[float] = None,
     sort: Optional[str] = "newest",
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
@@ -581,7 +583,18 @@ async def customer_marketplace(
         query = query.filter(stats_subquery.c.min_price <= max_price)
 
     # Sorting
-    if sort == "rating":
+    if lat is not None and lon is not None:
+        from sqlalchemy import text
+        # Haversine formula in SQL
+        distance_query = text("""
+            (6371 * acos(
+                cos(radians(:lat)) * cos(radians(latitude)) * 
+                cos(radians(longitude) - radians(:lon)) + 
+                sin(radians(:lat)) * sin(radians(latitude))
+            ))
+        """).bindparams(lat=lat, lon=lon)
+        query = query.order_by(distance_query.asc())
+    elif sort == "rating":
         query = query.order_by(models.CatererProfile.rating.desc())
     elif sort == "price_low":
         query = query.order_by(stats_subquery.c.min_price.asc())

@@ -142,7 +142,7 @@
 }
 
 .roi-metric-label {
-    font-size: 0.7rem;
+    font-size: var(--text-xs);
     text-transform: uppercase;
     font-weight: 800;
     color: var(--color-neutral-400);
@@ -151,7 +151,7 @@
 }
 
 .roi-metric-value {
-    font-size: 1.3rem;
+    font-size: var(--text-xl);
     font-weight: 700;
 }
 
@@ -176,7 +176,7 @@
 }
 
 .roi-trend-header p {
-    font-size: 0.8rem;
+    font-size: var(--text-xs);
     color: var(--color-neutral-400);
     margin-top: var(--space-xs);
 }
@@ -219,7 +219,7 @@
 .roi-help-icon {
     color: var(--color-neutral-400);
     cursor: help;
-    font-size: 0.9rem;
+    font-size: var(--text-sm);
     margin-left: var(--space-sm);
 }
 
@@ -295,7 +295,7 @@
 .profit-indicator {
     padding: 3px 10px;
     border-radius: var(--radius-pill);
-    font-size: 0.65rem;
+    font-size: var(--text-xs);
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.03em;
@@ -365,14 +365,14 @@
 }
 
 .event-date-box .month {
-    font-size: 0.65rem;
+    font-size: var(--text-xs);
     font-weight: 800;
     text-transform: uppercase;
     color: var(--color-neutral-500);
 }
 
 .event-date-box .day {
-    font-size: 1.15rem;
+    font-size: var(--text-lg);
     font-weight: 800;
     line-height: 1;
     color: var(--primary-color);
@@ -401,7 +401,7 @@
 }
 
 .event-status {
-    font-size: 0.65rem;
+    font-size: var(--text-xs);
     font-weight: 700;
     padding: 3px 8px;
     background: var(--color-neutral-100);
@@ -537,7 +537,7 @@
 .ro-badge {
     padding: var(--space-sm) var(--space-md);
     border-radius: var(--radius-pill);
-    font-size: 0.7rem;
+    font-size: var(--text-xs);
     font-weight: 700;
     white-space: nowrap;
     text-transform: capitalize;
@@ -585,7 +585,7 @@
 .status-badge-dashboard {
     padding: 3px 10px;
     border-radius: var(--radius-pill);
-    font-size: 0.65rem;
+    font-size: var(--text-xs);
     font-weight: 700;
     text-transform: capitalize;
 }
@@ -852,7 +852,7 @@
     }
 
     .ro-badge {
-        font-size: 0.65rem;
+        font-size: var(--text-xs);
     }
 
     .profitability-row {
@@ -875,11 +875,11 @@
     }
 
     .event-date-box .day {
-        font-size: 1rem;
+        font-size: var(--text-base);
     }
 
     .event-date-box .month {
-        font-size: 0.6rem;
+        font-size: var(--text-xs);
     }
 
     .event-title-text {

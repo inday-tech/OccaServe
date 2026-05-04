@@ -4,6 +4,7 @@ from ..db import database, models
 from ..core import security as auth
 from ..services.verification import verification_service
 from ..core.encryption import encrypt_data, decrypt_data
+from ..core.utils import validate_file_type_and_size
 from fastapi.responses import Response
 import os
 import uuid
@@ -65,13 +66,10 @@ async def upload_id(
     current_user.kyc_attempts += 1
 
     # Security: File Validation
-    if id_document.content_type not in ALLOWED_MIME_TYPES:
-        raise HTTPException(status_code=400, detail="❌ Unsupported file format. Please upload JPG or PNG.")
-    
-    # Check file size (FastAPI doesn't do this by default, we read a bit)
     content = await id_document.read()
-    if len(content) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail="❌ File size exceeds limit (max 5MB).")
+    file_error = validate_file_type_and_size(content, id_document.filename)
+    if file_error:
+        raise HTTPException(status_code=400, detail=f"❌ {file_error}")
     
     # Encrypt data
     encrypted_content = encrypt_data(content)
@@ -175,12 +173,10 @@ async def verify_full(
     # Save 3 selfie frames (Encrypted)
     selfie_urls = []
     for i, file in enumerate(selfies[:3]):
-        if file.content_type not in ALLOWED_MIME_TYPES:
-             continue # Skip invalid ones or raise error
-             
         content = await file.read()
-        if len(content) > MAX_FILE_SIZE:
-            continue
+        file_error = validate_file_type_and_size(content, file.filename)
+        if file_error:
+             continue # Skip invalid ones
 
         encrypted_content = encrypt_data(content)
         filename = f"user_{current_user.id}_selfie_{i+1}_{uuid.uuid4()}.enc"

@@ -186,6 +186,45 @@
         }
     }
 
+    #marketplaceMap {
+        height: 600px;
+        width: 100%;
+        border-radius: 1rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        border: 1px solid #e2e8f0;
+        margin-bottom: 2rem;
+    }
+    .view-toggle-btn {
+        background: #fff;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #64748b;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .view-toggle-btn.active {
+        background: #f97316;
+        color: #fff;
+        border-color: #f97316;
+    }
+    .map-popup-mkt {
+        width: 180px;
+    }
+    .map-popup-mkt img {
+        width: 100%;
+        height: 100px;
+        object-fit: cover;
+        border-radius: 8px;
+    }
+</style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     /* ── Phone: ≤ 480px refinements ── */
     @media (max-width: 480px) {
         .main-content {
@@ -235,6 +274,14 @@
         <p>Hand-picked professionals for your unforgettable events.</p>
     </div>
     <div class="header-actions" style="display: flex; gap: 1rem; align-items: center;">
+        <div class="flex items-center gap-2 mr-4">
+            <button id="gridViewBtn" onclick="toggleView('grid')" class="view-toggle-btn active">
+                <i class="fas fa-th-large"></i> Grid
+            </button>
+            <button id="mapViewBtn" onclick="toggleView('map')" class="view-toggle-btn">
+                <i class="fas fa-map-marked-alt"></i> Map
+            </button>
+        </div>
         <div class="search-box-pro"
             style="display: flex; align-items: center; gap: 0.75rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0 1.25rem; height: 48px; box-sizing: border-box; width: 340px; transition: all 0.2s ease;">
             <i class="fas fa-search" style="color: #94a3b8; font-size: 1.1rem; flex-shrink: 0;"></i>
@@ -269,6 +316,11 @@
                 <div id="catererResults" class="mkt-grid-premium">
                     {% include "customer/marketplace_partial.html" %}
                 </div>
+
+                <!-- Map View Container -->
+                <div id="mapViewContainer" style="display: none;">
+                    <div id="marketplaceMap"></div>
+                </div>
             </main>
 
         </div>
@@ -301,6 +353,14 @@
         if (city) params.append('city', city);
         if (type) params.append('event_type', type);
 
+        // Add location parameters if available
+        const lat = sessionStorage.getItem('user_lat');
+        const lon = sessionStorage.getItem('user_lon');
+        if (lat && lon) {
+            params.append('lat', lat);
+            params.append('lon', lon);
+        }
+
         const resultsContainer = document.getElementById('catererResults');
         const skeletonContainer = document.getElementById('skeletonContainer');
 
@@ -319,6 +379,10 @@
             if (response.ok) {
                 const html = await response.text();
                 resultsContainer.innerHTML = html;
+                // Update map data after filter if map is visible
+                if (currentView === 'map') {
+                    updateMapMarkers();
+                }
             }
         } catch (e) {
             if (e.name === 'AbortError') return;
@@ -330,5 +394,123 @@
             }
         }
     }
+       VIEW TOGGLING & MAP LOGIC
+       ============================================ */
+    let currentView = 'grid';
+    let marketplaceMap;
+    let mapMarkers = [];
+
+    function toggleView(view) {
+        currentView = view;
+        const gridBtn = document.getElementById('gridViewBtn');
+        const mapBtn = document.getElementById('mapViewBtn');
+        const results = document.getElementById('catererResults');
+        const mapContainer = document.getElementById('mapViewContainer');
+
+        if (view === 'grid') {
+            gridBtn.classList.add('active');
+            mapBtn.classList.remove('active');
+            results.style.display = 'grid';
+            mapContainer.style.display = 'none';
+        } else {
+            mapBtn.classList.add('active');
+            gridBtn.classList.remove('active');
+            results.style.display = 'none';
+            mapContainer.style.display = 'block';
+            
+            if (!marketplaceMap) {
+                initMarketplaceMap();
+            } else {
+                google.maps.event.trigger(marketplaceMap, "resize");
+            }
+        }
+    }
+
+    function initMarketplaceMap() {
+        const lagunaCenter = { lat: 14.2811, lng: 121.4150 };
+        marketplaceMap = new google.maps.Map(document.getElementById('marketplaceMap'), {
+            center: lagunaCenter,
+            zoom: 11,
+            mapId: "DEMO_MAP_ID",
+            disableDefaultUI: false,
+            zoomControl: true
+        });
+        
+        updateMapMarkers();
+    }
+
+    function updateMapMarkers() {
+        if (!marketplaceMap) return;
+
+        // Clear existing markers
+        mapMarkers.forEach(m => m.setMap(null));
+        mapMarkers = [];
+
+        const catererCards = document.querySelectorAll('.caterer-elite-card');
+        const bounds = new google.maps.LatLngBounds();
+        let hasCoords = false;
+
+        catererCards.forEach(card => {
+            const lat = parseFloat(card.dataset.lat);
+            const lng = parseFloat(card.dataset.lon);
+            const businessName = card.querySelector('h3').innerText;
+            const cardLink = card.querySelector('.elite-view-btn').getAttribute('href');
+            const imgUrl = card.querySelector('img').src;
+
+            if (!isNaN(lat) && !isNaN(lng)) {
+                hasCoords = true;
+                const position = { lat: lat, lng: lng };
+                
+                const marker = new google.maps.Marker({
+                    position: position,
+                    map: marketplaceMap,
+                    title: businessName
+                });
+
+                const infoWindow = new google.maps.InfoWindow({
+                    content: `
+                        <div style="padding: 10px; width: 180px;">
+                            <img src="${imgUrl}" style="width: 100%; height: 80px; object-fit: cover; border-radius: 8px; margin-bottom: 8px;">
+                            <h4 style="margin: 0 0 5px 0; font-size: 14px; color: #1e293b;">${businessName}</h4>
+                            <a href="${cardLink}" style="display: block; background: #FF7B54; color: white; text-align: center; padding: 6px; border-radius: 6px; font-size: 11px; text-decoration: none; font-weight: 700;">View Profile</a>
+                        </div>
+                    `
+                });
+
+                marker.addListener('click', () => {
+                    infoWindow.open(marketplaceMap, marker);
+                });
+
+                mapMarkers.push(marker);
+                bounds.extend(position);
+            }
+        });
+
+        if (hasCoords) {
+            marketplaceMap.fitBounds(bounds);
+        }
+    }
+
+    // Proximity Detection
+    function detectUserLocation() {
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const userPos = { lat: position.coords.latitude, lng: position.coords.longitude };
+                    sessionStorage.setItem('user_lat', userPos.lat);
+                    sessionStorage.setItem('user_lon', userPos.lng);
+                    
+                    if (marketplaceMap) {
+                        marketplaceMap.setCenter(userPos);
+                        marketplaceMap.setZoom(12);
+                    }
+                },
+                (error) => console.log("Location access denied."),
+                { enableHighAccuracy: true, timeout: 5000 }
+            );
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', detectUserLocation);
 </script>
 {% endblock %}

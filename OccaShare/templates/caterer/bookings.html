@@ -76,11 +76,8 @@
     <div class="b-table-header">
         <h3>All Bookings</h3>
         <div class="header-controls">
-            <div class="search-box-pro">
-                <i class="fas fa-search"></i>
-                <input type="text" id="bookingSearchInput" placeholder="Search by customer, event, or ID..."
-                    onkeyup="filterBookings()">
-            </div>
+            <!-- Local search removed, using global header search -->
+            <input type="hidden" id="bookingSearchInput">
             <div class="filter-wrapper">
                 <select class="filter-select-pro" id="statusFilter" onchange="filterBookings()">
                     <option value="">All Status</option>
@@ -374,6 +371,14 @@
                     </td>
                 </tr>
                 {% endfor %}
+                <!-- No Search Results Empty State -->
+                <tr id="searchEmptyState" style="display: none;">
+                    <td colspan="7" style="text-align: center; padding: 4rem 1rem;">
+                        <div style="color: #cbd5e1; font-size: 3rem; margin-bottom: 1rem;"><i class="fas fa-search"></i></div>
+                        <h2 style="color: #1e293b; font-size: 1.25rem; font-weight: 700;">No bookings found</h2>
+                        <p style="color: #64748b; font-size: 0.9rem;">Try adjusting your search or filter to find what you're looking for.</p>
+                    </td>
+                </tr>
             </tbody>
         </table>
     </div>
@@ -800,6 +805,15 @@
                 window.closeExpenseTracker = () => window.bk_closeModal('expenseTrackerModal');
                 window.closeContractModal = () => window.bk_closeModal('contractModal');
             }
+
+            // Global Search Listener
+            window.addEventListener('globalSearch', function(e) {
+                const hiddenInput = document.getElementById('bookingSearchInput');
+                if (hiddenInput && typeof window.filterBookings === 'function') {
+                    hiddenInput.value = e.detail.value;
+                    window.filterBookings();
+                }
+            });
         });
     })();
 </script>

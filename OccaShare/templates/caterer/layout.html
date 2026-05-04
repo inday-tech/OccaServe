@@ -17,11 +17,13 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Design System Base -->
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/layout.css') }}?v=4.7">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/layout.css') }}?v=5.2">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/shared/dashboard_premium.css') }}?v=1.0">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/alert_modal.css') }}?v=1.5">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v=1.1">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}">
+    <!-- Google Maps API -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDP5J8gIy1VMGZpjAwfW57jDb6omNlL-c0&libraries=places"></script>
 
     {% if wconfig and wconfig.favicon_url %}
     <link rel="icon" href="{{ wconfig.favicon_url }}">
@@ -32,29 +34,518 @@
     <style>
         :root {
             {% if user and user.caterer_profile %}
-            --primary-color: {{ user.caterer_profile.primary_color or '#f97316' }} !important;
-            --primary-color-rgb: {{ (user.caterer_profile.primary_color or '#f97316') | hex_to_rgb }} !important;
+            --primary-color: {{ user.caterer_profile.primary_color or '#800000' }} !important;
+            --primary-color-rgb: {{ (user.caterer_profile.primary_color or '#800000') | hex_to_rgb }} !important;
             
-            --secondary-color: {{ user.caterer_profile.secondary_color or '#334155' }} !important;
-            --secondary-color-rgb: {{ (user.caterer_profile.secondary_color or '#334155') | hex_to_rgb }} !important;
+            --secondary-color: {{ user.caterer_profile.secondary_color or '#1e293b' }} !important;
+            --secondary-color-rgb: {{ (user.caterer_profile.secondary_color or '#1e293b') | hex_to_rgb }} !important;
             
-            --accent-color: {{ user.caterer_profile.accent_color or '#f97316' }} !important;
-            --accent-color-rgb: {{ (user.caterer_profile.accent_color or '#f97316') | hex_to_rgb }} !important;
+            --accent-color: {{ user.caterer_profile.accent_color or '#800000' }} !important;
+            --accent-color-rgb: {{ (user.caterer_profile.accent_color or '#800000') | hex_to_rgb }} !important;
             
-            --highlight-color: {{ user.caterer_profile.highlight_color or '#48BB78' }} !important;
-            --highlight-color-rgb: {{ (user.caterer_profile.highlight_color or '#48BB78') | hex_to_rgb }} !important;
-            
-            --sidebar-width: 280px !important;
+            --highlight-color: {{ user.caterer_profile.highlight_color or '#10b981' }} !important;
+            --highlight-color-rgb: {{ (user.caterer_profile.highlight_color or '#10b981') | hex_to_rgb }} !important;
             {% else %}
-            --primary-color: #f97316 !important;
-            --primary-color-rgb: 249, 115, 22 !important;
-            --secondary-color: #334155 !important;
-            --secondary-color-rgb: 51, 65, 85 !important;
-            --accent-color: #f97316 !important;
-            --accent-color-rgb: 249, 115, 22 !important;
-            --highlight-color: #48BB78 !important;
-            --highlight-color-rgb: 72, 187, 120 !important;
+            --primary-color: #800000 !important;
+            --primary-color-rgb: 128, 0, 0 !important;
+            --secondary-color: #1e293b !important;
+            --secondary-color-rgb: 30, 41, 59 !important;
+            --accent-color: #800000 !important;
+            --accent-color-rgb: 128, 0, 0 !important;
+            --highlight-color: #10b981 !important;
+            --highlight-color-rgb: 16, 185, 129 !important;
             {% endif %}
+
+            --header-height: 80px;
+            --header-bg: rgba(255, 255, 255, 0.85);
+            --sidebar-width: 260px; /* Optimal width for comfortable reading */
+            --transition-speed: 0.3s;
+        }
+
+        /* Prevent Layout Shift from Scrollbars */
+        html {
+            overflow-y: scroll;
+        }
+
+        /* ── Core Layout (Foolproof Fixed Approach) ── */
+        .dashboard-wrapper {
+            display: block;
+            min-height: 100vh;
+            width: 100%;
+            background-color: #f8fafc;
+        }
+
+        .content-wrapper {
+            display: flex;
+            flex-direction: column;
+            margin-left: var(--sidebar-width) !important;
+            min-height: 100vh;
+            min-width: 0;
+            background: #f8fafc;
+            transition: margin-left var(--transition-speed) ease;
+        }
+
+        .sidebar-is-mini .content-wrapper {
+            margin-left: 80px !important;
+        }
+
+        @media (max-width: 1024px) {
+            .content-wrapper, .sidebar-is-mini .content-wrapper {
+                margin-left: 0 !important;
+            }
+        }
+
+        .main-content {
+            padding: 1.5rem 1.5rem !important; /* Clean, professional alignment */
+            flex: 1;
+            min-width: 0;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+        }
+
+        /* Prevent children from centering away from sidebar */
+        .main-content > * {
+            margin-left: 0 !important;
+        }
+
+        .caterer-business-name {
+            font-size: var(--text-sm) !important;
+            font-weight: 700 !important;
+            color: var(--secondary-color) !important;
+            white-space: normal !important; /* Allow wrapping */
+            overflow: visible !important;
+            text-overflow: clip !important;
+            display: block !important;
+            line-height: 1.2 !important;
+            max-width: 100%;
+        }
+
+        /* ── Header System ── */
+        .dashboard-header {
+            height: var(--header-height);
+            background: var(--header-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1.25rem !important; /* Consistent horizontal padding */
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03);
+            width: 100%;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+
+        .header-branding {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: fit-content;
+        }
+
+        .occ-brand-mini {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .occ-logo-img {
+            height: 36px !important;
+            width: 36px !important;
+            object-fit: contain !important;
+            border-radius: 6px;
+        }
+
+        .occ-brand-name {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #0f172a;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .header-toggle-btn {
+            background: #f1f5f9;
+            border: none;
+            color: #64748b;
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            display: flex; /* Always flex now that it's in sidebar */
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .header-toggle-btn:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .header-search-container {
+            position: relative;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .header-search-container i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        .header-search-container input {
+            width: 100%;
+            height: 44px;
+            background: #f1f5f9;
+            border: 1px solid transparent;
+            border-radius: 12px;
+            padding: 0 15px 0 40px;
+            font-size: 0.9rem;
+            color: #1e293b;
+            transition: all 0.2s;
+        }
+
+        .header-search-container input:focus {
+            background: #fff;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(var(--primary-color-rgb, 249, 115, 22), 0.1);
+            outline: none;
+        }
+
+        /* ── Header Right Actions ── */
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .header-action-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .header-action-btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+            transform: translateY(-2px);
+        }
+
+        .action-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: #ef4444;
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 800;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid white;
+        }
+
+        /* ── Profile Section ── */
+        .header-profile-section {
+            position: relative;
+        }
+
+        .profile-trigger {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 12px 6px 6px;
+            background: #f8fafc;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid #e2e8f0;
+        }
+
+        .profile-trigger:hover {
+            border-color: var(--primary-color);
+            background: #fff;
+        }
+
+        .profile-avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: var(--color-neutral-100);
+            flex-shrink: 0;
+        }
+
+        .profile-avatar img {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+        }
+
+        .profile-meta {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.2;
+        }
+
+        .profile-name {
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: #0f172a;
+        }
+
+        .profile-role {
+            font-size: 0.65rem;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .profile-dropdown {
+            position: absolute;
+            top: calc(100% + 12px);
+            right: 0;
+            width: 240px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+            padding: 8px;
+            display: none;
+            z-index: 1100;
+        }
+
+        .profile-dropdown.active {
+            display: block;
+            animation: slideDown 0.2s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .dropdown-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            margin-bottom: 4px;
+        }
+
+        .dropdown-user-name {
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: #0f172a;
+        }
+
+        .dropdown-user-email {
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+
+        .dropdown-links {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .dropdown-links a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            color: #475569;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border-radius: 10px;
+            transition: all 0.2s;
+        }
+
+        .dropdown-links a:hover {
+            background: #f1f5f9;
+            color: var(--primary-color);
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: #f1f5f9;
+            margin: 4px 8px;
+        }
+
+        /* ── Sidebar Redesign ── */
+        .sidebar {
+            width: var(--sidebar-width) !important;
+            height: 100vh;
+            background: #ffffff;
+            position: fixed !important; /* Hard-pin to left */
+            top: 0;
+            bottom: 0;
+            left: 0;
+            z-index: 1050;
+            padding: 0;
+            transition: width var(--transition-speed) ease;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #f1f5f9;
+        }
+
+        .sidebar-brand-area {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 0.75rem; /* Tighten brand area padding */
+            height: var(--header-height);
+            border-bottom: 1px solid #f1f5f9;
+            background: #fff;
+        }
+
+        .occ-brand-name {
+            font-size: 1.1rem !important; /* Smaller, more elegant size */
+            font-weight: 800 !important;
+            color: var(--secondary-color) !important;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-left: 0.25rem;
+        }
+
+        .header-toggle-btn {
+            background: transparent;
+            border: none;
+            color: #1e293b !important; /* Force visibility */
+            cursor: pointer;
+            font-size: 1.25rem;
+            padding: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .header-toggle-btn:hover {
+            color: var(--primary-color);
+        }
+
+        .sidebar-header {
+            margin-top: 1rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .sidebar-menu a.active {
+            background: var(--primary-color) !important;
+            color: white !important;
+            box-shadow: 0 4px 12px rgba(var(--primary-color-rgb, 249, 115, 22), 0.3) !important;
+        }
+
+        .caterer-mini-profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .caterer-avatar-box {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            overflow: hidden;
+            flex-shrink: 0;
+            background: #f1f5f9;
+            border: 2px solid #fff;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+
+        .caterer-avatar-img {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+        }
+
+        .caterer-business-name {
+            font-weight: 800;
+            font-size: 0.95rem;
+            color: #0f172a;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 160px;
+        }
+
+        .caterer-dashboard-label {
+            font-size: 0.65rem;
+            color: #94a3b8;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        /* Sidebar Section Labels */
+        .sidebar-section-label {
+            font-size: 0.65rem;
+            font-weight: 800;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 1.25rem 1rem 0.5rem 1rem;
+            margin-bottom: 0;
+            opacity: 0.8;
+        }
+
+        .sidebar-is-mini .sidebar-section-label {
+            display: none !important;
+        }
+
+        /* Sidebar Footer */
+        .sidebar-footer {
+            padding: 1.25rem 1rem;
+            text-align: center;
+            border-top: 1px solid #f1f5f9;
+            margin-top: auto; /* Pushes to bottom */
+            background: #ffffff;
+        }
+        
+        .sidebar-footer p {
+            margin: 0;
+            font-size: 0.7rem;
+            color: #94a3b8;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        .sidebar-is-mini .sidebar-footer {
+            display: none;
         }
     </style>
 
@@ -81,22 +572,16 @@
     <div class="dashboard-wrapper">
         <!-- Sidebar Navigation -->
         <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <div class="sidebar-branding-top">
-                    <a href="/" class="occ-brand-mini">
-                        {% if wconfig and wconfig.logo_url %}
-                        <img src="{{ wconfig.logo_url }}" alt="Logo" class="occ-logo-img">
-                        {% endif %}
-                        <span class="occ-brand-name">OccaServe</span>
-                    </a>
-                </div>
-                <div class="sidebar-toggle-row-abs">
-                    <button id="sidebarToggle" class="desktop-toggle-btn-mini" onclick="toggleSidebar()"
-                        aria-label="Toggle Sidebar">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                </div>
+            <div class="sidebar-brand-area">
+                <a href="/" class="occ-brand-mini">
+                    <span class="occ-brand-name">OccaServe</span>
+                </a>
+                <button class="header-toggle-btn" id="sidebarToggle" onclick="toggleSidebar()" aria-label="Toggle Sidebar">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
 
+            <div class="sidebar-header">
                 <div class="sidebar-user-section">
                     <a href="/caterer/profile" class="caterer-mini-profile">
                         <div class="caterer-avatar-box">
@@ -117,21 +602,14 @@
             </div>
 
             <ul class="sidebar-menu">
+                <li class="sidebar-section-label">Core</li>
                 <li>
                     <a href="/caterer/dashboard" class="{{ 'active' if active_page == 'dashboard' }}">
                         <i class="fas fa-th-large"></i> <span>Overview</span>
                     </a>
                 </li>
-                <li style="position: relative;">
-                    <a href="/caterer/notifications" class="{{ 'active' if active_page == 'notifications' }}">
-                        <i class="fas fa-bell"></i> <span>Notifications</span>
-                        {% set unread_count = user.notifications|selectattr('is_read', 'equalto', false)|list|count if
-                        user and user.notifications else 0 %}
-                        <span id="nav-notif-badge"
-                            style="background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.65rem; display: {{ 'flex' if unread_count > 0 else 'none' }}; align-items: center; justify-content: center; margin-left: auto;">{{
-                            unread_count }}</span>
-                    </a>
-                </li>
+                
+                <li class="sidebar-section-label">Operations</li>
                 <li>
                     <a href="/caterer/bookings" class="{{ 'active' if active_page == 'bookings' }}">
                         <i class="fas fa-calendar-check"></i> <span>Manage Bookings</span>
@@ -157,6 +635,8 @@
                         <i class="fas fa-users"></i> <span>My Customers</span>
                     </a>
                 </li>
+
+                <li class="sidebar-section-label">Finance & Trust</li>
                 <li>
                     <a href="/caterer/payments" class="{{ 'active' if active_page == 'payments' }}">
                         <i class="fas fa-money-bill-wave"></i> <span>Payments & Earnings</span>
@@ -172,35 +652,92 @@
                         <i class="fas fa-star"></i> <span>Reviews & Ratings</span>
                     </a>
                 </li>
-                <li style="position: relative;">
-                    <a href="/caterer/messages" class="{{ 'active' if active_page == 'messages' }}">
-                        <i class="fas fa-comment-dots"></i> <span>Messages</span>
-                    </a>
-                </li>
 
-                <li>
-                    <a href="/caterer/profile" class="{{ 'active' if active_page == 'profile' }}">
-                        <i class="fas fa-cog"></i> <span>Business Settings</span>
-                    </a>
-                </li>
+                <li class="sidebar-section-label">Others</li>
                 <li>
                     <a href="/caterer/archives" class="{{ 'active' if active_page == 'archives' }}">
                         <i class="fas fa-archive"></i> <span>Archives</span>
                     </a>
                 </li>
-                <li class="menu-divider"></li>
-                <li>
-                    <a href="/auth/logout" class="logout-link" id="sidebarLogoutBtn">
-                        <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
-                    </a>
-                </li>
             </ul>
+
+            <div class="sidebar-footer">
+                <p>&copy; 2026 OccaServe<br>All rights reserved.</p>
+            </div>
         </aside>
 
-        <!-- Main Content -->
-        <main class="main-content">
-            {% block content %}{% endblock %}
-        </main>
+        <!-- Main Content Wrapper -->
+        <div class="content-wrapper">
+            <!-- Professional Top Header -->
+            <header class="dashboard-header">
+                <div class="header-left">
+                    <!-- Space reserved for future left-side utilities -->
+                </div>
+                <div class="header-right">
+                    {% if active_page not in ['dashboard', 'archives'] %}
+                    <div class="header-search-container">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" id="globalSearchInput" placeholder="Search..." autocomplete="off">
+                    </div>
+                    {% endif %}
+                    <div class="header-actions">
+                        <a href="/caterer/messages" class="header-action-btn {{ 'active' if active_page == 'messages' }}" title="Messages">
+                            <i class="fas fa-comment-dots"></i>
+                            <span id="nav-chat-badge" class="action-badge" style="display: none;">0</span>
+                        </a>
+                        <a href="/caterer/notifications" class="header-action-btn {{ 'active' if active_page == 'notifications' }}" title="Notifications">
+                            <i class="fas fa-bell"></i>
+                            {% set unread_count = user.notifications|selectattr('is_read', 'equalto', false)|list|count if user and user.notifications else 0 %}
+                            <span id="nav-notif-badge" class="action-badge" style="display: {{ 'flex' if unread_count > 0 else 'none' }};">{{ unread_count }}</span>
+                        </a>
+                    </div>
+                    
+                    <div class="header-profile-section">
+                        <div class="profile-trigger" onclick="toggleProfileDropdown()">
+                            <div class="profile-avatar">
+                                {% if user and user.caterer_profile and user.caterer_profile.logo_url %}
+                                <img src="{{ '/' ~ user.caterer_profile.logo_url if not user.caterer_profile.logo_url.startswith('http') and not user.caterer_profile.logo_url.startswith('/') else user.caterer_profile.logo_url }}" alt="Profile">
+                                {% else %}
+                                <div class="avatar-placeholder">{{ user.first_name[0] if user else '?' }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="profile-meta">
+                                <span class="profile-name">{{ user.first_name }}</span>
+                                <span class="profile-role">Admin</span>
+                            </div>
+                            <i class="fas fa-chevron-down profile-chevron"></i>
+                        </div>
+                        
+                        <div class="profile-dropdown" id="profileDropdown">
+                            <div class="dropdown-header">
+                                <p class="dropdown-user-name">{{ user.first_name }} {{ user.last_name }}</p>
+                                <p class="dropdown-user-email">{{ user.email }}</p>
+                            </div>
+                            <ul class="dropdown-links">
+                                <li>
+                                    <a href="/caterer/profile">
+                                        <i class="fas fa-cog"></i>
+                                        <span>Business Settings</span>
+                                    </a>
+                                </li>
+                                <div class="dropdown-divider"></div>
+                                <li>
+                                    <a href="/auth/logout" class="logout-link">
+                                        <i class="fas fa-sign-out-alt"></i>
+                                        <span>Logout</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Content Area -->
+            <main class="main-content">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
     </div>
 
     <!-- Toast Container -->
@@ -222,7 +759,7 @@
             const isMobile = window.innerWidth <= 1024;
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebarOverlay');
-            const burgerBtn = document.getElementById('burgerBtn');
+            const burgerBtn = document.getElementById('sidebarToggle');
 
             if (isMobile) {
                 sidebar.classList.toggle('sidebar-open');
@@ -241,6 +778,51 @@
             }
         }
 
+        function toggleProfileDropdown() {
+            console.log("Profile dropdown toggled");
+            const dropdown = document.getElementById('profileDropdown');
+            if (!dropdown) {
+                console.error("Dropdown element not found!");
+                return;
+            }
+            
+            const isActive = dropdown.classList.contains('active');
+            
+            // Close all first
+            document.querySelectorAll('.profile-dropdown').forEach(d => {
+                d.classList.remove('active');
+                d.style.display = 'none';
+            });
+
+            if (!isActive) {
+                dropdown.style.display = 'block';
+                setTimeout(() => dropdown.classList.add('active'), 10);
+            }
+        }
+
+        // Close on outside click
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.header-profile-section')) {
+                const dropdown = document.getElementById('profileDropdown');
+                if (dropdown) {
+                    dropdown.classList.remove('active');
+                    setTimeout(() => {
+                        if (!dropdown.classList.contains('active')) dropdown.style.display = 'none';
+                    }, 300);
+                }
+            }
+        });
+
+        // Global Search Dispatcher
+        const globalSearchInput = document.getElementById('globalSearchInput');
+        if (globalSearchInput) {
+            globalSearchInput.addEventListener('input', function(e) {
+                const query = e.target.value;
+                const searchEvent = new CustomEvent('globalSearch', { detail: { value: query } });
+                window.dispatchEvent(searchEvent);
+            });
+        }
+
 
         // Close sidebar on window resize if it was open on mobile
         window.addEventListener('resize', () => {
@@ -257,7 +839,7 @@
     <script src="{{ url_for('static', path='/js/chat.js') }}?v=1.1"></script>
 
     {% if active_page != 'messages' %}
-        {% include "shared/floating_chat.html" %}
+        {# Removed floating chat as requested by user #}
     {% endif %}
 
     {% block extra_js %}{% endblock %}

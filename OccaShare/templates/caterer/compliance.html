@@ -13,10 +13,8 @@
         <h1>KYC & Compliance Queue</h1>
         <p>High-precision verification monitoring and risk mitigation for your clients.</p>
     </div>
-    <div class="kyc-search-box">
-        <i class="fas fa-search"></i>
-        <input type="text" id="kycSearchInput" placeholder="Search identity files..." onkeyup="filterKYC()">
-    </div>
+    <!-- Local search removed, using global header search -->
+    <input type="hidden" id="kycSearchInput">
 </div>
 
 <div id="packages-queue" class="tab-content active">
@@ -138,5 +136,14 @@
             }
         });
     }
+
+    // Listen to global header search
+    window.addEventListener('globalSearch', function(e) {
+        const hiddenInput = document.getElementById('kycSearchInput');
+        if (hiddenInput) {
+            hiddenInput.value = e.detail.value;
+            filterKYC();
+        }
+    });
 </script>
 {% endblock %}

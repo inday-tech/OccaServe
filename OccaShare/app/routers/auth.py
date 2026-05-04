@@ -24,7 +24,8 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 from ..core.utils import (
     is_gibberish, calculate_entropy, is_keyboard_walk, 
-    is_dummy_email, is_dummy_name, is_dummy_phone, is_dummy_address
+    is_dummy_email, is_dummy_name, is_dummy_phone, is_dummy_address,
+    validate_file_type_and_size
 )
 
 @router.post("/scan-document")
@@ -45,6 +46,12 @@ async def scan_document(
         
         for doc in document:
             content = await doc.read()
+            
+            # --- SECURITY: File Validation ---
+            file_error = validate_file_type_and_size(content, doc.filename)
+            if file_error:
+                return {"status": "rejected", "failure_reason": f"File Security: {file_error}"}
+
             temp_id = str(uuid.uuid4())
             filename = f"temp_{temp_id}_{doc.filename}"
             path = os.path.join(UPLOAD_DIR, filename)
@@ -59,7 +66,7 @@ async def scan_document(
         
         if doc_type == "permit":
             result = verification_service.verify_business_permit(
-                doc_url, user_name, owner_name=owner_name or user_name
+                doc_url, user_name, owner_name=owner_name or user_name, db=db
             )
         elif doc_type == "selfie":
             imgs = [verification_service._prepare_image(u) for u in doc_urls]
@@ -172,6 +179,8 @@ async def register(
     selfie: Optional[UploadFile] = File(None), # NEW: Added Selfie
     id_type: Optional[str] = Form(None),
     id_number: Optional[str] = Form(None),
+    latitude: Optional[float] = Form(None),
+    longitude: Optional[float] = Form(None),
     next_url: Optional[str] = Form(None),
     db: Session = Depends(database.get_db)
 ):
@@ -363,6 +372,14 @@ async def register(
                 
             if permit and permit.filename:
                 content = await permit.read()
+                
+                # --- SECURITY: File Validation ---
+                file_error = validate_file_type_and_size(content, permit.filename)
+                if file_error:
+                    return templates.TemplateResponse("auth/register_caterer.html", {
+                        "request": request, "error": f"Permit File: {file_error}", "role": role
+                    })
+
                 file_path = os.path.join(UPLOAD_DIR, f"{temp_id}_permit_{permit.filename}")
                 with open(file_path, "wb") as buffer:
                     buffer.write(encrypt_data(content))
@@ -370,6 +387,14 @@ async def register(
 
             if sample_menu and sample_menu.filename:
                 content = await sample_menu.read()
+                
+                # --- SECURITY: File Validation ---
+                file_error = validate_file_type_and_size(content, sample_menu.filename, max_size_mb=10) # Menus can be larger
+                if file_error:
+                    return templates.TemplateResponse("auth/register_caterer.html", {
+                        "request": request, "error": f"Menu File: {file_error}", "role": role
+                    })
+
                 file_path = os.path.join(UPLOAD_DIR, f"{temp_id}_menu_{sample_menu.filename}")
                 with open(file_path, "wb") as buffer:
                     buffer.write(encrypt_data(content))
@@ -420,6 +445,8 @@ async def register(
                 sample_menu_url=sample_menu_url,
                 permit_url=permit_url,
                 gov_id_url=gov_id_url,
+                latitude=latitude,
+                longitude=longitude,
                 verification_status="Pending"
             )
             db.add(new_profile)
@@ -435,7 +462,7 @@ async def register(
                     
                     # 2. OCR for Permit
                     permit_res = verification_service.verify_business_permit(
-                        permit_url, business_name, owner_name=full_name
+                        permit_url, business_name, owner_name=full_name, db=db
                     )
                     
                     # 3. Face Match (If selfie provided)

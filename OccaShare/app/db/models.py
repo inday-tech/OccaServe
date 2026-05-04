@@ -105,6 +105,8 @@ class CatererProfile(Base):
     sample_menu_url = Column(String, nullable=True)
     permit_url = Column(String, nullable=True)
     gov_id_url = Column(String, nullable=True)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
     
     # NEW: Brand Customization Fields
     primary_color = Column(String, default="#2D3748") # Deep Blue/Gray

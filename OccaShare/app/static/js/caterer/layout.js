@@ -157,6 +157,61 @@
         });
     }
 
+    // ─── Header Profile Dropdown ──────────────────────────────────────────────
+    window.toggleProfileDropdown = function () {
+        const dropdown = document.getElementById('profileDropdown');
+        const trigger = document.querySelector('.profile-trigger');
+        if (!dropdown) return;
+
+        const isActive = dropdown.classList.contains('active');
+        
+        // Close other dropdowns if any
+        closeAllDropdowns();
+
+        if (!isActive) {
+            dropdown.style.display = 'block';
+            setTimeout(() => {
+                dropdown.classList.add('active');
+                trigger.classList.add('active');
+            }, 10);
+        }
+    };
+
+    function closeAllDropdowns() {
+        const dropdowns = document.querySelectorAll('.profile-dropdown');
+        const triggers = document.querySelectorAll('.profile-trigger');
+        dropdowns.forEach(d => {
+            d.classList.remove('active');
+            setTimeout(() => {
+                if (!d.classList.contains('active')) d.style.display = 'none';
+            }, 300);
+        });
+        triggers.forEach(t => t.classList.remove('active'));
+    }
+
+    // Close dropdowns on outside click
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.header-profile-section')) {
+            closeAllDropdowns();
+        }
+    });
+
+    // ─── Global Search Logic ────────────────────────────────────────────────
+    const globalSearchInput = document.getElementById('globalSearchInput');
+    if (globalSearchInput) {
+        globalSearchInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                const query = this.value.trim();
+                if (query) {
+                    // Example: Redirect to a search page or filter current view
+                    // For now, let's just log or implement a simple redirect if needed
+                    console.log("Global search for:", query);
+                    // window.location.href = `/caterer/search?q=${encodeURIComponent(query)}`;
+                }
+            }
+        });
+    }
+
     // ─── Real-Time WebSocket Client ──────────────────────────────────────────
 
     if (window.catererConfig && window.catererConfig.userId) {

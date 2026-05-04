@@ -329,6 +329,14 @@
         color: #94a3b8;
         cursor: pointer;
     }
+    #map {
+        height: 320px;
+        width: 100%;
+        border-radius: 1rem;
+        z-index: 10;
+        margin-top: 1rem;
+        border: 1px solid #f1f5f9;
+    }
 </style>
 {% endblock %}
 
@@ -346,7 +354,7 @@
         <div class="profile-meta-row">
             <div class="profile-meta-item">
                 <i class="fas fa-map-marker-alt"></i>
-                <span>{{ caterer.city or 'Location not specified' }}</span>
+                <span>{{ caterer.contact_address if caterer.contact_address else (caterer.city or 'Location not specified') }}</span>
             </div>
             <div class="profile-meta-item">
                 <i class="fas fa-star"></i>
@@ -477,6 +485,58 @@
                     </div>
                     {% endif %}
                 </div>
+            </div>
+
+            <!-- Accurate Location Map -->
+            <div class="c-card-premium" style="padding: 1.5rem;">
+                <h2 style="font-size: 1.1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; text-transform: uppercase;">Accurate Business Location</h2>
+                <p style="color: #64748b; font-size: 0.88rem; margin-bottom: 1rem;">Pinpoint the exact location of the caterer for easy navigation and event logistics.</p>
+                <div id="map"></div>
+                <div style="margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem; color: #64748b; font-size: 0.85rem; font-weight: 600;">
+                    <i class="fas fa-map-marker-alt" style="color: #f97316;"></i>
+                    <span>{{ caterer.contact_address or caterer.city or 'Location available upon inquiry' }}</span>
+                </div>
+            </div>
+
+            <!-- Reviews Section -->
+            <div class="c-card-premium" style="padding: 1.5rem;">
+                <h2 style="font-size: 1.1rem; font-weight: 800; color: #1e293b; margin-bottom: 1.5rem; text-transform: uppercase;">Customer Reviews</h2>
+                {% if reviews %}
+                    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                        {% for review in reviews %}
+                        <div style="border-bottom: 1px solid #f1f5f9; padding-bottom: 1.5rem; last-child: border-bottom: none;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+                                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                    <div style="width: 40px; height: 40px; border-radius: 50%; background: #fff7ed; border: 1px solid #ffedd5; display: flex; align-items: center; justify-content: center; color: #f97316; font-weight: 800; font-size: 0.9rem;">
+                                        {{ review.user.first_name[0] if review.user.first_name else 'U' }}
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 0.95rem; font-weight: 700; color: #1e293b;">{{ review.user.first_name }} {{ review.user.last_name }}</div>
+                                        <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 500;">{{ review.created_at.strftime('%B %d, %Y') if review.created_at else '' }}</div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 0.15rem; color: #f59e0b; font-size: 0.85rem;">
+                                    {% for i in range(review.rating) %}
+                                    <i class="fas fa-star"></i>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <p style="font-size: 0.9rem; color: #475569; line-height: 1.6; font-style: italic; margin: 0;">"{{ review.comment }}"</p>
+                            {% if review.caterer_reply %}
+                            <div style="margin-top: 1rem; margin-left: 2rem; padding: 1rem; background: #f8fafc; border-radius: 0.75rem; border-left: 4px solid #f97316;">
+                                <div style="font-size: 0.8rem; font-weight: 700; color: #1e293b; margin-bottom: 0.4rem;">Caterer's Response:</div>
+                                <p style="font-size: 0.8rem; color: #64748b; font-style: italic; margin: 0;">{{ review.caterer_reply }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div style="text-align: center; padding: 3rem 1rem;">
+                        <i class="far fa-star fa-3x" style="color: #f1f5f9; margin-bottom: 1rem;"></i>
+                        <p style="color: #94a3b8; font-size: 0.9rem; font-weight: 500;">No reviews yet. Be the first to book and share your experience!</p>
+                    </div>
+                {% endif %}
             </div>
 
         </div>
@@ -659,6 +719,38 @@
 
     function closeImageModal() {
         document.getElementById('image-modal').style.display = 'none';
-    }
+     // Initialize Real-time Map (Google Maps)
+    document.addEventListener('DOMContentLoaded', function() {
+        const lat = {{ caterer.latitude if caterer.latitude else 14.2811 }};
+        const lng = {{ caterer.longitude if caterer.longitude else 121.4150 }};
+        const businessName = "{{ caterer.business_name }}";
+        
+        const mapPosition = { lat: lat, lng: lng };
+        const map = new google.maps.Map(document.getElementById('profileMap'), {
+            zoom: 15,
+            center: mapPosition,
+            mapId: "DEMO_MAP_ID",
+            disableDefaultUI: false,
+            fullscreenControl: true,
+            mapTypeControl: false,
+            streetViewControl: true
+        });
+
+        const marker = new google.maps.Marker({
+            position: mapPosition,
+            map: map,
+            title: businessName,
+            animation: google.maps.Animation.DROP
+        });
+
+        const infoWindow = new google.maps.InfoWindow({
+            content: `<div style="font-weight: 700; color: #1e293b; padding: 4px;">${businessName}</div><div style="font-size: 0.8rem; color: #64748b;">Verified Location</div>`
+        });
+
+        marker.addListener("click", () => {
+            infoWindow.open(map, marker);
+        });
+    });
 </script>
 {% endblock %}
+ock %}

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
+from typing import Optional
 from sqlalchemy.orm import Session
 from ..core.templates import templates
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -110,9 +111,9 @@ def get_caterer_by_slug(request: Request, slug: str, db: Session = Depends(datab
     })
 
 @router.get("/api/search", response_class=HTMLResponse)
-def unified_search_api(request: Request, q: str = "", db: Session = Depends(database.get_db)):
-    """Unified deep search across all caterer-related fields with real pricing."""
-    from sqlalchemy import or_, func, distinct
+def unified_search_api(request: Request, q: str = "", lat: Optional[float] = None, lon: Optional[float] = None, db: Session = Depends(database.get_db)):
+    """Unified deep search across all caterer-related fields with proximity sorting."""
+    from sqlalchemy import or_, func, distinct, text
 
     # Subquery for minimum active package price per caterer
     price_sq = db.query(
@@ -168,7 +169,22 @@ def unified_search_api(request: Request, q: str = "", db: Session = Depends(data
             )
         )
 
-    results = query.order_by(models.CatererProfile.rating.desc()).all()
+    # Proximity sorting if lat/lon provided
+    if lat is not None and lon is not None:
+        # Haversine formula in SQL
+        distance_query = text("""
+            (6371 * acos(
+                cos(radians(:lat)) * cos(radians(latitude)) * 
+                cos(radians(longitude) - radians(:lon)) + 
+                sin(radians(:lat)) * sin(radians(latitude))
+            ))
+        """).bindparams(lat=lat, lon=lon)
+        
+        query = query.order_by(distance_query.asc())
+    else:
+        query = query.order_by(models.CatererProfile.rating.desc())
+
+    results = query.all()
 
     # Attach computed min price to each caterer object
     caterers = []

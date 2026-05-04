@@ -15,10 +15,8 @@
         <h1>My Customers</h1>
         <p>Manage your customer database and track relationship history.</p>
     </div>
-    <div class="cust-search-box">
-        <i class="fas fa-search"></i>
-        <input type="text" id="customerSearch" placeholder="Search by name, email, or phone..." onkeyup="filterCustomers()">
-    </div>
+    <!-- Local search removed, using global header search -->
+    <input type="hidden" id="customerSearch">
 </div>
 
 <!-- Stats Row — 4 cards -->
@@ -183,6 +181,15 @@ function filterCustomers() {
 
     if (noResults) noResults.style.display = visibleCount === 0 && filter ? 'flex' : 'none';
 }
+
+// Listen to global header search
+window.addEventListener('globalSearch', function(e) {
+    const hiddenInput = document.getElementById('customerSearch');
+    if (hiddenInput) {
+        hiddenInput.value = e.detail.value;
+        filterCustomers();
+    }
+});
 </script>
 
 {% endblock %}

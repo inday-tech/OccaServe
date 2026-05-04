@@ -518,10 +518,18 @@ async function togglePackageStatus(id, el) {
 
 function filterPackages() {
     const query = document.getElementById('packageSearchInput')?.value.toLowerCase() || '';
+    let visibleCount = 0;
     document.querySelectorAll('.package-card-pro').forEach(card => {
         const name = card.querySelector('.package-name-pro')?.innerText.toLowerCase() || '';
-        card.style.display = name.includes(query) ? 'block' : 'none';
+        const match = name.includes(query);
+        card.style.display = match ? 'block' : 'none';
+        if (match) visibleCount++;
     });
+
+    const searchEmpty = document.getElementById('searchEmptyState');
+    if (searchEmpty) {
+        searchEmpty.style.display = visibleCount === 0 ? 'flex' : 'none';
+    }
 }
 
 function previewPackageImage(input) {

@@ -163,3 +163,18 @@ def get_dashboard_url(role: str) -> str:
         "customer": "/customer/dashboard"
     }
     return mapping.get(role, "/")
+
+def validate_file_type_and_size(file_content: bytes, filename: str, max_size_mb: int = 5) -> Optional[str]:
+    """Validates file size and extension for security."""
+    # Check size
+    if len(file_content) > max_size_mb * 1024 * 1024:
+        return f"File size exceeds the {max_size_mb}MB limit."
+    
+    # Check extension
+    allowed_extensions = {'.jpg', '.jpeg', '.png', '.webp', '.pdf'}
+    import os
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in allowed_extensions:
+        return f"Unsupported file type '{ext}'. Allowed: {', '.join(allowed_extensions)}"
+    
+    return None

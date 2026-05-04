@@ -62,10 +62,7 @@
         </div>
         <div class="pay-toolbar-actions">
             <!-- Search -->
-            <div class="pay-search-box">
-                <i class="fas fa-search"></i>
-                <input type="text" id="paymentSearch" placeholder="Search payments..." onkeyup="filterPayments()">
-            </div>
+            <input type="hidden" id="paymentSearch">
             <!-- Status Filter -->
             <select id="statusFilter" class="pay-filter-select" onchange="filterPayments()">
                 <option value="all">All Status</option>
@@ -269,4 +266,14 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="{{ url_for('static', path='/js/caterer/payments.js') }}?v=1.6"></script>
+<script>
+    // Listen to global header search
+    window.addEventListener('globalSearch', function(e) {
+        const hiddenInput = document.getElementById('paymentSearch');
+        if (hiddenInput && typeof window.filterPayments === 'function') {
+            hiddenInput.value = e.detail.value;
+            window.filterPayments();
+        }
+    });
+</script>
 {% endblock %}

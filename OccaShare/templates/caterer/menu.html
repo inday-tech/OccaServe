@@ -13,11 +13,9 @@
         <h1>Menu Library</h1>
         <p>Manage your collection of exquisite dishes and culinary offerings.</p>
     </div>
-    <div class="header-actions">
-        <div class="search-box-pro">
-            <i class="fas fa-search"></i>
-            <input type="text" id="menuSearchInput" placeholder="Search dishes..." onkeyup="filterMenu()">
-        </div>
+    <div class="menu-header-actions">
+        <!-- Local search removed, using global header search -->
+        <input type="hidden" id="menuSearchInput">
         <button class="btn-primary-pro" onclick="openAddMenuModal()">
             <i class="fas fa-plus"></i> <span>Add New Dish</span>
         </button>
@@ -94,6 +92,15 @@
         </div>
     </div>
     {% endfor %}
+
+    <!-- No Search Results Empty State -->
+    <div id="searchEmptyState" class="empty-state animate-up delay-2 d-flex flex-column align-items-center justify-content-center text-center" style="display: none; width: 100%; grid-column: 1 / -1; padding: 4rem 1rem;">
+        <div class="empty-icon" style="color: #cbd5e1; font-size: 3rem; margin-bottom: 1rem;">
+            <i class="fas fa-search"></i>
+        </div>
+        <h2 style="color: #1e293b; font-size: 1.25rem; font-weight: 700;">No matches found</h2>
+        <p style="color: #64748b; font-size: 0.9rem;">Try adjusting your search or filter to find what you're looking for.</p>
+    </div>
 </div>
 {% else %}
 <div class="empty-state animate-up delay-2 d-flex flex-column align-items-center justify-content-center text-center">
@@ -392,8 +399,10 @@
                 count++;
             } else card.style.display = 'none';
         });
-        const empty = document.querySelector('.empty-state');
-        if (empty && cards.length > 0) empty.style.display = count === 0 ? 'block' : 'none';
+        const empty = document.querySelector('.empty-state:not(#searchEmptyState)');
+        const searchEmpty = document.getElementById('searchEmptyState');
+        if (empty && cards.length > 0) empty.style.display = 'none'; // Only for 0 items in DB
+        if (searchEmpty) searchEmpty.style.display = count === 0 ? 'flex' : 'none';
     }
 
     function confirmArchiveDish(id) {
@@ -458,6 +467,15 @@
     window.addEventListener('click', e => {
         if (!e.target.closest('.card-options-dropdown')) {
             document.querySelectorAll('.dropdown-menu-pro').forEach(d => d.classList.remove('active'));
+        }
+    });
+
+    // Listen to global header search
+    window.addEventListener('globalSearch', function(e) {
+        const hiddenInput = document.getElementById('menuSearchInput');
+        if (hiddenInput) {
+            hiddenInput.value = e.detail.value;
+            filterMenu();
         }
     });
 </script>
