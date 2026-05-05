@@ -309,6 +309,7 @@ class Booking(Base):
     ocr_verified = Column(Boolean, default=False)
     liveness_verified = Column(Boolean, default=False)
     special_requests = Column(Text)
+    caterer_notes = Column(Text, nullable=True)
     is_archived = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

@@ -169,8 +169,20 @@ async def create_manual_booking(
             db.add(target_user)
             db.flush() 
 
-        # 2. Create Booking
+        # 2. Check Availability (Conflict Detection)
         event_date = datetime.strptime(data.get("event_date")[:10], "%Y-%m-%d").date()
+        existing_on_date = db.query(models.Booking).filter(
+            models.Booking.caterer_id == user.caterer_profile.id,
+            models.Booking.event_date == event_date,
+            models.Booking.status != 'cancelled',
+            models.Booking.is_archived == False
+        ).count()
+        
+        # Professional Limit: 5 bookings per day max
+        if existing_on_date >= 5:
+            raise HTTPException(status_code=400, detail=f"Capacity Reached: You already have {existing_on_date} active bookings scheduled for {event_date}. Consider expanding your staff or rejecting new requests for this day.")
+
+        # 3. Create Booking
         event_time_str = data.get("event_time")
         if event_time_str:
             try:
@@ -628,6 +640,9 @@ async def manage_bookings(
         models.CateringPackage.status == 'active'
     ).all()
     
+    from datetime import date
+    today = date.today()
+    
     return templates.TemplateResponse("caterer/bookings.html", {
         "request": request,
         "user": user,
@@ -637,7 +652,8 @@ async def manage_bookings(
         "confirmed_count": confirmed_count,
         "pending_count": pending_count,
         "cancelled_count": cancelled_count,
-        "active_page": "bookings"
+        "active_page": "bookings",
+        "today": today
     })
 
 @router.get("/bookings/{booking_id}/contract", response_class=HTMLResponse)
@@ -1171,6 +1187,45 @@ async def get_booking_details_api(
         },
         "is_package": booking.package_id is not None
     }
+
+@router.get("/api/bookings/{booking_id}/history")
+async def get_booking_history(
+    booking_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking or booking.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    history = db.query(models.BookingHistory).filter_by(booking_id=booking_id).order_by(models.BookingHistory.created_at.desc()).all()
+    
+    results = []
+    for h in history:
+        results.append({
+            "status": h.status,
+            "notes": h.notes,
+            "created_at_formatted": h.created_at.strftime("%b %d, %Y %I:%M %p")
+        })
+    return results
+
+class BookingNotesSchema(BaseModel):
+    notes: str
+
+@router.post("/api/bookings/{booking_id}/notes")
+async def update_booking_notes(
+    booking_id: int,
+    data: BookingNotesSchema,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking or booking.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    booking.caterer_notes = data.notes
+    db.commit()
+    return {"status": "success"}
 
 
 @router.get("/bookings/{booking_id}/quotation")
@@ -2679,12 +2734,18 @@ async def reject_booking(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    try:
+        data = await request.json()
+        reason = data.get("reason", "No reason provided.")
+    except:
+        reason = "Booking rejected by caterer."
+
     booking = db.query(models.Booking).get(booking_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
     
     booking.status = 'cancelled'
-    history = models.BookingHistory(booking_id=booking.id, status='cancelled', notes="Booking rejected by caterer.")
+    history = models.BookingHistory(booking_id=booking.id, status='cancelled', notes=f"Rejected: {reason}")
     db.add(history)
     db.commit()
 
@@ -2692,7 +2753,7 @@ async def reject_booking(
         "type": "booking_update",
         "booking_id": booking_id,
         "new_status": "cancelled",
-        "message": "Booking rejected."
+        "message": f"Booking rejected: {reason}"
     })
     
     # Notify Customer

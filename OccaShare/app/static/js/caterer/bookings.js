@@ -245,8 +245,10 @@ function filterBookings() {
             const needsSignature = ['pending_quotation', 'awaiting_caterer'].includes(rawStatus);
             // 2. Has pending payment proof to verify
             const needsPaymentVerify = ['proof_submitted', 'balance_proof_submitted'].includes(payStatus);
+            // 3. Urgent upcoming event (detected by backend in dataset)
+            const isUrgent = row.dataset.isUrgent === 'true';
             
-            matchesStatus = needsSignature || needsPaymentVerify;
+            matchesStatus = needsSignature || needsPaymentVerify || isUrgent;
         } else {
             matchesStatus = rawStatus === statusFilter;
         }
@@ -668,7 +670,7 @@ function showBookingDetails(btn) {
         
         if (data.status === 'pending') {
             const isPayment = data.paymentStatus === 'proof_submitted';
-            const btnLabel = isPayment ? `Verify ${plan}` : 'Accept Booking';
+            const btnLabel = isPayment ? `Verify ${plan} & Accept` : 'Confirm & Accept Booking';
             const btnIcon = isPayment ? 'fa-check-double' : 'fa-check-circle';
             
             actionsEl.innerHTML += `<button type="button" class="btn-footer-action btn-status-confirm" onclick="window.confirmAcceptBooking(${data.id}, ${isPayment}, ${isVerified}, ${isPackage})"><i class="fas ${btnIcon}"></i> ${btnLabel}</button>`;
@@ -766,6 +768,16 @@ function showBookingDetails(btn) {
 
     // Load Checklist Tasks
     loadBookingTasks(data.id);
+    
+    // Load History
+    loadBookingHistory(data.id);
+    
+    // Load Notes
+    const notesEl = document.getElementById('modalCatererNotes');
+    if (notesEl) notesEl.value = btn.dataset.catererNotes || '';
+    
+    // Update Stepper
+    updateBookingStepper(data.status);
 
     bk_openModal('bookingDetailModal');
 }
@@ -787,6 +799,102 @@ function resetBookingTabs() {
     if (summaryTab) summaryTab.classList.add('active');
     var firstBtn = document.querySelector('.mtab-btn-pro');
     if (firstBtn) firstBtn.classList.add('active');
+}
+
+// ─── NEW: AUDIT HISTORY ──────────────────────────────────────────────────────
+
+async function loadBookingHistory(bookingId) {
+    const container = document.getElementById('modalHistoryTimeline');
+    if (!container) return;
+    
+    try {
+        const res = await fetch(`/caterer/api/bookings/${bookingId}/history`);
+        const history = await res.json();
+        
+        if (history && history.length > 0) {
+            container.innerHTML = history.map(item => `
+                <div class="timeline-item-pro ${item === history[0] ? 'active' : ''}">
+                    <div class="timeline-icon-pro">
+                        <i class="fas fa-check"></i>
+                    </div>
+                    <div class="timeline-content-pro">
+                        <div class="timeline-meta-pro">
+                            <span class="timeline-status-pro">${item.status.replace(/_/g, ' ')}</span>
+                            <span class="timeline-date-pro">${item.created_at_formatted}</span>
+                        </div>
+                        <div class="timeline-note-pro">${item.notes || 'Status changed automatically.'}</div>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = '<div style="text-align:center;padding:2rem;color:#94a3b8;">No history records found.</div>';
+        }
+    } catch (err) {
+        container.innerHTML = '<div style="text-align:center;padding:2rem;color:#ef4444;">Failed to load history audit trail.</div>';
+    }
+}
+
+// ─── NEW: CATERER NOTES ──────────────────────────────────────────────────────
+
+async function saveCatererNotes() {
+    const notes = document.getElementById('modalCatererNotes').value;
+    const btn = event.currentTarget;
+    const originalText = btn.innerText;
+    
+    btn.disabled = true;
+    btn.innerText = 'Saving...';
+    
+    try {
+        const res = await fetch(`/caterer/api/bookings/${currentBookingId}/notes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ notes: notes })
+        });
+        
+        if (res.ok) {
+            window.showSuccess('Notes saved successfully.');
+            // Update the data attribute on the view button to persist change
+            const viewBtn = document.querySelector(`.view-details[data-id="${currentBookingId}"]`);
+            if (viewBtn) viewBtn.dataset.catererNotes = notes;
+        } else {
+            window.showError('Failed to save notes.');
+        }
+    } catch (err) {
+        window.showError('Error connecting to server.');
+    } finally {
+        btn.disabled = false;
+        btn.innerText = originalText;
+    }
+}
+
+// ─── NEW: STEPPER LOGIC ──────────────────────────────────────────────────────
+
+function updateBookingStepper(status) {
+    const steps = ['pending', 'confirmed', 'preparing', 'on_the_way', 'in_progress', 'completed'];
+    const currentIdx = steps.indexOf(status);
+    
+    document.querySelectorAll('.step-pro').forEach((step, idx) => {
+        const dot = step.querySelector('.step-dot');
+        step.classList.remove('active', 'completed');
+        
+        if (idx < currentIdx) {
+            step.classList.add('completed');
+            if (dot) dot.innerHTML = '<i class="fas fa-check"></i>';
+        } else if (idx === currentIdx) {
+            step.classList.add('active');
+            if (dot) dot.innerHTML = idx + 1;
+        } else {
+            if (dot) dot.innerHTML = idx + 1;
+        }
+        
+        // Handle specific labels for sub-statuses
+        if (status === 'awaiting_payment' || status === 'pending_quotation' || status === 'awaiting_caterer') {
+            if (idx === 0) {
+                step.classList.add('active');
+                if (dot) dot.innerHTML = '1';
+            }
+        }
+    });
 }
 
 // ─── CONTRACT MODAL ──────────────────────────────────────────────────────────
@@ -983,11 +1091,48 @@ async function proceedWithAcceptance(bookingId, isPayment) {
     );
 }
 
+let rejectionBookingId = null;
+
 function confirmRejectBooking(bookingId) {
-    window.showConfirm('Are you sure you want to REJECT this booking?',
-        async function() { await window.apiAction('/caterer/bookings/' + bookingId + '/reject', { method: 'POST' }); },
-        'Reject Booking?', 'Yes, Reject Booking'
-    );
+    rejectionBookingId = bookingId;
+    document.getElementById('rejectReasonInput').value = '';
+    bk_openModal('rejectReasonModal');
+}
+
+async function submitRejectionWithReason() {
+    const reason = document.getElementById('rejectReasonInput').value.trim();
+    if (!reason) {
+        window.showError('Please provide a reason for the rejection.');
+        return;
+    }
+    
+    const btn = event.currentTarget;
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Rejecting...';
+    
+    try {
+        const response = await fetch(`/caterer/bookings/${rejectionBookingId}/reject`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason: reason })
+        });
+        
+        const data = await response.json();
+        if (response.ok && data.status === 'success') {
+            window.showSuccess('Booking rejected and customer notified.');
+            bk_closeModal('rejectReasonModal');
+            bk_closeModal('bookingDetailModal');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            window.showError(data.detail || 'Failed to reject booking.');
+        }
+    } catch (err) {
+        window.showError('Error connecting to server.');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
 }
 
 function confirmCompleteBooking(bookingId) {

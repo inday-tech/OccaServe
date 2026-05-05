@@ -178,14 +178,14 @@
                 <select class="filter-select-pro" id="statusFilter" onchange="filterBookings()">
                     <option value="">All Status</option>
                     <option value="action_required" style="font-weight:800; color:var(--primary-color);">🔥 Action Required</option>
-                    <option value="pending">Pending</option>
-                    <option value="pending_quotation">Draft</option>
-                    <option value="awaiting_caterer">To Sign</option>
-                    <option value="awaiting_payment">Payment</option>
+                    <option value="pending">Pending Review</option>
+                    <option value="pending_quotation">Draft Quotation</option>
+                    <option value="awaiting_caterer">Needs Signature</option>
+                    <option value="awaiting_payment">Awaiting Payment</option>
                     <option value="confirmed">Confirmed</option>
-                    <option value="preparing">Preparing</option>
+                    <option value="preparing">Preparation</option>
                     <option value="on_the_way">In Transit</option>
-                    <option value="in_progress">Ongoing</option>
+                    <option value="in_progress">Ongoing / Setup</option>
                     <option value="completed">Completed</option>
                     <option value="cancelled">Cancelled</option>
                 </select>
@@ -229,13 +229,18 @@
             </thead>
             <tbody>
                 {% for booking in bookings %}
-                <tr id="booking-row-{{ booking.id }}" class="booking-row-item" 
+                <tr id="booking-row-{{ booking.id }}" class="booking-row-item {% if (booking.event_date - today).days <= 2 and booking.status not in ['completed', 'cancelled', 'confirmed', 'in_progress', 'on_the_way', 'preparing'] %}urgent-booking-row{% endif %}" 
                     data-status="{{ booking.status }}" 
                     data-payment-status="{{ booking.payment_status }}"
+                    data-is-urgent="{% if (booking.event_date - today).days <= 2 and booking.status not in ['completed', 'cancelled', 'confirmed', 'in_progress', 'on_the_way', 'preparing'] %}true{% else %}false{% endif %}"
                     style="border-bottom: 1px solid #f8fafc; transition: all 0.2s ease;">
                     <!-- ID -->
-                    <td style="padding: 1.5rem; font-weight: 800; color: #64748b; font-size: 0.85rem; letter-spacing: 0.05em; text-transform: uppercase;">BK-{{ "%03d" |
-                        format(booking.id) }}</td>
+                    <td style="padding: 1.5rem; font-weight: 800; color: #64748b; font-size: 0.85rem; letter-spacing: 0.05em; text-transform: uppercase; position: relative;">
+                        {% if (booking.event_date - today).days <= 2 and booking.status not in ['completed', 'cancelled', 'confirmed', 'in_progress', 'on_the_way', 'preparing'] %}
+                            <div class="urgent-pulse-indicator" title="Event Happening Soon!"></div>
+                        {% endif %}
+                        BK-{{ "%03d" | format(booking.id) }}
+                    </td>
 
                     <!-- CUSTOMER -->
                     <td style="padding: 1.5rem;">
@@ -515,20 +520,21 @@
         </div>
 
         <div class="occ-modal-body">
-            <!-- Header Status Card -->
-            <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 1.5rem; border-radius: var(--border-radius); border: 1px solid #e2e8f0; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; gap: 2rem;">
-                    <div>
-                        <span style="display: block; font-size: 0.7rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem;">Current Status</span>
-                        <span id="modalStatus" class="premium-status-badge" style="font-size: 0.85rem; padding: 0.5rem 1rem;"></span>
+        <div class="occ-modal-body">
+            <!-- Elite Header Status Bar -->
+            <div class="elite-status-bar" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 1.5rem; border-radius: 1rem; border: 1px solid #e2e8f0; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
+                <div style="display: flex; gap: 3rem;">
+                    <div class="status-info-group">
+                        <span class="status-info-label">Status Overview</span>
+                        <div id="modalStatus" class="premium-status-badge" style="font-size: 0.9rem; padding: 0.6rem 1.25rem; margin-top: 4px;"></div>
                     </div>
-                    <div>
-                        <span style="display: block; font-size: 0.7rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem;">Booking Date</span>
-                        <span id="modalBookedOn" style="font-weight: 800; color: #1e293b; font-size: 1rem;"></span>
+                    <div class="status-info-group">
+                        <span class="status-info-label">Booking Timestamp</span>
+                        <div id="modalBookedOn" style="font-weight: 800; color: #1e293b; font-size: 1.1rem; margin-top: 4px; letter-spacing: -0.01em;"></div>
                     </div>
                 </div>
-                <div id="modalRiskAlert" class="action-required-alert" style="display: none; margin-top: 0; padding: 0.6rem 1rem;">
-                    <i class="fas fa-exclamation-triangle"></i> HIGH RISK
+                <div id="modalRiskAlert" class="action-required-alert" style="display: none; margin-top: 0; padding: 0.75rem 1.25rem; border-radius: 50px; font-weight: 800; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);">
+                    <i class="fas fa-exclamation-triangle"></i> HIGH RISK CUSTOMER
                 </div>
             </div>
 
@@ -538,10 +544,42 @@
                 <button type="button" class="mtab-btn-pro" onclick="switchBookingTab('checklist')" style="padding-bottom: 1rem;"><i class="fas fa-clipboard-list" style="margin-right: 5px;"></i> Checklist</button>
                 <button type="button" class="mtab-btn-pro" onclick="switchBookingTab('financials')" style="padding-bottom: 1rem;">Financials</button>
                 <button type="button" class="mtab-btn-pro" onclick="switchBookingTab('logistics')" style="padding-bottom: 1rem;">Menu & Logistics</button>
+                <button type="button" class="mtab-btn-pro" onclick="switchBookingTab('history')" style="padding-bottom: 1rem;"><i class="fas fa-history" style="margin-right: 5px;"></i> History</button>
             </div>
 
             <!-- Tab Content -->
             <div id="btab-summary" class="mtab-pane-pro active">
+                <!-- Progress Stepper -->
+                <div class="booking-stepper-pro" style="margin-bottom: 2rem;">
+                    <div class="stepper-track-pro"></div>
+                    <div class="stepper-steps-pro">
+                        <div class="step-pro" data-step="pending" title="Pending Review">
+                            <div class="step-dot">1</div>
+                            <span class="step-label">Draft</span>
+                        </div>
+                        <div class="step-pro" data-step="confirmed" title="Booking Confirmed">
+                            <div class="step-dot">2</div>
+                            <span class="step-label">Confirmed</span>
+                        </div>
+                        <div class="step-pro" data-step="preparing" title="Food Preparation">
+                            <div class="step-dot">3</div>
+                            <span class="step-label">Prep</span>
+                        </div>
+                        <div class="step-pro" data-step="on_the_way" title="In Transit">
+                            <div class="step-dot">4</div>
+                            <span class="step-label">Transit</span>
+                        </div>
+                        <div class="step-pro" data-step="in_progress" title="Ongoing Event">
+                            <div class="step-dot">5</div>
+                            <span class="step-label">Serve</span>
+                        </div>
+                        <div class="step-pro" data-step="completed" title="Service Finished">
+                            <div class="step-dot">6</div>
+                            <span class="step-label">Done</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="occ-form-grid">
                     <div class="modal-info-card-premium">
                         <div class="modal-card-label-premium"><i class="fas fa-user-circle"></i> Customer Details</div>
@@ -562,11 +600,29 @@
                             <div id="modalVenue" style="font-size: 0.95rem; color: #334155; line-height: 1.5; font-weight: 500;"></div>
                         </div>
                     </div>
-                    <div class="occ-form-group full-width">
+                    
+                    <div class="occ-form-group full-width" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                         <div class="modal-info-card-premium" style="background: #fffbeb; border-color: #fef3c7;">
                             <div class="modal-card-label-premium" style="color: #b45309;"><i class="fas fa-comment-dots"></i> Special Requests</div>
                             <div id="modalRequests" style="font-size: 0.9rem; color: #92400e; font-weight: 500; line-height: 1.5;"></div>
                         </div>
+                        <div class="modal-info-card-premium" style="background: #f0fdfa; border-color: #ccfbf1;">
+                            <div class="modal-card-label-premium" style="color: #0f766e;"><i class="fas fa-sticky-note"></i> Internal Operational Notes</div>
+                            <textarea id="modalCatererNotes" placeholder="Add private notes for your team..." style="width: 100%; height: 60px; border: 1px solid #99f6e4; border-radius: 0.5rem; padding: 0.5rem; font-size: 0.85rem; background: white; margin-top: 0.5rem; resize: none;"></textarea>
+                            <button type="button" onclick="saveCatererNotes()" class="btn-sm-premium" style="margin-top: 0.5rem; background: #0d9488; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">Save Notes</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            </div>
+
+            <div id="btab-history" class="mtab-pane-pro">
+                <div class="audit-timeline-pro" id="modalHistoryTimeline">
+                    <!-- Timeline items will be injected here -->
+                    <div style="text-align:center;padding:2rem;color:#94a3b8;">
+                        <i class="fas fa-circle-notch fa-spin fa-2x" style="margin-bottom:1rem;"></i>
+                        <p>Loading history audit trail...</p>
                     </div>
                 </div>
             </div>
@@ -674,9 +730,37 @@
             </div>
         </div>
 
+        <div class="occ-modal-footer" style="padding: 1.5rem 2rem; background: #f8fafc; border-top: 1px solid #e2e8f0; gap: 1rem;">
+            <button onclick="bk_closeBookingDetailModal()" class="btn-sm-outline" style="min-width:120px; height:48px; border-radius: 12px; font-weight: 700;">Close View</button>
+            <div id="bookingModalActions" class="modal-actions-container-p" style="display: flex; gap: 0.75rem; align-items: center;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Reason Modal -->
+<div id="rejectReasonModal" class="occ-modal-overlay" style="z-index: 1100;">
+    <div class="occ-modal-box sz-sm occ-content-pop">
+        <div class="occ-modal-header" style="background: #fef2f2;">
+            <div>
+                <h2 class="occ-modal-title" style="color: #991b1b;"><i class="fas fa-ban"></i> Reject Booking</h2>
+                <div class="occ-modal-subtitle">Please provide a reason for the cancellation</div>
+            </div>
+            <button onclick="bk_closeModal('rejectReasonModal')" class="occ-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="occ-modal-body">
+            <div class="occ-form-group">
+                <label class="occ-form-label" style="font-weight: 800;">Reason for Rejection</label>
+                <textarea id="rejectReasonInput" class="occ-form-input" style="height: 120px; resize: none; border-color: #fecaca;" placeholder="Example: Fully booked on this date, out of service area, etc."></textarea>
+                <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem;"><i class="fas fa-info-circle"></i> This reason will be sent to the customer via email.</p>
+            </div>
+        </div>
         <div class="occ-modal-footer">
-            <button onclick="bk_closeBookingDetailModal()" class="btn-sm-outline" style="min-width:100px; height:44px;">Close</button>
-            <div id="bookingModalActions" class="modal-actions-container-p"></div>
+            <button onclick="bk_closeModal('rejectReasonModal')" class="btn-sm-outline">Go Back</button>
+            <button onclick="submitRejectionWithReason()" class="btn-sm-danger" style="background: #dc2626; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 800; display: flex; align-items: center; gap: 0.5rem;">
+                Confirm Rejection
+            </button>
         </div>
     </div>
 </div>
