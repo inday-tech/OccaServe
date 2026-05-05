@@ -36,6 +36,8 @@ class OccaChat {
                 this.handleMessageEdit(data);
             } else if (data.type === 'message_delete') {
                 this.handleMessageDelete(data);
+            } else if (data.type === 'presence') {
+                this.handlePresenceUpdate(data);
             } 
             
             // Handle Generic Notifications
@@ -114,6 +116,13 @@ class OccaChat {
         console.log("Message Deleted:", data);
         if (this.onMessageDeleted) {
             this.onMessageDeleted(data);
+        }
+    }
+
+    handlePresenceUpdate(data) {
+        console.log("Presence Update:", data);
+        if (this.onPresenceUpdate) {
+            this.onPresenceUpdate(data);
         }
     }
 

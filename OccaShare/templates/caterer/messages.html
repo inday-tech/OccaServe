@@ -7,12 +7,13 @@
     .messages-container {
         display: grid;
         grid-template-columns: 350px 1fr;
-        height: calc(100vh - 140px);
+        height: calc(100vh - var(--header-height) - 40px);
         background: white;
         border-radius: var(--border-radius-base);
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         overflow: hidden;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        margin-bottom: 0;
     }
 
     /* Conversations List */
@@ -305,7 +306,7 @@
                     <div class="peer-avatar" id="activePeerAvatar">?</div>
                     <div>
                         <div class="peer-name" id="activePeerName">Customer Name</div>
-                        <div style="font-size: 0.75rem; color: #10b981;"><i class="fas fa-circle" style="font-size: 0.5rem;"></i> Online</div>
+                        <div id="activePeerStatus" style="font-size: 0.75rem; color: #94a3b8;"><i class="fas fa-circle" style="font-size: 0.5rem;"></i> Offline</div>
                     </div>
                 </div>
             </div>
@@ -348,6 +349,21 @@
                     scrollToBottom();
                 }
                 // Refresh conversations list regardless
+                refreshConversations();
+            },
+            onPresenceUpdate: (data) => {
+                // If the current peer went online/offline, update the header
+                if (currentPeerId && data.user_id === currentPeerId) {
+                    const statusText = document.getElementById('activePeerStatus');
+                    if (statusText) {
+                        const isOnline = data.status === 'online';
+                        statusText.innerHTML = isOnline 
+                            ? '<i class="fas fa-circle" style="font-size: 0.5rem; color: #10b981;"></i> Online' 
+                            : '<i class="fas fa-circle" style="font-size: 0.5rem; color: #94a3b8;"></i> Offline';
+                        statusText.style.color = isOnline ? '#10b981' : '#94a3b8';
+                    }
+                }
+                // Also refresh the list to update sidebar dots
                 refreshConversations();
             }
         });
@@ -459,8 +475,11 @@
         }
 
         listDiv.innerHTML = conversationsToRender.map(conv => `
-            <div class="conversation-item ${currentPeerId == conv.peer.id ? 'active' : ''}" onclick="selectConversation(${conv.peer.id}, '${conv.peer.name.replace(/'/g, "\\'")}')">
-                <div class="peer-avatar">${conv.peer.name.charAt(0)}</div>
+            <div class="conversation-item ${currentPeerId == conv.peer.id ? 'active' : ''}" onclick="selectConversation(${conv.peer.id}, '${conv.peer.name.replace(/'/g, "\\'")}', ${conv.peer.is_online})">
+                <div style="position: relative;">
+                    <div class="peer-avatar">${conv.peer.name.charAt(0)}</div>
+                    ${conv.peer.is_online ? '<div style="position: absolute; bottom: 2px; right: 2px; width: 12px; height: 12px; background: #10b981; border: 2px solid white; border-radius: 50%;"></div>' : ''}
+                </div>
                 <div class="conversation-info">
                     <div class="conversation-header">
                         <span class="peer-name">${conv.peer.name}</span>
@@ -486,7 +505,7 @@
         renderConversations(filtered);
     });
 
-    async function selectConversation(peerId, peerName) {
+    async function selectConversation(peerId, peerName, isOnline) {
         currentPeerId = peerId;
         chatClient.peerId = peerId;
 
@@ -495,6 +514,14 @@
         document.getElementById('activeChat').style.display = 'flex';
         document.getElementById('activePeerName').innerText = peerName;
         document.getElementById('activePeerAvatar').innerText = peerName.charAt(0);
+        
+        const statusText = document.getElementById('activePeerStatus');
+        if (statusText) {
+            statusText.innerHTML = isOnline 
+                ? '<i class="fas fa-circle" style="font-size: 0.5rem; color: #10b981;"></i> Online' 
+                : '<i class="fas fa-circle" style="font-size: 0.5rem; color: #94a3b8;"></i> Offline';
+            statusText.style.color = isOnline ? '#10b981' : '#94a3b8';
+        }
         
         // Highlight active sidebar item
         document.querySelectorAll('.conversation-item').forEach(item => item.classList.remove('active'));

@@ -118,6 +118,14 @@ class CatererProfile(Base):
     sidebar_mode = Column(String, default="full") # 'full' (text + icon), 'icons' (icon only)
     show_platform_logo = Column(Boolean, default=True)
     
+    # NEW: Advanced Branding
+    glass_mode = Column(Boolean, default=False)
+    sidebar_color = Column(String, default="#000000")
+    header_color = Column(String, default="#FFFFFF")
+    dashboard_texture = Column(String, default="none") # 'none', 'dots', 'grid', 'waves', etc.
+    sidebar_decoration = Column(String, default="none") # 'none', 'food-doodle', 'steam', 'floating-chef'
+    header_decoration = Column(String, default="none") # 'none', 'utensils', 'sparkles'
+    
     # NEW: Policy Fields
     booking_policy = Column(Text, nullable=True)
     payment_policy = Column(Text, nullable=True)
@@ -201,6 +209,8 @@ class CateringPackage(Base):
     service_duration = Column(Integer, default=4) # In hours
     overtime_fee = Column(Float, default=0.0)
     location_coverage = Column(String, nullable=True) # City / Area
+    reservation_fee = Column(Float, default=0.0)
+    booking_lead_time = Column(Integer, default=7) # In days
     
     # Structured Data
     inclusions = Column(JSONB, nullable=True) # Checklist fields
@@ -311,6 +321,7 @@ class Booking(Base):
     user = relationship("User", back_populates="bookings")
     caterer = relationship("CatererProfile", back_populates="bookings")
     package = relationship("CateringPackage", back_populates="bookings")
+    tasks = relationship("BookingTask", back_populates="booking", cascade="all, delete-orphan")
     review = relationship("Review", back_populates="booking", uselist=False, cascade="all, delete-orphan")
     history = relationship("BookingHistory", back_populates="booking", cascade="all, delete-orphan")
     quotation = relationship("Quotation", back_populates="booking", uselist=False, cascade="all, delete-orphan")
@@ -650,3 +661,15 @@ class ProfileView(Base):
 
     caterer = relationship("CatererProfile")
     viewer = relationship("User")
+
+class BookingTask(Base):
+    __tablename__ = "booking_tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    booking_id = Column(Integer, ForeignKey("bookings.id"))
+    title = Column(String)
+    is_completed = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    booking = relationship("Booking", back_populates="tasks")
+

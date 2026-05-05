@@ -157,10 +157,9 @@
         });
     }
 
-    // ─── Header Profile Dropdown ──────────────────────────────────────────────
-    window.toggleProfileDropdown = function () {
-        const dropdown = document.getElementById('profileDropdown');
-        const trigger = document.querySelector('.profile-trigger');
+    // ─── Header Dropdowns (Profile, Messages, Notifications) ───────────────────
+    window.toggleHeaderDropdown = function (dropdownId, triggerEl) {
+        const dropdown = document.getElementById(dropdownId);
         if (!dropdown) return;
 
         const isActive = dropdown.classList.contains('active');
@@ -172,14 +171,26 @@
             dropdown.style.display = 'block';
             setTimeout(() => {
                 dropdown.classList.add('active');
-                trigger.classList.add('active');
+                if (triggerEl) triggerEl.classList.add('active');
             }, 10);
+
+            // Load content if it's messages
+            if (dropdownId === 'messagesDropdown') {
+                if (typeof window.loadHeaderMessages === 'function') {
+                    window.loadHeaderMessages();
+                }
+            }
         }
+    };
+
+    window.toggleProfileDropdown = function () {
+        const trigger = document.querySelector('.profile-trigger');
+        window.toggleHeaderDropdown('profileDropdown', trigger);
     };
 
     function closeAllDropdowns() {
         const dropdowns = document.querySelectorAll('.profile-dropdown');
-        const triggers = document.querySelectorAll('.profile-trigger');
+        const triggers = document.querySelectorAll('.profile-trigger, .header-action-btn');
         dropdowns.forEach(d => {
             d.classList.remove('active');
             setTimeout(() => {
@@ -191,7 +202,7 @@
 
     // Close dropdowns on outside click
     document.addEventListener('click', function (e) {
-        if (!e.target.closest('.header-profile-section')) {
+        if (!e.target.closest('.header-profile-section') && !e.target.closest('.header-dropdown-wrapper')) {
             closeAllDropdowns();
         }
     });
@@ -335,6 +346,10 @@
                 }
             } else if (data.type === 'chat_message') {
                 updateChatBadge();
+                const msgDropdown = document.getElementById('messagesDropdown');
+                if (msgDropdown && msgDropdown.classList.contains('active')) {
+                    loadHeaderMessages();
+                }
                 if (window.location.pathname !== '/caterer/messages' && window.showToast) {
                     window.showToast(`New message from ${data.sender_name}`, "info");
                 }
@@ -352,6 +367,61 @@
                     }
                 });
         }
+
+        function loadHeaderMessages() {
+            const container = document.getElementById('headerChatContainer');
+            if (!container) return;
+
+            fetch('/api/chat/conversations')
+                .then(r => r.json())
+                .then(conversations => {
+                    if (!conversations || conversations.length === 0) {
+                        container.innerHTML = `
+                            <div style="text-align: center; padding: 2rem 1rem;">
+                                <div style="background: #f8fafc; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;">
+                                    <i class="fas fa-comments" style="color: #cbd5e1; font-size: 1.25rem;"></i>
+                                </div>
+                                <p style="margin: 0; font-size: 0.85rem; color: #64748b;">No messages yet.</p>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    // Only show last 5 conversations
+                    const displayList = conversations.slice(0, 5);
+                    container.innerHTML = displayList.map(conv => {
+                        const lastMsg = conv.last_message;
+                        const isUnread = conv.unread_count > 0;
+                        const peer = conv.peer;
+                        const initials = peer.name ? peer.name.charAt(0) : '?';
+                        const time = lastMsg.created_at ? new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                        
+                        return `
+                            <a href="/caterer/messages?peer_id=${peer.id}" style="display: flex; gap: 12px; padding: 12px 16px; text-decoration: none; border-bottom: 1px solid #f1f5f9; background: ${isUnread ? '#f0f9ff' : 'transparent'}; transition: background 0.2s;">
+                                <div style="width: 40px; height: 40px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden;">
+                                    ${peer.logo || peer.profile_image ? `<img src="${peer.logo || peer.profile_image}" style="width: 100%; height: 100%; object-fit: cover;">` : `<span style="font-weight: 700; color: #64748b; font-size: 0.85rem;">${initials}</span>`}
+                                </div>
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                                        <p style="margin: 0; font-size: 0.85rem; color: #1e293b; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${peer.name}</p>
+                                        <span style="font-size: 0.6rem; color: #94a3b8;">${time}</span>
+                                    </div>
+                                    <p style="margin: 0; font-size: 0.75rem; color: ${isUnread ? '#0284c7' : '#64748b'}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: ${isUnread ? '600' : '400'};">
+                                        ${lastMsg.sender_id === window.catererConfig.userId ? 'You: ' : ''}${lastMsg.content || 'Sent a file'}
+                                    </p>
+                                </div>
+                                ${isUnread ? `<div style="width: 8px; height: 8px; border-radius: 50%; background: #0ea5e9; align-self: center; margin-left: 4px;"></div>` : ''}
+                            </a>
+                        `;
+                    }).join('');
+                })
+                .catch(err => {
+                    console.error("Error loading header messages:", err);
+                    container.innerHTML = '<p style="text-align: center; padding: 1rem; color: #ef4444; font-size: 0.8rem;">Failed to load messages.</p>';
+                });
+        }
+
+        window.loadHeaderMessages = loadHeaderMessages;
 
         // Initial check
         updateChatBadge();

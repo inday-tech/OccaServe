@@ -421,20 +421,19 @@
             if (!marketplaceMap) {
                 initMarketplaceMap();
             } else {
-                google.maps.event.trigger(marketplaceMap, "resize");
+                setTimeout(() => marketplaceMap.invalidateSize(), 100);
             }
         }
     }
 
     function initMarketplaceMap() {
-        const lagunaCenter = { lat: 14.2811, lng: 121.4150 };
-        marketplaceMap = new google.maps.Map(document.getElementById('marketplaceMap'), {
-            center: lagunaCenter,
-            zoom: 11,
-            mapId: "DEMO_MAP_ID",
-            disableDefaultUI: false,
-            zoomControl: true
-        });
+        const lagunaCenter = [14.2811, 121.4150];
+        marketplaceMap = L.map('marketplaceMap').setView(lagunaCenter, 11);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(marketplaceMap);
         
         updateMapMarkers();
     }
@@ -443,11 +442,11 @@
         if (!marketplaceMap) return;
 
         // Clear existing markers
-        mapMarkers.forEach(m => m.setMap(null));
+        mapMarkers.forEach(m => marketplaceMap.removeLayer(m));
         mapMarkers = [];
 
         const catererCards = document.querySelectorAll('.caterer-elite-card');
-        const bounds = new google.maps.LatLngBounds();
+        const bounds = L.latLngBounds();
         let hasCoords = false;
 
         catererCards.forEach(card => {
@@ -459,27 +458,17 @@
 
             if (!isNaN(lat) && !isNaN(lng)) {
                 hasCoords = true;
-                const position = { lat: lat, lng: lng };
+                const position = [lat, lng];
                 
-                const marker = new google.maps.Marker({
-                    position: position,
-                    map: marketplaceMap,
-                    title: businessName
-                });
-
-                const infoWindow = new google.maps.InfoWindow({
-                    content: `
-                        <div style="padding: 10px; width: 180px;">
-                            <img src="${imgUrl}" style="width: 100%; height: 80px; object-fit: cover; border-radius: 8px; margin-bottom: 8px;">
-                            <h4 style="margin: 0 0 5px 0; font-size: 14px; color: #1e293b;">${businessName}</h4>
-                            <a href="${cardLink}" style="display: block; background: #FF7B54; color: white; text-align: center; padding: 6px; border-radius: 6px; font-size: 11px; text-decoration: none; font-weight: 700;">View Profile</a>
-                        </div>
-                    `
-                });
-
-                marker.addListener('click', () => {
-                    infoWindow.open(marketplaceMap, marker);
-                });
+                const marker = L.marker(position).addTo(marketplaceMap);
+                
+                marker.bindPopup(`
+                    <div style="padding: 5px; width: 180px;">
+                        <img src="${imgUrl}" style="width: 100%; height: 80px; object-fit: cover; border-radius: 8px; margin-bottom: 8px;">
+                        <h4 style="margin: 0 0 5px 0; font-size: 14px; color: #1e293b;">${businessName}</h4>
+                        <a href="${cardLink}" style="display: block; background: #FF7B54; color: white; text-align: center; padding: 6px; border-radius: 6px; font-size: 11px; text-decoration: none; font-weight: 700;">View Profile</a>
+                    </div>
+                `);
 
                 mapMarkers.push(marker);
                 bounds.extend(position);
@@ -487,7 +476,7 @@
         });
 
         if (hasCoords) {
-            marketplaceMap.fitBounds(bounds);
+            marketplaceMap.fitBounds(bounds, { padding: [50, 50] });
         }
     }
 
@@ -501,8 +490,7 @@
                     sessionStorage.setItem('user_lon', userPos.lng);
                     
                     if (marketplaceMap) {
-                        marketplaceMap.setCenter(userPos);
-                        marketplaceMap.setZoom(12);
+                        marketplaceMap.setView([userPos.lat, userPos.lng], 12);
                     }
                 },
                 (error) => console.log("Location access denied."),

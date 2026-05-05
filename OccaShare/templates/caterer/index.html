@@ -191,6 +191,92 @@
             gap: 1.5rem;
         }
     }
+    /* Operations Tracker Styles */
+    .ops-tracker-card {
+        background: white;
+        padding: 24px;
+        border-radius: 1.25rem;
+        box-shadow: var(--card-shadow);
+        border: 1px solid #f1f5f9;
+        margin-bottom: 24px;
+    }
+
+    .ops-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .ops-header h3 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 800;
+        color: var(--secondary-color);
+    }
+
+    .ops-live-tag {
+        font-size: 0.65rem;
+        font-weight: 800;
+        background: #f0fdf4;
+        color: #16a34a;
+        padding: 4px 10px;
+        border-radius: 50px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .ops-item {
+        margin-bottom: 1.25rem;
+    }
+
+    .ops-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .ops-item-info {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+    }
+
+    .ops-event-name {
+        font-weight: 700;
+        font-size: 0.85rem;
+        color: var(--secondary-color);
+    }
+
+    .ops-progress-text {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--primary-color);
+    }
+
+    .ops-progress-bar {
+        height: 8px;
+        background: #f1f5f9;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .ops-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary-color), var(--highlight-color));
+        border-radius: 10px;
+        transition: width 0.5s ease-out;
+    }
+
+    .empty-ops-state {
+        text-align: center;
+        padding: 2rem 1rem;
+        color: #94a3b8;
+    }
+
+    .empty-ops-state i {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
 </style>
 {% endblock %}
 
@@ -198,8 +284,12 @@
 <div class="page-header" id="page-header">
     <div class="header-welcome-section">
         <h1>Welcome back, {{ user.first_name }}!</h1>
-        <p class="header-subtitle">Your business overview as of <strong>{{ now().strftime('%B %d, %Y') if now else
-                'today' }}</strong></p>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <p class="header-subtitle" style="margin: 0;">Your business overview as of <strong>{{ now().strftime('%B %d, %Y') if now else 'today' }}</strong></p>
+            <div id="last-updated-tag" style="font-size: 0.7rem; font-weight: 700; color: #94a3b8; display: flex; align-items: center; background: #f8fafc; padding: 4px 10px; border-radius: 50px; border: 1px solid #f1f5f9;">
+                <i class="fas fa-sync-alt fa-spin" style="margin-right: 5px; font-size: 0.6rem;"></i> Syncing...
+            </div>
+        </div>
     </div>
 
     <div class="header-action-section">
@@ -327,6 +417,42 @@
     </div>
 
     <div class="dashboard-sidebar-area">
+        <!-- Live Operations Tracker -->
+        <div class="ops-tracker-card c-card-premium animate-up">
+            <div class="ops-header">
+                <h3><i class="fas fa-tasks" style="color: var(--primary-color); margin-right: 8px;"></i> Operations Tracker</h3>
+                <span class="ops-live-tag">Live</span>
+            </div>
+            <div id="ops-tracker-list">
+                {% if upcoming_events %}
+                    {% for event in upcoming_events %}
+                        {% set total_tasks = event.tasks|length %}
+                        {% set done_tasks = event.tasks|selectattr('is_completed', 'equalto', true)|list|length %}
+                        {% set progress = (done_tasks / total_tasks * 100)|round|int if total_tasks > 0 else 0 %}
+                        <div class="ops-item">
+                            <div class="ops-item-info">
+                                <span class="ops-event-name">{{ event.event_name or event.event_type }}</span>
+                                <span class="ops-progress-text">{{ progress }}%</span>
+                            </div>
+                            <div class="ops-progress-bar">
+                                <div class="ops-progress-fill" style="width: {{ progress }}%"></div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-ops-state">
+                        <i class="fas fa-clipboard-check"></i>
+                        <p style="font-size: 0.8rem; margin: 0;">No active event tasks.</p>
+                    </div>
+                {% endif %}
+            </div>
+            <div style="margin-top: 1.5rem; border-top: 1px solid #f1f5f9; padding-top: 1rem;">
+                <a href="{{ url_for('manage_bookings') }}" style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                    Manage Detailed Checklists <i class="fas fa-arrow-right" style="font-size: 0.65rem;"></i>
+                </a>
+            </div>
+        </div>
+
         <!-- Upcoming Events -->
         <div class="sidebar-card-dashboard c-card-premium animate-up">
             <h3 class="sidebar-card-title"><i class="fas fa-calendar-alt"></i> Upcoming Events</h3>
@@ -387,11 +513,6 @@
             </div>
         </div>
 
-        <!-- Live Messages -->
-        <div class="sidebar-card-dashboard c-card-premium animate-up"
-            style="padding: 0; overflow: hidden; height: 380px;">
-            {% include "shared/dashboard_messages_widget.html" %}
-        </div>
     </div>
 </div>
 
@@ -659,29 +780,55 @@
 
     function updateUpcomingEvents(events) {
         const container = document.getElementById('upcoming-events-container');
-        if (!container) return;
-        if (events.length === 0) {
-            container.innerHTML = '<p style="color: #94a3b8; font-size: 0.85rem; padding: 1rem 0;">No upcoming events.</p>';
-            return;
+        const opsContainer = document.getElementById('ops-tracker-list');
+        
+        if (container) {
+            if (events.length === 0) {
+                container.innerHTML = '<p style="color: #94a3b8; font-size: 0.85rem; padding: 1rem 0;">No upcoming events.</p>';
+            } else {
+                const html = events.map(event => `
+                    <div class="upcoming-item-row animate-in">
+                        <div class="event-date-box">
+                            <span class="month">${event.month_short}</span>
+                            <span class="day">${event.day}</span>
+                        </div>
+                        <div class="event-details-box">
+                            <div class="event-head-box">
+                                <span class="event-title-text">${event.event_name}</span>
+                            </div>
+                            <div class="event-meta-text">
+                                <span><i class="far fa-clock"></i> ${event.event_time || 'TBD'}</span>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+                container.innerHTML = html;
+            }
         }
-        const html = events.map(event => `
-            <div class="upcoming-item-row animate-in" style="padding: 1rem 0; border-bottom: 1px solid #f1f5f9;">
-                <div class="event-date-box" style="width: 50px; height: 50px; background: #fff; border: 1px solid #f1f5f9; box-shadow: none;">
-                    <span class="month" style="font-size: 0.7rem; font-weight: 800;">${event.month_short}</span>
-                    <span class="day" style="font-size: 1.1rem; font-weight: 800; color: var(--primary-color);">${event.day}</span>
-                </div>
-                <div class="event-details-box" style="padding-left: 0.75rem;">
-                    <div class="event-head-box">
-                        <span class="event-title-text" style="font-weight: 700; font-size: 0.95rem;">${event.event_name}</span>
-                        <span class="event-status status-badge-dashboard status-${event.status}" style="font-size: 0.65rem; padding: 0.2rem 0.5rem; background: #f1f5f9; border: none;">${event.status.charAt(0).toUpperCase() + event.status.slice(1).replace('_', ' ')}</span>
+
+        if (opsContainer) {
+            if (events.length === 0) {
+                opsContainer.innerHTML = `
+                    <div class="empty-ops-state">
+                        <i class="fas fa-clipboard-check"></i>
+                        <p style="font-size: 0.8rem; margin: 0;">No active event tasks.</p>
                     </div>
-                    <div class="event-meta-text" style="font-size: 0.75rem; color: #94a3b8;">
-                        <span><i class="far fa-clock"></i> ${event.event_time || 'TBD'}</span>
+                `;
+            } else {
+                const opsHtml = events.map(event => `
+                    <div class="ops-item animate-in">
+                        <div class="ops-item-info">
+                            <span class="ops-event-name">${event.event_name || event.event_type || 'Event'}</span>
+                            <span class="ops-progress-text">${event.task_progress}%</span>
+                        </div>
+                        <div class="ops-progress-bar">
+                            <div class="ops-progress-fill" style="width: ${event.task_progress}%"></div>
+                        </div>
                     </div>
-                </div>
-            </div>
-        `).join('');
-        container.innerHTML = html;
+                `).join('');
+                opsContainer.innerHTML = opsHtml;
+            }
+        }
     }
 
     function updateRecentOrders(orders) {
@@ -692,18 +839,18 @@
             return;
         }
         const html = orders.map(order => `
-            <div class="recent-order-row animate-in" style="padding: 1.25rem; margin-bottom: 0.75rem; border: 1px solid #f1f5f9; border-radius: 1rem; transition: transform 0.2s ease;">
-                <div class="ro-avatar" style="width: 45px; height: 45px; background: #eff6ff; color: #3b82f6; font-weight: 800; font-size: 0.9rem;">${order.customer_initials}</div>
+            <div class="recent-order-row animate-in" style="background: white; border: 1px solid #f1f5f9; margin-bottom: 12px; padding: 1rem 1.5rem; border-radius: 1.25rem; display: grid; grid-template-columns: 60px 1fr 200px 150px; align-items: center; transition: all 0.2s ease;">
+                <div class="ro-avatar" style="width: 45px; height: 45px; background: #f1f5f9; color: #475569; font-size: 0.9rem; margin-right: 0; display: flex; align-items: center; justify-content: center; font-weight: 800; border-radius: 50%;">${order.customer_initials}</div>
                 <div class="ro-details">
-                    <div class="ro-name" style="font-weight: 700; color: var(--secondary-color);">${order.customer_name}</div>
-                    <div class="ro-event" style="color: #64748b; font-size: 0.8rem;">${order.event_type}</div>
+                    <div class="ro-name" style="font-size: 1rem; font-weight: 700; color: var(--secondary-color);">${order.customer_name}</div>
+                    <div class="ro-event" style="color: #64748b; font-weight: 500; font-size: 0.85rem;">${order.event_type}</div>
                 </div>
-                <div class="ro-price-date" style="text-align: right; padding-right: 2rem;">
-                    <div class="ro-amount" style="font-weight: 800; color: var(--secondary-color); font-size: 1.1rem;">${formatCurrency(order.total_amount)}</div>
-                    <div class="ro-date" style="font-size: 0.75rem; color: #94a3b8;">${order.event_date}</div>
+                <div class="ro-price-date" style="text-align: right; padding-right: 1.5rem;">
+                    <div class="ro-amount" style="font-size: 1.1rem; font-weight: 800; color: var(--secondary-color);">${formatCurrency(order.total_amount)}</div>
+                    <div class="ro-date" style="font-weight: 600; font-size: 0.85rem; color: #94a3b8;">${order.event_date}</div>
                 </div>
-                <div class="ro-status">
-                    <span class="ro-badge ro-status-${order.status}" style="font-weight: 800; padding: 0.5rem 1rem; border-radius: 2rem;">${order.status.charAt(0).toUpperCase() + order.status.slice(1).replace('_', ' ')}</span>
+                <div class="ro-status" style="text-align: right;">
+                    <span class="ro-badge ro-status-${order.status}" style="font-weight: 800; letter-spacing: 0.5px; font-size: 0.75rem; padding: 0.5rem 1rem; border-radius: 2rem;">${order.status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}</span>
                 </div>
             </div>
         `).join('');
@@ -716,7 +863,7 @@
             roi_trend_data: {{ roi_trend_data | tojson if roi_trend_data is defined else '[]'
     }},
         chart_data: {{ chart_data | tojson if chart_data is defined else '[]' }},
-    bookings_chart_data: { { bookings_chart_data | tojson if bookings_chart_data is defined else '[]' } }
+    bookings_chart_data: {{ bookings_chart_data | tojson if bookings_chart_data is defined else '[]' }}
         };
 
     initCharts(initialData);

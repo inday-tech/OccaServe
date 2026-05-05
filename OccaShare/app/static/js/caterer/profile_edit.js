@@ -1,301 +1,101 @@
 /**
- * Caterer Profile Edit JavaScript
- * Handles tab switching and gallery management
+ * Caterer Profile Edit Logic
+ * Handles color extraction, live branding preview, payment validation, and tab management.
  */
-
 document.addEventListener('DOMContentLoaded', function () {
-    // 1. Tab Switching Logic
-    const tabSelectors = document.querySelectorAll('.tab-btn');
+    // 1. Tab Management Logic
+    const tabBtns = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');
 
-    tabSelectors.forEach(btn => {
+    tabBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             const targetTab = btn.getAttribute('data-tab');
 
-            // Remove active classes
-            tabSelectors.forEach(s => s.classList.remove('active'));
-            tabContents.forEach(c => c.classList.remove('active'));
-
-            // Add active classes to target
+            // Toggle Buttons
+            tabBtns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            const targetContent = document.getElementById(targetTab);
-            if (targetContent) {
-                targetContent.classList.add('active');
-            }
 
-            // Re-render any charts or specialized components if needed
-            window.dispatchEvent(new Event('resize'));
+            // Toggle Contents
+            tabContents.forEach(content => {
+                if (content.id === targetTab) {
+                    content.classList.add('active');
+                } else {
+                    content.classList.remove('active');
+                }
+            });
+
+            // Update URL hash without scroll
+            history.replaceState(null, null, '#' + targetTab);
         });
     });
 
-    // 2. Color Input Syncing (Visual feedback)
+    // Restore Tab from Hash
+    const currentHash = window.location.hash.substring(1);
+    if (currentHash) {
+        const targetBtn = document.querySelector(`.tab-btn[data-tab="${currentHash}"]`);
+        if (targetBtn) targetBtn.click();
+    }
+
+    // 2. Color Code Sync (Color Input -> Text Span)
     const colorInputs = document.querySelectorAll('input[type="color"]');
     colorInputs.forEach(input => {
-        input.addEventListener('input', () => {
-            const sibling = input.nextElementSibling;
-            // Supports both SPAN.color-code and CODE tags
-            if (sibling && (sibling.classList.contains('color-code') || sibling.tagName === 'CODE')) {
-                sibling.textContent = input.value.toUpperCase();
+        input.addEventListener('input', (e) => {
+            const codeSpan = input.nextElementSibling;
+            if (codeSpan && codeSpan.classList.contains('color-code')) {
+                codeSpan.textContent = e.target.value.toUpperCase();
             }
         });
     });
 
-    // 3. Real-time Payment Field Validation (Mobile Wallets & Banks)
-    const mobileWalletInputs = [
-        document.querySelector('input[name="gcash_number"]'),
-        document.querySelector('input[name="maya_number"]')
-    ];
-
-    // Helper function to show/hide error message and red border
-    function toggleError(inputElement, showError, message) {
-        let errorEl = inputElement.nextElementSibling;
-
-        // If error element doesn't exist yet, create it
-        if (!errorEl || !errorEl.classList.contains('validation-error-text')) {
-            errorEl = document.createElement('div');
-            errorEl.className = 'validation-error-text';
-            inputElement.parentNode.insertBefore(errorEl, inputElement.nextSibling);
-        }
-
-        if (showError) {
-            inputElement.classList.add('input-error');
-            errorEl.textContent = message;
-            errorEl.style.display = 'block';
-        } else {
-            inputElement.classList.remove('input-error');
-            errorEl.style.display = 'none';
-        }
-    }
-
-
-window.openPasswordModal = function() {
-    const modal = document.getElementById('passwordModal');
-    if (modal) {
-        modal.style.display = 'flex';
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                modal.classList.add('active');
-            });
-        });
-    }
-    document.body.style.overflow = 'hidden';
-}
-
-window.closePasswordModal = function() {
-    const modal = document.getElementById('passwordModal');
-    if (modal) {
-        modal.classList.remove('active');
-        setTimeout(() => {
-            if (!modal.classList.contains('active')) {
-                modal.style.display = 'none';
-            }
-        }, 400);
-    }
-    document.body.style.overflow = 'auto';
-    const form = document.getElementById('changePasswordForm');
-    if (form) form.reset();
-}
-
-    mobileWalletInputs.forEach(input => {
-        if (input) {
-            input.addEventListener('input', (e) => {
-                let val = e.target.value.replace(/\D/g, '');
-                if (val.length > 11) val = val.slice(0, 11);
-                e.target.value = val;
-
-                if (val.length > 0) {
-                    if (!val.startsWith('09') && !val.startsWith('639')) {
-                        toggleError(input, true, "Number must start with 09");
-                    } else if (val.length < 11) {
-                        toggleError(input, true, "Number must be exactly 11 digits");
-                    } else {
-                        toggleError(input, false, "");
-                    }
-                } else {
-                    toggleError(input, false, "");
-                }
-            });
-            input.addEventListener('blur', (e) => {
-                let val = e.target.value;
-                if (val.length > 0 && (val.length !== 11 || (!val.startsWith('09') && !val.startsWith('639')))) {
-                    toggleError(input, true, "Invalid mobile number format.");
-                }
-            });
-        }
-    });
-
-    const bankInput = document.querySelector('input[name="bank_account_number"]');
-    if (bankInput) {
-        bankInput.addEventListener('input', (e) => {
-            let val = e.target.value;
-            // Immediately show error if letters/symbols are typed
-            if (/[^\d]/.test(val)) {
-                toggleError(bankInput, true, "Bank accounts must contain numbers only.");
-            } else {
-                toggleError(bankInput, false, "");
-            }
-            // Still enforce cleaning
-            val = val.replace(/\D/g, '');
-            if (val.length > 20) val = val.slice(0, 20);
-            e.target.value = val;
-        });
-    }
-
-    // Assistant function to detect keyboard smashing or non-words
-    function isGibberish(text) {
-        if (!text) return false;
-        if (text.length < 2 && text.length > 0) return "Must be at least 2 characters.";
-
-        // No word can be over 18 characters without spaces (except some very rare edge cases)
-        const words = text.split(' ');
-        for (let w of words) {
-            if (w.length > 18) return "Words cannot exceed 18 letters without a space.";
-        }
-
-        // 5 or more identical letters in sequence
-        if (/([A-Za-z0-9])\1{4,}/.test(text)) return "Please enter a valid real name (too many identical characters).";
-
-        // 6 or more consonants in a row (excluding 'y' as it acts as a vowel)
-        if (/[bcdfghjklmnpqrstvwxz]{6,}/i.test(text)) return "Please enter a valid real name (too many consonants).";
-
-        // Common keyboard smashes
-        const smashes = ['asdf', 'fdsa', 'qwer', 'rewq', 'zxcv', 'vcxz', 'hjkl', 'lkjh'];
-        for (let s of smashes) {
-            if (text.toLowerCase().includes(s)) return "Please enter a valid real name (keyboard smash detected).";
-        }
-
-        return false;
-    }
-
-    const bankNameInput = document.querySelector('input[name="bank_account_name"]');
-    if (bankNameInput) {
-        bankNameInput.addEventListener('input', (e) => {
-            let val = e.target.value;
-            let errorMessage = "";
-            let gibberishError = isGibberish(val);
-
-            // Allow letters, spaces, dots, commas, hyphens. Block others.
-            if (/[^A-Za-zñÑ\s\.\,\-]/.test(val)) {
-                errorMessage = "Account Name can only contain letters, spaces, and basic punctuation (.,-)";
-            } else if (gibberishError) {
-                errorMessage = gibberishError;
-            }
-
-            if (errorMessage) {
-                toggleError(bankNameInput, true, errorMessage);
-            } else {
-                toggleError(bankNameInput, false, "");
-            }
-
-            e.target.value = val.replace(/[^A-Za-zñÑ\s\.\,\-]/g, '');
-        });
-    }
-
-    const bankInstInput = document.querySelector('input[name="bank_name"]');
-    if (bankInstInput) {
-        bankInstInput.addEventListener('input', (e) => {
-            let val = e.target.value;
-            let errorMessage = "";
-            let gibberishError = isGibberish(val);
-
-            // Allow letters, numbers, spaces, dots, commas, hyphens, ampersands. Block others.
-            if (/[^A-Za-z0-9\s\.\,\-\&]/.test(val)) {
-                errorMessage = "Bank Name can only contain letters, numbers, spaces, and basic punctuation (.,-&)";
-            } else if (gibberishError) {
-                errorMessage = gibberishError;
-            }
-
-            if (errorMessage) {
-                toggleError(bankInstInput, true, errorMessage);
-            } else {
-                toggleError(bankInstInput, false, "");
-            }
-
-            e.target.value = val.replace(/[^A-Za-z0-9\s\.\,\-\&]/g, '');
-        });
-    }
-
-    // 4. Magic Color Extraction from Logo
+    // 3. Magic Palette: AI Logo Color Extraction
     const logoInputs = document.querySelectorAll('.logo-input-shared');
-    const magicBtns = document.querySelectorAll('.magic-extract-shared');
+    const magicBtn = document.querySelector('.magic-extract-shared');
 
-    magicBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            // Find the closest related input or just check any if there are multiple
-            const activeInput = Array.from(logoInputs).find(input => input.files && input.files[0]);
-            if (activeInput) {
-                extractColors(activeInput.files[0], btn);
-            } else {
+    if (magicBtn) {
+        magicBtn.addEventListener('click', async function () {
+            const logoInput = document.querySelector('.logo-input-shared');
+            if (!logoInput || !logoInput.files || !logoInput.files[0]) {
                 window.showError("Please select a logo file first.");
+                return;
             }
+
+            const file = logoInput.files[0];
+            const reader = new FileReader();
+
+            const originalHtml = magicBtn.innerHTML;
+            magicBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+            magicBtn.classList.add('processing');
+
+            reader.onload = async function (e) {
+                const img = new Image();
+                img.onload = () => extractColors(img, magicBtn, originalHtml);
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
         });
-    });
+    }
 
-    async function extractColors(file, triggerBtn) {
-        triggerBtn.classList.add('processing');
-        const originalHtml = triggerBtn.innerHTML;
-        triggerBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
-
+    async function extractColors(img, triggerBtn, originalHtml) {
         try {
-            let bitmap;
-            // Cross-browser: createImageBitmap is not supported in older Safari (<15)
-            if (window.createImageBitmap) {
-                bitmap = await createImageBitmap(file);
-            } else {
-                // Fallback: Use standard Image load
-                bitmap = await new Promise((resolve, reject) => {
-                    const img = new Image();
-                    img.onload = () => resolve(img);
-                    img.onerror = reject;
-                    img.src = URL.createObjectURL(file);
-                });
-            }
-
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
-            
-            // Resize for faster processing
-            const maxDim = 150; 
-            let width = bitmap.width || bitmap.naturalWidth;
-            let height = bitmap.height || bitmap.naturalHeight;
-            if (width > height) {
-                if (width > maxDim) {
-                    height = Math.round(height * maxDim / width);
-                    width = maxDim;
-                }
-            } else {
-                if (height > maxDim) {
-                    width = Math.round(width * maxDim / height);
-                    height = maxDim;
-                }
-            }
+            const size = 150; // Performance-optimized sampling
+            canvas.width = size;
+            canvas.height = size;
+            ctx.drawImage(img, 0, 0, size, size);
 
-            canvas.width = width;
-            canvas.height = height;
-            ctx.drawImage(bitmap, 0, 0, width, height);
-
-            // Cleanup object URL if fallback was used
-            if (!window.createImageBitmap && bitmap.src) {
-                URL.revokeObjectURL(bitmap.src);
-            }
-
-            const imageData = ctx.getImageData(0, 0, width, height).data;
+            const imageData = ctx.getImageData(0, 0, size, size).data;
             const colorCounts = {};
-            
-            // Sample pixels
+            const q = 16; // Quantization factor
+
             for (let i = 0; i < imageData.length; i += 4) {
-                const r = imageData[i];
-                const g = imageData[i + 1];
-                const b = imageData[i + 2];
-                const a = imageData[i + 3];
+                const r = imageData[i], g = imageData[i + 1], b = imageData[i + 2], a = imageData[i + 3];
+                if (a < 128) continue; // Skip transparency
 
-                // Skip transparent or near-white/near-black pixels
-                if (a < 128) continue;
-                const brightness = (r + g + b) / 3;
-                if (brightness > 245 || brightness < 10) continue;
+                // Skip white/black/neutral
+                const avg = (r + g + b) / 3;
+                if (avg > 240 || avg < 15) continue; 
 
-                // Simple quantization to reduce similar colors
-                const q = 24; // Finer quantization
                 const qr = Math.round(r / q) * q;
                 const qg = Math.round(g / q) * q;
                 const qb = Math.round(b / q) * q;
@@ -303,7 +103,6 @@ window.closePasswordModal = function() {
                 colorCounts[key] = (colorCounts[key] || 0) + 1;
             }
 
-            // Sort by frequency
             const sortedColors = Object.entries(colorCounts)
                 .map(([rgbStr, count]) => {
                     const rgb = rgbStr.split(',').map(Number);
@@ -314,52 +113,84 @@ window.closePasswordModal = function() {
                 .sort((a, b) => b.count - a.count);
             
             if (sortedColors.length > 0) {
-                // Analysis logic:
-                // Primary: The most dominant non-neutral color.
-                // Secondary: The next dominant color that's distinct from Primary.
-                // Accent: The most saturated color among top candidates.
-                // Highlight: A distinct, vibrant color (usually high saturation, different hue).
+                const hueGroups = {};
+                sortedColors.forEach(c => {
+                    const hKey = Math.floor(c.h * 12);
+                    if (!hueGroups[hKey]) hueGroups[hKey] = [];
+                    hueGroups[hKey].push(c);
+                });
 
-                const primary = sortedColors[0].hex;
-                
-                // Find Secondary (distinct from primary by hue or significant saturation)
-                let secondaryCandidate = sortedColors.find(c => 
-                    Math.abs(c.h - sortedColors[0].h) > 0.1 || Math.abs(c.s - sortedColors[0].s) > 0.3
+                const groups = Object.values(hueGroups).sort((a, b) => {
+                    const countA = a.reduce((sum, curr) => sum + curr.count, 0);
+                    const countB = b.reduce((sum, curr) => sum + curr.count, 0);
+                    return countB - countA;
+                });
+
+                const getBalancedColor = (candidates) => {
+                    return candidates.sort((a, b) => {
+                        const scoreA = (a.s > 0.2 ? 1 : 0) + (a.v > 0.2 && a.v < 0.8 ? 1 : 0);
+                        const scoreB = (b.s > 0.2 ? 1 : 0) + (b.v > 0.2 && b.v < 0.8 ? 1 : 0);
+                        return scoreB - scoreA || b.count - a.count;
+                    })[0];
+                };
+
+                let primaryObj = getBalancedColor(groups[0]);
+                let primary = primaryObj.hex;
+
+                let secondary;
+                if (groups[1]) {
+                    secondary = getBalancedColor(groups[1]).hex;
+                } else {
+                    const pRgb = hexToRgb(primary);
+                    secondary = rgbToHex(Math.max(0, pRgb.r - 40), Math.max(0, pRgb.g - 40), Math.max(0, pRgb.b - 40));
+                }
+
+                const allBySaturation = [...sortedColors].sort((a, b) => b.s - a.s);
+                let accentObj = allBySaturation.find(c => c.s > 0.4 && c.v > 0.4) || allBySaturation[0];
+                let accent = accentObj.hex;
+
+                const highlight = rgbToHex(
+                    Math.min(255, hexToRgb(primary).r + 180),
+                    Math.min(255, hexToRgb(primary).g + 180),
+                    Math.min(255, hexToRgb(primary).b + 180)
                 );
-                const secondary = secondaryCandidate ? secondaryCandidate.hex : primary;
 
-                // Highlight/Accent: Find most saturated colors
-                const bySaturation = [...sortedColors].slice(0, 10).sort((a, b) => b.s - a.s);
-                const accent = bySaturation[0].hex;
-                const highlight = bySaturation[1] ? bySaturation[1].hex : (bySaturation[0] ? bySaturation[0].hex : primary);
+                const sanitize = (hex) => {
+                    const hsv = rgbToHsv(...Object.values(hexToRgb(hex)));
+                    if (hsv.s > 0.85 || hsv.v > 0.95) {
+                        const rgb = hsvToRgb(hsv.h, Math.min(hsv.s, 0.7), Math.min(hsv.v, 0.8));
+                        return rgbToHex(rgb.r, rgb.g, rgb.b);
+                    }
+                    return hex;
+                };
 
                 applyPalette({
-                    primary: primary,
-                    secondary: secondary,
-                    accent: accent,
-                    highlight: highlight
+                    primary: sanitize(primary),
+                    secondary: sanitize(secondary),
+                    accent: sanitize(accent),
+                    highlight: sanitize(highlight)
                 });
+                
+                window.showSuccess("Magic Palette applied! Elite dashboard theme generated.");
             }
-
         } catch (err) {
             console.error("Color extraction failed:", err);
-            window.showError("Could not extract colors from this image. Please try another one.");
+            window.showError("Could not extract colors. Please try another logo.");
         } finally {
             triggerBtn.classList.remove('processing');
             triggerBtn.innerHTML = originalHtml;
         }
     }
 
-    // Helper: RGB to HSV for better color analysis
+    // Helper functions
     function rgbToHsv(r, g, b) {
         r /= 255, g /= 255, b /= 255;
         const max = Math.max(r, g, b), min = Math.min(r, g, b);
         let h, s, v = max;
         const d = max - min;
         s = max === 0 ? 0 : d / max;
-        if (max === min) {
-            h = 0;
-        } else {
+        if (max === min) h = 0;
+        else {
             switch (max) {
                 case r: h = (g - b) / d + (g < b ? 6 : 0); break;
                 case g: h = (b - r) / d + 2; break;
@@ -370,184 +201,196 @@ window.closePasswordModal = function() {
         return { h, s, v };
     }
 
+    function hsvToRgb(h, s, v) {
+        let r, g, b;
+        const i = Math.floor(h * 6);
+        const f = h * 6 - i;
+        const p = v * (1 - s);
+        const q = v * (1 - f * s);
+        const t = v * (1 - (1 - f) * s);
+        switch (i % 6) {
+            case 0: r = v, g = t, b = p; break;
+            case 1: r = q, g = v, b = p; break;
+            case 2: r = p, g = v, b = t; break;
+            case 3: r = p, g = q, b = v; break;
+            case 4: r = t, g = p, b = v; break;
+            case 5: r = v, g = p, b = q; break;
+        }
+        return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
+    }
+
     function rgbToHex(r, g, b) {
-        return "#" + [r, g, b].map(x => {
-            const hex = x.toString(16);
-            return hex.length === 1 ? "0" + hex : hex;
-        }).join("").toUpperCase();
+        return "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
     }
 
     function hexToRgb(hex) {
         const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result ? {
-            r: parseInt(result[1], 16),
-            g: parseInt(result[2], 16),
-            b: parseInt(result[3], 16)
-        } : null;
+        return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : {r:0,g:0,b:0};
     }
 
-    // 4. Branding Advanced Interactivity
+    // 4. Advanced Branding Sync
     const fontSelect = document.querySelector('select[name="font_family"]');
     const radiusInput = document.querySelector('input[name="border_radius"]');
-    const sidebarToggles = document.querySelectorAll('input[name="sidebar_mode"]');
-    const platformLogoCheck = document.getElementById('showPlatformLogo');
+    const textureSelect = document.querySelector('select[name="dashboard_texture"]');
+    const sidebarDecorSelect = document.querySelector('select[name="sidebar_decoration"]');
+    const headerDecorSelect = document.querySelector('select[name="header_decoration"]');
     const presetItems = document.querySelectorAll('.preset-item');
 
-    // Preset Palettes
-    presetItems.forEach(item => {
-        item.addEventListener('click', () => {
-            const palette = {
-                primary: item.getAttribute('data-primary'),
-                secondary: item.getAttribute('data-secondary'),
-                accent: item.getAttribute('data-accent'),
-                highlight: item.getAttribute('data-highlight')
-            };
-            applyPalette(palette);
-        });
-    });
-
-    // Font Family Updates
-    if (fontSelect) {
-        fontSelect.addEventListener('change', () => {
-            updateMockup();
-        });
-    }
-
-    // Border Radius Updates
-    if (radiusInput) {
-        radiusInput.addEventListener('input', (e) => {
-            // Update the label text in the label itself if we wanted, but let's just update mockup
-            const parentLabel = radiusInput.previousElementSibling;
-            if (parentLabel) {
-                parentLabel.textContent = `Interface Roundness (${e.target.value}px)`;
-            }
-            updateMockup();
-        });
-    }
-
-    // Sidebar Mode Updates
-    sidebarToggles.forEach(toggle => {
-        toggle.addEventListener('change', () => {
-            updateMockup();
-        });
-    });
-
-    // Platform Logo Visibility
-    if (platformLogoCheck) {
-        platformLogoCheck.addEventListener('change', () => {
-            updateMockup();
-        });
-    }
-
     function applyPalette(palette) {
-        const pInput = document.querySelector('input[name="primary_color"]');
-        const sInput = document.querySelector('input[name="secondary_color"]');
-        const aInput = document.querySelector('input[name="accent_color"]');
-        const hInput = document.querySelector('input[name="highlight_color"]');
+        const fields = {
+            primary_color: palette.primary,
+            secondary_color: palette.secondary,
+            accent_color: palette.accent,
+            highlight_color: palette.highlight
+        };
 
-        if (pInput) { pInput.value = palette.primary; pInput.dispatchEvent(new Event('input')); }
-        if (sInput) { sInput.value = palette.secondary; sInput.dispatchEvent(new Event('input')); }
-        if (aInput) { aInput.value = palette.accent; aInput.dispatchEvent(new Event('input')); }
-        if (hInput) { hInput.value = palette.highlight; hInput.dispatchEvent(new Event('input')); }
-
-        // Preview in UI instantly
-        const root = document.documentElement;
-        
-        // Update Hex Variables
-        root.style.setProperty('--primary-color', palette.primary);
-        root.style.setProperty('--secondary-color', palette.secondary);
-        root.style.setProperty('--accent-color', palette.accent);
-        root.style.setProperty('--highlight-color', palette.highlight);
-        
-        // Update RGB Variables for transparency/shadows
-        const pRgb = hexToRgb(palette.primary);
-        const sRgb = hexToRgb(palette.secondary);
-        const aRgb = hexToRgb(palette.accent);
-        const hRgb = hexToRgb(palette.highlight);
-        
-        if (pRgb) root.style.setProperty('--primary-color-rgb', `${pRgb.r}, ${pRgb.g}, ${pRgb.b}`);
-        if (sRgb) root.style.setProperty('--secondary-color-rgb', `${sRgb.r}, ${sRgb.g}, ${sRgb.b}`);
-        if (aRgb) root.style.setProperty('--accent-color-rgb', `${aRgb.r}, ${aRgb.g}, ${aRgb.b}`);
-        if (hRgb) root.style.setProperty('--highlight-color-rgb', `${hRgb.r}, ${hRgb.g}, ${hRgb.b}`);
-        
+        for (const [name, val] of Object.entries(fields)) {
+            const input = document.querySelector(`input[name="${name}"]`);
+            if (input && val) {
+                input.value = val;
+                const code = input.nextElementSibling;
+                if (code && code.classList.contains('color-code')) code.textContent = val.toUpperCase();
+            }
+        }
         updateMockup();
     }
 
     function updateMockup() {
-        const palette = {
-            primary: document.querySelector('input[name="primary_color"]')?.value || '#FF7B54',
-            secondary: document.querySelector('input[name="secondary_color"]')?.value || '#2D4059',
-            accent: document.querySelector('input[name="accent_color"]')?.value || '#FFB26B',
-            highlight: document.querySelector('input[name="highlight_color"]')?.value || '#48BB78'
+        const mockup = document.getElementById('mockupContainer');
+        if (!mockup) return;
+
+        const getVal = (name) => document.querySelector(`input[name="${name}"]`)?.value;
+        
+        const colors = {
+            primary: getVal('primary_color'),
+            secondary: getVal('secondary_color'),
+            accent: getVal('accent_color'),
+            highlight: getVal('highlight_color')
         };
 
-        const mockBody = document.querySelector('.preview-mockup-pro');
-        const mockSidebar = document.querySelector('.mock-sidebar');
-        const mockItemActive = document.querySelector('.mock-menu-item.active');
-        const mockButton = document.querySelector('.mock-btn-pro');
-        const mockTag = document.querySelector('.mock-tag-pro');
-        const mockLogo = document.querySelector('.mock-logo');
+        mockup.style.setProperty('--primary-color', colors.primary);
+        mockup.style.setProperty('--secondary-color', colors.secondary);
+        mockup.style.setProperty('--accent-color', colors.accent);
+        mockup.style.setProperty('--highlight-color', colors.highlight);
 
-        // Styles
-        if (mockSidebar) mockSidebar.style.backgroundColor = palette.secondary;
-        if (mockItemActive) mockItemActive.style.backgroundColor = palette.primary;
-        if (mockButton) mockButton.style.backgroundColor = palette.primary;
-        if (mockTag) mockTag.style.backgroundColor = palette.highlight;
-        if (mockLogo) mockLogo.style.border = `2px solid ${palette.highlight}`;
+        const mSidebar = document.getElementById('mockSidebar');
+        const mHeader = document.getElementById('mockHeader');
+        const mMainBody = document.getElementById('mockMainBody');
+        const mCards = mockup.querySelectorAll('.mock-mini-card, .mock-card-large');
+        const mBtn = document.getElementById('mockActionBtn');
 
-        // Focus text on Catering
-        if (mockButton) mockButton.innerText = "Catering Actions";
-        if (mockTag) mockTag.innerText = "Verified Caterer";
+        if (mSidebar) mSidebar.style.background = '#ffffff';
+        if (mHeader) mHeader.style.background = '#ffffff';
+        
+        if (mMainBody) mMainBody.className = 'mock-content-body texture-' + (textureSelect?.value || 'none');
+        
+        mockup.classList.remove('glass-active');
 
-        // Font
-        const selectedFont = fontSelect ? fontSelect.value : 'Inter';
-        if (mockBody) mockBody.style.fontFamily = selectedFont;
+        mockup.style.fontFamily = fontSelect?.value || 'Inter';
+        const radius = radiusInput?.value || 12;
+        mockup.style.setProperty('--preview-radius', radius + 'px');
 
-        // Radius
-        const radius = radiusInput ? radiusInput.value : 12;
-        document.documentElement.style.setProperty('--preview-radius', `${radius / 2}px`); // Scaled for mockup
-
-        // Sidebar Mode
-        const mode = document.querySelector('input[name="sidebar_mode"]:checked')?.value || 'full';
-        if (mockSidebar) {
-            mockSidebar.style.width = mode === 'icons' ? '25px' : '45px';
+        // Decorations Logic
+        const sDecor = sidebarDecorSelect?.value || 'none';
+        const hDecor = headerDecorSelect?.value || 'none';
+        
+        let sHtml = '';
+        if (sDecor === 'chef-hat') {
+            sHtml = '<div class="mock-sidebar-decor sticker-1"><i class="fas fa-hat-chef"></i></div>' +
+                    '<div class="mock-sidebar-decor sticker-2" style="top:30%;"><i class="fas fa-utensils"></i></div>' +
+                    '<div class="mock-sidebar-decor sticker-3" style="top:50%;"><i class="fas fa-mitten"></i></div>';
+        } else if (sDecor === 'food-pack') {
+            sHtml = '<div class="mock-sidebar-decor sticker-1"><i class="fas fa-pizza-slice" style="color: #ed8936;"></i></div>' +
+                    '<div class="mock-sidebar-decor sticker-2" style="top:30%; color: #ecc94b;"><i class="fas fa-hamburger"></i></div>' +
+                    '<div class="mock-sidebar-decor sticker-3" style="top:50%; color: #f687b3;"><i class="fas fa-ice-cream"></i></div>';
+        } else if (sDecor === 'party-pack') {
+            sHtml = '<div class="mock-sidebar-decor sticker-1"><i class="fas fa-balloons" style="color: #4299e1;"></i></div>' +
+                    '<div class="mock-sidebar-decor sticker-2" style="top:30%; color: #ed64a6;"><i class="fas fa-glass-cheers"></i></div>' +
+                    '<div class="mock-sidebar-decor sticker-3" style="top:50%; color: #48bb78;"><i class="fas fa-music"></i></div>';
+        } else if (sDecor === 'steam') {
+            sHtml = '<div class="mock-sidebar-decor sticker-1"><i class="fas fa-mug-hot steam-icon"></i></div>' +
+                    '<div class="mock-sidebar-decor sticker-2" style="top:40%; color:#a0aec0;"><i class="fas fa-cookie-bite"></i></div>';
         }
+        
+        const existingSDecors = mSidebar.querySelectorAll('.mock-sidebar-decor');
+        existingSDecors.forEach(d => d.remove());
+        if (sHtml) mSidebar.insertAdjacentHTML('beforeend', sHtml);
 
-        // Platform Logo
-        const showLogo = platformLogoCheck ? platformLogoCheck.checked : true;
+        let hHtml = '';
+        if (hDecor === 'utensils') {
+            hHtml = '<div class="mock-header-decor" style="left:5%;"><i class="fas fa-utensils"></i></div>' +
+                    '<div class="mock-header-decor" style="left:20%; color:#ecc94b;"><i class="fas fa-wine-glass"></i></div>' +
+                    '<div class="mock-header-decor" style="left:40%;"><i class="fas fa-cheese"></i></div>' +
+                    '<div class="mock-header-decor" style="left:60%; color:#ed8936;"><i class="fas fa-pizza-slice"></i></div>' +
+                    '<div class="mock-header-decor" style="left:85%;"><i class="fas fa-ice-cream"></i></div>';
+        } else if (hDecor === 'sparkles') {
+            hHtml = '<div class="mock-header-decor" style="left:10%; opacity:0.6;"><i class="fas fa-sparkles fa-spin" style="color:#f6e05e;"></i></div>' +
+                    '<div class="mock-header-decor" style="left:35%; opacity:0.6;"><i class="fas fa-star" style="color:#f6e05e;"></i></div>' +
+                    '<div class="mock-header-decor" style="left:65%; opacity:0.6;"><i class="fas fa-shimmer" style="color:#f6e05e;"></i></div>' +
+                    '<div class="mock-header-decor" style="left:90%; opacity:0.6;"><i class="fas fa-star-shooting" style="color:#f6e05e;"></i></div>';
+        } else if (hDecor === 'delivery') {
+            hHtml = '<div class="mock-header-decor" style="left:15%;"><i class="fas fa-truck-container" style="color:var(--primary-color);"></i></div>' +
+                    '<div class="mock-header-decor" style="left:50%;"><i class="fas fa-box-check" style="color:var(--highlight-color);"></i></div>' +
+                    '<div class="mock-header-decor" style="left:85%;"><i class="fas fa-map-marker-alt" style="color:var(--accent-color);"></i></div>';
+        }
+        
+        const existingHDecors = mHeader.querySelectorAll('.mock-header-decor');
+        existingHDecors.forEach(d => d.remove());
+        if (hHtml) mHeader.insertAdjacentHTML('beforeend', hHtml);
+        
+        mCards.forEach(c => c.style.borderRadius = radius + 'px');
+        if (mBtn) mBtn.style.borderRadius = (radius * 0.8) + 'px';
+        const mSearch = mockup.querySelector('.mock-search-bar');
+        if (mSearch) mSearch.style.borderRadius = radius + 'px';
     }
 
-    // Connect manual color changes — also update CSS RGB variables live
-    const colorInputsForMock = document.querySelectorAll('input[type="color"]');
-    colorInputsForMock.forEach(input => {
-        input.addEventListener('input', () => {
+    // Event Listeners for Live Preview
+    [fontSelect, radiusInput, textureSelect, sidebarDecorSelect, headerDecorSelect].forEach(el => {
+        if (!el) return;
+        const evt = el.tagName === 'INPUT' && el.type === 'range' ? 'input' : 'change';
+        el.addEventListener(evt, () => {
+            if (el === radiusInput) document.documentElement.style.setProperty('--border-radius', radiusInput.value + 'px');
+            if (el === fontSelect) document.documentElement.style.setProperty('--font-family', fontSelect.value);
             updateMockup();
-            // Keep global CSS variables in sync when user manually changes colors
-            const varMap = {
-                'primary_color': ['--primary-color', '--primary-color-rgb'],
-                'secondary_color': ['--secondary-color', '--secondary-color-rgb'],
-                'accent_color': ['--accent-color', '--accent-color-rgb'],
-                'highlight_color': ['--highlight-color', '--highlight-color-rgb']
-            };
-            const fieldName = input.getAttribute('name');
-            if (varMap[fieldName]) {
-                document.documentElement.style.setProperty(varMap[fieldName][0], input.value);
-                const rgb = hexToRgb(input.value);
-                if (rgb) document.documentElement.style.setProperty(varMap[fieldName][1], `${rgb.r}, ${rgb.g}, ${rgb.b}`);
-            }
+        });
+        if (el.type === 'color') {
+            el.addEventListener('input', updateMockup);
+        }
+    });
+
+    // Color input sync with global CSS
+    document.querySelectorAll('input[type="color"]').forEach(input => {
+        input.addEventListener('input', () => {
+            const name = input.getAttribute('name');
+            const cssVar = `--${name.replace('_', '-')}`;
+            document.documentElement.style.setProperty(cssVar, input.value);
+            const rgb = hexToRgb(input.value);
+            if (rgb) document.documentElement.style.setProperty(`${cssVar}-rgb`, `${rgb.r}, ${rgb.g}, ${rgb.b}`);
         });
     });
 
-    // Logo image preview in mockup (works for ALL logo inputs via shared class)
-    logoInputs.forEach(logoInput => {
-        logoInput.addEventListener('change', function() {
-            if (this.files && this.files[0]) {
+    presetItems.forEach(item => {
+        item.addEventListener('click', () => {
+            applyPalette({
+                primary: item.getAttribute('data-primary'),
+                secondary: item.getAttribute('data-secondary'),
+                accent: item.getAttribute('data-accent'),
+                highlight: item.getAttribute('data-highlight')
+            });
+        });
+    });
+
+    // Logo image preview
+    logoInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            if (this.files?.[0]) {
                 const reader = new FileReader();
-                reader.onload = function(e) {
+                reader.onload = e => {
                     const mockLogo = document.querySelector('.mock-logo');
                     if (mockLogo) {
                         mockLogo.style.backgroundImage = `url(${e.target.result})`;
-                        mockLogo.style.backgroundSize = 'cover';
+                        mockLogo.style.backgroundSize = 'contain';
+                        mockLogo.style.backgroundRepeat = 'no-repeat';
                         mockLogo.style.backgroundPosition = 'center';
                         mockLogo.style.backgroundColor = 'transparent';
                     }
@@ -557,68 +400,22 @@ window.closePasswordModal = function() {
         });
     });
 
-    // Prevent form submission if there are validation errors
-    const profileForm = document.querySelector('.profile-edit-form');
-    if (profileForm) {
-        profileForm.addEventListener('submit', function (e) {
-            const errors = document.querySelectorAll('.input-error');
-            if (errors.length > 0) {
-                e.preventDefault();
-                window.showError("Please correct the highlighted errors in your payment details before saving.");
-
-                // Automatically switch to the Payments tab so the user sees the error
-                const paymentsTabBtn = document.querySelector('.tab-btn[data-tab="payments"]');
-                if (paymentsTabBtn) paymentsTabBtn.click();
-
-                errors[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-
-            // Re-validate everything just before submit to ensure they didn't bypass by not blurring
-            const bankName = bankInstInput ? bankInstInput.value : "";
-            const accountName = bankNameInput ? bankNameInput.value : "";
-
-            let gError1 = isGibberish(bankName);
-            let gError2 = isGibberish(accountName);
-
-            if (gError1 || gError2) {
-                e.preventDefault();
-                window.showError(gError1 || gError2);
-                if (paymentsTabBtn) paymentsTabBtn.click();
-            }
-        });
-    }
+    // Initial Update
+    updateMockup();
 });
 
-/**
- * Archives a gallery item
- * @param {number} itemId 
- */
+// Gallery Archive Function
 async function archiveGalleryItem(itemId) {
-    window.showConfirm('Are you sure you want to archive this photo? It will be moved to your archives.', async () => {
-        try {
-            const response = await fetch(`/caterer/gallery/${itemId}/archive`, {
-                method: 'POST',
-            });
-
-            if (response.ok) {
-                // Remove the element from DOM
-                const btn = document.querySelector(`button[onclick="archiveGalleryItem(${itemId})"]`);
-                if (btn) {
-                    const itemWrapper = btn.closest('.gallery-item-wrapper');
-                    if (itemWrapper) {
-                        itemWrapper.style.opacity = '0';
-                        itemWrapper.style.transform = 'scale(0.8)';
-                        setTimeout(() => itemWrapper.remove(), 300);
-                    }
-                }
-                window.showSuccess('Gallery item archived successfully');
-            } else {
-                const data = await response.json();
-                window.showError(data.detail || 'Failed to archive item');
+    if (!confirm('Archive this photo?')) return;
+    try {
+        const response = await fetch(`/caterer/gallery/${itemId}/archive`, { method: 'POST' });
+        if (response.ok) {
+            const btn = document.querySelector(`button[onclick="archiveGalleryItem(${itemId})"]`);
+            const item = btn?.closest('.gallery-item-wrapper');
+            if (item) {
+                item.style.opacity = '0';
+                setTimeout(() => item.remove(), 300);
             }
-        } catch (error) {
-            console.error('Error archiving gallery item:', error);
-            window.showError('An error occurred while archiving the item.');
         }
-    }, "Archive Photo?", "Yes, Archive");
+    } catch (err) { console.error(err); }
 }

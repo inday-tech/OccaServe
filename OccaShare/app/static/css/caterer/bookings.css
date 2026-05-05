@@ -238,39 +238,6 @@
 }
 
 /* New Booking Button Standard Class */
-.btn-bookings-new {
-    height: 48px;
-    background: var(--primary-color) !important;
-    color: white !important;
-    padding: 0 1.75rem;
-    border-radius: 0.85rem;
-    font-weight: 800;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    border: none;
-    font-size: var(--text-base);
-    white-space: nowrap;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 8px 16px rgba(var(--primary-color-rgb), 0.2);
-}
-
-.btn-bookings-new:hover {
-    transform: translateY(-3px);
-    background: var(--accent-color) !important;
-    color: white !important;
-    box-shadow: 0 12px 24px rgba(var(--primary-color-rgb), 0.3);
-}
-
-.btn-bookings-new i {
-    font-size: var(--text-base);
-    color: white !important;
-}
-
-.btn-bookings-new .btn-text {
-    color: white !important;
-}
 
 /* Action Buttons for Dashboard */
 .btn-status-next {

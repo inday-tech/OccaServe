@@ -62,6 +62,20 @@ async function openAddPackageModal() {
         const firstStep = document.getElementById('step-btn-basic');
         if (firstStep) switchPackageTab(firstStep, 'basic');
 
+        // Reset new fields to defaults
+        if (form.booking_lead_time) form.booking_lead_time.value = 7;
+        if (form.reservation_fee) form.reservation_fee.value = 5000;
+        if (form.min_contract_amount) form.min_contract_amount.value = '';
+
+        // Reset Image Preview
+        const preview = document.getElementById('pkgImagePreview');
+        const placeholder = document.getElementById('previewPlaceholder');
+        if (preview) {
+            preview.src = '';
+            preview.style.display = 'none';
+        }
+        if (placeholder) placeholder.style.display = 'flex';
+
         // Render default standard inclusions
         renderInclusions({});
 
@@ -103,6 +117,9 @@ async function editPackage(pkgId) {
         if (form.price_per_head) form.price_per_head.value = pkg.price_per_head || '';
         if (form.min_guests) form.min_guests.value = pkg.min_guests || 50;
         if (form.service_duration) form.service_duration.value = pkg.service_duration || 8;
+        if (form.booking_lead_time) form.booking_lead_time.value = pkg.booking_lead_time || 7;
+        if (form.reservation_fee) form.reservation_fee.value = pkg.reservation_fee || 5000;
+        if (form.min_contract_amount) form.min_contract_amount.value = pkg.min_contract_amount || '';
 
         // Cost Breakdown (Explicit Fields)
         if (form.base_pax) form.base_pax.value = pkg.base_pax || 50;
@@ -120,6 +137,18 @@ async function editPackage(pkgId) {
 
         // Inclusions
         renderInclusions(pkg.inclusions || {});
+
+        // Image Preview Handling
+        const preview = document.getElementById('pkgImagePreview');
+        const placeholder = document.getElementById('previewPlaceholder');
+        if (preview && pkg.image_url) {
+            preview.src = pkg.image_url;
+            preview.style.display = 'block';
+            if (placeholder) placeholder.style.display = 'none';
+        } else if (preview) {
+            preview.style.display = 'none';
+            if (placeholder) placeholder.style.display = 'flex';
+        }
 
         // Reset wizard to Step 1
         const firstStep = document.getElementById('step-btn-basic');
@@ -231,7 +260,8 @@ function switchPackageTab(el, tabName) {
     const target = document.getElementById('tab-' + tabName);
     if (target) {
         target.classList.add('active');
-        document.querySelector('#packageModal .modal-body-pro').scrollTop = 0;
+        const body = document.querySelector('#packageModal .occ-modal-body');
+        if (body) body.scrollTop = 0;
     }
 
     if (tabName === 'menu') loadPkgMenuLibrary();
@@ -263,18 +293,21 @@ async function loadPkgMenuLibrary() {
             const isSelected = linkedIds.includes(item.id);
             return `
                 <div class="menu-select-card ${isSelected ? 'selected' : ''}" 
+                     data-id="${item.id}"
+                     data-cost="${item.cost_price || 0}"
                      onclick="window.toggleLibItemSelectCard(this, ${item.id})"
                      style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; cursor: pointer; transition: all 0.2s; margin-bottom: 0.5rem; background: ${isSelected ? '#f0fdf4' : 'white'}; border-color: ${isSelected ? '#22c55e' : '#e2e8f0'};">
                     <img src="${item.image_url || DISH_PLACEHOLDER}" alt="${item.name}" onerror="this.src='${DISH_PLACEHOLDER}'" style="width: 40px; height: 40px; border-radius: 0.5rem; object-fit: cover;">
                     <div style="flex: 1;">
                         <h6 style="margin: 0; font-size: 0.85rem; font-weight: 700;">${item.name}</h6>
-                        <div style="font-size: 0.7rem; color: #94a3b8;">${item.category}</div>
+                        <div style="font-size: 0.7rem; color: #94a3b8;">${item.category} • ₱${(item.cost_price || 0).toFixed(2)} cost</div>
                     </div>
                     <input type="checkbox" name="linked_menu_ids" value="${item.id}" ${isSelected ? 'checked' : ''} style="display:none;">
                     ${isSelected ? '<i class="fas fa-check-circle text-green-500"></i>' : '<i class="far fa-circle text-slate-200"></i>'}
                 </div>
             `;
         }).join('');
+        calculateCosts(); // Initial calc
     } catch (e) {
         console.error('[Packages] Menu library fetch error:', e);
         container.innerHTML = '<div class="text-center py-5 text-red-400 text-xs">Error loading library.</div>';
@@ -296,6 +329,7 @@ function toggleLibItemSelectCard(card, id) {
         card.style.borderColor = '#e2e8f0';
         card.querySelector('i').className = 'far fa-circle text-slate-200';
     }
+    calculateCosts();
 }
 
 function filterPkgMenuLibrary() {
@@ -311,7 +345,21 @@ function calculateCosts() {
     const utility = parseFloat(document.getElementById('pkgUtilityCost')?.value) || 0;
     const equip = parseFloat(document.getElementById('pkgEquipmentCost')?.value) || 0;
     const basePax = parseInt(document.getElementById('pkgBasePax')?.value) || 50;
-    
+    // Sum selected menu items cost from Step 3 (Only if library is loaded)
+    const menuCards = document.querySelectorAll('.menu-select-card');
+    if (menuCards.length > 0) {
+        let ingCostPerPax = 0;
+        document.querySelectorAll('.menu-select-card.selected').forEach(card => {
+            ingCostPerPax += parseFloat(card.dataset.cost) || 0;
+        });
+
+        const ingDisplay = document.getElementById('pkgIngredientCostDisplay');
+        if (ingDisplay) {
+            ingDisplay.innerText = '₱' + ingCostPerPax.toFixed(2) + ' / pax';
+            ingDisplay.dataset.cost = ingCostPerPax;
+        }
+    }
+
     const ingDisplay = document.getElementById('pkgIngredientCostDisplay');
     const ingCostPerPax = parseFloat(ingDisplay?.dataset?.cost) || 0;
 
@@ -325,15 +373,12 @@ function calculateCosts() {
     const internalInput = document.getElementById('pkgInternalCostPerPax');
     if (internalInput) internalInput.value = totalCostPerPax;
 
-    const costInput = document.getElementById('cost_price_input');
-    if (costInput) costInput.value = totalCostPerPax;
-
     const manualPriceInput = document.getElementById('pkgManualPriceInput');
     const manualPrice = manualPriceInput ? parseFloat(manualPriceInput.value.replace(/,/g, '')) || 0 : 0;
     const badge = document.getElementById('roiMarginBadge');
     
     if (badge) {
-        if (manualPrice > 0 && totalCostPerPax > 0) {
+        if (manualPrice > 0) {
             const profit = manualPrice - totalCostPerPax;
             const margin = (profit / manualPrice) * 100;
             
@@ -342,7 +387,7 @@ function calculateCosts() {
             if (margin < 0) {
                 badge.style.background = '#fee2e2';
                 badge.style.color = '#ef4444';
-                badge.innerText = `LOSS: ${margin.toFixed(1)}%`;
+                badge.innerText = `LOSS: ${Math.abs(margin).toFixed(1)}%`;
                 badge.classList.add('margin-pulse-warning');
             } else if (margin < 25) {
                 badge.style.background = '#fff7ed';
@@ -537,9 +582,11 @@ function previewPackageImage(input) {
         const reader = new FileReader();
         reader.onload = (e) => {
             const preview = document.getElementById('pkgImagePreview');
+            const placeholder = document.getElementById('previewPlaceholder');
             if (preview) {
                 preview.src = e.target.result;
                 preview.style.display = 'block';
+                if (placeholder) placeholder.style.display = 'none';
             }
         };
         reader.readAsDataURL(input.files[0]);

@@ -173,4 +173,4 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
     except Exception:
         pass
     finally:
-        manager.disconnect(client_id)
+        await manager.disconnect(client_id)

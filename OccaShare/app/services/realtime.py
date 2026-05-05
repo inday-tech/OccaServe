@@ -15,25 +15,33 @@ class ConnectionManager:
         self.active_connections[client_id] = websocket
         
         if user_id:
+            # Check if this was the first connection for this user
+            is_first = user_id not in self.user_connections or not self.user_connections[user_id]
+            
             if user_id not in self.user_connections:
                 self.user_connections[user_id] = set()
             self.user_connections[user_id].add(client_id)
+            
+            if is_first:
+                await self.broadcast({"type": "presence", "user_id": user_id, "status": "online"})
             
         if role:
             if role not in self.role_connections:
                 self.role_connections[role] = set()
             self.role_connections[role].add(client_id)
 
-    def disconnect(self, client_id: str):
+    async def disconnect(self, client_id: str):
+        user_id_to_notify = None
         if client_id in self.active_connections:
             del self.active_connections[client_id]
         
         # Clean up user mapping
-        for user_id in list(self.user_connections.keys()):
-            if client_id in self.user_connections[user_id]:
-                self.user_connections[user_id].remove(client_id)
-                if not self.user_connections[user_id]:
-                    del self.user_connections[user_id]
+        for uid in list(self.user_connections.keys()):
+            if client_id in self.user_connections[uid]:
+                self.user_connections[uid].remove(client_id)
+                if not self.user_connections[uid]:
+                    del self.user_connections[uid]
+                    user_id_to_notify = uid
                     
         # Clean up role mapping
         for role in list(self.role_connections.keys()):
@@ -41,6 +49,9 @@ class ConnectionManager:
                 self.role_connections[role].remove(client_id)
                 if not self.role_connections[role]:
                     del self.role_connections[role]
+
+        if user_id_to_notify:
+            await self.broadcast({"type": "presence", "user_id": user_id_to_notify, "status": "offline"})
 
     async def broadcast_to_client(self, client_id: str, message: dict):
         if client_id in self.active_connections:

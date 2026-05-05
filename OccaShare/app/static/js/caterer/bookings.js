@@ -33,6 +33,13 @@ let filteredRows = [];
     window.confirmArchiveBooking = confirmArchiveBooking;
     window.bk_closeModal = bk_closeModal; // New exposure
     window.scrollToActionTable = filterBySignature; // Link Attend Now button
+    
+    // Operations Checklist
+    window.loadBookingTasks = loadBookingTasks;
+    window.addNewCustomTask = addNewCustomTask;
+    window.toggleTaskStatus = toggleTaskStatus;
+    window.deleteTask = deleteTask;
+
     console.log('[BookingsJS] Global functions exposed to window.');
 })();
 
@@ -757,6 +764,9 @@ function showBookingDetails(btn) {
         else pStatusEl.classList.add('ps-badge-cancelled');
     }
 
+    // Load Checklist Tasks
+    loadBookingTasks(data.id);
+
     bk_openModal('bookingDetailModal');
 }
 
@@ -1284,5 +1294,101 @@ function recalculateBookingTotal() {
         amountInput.readOnly = false;
         amountInput.style.backgroundColor = '';
         amountInput.style.cursor = 'text';
+    }
+}
+
+/* ─── OPERATIONS CHECKLIST ─── */
+
+async function loadBookingTasks(bookingId) {
+    const listContainer = document.getElementById('bookingTasksList');
+    const progressText = document.getElementById('checklistProgressText');
+    const progressBar = document.getElementById('checklistProgressBar');
+    
+    if (!listContainer) return;
+    listContainer.innerHTML = '<div style="text-align:center;padding:1rem;color:#94a3b8;"><i class="fas fa-circle-notch fa-spin"></i> Loading tasks...</div>';
+
+    try {
+        const res = await fetch(`/caterer/api/bookings/${bookingId}/tasks`);
+        if (!res.ok) throw new Error('Failed to load tasks');
+        
+        const tasks = await res.json();
+        
+        if (tasks.length === 0) {
+            listContainer.innerHTML = '<p style="text-align:center;color:#94a3b8;font-size:0.85rem;padding:2rem;">No operational tasks found for this booking.</p>';
+            if (progressText) progressText.innerText = '0%';
+            if (progressBar) progressBar.style.width = '0%';
+            return;
+        }
+
+        const completedCount = tasks.filter(t => t.is_completed).length;
+        const progress = Math.round((completedCount / tasks.length) * 100);
+
+        if (progressText) progressText.innerText = progress + '%';
+        if (progressBar) progressBar.style.width = progress + '%';
+
+        listContainer.innerHTML = tasks.map(task => `
+            <div class="task-item-pro ${task.is_completed ? 'completed' : ''}" data-task-id="${task.id}">
+                <div class="task-checkbox-pro" onclick="toggleTaskStatus(${task.id})">
+                    ${task.is_completed ? '<i class="fas fa-check"></i>' : ''}
+                </div>
+                <div class="task-title" onclick="toggleTaskStatus(${task.id})">${task.title}</div>
+                <div class="btn-delete-task" onclick="deleteTask(${task.id})">
+                    <i class="fas fa-trash-alt"></i>
+                </div>
+            </div>
+        `).join('');
+
+    } catch (err) {
+        console.error('Error loading tasks:', err);
+        listContainer.innerHTML = '<p style="text-align:center;color:#ef4444;font-size:0.85rem;">Failed to load checklist.</p>';
+    }
+}
+
+async function addNewCustomTask() {
+    if (!currentBookingId) return;
+    
+    const title = prompt("Enter task description (e.g., Finalize flower arrangements):");
+    if (!title || title.trim() === "") return;
+
+    try {
+        const res = await fetch(`/caterer/api/bookings/${currentBookingId}/tasks`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: title.trim() })
+        });
+        
+        if (res.ok) {
+            loadBookingTasks(currentBookingId);
+        } else {
+            window.showError('Failed to add task');
+        }
+    } catch (err) {
+        window.showError('Error adding task');
+    }
+}
+
+async function toggleTaskStatus(taskId) {
+    try {
+        const res = await fetch(`/caterer/api/tasks/${taskId}/toggle`, { method: 'POST' });
+        if (res.ok) {
+            loadBookingTasks(currentBookingId);
+        }
+    } catch (err) {
+        console.error('Error toggling task:', err);
+    }
+}
+
+async function deleteTask(taskId) {
+    if (!confirm('Are you sure you want to remove this task?')) return;
+
+    try {
+        const res = await fetch(`/caterer/api/tasks/${taskId}`, { method: 'DELETE' });
+        if (res.ok) {
+            loadBookingTasks(currentBookingId);
+        } else {
+            window.showError('Failed to delete task');
+        }
+    } catch (err) {
+        window.showError('Error deleting task');
     }
 }

@@ -34,6 +34,7 @@ async def get_conversations(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     """List all unique users the current user has chatted with, plus the last message."""
+    from ..services.realtime import manager
     # This is a bit more complex in SQL. We'll find all unique pairs.
     # We can use a subquery to find the latest message per peer.
     
@@ -62,6 +63,8 @@ async def get_conversations(
             if peer.role == 'caterer' and peer.caterer_profile:
                 peer_info["name"] = peer.caterer_profile.business_name
                 peer_info["logo"] = peer.caterer_profile.logo_url
+            
+            peer_info["is_online"] = peer_id in manager.user_connections
                 
             conversations[peer_id] = {
                 "peer": peer_info,

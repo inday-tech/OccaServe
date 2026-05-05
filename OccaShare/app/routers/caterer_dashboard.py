@@ -24,6 +24,24 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 # Standard dependency for caterer access
 caterer_only = auth.RoleChecker(["caterer"])
 
+def create_default_booking_tasks(db: Session, booking_id: int):
+    # Idempotency check: Don't add if tasks already exist
+    existing_count = db.query(models.BookingTask).filter(models.BookingTask.booking_id == booking_id).count()
+    if existing_count > 0:
+        return
+
+    default_tasks = [
+        "Ingredient Sourcing & Procurement",
+        "Kitchen Preparation & Prep-work",
+        "Equipment & Logistics Loading",
+        "On-site Setup & Table Management",
+        "Service Execution & Food Serving",
+        "Post-event Cleanup & Packing"
+    ]
+    for title in default_tasks:
+        db.add(models.BookingTask(booking_id=booking_id, title=title))
+
+
 @router.post("/platform-feedback")
 async def submit_platform_feedback_caterer(
     rating: int = Form(...),
@@ -204,6 +222,9 @@ async def create_manual_booking(
         )
         db.add(history)
         
+        # 5. Add Operations Checklist
+        create_default_booking_tasks(db, new_booking.id)
+        
         db.commit()
         return {"status": "success", "booking_id": new_booking.id}
     except Exception as e:
@@ -336,18 +357,22 @@ def _get_caterer_stats(profile, bookings, timeframe='month'):
     # 1. Define Timeframe Bounds for TOP STATS
     if timeframe == 'day':
         stats_start = today
+        stats_end = today
         chart_points = [(today - timedelta(days=i)) for i in range(6, -1, -1)] # Last 7 days for trend
         date_format = "%Y-%m-%d"
     elif timeframe == 'week':
         stats_start = today - timedelta(days=today.weekday()) # Current Week start (Monday)
+        stats_end = stats_start + timedelta(days=6) # Current Week end (Sunday)
         chart_points = [(today - timedelta(days=i)) for i in range(13, -1, -1)] # Last 14 days for trend
         date_format = "%Y-%m-%d"
     elif timeframe == 'year':
         stats_start = today.replace(month=1, day=1) # Current Year start
+        stats_end = today.replace(month=12, day=31) # Current Year end
         chart_points = [today.replace(month=1, day=1) + relativedelta(months=i) for i in range(12)] # All months of the year
         date_format = "%Y-%m"
     else: # Default: Monthly
         stats_start = today.replace(day=1) # Current Month start
+        stats_end = (stats_start + relativedelta(months=1)) - timedelta(days=1) # Current Month end
         chart_points = [(today - relativedelta(months=5)).replace(day=1) + relativedelta(months=i) for i in range(6)]
         date_format = "%Y-%m"
 
@@ -386,7 +411,7 @@ def _get_caterer_stats(profile, bookings, timeframe='month'):
         actual_cost = b.actual_cost if b.actual_cost and b.actual_cost > 0 else base_cost_price
         
         # --- A. TOP STATS FILTERING ---
-        if b.event_date >= stats_start:
+        if b.event_date >= stats_start and b.event_date <= stats_end:
             unique_customers.add(b.user_id)
             
             if b.status in ['confirmed', 'preparing', 'on_the_way', 'in_progress', 'completed']:
@@ -425,7 +450,7 @@ def _get_caterer_stats(profile, bookings, timeframe='month'):
                 period_bookings[date_key]['pending'] += 1
 
         # --- C. PACKAGE EFFICIENCY ---
-        if b.package_id and b.event_date >= stats_start:
+        if b.package_id and b.event_date >= stats_start and b.event_date <= stats_end:
             if b.package_id not in package_stats:
                 package_stats[b.package_id] = {'revenue': 0, 'expenses': 0, 'orders': 0}
             package_stats[b.package_id]['orders'] += 1
@@ -464,7 +489,8 @@ def _get_caterer_stats(profile, bookings, timeframe='month'):
             "date": k, "completed": period_bookings[k]['completed'], "pending": period_bookings[k]['pending'], "label": label
         })
     
-    upcoming_events = sorted([b for b in bookings if b.status == 'confirmed' and b.event_date and b.event_date >= today], key=lambda x: x.event_date)[:4]
+    active_op_statuses = ['confirmed', 'preparing', 'on_the_way', 'in_progress']
+    upcoming_events = sorted([b for b in bookings if b.status in active_op_statuses and b.event_date and b.event_date >= today], key=lambda x: x.event_date)[:4]
     
     popular_packages = []
     for pkg in profile.packages:
@@ -492,7 +518,7 @@ def _get_caterer_stats(profile, bookings, timeframe='month'):
         "bookings_chart_data": bookings_chart_data,
         "upcoming_events": upcoming_events,
         "popular_packages": popular_packages[:4],
-        "recent_orders": sorted([b for b in bookings if b.event_date and b.event_date >= stats_start], key=lambda x: x.id, reverse=True)[:5],
+        "recent_orders": sorted([b for b in bookings if b.event_date and b.event_date >= stats_start and b.event_date <= stats_end], key=lambda x: x.id, reverse=True)[:5],
         "timeframe": timeframe
     }
 
@@ -533,6 +559,10 @@ async def dashboard_overview_api(
     # Process complex objects for JSON
     serializable_upcoming = []
     for e in stats['upcoming_events']:
+        total_tasks = len(e.tasks)
+        completed_tasks = sum(1 for t in e.tasks if t.is_completed)
+        progress = round((completed_tasks / total_tasks * 100)) if total_tasks > 0 else 0
+
         serializable_upcoming.append({
             "id": e.id,
             "event_name": e.event_name,
@@ -544,7 +574,10 @@ async def dashboard_overview_api(
             "month_short": e.event_date.strftime('%b') if e.event_date else '???',
             "day": e.event_date.strftime('%d') if e.event_date else '??',
             "venue_address": e.venue_address,
-            "guest_count": e.guest_count
+            "guest_count": e.guest_count,
+            "task_progress": progress,
+            "tasks_count": total_tasks,
+            "tasks_completed": completed_tasks
         })
 
     serializable_recent = []
@@ -788,6 +821,9 @@ async def _confirm_booking_logic(db: Session, booking: models.Booking, caterer_u
         else:
             booking.payment_status = 'deposit_paid'
         booking.status = 'confirmed'
+        
+        # Initialize operations checklist
+        create_default_booking_tasks(db, booking.id)
         
         # Calculate Initial Actual Cost (Baseline)
         total_cost = 0
@@ -1601,6 +1637,8 @@ async def add_package(
     utility_cost: float = Form(0.0),
     equipment_cost: float = Form(0.0),
     internal_cost_per_pax: float = Form(0.0),
+    reservation_fee: float = Form(0.0),
+    booking_lead_time: int = Form(7),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
@@ -1635,6 +1673,8 @@ async def add_package(
         utility_cost=utility_cost,
         equipment_cost=equipment_cost,
         internal_cost_per_pax=internal_cost_per_pax,
+        reservation_fee=reservation_fee,
+        booking_lead_time=booking_lead_time,
         is_active=True,
         status='active'
     )
@@ -1761,9 +1801,15 @@ async def update_profile(
     accent_color: Optional[str] = Form(None),
     highlight_color: Optional[str] = Form(None),
     font_family: Optional[str] = Form(None),
-    border_radius: Optional[int] = Form(None),
-    sidebar_mode: Optional[str] = Form("full"),
-    show_platform_logo: bool = Form(False),
+    border_radius: int = Form(12),
+    sidebar_mode: str = Form("full"),
+    show_platform_logo: bool = Form(True),
+    glass_mode: bool = Form(False),
+    sidebar_color: str = Form("#000000"),
+    header_color: str = Form("#FFFFFF"),
+    dashboard_texture: str = Form("none"),
+    sidebar_decoration: str = Form("none"),
+    header_decoration: str = Form("none"),
     latitude: Optional[float] = Form(None),
     longitude: Optional[float] = Form(None),
     contact_address: Optional[str] = Form(None),
@@ -1805,6 +1851,12 @@ async def update_profile(
     profile.border_radius = border_radius
     profile.sidebar_mode = sidebar_mode
     profile.show_platform_logo = show_platform_logo
+    profile.glass_mode = glass_mode
+    profile.sidebar_color = sidebar_color
+    profile.header_color = header_color
+    profile.dashboard_texture = dashboard_texture
+    profile.sidebar_decoration = sidebar_decoration
+    profile.header_decoration = header_decoration
     
     if latitude is not None:
         profile.latitude = latitude
@@ -1876,7 +1928,9 @@ async def get_package_details_api(
         "utility_cost": package.utility_cost,
         "equipment_cost": package.equipment_cost,
         "ingredient_total_cost": package.ingredient_total_cost,
-        "internal_cost_per_pax": package.internal_cost_per_pax
+        "internal_cost_per_pax": package.internal_cost_per_pax,
+        "reservation_fee": package.reservation_fee,
+        "booking_lead_time": package.booking_lead_time
     }
 
 @router.post("/packages/{package_id}/update")
@@ -1903,6 +1957,8 @@ async def update_package(
     utility_cost: float = Form(0.0),
     equipment_cost: float = Form(0.0),
     internal_cost_per_pax: float = Form(0.0),
+    reservation_fee: float = Form(0.0),
+    booking_lead_time: int = Form(7),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
@@ -1932,6 +1988,8 @@ async def update_package(
     package.internal_cost_per_pax = internal_cost_per_pax
     package.markup_type = markup_type
     package.markup_value = markup_value
+    package.reservation_fee = reservation_fee
+    package.booking_lead_time = booking_lead_time
     
     # Process inclusions into a dict for storage
     if inclusions:
@@ -2436,7 +2494,85 @@ async def set_booking_reminder(
     return {"status": "success", "message": "Reminder set successfully"}
 
 
+@router.get("/api/bookings/{booking_id}/tasks")
+async def get_booking_tasks(
+    booking_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    booking = db.query(models.Booking).filter(
+        models.Booking.id == booking_id,
+        models.Booking.caterer_id == user.caterer_profile.id
+    ).first()
+    
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+        
+    tasks = db.query(models.BookingTask).filter(models.BookingTask.booking_id == booking_id).order_by(models.BookingTask.created_at.asc()).all()
+    return tasks
+
+@router.post("/api/bookings/{booking_id}/tasks")
+async def add_booking_task(
+    booking_id: int,
+    data: dict = Body(...),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    booking = db.query(models.Booking).filter(
+        models.Booking.id == booking_id,
+        models.Booking.caterer_id == user.caterer_profile.id
+    ).first()
+    
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+        
+    task = models.BookingTask(
+        booking_id=booking_id,
+        title=data.get("title", "New Task")
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    return task
+
+@router.post("/api/tasks/{task_id}/toggle")
+async def toggle_booking_task(
+    task_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    task = db.query(models.BookingTask).join(models.Booking).filter(
+        models.BookingTask.id == task_id,
+        models.Booking.caterer_id == user.caterer_profile.id
+    ).first()
+    
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+        
+    task.is_completed = not task.is_completed
+    db.commit()
+    return {"is_completed": task.is_completed}
+
+@router.delete("/api/tasks/{task_id}")
+async def delete_booking_task(
+    task_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    task = db.query(models.BookingTask).join(models.Booking).filter(
+        models.BookingTask.id == task_id,
+        models.Booking.caterer_id == user.caterer_profile.id
+    ).first()
+    
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+        
+    db.delete(task)
+    db.commit()
+    return {"status": "success"}
+
 @router.get("/notifications", response_class=HTMLResponse)
+
 async def caterer_notifications(
     request: Request, 
     page: int = 1,
