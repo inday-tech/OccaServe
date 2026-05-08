@@ -22,7 +22,7 @@
 
     <!-- Stats Cards Row -->
     <div class="reviews-stats-grid">
-        <div class="stat-card-premium c-card-premium stat-card-white animate-up delay-1">
+        <div class="stat-card-premium animate-up delay-1">
             <div class="stat-icon-bg halo-amber"><i class="fas fa-star"></i></div>
             <div class="stat-label-dashboard">Average Rating</div>
             <div class="stat-main-row">
@@ -30,28 +30,27 @@
                 <div class="star-rating-display">
                     {% for _ in range(avg_rating|int) %}<i class="fas fa-star"></i>{% endfor %}
                     {% if avg_rating % 1 >= 0.5 %}<i class="fas fa-star-half-alt"></i>{% endif %}
+                    {% for _ in range(5 - (avg_rating|round(0, 'floor')|int)) %}{% if not (avg_rating % 1 >= 0.5 and loop.first) %}<i class="far fa-star"></i>{% endif %}{% endfor %}
                 </div>
             </div>
-            <div class="stat-hint-dashboard">Lifetime score</div>
+            <div class="stat-hint-dashboard">Lifetime reputation score</div>
         </div>
 
-        <div class="stat-card-premium c-card-premium stat-card-white animate-up delay-2">
-            <div class="stat-icon-bg halo-green"><i class="fas fa-comments"></i></div>
+        <div class="stat-card-premium animate-up delay-2">
+            <div class="stat-icon-bg halo-blue"><i class="fas fa-comments"></i></div>
             <div class="stat-label-dashboard">Total Reviews</div>
             <div class="stat-value-dashboard">{{ total_reviews }}</div>
-            <div class="stat-hint-dashboard">All feedback entries</div>
+            <div class="stat-hint-dashboard">Verified customer feedback</div>
         </div>
 
-        <div class="stat-card-premium c-card-premium stat-card-white rating-breakdown-card animate-up delay-3">
-            <div class="breakdown-header">
-                <span class="stat-label-dashboard">Rating Distribution</span>
-            </div>
+        <div class="stat-card-premium rating-breakdown-card animate-up delay-3">
+            <div class="stat-label-dashboard">Rating Distribution</div>
             <div class="breakdown-list">
                 {% for star in [5, 4, 3, 2, 1] %}
                 {% set count = rating_stats.get(star, 0) %}
                 {% set percent = (count / total_reviews * 100)|int if total_reviews > 0 else 0 %}
                 <div class="breakdown-item">
-                    <span class="star-label">{{ star }} <i class="fas fa-star"></i></span>
+                    <span class="star-label">{{ star }} <i class="fas fa-star" style="font-size: 0.75rem; color: #f59e0b;"></i></span>
                     <div class="progress-bar-bg">
                         <div class="progress-bar-fill" style="width: {{ percent }}%;"></div>
                     </div>
@@ -62,39 +61,43 @@
         </div>
     </div>
 
-    <!-- Review Cards List (Dish Management Card Pattern) -->
+    <!-- Review Cards List -->
     <div id="reviewsList" class="reviews-feed-vertical animate-up delay-4">
         {% if reviews %}
             {% for r in reviews %}
-            <div class="review-card-pro c-card-premium animate-up" data-id="{{ r.id }}">
-                <div class="review-card-body">
-                    <div class="reviewer-profile">
+            <div class="review-card-pro animate-up" data-id="{{ r.id }}">
+                <div class="reviewer-profile">
+                    <div class="reviewer-meta">
                         <div class="reviewer-avatar">
                             {{ r.user.first_name[0] }}{{ r.user.last_name[0] }}
                         </div>
-                        <div class="reviewer-info">
+                        <div class="reviewer-info-text">
                             <h4 class="reviewer-name">{{ r.user.first_name }} {{ r.user.last_name }}</h4>
-                            <span class="review-date"><i class="far fa-calendar-alt"></i> {{ r.created_at.strftime('%B %d, %Y') }}</span>
+                            <span class="review-date-badge"><i class="far fa-clock"></i> {{ r.created_at.strftime('%B %d, %Y') }}</span>
                         </div>
                     </div>
-                    <div class="review-content">
-                        <div class="review-rating-row">
-                            <div class="review-stars-pro">
-                                {% for _ in range(r.rating) %}<i class="fas fa-star"></i>{% endfor %}
-                                {% for _ in range(5 - r.rating) %}<i class="far fa-star"></i>{% endfor %}
-                            </div>
-                            <span class="rating-number">({{ r.rating }}/5)</span>
-                        </div>
-                        <p class="review-comment">"{{ r.comment }}"</p>
+                    <div class="verified-badge">
+                        <i class="fas fa-check-circle"></i> Verified Booking
                     </div>
+                </div>
+
+                <div class="review-body-section">
+                    <div class="review-stars-row">
+                        <div class="stars-container">
+                            {% for _ in range(r.rating) %}<i class="fas fa-star"></i>{% endfor %}
+                            {% for _ in range(5 - r.rating) %}<i class="far fa-star"></i>{% endfor %}
+                        </div>
+                        <span class="rating-score-text">{{ r.rating }}.0 / 5.0</span>
+                    </div>
+                    <p class="review-comment-text">"{{ r.comment }}"</p>
                 </div>
             </div>
             {% endfor %}
         {% else %}
-            <div class="empty-state-card c-card-premium">
+            <div class="empty-state-card">
                 <i class="fas fa-comment-slash"></i>
-                <h3>No Reviews Found</h3>
-                <p>Wait for customers to share their feedback after their successful events.</p>
+                <h3>No Reviews Yet</h3>
+                <p>Build your reputation by completing bookings and inviting customers to share their experience.</p>
             </div>
         {% endif %}
     </div>

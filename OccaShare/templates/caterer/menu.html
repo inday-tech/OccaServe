@@ -40,54 +40,71 @@
 {% if menu_items %}
 <div class="menu-grid animate-up delay-2">
     {% for item in menu_items %}
-    <div class="menu-item-card-pro" data-category="{{ item.category }}" data-name="{{ item.name|lower }}">
-        <div class="card-options-dropdown">
-            <button class="btn-dots" onclick="toggleDropdown(this, event)">
-                <i class="fas fa-ellipsis-v"></i>
-            </button>
-            <div class="dropdown-menu-pro">
-                <button class="dropdown-item-pro"
-                    data-id="{{ item.id }}"
-                    data-name="{{ item.name }}"
-                    data-category="{{ item.category }}"
-                    data-description="{{ item.description or '' }}"
-                    data-price="{{ item.price or 0 }}"
-                    data-cost-price="{{ item.cost_price or 0 }}"
-                    data-serving-size="{{ item.serving_size or '' }}"
-                    data-is-addon="{{ 'true' if item.is_addon else 'false' }}"
-                    data-addon-price="{{ item.addon_price or 0 }}"
-                    data-dietary-tags='{{ item.dietary_tags|tojson if item.dietary_tags else "[]" }}'
-                    data-image-url="{{ item.image_url or '' }}"
-                    onclick="editMenuItem(this)">
-                    <i class="fas fa-edit"></i> Edit Dish
+    <div class="menu-item-card-premium" data-category="{{ item.category }}" data-name="{{ item.name|lower }}">
+        <div class="item-visual-pro">
+            {% if item.image_url %}
+                <img src="{{ item.image_url }}" alt="{{ item.name }}" class="item-img-pro">
+            {% else %}
+                <div class="item-img-placeholder"><i class="fas fa-utensils"></i></div>
+            {% endif %}
+            <div class="item-status-overlay">
+                {% if item.is_hidden %}
+                    <span class="status-chip unavailable">Hidden</span>
+                {% else %}
+                    <span class="status-chip available">Available</span>
+                {% endif %}
+            </div>
+            <div class="card-options-glass">
+                <button class="btn-dots-glass" onclick="toggleDropdown(this, event)">
+                    <i class="fas fa-ellipsis-h"></i>
                 </button>
-
-                <button class="dropdown-item-pro delete" onclick="confirmArchiveDish({{ item.id }})">
-                    <i class="fas fa-archive"></i> Archive Dish
-                </button>
+                <div class="dropdown-menu-glass">
+                    <button class="dropdown-item-pro"
+                        data-id="{{ item.id }}"
+                        data-name="{{ item.name }}"
+                        data-category="{{ item.category }}"
+                        data-description="{{ item.description or '' }}"
+                        data-price="{{ item.price or 0 }}"
+                        data-cost-price="{{ item.cost_price or 0 }}"
+                        data-serving-size="{{ item.serving_size or '' }}"
+                        data-is-addon="{{ 'true' if item.is_addon else 'false' }}"
+                        data-addon-price="{{ item.addon_price or 0 }}"
+                        data-dietary-tags='{{ item.dietary_tags|tojson if item.dietary_tags else "[]" }}'
+                        data-allergen-info='{{ item.allergen_info|tojson if item.allergen_info else "[]" }}'
+                        data-is-hidden="{{ 'true' if item.is_hidden else 'false' }}"
+                        data-image-url="{{ item.image_url or '' }}"
+                        onclick="editMenuItem(this)">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    <button class="dropdown-item-pro delete" onclick="confirmArchiveDish({{ item.id }})">
+                        <i class="fas fa-archive"></i> Archive
+                    </button>
+                </div>
             </div>
         </div>
 
-        <div class="menu-item-content-pro">
-            <div class="item-main-info">
-                <h3 class="item-name-pro">{{ item.name }}</h3>
-                <span class="item-category-tag">{{ item.category }}</span>
-                <p class="item-desc-pro">
-                    {{ item.description|truncate(100) if item.description else 'No description provided.' }}
-                </p>
-                <div class="item-footer-row">
-                    <span class="item-price-pro">₱{{ "{:,.0f}".format(item.price or 0) }}</span>
-                    {% if item.is_addon %}
-                    <span class="addon-mini-badge">Add-on</span>
-                    {% endif %}
-                </div>
-            </div>
-            <div class="item-status-col">
-                {% if item.is_hidden %}
-                <span class="status-badge-pro unavailable">unavailable</span>
-                {% else %}
-                <span class="status-badge-pro available">available</span>
+        <div class="item-info-premium">
+            <div class="item-header-row">
+                <span class="item-cat-tag">{{ item.category }}</span>
+                {% if item.is_addon %}
+                    <span class="item-addon-tag">Add-on</span>
                 {% endif %}
+            </div>
+            <h3 class="item-name-premium">{{ item.name }}</h3>
+            <p class="item-desc-premium">{{ item.description|truncate(80) if item.description else 'No description provided.' }}</p>
+            
+            <div class="item-footer-premium">
+                <div class="price-stack">
+                    <span class="price-label">Selling Price</span>
+                    <span class="price-value">₱{{ "{:,.0f}".format(item.price or 0) }}</span>
+                </div>
+                <div class="margin-stack">
+                    {% set margin = ((item.price - item.cost_price) / item.price * 100) if item.price and item.price > 0 else 0 %}
+                    <span class="price-label">Margin</span>
+                    <span class="margin-value {{ 'negative' if margin < 0 else 'positive' if margin > 20 else 'neutral' }}">
+                        {{ margin|round(1) }}%
+                    </span>
+                </div>
             </div>
         </div>
     </div>
@@ -116,116 +133,164 @@
 <!-- Add/Edit Menu Modal -->
 <div id="menuModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-md occ-content-pop">
-        <div class="occ-modal-header">
+        <div class="occ-modal-header glass-header">
             <div>
-                <h3 id="menuModalTitle" class="occ-modal-title">Add New Dish</h3>
-                <div class="occ-modal-subtitle">Dishes in your library can be added to any professional package.</div>
+                <h3 id="menuModalTitle" class="occ-modal-title"><i class="fas fa-utensils-alt"></i> Add New Dish</h3>
+                <div class="occ-modal-subtitle">Configure your dish details, recipe, and pricing strategy.</div>
             </div>
             <button onclick="window.closeModal('menuModal')" class="occ-modal-close">
                 <i class="fas fa-times"></i>
             </button>
         </div>
 
+        <div class="modal-tabs-pro">
+            <button class="tab-btn-pro active" onclick="switchDishTab('basic')">Basic Info</button>
+            <button class="tab-btn-pro" onclick="switchDishTab('recipe')">Recipe & Cost</button>
+            <button class="tab-btn-pro" onclick="switchDishTab('labels')">Preferences</button>
+        </div>
+
         <form id="menuForm" action="/caterer/menu/add" method="POST" enctype="multipart/form-data" novalidate>
-            <div class="occ-modal-body">
+            <div class="occ-modal-body compact-body">
                 <div id="menuErrorDrawer" class="error-drawer"></div>
                 
-                <div class="form-group-pro">
-                    <label>Dish Name *</label>
-                    <input type="text" name="name" class="control-pro" placeholder="e.g. Braised Beef Short Ribs" required minlength="2" maxlength="100">
-                    <div class="invalid-feedback"></div>
-                </div>
-
-                <div class="form-row-pro">
+                <!-- TAB 1: BASIC INFO -->
+                <div id="tab-basic" class="dish-tab-content active">
                     <div class="form-group-pro">
-                        <label>Category</label>
-                        <select name="category" id="modalCategory" class="control-pro" required>
-                            <option value="Appetizer">Appetizer</option>
-                            <option value="Soup">Soup</option>
-                            <option value="Salad">Salad</option>
-                            <option value="Main Course">Main Course</option>
-                            <option value="Side Dish">Side Dish</option>
-                            <option value="Dessert">Dessert</option>
-                            <option value="Drinks">Drinks</option>
-                        </select>
+                        <label>Dish Name *</label>
+                        <input type="text" name="name" class="control-pro" placeholder="e.g. Braised Beef Short Ribs" required minlength="2" maxlength="100">
+                        <div class="invalid-feedback"></div>
                     </div>
+
+                    <div class="form-row-pro">
+                        <div class="form-group-pro">
+                            <label>Category</label>
+                            <select name="category" id="modalCategory" class="control-pro" required>
+                                <option value="Appetizer">Appetizer</option>
+                                <option value="Soup">Soup</option>
+                                <option value="Salad">Salad</option>
+                                <option value="Main Course">Main Course</option>
+                                <option value="Side Dish">Side Dish</option>
+                                <option value="Dessert">Dessert</option>
+                                <option value="Drinks">Drinks</option>
+                            </select>
+                        </div>
+                        <div class="form-group-pro">
+                            <label>Serving Size</label>
+                            <input type="text" name="serving_size" class="control-pro" placeholder="e.g. Good for 1" maxlength="50">
+                        </div>
+                    </div>
+
                     <div class="form-group-pro">
-                        <label>Serving Size</label>
-                        <input type="text" name="serving_size" class="control-pro" placeholder="e.g. Good for 1 / Per Tray" maxlength="50">
+                        <label>Description</label>
+                        <textarea name="description" class="control-pro" placeholder="Describe flavors, ingredients..." maxlength="500" style="height: 80px;"></textarea>
+                    </div>
+
+                    <div class="form-group-pro">
+                        <label>Dish Presentation Photo</label>
+                        <div class="photo-dropzone-pro" onclick="document.getElementById('menuImageInput').click()">
+                            <i class="fas fa-camera"></i>
+                            <span>Upload dish photo</span>
+                            <input type="file" name="image" id="menuImageInput" accept="image/*" style="display: none;" onchange="previewImage(event)">
+                        </div>
+                        <div id="imagePreviewContainer" class="preview-box-pro" style="display: none;">
+                            <img id="imagePreview" src="" class="img-preview-pro" alt="Preview">
+                            <button type="button" class="btn-remove-img-pro" onclick="removeImage()"><i class="fas fa-times"></i></button>
+                        </div>
                     </div>
                 </div>
 
-                <div class="form-group-pro">
-                    <label>Description</label>
-                    <textarea name="description" class="control-pro" placeholder="Describe the flavors, ingredients, and presentation..." maxlength="500"></textarea>
-                </div>
+                <!-- TAB 2: RECIPE & COSTING -->
+                <div id="tab-recipe" class="dish-tab-content">
+                    <div class="recipe-builder-card-premium">
+                        <div class="builder-header-pro">
+                            <h4 class="builder-title-pro">Recipe Composition</h4>
+                            <div class="builder-total-badge-pro">₱<span id="totalRecipeCost">0.00</span></div>
+                        </div>
+                        
+                        <div class="builder-controls-pro">
+                            <select id="ingredientPicker" class="control-pro-sm">
+                                <option value="">Select Ingredient...</option>
+                                {% for ing in ingredients %}
+                                <option value="{{ ing.id }}" data-price="{{ ing.unit_price }}" data-unit="{{ ing.unit }}">{{ ing.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <input type="number" id="ingredientQty" class="control-pro-sm" placeholder="Qty" step="0.01" style="width: 70px;">
+                            <button type="button" class="btn-add-recipe-pro" onclick="addIngredientToRecipe()"><i class="fas fa-plus"></i></button>
+                        </div>
 
-                <div class="form-group-pro">
-                    <div class="costing-snapshot-card">
-                        <div class="form-row-pro" style="align-items: flex-end; margin-bottom: var(--space-md);">
-                            <div class="form-group-pro" style="margin:0;">
-                                <label>Base Selling Price (₱) *</label>
+                        <div class="recipe-items-list-pro" id="recipeListContainer">
+                            <div class="empty-recipe-msg">No ingredients added.</div>
+                        </div>
+                    </div>
+
+                    <div class="pricing-lab-card">
+                        <div class="form-row-pro">
+                            <div class="form-group-pro">
+                                <label>Target Markup (%)</label>
+                                <input type="number" id="markupInput" class="control-pro" placeholder="300" oninput="suggestPrice()">
+                            </div>
+                            <div class="form-group-pro">
+                                <label>Suggested Price</label>
+                                <div class="suggestion-pill">
+                                    <span id="suggestedPrice">₱0.00</span>
+                                    <button type="button" onclick="applySuggestedPrice()">Use</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-row-pro mt-3">
+                            <div class="form-group-pro">
+                                <label>Selling Price (₱) *</label>
                                 <input type="text" name="price" class="control-pro js-format-comma" placeholder="0" required inputmode="numeric">
-                                <div class="invalid-feedback"></div>
                             </div>
-                            <div class="form-group-pro" style="margin:0;">
-                                <label>Prep Cost / Pax (₱) *</label>
+                            <div class="form-group-pro">
+                                <label>Prep Cost (₱) *</label>
                                 <input type="text" name="cost_price" id="cost_price_input" class="control-pro js-format-comma" placeholder="0" required inputmode="numeric">
-                                <div class="invalid-feedback"></div>
                             </div>
                         </div>
-
-                        <div style="padding: var(--space-xs) 0;">
-                            <span class="status-badge-pro available" id="roiMarginBadge" style="background: var(--color-neutral-400); height: 32px; display: inline-flex; align-items: center; padding: 0 1rem; border-radius: var(--border-radius);">Margin: --%</span>
-                        </div>
+                        <div class="margin-analytics-pro" id="roiMarginBadge">Margin: --%</div>
                     </div>
                 </div>
 
-                <div class="form-group-pro">
-                    <div class="addon-toggle-box">
-                        <div class="d-flex align-items-center justify-content-between">
-                            <div>
-                                <h4 style="font-size:var(--text-sm); font-weight:800; margin:0; color:var(--color-neutral-900);">Premium Add-on</h4>
-                                <p style="font-size:var(--text-xs); color:var(--color-neutral-500); margin:0;">Can be upsold to customers for an extra fee.</p>
-                            </div>
-                            <div class="form-check form-switch">
-                                <label class="switch">
-                                    <input type="checkbox" name="is_addon" id="isAddonCheckbox" onchange="toggleAddonPrice()">
-                                    <span class="slider round"></span>
-                                </label>
-                            </div>
-                        </div>
-                        <div id="addonPriceContainer" class="mt-3" style="display: none;">
-                            <label class="form-group-pro label" style="display:block; margin-bottom:6px;">Add-on Surcharge (₱)</label>
-                            <input type="text" name="addon_price" id="addonPriceInput" class="control-pro js-format-comma" placeholder="0" inputmode="numeric">
-                            <div class="invalid-feedback"></div>
+                <!-- TAB 3: PREFERENCES -->
+                <div id="tab-labels" class="dish-tab-content">
+                    <div class="form-group-pro">
+                        <label>Visibility</label>
+                        <div class="visibility-toggle-pro">
+                            <span>Show in Customer Menu</span>
+                            <label class="switch-pro">
+                                <input type="checkbox" name="is_visible" id="isVisibleCheckbox" checked>
+                                <span class="slider-pro"></span>
+                            </label>
                         </div>
                     </div>
-                </div>
 
-                <div class="form-group-pro">
-                    <label>Dietary Labels</label>
-                    <div class="dietary-matrix">
-                        <label class="matrix-item"><input type="checkbox" name="dietary_tags" value="Vegetarian"> Vegetarian</label>
-                        <label class="matrix-item"><input type="checkbox" name="dietary_tags" value="Vegan"> Vegan</label>
-                        <label class="matrix-item"><input type="checkbox" name="dietary_tags" value="Halal"> Halal</label>
-                        <label class="matrix-item"><input type="checkbox" name="dietary_tags" value="Gluten-Free"> Gluten-Free</label>
-                        <label class="matrix-item"><input type="checkbox" name="dietary_tags" value="Spicy"> Spicy</label>
+                    <div class="form-group-pro">
+                        <label>Dietary Labels</label>
+                        <div class="label-matrix-pro">
+                            {% for tag in ['Vegetarian', 'Vegan', 'Halal', 'Keto', 'Spicy'] %}
+                            <label class="matrix-check"><input type="checkbox" name="dietary_tags" value="{{ tag }}"> {{ tag }}</label>
+                            {% endfor %}
+                        </div>
                     </div>
-                </div>
 
-                <div class="form-group-pro">
-                    <label>Dish Presentation Photo</label>
-                    <div class="photo-dropzone" id="photoDropzone" onclick="document.getElementById('menuImageInput').click()">
-                        <i class="fas fa-camera"></i>
-                        <span>Click to upload or drag dish photo</span>
-                        <input type="file" name="image" id="menuImageInput" accept="image/*" style="display: none;" onchange="previewImage(event)">
+                    <div class="form-group-pro">
+                        <label>Allergen Alerts</label>
+                        <div class="label-matrix-pro danger">
+                            {% for alg in ['Nuts', 'Dairy', 'Seafood', 'Egg', 'Soy'] %}
+                            <label class="matrix-check"><input type="checkbox" name="allergen_info" value="{{ alg }}"> {{ alg }}</label>
+                            {% endfor %}
+                        </div>
                     </div>
-                    <div id="imagePreviewContainer" style="display: none; position: relative; margin-top: 1rem;">
-                        <img id="imagePreview" src="" class="img-preview" alt="Preview">
-                        <button type="button" class="btn-remove-img" onclick="removeImage()">
-                            <i class="fas fa-times"></i>
-                        </button>
+
+                    <div class="form-group-pro">
+                        <div class="addon-box-pro">
+                            <div class="addon-header">
+                                <label class="matrix-check"><input type="checkbox" name="is_addon" id="isAddonCheckbox" onchange="toggleAddonPrice()"> Mark as Add-on</label>
+                            </div>
+                            <div id="addonPriceContainer" style="display: none; margin-top: 10px;">
+                                <input type="text" name="addon_price" id="addonPriceInput" class="control-pro js-format-comma" placeholder="Add-on Surcharge (₱)">
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -273,12 +338,24 @@
     const photoDropzone = document.getElementById('photoDropzone');
     const addonPriceContainer = document.getElementById('addonPriceContainer');
 
+    function switchDishTab(tabId) {
+        document.querySelectorAll('.tab-btn-pro').forEach(b => {
+            b.classList.toggle('active', b.innerText.toLowerCase().includes(tabId));
+        });
+        document.querySelectorAll('.dish-tab-content').forEach(c => {
+            c.classList.toggle('active', c.id === `tab-${tabId}`);
+        });
+    }
+
     function openAddMenuModal() {
         modalTitle.innerText = 'Add New Dish';
         form.action = '/caterer/menu/add';
         form.reset();
         removeImage();
+        currentRecipe = [];
+        updateRecipeUI();
         toggleAddonPrice();
+        switchDishTab('basic');
         if (document.getElementById('menuErrorDrawer')) document.getElementById('menuErrorDrawer').style.display = 'none';
         
         if (window.openModal) {
@@ -290,7 +367,7 @@
         calculateMenuCosts();
     }
 
-    function editMenuItem(el) {
+    async function editMenuItem(el) {
         try {
             const item = {
                 id: el.dataset.id,
@@ -303,10 +380,12 @@
                 is_addon: el.dataset.isAddon === 'true',
                 addon_price: el.dataset.addonPrice,
                 dietary_tags: el.dataset.dietaryTags,
+                allergen_info: el.dataset.allergenInfo,
+                is_hidden: el.dataset.isHidden === 'true',
                 image_url: el.dataset.imageUrl
             };
 
-            modalTitle.innerText = 'Edit Dish';
+            modalTitle.innerText = 'Edit Dish Library';
             form.action = `/caterer/menu/${item.id}/update`;
             form.name.value = item.name;
             form.category.value = item.category;
@@ -330,21 +409,130 @@
             try { tags = JSON.parse(item.dietary_tags); } catch(e) { tags = []; }
             form.querySelectorAll('input[name="dietary_tags"]').forEach(c => c.checked = tags.includes(c.value));
 
+            let allergens = [];
+            try { allergens = JSON.parse(item.allergen_info); } catch(e) { allergens = []; }
+            form.querySelectorAll('input[name="allergen_info"]').forEach(c => c.checked = allergens.includes(c.value));
+
+            const visibleCb = document.getElementById('isVisibleCheckbox');
+            if (visibleCb) visibleCb.checked = !item.is_hidden;
+
             if (item.image_url) {
                 imagePreview.src = item.image_url;
                 imagePreviewContainer.style.display = 'block';
-                photoDropzone.style.display = 'none';
+                document.querySelector('.photo-dropzone-pro').style.display = 'none';
             } else {
                 removeImage();
             }
 
             if (window.openModal) window.openModal('menuModal');
-            else {
-                modal.style.display = 'flex';
-                requestAnimationFrame(() => modal.classList.add('active'));
-            }
+            else modal.style.display = 'flex';
+            
+            switchDishTab('basic');
+
+            // Load Recipe from API
+            await loadRecipe(item.id);
             calculateMenuCosts();
         } catch (err) { console.error("Edit error:", err); }
+    }
+
+    let currentRecipe = []; // [{ingId, name, qty, unit, pricePerUnit}]
+
+    function addIngredientToRecipe() {
+        const picker = document.getElementById('ingredientPicker');
+        const qtyInput = document.getElementById('ingredientQty');
+        const opt = picker.options[picker.selectedIndex];
+        
+        if (!opt.value || !qtyInput.value) return;
+
+        const ingId = opt.value;
+        const name = opt.text.split(' (')[0];
+        const unit = opt.dataset.unit;
+        const pricePerUnit = parseFloat(opt.dataset.price);
+        const qty = parseFloat(qtyInput.value);
+
+        currentRecipe.push({ ingId, name, qty, unit, pricePerUnit });
+        qtyInput.value = '';
+        updateRecipeUI();
+    }
+
+    function removeIngredientFromRecipe(index) {
+        currentRecipe.splice(index, 1);
+        updateRecipeUI();
+    }
+
+    function updateRecipeUI() {
+        const container = document.getElementById('recipeListContainer');
+        const totalBadge = document.getElementById('totalRecipeCost');
+        const costInput = document.getElementById('cost_price_input');
+        
+        container.innerHTML = '';
+        let totalCost = 0;
+
+        if (currentRecipe.length === 0) {
+            container.innerHTML = '<div class="empty-recipe-msg">No ingredients added.</div>';
+        } else {
+            currentRecipe.forEach((item, index) => {
+                const itemCost = item.qty * item.pricePerUnit;
+                totalCost += itemCost;
+                
+                const row = document.createElement('div');
+                row.className = 'recipe-item-row';
+                row.innerHTML = `
+                    <div class="recipe-item-info">
+                        <strong>${item.name}</strong>
+                        <span>${item.qty} ${item.unit} @ ₱${item.pricePerUnit}/${item.unit}</span>
+                    </div>
+                    <div class="recipe-item-price">₱${itemCost.toFixed(2)}</div>
+                    <button type="button" class="btn-remove-recipe-pro" onclick="removeIngredientFromRecipe(${index})"><i class="fas fa-times"></i></button>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        totalBadge.innerText = totalCost.toLocaleString(undefined, {minimumFractionDigits: 2});
+        costInput.value = totalCost.toFixed(2);
+        calculateMenuCosts();
+    }
+
+    async function loadRecipe(menuId) {
+        try {
+            const res = await fetch(`/caterer/api/menu-items/${menuId}/ingredients`);
+            if (res.ok) {
+                const data = await res.json();
+                currentRecipe = data.ingredients.map(i => ({
+                    ingId: i.id,
+                    name: i.name,
+                    qty: i.quantity,
+                    unit: i.unit,
+                    pricePerUnit: i.unit_price
+                }));
+                updateRecipeUI();
+            }
+        } catch (err) { console.error("Load recipe error:", err); }
+    }
+
+    function suggestPrice() {
+        const cost = parseFloat(document.getElementById('cost_price_input').value) || 0;
+        const markup = parseFloat(document.getElementById('markupInput').value) || 0;
+        const suggestedSpan = document.getElementById('suggestedPrice');
+        
+        if (cost > 0 && markup > 0) {
+            const suggested = cost * (1 + markup/100);
+            suggestedSpan.innerText = `₱${suggested.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+        } else {
+            suggestedSpan.innerText = '₱0.00';
+        }
+    }
+
+    function applySuggestedPrice() {
+        const cost = parseFloat(document.getElementById('cost_price_input').value) || 0;
+        const markup = parseFloat(document.getElementById('markupInput').value) || 0;
+        if (cost > 0 && markup > 0) {
+            const suggested = cost * (1 + markup/100);
+            document.querySelector('input[name="price"]').value = suggested.toFixed(0);
+            calculateMenuCosts();
+            if (window.applyCommaFormatting) window.applyCommaFormatting(document.querySelector('input[name="price"]'));
+        }
     }
 
     function previewImage(event) {
@@ -363,7 +551,8 @@
     function removeImage() {
         imagePreview.src = '';
         imagePreviewContainer.style.display = 'none';
-        photoDropzone.style.display = 'flex';
+        const dz = document.querySelector('.photo-dropzone-pro');
+        if (dz) dz.style.display = 'block';
         document.getElementById('menuImageInput').value = '';
     }
 
@@ -373,11 +562,11 @@
     }
 
     function toggleDropdown(btn, e) {
-        const dropdown = btn.nextElementSibling;
-        const isActive = dropdown.classList.contains('active');
-        document.querySelectorAll('.dropdown-menu-pro').forEach(d => d.classList.remove('active'));
-        if (!isActive) dropdown.classList.add('active');
         if (e) e.stopPropagation();
+        const menu = btn.nextElementSibling;
+        const isActive = menu.classList.contains('active');
+        document.querySelectorAll('.dropdown-menu-glass').forEach(d => d.classList.remove('active'));
+        if (!isActive) menu.classList.add('active');
     }
 
     function filterByCategory(cat) {
@@ -389,13 +578,13 @@
 
     function applyFilters(cat) {
         const query = document.getElementById('menuSearchInput').value.toLowerCase();
-        const cards = document.querySelectorAll('.menu-item-card-pro');
+        const cards = document.querySelectorAll('.menu-item-card-premium');
         let count = 0;
         cards.forEach(card => {
             const matchQuery = card.dataset.name.includes(query);
             const matchCat = cat === 'all' || card.dataset.category === cat;
             if (matchQuery && matchCat) {
-                card.style.display = 'block';
+                card.style.display = 'flex';
                 count++;
             } else card.style.display = 'none';
         });
@@ -450,6 +639,13 @@
         const btn = this.querySelector('button[type="submit"]');
         this.querySelectorAll('.js-format-comma').forEach(i => i.value = i.value.replace(/,/g, ''));
         const data = new FormData(this);
+        
+        // Map is_visible checkbox to is_hidden for backend
+        data.set('is_hidden', !this.querySelector('#isVisibleCheckbox').checked);
+        
+        // Include Recipe Data
+        data.set('recipe_data', JSON.stringify(currentRecipe));
+
         if (window.apiAction) {
             const res = await window.apiAction(this.action, { method: 'POST', body: data }, btn);
             if (res) setTimeout(() => window.location.reload(), 800);
@@ -465,8 +661,8 @@
     });
 
     window.addEventListener('click', e => {
-        if (!e.target.closest('.card-options-dropdown')) {
-            document.querySelectorAll('.dropdown-menu-pro').forEach(d => d.classList.remove('active'));
+        if (!e.target.closest('.card-options-glass')) {
+            document.querySelectorAll('.dropdown-menu-glass').forEach(d => d.classList.remove('active'));
         }
     });
 

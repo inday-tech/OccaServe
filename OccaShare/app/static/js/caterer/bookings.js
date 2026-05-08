@@ -40,6 +40,13 @@ let filteredRows = [];
     window.toggleTaskStatus = toggleTaskStatus;
     window.deleteTask = deleteTask;
 
+    window.formatCurrency = (val) => {
+        if (!val) return '';
+        let num = parseFloat(val.toString().replace(/[₱,]/g, ''));
+        if (isNaN(num)) return val;
+        return '₱' + num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
     console.log('[BookingsJS] Global functions exposed to window.');
 })();
 
@@ -108,38 +115,64 @@ document.addEventListener('DOMContentLoaded', function () {
         if (window.ValidationManager) {
             console.log('[BookingsJS] Initializing ValidationManager for walkinBookingForm...');
             new window.ValidationManager('walkinBookingForm', {
-                'customer_name': { label: 'customer name', noSameParts: true },
-                'customer_email': { 
-                    label: 'email address',
+                'customer_name': { 
+                    noSameParts: true,
+                    label: 'Customer Name'
+                },
+                'customer_email': {
                     custom: (val) => {
-                        const email = (val || '').trim().toLowerCase();
-                        if (!email.endsWith('@gmail.com')) return 'Only Gmail accounts are allowed.';
+                        if (!val) return true;
+                        if (!val.toLowerCase().endsWith('@gmail.com')) return 'Only Gmail accounts are supported.';
                         return true;
                     }
                 },
-                'customer_contact': { 
-                    label: 'contact number', 
-                    numericOnly: true, 
-                    maxLength: 11,
-                    custom: (val) => {
-                        const repetitive = /^(\d)\1+$/; // Entirely same
-                        const consecutiveSame = /(.)\1{3,}/; // 4 or more same digits anywhere
-                        if (!val.startsWith('09')) return 'Must start with 09';
-                        if (val.length !== 11) return 'Must be 11 digits';
-                        if (repetitive.test(val) || consecutiveSame.test(val)) return 'Too many repetitive numbers.';
-                        return true;
-                    }
+                'customer_contact': {
+                    phMobile: true,
+                    noRepetitive: true,
+                    label: 'Contact Number'
                 },
-                'event_name':    { label: 'event name' },
-                'event_type':    { label: 'event type' },
-                'event_date':    { label: 'event date' },
-                'guest_count':   { numericOnly: true, max: 100000, autoStop: true },
-                'total_amount':  { numericOnly: true, max: 10000000, autoStop: true }
+                'guest_count': {
+                    numericOnly: true,
+                    max: 100000,
+                    label: 'Number of Guests'
+                },
+                'total_amount': {
+                    numericOnly: true,
+                    max: 5000000,
+                    autoStop: false,
+                    label: 'Total Amount'
+                },
+                'event_name': { label: 'Event Name' },
+                'venue_address': { label: 'Venue' }
             });
             console.log('[BookingsJS] ValidationManager ready.');
             
-            // Real-time Email Existence Check
-            initEmailExistenceCheck();
+            // 4. Real-time Button State & Masking
+            const walkinForm = document.getElementById('walkinBookingForm');
+            const walkinSubmitBtn = document.getElementById('walkinSubmitBtn');
+            const amountInput = document.getElementById('bookTotalAmount');
+
+            if (walkinForm && walkinSubmitBtn) {
+                // Disable by default
+                walkinSubmitBtn.disabled = true;
+
+                walkinForm.addEventListener('input', function() {
+                    const isInvalid = walkinForm.querySelectorAll('.is-invalid').length > 0;
+                    const allRequiredFilled = Array.from(walkinForm.querySelectorAll('[required]')).every(input => input.value.trim() !== '');
+                    walkinSubmitBtn.disabled = isInvalid || !allRequiredFilled;
+                });
+            }
+
+            if (amountInput) {
+                amountInput.addEventListener('focus', function() {
+                    const val = this.value.replace(/[₱,]/g, '');
+                    this.value = val;
+                });
+
+                amountInput.addEventListener('blur', function() {
+                    this.value = window.formatCurrency(this.value);
+                });
+            }
         } else {
             console.warn('[BookingsJS] window.ValidationManager not found! Validation will be limited.');
         }
@@ -179,11 +212,59 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
+        // 7. Real-time Alerts Polling (Every 45 seconds)
+        setInterval(refreshActionAlerts, 45000);
+
         console.log('[BookingsJS] Manage Bookings JS Ready. [v2.0-english-standard]');
     } catch (err) {
         console.error('[BookingsJS] CRITICAL ERROR DURING INIT:', err);
     }
 });
+
+async function refreshActionAlerts() {
+    try {
+        const res = await fetch('/caterer/api/dashboard-overview');
+        if (!res.ok) return;
+        
+        // Count critical items across the whole table (even hidden ones)
+        const allRows = Array.from(document.querySelectorAll('.bookings-list-table tbody tr.booking-row-item'));
+        let payAlerts = 0;
+        let contractAlerts = 0;
+        let urgentAlerts = 0;
+
+        allRows.forEach(row => {
+            const rawStatus = row.dataset.status || '';
+            const payStatus = row.dataset.paymentStatus || '';
+            const isUrgent = row.dataset.isUrgent === 'true';
+
+            if (['proof_submitted', 'balance_proof_submitted'].includes(payStatus)) payAlerts++;
+            if (['pending_quotation', 'awaiting_caterer'].includes(rawStatus)) contractAlerts++;
+            if (isUrgent && !['completed', 'cancelled'].includes(rawStatus)) urgentAlerts++;
+        });
+
+        const total = payAlerts + contractAlerts + urgentAlerts;
+        const banner = document.getElementById('alertBanner');
+        const countBadge = document.querySelector('.alert-count-badge');
+        const detailsSpan = document.getElementById('bannerTaskDetails');
+
+        if (total > 0) {
+            if (banner) {
+                banner.style.display = 'flex';
+                if (countBadge) countBadge.innerText = total + ' Alerts';
+                if (detailsSpan) {
+                    let parts = [];
+                    if (payAlerts > 0) parts.push(`<span style="color: #f59e0b; font-weight: 800;">${payAlerts}</span> payments`);
+                    if (contractAlerts > 0) parts.push(`<span style="color: #f59e0b; font-weight: 800;">${contractAlerts}</span> contracts`);
+                    if (urgentAlerts > 0) parts.push(`<span style="color: #fb7185; font-weight: 800;">${urgentAlerts}</span> urgent events`);
+                    
+                    detailsSpan.innerHTML = 'Pending: ' + parts.join(' &bull; ');
+                }
+            }
+        } else if (banner) {
+            banner.style.display = 'none';
+        }
+    } catch (err) { console.error('Alert polling failed:', err); }
+}
 
 function initDetailListeners() {
     document.querySelectorAll('.view-details').forEach(function(btn) {
@@ -315,12 +396,15 @@ function renderPaginationControls(totalPages) {
 }
 
 function filterBySignature() {
+    const si = document.getElementById('bookingSearchInput');
+    if (si) si.value = ''; // Clear search to show all actionable items
+    
     var sf = document.getElementById('statusFilter');
     if (sf) { 
         sf.value = 'action_required'; 
         filterBookings(); 
     }
-    var tc = document.querySelector('.b-table-container');
+    const tc = document.querySelector('.bookings-list-section') || document.querySelector('.b-table-container');
     if (tc) tc.scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -342,89 +426,74 @@ function closeWalkinModal() {
 }
 
 async function submitWalkinBooking(e) {
-    e.preventDefault();
-    const form = e.target;
+    if (e && e.preventDefault) e.preventDefault();
+    const form = document.getElementById('walkinBookingForm');
 
-    // 1. Strict HTML5 Check
-    if (!form.checkValidity() || form.querySelectorAll('.is-invalid').length > 0) {
-        if (form.querySelectorAll('.is-invalid').length > 0) {
-            window.showError('Please check the fields in red. There is an error in your input.');
-        } else {
-            form.reportValidity();
-        }
+    // 1. Check for ValidationManager errors
+    if (form.querySelectorAll('.is-invalid').length > 0) {
+        window.showError('Please fix the errors highlighted in red before submitting.');
         return;
     }
 
-    // 2. Custom validation for guests minimum check
-    const guestInput = document.getElementById('bookGuests');
+    // 2. HTML5 Check
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    const btn = document.getElementById('walkinSubmitBtn');
+    const originalContent = btn ? btn.innerHTML : 'Submit';
+
+    // 3. Data Prep
+    const formData = new FormData(form);
+    const data = {};
+    for (let [key, value] of formData.entries()) {
+        if (key === 'total_amount') {
+            data[key] = parseFloat(value.replace(/[₱,]/g, '')) || 0;
+        } else {
+            data[key] = value;
+        }
+    }
+
+    // 4. Guest Capacity Check (Double Check)
     const pkgSelect = document.getElementById('bookPackage');
-    if (pkgSelect && guestInput && pkgSelect.value !== "") {
+    if (pkgSelect && pkgSelect.value !== "") {
         const option = pkgSelect.options[pkgSelect.selectedIndex];
-        const minGuests = parseInt(option.dataset.min) || 1;
-        if (parseInt(guestInput.value) < minGuests) {
-            window.showError(`Minimum of ${minGuests} guests required for this package.`);
-            guestInput.classList.add('is-invalid');
+        const minGuests = parseInt(option.dataset.min) || 0;
+        if (parseInt(data.guest_count) < minGuests) {
+            window.showError(`The selected package requires at least ${minGuests} guests.`);
             return;
         }
     }
 
-    const btn = document.getElementById('walkinSubmitBtn');
-    if (!btn) return;
-
-    const formData = new FormData(form);
-    const data = {};
-    for (let [key, value] of formData.entries()) { data[key] = value; }
-
-    // --- SMART VALIDATION: GMAIL ONLY ---
-    if (data.customer_email && !data.customer_email.toLowerCase().endsWith('@gmail.com')) {
-        window.showError('Only @gmail.com emails are accepted for security.');
-        return;
-    }
-
-    // --- SMART VALIDATION: REPETITIVE CONTACT ---
-    const contact = data.customer_contact || '';
-    if (/^(\d)\1+$/.test(contact) || contact.length < 10) {
-        window.showError('Invalid Contact Number. Avoid repetitive numbers and ensure correct length.');
-        return;
-    }
-
-    btn.disabled = true;
-    btn.innerText = 'Creating...';
-
-    data.guest_count = parseInt(data.guest_count);
-    data.total_amount = parseFloat((data.total_amount || "0").toString().replace(/,/g, ''));
-    if (!data.package_id) data.package_id = null;
-    else data.package_id = parseInt(data.package_id);
-    if (!data.event_time) data.event_time = null;
-    data.menu_items = [];
-
-    // Additional Validation for Amount
-    if (isNaN(data.total_amount) || data.total_amount <= 0) {
-        window.showError('Invalid total amount.');
-        btn.disabled = false;
-        btn.innerText = 'Create Booking';
-        return;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
     }
 
     try {
-        const res = await fetch('/caterer/api/bookings/manual', {
+        const response = await fetch('/caterer/api/bookings/manual', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
-        if (res.ok) {
-            window.showSuccess('Booking created successfully!');
-            setTimeout(function() { window.location.reload(); }, 1500);
+
+        const result = await response.json();
+        if (response.ok && result.status === 'success') {
+            if (window.showToast) window.showToast("Manual booking recorded successfully!", "success");
+            closeWalkinModal();
+            setTimeout(() => window.location.reload(), 1500);
         } else {
-            const err = await res.json();
-            window.showError(err.detail || 'Failed to create booking.');
+            const errorMsg = result.detail || result.message || "Failed to create booking.";
+            window.showError(errorMsg);
         }
     } catch (err) {
-        window.showError('An error occurred. Please try again.');
+        console.error('Error submitting manual booking:', err);
+        window.showError("A connection error occurred. Please try again.");
     } finally {
-        if(btn) {
+        if (btn) {
             btn.disabled = false;
-            btn.innerText = 'Create Booking';
+            btn.innerHTML = originalContent;
         }
     }
 }
@@ -578,6 +647,13 @@ function showBookingDetails(btn) {
     resetBookingTabs();
 
     document.getElementById('modalBookingId').innerText = 'Booking #' + data.id;
+    
+    // Urgent Indicator in Modal Header
+    const headerTitle = document.getElementById('modalBookingId');
+    if (data.isUrgent === 'true') {
+        headerTitle.innerHTML = `Booking #${data.id} <span style="background: #fff1f2; color: #e11d48; font-size: 0.65rem; padding: 2px 8px; border-radius: 50px; margin-left: 8px; border: 1px solid #fecdd3; vertical-align: middle;"><i class="fas fa-clock"></i> URGENT</span>`;
+    }
+
     document.getElementById('modalCustomer').innerText = data.customer;
     document.getElementById('modalEmail').innerText = data.email;
     document.getElementById('modalEventName').innerText = data.eventName;

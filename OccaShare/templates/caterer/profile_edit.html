@@ -189,7 +189,26 @@
                 <div class="tab-content" id="payments">
                     <div class="section-header-compact">
                         <h3><i class="fas fa-credit-card"></i> Payment Methods</h3>
-                        <p>Configure how customers can pay for your catering services.</p>
+                        <p>Configure how customers can pay you and where you'll receive your earnings.</p>
+                    </div>
+
+                    <!-- Withdrawal Config -->
+                    <div class="payout-method-selection-card" style="margin-bottom: 2rem; background: var(--color-neutral-50); padding: 1.5rem; border-radius: 16px; border: 1px solid var(--color-neutral-100);">
+                        <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+                            <i class="fas fa-money-check-dollar" style="font-size: 1.5rem; color: var(--primary-color);"></i>
+                            <div>
+                                <h4 style="margin: 0; font-size: 0.9rem; font-weight: 800; color: var(--color-neutral-900);">Preferred Payout Method</h4>
+                                <p style="margin: 0; font-size: 0.75rem; color: var(--color-neutral-500);">This is where OccaServe will transfer your earnings.</p>
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <select name="payout_method" class="filter-select-pro" style="background: white;">
+                                <option value="" {% if not profile.payout_method %}selected{% endif %}>-- Select Method --</option>
+                                <option value="GCash" {% if profile.payout_method == 'GCash' %}selected{% endif %}>GCash</option>
+                                <option value="Maya" {% if profile.payout_method == 'Maya' %}selected{% endif %}>Maya</option>
+                                <option value="Bank Transfer" {% if profile.payout_method == 'Bank Transfer' %}selected{% endif %}>Bank Transfer</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="payment-methods-tabs-grid">

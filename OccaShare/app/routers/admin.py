@@ -188,30 +188,69 @@ async def manage_payouts(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
-    # Fetch payout items that are 'ready' for release
-    ready_payouts = db.query(models.PayoutItem).filter(
-        models.PayoutItem.status == 'ready'
+    # 1. Fetch formal Withdrawal Requests (Grouped Payouts)
+    pending_requests = db.query(models.Payout).filter(
+        models.Payout.status == 'pending'
+    ).order_by(models.Payout.requested_at.desc()).all()
+
+    # 2. Fetch payout items that are 'ready' but NOT yet linked to a formal request
+    # This allows admin to be proactive if needed
+    ready_items = db.query(models.PayoutItem).filter(
+        models.PayoutItem.status == 'ready',
+        models.PayoutItem.payout_id == None
     ).order_by(models.PayoutItem.id.desc()).all()
 
-    # Fetch recently released payouts
-    recent_released = db.query(models.PayoutItem).filter(
-        models.PayoutItem.status == 'released'
-    ).order_by(models.PayoutItem.id.desc()).limit(20).all()
+    # 3. Fetch recently completed payouts
+    recent_completed = db.query(models.Payout).filter(
+        models.Payout.status == 'completed'
+    ).order_by(models.Payout.completed_at.desc()).limit(15).all()
 
-    # Calculate pending total
-    pending_release_total = float(sum(p.amount for p in ready_payouts) or 0.0)
+    # Calculate metrics
+    pending_request_total = float(sum(p.total_amount for p in pending_requests) or 0.0)
+    ready_funds_total = float(sum(p.amount for p in ready_items) or 0.0)
 
     return templates.TemplateResponse("admin/payouts.html", {
         "request": request,
         "user": user,
-        "ready_payouts": ready_payouts,
-        "recent_released": recent_released,
-        "pending_release_total": pending_release_total,
+        "pending_requests": pending_requests,
+        "ready_items": ready_items,
+        "recent_completed": recent_completed,
+        "pending_request_total": pending_request_total,
+        "ready_funds_total": ready_funds_total,
         "active_page": "payouts"
     })
 
-@router.post("/payouts/{item_id}/release")
-async def release_payout(
+@router.post("/payouts/{payout_id}/approve")
+async def approve_withdrawal_request(
+    payout_id: int,
+    reference: str = Form(...),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(admin_only)
+):
+    payout = db.query(models.Payout).get(payout_id)
+    if not payout:
+        raise HTTPException(status_code=404, detail="Withdrawal request not found")
+    
+    # 1. Update Payout Status
+    payout.status = "completed"
+    payout.completed_at = datetime.now()
+    payout.admin_notes = f"Approved by {user.first_name}. Ref: {reference}"
+    
+    # 2. Update all linked items to 'released'
+    for item in payout.items:
+        item.status = "released"
+    
+    db.commit()
+
+    # 3. Notify Caterer
+    from ..services.notification import NotificationService
+    import asyncio
+    asyncio.create_task(NotificationService.notify_payout_completed(payout.id, db))
+
+    return RedirectResponse(url="/admin/payouts?success_msg=Withdrawal+request+approved+successfully", status_code=303)
+
+@router.post("/payouts/items/{item_id}/release")
+async def release_individual_item(
     item_id: int,
     reference: str = Form(...),
     db: Session = Depends(database.get_db),
@@ -222,17 +261,8 @@ async def release_payout(
         raise HTTPException(status_code=404, detail="Payout item not found")
     
     item.status = "released"
-    # item.payout_reference = reference # If I add field, else log in history
-    
-    # Check if all items in the parent Payout are released
-    parent_payout = item.payout
-    all_released = all(i.status == "released" for i in parent_payout.items)
-    if all_released:
-        parent_payout.status = "completed"
-        parent_payout.completed_at = datetime.now()
-
     db.commit()
-    return RedirectResponse(url="/admin/payouts?success_msg=Payout+released+successfully", status_code=303)
+    return RedirectResponse(url="/admin/payouts?success_msg=Individual+payout+item+released", status_code=303)
 
 
 @router.get("/settings", response_class=HTMLResponse)

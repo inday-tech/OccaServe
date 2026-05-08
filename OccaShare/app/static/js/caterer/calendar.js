@@ -1,7 +1,13 @@
+/* ==========================================================================
+   CATERER CALENDAR CORE LOGIC (v12.0)
+   - Intelligent Validation & Conflict Detection
+   - Automated Pricing & ROI Engine
+   - Adaptive Mobile View Switching
+   ========================================================================== */
+
 document.addEventListener('DOMContentLoaded', function () {
     const calendarEl = document.getElementById('calendar');
     if (calendarEl) {
-        // Change default view based on screen width
         const initialView = window.innerWidth <= 768 ? 'listMonth' : 'dayGridMonth';
         
         const calendar = new FullCalendar.Calendar(calendarEl, {
@@ -9,37 +15,35 @@ document.addEventListener('DOMContentLoaded', function () {
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',
-                right: 'dayGridMonth,timeGridWeek'
+                right: 'dayGridMonth,timeGridWeek,listMonth'
             },
+            themeSystem: 'standard',
             events: '/caterer/api/events',
+            // --- BLOCK PAST DATES ---
+            selectAllow: function(selectInfo) {
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                return selectInfo.start >= today;
+            },
             eventContent: function(arg) {
                 const props = arg.event.extendedProps;
                 const isBlocked = props.type === 'BLOCKED';
-                const iconClass = isBlocked ? 'fas fa-ban' : 'fas fa-calendar-check';
-                
+                const iconClass = isBlocked ? 'fas fa-ban' : 'fas fa-utensils';
                 return {
-                    html: `
-                        <div class="custom-calendar-event" style="
-                            display: flex; align-items: center; gap: 0.35rem; width: 100%;
-                            padding: 0.2rem 0.4rem; border-radius: 6px; 
-                            background-color: ${arg.event.backgroundColor}; 
-                            color: ${arg.event.textColor || '#fff'}; 
-                            border-left: 3px solid ${arg.event.borderColor || arg.event.backgroundColor};
-                            font-size: 0.8rem; font-weight: 500; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
-                        ">
-                            <i class="${iconClass}" style="opacity: 0.8;"></i>
-                            <span style="overflow: hidden; text-overflow: ellipsis;">${arg.event.title}</span>
-                        </div>
-                    `
+                    html: `<div class="custom-calendar-event" style="background-color: ${arg.event.backgroundColor}; color: ${arg.event.textColor || '#fff'};">
+                            <i class="${iconClass}" style="font-size: 0.7rem;"></i>
+                            <span>${arg.event.title}</span>
+                        </div>`
                 };
             },
             eventClick: function (info) {
                 const today = new Date();
                 today.setHours(0,0,0,0);
+                // Prevent clicking events on past dates
                 if (info.event.start < today) {
+                    window.showError('Audit Guard: Past event details are archived.');
                     return;
                 }
-
                 if (info.event.extendedProps.type === 'BLOCKED') {
                     showBlockedDetails(info.event);
                 } else {
@@ -52,18 +56,21 @@ document.addEventListener('DOMContentLoaded', function () {
                 const clickedDate = new Date(info.dateStr);
                 
                 if (clickedDate < today) {
+                    window.showError('Audit Guard: You cannot manage past dates.');
                     return; 
                 }
                 
                 const blockInput = document.getElementById('blockDate');
                 const manInput = document.getElementById('manDate');
                 if (blockInput) blockInput.value = info.dateStr;
-                if (manInput) manInput.value = info.dateStr;
-                
+                if (manInput) {
+                    manInput.value = info.dateStr;
+                    checkDateConflict(info.dateStr);
+                }
                 openManualBookingModal();
             },
             height: 'auto',
-            dayMaxEvents: true,
+            dayMaxEvents: 3,
             windowResize: function(arg) {
                 if (window.innerWidth <= 768) {
                     calendar.changeView('listMonth');
@@ -73,103 +80,284 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
         calendar.render();
+        window.fullCalendarInstance = calendar;
     }
 
-    // Initialize Manual Booking Validation
-    if (window.ValidationManager) {
-        window.manualBookingValidation = new window.ValidationManager('manualBookingForm', {
-            'customer_name': { label: 'customer name', noSameParts: true },
-            'customer_email': { label: 'email address' },
-            'customer_contact': { phMobile: true, noRepetitive: true, maxLength: 11 },
-            'event_name': { label: 'event name' },
-            'guest_count': { numericOnly: true, min: 1, max: 100000, autoStop: true },
-            'total_amount': { numericOnly: true, max: 10000000, autoStop: true },
-            'event_date': { label: 'event date' }
-        });
-    }
-    
+    // --- FIELD LEVEL VALIDATION HELPER ---
+    window.setFieldError = (fieldId, msg) => {
+        const field = document.getElementById(fieldId);
+        const errorDiv = document.getElementById(`error-${fieldId}`);
+        if (field && errorDiv) {
+            field.classList.add('is-invalid');
+            errorDiv.textContent = msg;
+            errorDiv.style.display = 'block';
+        }
+    };
+
+    window.clearFieldError = (fieldId) => {
+        const field = document.getElementById(fieldId);
+        const errorDiv = document.getElementById(`error-${fieldId}`);
+        if (field && errorDiv) {
+            field.classList.remove('is-invalid');
+            errorDiv.style.display = 'none';
+        }
+    };
+
     initCustomerDetection();
-
-    // Proactive Numeric Blocking for Contact
-    const contactInput = document.getElementById('manCustContact');
-    if (contactInput) {
-        contactInput.addEventListener('keydown', (e) => {
-            const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter'];
-            if (!allowedKeys.includes(e.key) && !/[0-9]/.test(e.key) && !e.ctrlKey) {
-                e.preventDefault();
-            }
-        });
-    }
-
-    // Initialize Listeners
-    attachPackageListeners();
+    attachPricingListeners();
+    attachInputRestrictions();
 });
 
-function attachPackageListeners() {
+/**
+ * Throttles and restricts inputs in real-time
+ */
+function attachInputRestrictions() {
+    const contactInput = document.getElementById('manCustContact');
+    if (contactInput) {
+        contactInput.addEventListener('input', function(e) {
+            // Only allow numbers
+            this.value = this.value.replace(/[^0-9]/g, '');
+            // Limit to 11 digits
+            if (this.value.length > 11) {
+                this.value = this.value.slice(0, 11);
+            }
+            validateSmartContact(this.value);
+        });
+    }
+
+    const nameInput = document.getElementById('manCustName');
+    if (nameInput) {
+        nameInput.addEventListener('input', function() {
+            validateSmartName(this.value);
+        });
+    }
+
+    const emailInput = document.getElementById('manCustEmail');
+    if (emailInput) {
+        emailInput.addEventListener('input', function() {
+            validateSmartEmail(this.value);
+        });
+    }
+}
+
+function validateSmartEmail(val) {
+    if (!val) { window.clearFieldError('manCustEmail'); return false; }
+    if (!val.toLowerCase().endsWith('@gmail.com')) {
+        window.setFieldError('manCustEmail', 'Only @gmail.com addresses are permitted.');
+        return false;
+    }
+    window.clearFieldError('manCustEmail');
+    return true;
+}
+
+function validateSmartName(val) {
+    if (!val) { window.clearFieldError('manCustName'); return false; }
+    const parts = val.trim().split(/\s+/);
+    
+    // Check structure: First, Middle/Initial, Last
+    if (parts.length < 3) {
+        window.setFieldError('manCustName', 'Format: First Name, Middle Initial, and Surname.');
+        return false;
+    }
+
+    // Check for repetitive parts (e.g., "John John")
+    const firstName = parts[0].toLowerCase();
+    const lastName = parts[parts.length - 1].toLowerCase();
+    if (firstName === lastName) {
+        window.setFieldError('manCustName', 'First name and Surname cannot be identical.');
+        return false;
+    }
+
+    window.clearFieldError('manCustName');
+    return true;
+}
+
+function validateSmartContact(val) {
+    if (!val) { window.clearFieldError('manCustContact'); return false; }
+    
+    // Check length
+    if (val.length < 11) {
+        window.setFieldError('manCustContact', 'Incomplete number (11 digits required).');
+        return false;
+    }
+
+    // Check for repetitive patterns (e.g., "09111111111")
+    if (/(\d)\1{7,}/.test(val)) {
+        window.setFieldError('manCustContact', 'Invalid pattern: Repetitive numbers detected.');
+        return false;
+    }
+
+    window.clearFieldError('manCustContact');
+    return true;
+}
+
+/**
+ * Intelligent Customer detection (Name, Email, Contact)
+ */
+function initCustomerDetection() {
+    let detectionTimeout;
+    const emailInput = document.getElementById('manCustEmail');
+    const nameInput = document.getElementById('manCustName');
+    const contactInput = document.getElementById('manCustContact');
+    const badge = document.getElementById('userDetectionBadge');
+    
+    if (!emailInput || !badge) return;
+
+    const runDetection = () => {
+        clearTimeout(detectionTimeout);
+        detectionTimeout = setTimeout(async () => {
+            const email = emailInput.value.trim();
+            const name = nameInput.value.trim();
+            const contact = contactInput.value.trim();
+
+            if (email.length < 10 && name.length < 5 && contact.length < 11) {
+                badge.style.display = 'none';
+                return;
+            }
+
+            // Real-time validation check before API call
+            const isEmailValid = validateSmartEmail(email);
+            const isNameValid = validateSmartName(name);
+            if (!isEmailValid || !isNameValid) { badge.style.display = 'none'; return; }
+
+            badge.style.display = 'flex';
+            badge.innerHTML = `<div class="badge-spinner"><i class="fas fa-circle-notch fa-spin"></i></div><div class="badge-content"><span class="badge-title">AI Scanner</span><span style="font-size: 11px; color: #64748b;">Analyzing platform records...</span></div>`;
+
+            try {
+                const resp = await fetch('/caterer/api/check-customer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, contact })
+                });
+                const data = await resp.json();
+                
+                if (data.exists) {
+                    badge.style.borderLeftColor = data.is_taken ? '#ef4444' : '#0ea5e9';
+                    badge.style.background = data.is_taken ? '#fff1f2' : '#f0f9ff';
+                    badge.innerHTML = `
+                        <div class="badge-spinner" style="color: ${data.is_taken ? '#ef4444' : '#0ea5e9'};"><i class="fas ${data.is_taken ? 'fa-user-lock' : 'fa-user-check'}"></i></div>
+                        <div class="badge-content">
+                            <span class="badge-title" style="color: ${data.is_taken ? '#ef4444' : '#0ea5e9'};">${data.is_taken ? 'Registered Client' : 'Match Found'}</span>
+                            <span style="font-size: 11px; color: #475569;">Verified: <b>${data.name}</b>. Profiles will be linked.</span>
+                        </div>
+                    `;
+                    if (!contactInput.value && data.contact) contactInput.value = data.contact;
+                } else {
+                    badge.style.borderLeftColor = '#10b981';
+                    badge.style.background = '#f0fdf4';
+                    badge.innerHTML = `<div class="badge-spinner" style="color: #10b981;"><i class="fas fa-user-plus"></i></div><div class="badge-content"><span class="badge-title" style="color: #10b981;">New Discovery</span><span style="font-size: 11px; color: #166534;">Unique customer detected. Ready for registration.</span></div>`;
+                }
+            } catch (e) { badge.style.display = 'none'; }
+        }, 800);
+    };
+
+    [emailInput, nameInput, contactInput].forEach(el => el.addEventListener('input', runDetection));
+}
+
+/**
+ * Submit & Validation Logic
+ */
+async function submitManualEvent(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnSubmitManual');
+    
+    // Clear all errors first
+    ['manCustName', 'manCustEmail', 'manCustContact', 'manEventName', 'manGuests', 'manDate', 'manVenue'].forEach(id => window.clearFieldError(id));
+
+    // Client-side validation
+    const name = document.getElementById('manCustName').value.trim();
+    const email = document.getElementById('manCustEmail').value.trim();
+    const contact = document.getElementById('manCustContact').value.trim();
+    const guests = parseInt(document.getElementById('manGuests').value) || 0;
+    const date = document.getElementById('manDate').value;
+
+    const isNameValid = validateSmartName(name);
+    const isEmailValid = validateSmartEmail(email);
+    const isContactValid = validateSmartContact(contact);
+    
+    let hasError = !isNameValid || !isEmailValid || !isContactValid;
+
+    if (guests < 1) { window.setFieldError('manGuests', 'Minimum 1 guest required.'); hasError = true; }
+    
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    if (new Date(date) < today) { window.setFieldError('manDate', 'Past dates not allowed.'); hasError = true; }
+
+    if (hasError) {
+        window.showError("Audit Check: Please resolve all field errors before proceeding.");
+        return;
+    }
+
+    if (window.apiAction) {
+        const payload = {
+            customer_name: name,
+            customer_email: email,
+            customer_contact: contact,
+            event_name: document.getElementById('manEventName').value.trim(),
+            event_type: document.getElementById('manEventType').value,
+            event_date: date,
+            event_time: document.getElementById('manTime').value || null,
+            venue_address: document.getElementById('manVenue').value.trim(),
+            guest_count: guests,
+            total_amount: parseFloat(document.getElementById('manAmount').value) || 0,
+            package_id: document.getElementById('manPackage').value ? parseInt(document.getElementById('manPackage').value) : null
+        };
+
+        const res = await window.apiAction('/caterer/api/bookings/manual', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        }, btn);
+
+        if (res) {
+            closeModal('manualBookingModal');
+            setTimeout(() => window.location.reload(), 1000);
+        }
+    }
+}
+
+/**
+ * Real-time Conflict Detection
+ */
+async function checkDateConflict(dateStr) {
+    const submitBtn = document.getElementById('btnSubmitManual');
+    try {
+        const resp = await fetch(`/caterer/api/availability/check?date=${dateStr}`);
+        const data = await resp.json();
+        
+        if (!data.is_available) {
+            window.setFieldError('manDate', `CONFLICT: This date is BLOCKED (${data.reason || 'No reason provided'}).`);
+            submitBtn.disabled = true;
+        } else {
+            window.clearFieldError('manDate');
+            submitBtn.disabled = false;
+        }
+    } catch (e) { console.error("Conflict check failed:", e); }
+}
+
+/**
+ * Pricing & ROI Intelligence
+ */
+function attachPricingListeners() {
     const pkgSelect = document.getElementById('manPackage');
     const guestInput = document.getElementById('manGuests');
-    const amountInput = document.getElementById('manAmount');
-    if (!pkgSelect || !guestInput || !amountInput) return;
-
-    // Listen to changes that affect price
-    pkgSelect.addEventListener('change', () => {
-        syncPackageMenus();
-        
-        const option = pkgSelect.options[pkgSelect.selectedIndex];
-        const minGuests = parseInt(option.dataset.min) || 1;
-        guestInput.min = minGuests;
-        if (!guestInput.value || parseInt(guestInput.value) < minGuests) {
-            guestInput.value = minGuests;
-        }
-        
-        recalculateTotal();
-    });
-    guestInput.addEventListener('input', recalculateTotal);
+    const dateInput = document.getElementById('manDate');
     
-    document.querySelectorAll('.man-menu-checkbox').forEach(cb => {
-        cb.addEventListener('change', recalculateTotal);
-    });
+    if (!pkgSelect || !guestInput || !dateInput) return;
 
-    // Initial calculation
+    pkgSelect.addEventListener('change', recalculateTotal);
+    guestInput.addEventListener('input', recalculateTotal);
+    dateInput.addEventListener('change', (e) => checkDateConflict(e.target.value));
+
     recalculateTotal();
 }
 
-/**
- * Synchronize checkboxes based on package menu items
- */
-function syncPackageMenus() {
-    const pkgSelect = document.getElementById('manPackage');
-    if (!pkgSelect) return;
-    
-    const option = pkgSelect.options[pkgSelect.selectedIndex];
-    if (!option.dataset.menus) return;
-
-    try {
-        const menuIds = JSON.parse(option.dataset.menus);
-        // Clear all first
-        document.querySelectorAll('.man-menu-checkbox').forEach(cb => cb.checked = false);
-        
-        // Check associated ones
-        if (menuIds.length > 0) {
-            menuIds.forEach(id => {
-                const cb = document.querySelector(`.man-menu-checkbox[value="${id}"]`);
-                if (cb) cb.checked = true;
-            });
-        }
-    } catch (e) {
-        console.error("Error syncing menus:", e);
-    }
-}
-
-/**
- * Real-time Accurate Pricing Calculation
- */
 function recalculateTotal() {
     const pkgSelect = document.getElementById('manPackage');
     const guestInput = document.getElementById('manGuests');
-    const amountInput = document.getElementById('manAmount');
+    const displayTotal = document.getElementById('displayTotal');
+    const manAmount = document.getElementById('manAmount');
     
-    if (!pkgSelect || !guestInput || !amountInput) return;
+    if (!pkgSelect || !guestInput || !displayTotal) return;
 
     const guests = parseInt(guestInput.value) || 0;
     const option = pkgSelect.options[pkgSelect.selectedIndex];
@@ -178,77 +366,127 @@ function recalculateTotal() {
     const minGuests = parseInt(option.dataset.min) || 1;
 
     let total = 0;
-
-    // 1. Calculate Package Price
     if (unit === 'per_guest') {
         total = basePrice * guests;
     } else {
         total = basePrice;
     }
 
-    // 2. Add Extra Menu Add-ons Price
-    let includedMenuIds = [];
-    if (option.dataset.menus) {
-        try {
-            includedMenuIds = JSON.parse(option.dataset.menus).map(id => id.toString());
-        } catch (e) {}
-    }
-
-    document.querySelectorAll('.man-menu-checkbox:checked').forEach(cb => {
-        // Only add price if it's NOT part of the package inclusions
-        if (!includedMenuIds.includes(cb.value.toString())) {
-            total += parseFloat(cb.dataset.price) || 0;
-        }
-    });
-
-    // 3. Update UI - Fixed Formatting to match js-format-comma expectation
-    amountInput.value = total.toLocaleString('en-US', { minimumFractionDigits: 2 });
+    displayTotal.innerText = `₱${total.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+    manAmount.value = total.toFixed(2);
     
-    // 4. Smart Validation: Min Guests Enforcement
     if (pkgSelect.value && guests < minGuests) {
-        if (window.manualBookingValidation) {
-            window.manualBookingValidation.setError(guestInput, `Minimum of ${minGuests} guests required for this package.`);
-        }
+        // Auto-fill to minimum if it's too low
+        guestInput.value = minGuests;
+        window.setFieldError('manGuests', `Auto-adjusted: Min ${minGuests} guests required for this package.`);
+        // Recurse once with new value
+        recalculateTotal();
+        return;
     } else {
-        if (window.manualBookingValidation) {
-            window.manualBookingValidation.clearError(guestInput);
-        }
+        window.clearFieldError('manGuests');
     }
 
-    // Trigger validation update
-    amountInput.dispatchEvent(new Event('input', { bubbles: true }));
+    updateRoiPreview(pkgSelect.value, guests);
+}
 
-    // --- SMART PRICING UI UPDATE ---
+async function updateRoiPreview(pkgId, pax) {
+    const roiPill = document.getElementById('roiPreviewLabel');
     const quoteBtn = document.getElementById('btnQuickQuote');
-    const roiLabel = document.getElementById('roiPreviewLabel');
-    if (pkgSelect.value) {
-        if (quoteBtn) quoteBtn.style.display = 'inline-block';
-        if (roiLabel) {
-            roiLabel.style.display = 'block';
-            roiLabel.innerHTML = '<i class="fas fa-sync fa-spin"></i> Calculating ROI...';
-            
-            // Debounced ROI Preview
-            clearTimeout(window.roiPreviewTimeout);
-            window.roiPreviewTimeout = setTimeout(async () => {
-                try {
-                    const resp = await fetch(`/caterer/api/quick-quotation/${pkgSelect.value}?pax=${guests}`);
-                    if (resp.ok) {
-                        const data = await resp.json();
-                        roiLabel.innerHTML = `Calc. Profit: ₱${data.roi.toLocaleString()} (${data.markup_label})`;
-                    }
-                } catch (e) {}
-            }, 500);
-        }
-    } else {
+    
+    if (!pkgId || pax <= 0) {
+        if (roiPill) roiPill.style.display = 'none';
         if (quoteBtn) quoteBtn.style.display = 'none';
-        if (roiLabel) roiLabel.style.display = 'none';
+        return;
+    }
+
+    if (roiPill) {
+        roiPill.style.display = 'inline-flex';
+        roiPill.innerHTML = '<i class="fas fa-sync fa-spin"></i> Calculating ROI...';
+    }
+
+    clearTimeout(window.roiTimer);
+    window.roiTimer = setTimeout(async () => {
+        try {
+            const resp = await fetch(`/caterer/api/quick-quotation/${pkgId}?pax=${pax}`);
+            if (resp.ok) {
+                const data = await resp.json();
+                roiPill.innerHTML = `<i class="fas fa-chart-line"></i> Est. Profit: ₱${data.roi.toLocaleString()} (${data.markup_label})`;
+                if (quoteBtn) quoteBtn.style.display = 'inline-block';
+            }
+        } catch (e) { if (roiPill) roiPill.style.display = 'none'; }
+    }, 600);
+}
+
+
+
+function showErrorInDrawer(msg) {
+    const drawer = document.getElementById('manualBookingError');
+    const text = document.getElementById('errorText');
+    if (drawer && text) {
+        text.innerText = msg;
+        drawer.style.display = 'flex';
     }
 }
+
+function clearErrorDrawer() {
+    const drawer = document.getElementById('manualBookingError');
+    if (drawer) drawer.style.display = 'none';
+}
+
+function openManualBookingModal() {
+    if (window.openModal) window.openModal('manualBookingModal');
+    else document.getElementById('manualBookingModal').style.display = 'flex';
+}
+
+function closeCalModal(id) {
+    // If the global modal engine exists and it's NOT this function, use it
+    if (window.closeModal && window.closeModal !== closeCalModal) {
+        window.closeModal(id);
+    } else {
+        // Fallback: direct DOM manipulation
+        const modal = document.getElementById(id);
+        if (modal) {
+            modal.classList.remove('active');
+            setTimeout(() => {
+                if (!modal.classList.contains('active')) {
+                    modal.style.display = 'none';
+                }
+            }, 400);
+        }
+    }
+}
+
+function showEventDetails(event) {
+    const props = event.extendedProps;
+    document.getElementById('detCustomer').textContent = props.customer || '---';
+    document.getElementById('detType').textContent = props.type || '---';
+    document.getElementById('detDateTime').textContent = event.start.toLocaleDateString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    }) + ' at ' + (props.time || 'TBD');
+    document.getElementById('detVenue').textContent = props.venue || '---';
+    document.getElementById('detPackage').textContent = (props.guests || '0') + ' Guests - ' + (props.package || '---');
+    
+    document.getElementById('currentBookingId').value = event.id;
+    if (window.openModal) window.openModal('eventModal');
+    else document.getElementById('eventModal').style.display = 'flex';
+}
+
+window.showEventDetails = showEventDetails;
+window.showBlockedDetails = showBlockedDetails;
+window.closeModal = window.closeModal || closeCalModal; // Fallback if global not exists
+window.closeCalModal = closeCalModal;
+window.toggleDateAvailability = toggleDateAvailability;
+window.openManualBookingModal = openManualBookingModal;
+window.submitManualEvent = submitManualEvent;
+window.unblockSelectedDate = unblockSelectedDate;
+window.getQuickQuotation = getQuickQuotation;
+window.closeRoiBreakdown = closeRoiBreakdown;
+window.toggleOtherEventType = toggleOtherEventType;
+
 
 async function getQuickQuotation() {
     const pkgId = document.getElementById('manPackage').value;
     const pax = parseInt(document.getElementById('manGuests').value) || 0;
-    
     if (!pkgId || pax <= 0) return;
 
     try {
@@ -261,512 +499,102 @@ async function getQuickQuotation() {
         document.getElementById('breakdownTotalPrice').innerText = `₱${data.total_price.toLocaleString()}`;
         
         const list = document.getElementById('breakdownList');
-        list.innerHTML = '';
-        data.breakdown.forEach(item => {
-            const itemCost = item.cost_per_pax * pax;
-            list.innerHTML += `
-                <div style="background: white; padding: var(--space-md); border-radius: var(--radius-sm); border: 1px solid var(--color-neutral-100); display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <div style="font-weight: 700; color: var(--color-neutral-700); font-size: var(--text-sm);">${item.name}</div>
-                        <div style="font-size: var(--text-xs); color: var(--color-neutral-400);">Total Dish Cost (x${pax})</div>
-                    </div>
-                    <div style="text-align: right;">
-                        <div style="font-weight: 900; color: var(--color-neutral-700);">₱${itemCost.toLocaleString()}</div>
-                        <div style="font-size: var(--text-xs); color: var(--color-info); font-weight: 700;">₱${item.cost_per_pax.toFixed(2)} / pax</div>
-                    </div>
+        list.innerHTML = data.breakdown.map(item => `
+            <div style="background: white; padding: 1rem; border-radius: 12px; border: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div>
+                    <div style="font-weight: 800; color: #1e293b; font-size: 0.85rem;">${item.name}</div>
+                    <div style="font-size: 0.65rem; color: #94a3b8;">Dish Cost x ${pax} pax</div>
                 </div>
-            `;
-        });
+                <div style="text-align: right;">
+                    <div style="font-weight: 900; color: #1e293b;">₱${(item.cost_per_pax * pax).toLocaleString()}</div>
+                    <div style="font-size: 0.65rem; color: #10b981; font-weight: 700;">₱${item.cost_per_pax.toFixed(2)} / pax</div>
+                </div>
+            </div>
+        `).join('');
 
-        const modal = document.getElementById('roiBreakdownModal');
-        modal.style.display = 'flex';
-        setTimeout(() => modal.classList.add('active'), 10);
-        
-        // Update the preview label on the main modal too
-        const roiLabel = document.getElementById('roiPreviewLabel');
-        if (roiLabel) {
-            roiLabel.innerHTML = `Calc. Profit: ₱${data.roi.toLocaleString()} (${data.markup_label})`;
-        }
-
-    } catch (e) {
-        console.error(e);
-        alert('Failed to fetch quotation breakdown');
-    }
+        if (window.openModal) window.openModal('roiBreakdownModal');
+    } catch (e) { console.error(e); }
 }
 
 function closeRoiBreakdown() {
-    const modal = document.getElementById('roiBreakdownModal');
-    modal.classList.remove('active');
-    setTimeout(() => modal.style.display = 'none', 400);
+    closeModal('roiBreakdownModal');
 }
 
-function showEventDetails(event) {
-    const props = event.extendedProps;
-    const modalTitle = document.getElementById('calModalTitle');
-    if (modalTitle) modalTitle.textContent = event.title || 'Event Details';
-
-    document.getElementById('currentBookingId').value = event.id;
-    document.getElementById('detCustomer').textContent = props.customer || '---';
-    document.getElementById('detType').textContent = props.type || '---';
-    document.getElementById('detDateTime').textContent = event.start.toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    }) + ' at ' + (props.time || 'TBD');
-    document.getElementById('detVenue').textContent = props.venue || '---';
-    document.getElementById('detPackage').textContent = (props.guests || '0') + ' Guests - ' + (props.package || '---');
-
-    // Disable reminder for past events
-    const reminderBtn = document.querySelector('#eventModal .btn-primary');
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    if (event.start < today) {
-        if (reminderBtn) reminderBtn.style.display = 'none';
-    } else {
-        if (reminderBtn) reminderBtn.style.display = 'block';
+/**
+ * Availability Management Helpers
+ */
+async function toggleDateAvailability(isAvailable) {
+    const dateInput = document.getElementById("blockDate");
+    if (!dateInput || !dateInput.value) {
+        window.showError("Please select a target date first.");
+        return;
     }
 
-    document.getElementById('eventModal').style.display = 'flex';
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            document.getElementById('eventModal').classList.add('active');
+    const payload = { 
+        date: dateInput.value, 
+        is_available: isAvailable, 
+        reason: isAvailable ? "" : "Manual Block via Calendar" 
+    };
+
+    try {
+        const response = await fetch("/caterer/api/availability/toggle", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
         });
-    });
-}
 
-let currentBlockedDate = '';
-
-function showBlockedDetails(event) {
-    const props = event.extendedProps;
-    document.getElementById('detBlockedReason').textContent = props.reason || 'No reason provided';
-    document.getElementById('detBlockedDate').textContent = event.start.toLocaleDateString('en-US', {
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-    });
-    
-    currentBlockedDate = event.startStr.split('T')[0];
-    
-    document.getElementById('blockedDateModal').style.display = 'flex';
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            document.getElementById('blockedDateModal').classList.add('active');
-        });
-    });
-}
-
-function openManualBookingModal(slotStr = null) {
-    const modal = document.getElementById('manualBookingModal');
-    if (!modal) return;
-    document.getElementById('manualBookingForm').reset();
-    
-    const errorDrawer = document.getElementById('manualBookingError');
-    if (errorDrawer) errorDrawer.style.display = 'none';
-    
-    if (slotStr) {
-        document.getElementById('manDate').value = slotStr;
-    }
-    
-    if (document.getElementById('manAmount')) {
-        document.getElementById('manAmount').value = '0.00';
-    }
-
-    // Reset checkmarks
-    document.querySelectorAll('.man-menu-checkbox').forEach(cb => cb.checked = false);
-
-    // Initial validation check
-    setTimeout(() => {
-        recalculateTotal();
-        document.getElementById('manualBookingForm').dispatchEvent(new Event('input', { bubbles: true }));
-    }, 50);
-
-    modal.style.display = 'flex';
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            modal.classList.add('active');
-        });
-    });
-}
-
-function clearErrorDrawer() {
-    const drawer = document.getElementById('manualBookingError');
-    if (drawer) {
-        drawer.style.display = 'none';
-        drawer.innerHTML = '';
-    }
-}
-
-function showErrorInDrawer(message) {
-    const drawer = document.getElementById('manualBookingError');
-    if (drawer) {
-        drawer.innerHTML = `<i class="fas fa-exclamation-circle"></i> <span>${message}</span>`;
-        drawer.style.display = 'flex';
-        document.querySelector('#manualBookingModal .occ-modal-body').scrollTop = 0;
+        if (response.ok) {
+            window.showSuccess(`Date successfully ${isAvailable ? "opened" : "blocked"}!`);
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            window.showError("Failed to update availability.");
+        }
+    } catch (error) {
+        console.error("Error:", error);
     }
 }
 
 async function unblockSelectedDate() {
-    if (!currentBlockedDate) return;
+    const date = document.getElementById("detBlockedDate").textContent; // This needs to be set when opening the modal
+    // Actually we should store it in a global variable
+    if (!window.currentBlockedDate) return;
+    
     try {
-        const response = await fetch('/caterer/api/availability/toggle', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ date: currentBlockedDate, is_available: true, reason: '' })
+        const response = await fetch("/caterer/api/availability/toggle", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ date: window.currentBlockedDate, is_available: true, reason: "" })
         });
         if (response.ok) {
             location.reload();
         } else {
-            window.showError('Failed to unblock date.');
+            window.showError("Failed to unblock date.");
         }
     } catch (error) {
-        console.error('Error:', error);
+        console.error("Error:", error);
     }
 }
 
-async function submitManualEvent(e) {
-    e.preventDefault();
-    clearErrorDrawer();
-    
-    const guests = parseInt(document.getElementById('manGuests').value) || 0;
-    const amountInputString = document.getElementById('manAmount').value || '0.00';
-    const amount = parseFloat(amountInputString.replace(/,/g, '').replace('₱', '').trim()) || 0;
-    
-    if (guests < 1) {
-        showErrorInDrawer('Oops! Guest count must be at least 1 pax.');
-        return;
-    }
-    
-    if (amount <= 0) {
-        showErrorInDrawer('Invalid Amount! Total price must be greater than ₱0.00.');
-        return;
-    }
-
-    const eventDateStr = document.getElementById('manDate').value;
-    if (!eventDateStr) {
-        showErrorInDrawer('Please select a valid date for the event.');
-        return;
-    }
-
-    const selectedDate = new Date(eventDateStr);
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    if (selectedDate < today) {
-        showErrorInDrawer('Booking Error: You cannot create bookings for past dates.');
-        return;
-    }
-
-    let eventType = document.getElementById('manEventType').value;
-    if (eventType === 'Other') {
-        eventType = document.getElementById('manOtherType').value.trim();
-        if (!eventType) {
-            showErrorInDrawer('Please specify the "Other" event type name.');
-            return;
-        }
-    }
-
-    const btn = document.getElementById('btnSubmitManual');
-    const originalText = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-    
-    const packageId = document.getElementById('manPackage').value;
-    const selectedMenus = Array.from(document.querySelectorAll('.man-menu-checkbox:checked')).map(cb => parseInt(cb.value));
-
-    const payload = {
-        customer_name: document.getElementById('manCustName').value.trim(),
-        customer_email: document.getElementById('manCustEmail').value.trim() || null,
-        customer_contact: document.getElementById('manCustContact').value.trim() || null,
-        event_name: document.getElementById('manEventName').value,
-        event_type: eventType,
-        event_date: eventDateStr,
-        event_time: document.getElementById('manTime').value || null,
-        venue_address: document.getElementById('manVenue').value || null,
-        guest_count: guests,
-        total_amount: amount,
-        package_id: packageId ? parseInt(packageId) : null,
-        menu_items: selectedMenus
-    };
-    
-    try {
-        const response = await fetch('/caterer/api/bookings/manual', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        
-        const data = await response.json();
-        if (response.ok) {
-            window.showSuccess('Walk-in booking created successfully!');
-            setTimeout(() => location.reload(), 1500);
-        } else {
-            window.showError(data.detail || 'Failed to create booking.');
-            btn.disabled = false;
-            btn.innerHTML = originalText;
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        window.showError('An error occurred.');
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-    }
-}
-
-async function setReminder() {
-    const bookingId = document.getElementById('currentBookingId').value;
-    const btn = document.querySelector('#eventModal .btn-primary');
-    if (!btn) return;
-
-    // Request Notification Permission
-    if ("Notification" in window) {
-        if (Notification.permission !== "granted" && Notification.permission !== "denied") {
-            const permission = await Notification.requestPermission();
-            if (permission !== "granted") {
-                window.showError('Notification permission denied. Alarms will not sound.');
-            }
-        }
-    }
-
-    const originalText = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = 'Setting...';
-
-    try {
-        const response = await fetch(`/caterer/api/bookings/${bookingId}/reminders`, {
-            method: 'POST'
-        });
-        const data = await response.json();
-
-        if (data.status === 'success') {
-            window.showSuccess('Reminder set! You will see it in your notifications.');
-            
-            // Trigger Local "Alarm" Preview
-            if ("Notification" in window && Notification.permission === "granted") {
-                const eventName = document.getElementById('calModalTitle').textContent;
-                const eventDate = document.getElementById('detDateTime').textContent;
-                
-                // Play notification sound
-                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-                audio.play().catch(e => console.log("Audio play failed, needs user interaction first."));
-
-                new Notification("OccaServe Reminder Set! 🔔", {
-                    body: `Alarm active for: ${eventName}\nScheduled for: ${eventDate}`,
-                    icon: '/static/img/logo.png' // Fallback to icon if available
-                });
-            }
-
-            closeModal();
-            setTimeout(() => location.reload(), 2000);
-        } else {
-            window.showError(data.message || 'Failed to set reminder.');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        window.showError('Failed to set reminder.');
-    } finally {
-        btn.disabled = false;
-        btn.textContent = originalText;
-    }
-}
-
-function closeModal() {
-    document.querySelectorAll('.occ-modal-overlay').forEach(m => {
-        m.classList.remove('active');
-        setTimeout(() => {
-            if (!m.classList.contains('active')) {
-                m.style.display = 'none';
-            }
-        }, 400);
+function showBlockedDetails(event) {
+    const props = event.extendedProps;
+    document.getElementById("detBlockedReason").textContent = props.reason || "No reason provided";
+    document.getElementById("detBlockedDate").textContent = event.start.toLocaleDateString("en-US", {
+        weekday: "long", year: "numeric", month: "long", day: "numeric"
     });
-}
-
-async function toggleDateAvailability(isAvailable) {
-    const dateInput = document.getElementById('blockDate');
-    const reasonInput = document.getElementById('blockReason');
-
-    if (!dateInput) return;
-
-    const date = dateInput.value;
-    const reason = reasonInput ? reasonInput.value : '';
-
-    if (!date) {
-        window.showError('Please select a date first.');
-        return;
-    }
-
-    if (!isAvailable) {
-        const selectedDate = new Date(date);
-        const today = new Date();
-        today.setHours(0,0,0,0);
-        if (selectedDate < today) {
-            window.showError('You cannot block past dates.');
-            return;
-        }
-    }
-
-    try {
-        const response = await fetch('/caterer/api/availability/toggle', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ date, is_available: isAvailable, reason })
-        });
-
-        if (response.ok) {
-            window.showSuccess(`Date successfully ${isAvailable ? 'unblocked' : 'blocked'}!`);
-            setTimeout(() => location.reload(), 1000);
-        } else {
-            window.showError('Failed to update availability.');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        window.showError('An error occurred.');
-    }
-}
-
-function toggleOtherEventType() {
-    const select = document.getElementById('manEventType');
-    const otherDiv = document.getElementById('otherEventTypeDiv');
-    const otherInput = document.getElementById('manOtherType');
     
-    if (select.value === 'Other') {
-        otherDiv.style.display = 'block';
-        otherInput.required = true;
-    } else {
-        otherDiv.style.display = 'none';
-        otherInput.required = false;
-        otherInput.value = '';
-    }
-}
-
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeModal();
-});
-
-window.showEventDetails = showEventDetails;
-window.showBlockedDetails = showBlockedDetails;
-window.setReminder = setReminder;
-window.closeModal = closeModal;
-window.toggleDateAvailability = toggleDateAvailability;
-window.openManualBookingModal = openManualBookingModal;
-window.submitManualEvent = submitManualEvent;
-window.unblockSelectedDate = unblockSelectedDate;
-window.toggleOtherEventType = toggleOtherEventType;
-
-function initCustomerDetection() {
-    let timeoutId;
-    const nameInput = document.getElementById('manCustName');
-    const emailInput = document.getElementById('manCustEmail');
-    const contactInput = document.getElementById('manCustContact');
-    const badge = document.getElementById('userDetectionBadge');
-    
-    if (!nameInput || !emailInput || !badge) return;
-
-    function checkUser() {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(async () => {
-            const name = nameInput.value.trim();
-            const email = emailInput.value.trim();
-            
-            if (!name && !email) {
-                badge.style.display = 'none';
-                return;
-            }
-
-            badge.style.display = 'flex';
-            badge.className = 'detection-badge-container';
-            badge.style.background = 'var(--color-neutral-50)';
-            badge.style.borderLeftColor = 'var(--color-neutral-300)';
-            
-            badge.innerHTML = `
-                <div class="badge-spinner"><i class="fas fa-circle-notch fa-spin"></i></div>
-                <div class="badge-content">
-                    <span class="badge-title">AI Scanner</span>
-                    <span style="color: var(--color-neutral-500); font-size: 11px;">Scanning platform records...</span>
-                </div>
-            `;
-
-            try {
-                const response = await fetch('/caterer/api/check-customer', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, email })
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.exists) {
-                        badge.style.display = 'flex';
-                        if (data.is_taken) {
-                            badge.style.background = '#fff1f2';
-                            badge.style.borderLeftColor = '#e11d48';
-                            badge.innerHTML = `
-                                <div class="badge-spinner" style="color: #e11d48;"><i class="fas fa-exclamation-triangle"></i></div>
-                                <div class="badge-content">
-                                    <span class="badge-title" style="color: #e11d48;">System Warning</span>
-                                    <span style="color: #9f1239; font-size: 11px;">Email is registered to <b>${data.name}</b>.</span>
-                                </div>
-                            `;
-                        } else {
-                            badge.style.background = '#f0f9ff';
-                            badge.style.borderLeftColor = '#0284c7';
-                            badge.innerHTML = `
-                                <div class="badge-spinner" style="color: #0284c7;"><i class="fas fa-fingerprint"></i></div>
-                                <div class="badge-content">
-                                    <span class="badge-title" style="color: #0284c7;">Match Detected</span>
-                                    <span style="color: #0369a1; font-size: 11px;">Found <b>${data.name}</b>. Linking enabled.</span>
-                                </div>
-                            `;
-                        }
-                        
-                        // Smart Auto-fill
-                        if (data.exists && !data.is_taken) {
-                             if (!nameInput.value || nameInput.value.length < 3) nameInput.value = data.name;
-                             if (!contactInput.value && data.contact) contactInput.value = data.contact;
-                             
-                             nameInput.dispatchEvent(new Event('input', { bubbles: true }));
-                             if (contactInput.value) contactInput.dispatchEvent(new Event('input', { bubbles: true }));
-                        }
-                    } else {
-                        badge.style.background = '#f0fdf4';
-                        badge.style.borderLeftColor = '#16a34a';
-                        badge.innerHTML = `
-                            <div class="badge-spinner" style="color: #16a34a;"><i class="fas fa-user-plus"></i></div>
-                            <div class="badge-content">
-                                <span class="badge-title" style="color: #16a34a;">New Registry</span>
-                                <span style="color: #166534; font-size: 11px;">Unique user. Ready for registration.</span>
-                            </div>
-                        `;
-                    }
-                }
-            } catch (err) {
-                badge.style.display = 'none';
-            }
-        }, 600);
-    }
-
-    nameInput.addEventListener('input', checkUser);
-    emailInput.addEventListener('input', checkUser);
+    window.currentBlockedDate = event.startStr.split("T")[0];
+    if (window.openModal) window.openModal("blockedDateModal");
 }
 
 window.openSidebarEventModal = function(elem) {
     const ds = elem.dataset;
-    const modalTitle = document.getElementById('calModalTitle');
-    if (modalTitle) modalTitle.textContent = ds.title || 'Event Details';
-
-    document.getElementById('currentBookingId').value = ds.id || '';
-    document.getElementById('detCustomer').textContent = ds.customer || '---';
-    document.getElementById('detType').textContent = ds.type || '---';
-    document.getElementById('detDateTime').textContent = ds.datetime || '---';
-    document.getElementById('detVenue').textContent = ds.venue || '---';
-    document.getElementById('detPackage').textContent = ds.package || '---';
-
-    const reminderBtn = document.querySelector('#eventModal .btn-primary');
-    if (reminderBtn) {
-        reminderBtn.style.display = 'block';
-    }
-
-    document.getElementById('eventModal').style.display = 'flex';
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            document.getElementById('eventModal').classList.add('active');
-        });
-    });
+    document.getElementById("detCustomer").textContent = ds.customer || "---";
+    document.getElementById("detType").textContent = ds.type || "---";
+    document.getElementById("detDateTime").textContent = ds.datetime || "---";
+    document.getElementById("detVenue").textContent = ds.venue || "---";
+    document.getElementById("detPackage").textContent = ds.package || "---";
+    document.getElementById("currentBookingId").value = ds.id || "";
+    
+    if (window.openModal) window.openModal("eventModal");
+    else document.getElementById("eventModal").style.display = "flex";
 };

@@ -4,45 +4,147 @@
 {% block title %}Payments & Earnings - Caterer Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/payments.css') }}?v=2.2">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/payments.css') }}?v=3.0">
+<style>
+    /* Bulletproof Fallback Styles for the Withdraw Panel */
+    .pay-withdraw-panel {
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)) !important;
+        padding: 2rem 2.5rem !important;
+        border-radius: 24px !important;
+        margin-bottom: 2.5rem !important;
+        color: white !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        box-shadow: 0 20px 40px rgba(var(--primary-color-rgb), 0.25) !important;
+        position: relative !important;
+        overflow: hidden !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        width: 100% !important;
+    }
+
+    .pay-withdraw-action {
+        display: flex !important;
+        align-items: center !important;
+        gap: 3rem !important;
+        background: rgba(255, 255, 255, 0.1) !important;
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        padding: 1.25rem 2rem !important;
+        border-radius: 20px !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    }
+
+    .btn-withdraw {
+        padding: 0.875rem 1.75rem !important;
+        background: white !important;
+        color: var(--primary-color) !important;
+        border: none !important;
+        border-radius: 12px !important;
+        font-weight: 800 !important;
+        font-size: 0.95rem !important;
+        cursor: pointer !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 0.75rem !important;
+    }
+
+    /* Fix Export Dropdown Position */
+    .pay-header-actions {
+        position: relative !important;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
 
-<!-- Page Header — KYC-aligned -->
+<!-- Page Header -->
 <div class="pay-page-header">
     <div>
         <h1>Payments & Earnings</h1>
-        <p>Track your revenue, collected deposits, and pending balances from bookings.</p>
+        <p>Monitor your revenue, collected deposits, and pending payout schedules.</p>
+    </div>
+    <div class="pay-header-actions">
+        <button class="pay-export-btn" id="btnExportToggle" onclick="toggleExportMenu(event)">
+            <i class="fas fa-file-export"></i> Export Reports <i class="fas fa-chevron-down" style="font-size: 0.65rem; margin-left: 5px;"></i>
+        </button>
+        <div id="exportMenu" class="pay-dropdown-menu">
+            <button class="pay-dropdown-item" onclick="exportToExcel()">
+                <i class="fas fa-file-excel" style="color: #166534;"></i> Excel File (.xlsx)
+            </button>
+            <button class="pay-dropdown-item" onclick="exportToPDF()">
+                <i class="fas fa-file-pdf" style="color: #991b1b;"></i> PDF Document
+            </button>
+            <button class="pay-dropdown-item" onclick="exportToCSV()">
+                <i class="fas fa-file-csv" style="color: #0369a1;"></i> CSV File
+            </button>
+        </div>
     </div>
 </div>
 
-<div class="pay-stats-grid">
-    <div class="pay-stat-card pay-stat-released">
-        <div class="pay-stat-icon pay-icon-green"><i class="fas fa-hand-holding-usd"></i></div>
-        <div class="pay-stat-info">
-            <div class="pay-stat-label">Released Capital</div>
-            <div class="pay-stat-value">₱{{ "{:,.2f}".format(released_total) }}</div>
-            <div class="pay-stat-hint">Already in your pockets</div>
+<div class="pay-dashboard-container" style="padding: 0 5px;">
+    <!-- Withdraw Panel (Main Payout Tool) -->
+    <div class="pay-withdraw-panel">
+        <div class="pay-withdraw-info">
+            <h2 style="color: white; margin-bottom: 5px;">Ready for Payout</h2>
+            <p style="color: rgba(255,255,255,0.85); font-size: 0.9rem;">These are your earnings ready to be transferred to your selected bank account or e-wallet.</p>
+        </div>
+        <div class="pay-withdraw-action">
+            <div class="pay-withdrawable-amount">
+                <div class="label" style="font-size: 0.7rem; color: rgba(255,255,255,0.6); text-transform: uppercase; font-weight: 700;">Available Funds</div>
+                <div class="value" style="font-size: 2rem; font-weight: 900; color: white;">₱{{ "{:,.2f}".format(ready_total) }}</div>
+            </div>
+            <button class="btn-withdraw" id="btnWithdraw" {% if ready_total <= 0 %}disabled{% endif %} onclick="openPayoutModal()">
+                <i class="fas fa-wallet"></i> Withdraw Funds
+            </button>
         </div>
     </div>
-    <div class="pay-stat-card pay-stat-payout">
-        <div class="pay-stat-icon pay-icon-purple"><i class="fas fa-shipping-fast"></i></div>
+
+    <!-- Payout Process Intelligence Guide -->
+    <div class="pay-process-guide" style="margin-bottom: 2.5rem; background: white; border-radius: 20px; border: 1px solid var(--color-neutral-100); padding: 1.5rem; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; box-shadow: 0 4px 20px rgba(0,0,0,0.03);">
+        <div class="guide-step" style="display: flex; gap: 1rem;">
+            <div style="width: 40px; height: 40px; background: rgba(var(--primary-color-rgb), 0.1); color: var(--primary-color); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><i class="fas fa-lock"></i></div>
+            <div>
+                <h4 style="margin: 0 0 4px 0; font-size: 0.9rem; font-weight: 800; color: var(--color-neutral-900);">1. Funds in Escrow</h4>
+                <p style="margin: 0; font-size: 0.75rem; color: var(--color-neutral-500); line-height: 1.4;">Payments are securely held while your event is ongoing or pending completion.</p>
+            </div>
+        </div>
+        <div class="guide-step" style="display: flex; gap: 1rem;">
+            <div style="width: 40px; height: 40px; background: #ecfdf5; color: #10b981; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><i class="fas fa-check-double"></i></div>
+            <div>
+                <h4 style="margin: 0 0 4px 0; font-size: 0.9rem; font-weight: 800; color: var(--color-neutral-900);">2. Released to 'Ready'</h4>
+                <p style="margin: 0; font-size: 0.75rem; color: var(--color-neutral-500); line-height: 1.4;">Once the event is marked as 'Completed', funds move to your withdrawable balance.</p>
+            </div>
+        </div>
+        <div class="guide-step" style="display: flex; gap: 1rem;">
+            <div style="width: 40px; height: 40px; background: #fdf2f8; color: #db2777; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><i class="fas fa-paper-plane"></i></div>
+            <div>
+                <h4 style="margin: 0 0 4px 0; font-size: 0.9rem; font-weight: 800; color: var(--color-neutral-900);">3. Request Withdrawal</h4>
+                <p style="margin: 0; font-size: 0.75rem; color: var(--color-neutral-500); line-height: 1.4;">Click 'Withdraw Funds' to request a transfer. Processing typically takes 1-3 business days.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="pay-stats-grid">
+    <div class="pay-stat-card pay-stat-released">
+        <div class="pay-stat-icon pay-icon-green"><i class="fas fa-coins"></i></div>
         <div class="pay-stat-info">
-            <div class="pay-stat-label">Ready for Payout</div>
-            <div class="pay-stat-value">₱{{ "{:,.2f}".format(ready_total) }}</div>
-            <div class="pay-stat-hint">Prep funds / Due for release</div>
+            <div class="pay-stat-label">Total Earnings</div>
+            <div class="pay-stat-value">₱{{ "{:,.2f}".format(released_total) }}</div>
+            <div class="pay-stat-hint">Net funds already collected</div>
         </div>
     </div>
     <div class="pay-stat-card pay-stat-escrow">
-        <div class="pay-stat-icon pay-icon-amber"><i class="fas fa-user-lock"></i></div>
+        <div class="pay-stat-icon pay-icon-amber"><i class="fas fa-shield-alt"></i></div>
         <div class="pay-stat-info">
-            <div class="pay-stat-label">Held in Escrow</div>
+            <div class="pay-stat-label">Funds in Escrow</div>
             <div class="pay-stat-value">₱{{ "{:,.2f}".format(escrow_total) }}</div>
-            <div class="pay-stat-hint">Released after event complete</div>
+            <div class="pay-stat-hint">Held until event completion</div>
         </div>
     </div>
-    <div class="pay-stat-card">
+    <div class="pay-stat-card pay-stat-active">
         <div class="pay-stat-icon pay-icon-gray"><i class="fas fa-calendar-check"></i></div>
         <div class="pay-stat-info">
             <div class="pay-stat-label">Active Bookings</div>
@@ -50,43 +152,31 @@
             <div class="pay-stat-hint">Ongoing event contracts</div>
         </div>
     </div>
+    <div class="pay-stat-card pay-stat-payout">
+        <div class="pay-stat-icon pay-icon-purple"><i class="fas fa-history"></i></div>
+        <div class="pay-stat-info">
+            <div class="pay-stat-label">Next Payout Cycle</div>
+            <div class="pay-stat-value" style="font-size: 1rem; color: #475569;">Every Tuesday</div>
+            <div class="pay-stat-hint">Standard processing schedule</div>
+        </div>
+    </div>
 </div>
 
 <!-- Main Table Card -->
 <div class="pay-card">
-    <!-- Card Header / Toolbar -->
     <div class="pay-section-header">
         <div class="pay-header-left">
-            <i class="fas fa-receipt"></i>
-            <h3>Payment History</h3>
+            <i class="fas fa-history"></i>
+            <h3>Transaction History</h3>
         </div>
         <div class="pay-toolbar-actions">
-            <!-- Search -->
             <input type="hidden" id="paymentSearch">
-            <!-- Status Filter -->
             <select id="statusFilter" class="pay-filter-select" onchange="filterPayments()">
                 <option value="all">All Status</option>
-                <option value="completed">Completed</option>
-                <option value="pending">Pending</option>
-                <option value="partial">Partial</option>
+                <option value="completed">Completed (Paid)</option>
+                <option value="pending">Awaiting Payment</option>
+                <option value="partial">Partially Paid</option>
             </select>
-            <!-- Export -->
-            <div class="pay-export-wrapper export-dropdown-container">
-                <button class="btn-review-kyc pay-export-btn" onclick="toggleExportMenu(event)">
-                    <i class="fas fa-download"></i> Export <i class="fas fa-chevron-down" style="font-size: 0.65rem;"></i>
-                </button>
-                <div id="exportMenu" class="pay-dropdown-menu">
-                    <button class="pay-dropdown-item" onclick="exportToExcel()">
-                        <i class="fas fa-file-excel" style="color: #166534;"></i> Excel File (.xlsx)
-                    </button>
-                    <button class="pay-dropdown-item" onclick="exportToPDF()">
-                        <i class="fas fa-file-pdf" style="color: #991b1b;"></i> PDF Document
-                    </button>
-                    <button class="pay-dropdown-item" onclick="exportToCSV()">
-                        <i class="fas fa-file-csv" style="color: #0369a1;"></i> CSV File
-                    </button>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -96,14 +186,14 @@
         <table class="pay-table">
             <thead>
                 <tr>
-                    <th>Payment ID</th>
+                    <th>Ref ID</th>
                     <th>Customer</th>
-                    <th>Event</th>
+                    <th>Event Details</th>
                     <th>Amount</th>
                     <th>Method</th>
                     <th>Date</th>
                     <th>Status</th>
-                    <th class="pay-th-right">Action</th>
+                    <th class="pay-th-right">Actions</th>
                 </tr>
             </thead>
             <tbody id="paymentsTableBody">
@@ -114,46 +204,49 @@
                     {% else %}pending{% endif %}">
                     <td><span class="pay-id payment-id">PAY-{{ "%03d"|format(b.id) }}</span></td>
                     <td>
-                        <div class="pay-customer-cell customer-info-pro">
+                        <div class="pay-customer-cell">
                             <span class="pay-customer-name cust-name">{{ b.user.first_name }} {{ b.user.last_name }}</span>
-                            <span class="pay-booking-ref bk-id">BK-{{ b.id }}</span>
+                            <span class="pay-booking-ref bk-id">Booking #BK-{{ b.id }}</span>
                         </div>
                     </td>
                     <td><span class="pay-event-name">{{ b.event_name or b.event_type }}</span></td>
                     <td><span class="pay-amount amount-pro">₱{{ "{:,.0f}".format(b.total_amount or 0) }}</span></td>
-                    <td><span class="pay-method">{{ b.payment_method or 'Manual' }}</span></td>
+                    <td><span class="pay-method">{{ b.payment_method or 'Direct' }}</span></td>
                     <td><span class="pay-date">{{ b.created_at.strftime('%b %d, %Y') }}</span></td>
                     <td>
                         {% if b.payment_status == 'paid' %}
-                            <span class="pay-status-badge pay-status-completed badge-status-pro completed">Completed</span>
+                            <span class="pay-status-badge pay-status-completed">Completed</span>
                         {% elif b.payment_status == 'deposit_paid' %}
-                            <span class="pay-status-badge pay-status-partial badge-status-pro partial">Partial</span>
+                            <span class="pay-status-badge pay-status-partial">Partial</span>
                         {% else %}
-                            <span class="pay-status-badge pay-status-pending badge-status-pro pending">Pending</span>
+                            <span class="pay-status-badge pay-status-pending">Pending</span>
                         {% endif %}
                     </td>
                     <td class="pay-th-right">
                         <div class="pay-action-wrapper action-dropdown-container">
-                            <button class="pay-action-btn" onclick="toggleActionMenu('{{ b.id }}', event)" title="Actions">
-                                <i class="fas fa-ellipsis-h"></i>
+                            <button class="pay-action-btn" onclick="toggleActionMenu('{{ b.id }}', event)">
+                                <i class="fas fa-ellipsis-v"></i>
                             </button>
-                            <div id="actionMenu-{{ b.id }}" class="pay-dropdown-menu action-dropdown-menu">
+                            <div id="actionMenu-{{ b.id }}" class="pay-dropdown-menu">
                                 {% if b.payment_status != 'paid' %}
                                 <button class="pay-dropdown-item" onclick="verifyPayment('{{ b.id }}')">
                                     <i class="fas fa-check-circle" style="color: #10b981;"></i> Verify Payment
                                 </button>
                                 {% endif %}
                                 <button class="pay-dropdown-item" onclick="viewPaymentDetails('{{ b.id }}')">
-                                    <i class="fas fa-eye" style="color: #64748b;"></i> View Details
+                                    <i class="fas fa-info-circle"></i> View Details
                                 </button>
                                 {% if b.payment_proof_url %}
                                 <button class="pay-dropdown-item" onclick="showProof('{{ b.payment_proof_url }}', 'Proof - BK-{{ b.id }}')">
-                                    <i class="fas fa-receipt" style="color: #f59e0b;"></i> View Proof
+                                    <i class="fas fa-receipt" style="color: #f59e0b;"></i> Check Receipt
                                 </button>
                                 {% endif %}
+                                <button class="pay-dropdown-item" onclick="window.viewInvoice('{{ b.id }}')">
+                                    <i class="fas fa-file-invoice"></i> Official Invoice
+                                </button>
                                 {% if b.payment_status == 'paid' %}
                                 <button class="pay-dropdown-item pay-dropdown-danger" onclick="archivePayment('{{ b.id }}')">
-                                    <i class="fas fa-archive"></i> Archive
+                                    <i class="fas fa-archive"></i> Archive Record
                                 </button>
                                 {% endif %}
                             </div>
@@ -168,12 +261,14 @@
     <!-- Empty search fallback -->
     <div id="noPaymentResults" class="pay-empty-state" style="display:none;">
         <i class="fas fa-search"></i>
-        <p>No payments match your search or filter.</p>
+        <p>No transactions found.</p>
     </div>
 
     {% else %}
     <div class="pay-empty-state">
-        <i class="fas fa-receipt"></i>
+        <div class="pay-empty-icon" style="background: var(--color-neutral-50); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+            <i class="fas fa-receipt" style="font-size: 2rem; color: var(--color-neutral-300);"></i>
+        </div>
         <p>No payment records yet.</p>
         <span>Payments will appear here once bookings are confirmed.</span>
     </div>
@@ -181,15 +276,73 @@
 
     <!-- Pagination -->
     <div class="pay-pagination">
-        <div class="pay-pagination-info">
-            Showing <span id="startRange">0</span> to <span id="endRange">0</span> of <span id="totalEntries">0</span> transactions
-        </div>
+        <div class="pay-pagination-info">Showing <span id="startRange">0</span>-<span id="endRange">0</span> of <span id="totalEntries">0</span> records</div>
         <div class="pay-pagination-btns">
-            <button id="prevPage" class="pay-page-btn"><i class="fas fa-chevron-left"></i> Previous</button>
+            <button id="prevPage" class="pay-page-btn"><i class="fas fa-chevron-left"></i></button>
             <div id="pageNumbers" class="pay-page-numbers"></div>
             <button id="nextPage" class="pay-page-btn">Next <i class="fas fa-chevron-right"></i></button>
         </div>
     </div>
+</div>
+
+<!-- Withdrawal History Card -->
+<div class="pay-card" style="margin-top: 2.5rem;">
+    <div class="pay-section-header">
+        <div class="pay-header-left">
+            <i class="fas fa-money-bill-transfer" style="color: var(--secondary-color);"></i>
+            <h3>Withdrawal History</h3>
+        </div>
+        <div class="pay-toolbar-actions">
+            <span style="font-size: 0.75rem; color: var(--color-neutral-400); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Your payout logs</span>
+        </div>
+    </div>
+
+    {% if payouts %}
+    <div class="pay-table-scroll">
+        <table class="pay-table">
+            <thead>
+                <tr>
+                    <th>Payout ID</th>
+                    <th>Amount</th>
+                    <th>Requested On</th>
+                    <th>Status</th>
+                    <th>Reference</th>
+                    <th class="pay-th-right">Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in payouts %}
+                <tr>
+                    <td><span class="pay-id" style="background: var(--color-neutral-100); color: var(--color-neutral-700);">TRX-{{ "%04d"|format(p.id) }}</span></td>
+                    <td><span class="pay-amount" style="font-weight: 800; color: var(--color-neutral-900);">₱{{ "{:,.2f}".format(p.amount) }}</span></td>
+                    <td><span class="pay-date">{{ p.created_at.strftime('%b %d, %Y') }}</span></td>
+                    <td>
+                        {% if p.status == 'completed' %}
+                            <span class="pay-status-badge" style="background: #ecfdf5; color: #059669; border-color: #10b981;">Completed</span>
+                        {% elif p.status == 'processing' %}
+                            <span class="pay-status-badge" style="background: #eff6ff; color: #2563eb; border-color: #3b82f6;">Processing</span>
+                        {% else %}
+                            <span class="pay-status-badge" style="background: #fffbeb; color: #d97706; border-color: #f59e0b;">Pending</span>
+                        {% endif %}
+                    </td>
+                    <td><span style="font-family: monospace; font-size: 0.8rem; color: var(--color-neutral-500);">{{ p.reference_number or '---' }}</span></td>
+                    <td class="pay-th-right">
+                        <span style="font-size: 0.75rem; color: var(--color-neutral-400); font-style: italic;">{{ p.notes or 'No additional notes' }}</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 4rem 2rem;">
+        <div style="width: 64px; height: 64px; background: var(--color-neutral-50); color: var(--color-neutral-300); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
+            <i class="fas fa-receipt fa-2x"></i>
+        </div>
+        <h4 style="margin: 0; color: var(--color-neutral-600); font-weight: 700;">No withdrawals yet</h4>
+        <p style="margin: 4px 0 0; font-size: 0.85rem; color: var(--color-neutral-400);">Your requested payouts will appear here once you initiate them.</p>
+    </div>
+    {% endif %}
 </div>
 
 <!-- Transaction Details Modal -->
@@ -197,11 +350,11 @@
     <div class="occ-modal-box sz-md">
         <div class="occ-modal-header">
             <div class="occ-modal-header-icon" style="background: var(--color-neutral-100); color: var(--color-neutral-600);">
-                <i class="fas fa-receipt"></i>
+                <i class="fas fa-file-invoice-dollar"></i>
             </div>
             <div>
                 <h3 class="occ-modal-title">Transaction Details</h3>
-                <div class="occ-modal-subtitle">Official financial record and AI verification audit.</div>
+                <div class="occ-modal-subtitle">Financial audit record and verification report.</div>
             </div>
             <button onclick="closeDetailsModal()" class="occ-modal-close"><i class="fas fa-times"></i></button>
         </div>
@@ -214,22 +367,78 @@
     </div>
 </div>
 
-<!-- Proof Modal -->
+<!-- Payout Modal -->
+<div id="payoutModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-md">
+        <div class="occ-modal-header">
+            <div class="occ-modal-header-icon" style="background: #eef2ff; color: #6366f1;">
+                <i class="fas fa-money-check-alt"></i>
+            </div>
+            <div>
+                <h3 class="occ-modal-title">Withdrawal Request</h3>
+                <div class="occ-modal-subtitle">Transfer your earnings to your bank or e-wallet.</div>
+            </div>
+            <button onclick="closePayoutModal()" class="occ-modal-close"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="occ-modal-body">
+            <div class="pay-details-summary" style="margin-bottom: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span class="pay-details-label-sm" style="margin-bottom: 0;">Amount to Transfer:</span>
+                    <span class="pay-details-amount-lg" style="font-size: 1.25rem;">₱{{ "{:,.2f}".format(ready_total) }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid var(--color-neutral-100);">
+                    <span class="pay-details-label-sm" style="margin-bottom: 0;">Payout Method:</span>
+                    <span style="font-weight: 800; font-size: 0.85rem; color: var(--color-neutral-900);">{{ user.caterer_profile.payout_method or 'NOT CONFIGURED' }}</span>
+                </div>
+            </div>
+
+            {% if not user.caterer_profile.payout_method %}
+            <div class="occ-alert alert-warning" style="margin-bottom: 1.5rem; border-left: 4px solid var(--color-warning-500);">
+                <i class="fas fa-exclamation-triangle" style="font-size: 1.25rem;"></i>
+                <div style="flex: 1;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <strong>Payout Setup Required</strong>
+                        <a href="/caterer/profile" class="btn-link-pro" style="font-size: 0.7rem; color: var(--color-warning-700); text-decoration: underline; font-weight: 800;">
+                            <i class="fas fa-cog"></i> CONFIGURE
+                        </a>
+                    </div>
+                    <div style="font-size: 0.8rem; margin-top: 4px;">Please set up your Payout Method in Profile Settings before requesting a withdrawal.</div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="pay-form-group">
+                <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: var(--color-neutral-700);">Confirmation</label>
+                <p style="font-size: 0.85rem; color: var(--color-neutral-500);">Are you sure you want to request a withdrawal for the available amount?</p>
+            </div>
+        </div>
+        <div class="occ-modal-footer">
+            <button type="button" class="btn-sm-outline" onclick="closePayoutModal()">Cancel</button>
+            <button type="button" class="btn-primary-pro" id="btnConfirmWithdraw" 
+                {% if ready_total <= 0 or not user.caterer_profile.payout_method %}disabled{% endif %}
+                onclick="submitPayoutRequest()">
+                Confirm Withdrawal
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Proof Modal (Same as before but improved UI) -->
 <div id="proofModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-md">
         <div class="occ-modal-header">
             <div>
-                <h3 id="proofModalTitle" class="occ-modal-title">Payment Proof</h3>
-                <div class="occ-modal-subtitle">Official document provided by the customer for transaction audit.</div>
+                <h3 id="proofModalTitle" class="occ-modal-title">Receipt / Payment Proof</h3>
+                <div class="occ-modal-subtitle">Official document provided by the customer.</div>
             </div>
             <button onclick="closeProof()" class="occ-modal-close"><i class="fas fa-times"></i></button>
         </div>
         <div class="occ-modal-body" style="text-align: center;">
             <img id="proofModalImg" src="" alt="Proof"
-                style="max-width: 100%; border-radius: var(--radius-md); box-shadow: 0 10px 25px rgba(0,0,0,0.15); border: 1px solid var(--color-neutral-200);">
+                style="max-width: 100%; border-radius: var(--radius-md); box-shadow: var(--shadow-xl);">
         </div>
         <div class="occ-modal-footer">
-            <button type="button" class="btn-sm-outline" style="min-width:100px;" onclick="closeProof()">Close</button>
+            <button type="button" class="btn-sm-outline" onclick="closeProof()">Close</button>
         </div>
     </div>
 </div>
@@ -239,11 +448,11 @@
     <div class="occ-modal-box sz-lg" style="max-width: 850px;">
         <div class="occ-modal-header">
             <div class="occ-modal-header-icon" style="background: var(--color-success-50); color: var(--color-success-600);">
-                <i class="fas fa-file-invoice-dollar"></i>
+                <i class="fas fa-file-invoice"></i>
             </div>
             <div>
-                <h3 class="occ-modal-title">Official Invoice</h3>
-                <div class="occ-modal-subtitle">Detailed breakdown of services and transaction history.</div>
+                <h3 class="occ-modal-title">Official Digital Invoice</h3>
+                <div class="occ-modal-subtitle">Audit-ready document for tax and accounting.</div>
             </div>
             <button onclick="closeInvoiceModal()" class="occ-modal-close"><i class="fas fa-times"></i></button>
         </div>
@@ -259,13 +468,14 @@
     </div>
 </div>
 
+
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="{{ url_for('static', path='/js/caterer/payments.js') }}?v=1.6"></script>
+<script src="{{ url_for('static', path='/js/caterer/payments.js') }}?v=3.0"></script>
 <script>
     // Listen to global header search
     window.addEventListener('globalSearch', function(e) {

@@ -6,23 +6,24 @@
 {% block extra_css %}
 <!-- FullCalendar CSS -->
 <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css' rel='stylesheet' />
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/calendar.css') }}?v=11.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/calendar.css') }}?v=12.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/menu.css') }}?v=1.6"> <!-- Reuse menu modal utils -->
 {% endblock %}
 
 {% block content %}
-<!-- Page Header — KYC-aligned -->
-<div class="cal-page-header">
+<!-- Page Header — Elite Styled -->
+<div class="cal-page-header animate-up">
     <div>
         <h1>Service Calendar</h1>
-        <p>Manage your availability and view upcoming event dates.</p>
+        <p>Manage your availability and track your high-value event bookings.</p>
     </div>
-    <button onclick="openManualBookingModal()" class="btn-primary btn-walkin-header">
+    <button onclick="openManualBookingModal()" class="btn-walkin-header">
         <i class="fas fa-plus"></i> Walk-in Booking
     </button>
 </div>
 
 <!-- Legend Bar -->
-<div class="cal-card cal-legend-bar">
+<div class="cal-card cal-legend-bar animate-up delay-1" style="border: none; background: #f8fafc; margin-bottom: 1.5rem;">
     <div class="legend-group">
         <span class="legend-pill" style="background: rgba(236,72,153,0.1); border-color: #ec4899; color: #ec4899;">
             <span class="pill-dot" style="background:#ec4899;"></span> Weddings
@@ -37,52 +38,50 @@
             <span class="pill-dot" style="background:#f59e0b;"></span> Private
         </span>
         <span class="legend-pill" style="background: #fff1f2; border-color: #fecaca; color: #ef4444;">
-            <span class="pill-square"></span> Blocked Day
+            <span class="pill-square" style="background:#ef4444;"></span> Blocked Day
         </span>
     </div>
 </div>
 
-<!-- Main 7/3 Grid -->
+<!-- Main 8/4 Grid -->
 <div class="cal-grid">
     <!-- Left: Calendar -->
-    <div class="cal-card cal-card-calendar">
+    <div class="cal-card cal-card-calendar animate-up delay-1">
         <div id='calendar'></div>
     </div>
 
     <!-- Right: Sidebar -->
     <div class="cal-sidebar">
-        <!-- Availability Management -->
-        <div class="cal-card">
+        <!-- Availability Management (Quick Access) -->
+        <div class="cal-card animate-up delay-2">
             <div class="cal-section-header">
                 <i class="fas fa-calendar-check"></i>
-                <h3>Availability</h3>
+                <h3>Manage Availability</h3>
             </div>
-            <div class="cal-section-body">
+            <div class="cal-section-body" style="padding: 1.25rem;">
                 <form id="availabilityForm" class="cal-form-stack">
                     <div class="cal-form-group">
-                        <label class="cal-label">Select Date</label>
-                        <input type="date" id="blockDate" class="cal-input" required min="{{ current_date.strftime('%Y-%m-%d') }}">
+                        <label class="cal-label">Target Date</label>
+                        <input type="date" id="blockDate" class="control-pro" required min="{{ current_date.strftime('%Y-%m-%d') }}">
                     </div>
-                    <div class="cal-btn-row">
-                        <button type="button" onclick="toggleDateAvailability(false)" class="btn-primary cal-btn-half">Block</button>
-                        <button type="button" onclick="toggleDateAvailability(true)" class="btn-outline cal-btn-half">Unblock</button>
+                    <div class="cal-btn-row" style="display: flex; gap: 10px; margin-top: 1rem;">
+                        <button type="button" onclick="toggleDateAvailability(false)" class="btn-primary-pro" style="flex: 1; background: #ef4444; border: none;">Block Date</button>
+                        <button type="button" onclick="toggleDateAvailability(true)" class="btn-secondary-pro" style="flex: 1; background: #f1f5f9; color: #475569;">Open Date</button>
                     </div>
                 </form>
             </div>
         </div>
 
-        <!-- Event Status Tracker -->
-        <div class="cal-card cal-card-tracker">
+        <!-- Status Tracker (Real-time Feed) -->
+        <div class="cal-card animate-up delay-3">
             <div class="cal-section-header">
-                <i class="fas fa-list-ul"></i>
-                <h3>Status Tracker</h3>
+                <i class="fas fa-stream"></i>
+                <h3>Upcoming Schedule</h3>
             </div>
-            <div class="cal-section-body cal-tracker-body">
-            {% if bookings %}
             <div class="cal-tracker-list">
+            {% if bookings %}
                 {% for booking in bookings %}
                 <div class="weekly-event-card type-{{ booking.event_type.lower().split(' ')[0] if booking.event_type else 'other' }}"
-                     style="cursor: pointer;"
                      data-id="{{ booking.id }}"
                      data-customer="{{ (booking.user.first_name ~ ' ' ~ booking.user.last_name) if booking.user else (booking.customer_name or 'Walk-in') }}"
                      data-type="{{ booking.event_type or 'Other' }}"
@@ -99,47 +98,49 @@
                         <div class="weekly-event-name">{{ booking.event_name or (booking.user.first_name if booking.user else 'Walk-in') }}</div>
                         {% set days_left = (booking.event_date - current_date).days %}
                         {% if days_left == 0 %}
-                            <div class="event-status-badge status-ongoing"><i class="fas fa-spinner fa-spin"></i> Ongoing</div>
-                        {% elif days_left <= 2 %}
-                            <div class="event-status-badge status-preparing"><i class="fas fa-fire"></i> Preparing</div>
+                            <div class="event-status-badge status-ongoing">Ongoing</div>
+                        {% elif days_left == 1 %}
+                            <div class="event-status-badge status-preparing">Tomorrow</div>
                         {% else %}
-                            <div class="event-status-badge status-upcoming"><i class="far fa-calendar-check"></i> Upcoming</div>
+                            <div class="event-status-badge status-upcoming">In {{ days_left }} days</div>
                         {% endif %}
                     </div>
                 </div>
                 {% endfor %}
-            </div>
             {% else %}
-            <p class="cal-empty-text">No events soon.</p>
+                <div style="text-align: center; padding: 2rem;">
+                    <i class="fas fa-calendar-day fa-2x" style="color: #e2e8f0; margin-bottom: 1rem;"></i>
+                    <p style="color: #94a3b8; font-size: 0.8rem;">No events scheduled for this period.</p>
+                </div>
             {% endif %}
             </div>
         </div>
     </div>
 </div>
 
-<!-- Event Details Modal -->
+<!-- EVENT DETAILS MODAL -->
 <div id="eventModal" class="occ-modal-overlay">
-    <div class="occ-modal-box sz-md">
-        <div class="occ-modal-header">
+    <div class="occ-modal-box sz-md occ-content-pop">
+        <div class="occ-modal-header colored-header">
             <div>
-                <h3 id="calModalTitle" class="occ-modal-title">Event Details</h3>
-                <div class="occ-modal-subtitle">Quick overview of the confirmed booking details and service requirements.</div>
+                <h3 id="calModalTitle" class="occ-modal-title">Event Logistics</h3>
+                <div class="occ-modal-subtitle">Review core requirements and service details.</div>
             </div>
-            <button onclick="closeModal()" class="occ-modal-close"><i class="fas fa-times"></i></button>
+            <button onclick="closeModal('eventModal')" class="occ-modal-close"><i class="fas fa-times"></i></button>
         </div>
-        <div id="modalBody" class="occ-modal-body">
+        <div class="compact-body">
             <div class="calendar-detail-list">
                 <div class="calendar-detail-item">
-                    <i class="fas fa-user"></i>
+                    <i class="fas fa-user-circle"></i>
                     <div>
-                        <div class="calendar-detail-label">Customer</div>
+                        <div class="calendar-detail-label">Client Name</div>
                         <div id="detCustomer" class="calendar-detail-value">---</div>
                     </div>
                 </div>
                 <div class="calendar-detail-item">
-                    <i class="fas fa-tag"></i>
+                    <i class="fas fa-star"></i>
                     <div>
-                        <div class="calendar-detail-label">Event Type</div>
+                        <div class="calendar-detail-label">Service Type</div>
                         <div id="detType" class="calendar-detail-value">---</div>
                     </div>
                 </div>
@@ -151,94 +152,81 @@
                     </div>
                 </div>
                 <div class="calendar-detail-item">
-                    <i class="fas fa-map-marker-alt"></i>
+                    <i class="fas fa-map-pin"></i>
                     <div>
-                        <div class="calendar-detail-label">Venue / Address</div>
+                        <div class="calendar-detail-label">Event Location</div>
                         <div id="detVenue" class="calendar-detail-value">---</div>
                     </div>
                 </div>
                 <div class="calendar-detail-item">
-                    <i class="fas fa-users"></i>
+                    <i class="fas fa-users-cog"></i>
                     <div>
-                        <div class="calendar-detail-label">Guests & Package</div>
+                        <div class="calendar-detail-label">Guest Logistics</div>
                         <div id="detPackage" class="calendar-detail-value">---</div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="occ-modal-footer">
+        <div class="occ-modal-footer" style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 1.25rem 1.5rem; display: flex; justify-content: flex-end; gap: 12px;">
             <input type="hidden" id="currentBookingId">
-            <button onclick="closeModal()" class="btn-sm-outline" style="min-width:100px;">Close</button>
-            <button onclick="setReminder()" class="btn-primary" style="height:var(--tap-min); padding:0 var(--space-xl);">Set Reminder</button>
+            <button onclick="closeModal('eventModal')" class="btn-secondary-pro" style="background: #e2e8f0; color: #475569; border: none;">Close</button>
+            <button onclick="setReminder()" class="btn-primary-pro">Set Reminder Alert</button>
         </div>
     </div>
 </div>
 
-<!-- Blocked Date Modal -->
-<div id="blockedDateModal" class="occ-modal-overlay">
-    <div class="occ-modal-box sz-sm">
-        <div class="occ-modal-header">
-            <div>
-                <h3 class="occ-modal-title"><i class="fas fa-ban" style="color: #ef4444; margin-right: var(--space-sm);"></i> Blocked Date</h3>
-                <div class="occ-modal-subtitle">This date has been marked as unavailable for online bookings.</div>
-            </div>
-            <button onclick="closeModal()" class="occ-modal-close"><i class="fas fa-times"></i></button>
-        </div>
-        <div id="blockedBody" class="occ-modal-body">
-            <div class="cal-blocked-details">
-                <div class="cal-blocked-row">
-                    <div class="cal-label">Reason for blocking</div>
-                    <div id="detBlockedReason" class="cal-blocked-value">---</div>
-                </div>
-                <div class="cal-blocked-row">
-                    <div class="cal-label">Date</div>
-                    <div id="detBlockedDate" class="cal-blocked-value">---</div>
-                </div>
-            </div>
-        </div>
-        <div class="occ-modal-footer">
-            <button onclick="unblockSelectedDate()" class="btn-sm-outline" style="color: #ef4444; border-color: #fee2e2; background: #fff5f5; height: var(--tap-min);">Unblock Date</button>
-            <button onclick="closeModal()" class="btn-primary" style="min-width:100px; height: var(--tap-min);">Close</button>
-        </div>
-    </div>
-</div>
-
-<!-- Manual Booking Modal -->
+<!-- WALK-IN BOOKING MODAL (AUDIT-READY) -->
 <div id="manualBookingModal" class="occ-modal-overlay">
-    <div class="occ-modal-box sz-lg">
-        <div class="occ-modal-header">
+    <div class="occ-modal-box sz-lg occ-content-pop">
+        <div class="occ-modal-header colored-header">
             <div>
-                <h3 class="occ-modal-title">Create Walk-in Booking</h3>
-                <div class="occ-modal-subtitle">Manually register bookings from offline clients.</div>
+                <h3 class="occ-modal-title">Create Offline Booking</h3>
+                <div class="occ-modal-subtitle">Directly register walk-in clients into the smart inventory.</div>
             </div>
-            <button onclick="closeModal()" class="occ-modal-close"><i class="fas fa-times"></i></button>
+            <button onclick="closeModal('manualBookingModal')" class="occ-modal-close"><i class="fas fa-times"></i></button>
         </div>
+        
         <form id="manualBookingForm" onsubmit="submitManualEvent(event)">
-            <div class="occ-modal-body">
-                <div class="occ-form-grid">
-                    <div class="occ-form-group">
-                        <label class="occ-form-label">Customer Name</label>
-                        <input type="text" id="manCustName" name="customer_name" class="occ-form-input" required placeholder="Full Name">
+            <div class="compact-body" style="padding-top: 1rem;">
+                <!-- Validation Error Drawer -->
+                <div id="manualBookingError" class="validation-error-drawer">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span id="errorText">One or more fields require your attention.</span>
+                </div>
+
+                <!-- Customer Intelligence Badge -->
+                <div id="userDetectionBadge" class="detection-badge-container">
+                    <!-- Injected via JS -->
+                </div>
+
+                <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
+                    <div class="form-group-pro">
+                        <label>Client Full Name</label>
+                        <input type="text" id="manCustName" name="customer_name" class="control-pro" required placeholder="Enter client name">
+                        <div class="field-error-msg" id="error-manCustName">Invalid name.</div>
                     </div>
 
-                    <div class="occ-form-group">
-                        <label class="occ-form-label">Email Address</label>
-                        <input type="email" id="manCustEmail" name="customer_email" class="occ-form-input" required placeholder="Email">
+                    <div class="form-group-pro">
+                        <label>Email Address</label>
+                        <input type="email" id="manCustEmail" name="customer_email" class="control-pro" required placeholder="client@example.com">
+                        <div class="field-error-msg" id="error-manCustEmail">Invalid email address.</div>
                     </div>
 
-                    <div class="occ-form-group full-width">
-                        <label class="occ-form-label">Contact Number</label>
-                        <input type="text" id="manCustContact" name="customer_contact" class="occ-form-input" required placeholder="09xxxxxxxxx">
+                    <div class="form-group-pro">
+                        <label>Contact Number (PH)</label>
+                        <input type="text" id="manCustContact" name="customer_contact" class="control-pro" required placeholder="09XXXXXXXXX">
+                        <div class="field-error-msg" id="error-manCustContact">Enter a valid PH mobile number.</div>
                     </div>
 
-                    <div class="occ-form-group full-width">
-                        <label class="occ-form-label">Event Name</label>
-                        <input type="text" id="manEventName" name="event_name" class="occ-form-input" required placeholder="Occasion Name">
+                    <div class="form-group-pro">
+                        <label>Event Name / Occasion</label>
+                        <input type="text" id="manEventName" name="event_name" class="control-pro" required placeholder="e.g. Santos Wedding">
+                        <div class="field-error-msg" id="error-manEventName">Required field.</div>
                     </div>
 
-                    <div class="occ-form-group">
-                        <label class="occ-form-label">Event Type</label>
-                        <select id="manEventType" class="occ-form-input" required onchange="toggleOtherEventType()">
+                    <div class="form-group-pro">
+                        <label>Event Type</label>
+                        <select id="manEventType" class="control-pro" required onchange="toggleOtherEventType()">
                             <option value="Wedding">Wedding</option>
                             <option value="Birthday">Birthday</option>
                             <option value="Corporate">Corporate</option>
@@ -247,99 +235,141 @@
                         </select>
                     </div>
 
-                    <div class="occ-form-group">
-                        <label class="occ-form-label">Guest Count</label>
-                        <input type="number" id="manGuests" name="guest_count" class="occ-form-input" required min="1" placeholder="0">
+                    <div class="form-group-pro">
+                        <label>Expected Guest Count</label>
+                        <input type="number" id="manGuests" name="guest_count" class="control-pro" required min="1" placeholder="Minimum 1">
+                        <div class="field-error-msg" id="error-manGuests">Must be at least 1 pax.</div>
                     </div>
 
-                    <div id="otherEventTypeDiv" class="occ-form-group full-width" style="display: none;">
-                        <label class="occ-form-label">Specify Type</label>
-                        <input type="text" id="manOtherType" class="occ-form-input">
+                    <div id="otherEventTypeDiv" class="form-group-pro" style="display: none; grid-column: span 2;">
+                        <label>Specify Event Type</label>
+                        <input type="text" id="manOtherType" class="control-pro" placeholder="Enter custom type">
+                        <div class="field-error-msg" id="error-manOtherType">Required for 'Other' types.</div>
                     </div>
 
-                    <div class="occ-form-group">
-                        <label class="occ-form-label">Event Date</label>
-                        <input type="date" id="manDate" name="event_date" class="occ-form-input" required min="{{ current_date.strftime('%Y-%m-%d') }}">
+                    <div class="form-group-pro">
+                        <label>Event Date</label>
+                        <input type="date" id="manDate" name="event_date" class="control-pro" required min="{{ current_date.strftime('%Y-%m-%d') }}">
+                        <div class="field-error-msg" id="error-manDate">Select a future date.</div>
                     </div>
 
-                    <div class="occ-form-group">
-                        <label class="occ-form-label">Event Time</label>
-                        <input type="time" id="manTime" class="occ-form-input">
+                    <div class="form-group-pro">
+                        <label>Call Time</label>
+                        <input type="time" id="manTime" class="control-pro">
                     </div>
 
-                    <div class="occ-form-group full-width">
-                        <label class="occ-form-label">Venue Address</label>
-                        <input type="text" id="manVenue" name="venue_address" class="occ-form-input" placeholder="Address">
+                    <div class="form-group-pro" style="grid-column: span 2;">
+                        <label>Venue Full Address</label>
+                        <input type="text" id="manVenue" name="venue_address" class="control-pro" required placeholder="Street, City, Province">
+                        <div class="field-error-msg" id="error-manVenue">Address required.</div>
                     </div>
 
-                    <div class="occ-form-group full-width">
-                        <label class="occ-form-label">Package Selection</label>
-                        <select id="manPackage" class="occ-form-input">
-                            <option value="" data-price="0">-- No Package --</option>
+                    <div class="form-group-pro" style="grid-column: span 2;">
+                        <label>Select Catering Package</label>
+                        <select id="manPackage" class="control-pro">
+                            <option value="" data-price="0">Custom Selection (No Base Package)</option>
                             {% for pkg in packages %}
-                            <option value="{{ pkg.id }}" data-price="{{ pkg.price or 0 }}">
-                                {{ pkg.name }} (₱{{ '{:,.0f}'.format(pkg.price or 0) }})
+                            <option value="{{ pkg.id }}" data-price="{{ pkg.price or 0 }}" data-min="{{ pkg.min_pax or 1 }}" data-unit="{{ pkg.price_unit or 'fixed' }}">
+                                {{ pkg.name }} (₱{{ '{:,.0f}'.format(pkg.price or 0) }} / {{ pkg.price_unit or 'fixed' }})
                             </option>
                             {% endfor %}
                         </select>
                     </div>
+                </div>
 
-                    <div class="occ-form-group full-width">
-                        <label class="occ-form-label">Total Amount</label>
-                        <input type="text" id="manAmount" name="total_amount" class="occ-form-input js-format-comma" required placeholder="0.00">
+                <!-- Financial Breakdown Card -->
+                <div class="pricing-breakdown-card">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                        <div>
+                            <div id="roiPreviewLabel" class="roi-preview-pill" style="display: none;">
+                                <i class="fas fa-chart-line"></i> Calculating Profit...
+                            </div>
+                            <button type="button" id="btnQuickQuote" onclick="getQuickQuotation()" class="btn-secondary-pro" style="display: none; padding: 4px 10px; font-size: 0.65rem; background: #e2e8f0; margin-top: 5px;">View ROI Breakdown</button>
+                        </div>
+                        <div class="total-amount-display">
+                            <span>Contract Amount</span>
+                            <div id="displayTotal">₱0.00</div>
+                            <input type="hidden" id="manAmount" name="total_amount">
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="occ-modal-footer">
-                <button type="button" onclick="closeModal()" class="btn-sm-outline">Cancel</button>
-                <button type="submit" class="btn-primary">Create Booking</button>
+            
+            <div class="occ-modal-footer" style="padding: 1.25rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
+                <button type="button" onclick="closeModal('manualBookingModal')" class="btn-secondary-pro" style="background: #e2e8f0; color: #475569; border: none;">Cancel</button>
+                <button type="submit" id="btnSubmitManual" class="btn-primary-pro">Verify & Create Booking</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Smart ROI Breakdown Modal -->
+<!-- SMART ROI BREAKDOWN MODAL -->
 <div id="roiBreakdownModal" class="occ-modal-overlay">
-    <div class="occ-modal-box sz-md">
-        <div class="occ-modal-header">
+    <div class="occ-modal-box sz-md occ-content-pop">
+        <div class="occ-modal-header colored-header" style="background: #0f172a;">
             <div>
-                <h3 class="occ-modal-title"><i class="fas fa-chart-pie" style="color: var(--secondary-color);"></i> Smart Profit Analysis</h3>
+                <h3 class="occ-modal-title"><i class="fas fa-shield-alt" style="color: #10b981; margin-right: 8px;"></i> Profit Analysis</h3>
                 <div id="roiBreakdownSubtitle" class="occ-modal-subtitle">Package: ---</div>
             </div>
             <button onclick="closeRoiBreakdown()" class="occ-modal-close"><i class="fas fa-times"></i></button>
         </div>
-        <div class="occ-modal-body">
-            <div class="cal-roi-grid">
-                <div class="cal-roi-stat cal-roi-stat-cost">
-                    <span class="cal-roi-stat-label">Total Cost</span>
-                    <div id="breakdownTotalCost" class="cal-roi-stat-value">₱0.00</div>
+        <div class="compact-body">
+            <div class="cal-roi-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                <div style="background: #f0f9ff; padding: 1.25rem; border-radius: 12px; border: 1px solid #e0f2fe;">
+                    <span style="font-size: 0.7rem; font-weight: 800; color: #0ea5e9; text-transform: uppercase;">Raw Food Cost</span>
+                    <div id="breakdownTotalCost" style="font-size: 1.25rem; font-weight: 900; color: #0369a1;">₱0.00</div>
                 </div>
-                <div class="cal-roi-stat cal-roi-stat-profit">
-                    <span class="cal-roi-stat-label">Target Profit (ROI)</span>
-                    <div id="breakdownRoi" class="cal-roi-stat-value">₱0.00</div>
+                <div style="background: #f0fdf4; padding: 1.25rem; border-radius: 12px; border: 1px solid #dcfce7;">
+                    <span style="font-size: 0.7rem; font-weight: 800; color: #10b981; text-transform: uppercase;">Net Profit</span>
+                    <div id="breakdownRoi" style="font-size: 1.25rem; font-weight: 900; color: #15803d;">₱0.00</div>
                 </div>
             </div>
 
-            <h4 class="cal-roi-breakdown-title"><i class="fas fa-clipboard-list"></i> Expense Breakdown</h4>
-            <div id="breakdownList" class="cal-roi-breakdown-list">
+            <h4 style="font-size: 0.8rem; font-weight: 800; color: #1e293b; text-transform: uppercase; margin-bottom: 1rem;">Recipe Cost Breakdown</h4>
+            <div id="breakdownList" class="cal-roi-breakdown-list" style="max-height: 250px; overflow-y: auto;">
                 <!-- Injected via JS -->
             </div>
         </div>
-        <div class="occ-modal-footer" style="background: var(--secondary-color); border: none;">
-            <div style="display: flex; justify-content: space-between; align-items: center; width: 100;">
-                <div style="color: white;">
-                    <span class="cal-roi-stat-label" style="color: rgba(255,255,255,0.7);">Final Quotation</span>
-                    <div id="breakdownTotalPrice" style="font-size: var(--text-xl); font-weight: 900; color: white;">₱0.00</div>
+        <div class="occ-modal-footer" style="background: #0f172a; border-top: none; padding: 1.5rem; border-radius: 0 0 1.25rem 1.25rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <div>
+                    <span style="color: rgba(255,255,255,0.6); font-size: 0.7rem; font-weight: 800; text-transform: uppercase;">Recommended Price</span>
+                    <div id="breakdownTotalPrice" style="font-size: 1.5rem; font-weight: 900; color: #10b981;">₱0.00</div>
                 </div>
-                <button onclick="closeRoiBreakdown()" class="btn-sm-outline" style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); color: white;">Close Analysis</button>
+                <button onclick="closeRoiBreakdown()" class="btn-primary-pro" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);">Close Audit</button>
             </div>
         </div>
     </div>
 </div>
+
+<!-- BLOCKED DATE MODAL -->
+<div id="blockedDateModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-sm occ-content-pop">
+        <div class="occ-modal-header colored-header" style="background: #ef4444;">
+            <div>
+                <h3 class="occ-modal-title"><i class="fas fa-ban" style="margin-right: 8px;"></i> Blocked Date</h3>
+                <div class="occ-modal-subtitle">This date is restricted from online bookings.</div>
+            </div>
+            <button onclick="closeModal('blockedDateModal')" class="occ-modal-close"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="compact-body">
+            <div style="background: #fff5f5; border: 1px solid #fee2e2; padding: 1.25rem; border-radius: 12px;">
+                <div style="font-size: 0.7rem; font-weight: 800; color: #ef4444; text-transform: uppercase; margin-bottom: 0.5rem;">Reason for block</div>
+                <div id="detBlockedReason" style="font-weight: 700; color: #991b1b;">Maintenance or Full Capacity</div>
+                <div id="detBlockedDate" style="font-size: 0.8rem; color: #b91c1c; margin-top: 4px;">--</div>
+            </div>
+        </div>
+        <div class="occ-modal-footer" style="padding: 1.25rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
+            <button onclick="unblockSelectedDate()" class="btn-secondary-pro" style="background: #fee2e2; color: #ef4444; border: none;">Unblock This Date</button>
+            <button onclick="closeModal('blockedDateModal')" class="btn-primary-pro" style="background: #1e293b;">Close</button>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
 <!-- FullCalendar JS -->
 <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js'></script>
-<script src="{{ url_for('static', path='/js/caterer/calendar.js') }}?v=5"></script>
+<script src="{{ url_for('static', path='/js/caterer/calendar.js') }}?v=6"></script>
 {% endblock %}

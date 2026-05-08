@@ -2,135 +2,174 @@
 {% block title %}Ingredients Library - OccaServe{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/ingredients.css') }}?v=1.2">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/ingredients.css') }}?v=2.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/menu.css') }}?v=1.6"> <!-- Reuse some elite modal styles -->
 {% endblock %}
 
 {% block content %}
-<div class="container-premium">
-    <div class="page-header kyc-page-header animate-up">
-        <div class="header-title-group">
-            <h1>Ingredient Inventory</h1>
-            <p>Manage your raw materials and track internal costs for accurate menu pricing.</p>
-        </div>
-        <div class="header-actions">
-            <button class="btn-primary-pro" onclick="openIngredientModal()">
-                <i class="fas fa-plus"></i> <span>Add Ingredient</span>
-            </button>
-        </div>
+<div class="page-header animate-up">
+    <div class="header-title-group">
+        <h1>Ingredient Inventory</h1>
+        <p>Manage raw materials and market prices for accurate dish costing.</p>
     </div>
-
-    <div class="stats-grid-dashboard animate-up delay-1">
-        <div class="stat-card-premium c-card-premium stat-card-white">
-            <div class="stat-icon-bg halo-slate"><i class="fas fa-box-open"></i></div>
-            <div class="stat-label-dashboard">Total Ingredients</div>
-            <div class="stat-value-dashboard">{{ ingredients|length }}</div>
-        </div>
-        <div class="stat-card-premium c-card-premium stat-card-white">
-            <div class="stat-icon-bg halo-amber"><i class="fas fa-chart-line"></i></div>
-            <div class="stat-label-dashboard">Market Price Alerts</div>
-            <div class="stat-value-dashboard" style="color: #f59e0b;">0</div>
-        </div>
-    </div>
-
-    <div class="c-card-premium animate-up delay-2">
-        <!-- Local search removed, using global header search -->
-        <input type="hidden" id="ingredientSearch">
-        <div class="premium-table-wrapper mt-4">
-            <table class="premium-table" id="ingredientsTable">
-                <thead>
-                    <tr>
-                        <th>Ingredient Name</th>
-                        <th>Unit Type</th>
-                        <th>Cost per Unit</th>
-                        <th>Last Updated</th>
-                        <th style="text-align: right;">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in ingredients %}
-                    <tr class="premium-row">
-                        <td class="premium-cell">
-                            <div class="kyc-user-identity-box">
-                                <strong class="kyc-user-name">{{ item.name }}</strong>
-                            </div>
-                        </td>
-                        <td class="premium-cell">
-                            <span class="kyc-status-badge status-pending" style="text-transform: lowercase;">{{ item.unit }}</span>
-                        </td>
-                        <td class="premium-cell" style="font-weight: 700; color: var(--color-neutral-900);">
-                            ₱{{ "{:,.2f}".format(item.unit_price) }}
-                        </td>
-                        <td class="premium-cell" style="color: var(--color-neutral-500); font-size: var(--text-sm);">
-                            {{ item.updated_at.strftime('%Y-%m-%d') if item.updated_at else 'Never' }}
-                        </td>
-                        <td class="premium-cell" style="text-align: right; display: flex; gap: 0.5rem; justify-content: flex-end;">
-                            <button class="btn-icon-edit" onclick="editIngredient({{ item.id }}, '{{ item.name|escape }}', '{{ item.unit }}', {{ item.unit_price }})" title="Edit"><i class="fas fa-edit"></i></button>
-                            <button class="btn-icon-archive" onclick="deleteIngredient({{ item.id }})" title="Archive"><i class="fas fa-archive"></i></button>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="5" style="text-align:center; padding: 3rem;">
-                            <div style="color: var(--color-neutral-400); margin-bottom: 1rem;"><i class="fas fa-box-open fa-3x"></i></div>
-                            <strong>No ingredients added yet.</strong>
-                            <p style="color: var(--color-neutral-500); font-size: var(--text-sm); margin-top: 0.5rem;">Start adding raw materials to enable smart costing.</p>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+    <div class="header-actions">
+        <button class="btn-primary-pro" onclick="openIngredientModal()">
+            <i class="fas fa-plus"></i> <span>Add New Ingredient</span>
+        </button>
     </div>
 </div>
 
-<!-- Modal for Add/Edit Ingredient -->
-<div id="ingredientModal" class="modal-pro">
-    <div class="modal-content-pro">
-        <div class="modal-header-pro">
-            <h3 id="modalTitle">Add New Ingredient</h3>
-            <button class="btn-close-pro" type="button" onclick="closeModal()"><i class="fas fa-times"></i></button>
+<div class="stats-grid-dashboard animate-up delay-1">
+    <div class="stat-card-premium">
+        <div class="stat-icon-bg halo-slate"><i class="fas fa-box-open"></i></div>
+        <div class="stat-label-dashboard">Total Ingredients</div>
+        <div class="stat-value-dashboard">{{ ingredients|length }}</div>
+    </div>
+    <div class="stat-card-premium">
+        <div class="stat-icon-bg halo-amber"><i class="fas fa-chart-line"></i></div>
+        <div class="stat-label-dashboard">Market Price Alerts</div>
+        <div class="stat-value-dashboard" style="color: #f59e0b;">0</div>
+    </div>
+</div>
+
+<div class="inventory-card animate-up delay-2">
+    <div class="premium-table-wrapper">
+        <table class="premium-table" id="ingredientsTable">
+            <thead>
+                <tr>
+                    <th>Ingredient</th>
+                    <th>Unit</th>
+                    <th>Cost per Unit</th>
+                    <th>Last Updated</th>
+                    <th style="text-align: right;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in ingredients %}
+                <tr class="premium-row">
+                    <td>
+                        <div class="ing-name-box">
+                            <div class="ing-icon-mini"><i class="fas fa-leaf"></i></div>
+                            <strong style="color: #0f172a;">{{ item.name }}</strong>
+                        </div>
+                    </td>
+                    <td><span class="unit-badge">{{ item.unit }}</span></td>
+                    <td class="ing-price">₱{{ "{:,.2f}".format(item.unit_price) }}</td>
+                    <td style="color: #64748b; font-size: 0.8rem;">
+                        {{ item.updated_at.strftime('%b %d, %Y') if item.updated_at else 'Initial Entry' }}
+                    </td>
+                    <td style="text-align: right;">
+                        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                            <button class="btn-action-pro" onclick="editIngredient({{ item.id }}, '{{ item.name|replace("'", "\\'")|escape }}', '{{ item.unit }}', {{ item.unit_price }})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-action-pro delete" onclick="confirmArchiveIngredient({{ item.id }}, '{{ item.name|replace("'", "\\'")|escape }}')">
+                                <i class="fas fa-archive"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" style="text-align:center; padding: 4rem;">
+                        <div style="color: #cbd5e1; margin-bottom: 1rem;"><i class="fas fa-box-open fa-3x"></i></div>
+                        <h3 style="color: #1e293b; margin-bottom: 0.5rem;">Your inventory is empty</h3>
+                        <p style="color: #64748b;">Start adding ingredients to enable automated dish costing.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add/Edit Ingredient Modal (Elite Style) -->
+<div id="ingredientModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-sm occ-content-pop">
+        <div class="occ-modal-header colored-header">
+            <div>
+                <h3 id="modalTitle" class="occ-modal-title">Add Ingredient</h3>
+                <div class="occ-modal-subtitle">Set market price and units for your raw material.</div>
+            </div>
+            <button onclick="closeModal('ingredientModal')" class="occ-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
+
         <form id="ingredientForm" onsubmit="saveIngredient(event)">
             <input type="hidden" id="ingId">
-            <div class="modal-body-pro space-y-4">
+            <div class="compact-body">
                 <div class="form-group-pro">
                     <label>Ingredient Name</label>
-                    <input type="text" id="ingName" class="control-pro" placeholder="e.g. Chicken Breast, Jasmine Rice" required>
+                    <input type="text" id="ingName" class="control-pro" placeholder="e.g. Chicken Breast, White Rice" required>
                 </div>
                 <div class="form-row-pro">
                     <div class="form-group-pro">
                         <label>Unit Type</label>
-                        <select id="ingUnit" class="control-pro">
+                        <select id="ingUnit" class="control-pro" required>
                             <option value="kg">Kilogram (kg)</option>
                             <option value="g">Gram (g)</option>
-                            <option value="pack">Pack</option>
-                            <option value="piece">Piece (pcs)</option>
+                            <option value="liter">Liter (l)</option>
                             <option value="ml">Milliliter (ml)</option>
-                            <option value="l">Liter (L)</option>
+                            <option value="pcs">Pieces (pcs)</option>
+                            <option value="pack">Pack</option>
+                            <option value="tray">Tray</option>
                         </select>
                     </div>
                     <div class="form-group-pro">
-                        <label>Cost per Unit (₱)</label>
+                        <label>Market Price (₱)</label>
                         <input type="number" step="0.01" id="ingPrice" class="control-pro" placeholder="0.00" required>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer-pro">
-                <button type="button" class="btn-secondary-pro" onclick="closeModal()">Cancel</button>
-                <button type="submit" class="btn-primary-pro">Save Ingredient</button>
+            <div class="occ-modal-footer" style="padding: 1.25rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
+                <button type="button" class="btn-secondary-pro" onclick="closeModal('ingredientModal')" style="background: #e2e8f0; border: none; padding: 0.6rem 1.25rem; border-radius: 8px; font-weight: 700; cursor: pointer;">Cancel</button>
+                <button type="submit" class="btn-primary-pro" id="saveBtn">Save Ingredient</button>
             </div>
         </form>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
+<!-- Archive Confirmation Modal -->
+<div id="archiveIngredientModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-sm occ-content-pop">
+        <div class="occ-modal-header colored-header">
+            <div>
+                <h3 class="occ-modal-title">Archive Ingredient</h3>
+                <div class="occ-modal-subtitle">Confirming inventory removal.</div>
+            </div>
+            <button onclick="closeModal('archiveIngredientModal')" class="occ-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="compact-body">
+            <div class="modal-info-card-pro">
+                <div class="info-icon-pro"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="info-text-pro">
+                    Archive <strong id="archiveItemName">this ingredient</strong>? It will no longer appear in your active inventory or recipe picker.
+                </div>
+            </div>
+            <p style="font-size: 0.8rem; color: #64748b; line-height: 1.5;">Linked dishes will still retain their current cost data, but this ingredient will be hidden from future selections.</p>
+        </div>
+        <div class="occ-modal-footer" style="padding: 1.25rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
+            <button type="button" class="btn-secondary-pro" onclick="closeModal('archiveIngredientModal')" style="background: #e2e8f0; border: none; padding: 0.6rem 1.25rem; border-radius: 8px; font-weight: 700; cursor: pointer;">Cancel</button>
+            <button type="button" class="btn-primary-pro" id="confirmArchiveBtn" style="background: #ef4444;">Archive Now</button>
+        </div>
+    </div>
+</div>
+
 <script>
     function openIngredientModal() {
         document.getElementById('modalTitle').innerText = 'Add New Ingredient';
-        document.getElementById('ingId').value = '';
         document.getElementById('ingredientForm').reset();
-        document.getElementById('ingredientModal').classList.add('active');
+        document.getElementById('ingId').value = '';
+        if (window.openModal) window.openModal('ingredientModal');
+        else document.getElementById('ingredientModal').style.display = 'flex';
+    }
+
+    function closeModal(id) {
+        if (window.closeModal) window.closeModal(id);
+        else document.getElementById(id).style.display = 'none';
     }
 
     function editIngredient(id, name, unit, price) {
@@ -139,97 +178,74 @@
         document.getElementById('ingName').value = name;
         document.getElementById('ingUnit').value = unit;
         document.getElementById('ingPrice').value = price;
-        document.getElementById('ingredientModal').classList.add('active');
+        if (window.openModal) window.openModal('ingredientModal');
+        else document.getElementById('ingredientModal').style.display = 'flex';
     }
 
-    function closeModal() {
-        document.getElementById('ingredientModal').classList.remove('active');
-    }
-
-    async function saveIngredient(event) {
-        event.preventDefault();
-        const ingName = document.getElementById('ingName');
-        const ingPrice = document.getElementById('ingPrice');
-        
-        if(!ingName.value || !ingPrice.value) {
-            window.showError('Please fill in all required fields.', 'Required Fields');
-            return;
-        }
-
+    async function saveIngredient(e) {
+        e.preventDefault();
         const id = document.getElementById('ingId').value;
         const data = {
-            id: id ? parseInt(id) : null,
-            name: ingName.value,
+            id: id || null,
+            name: document.getElementById('ingName').value,
             unit: document.getElementById('ingUnit').value,
-            unit_price: parseFloat(ingPrice.value)
+            unit_price: parseFloat(document.getElementById('ingPrice').value)
         };
 
-        try {
-            const resp = await fetch('/caterer/api/ingredients', {
+        const url = '/caterer/api/ingredients';
+        const btn = document.getElementById('saveBtn');
+        
+        if (window.apiAction) {
+            const res = await window.apiAction(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
-            });
-            const res = await resp.json();
-            if (res.status === 'success') {
-                closeModal();
-                window.showSuccess('Ingredient saved. Costing engine will update automatically.', 'Success!');
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                window.showError(res.detail || 'Failed to save ingredient.', 'Error');
+            }, btn);
+            if (res) {
+                closeModal('ingredientModal');
+                setTimeout(() => window.location.reload(), 500);
             }
-        } catch (e) {
-            console.error(e);
-            window.showError('Failed to save ingredient due to a network error.', 'Error');
+        } else {
+            try {
+                btn.disabled = true;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (response.ok) {
+                    closeModal('ingredientModal');
+                    window.location.reload();
+                } else {
+                    alert('Failed to save ingredient');
+                }
+            } catch (err) {
+                console.error(err);
+            } finally {
+                btn.disabled = false;
+            }
         }
     }
 
-    function deleteIngredient(id) {
-        window.showConfirm(
-            "Are you sure you want to archive this ingredient? It will no longer be available for new menus.",
-            () => executeDelete(id),
-            "Archive Ingredient?",
-            "Yes, Archive"
-        );
-    }
-
-    async function executeDelete(id) {
-        try {
-            const resp = await fetch(`/caterer/api/ingredients/${id}`, { method: 'DELETE' });
-            const res = await resp.json();
-            if (res.status === 'success') {
-                window.showSuccess('Ingredient archived successfully.', 'Archived');
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                window.showError(res.detail || 'Failed to archive ingredient.', 'Error');
+    async function confirmArchiveIngredient(id, name) {
+        document.getElementById('archiveItemName').innerText = name;
+        document.getElementById('confirmArchiveBtn').onclick = async () => {
+            const btn = document.getElementById('confirmArchiveBtn');
+            try {
+                btn.disabled = true;
+                const res = await fetch(`/caterer/api/ingredients/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    closeModal('archiveIngredientModal');
+                    window.location.reload();
+                } else alert('Failed to archive ingredient');
+            } catch (err) {
+                console.error(err);
+            } finally {
+                btn.disabled = false;
             }
-        } catch (e) {
-            console.error(e);
-            window.showError('Failed to archive ingredient.', 'Error');
-        }
+        };
+        if (window.openModal) window.openModal('archiveIngredientModal');
+        else document.getElementById('archiveIngredientModal').style.display = 'flex';
     }
-
-    function filterIngredients() {
-        const query = document.getElementById('ingredientSearch').value.toLowerCase();
-        const rows = document.querySelectorAll('#ingredientsTable tbody tr.premium-row');
-        
-        rows.forEach(row => {
-            const name = row.querySelector('.kyc-user-name').innerText.toLowerCase();
-            if (name.includes(query)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
-    }
-
-    // Listen to global header search
-    window.addEventListener('globalSearch', function(e) {
-        const hiddenInput = document.getElementById('ingredientSearch');
-        if (hiddenInput) {
-            hiddenInput.value = e.detail.value;
-            filterIngredients();
-        }
-    });
 </script>
 {% endblock %}

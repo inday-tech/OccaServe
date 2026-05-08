@@ -66,6 +66,12 @@ async function openAddPackageModal() {
         if (form.booking_lead_time) form.booking_lead_time.value = 7;
         if (form.reservation_fee) form.reservation_fee.value = 5000;
         if (form.min_contract_amount) form.min_contract_amount.value = '';
+        
+        // Reset Contract Term fields
+        if (form.downpayment_type) form.downpayment_type.value = 'fixed';
+        if (form.payment_terms) form.payment_terms.value = '';
+        if (form.cancellation_policy) form.cancellation_policy.value = '';
+        if (form.area_coverage) form.area_coverage.value = '';
 
         // Reset Image Preview
         const preview = document.getElementById('pkgImagePreview');
@@ -126,6 +132,12 @@ async function editPackage(pkgId) {
         if (form.labor_cost) form.labor_cost.value = pkg.labor_cost || 0;
         if (form.utility_cost) form.utility_cost.value = pkg.utility_cost || 0;
         if (form.equipment_cost) form.equipment_cost.value = pkg.equipment_cost || 0;
+
+        // Populate Contract Terms
+        if (form.downpayment_type) form.downpayment_type.value = pkg.downpayment_type || 'fixed';
+        if (form.payment_terms) form.payment_terms.value = pkg.payment_terms || '';
+        if (form.cancellation_policy) form.cancellation_policy.value = pkg.cancellation_policy || '';
+        if (form.area_coverage) form.area_coverage.value = pkg.area_coverage || '';
         
         const ingDisplay = document.getElementById('pkgIngredientCostDisplay');
         if (ingDisplay) {

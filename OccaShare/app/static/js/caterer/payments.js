@@ -411,17 +411,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
             content.innerHTML = `
                 <div class="pay-details-summary">
-                    <div class="pay-details-label-sm">Gross Amount</div>
+                    <div class="pay-details-label-sm">Gross Subtotal</div>
                     <div class="pay-details-amount-lg">₱${parseFloat(booking.total_amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
                 </div>
 
                 <div class="pay-details-grid">
                     <div class="pay-details-item-box">
-                        <span class="pay-details-key-label">Customer</span>
+                        <span class="pay-details-key-label">Client Name</span>
                         <span class="pay-details-val-text">${booking.user.first_name} ${booking.user.last_name}</span>
                     </div>
                     <div class="pay-details-item-box">
-                        <span class="pay-details-key-label">Booking Ref</span>
+                        <span class="pay-details-key-label">Booking ID</span>
                         <span class="pay-details-val-text">#BK-${bookingId}</span>
                     </div>
                     <div class="pay-details-item-box">
@@ -429,17 +429,17 @@ document.addEventListener('DOMContentLoaded', function() {
                         <span class="pay-details-val-text">${booking.event_type}</span>
                     </div>
                     <div class="pay-details-item-box">
-                        <span class="pay-details-key-label">Method</span>
-                        <span class="pay-details-val-text">${booking.payment_method || 'Manual'}</span>
+                        <span class="pay-details-key-label">Payment Method</span>
+                        <span class="pay-details-val-text">${booking.payment_method || 'Direct'}</span>
                     </div>
                 </div>
 
                 <div class="pay-breakdown-card">
                     <div class="pay-breakdown-hdr">
-                        <i class="fas fa-chart-pie"></i> Profit Breakdown
+                        <i class="fas fa-chart-pie"></i> Financial Breakdown
                     </div>
                     <div class="pay-breakdown-row">
-                        <span class="pay-breakdown-label">Gross Subtotal</span>
+                        <span class="pay-breakdown-label">Gross Revenue</span>
                         <span class="pay-breakdown-val">₱${parseFloat(booking.total_amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                     </div>
                     <div class="pay-breakdown-row">
@@ -447,10 +447,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         <span class="pay-breakdown-val negative">- ₱${parseFloat(booking.commission).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                     </div>
                     <div class="pay-earnings-summary-line">
-                        <span class="pay-earnings-label-text">Your Earnings</span>
-                        <span class="pay-earnings-amount-val">₱${parseFloat(booking.net_amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                        <span class="pay-earnings-label-text">Net Earnings</span>
+                        <span class="pay-earnings-amount-val">₱${parseFloat(booking.net_earnings || (booking.total_amount - booking.commission)).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                     </div>
                 </div>
+              </div>
 
                 ${documentsHtml}
                 
@@ -559,21 +560,31 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await response.json();
             
             if (data) {
-                // Update Released Capital Card
-                const releasedCard = document.querySelector('.pay-stat-released .pay-stat-value');
-                if (releasedCard) releasedCard.innerText = `₱${data.released_total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                const formatter = new Intl.NumberFormat('en-PH', {
+                    style: 'currency',
+                    currency: 'PHP',
+                    minimumFractionDigits: 2
+                });
 
-                // Update Ready for Payout Card
-                const readyCard = document.querySelector('.pay-stat-payout .pay-stat-value');
-                if (readyCard) readyCard.innerText = `₱${data.ready_total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                // Update Withdraw Panel (Available Funds)
+                const withdrawValue = document.querySelector('.pay-withdrawable-amount .value');
+                if (withdrawValue) withdrawValue.innerText = formatter.format(data.ready_total);
 
-                // Update Held in Escrow Card
-                const escrowCard = document.querySelector('.pay-stat-escrow .pay-stat-value');
-                if (escrowCard) escrowCard.innerText = `₱${data.escrow_total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                // Update Stats Grid
+                const releasedValue = document.querySelector('.pay-stat-released .pay-stat-value');
+                if (releasedValue) releasedValue.innerText = formatter.format(data.released_total);
 
-                // Update Active Bookings Card
-                const activeCard = document.querySelector('.pay-stats-grid .pay-stat-card:last-child .pay-stat-value');
-                if (activeCard) activeCard.innerText = data.active_count;
+                const escrowValue = document.querySelector('.pay-stat-escrow .pay-stat-value');
+                if (escrowValue) escrowValue.innerText = formatter.format(data.escrow_total);
+
+                const activeValue = document.querySelector('.pay-stat-active .pay-stat-value');
+                if (activeValue) activeValue.innerText = data.active_count;
+
+                // Disable/Enable Withdraw button based on amount
+                const btnWithdraw = document.getElementById('btnWithdraw');
+                if (btnWithdraw) {
+                    btnWithdraw.disabled = data.ready_total <= 0;
+                }
             }
         } catch (err) {
             console.warn("Summary refresh failed:", err);
@@ -593,6 +604,55 @@ document.addEventListener('DOMContentLoaded', function() {
             window.openModal('proofModal');
         }
     };
+
+    // Payout Modal Logic
+    window.openPayoutModal = function() {
+        window.openModal('payoutModal');
+    };
+
+    window.closePayoutModal = function() {
+        window.closeModal('payoutModal');
+    };
+
+    window.submitPayoutRequest = async function() {
+        const btn = document.getElementById('btnConfirmWithdraw');
+        const originalHtml = btn.innerHTML;
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        
+        try {
+            const response = await fetch('/caterer/api/payments/request-payout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await response.json();
+            
+            if (response.ok && data.status === 'success') {
+                window.showSuccess("Payout request submitted successfully! Funds will be verified within 24-48 hours.", "Withdrawal Requested");
+                closePayoutModal();
+                // Refresh data
+                setTimeout(() => window.location.reload(), 2000);
+            } else {
+                throw new Error(data.detail || "Unable to process withdrawal at this time.");
+            }
+        } catch (err) {
+            console.error(err);
+            window.showError(err.message, "System Error");
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+    };
+
+    // Listen to global header search
+    window.addEventListener('globalSearch', function(e) {
+        const hiddenInput = document.getElementById('paymentSearch');
+        if (hiddenInput && typeof window.filterPayments === 'function') {
+            hiddenInput.value = e.detail.value;
+            window.filterPayments();
+        }
+    });
+
     window.closeProof = function() { 
         window.closeModal('proofModal');
     };

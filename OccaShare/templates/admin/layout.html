@@ -106,6 +106,13 @@
                     </a>
                 </li>
                 <li>
+                    <a href="/admin/payouts" class="{{ 'active' if active_page == 'payouts' }}"
+                        onclick="closeSidebar()">
+                        <i class="fas fa-hand-holding-dollar"></i> <span>Payout Management</span>
+                        <span id="payoutNotifBadge" class="badge" style="display: none; background: #f59e0b; color: white; padding: 2px 6px; border-radius: 20px; font-size: 0.65rem; margin-left: auto; font-weight: 800;">NEW</span>
+                    </a>
+                </li>
+                <li>
                     <a href="/admin/payments" class="{{ 'active' if active_page == 'payments' }}"
                         onclick="closeSidebar()">
                         <i class="fas fa-money-bill-trend-up"></i> <span>Earnings & Commissions</span>
@@ -229,6 +236,27 @@
                             updateBadge(data.count);
                             if (typeof window.showSuccess === 'function') {
                                 window.showSuccess(data.message, "System Alert");
+                            }
+                        }
+
+                        // 3. Handle Payout Requests (Financial Event)
+                        if (data.type === 'new_payout_request') {
+                            const payoutBadge = document.getElementById('payoutNotifBadge');
+                            if (payoutBadge) payoutBadge.style.display = 'inline-block';
+                            
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire({
+                                    title: 'New Withdrawal Request!',
+                                    text: data.message,
+                                    icon: 'warning',
+                                    showCancelButton: true,
+                                    confirmButtonText: 'Go to Payouts',
+                                    confirmButtonColor: '#1e293b'
+                                }).then((result) => {
+                                    if (result.isConfirmed) {
+                                        window.location.href = '/admin/payouts';
+                                    }
+                                });
                             }
                         }
 

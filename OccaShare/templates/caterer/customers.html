@@ -1,195 +1,298 @@
-{% set nav_page = 'customers' %}
 {% extends "caterer/layout.html" %}
 
-{% block title %}My Customers - Caterer Dashboard{% endblock %}
-
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/customers.css') }}?v=2.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/customers.css') }}">
 {% endblock %}
 
 {% block content %}
-
-<!-- Page Header — KYC-aligned -->
-<div class="cust-page-header">
-    <div>
-        <h1>My Customers</h1>
-        <p>Manage your customer database and track relationship history.</p>
-    </div>
-    <!-- Local search removed, using global header search -->
-    <input type="hidden" id="customerSearch">
-</div>
-
-<!-- Stats Row — 4 cards -->
-<div class="cust-stats-grid">
-    <div class="cust-stat-card">
-        <div class="cust-stat-icon cust-icon-purple">
-            <i class="fas fa-users"></i>
+<div class="customers-page-container">
+    <!-- Header Section -->
+    <div class="page-header-premium">
+        <div class="header-left-pro">
+            <h1 class="page-title-pro">My Customer Database</h1>
+            <p class="page-subtitle-pro">Manage your client relationships and intelligence.</p>
         </div>
-        <div class="cust-stat-info">
-            <div class="cust-stat-label">Total Customers</div>
-            <div class="cust-stat-value">{{ stats.total }}</div>
-            <div class="cust-stat-hint">All-time clients</div>
+        <div class="header-actions-pro">
+            <button class="btn-primary-pro" onclick="window.openModal('addCustomerModal')">
+                <i class="fas fa-plus"></i> Register New Customer
+            </button>
         </div>
-    </div>
-    <div class="cust-stat-card">
-        <div class="cust-stat-icon cust-icon-amber">
-            <i class="fas fa-crown"></i>
-        </div>
-        <div class="cust-stat-info">
-            <div class="cust-stat-label">VIP Customers</div>
-            <div class="cust-stat-value cust-value-amber">{{ stats.vip }}</div>
-            <div class="cust-stat-hint">3+ bookings</div>
-        </div>
-    </div>
-    <div class="cust-stat-card">
-        <div class="cust-stat-icon cust-icon-green">
-            <i class="fas fa-user-plus"></i>
-        </div>
-        <div class="cust-stat-info">
-            <div class="cust-stat-label">New This Month</div>
-            <div class="cust-stat-value cust-value-green">{{ stats.new }}</div>
-            <div class="cust-stat-hint">Recent additions</div>
-        </div>
-    </div>
-    <div class="cust-stat-card">
-        <div class="cust-stat-icon cust-icon-blue">
-            <i class="fas fa-sync"></i>
-        </div>
-        <div class="cust-stat-info">
-            <div class="cust-stat-label">Repeat Rate</div>
-            <div class="cust-stat-value">{{ stats.repeat }}</div>
-            <div class="cust-stat-hint">Returning clients</div>
-        </div>
-    </div>
-</div>
-
-<!-- Customer List Card — KYC-aligned -->
-<div class="cust-card">
-    <!-- Card Header -->
-    <div class="cust-section-header">
-        <i class="fas fa-address-book"></i>
-        <h3>Customer List</h3>
-        <span class="cust-count-pill">{{ customers | length }} record{{ 's' if customers | length != 1 else '' }}</span>
     </div>
 
-    <!-- Table -->
-    {% if customers %}
-    <div class="cust-table-scroll">
-        <table class="cust-table">
-            <thead>
-                <tr>
-                    <th>Customer</th>
-                    <th>Contact</th>
-                    <th>Bookings</th>
-                    <th>Total Spent</th>
-                    <th>Last Booking</th>
-                    <th>Status</th>
-                    <th class="cust-th-right">Actions</th>
-                </tr>
-            </thead>
-            <tbody id="customersTableBody">
-                {% for c in customers %}
-                <tr class="customer-row">
-                    <td>
-                        <div class="cust-profile-cell">
-                            <div class="cust-avatar {% if c.status == 'VIP' %}cust-avatar-vip{% endif %}">
-                                {{ c.first_name[0] }}{{ c.last_name[0] }}
+    <!-- Symmetrical Stats Grid -->
+    <div class="stats-grid-diamond">
+        <div class="stat-card-diamond">
+            <div class="stat-icon-diamond bg-emerald">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-info-diamond">
+                <span class="stat-label">Total Clients</span>
+                <h2 class="stat-value">{{ stats.total }}</h2>
+            </div>
+        </div>
+        <div class="stat-card-diamond">
+            <div class="stat-icon-diamond bg-amber">
+                <i class="fas fa-crown"></i>
+            </div>
+            <div class="stat-info-diamond">
+                <span class="stat-label">VIP Accounts</span>
+                <h2 class="stat-value">{{ stats.vip }}</h2>
+            </div>
+        </div>
+        <div class="stat-card-diamond">
+            <div class="stat-icon-diamond bg-blue">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="stat-info-diamond">
+                <span class="stat-label">Monthly Growth</span>
+                <h2 class="stat-value">{{ stats.new }}</h2>
+            </div>
+        </div>
+        <div class="stat-card-diamond">
+            <div class="stat-icon-diamond bg-indigo">
+                <i class="fas fa-repeat"></i>
+            </div>
+            <div class="stat-info-diamond">
+                <span class="stat-label">Repeat Rate</span>
+                <h2 class="stat-value">{{ stats.repeat }}</h2>
+            </div>
+        </div>
+    </div>
+
+    <!-- Organized Database Table -->
+    <div class="table-container-diamond">
+        <div class="table-header-diamond">
+            <div class="header-title-diamond">
+                <h3>Relationship List</h3>
+                <p>Real-time data synchronization active</p>
+            </div>
+            <div class="header-search-bridge">
+                <i class="fas fa-search"></i>
+                <input type="text" id="custSearchInput" placeholder="Search relationship..." oninput="window.filterCustomers()">
+            </div>
+        </div>
+        
+        <div class="premium-table-wrapper">
+            <table class="premium-table" id="customersTable">
+                <thead>
+                    <tr>
+                        <th>Customer ID</th>
+                        <th>Name & Contact</th>
+                        <th>Account Tier</th>
+                        <th>Lifetime Spend</th>
+                        <th>Events</th>
+                        <th>Last Engagement</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for customer in customers %}
+                    <tr class="premium-row" data-name="{{ customer.first_name | lower }} {{ customer.last_name | lower }}">
+                        <td class="premium-cell">
+                            <span class="customer-id-pill">#{{ "00%d"|format(customer.id) }}</span>
+                        </td>
+                        <td class="premium-cell">
+                            <div class="customer-info-cell">
+                                <div class="cust-avatar-mini">{{ customer.first_name[0] }}{{ customer.last_name[0] }}</div>
+                                <div class="cust-text-info">
+                                    <div class="cust-name-pro">{{ customer.first_name }} {{ customer.last_name }}</div>
+                                    <div class="cust-email-pro">{{ customer.email }}</div>
+                                </div>
                             </div>
-                            <div class="cust-name-group">
-                                <span class="cust-name">{{ c.first_name }} {{ c.last_name }}</span>
-                            </div>
-                        </div>
-                    </td>
-                    <td>
-                        <div class="cust-contact-info">
-                            <span class="info-email"><i class="far fa-envelope"></i> {{ c.email }}</span>
-                            <span class="info-phone"><i class="fas fa-phone-alt"></i> {{ c.phone or 'No contact' }}</span>
-                        </div>
-                    </td>
-                    <td>
-                        <span class="cust-count-badge">{{ c.total_bookings }}</span>
-                    </td>
-                    <td>
-                        <span class="cust-spent">₱{{ "{:,.2f}".format(c.total_spent) }}</span>
-                    </td>
-                    <td>
-                        <span class="cust-date">
-                            {% if c.last_booking_date %}
-                                {{ c.last_booking_date.strftime('%b %d, %Y') }}
+                        </td>
+                        <td class="premium-cell">
+                            {% if customer.status == 'Blacklisted' %}
+                                <span class="p-badge p-badge-cancelled">Blacklisted</span>
+                            {% elif customer.total_bookings > 5 %}
+                                <span class="p-badge p-badge-confirmed">VIP Elite</span>
                             {% else %}
-                                <span class="cust-na">N/A</span>
+                                <span class="p-badge p-badge-draft">Standard</span>
                             {% endif %}
-                        </span>
-                    </td>
-                    <td>
-                        <span class="cust-status-badge cust-status-{{ c.status.lower() }}">
-                            {% if c.status == 'VIP' %}<i class="fas fa-crown"></i>{% endif %}
-                            {% if c.status == 'NEW' %}<i class="fas fa-sparkles"></i>{% endif %}
-                            {{ c.status }}
-                        </span>
-                    </td>
-                    <td class="cust-th-right">
-                        <div class="cust-actions">
-                            <a href="/caterer/bookings?search={{ c.first_name }}+{{ c.last_name }}"
-                               class="btn-review-kyc" title="View Booking History">
-                                <i class="fas fa-history"></i> History
-                            </a>
-                            <a href="mailto:{{ c.email }}"
-                               class="btn-review-kyc" title="Send Email">
-                                <i class="far fa-envelope"></i>
-                            </a>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                        </td>
+                        <td class="premium-cell">
+                            <div class="spend-value">₱{{ "{:,.2f}".format(customer.total_spent or 0) }}</div>
+                        </td>
+                        <td class="premium-cell">
+                            <span class="booking-count-badge">{{ customer.total_bookings }} events</span>
+                        </td>
+                        <td class="premium-cell">
+                            <div class="last-seen-pro">
+                                {{ customer.last_booking_date.strftime('%b %d, %Y') if customer.last_booking_date else 'No data' }}
+                            </div>
+                        </td>
+                        <td class="premium-cell">
+                            <button class="btn-view-details-pro" onclick="openCustomerProfile({{ customer.id }})">
+                                <i class="fas fa-brain"></i> Open Hub
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
-
-    <!-- Empty search state (hidden by default) -->
-    <div id="noSearchResults" class="cust-empty-state" style="display:none;">
-        <i class="fas fa-search"></i>
-        <p>No customers match your search.</p>
-    </div>
-
-    {% else %}
-    <!-- Empty state -->
-    <div class="cust-empty-state">
-        <i class="fas fa-users"></i>
-        <p>No customers yet.</p>
-        <span>Customers will appear here once they book your catering services.</span>
-    </div>
-    {% endif %}
 </div>
 
-<script>
-function filterCustomers() {
-    const input = document.getElementById('customerSearch');
-    const filter = input.value.toLowerCase();
-    const rows = document.querySelectorAll('#customersTableBody .customer-row');
-    const noResults = document.getElementById('noSearchResults');
-    let visibleCount = 0;
+<!-- Register New Customer Modal (Elite Diamond Standard) -->
+<div id="addCustomerModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-lg occ-content-pop">
+        <div class="occ-modal-header colored-header" style="background: #0f172a; padding: 2rem 2.5rem;">
+            <div style="display: flex; align-items: center; gap: 18px;">
+                <div style="width: 54px; height: 54px; background: rgba(16, 185, 129, 0.1); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #10b981;">
+                    <i class="fas fa-user-plus"></i>
+                </div>
+                <div>
+                    <h3 class="occ-modal-title" style="color: white !important; font-size: 1.5rem; font-weight: 850;">Relationship Registration</h3>
+                    <div class="occ-modal-subtitle" style="color: rgba(255,255,255,0.6) !important;">Establish a new entry in your client intelligence database.</div>
+                </div>
+            </div>
+            <button type="button" class="occ-modal-close" onclick="window.closeModal('addCustomerModal')" style="background: rgba(255,255,255,0.05); color: white !important;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
 
-    rows.forEach(row => {
-        const name   = row.querySelector('.cust-name')?.textContent.toLowerCase() || '';
-        const email  = row.querySelector('.info-email')?.textContent.toLowerCase() || '';
-        const phone  = row.querySelector('.info-phone')?.textContent.toLowerCase() || '';
-        const match  = name.includes(filter) || email.includes(filter) || phone.includes(filter);
-        row.style.display = match ? '' : 'none';
-        if (match) visibleCount++;
-    });
+        <form id="addCustomerForm" onsubmit="window.registerCustomer(event)">
+            <div class="occ-modal-body" style="padding: 2.5rem;">
+                <!-- Validation Error Drawer -->
+                <div id="addCustomerError" class="validation-error-drawer" style="display: none; margin-bottom: 2rem;">
+                    <i class="fas fa-exclamation-shield"></i>
+                    <span id="addCustomerErrorText">Audit Guard: Please resolve all field validation errors.</span>
+                </div>
 
-    if (noResults) noResults.style.display = visibleCount === 0 && filter ? 'flex' : 'none';
-}
+                <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                    <div class="form-group-pro">
+                        <label style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 10px;">Full Client Name *</label>
+                        <input type="text" id="regName" name="name" class="control-pro" placeholder="e.g. Maria Clara Santos" required style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem;">
+                        <div class="field-error-msg" id="error-regName">Format: First, Middle, and Last Name required.</div>
+                    </div>
+                    
+                    <div class="form-group-pro">
+                        <label style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 10px;">Email Address *</label>
+                        <input type="email" id="regEmail" name="email" class="control-pro" placeholder="client@gmail.com" required style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem;">
+                        <div class="field-error-msg" id="error-regEmail">Only @gmail.com addresses are permitted.</div>
+                    </div>
 
-// Listen to global header search
-window.addEventListener('globalSearch', function(e) {
-    const hiddenInput = document.getElementById('customerSearch');
-    if (hiddenInput) {
-        hiddenInput.value = e.detail.value;
-        filterCustomers();
-    }
-});
-</script>
+                    <div class="form-group-pro">
+                        <label style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 10px;">Phone Number *</label>
+                        <input type="text" id="regPhone" name="phone" class="control-pro" placeholder="09XXXXXXXXX" required maxlength="11" style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem;">
+                        <div class="field-error-msg" id="error-regPhone">Enter a valid 11-digit PH mobile number.</div>
+                    </div>
 
+                    <div class="form-group-pro">
+                        <label style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 10px;">Relationship Status</label>
+                        <div style="height: 50px; background: #f8fafc; border-radius: 12px; border: 1.5px solid #e2e8f0; display: flex; align-items: center; padding: 0 1.25rem; color: #94a3b8; font-weight: 700; font-size: 0.85rem;">
+                            <i class="fas fa-robot" style="margin-right: 10px;"></i> Calculated Automatically
+                        </div>
+                    </div>
+
+                    <div class="form-group-pro" style="grid-column: span 2;">
+                        <label style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 10px;">Operational Notes & Special Preferences</label>
+                        <textarea id="regNotes" name="notes" class="control-pro" placeholder="Record specific catering requirements, past event context, or client tiering notes..." rows="3" style="height: auto; min-height: 120px; padding: 1.25rem; border-radius: 12px; border: 1.5px solid #e2e8f0; font-weight: 500;"></textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="occ-modal-footer" style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 1.5rem 2.5rem; display: flex; justify-content: flex-end; gap: 15px;">
+                <button type="button" class="btn-secondary-pro" onclick="window.closeModal('addCustomerModal')" style="background: #e2e8f0; color: #475569; border: none; font-weight: 700; padding: 0.85rem 2rem; border-radius: 12px;">Dismiss</button>
+                <button type="submit" id="btnSubmitRegistration" class="btn-primary-pro" style="background: #10b981; color: white; padding: 0.85rem 3rem; border-radius: 12px; font-weight: 800; border: none; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);">Establish Relationship</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Customer Intelligence Hub (CRM Profile) -->
+<div id="customerProfileModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-lg occ-content-pop">
+        <div class="occ-modal-header intelligence-header-bg">
+            <div class="customer-profile-brief">
+                <div class="brief-avatar">
+                    <span id="profInitials">--</span>
+                </div>
+                <div class="brief-info">
+                    <h3 id="profName" class="occ-modal-title">--</h3>
+                    <p id="profStatus" class="intelligence-tag">Analyzing Relationship...</p>
+                </div>
+            </div>
+            <button type="button" class="occ-modal-close" onclick="window.closeModal('customerProfileModal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="intelligence-tabs-container">
+            <button class="intel-tab active" data-tab="overview" onclick="switchIntelTab('overview', this)">
+                <i class="fas fa-info-circle"></i> Overview
+            </button>
+            <button class="intel-tab" data-tab="history" onclick="switchIntelTab('history', this)">
+                <i class="fas fa-history"></i> Booking History
+            </button>
+            <button class="intel-tab" data-tab="risk" onclick="switchIntelTab('risk', this)">
+                <i class="fas fa-shield-alt"></i> Risk Management
+            </button>
+        </div>
+
+        <div class="occ-modal-body intelligence-body">
+            <!-- Overview Tab -->
+            <div id="intel-overview" class="intel-content active">
+                <div class="stats-mini-grid">
+                    <div class="stat-mini-card">
+                        <label>Total Life-Time Value</label>
+                        <div class="value" id="profLTV">₱0.00</div>
+                    </div>
+                    <div class="stat-mini-card">
+                        <label>Successful Events</label>
+                        <div class="value" id="profEvents">0</div>
+                    </div>
+                </div>
+
+                <div class="info-details-grid">
+                    <div class="info-box-pro">
+                        <label>Email Address</label>
+                        <p id="profEmail">--</p>
+                    </div>
+                    <div class="info-box-pro">
+                        <label>Contact Number</label>
+                        <p id="profPhone">--</p>
+                    </div>
+                </div>
+
+                <div class="notes-section-pro">
+                    <label>Operational Notes</label>
+                    <div class="notes-display-pro" id="profNotes">--</div>
+                </div>
+            </div>
+
+            <!-- Booking History Tab -->
+            <div id="intel-history" class="intel-content">
+                <div class="history-timeline" id="profHistory">
+                    <div class="empty-intel-msg">
+                        <i class="fas fa-calendar-minus"></i>
+                        <p>No historical bookings found for this relationship.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Risk Management Tab -->
+            <div id="intel-risk" class="intel-content">
+                <div class="risk-card-pro-danger">
+                    <div class="risk-icon-box">
+                        <i class="fas fa-user-slash"></i>
+                    </div>
+                    <div class="risk-info">
+                        <h4>Security Enforcement</h4>
+                        <p>Restrict this client from making future bookings. Use this for persistent no-shows or fraudulent behavior. This action can be undone if behavior improves.</p>
+                    </div>
+                    <button class="btn-risk-blacklist" id="blacklistBtn" onclick="toggleBlacklist()">BLOCK RELATIONSHIP</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="occ-modal-footer">
+            <button type="button" class="btn-secondary-pro" onclick="window.closeModal('customerProfileModal')">Close Hub</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='/js/caterer/customers.js') }}"></script>
 {% endblock %}

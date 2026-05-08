@@ -105,6 +105,112 @@
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
+/* --- Elite Modal System Override --- */
+.occ-modal-header.colored-header {
+    background: var(--secondary-color) !important;
+    padding: 1.5rem 2rem !important;
+    border-radius: 1.25rem 1.25rem 0 0 !important;
+    color: white !important;
+    border-bottom: none !important;
+}
+
+.occ-modal-header.colored-header .occ-modal-title { 
+    color: white !important; 
+    font-size: 1.25rem !important; 
+    font-weight: 900 !important; 
+    margin: 0 !important;
+}
+
+.occ-modal-header.colored-header .occ-modal-subtitle { 
+    color: rgba(255,255,255,0.7) !important; 
+    font-size: 0.75rem !important; 
+}
+
+.occ-modal-close {
+    background: rgba(255,255,255,0.1) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    color: white !important;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.occ-modal-close:hover { background: rgba(255,255,255,0.2) !important; transform: rotate(90deg); }
+
+/* Wizard Stepper Professionalization */
+.pkg-wizard-steps {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+    padding: 0.75rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 1.25rem;
+}
+
+.pkg-step {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    cursor: pointer;
+    border-radius: 1rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid transparent;
+}
+
+.pkg-step .step-icon {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    color: #94a3b8;
+    transition: all 0.3s;
+}
+
+.pkg-step .step-label {
+    font-size: 0.65rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: #94a3b8;
+    letter-spacing: 0.05em;
+    transition: all 0.3s;
+}
+
+.pkg-step.active {
+    background: white;
+    border-color: #f1f5f9;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+}
+
+.pkg-step.active .step-icon {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+.pkg-step.active .step-label {
+    color: #0f172a;
+}
+
+.pkg-step:hover:not(.active) {
+    background: rgba(255,255,255,0.5);
+    transform: translateY(-2px);
+}
+
 /* --- Standardized Premium Modal System --- */
 .modal-pro {
     display: none;
@@ -1877,4 +1983,60 @@ textarea.control-pro {
     flex: 1;
     overflow: hidden;
     min-height: 0;
+}
+/* --- ELITE MODAL SYSTEM INTEGRATION --- */
+.occ-modal-header.colored-header {
+    background: var(--secondary-color);
+    padding: 1.5rem 2rem;
+    border-radius: 1.25rem 1.25rem 0 0;
+    color: white;
+}
+
+.occ-modal-header.colored-header .occ-modal-title { color: white !important; font-size: 1.25rem; font-weight: 900; }
+.occ-modal-header.colored-header .occ-modal-subtitle { color: rgba(255,255,255,0.7) !important; font-size: 0.75rem; }
+
+.occ-modal-close {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: white !important;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.occ-modal-close:hover { background: rgba(255,255,255,0.2); transform: rotate(90deg); }
+
+.btn-primary-pro {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.75rem 1.75rem;
+    border-radius: 12px;
+    font-weight: 800;
+    font-size: 0.85rem;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-secondary-pro {
+    background: #e9eef5;
+    color: #0f172a;
+    padding: 0.75rem 1.75rem;
+    border-radius: 12px;
+    font-weight: 800;
+    font-size: 0.85rem;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
