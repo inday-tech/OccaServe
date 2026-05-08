@@ -605,6 +605,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
+    // Real-time Event Listener (from layout.js)
+    window.addEventListener('payoutUpdate', function(e) {
+        console.log("Real-time payout update triggered refresh");
+        refreshPaymentSummary();
+        // If it was a completion, reload to update the history table
+        if (e.detail.type === 'payout_completed' || e.detail.type === 'payout_update') {
+            setTimeout(() => window.location.reload(), 1500);
+        }
+    });
+
     // Payout Modal Logic
     window.openPayoutModal = function() {
         window.openModal('payoutModal');

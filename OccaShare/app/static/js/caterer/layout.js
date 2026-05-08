@@ -344,6 +344,12 @@
                         window.location.reload();
                     }, 2500);
                 }
+            } else if (data.type === 'payout_update' || data.type === 'payout_completed') {
+                if (window.showToast) {
+                    window.showToast(data.message || "Payout status updated", "success");
+                }
+                // Dispatch event for payments.js to handle
+                window.dispatchEvent(new CustomEvent('payoutUpdate', { detail: data }));
             } else if (data.type === 'chat_message') {
                 updateChatBadge();
                 const msgDropdown = document.getElementById('messagesDropdown');

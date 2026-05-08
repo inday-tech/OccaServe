@@ -158,13 +158,22 @@ async def manage_caterers(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
-    
-    # ONLY show Verified Caterers here. Pending/Rejected go to Compliance Queue.
-    caterers = db.query(models.CatererProfile).join(models.User).filter(
-        models.User.is_archived == False,
-        models.CatererProfile.verification_status == "Verified"
+    # Fetch all non-archived caterers to allow management of all states
+    from sqlalchemy.orm import joinedload
+    caterers_list = db.query(models.CatererProfile).options(
+        joinedload(models.CatererProfile.user)
+    ).join(models.User).filter(
+        models.User.is_archived == False
     ).all()
     
+    # Enrich with performance metrics
+    for c in caterers_list:
+        # Calculate performance
+        booking_count = db.query(models.Booking).filter(models.Booking.caterer_id == c.id).count()
+        c.booking_count = booking_count
+        # Average rating is already a field in CatererProfile, but let's ensure it's fresh if needed
+        # (Assuming the model updates it automatically on review submission)
+
     # Caterer Metrics for Summary
     metrics = {
         "total_caterers": db.query(models.CatererProfile).join(models.User).filter(models.User.is_archived == False).count(),
@@ -176,10 +185,84 @@ async def manage_caterers(
     return templates.TemplateResponse("admin/caterers.html", {
         "request": request,
         "user": user,
-        "caterers": caterers,
+        "caterers": caterers_list,
         "metrics": metrics,
         "active_page": "caterers"
     })
+
+@router.post("/api/caterers/{caterer_id}/suspend")
+async def suspend_caterer(
+    caterer_id: int,
+    db: Session = Depends(database.get_db),
+    admin: models.User = Depends(admin_only)
+):
+    caterer = db.query(models.CatererProfile).get(caterer_id)
+    if not caterer: return {"success": False, "message": "Caterer not found"}
+    
+    caterer.account_status = "Suspended"
+    db.commit()
+    
+    asyncio.create_task(manager.broadcast({"type": "caterer_update", "caterer_id": caterer_id, "action": "suspend"}))
+    return {"success": True, "message": "Partner account suspended."}
+
+@router.post("/api/caterers/{caterer_id}/activate")
+async def activate_caterer(
+    caterer_id: int,
+    db: Session = Depends(database.get_db),
+    admin: models.User = Depends(admin_only)
+):
+    caterer = db.query(models.CatererProfile).get(caterer_id)
+    if not caterer: return {"success": False, "message": "Caterer not found"}
+    
+    caterer.account_status = "Active"
+    db.commit()
+    
+    asyncio.create_task(manager.broadcast({"type": "caterer_update", "caterer_id": caterer_id, "action": "activate"}))
+    return {"success": True, "message": "Partner account reactivated."}
+
+@router.get("/api/caterers-overview")
+async def get_caterers_overview(
+    db: Session = Depends(database.get_db),
+    admin: models.User = Depends(admin_only)
+):
+    from sqlalchemy.orm import joinedload
+    caterers = db.query(models.CatererProfile).options(
+        joinedload(models.CatererProfile.user)
+    ).join(models.User).filter(
+        models.User.is_archived == False
+    ).all()
+    
+    # Enrichment
+    enriched = []
+    for c in caterers:
+        booking_count = db.query(models.Booking).filter(models.Booking.caterer_id == c.id).count()
+        enriched.append({
+            "id": c.id,
+            "business_name": c.business_name,
+            "first_name": c.user.first_name if c.user else "N/A",
+            "last_name": c.user.last_name if c.user else "",
+            "email": c.user.email if c.user else "N/A",
+            "contact_phone": c.contact_phone,
+            "contact_address": c.contact_address,
+            "city": c.city,
+            "verification_status": c.verification_status,
+            "account_status": c.account_status,
+            "rating": float(c.rating or 0),
+            "booking_count": booking_count,
+            "created_at": c.created_at.strftime('%b %d, %Y') if c.created_at else "TBD",
+            "latitude": c.latitude,
+            "longitude": c.longitude,
+            "user_id": c.user_id
+        })
+        
+    metrics = {
+        "total_caterers": db.query(models.CatererProfile).join(models.User).filter(models.User.is_archived == False).count(),
+        "pending_caterers_count": db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Pending", models.User.is_archived == False).count(),
+        "approved_caterers_count": db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Verified", models.User.is_archived == False).count(),
+        "rejected_caterers_count": db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Rejected", models.User.is_archived == False).count(),
+    }
+    
+    return {"success": True, "caterers": enriched, "metrics": metrics}
 
 
 @router.get("/payouts", response_class=HTMLResponse)
@@ -637,7 +720,15 @@ async def edit_caterer(
     existing_user = db.query(models.User).filter(models.User.email == email.strip().lower(), models.User.id != caterer.user_id).first()
     if existing_user:
         return {"success": False, "message": "This email is already in use by another account."}
-        
+
+    # IDENTITY LOCK: If already verified, do NOT allow changing core business/owner names
+    if caterer.verification_status == 'Verified':
+        # Check if they are trying to change core fields
+        if caterer.business_name != business_name:
+            return {"success": False, "message": "Identity Lock Active: Business Name of a Verified Partner cannot be changed manually. Please contact technical audit."}
+        if caterer.user and (caterer.user.first_name != first_name or caterer.user.last_name != last_name):
+             return {"success": False, "message": "Identity Lock Active: Signatory Name of a Verified Partner is locked for security."}
+
     caterer.business_name = business_name
     caterer.city = city
     caterer.contact_address = contact_address
@@ -950,6 +1041,99 @@ def delete_customer(customer_id: int, db: Session = Depends(database.get_db), us
     
     return RedirectResponse(url="/admin/customers?success_msg=Customer+deleted+successfully", status_code=status.HTTP_303_SEE_OTHER)
 
+@router.get("/api/customers-overview")
+async def get_customers_overview(
+    db: Session = Depends(database.get_db),
+    admin: models.User = Depends(admin_only)
+):
+    customers = db.query(models.User).filter(
+        models.User.role == "customer",
+        models.User.is_archived == False
+    ).all()
+    
+    enriched = []
+    for c in customers:
+        # Get engagement metrics
+        bookings = db.query(models.Booking).filter(models.Booking.user_id == c.id).all()
+        booking_count = len(bookings)
+        completed_bookings = [b for b in bookings if b.status == "completed"]
+        cancelled_bookings = [b for b in bookings if b.status == "cancelled"]
+        
+        success_rate = 100
+        if booking_count > 0:
+            # Success rate is completed bookings vs total non-draft bookings
+            success_rate = (len(completed_bookings) / booking_count) * 100 if booking_count > 0 else 100
+            
+        total_spent = sum([b.total_amount for b in completed_bookings if b.total_amount])
+        
+        # Get KYC details if any
+        fraud_score = 0
+        if c.identity_verification:
+            fraud_score = c.identity_verification.fraud_score or 0
+
+        enriched.append({
+            "id": c.id,
+            "first_name": c.first_name,
+            "last_name": c.last_name,
+            "email": c.email,
+            "phone_number": c.phone_number,
+            "address": c.address,
+            "is_kyc_complete": c.is_kyc_complete,
+            "status": c.status or "active",
+            "fraud_score": fraud_score,
+            "booking_count": booking_count,
+            "success_rate": round(success_rate, 1),
+            "total_spent": total_spent,
+            "created_at": c.created_at.strftime('%b %d, %Y') if c.created_at else "N/A"
+        })
+        
+    metrics = {
+        "total_customers": db.query(models.User).filter(models.User.role == "customer", models.User.is_archived == False).count(),
+        "active_customers": db.query(models.User).filter(models.User.role == "customer", models.User.status == "active", models.User.is_archived == False).count(),
+        "kyc_completed": db.query(models.User).filter(models.User.role == "customer", models.User.is_kyc_complete == True, models.User.is_archived == False).count(),
+    }
+    
+    return {"success": True, "customers": enriched, "metrics": metrics}
+
+@router.post("/api/customers/{user_id}/suspend")
+async def suspend_customer(user_id: int, db: Session = Depends(database.get_db), admin: models.User = Depends(admin_only)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user: return {"success": False, "message": "User not found"}
+    user.status = "suspended"
+    db.commit()
+    return {"success": True, "message": f"Account for {user.first_name} has been suspended."}
+
+@router.post("/api/customers/{user_id}/activate")
+async def activate_customer(user_id: int, db: Session = Depends(database.get_db), admin: models.User = Depends(admin_only)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user: return {"success": False, "message": "User not found"}
+    user.status = "active"
+    db.commit()
+    return {"success": True, "message": f"Account for {user.first_name} is now active."}
+
+@router.post("/api/customers/{user_id}/flag")
+async def flag_customer(user_id: int, db: Session = Depends(database.get_db), admin: models.User = Depends(admin_only)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user: return {"success": False, "message": "User not found"}
+    user.status = "investigation"
+    db.commit()
+    return {"success": True, "message": f"Account for {user.first_name} has been flagged for compliance investigation."}
+
+@router.get("/api/customers/{user_id}/kyc-audit")
+async def get_customer_kyc_audit(user_id: int, db: Session = Depends(database.get_db), admin: models.User = Depends(admin_only)):
+    kyc = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user_id).first()
+    if not kyc: return {"success": False, "message": "No KYC data available"}
+    
+    return {
+        "success": True,
+        "document_url": kyc.document_url,
+        "selfie_url": kyc.selfie_url,
+        "id_number": kyc.id_number,
+        "fraud_score": kyc.fraud_score,
+        "verified_at": kyc.verified_at.strftime('%b %d, %Y') if kyc.verified_at else "N/A",
+        "ocr_data": kyc.ocr_data
+    }
+
 @router.post("/customers/{customer_id}/verify")
 def verify_customer(customer_id: int, action: str = Form(...), db: Session = Depends(database.get_db), user: models.User = Depends(admin_only)):
     customer = db.query(models.User).filter(models.User.id == customer_id, models.User.role == "customer").first()
@@ -1215,23 +1399,37 @@ async def admin_payments(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
-    # Get all bookings with payment records or history
-    bookings = db.query(models.Booking).filter(models.Booking.payment_status == 'paid', models.Booking.is_archived == False).order_by(models.Booking.created_at.desc()).all()
+    # Fetch all PayoutItems which serve as the Financial Ledger
+    from sqlalchemy.orm import joinedload
+    ledger_items = db.query(models.PayoutItem).options(
+        joinedload(models.PayoutItem.booking).joinedload(models.Booking.caterer)
+    ).order_by(models.PayoutItem.created_at.desc()).all()
     
-    # Get dynamic commission rate from site configuration
-    config = db.query(models.WebsiteConfig).first()
-    commission_rate = (config.commission_rate / 100.0) if config and config.commission_rate else 0.10
+    # Calculate Professional Metrics with Null Safety
+    total_gross = sum(((item.amount or 0.0) + (item.commission_amount or 0.0)) for item in ledger_items)
+    total_commission = sum((item.commission_amount or 0.0) for item in ledger_items)
+    
+    # Escrowed vs Realized Commission
+    realized_commission = sum((item.commission_amount or 0.0) for item in ledger_items if item.status == 'released')
+    escrowed_commission = total_commission - realized_commission
+    
+    monetized_bookings_count = db.query(func.count(func.distinct(models.PayoutItem.booking_id))).scalar() or 0
 
-    total_gross = sum((b.total_amount or 0.0) for b in bookings)
-    total_commission = total_gross * commission_rate
+    metrics_context = {
+        "total_gross": total_gross,
+        "total_commission": total_commission,
+        "realized_commission": realized_commission,
+        "escrowed_commission": escrowed_commission,
+        "monetized_bookings_count": monetized_bookings_count
+    }
+    
+    print(f"[DEBUG FINANCE] Metrics: {metrics_context}")
 
     return templates.TemplateResponse("admin/payments.html", {
         "request": request,
         "user": user,
-        "bookings": bookings,
-        "commission_rate": commission_rate,
-        "total_gross": total_gross,
-        "total_commission": total_commission,
+        "ledger_items": ledger_items,
+        "metrics": metrics_context,
         "active_page": "payments"
     })
 
@@ -1538,11 +1736,13 @@ async def admin_bookings(
     bookings = db.query(models.Booking).filter(models.Booking.is_archived == False).order_by(models.Booking.created_at.desc()).all()
     
     # Calculate metrics
-    total_revenue = sum((b.total_amount or 0.0) for b in bookings if b.status != 'cancelled')
+    realized_revenue = sum((b.total_amount or 0.0) for b in bookings if b.payment_status == 'paid')
+    projected_revenue = sum((b.total_amount or 0.0) for b in bookings if b.status == 'confirmed' and b.payment_status != 'paid')
     pending_bookings = sum(1 for b in bookings if b.status == 'pending')
     
     metrics = {
-        "total_revenue": total_revenue,
+        "realized_revenue": realized_revenue,
+        "projected_revenue": projected_revenue,
         "pending_bookings": pending_bookings,
         "total_bookings": len(bookings)
     }
@@ -1596,6 +1796,11 @@ async def api_booking_details(
             "payment_status": booking.payment_status,
             "payment_method": booking.payment_method,
             "total_amount": float(booking.total_amount or 0),
+            "payment_reference": booking.payment_reference,
+            "payment_proof_url": booking.payment_proof_url,
+            "balance_proof_url": booking.balance_proof_url,
+            "is_caterer_verified": booking.caterer.verification_status == "Verified" if booking.caterer else False,
+            "payout_status": "Settled" if booking.payout_id else "Pending Settlement",
             "customer": customer_data,
             "selected_items": [
                 {
@@ -1603,6 +1808,13 @@ async def api_booking_details(
                     "price": float(item.price or 0),
                     "quantity": 1 # For now
                 } for item in (booking.selected_items or [])
+            ],
+            "history": [
+                {
+                    "status": h.status,
+                    "notes": h.notes,
+                    "created_at": h.created_at.strftime('%b %d, %Y %I:%M %p')
+                } for h in sorted(booking.history, key=lambda x: x.created_at, reverse=True)
             ]
         }
     }

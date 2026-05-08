@@ -129,6 +129,8 @@ async def payment_webhook(
                     payout_id=payout.id,
                     booking_id=booking.id,
                     amount=net_amount,
+                    commission_amount=commission,
+                    payment_reference=external_ref,
                     status=status,
                     release_trigger=trigger
                 )

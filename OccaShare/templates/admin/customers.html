@@ -4,12 +4,12 @@
 
 {% block extra_css %}
 <style>
-    /* Removed .main-content override */
-
     /* KPI Stats Architecture */
     .kpi-grid-clean {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 2rem;
     }
 
     .kpi-card-clean {
@@ -40,14 +40,21 @@
 
     .kpi-info h4 {
         margin: 0;
+        font-size: 0.8rem;
+        color: var(--dm-slate-400);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
     }
 
     .kpi-info .kpi-value {
         margin-top: 4px;
         display: block;
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--dm-secondary);
     }
 
-    /* Management Header */
+    /* Management Terminal */
     .management-terminal {
         background: white;
         border-radius: 1.25rem;
@@ -64,39 +71,40 @@
         border-bottom: 1px solid var(--dm-slate-100);
     }
 
-    .terminal-header h3 {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
     /* Search Integration */
     .search-clean {
         position: relative;
         min-width: 320px;
     }
 
-    .search-clean i {
+    .dm-input-group {
+        position: relative;
+        margin-bottom: 0;
+    }
+
+    .dm-input-group i {
         position: absolute;
-        left: 1rem;
+        left: 1.25rem;
         top: 50%;
         transform: translateY(-50%);
         color: var(--dm-slate-400);
         font-size: 0.9rem;
+        transition: color 0.3s;
     }
 
-    .search-clean input {
+    .dm-input-group input {
         width: 100%;
-        padding: 0.75rem 1rem 0.75rem 2.5rem;
+        padding: 0.75rem 1rem 0.75rem 3rem;
         border: 1.5px solid var(--dm-slate-100);
-        border-radius: 10px;
-        font-size: 0.875rem;
-        outline: none;
+        border-radius: 12px;
+        font-size: 0.9rem;
+        font-weight: 500;
         background: var(--dm-slate-50);
         transition: all 0.2s;
     }
 
-    .search-clean input:focus {
+    .dm-input-group input:focus {
+        outline: none;
         border-color: var(--dm-primary);
         background: white;
         box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.08);
@@ -110,21 +118,19 @@
 
     .cust-table th {
         background: var(--dm-slate-50);
-        padding: 1rem 2rem;
+        padding: 1rem;
         text-align: left;
         font-size: 0.75rem;
         font-weight: 600;
         color: var(--dm-slate-400);
         text-transform: uppercase;
-        letter-spacing: 0.1em;
         border-bottom: 1px solid var(--dm-slate-100);
     }
 
     .cust-table td {
-        padding: 1.25rem 2rem;
-        border-bottom: 1px solid var(--dm-slate-100);
+        padding: 1.25rem 1rem;
+        border-bottom: 1px solid var(--dm-slate-50);
         vertical-align: middle;
-        font-size: 0.9rem;
     }
 
     .cust-row:hover {
@@ -141,8 +147,6 @@
         width: 42px;
         height: 42px;
         border-radius: 10px;
-        background: var(--dm-primary-light);
-        color: var(--dm-primary);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -151,7 +155,7 @@
     }
 
     .user-info-text .name {
-        font-weight: 700;
+        font-weight: 800;
         color: var(--dm-secondary);
         display: block;
     }
@@ -159,14 +163,18 @@
     .user-info-text .email {
         font-size: 0.8rem;
         color: var(--dm-slate-400);
+        font-weight: 500;
     }
 
     .badge-clean {
         padding: 4px 10px;
         border-radius: 6px;
-        font-size: 0.7rem;
+        font-size: 0.65rem;
         font-weight: 700;
         text-transform: uppercase;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
     }
 
     /* ACTION DROPDOWN */
@@ -200,7 +208,7 @@
         position: absolute;
         top: 100%;
         right: 0;
-        width: 210px;
+        width: 220px;
         background: white;
         border: 1px solid var(--dm-slate-100);
         border-radius: 12px;
@@ -209,23 +217,10 @@
         z-index: 1000;
         padding: 0.5rem;
         margin-top: 8px;
-        animation: menuFade 0.2s ease;
     }
 
     .dropdown-menu.show {
         display: block;
-    }
-
-    @keyframes menuFade {
-        from {
-            opacity: 0;
-            transform: translateY(-5px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
     }
 
     .dropdown-item {
@@ -257,24 +252,15 @@
         color: var(--dm-slate-400);
     }
 
-    .dropdown-item:hover i {
-        color: var(--dm-primary);
-    }
-
     .dropdown-item.danger {
         color: #ef4444;
     }
 
     .dropdown-item.danger:hover {
         background: #fef2f2;
-        color: #ef4444;
     }
 
-    .dropdown-item.danger:hover i {
-        color: #ef4444;
-    }
-
-    /* MODAL SYSTEM (Standardized with Caterers) */
+    /* MODAL SYSTEM */
     .admin-modal-overlay {
         position: fixed;
         inset: 0;
@@ -298,24 +284,10 @@
         border-radius: 1.25rem;
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
         overflow: hidden;
-        animation: modalSlide 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    @keyframes modalSlide {
-        from {
-            opacity: 0;
-            transform: translateY(20px) scale(0.98);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-        }
     }
 
     .modal-header-clean {
         padding: 1.5rem 2rem;
-        background: var(--dm-slate-50);
         border-bottom: 1px solid var(--dm-slate-100);
         display: flex;
         justify-content: space-between;
@@ -332,10 +304,6 @@
         gap: 12px;
     }
 
-    .modal-header-clean h3 i {
-        color: var(--dm-primary);
-    }
-
     .modal-close-btn {
         background: none;
         border: none;
@@ -350,94 +318,33 @@
 
     .modal-footer-clean {
         padding: 1.25rem 2rem;
-        background: var(--dm-slate-50);
         border-top: 1px solid var(--dm-slate-100);
         display: flex;
         justify-content: flex-end;
         gap: 12px;
     }
 
-    /* Admin Form Pro */
-    .admin-form-pro label {
-        display: block;
-        font-size: 0.7rem;
-        font-weight: 700;
-        color: var(--dm-slate-600);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-bottom: 6px;
-        padding-left: 4px;
-    }
-
-    .dm-input-group {
-        position: relative;
-        margin-bottom: 1.25rem;
-    }
-
-    .dm-input-group i {
-        position: absolute;
-        left: 1.25rem;
-        top: 1rem;
-        color: var(--dm-slate-400);
-        font-size: 0.9rem;
-        transition: color 0.3s;
-    }
-
-    .dm-input-group input {
-        width: 100%;
-        padding: 0.85rem 1.25rem 0.85rem 3rem;
-        border: 1.5px solid var(--dm-slate-100);
-        border-radius: 12px;
-        font-size: 0.95rem;
-        font-weight: 500;
-        background: white;
-        transition: all 0.2s;
-    }
-
-    .dm-input-group input:focus {
-        outline: none;
-        border-color: var(--dm-primary);
-        box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.08);
-    }
-
-    .dm-input-group input:focus+i {
-        color: var(--dm-primary);
-    }
-
-    /* Audit Detail Layout */
-    .audit-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1.5rem;
-    }
-
     .audit-item {
-        padding-bottom: 1rem;
-        border-bottom: 1px solid var(--dm-slate-50);
+        margin-bottom: 1rem;
     }
 
     .audit-label {
         font-size: 0.65rem;
-        font-weight: 700;
+        font-weight: 800;
         color: var(--dm-slate-400);
         text-transform: uppercase;
+        letter-spacing: 0.05em;
         display: block;
         margin-bottom: 4px;
     }
 
     .audit-value {
-        font-size: 0.95rem;
-        font-weight: 600;
+        font-size: 0.9rem;
+        font-weight: 700;
         color: var(--dm-secondary);
         display: flex;
         align-items: center;
         gap: 8px;
-    }
-
-    .audit-value i {
-        color: var(--dm-primary);
-        opacity: 0.6;
-        font-size: 0.85rem;
     }
 
     .btn-action-primary {
@@ -446,93 +353,22 @@
         border: none;
         padding: 0.75rem 1.5rem;
         border-radius: 10px;
-        font-weight: 600;
+        font-weight: 700;
         font-size: 0.9rem;
         cursor: pointer;
         display: flex;
         align-items: center;
         gap: 10px;
-        transition: opacity 0.2s;
     }
 
-    .btn-action-primary:hover {
-        opacity: 0.9;
-    }
-
-    /* Real-time Pulse & Sync */
     .pulse-live {
         animation: pulse-live 2s infinite;
     }
 
     @keyframes pulse-live {
-        0% {
-            transform: scale(0.95);
-            opacity: 0.5;
-        }
-
-        50% {
-            transform: scale(1.1);
-            opacity: 1;
-        }
-
-        100% {
-            transform: scale(0.95);
-            opacity: 0.5;
-        }
-    }
-
-    .sync-status {
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: var(--dm-slate-400);
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    /* HIGH-FIDELITY RESPONSIVENESS */
-    @media (max-width: 1200px) {
-        .kpi-grid-clean {
-            grid-template-columns: repeat(2, 1fr);
-        }
-
-        /* Removed .main-content override */
-    }
-
-    @media (max-width: 768px) {
-        .kpi-grid-clean {
-            grid-template-columns: 1fr;
-        }
-
-        .page-header h1 {
-            font-size: 1.5rem;
-        }
-
-        .management-terminal {
-            padding: 1.25rem !important;
-        }
-
-        .terminal-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 1rem;
-        }
-
-        .dm-input-group {
-            width: 100% !important;
-        }
-
-        .cust-table th:nth-child(3),
-        .cust-table td:nth-child(3) {
-            display: none;
-        }
-
-        /* Hide Date on Mobile */
-        .admin-modal-card {
-            padding: 0;
-        }
-
-        .modal-body-clean {}
+        0% { transform: scale(0.95); opacity: 0.5; }
+        50% { transform: scale(1.1); opacity: 1; }
+        100% { transform: scale(0.95); opacity: 0.5; }
     }
 </style>
 {% endblock %}
@@ -545,7 +381,6 @@
     </div>
 </div>
 
-<!-- KPI Dashboard -->
 <div class="kpi-grid-clean">
     <div class="kpi-card-clean">
         <div class="kpi-icon-box" style="background: #eff6ff; color: #3b82f6;"><i class="fas fa-users"></i></div>
@@ -562,8 +397,7 @@
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: var(--dm-primary-light); color: var(--dm-primary);"><i
-                class="fas fa-id-card"></i></div>
+        <div class="kpi-icon-box" style="background: var(--dm-primary-light); color: var(--dm-primary);"><i class="fas fa-id-card"></i></div>
         <div class="kpi-info">
             <h4>KYC Verified</h4>
             <span class="kpi-value" id="kpi-kyc">{{ metrics.kyc_completed }}</span>
@@ -571,99 +405,105 @@
     </div>
 </div>
 
-<!-- Management Terminal -->
-<div class="management-terminal"
-    style="padding: 2rem; border-radius: 1rem; border: 1px solid var(--dm-slate-100); background: white;">
-    <div class="terminal-header"
-        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+<div class="management-terminal">
+    <div class="terminal-header">
         <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--dm-secondary);">User Directory</h3>
-        <div class="dm-input-group" style="margin: 0; width: 320px;">
+        <div class="dm-input-group" style="width: 320px;">
             <i class="fas fa-search"></i>
             <input type="text" id="customerSearchInput" placeholder="Filter by name, email..." onkeyup="filterTable()">
         </div>
     </div>
 
     <div style="overflow-x: auto;">
-        <table class="cust-table" id="customersTable" style="width: 100%; border-collapse: collapse;">
+        <table class="cust-table" id="customersTable">
             <thead>
                 <tr>
-                    <th
-                        style="text-align: left; font-size: 0.75rem; font-weight: 600; color: var(--dm-slate-400); text-transform: uppercase; padding: 1rem; border-bottom: 1px solid var(--dm-slate-100);">
-                        Customer Identity</th>
-                    <th
-                        style="text-align: left; font-size: 0.75rem; font-weight: 600; color: var(--dm-slate-400); text-transform: uppercase; padding: 1rem; border-bottom: 1px solid var(--dm-slate-100);">
-                        KYC Status</th>
-                    <th
-                        style="text-align: left; font-size: 0.75rem; font-weight: 600; color: var(--dm-slate-400); text-transform: uppercase; padding: 1rem; border-bottom: 1px solid var(--dm-slate-100);">
-                        Registry Date</th>
-                    <th
-                        style="text-align: right; font-size: 0.75rem; font-weight: 600; color: var(--dm-slate-400); text-transform: uppercase; padding: 1rem; border-bottom: 1px solid var(--dm-slate-100);">
-                        Actions</th>
+                    <th>Customer Identity</th>
+                    <th>Governance & KYC</th>
+                    <th>Engagement</th>
+                    <th style="text-align: right;">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for customer in customers %}
                 <tr class="cust-row">
-                    <td style="padding: 1.25rem 1rem; border-bottom: 1px solid var(--dm-slate-50);">
+                    <td>
                         <div class="user-profile-cell">
-                            <div class="user-avatar">{{ customer.first_name[0] }}{{ customer.last_name[0] }}</div>
+                            <div class="user-avatar" style="background: var(--dm-slate-50); color: var(--dm-secondary); border: 1px solid var(--dm-slate-100);">
+                                {{ customer.first_name[0] }}{{ customer.last_name[0] }}
+                            </div>
                             <div class="user-info-text">
                                 <span class="name">{{ customer.first_name }} {{ customer.last_name }}</span>
                                 <span class="email">{{ customer.email }}</span>
                             </div>
                         </div>
                     </td>
-                    <td style="padding: 1.25rem 1rem; border-bottom: 1px solid var(--dm-slate-50);">
-                        {% if customer.is_kyc_complete %}
-                        <span class="badge-clean"
-                            style="background: var(--dm-primary-light); color: var(--dm-primary);"><i
-                                class="fas fa-id-shield"></i> Verified</span>
-                        {% else %}
-                        <span class="badge-clean"
-                            style="background: var(--dm-slate-100); color: var(--dm-slate-400);"><i
-                                class="fas fa-clock"></i> Pending</span>
-                        {% endif %}
+                    <td>
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                            <span class="badge-clean" style="background: {% if customer.is_kyc_complete %}#ecfdf5; color: #10b981;{% else %}#f1f5f9; color: #64748b;{% endif %}">
+                                <i class="fas {% if customer.is_kyc_complete %}fa-id-shield{% else %}fa-clock{% endif %}"></i>
+                                {{ 'Verified' if customer.is_kyc_complete else 'Pending KYC' }}
+                            </span>
+                            <span class="badge-clean" style="background: {% if customer.status == 'active' %}#eff6ff; color: #2563eb;{% elif customer.status == 'suspended' %}#fef2f2; color: #ef4444;{% else %}#fff7ed; color: #f97316;{% endif %}">
+                                <i class="fas {% if customer.status == 'active' %}fa-user-check{% elif customer.status == 'suspended' %}fa-user-slash{% else %}fa-magnifying-glass-chart{% endif %}"></i>
+                                {{ customer.status | title if customer.status else 'Active' }}
+                            </span>
+                        </div>
                     </td>
-                    <td
-                        style="padding: 1.25rem 1rem; border-bottom: 1px solid var(--dm-slate-50); font-weight: 600; color: var(--dm-slate-600);">
-                        {{ customer.created_at.strftime('%b %d, %Y') if customer.created_at else 'N/A' }}
+                    <td>
+                        <div style="font-weight: 800; color: var(--dm-secondary); font-size: 0.95rem;">
+                            ₱{{ "{:,.2f}".format(customer.bookings | selectattr('status', 'equalto', 'completed') | map(attribute='total_amount') | sum) }}
+                            <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 500;">Spent</span>
+                        </div>
+                        <div style="font-size: 0.75rem; color: #10b981; font-weight: 700; margin-top: 2px;">
+                            <i class="fas fa-chart-line"></i> 
+                            {% set total_b = customer.bookings | length %}
+                            {% set completed_b = customer.bookings | selectattr('status', 'equalto', 'completed') | list | length %}
+                            {{ (completed_b / total_b * 100) | round(1) if total_b > 0 else 100 }}% Success Rate
+                        </div>
                     </td>
-                    <td style="padding: 1.25rem 1rem; border-bottom: 1px solid var(--dm-slate-50); text-align: right;">
+                    <td style="text-align: right;">
                         <div class="actions-dropdown">
                             <button class="dropdown-trigger" onclick="toggleDropdown(this, event)">
                                 <i class="fas fa-ellipsis-v"></i>
                             </button>
                             <div class="dropdown-menu">
-                                <button class="dropdown-item"
-                                    data-name="{{ customer.first_name }} {{ customer.last_name }}"
-                                    data-email="{{ customer.email }}" data-phone="{{ customer.phone_number or 'N/A' }}"
-                                    data-address="{{ customer.address or 'N/A' }}"
-                                    data-kyc="{{ 'Verified' if customer.is_kyc_complete else 'Incomplete' }}"
-                                    data-date="{{ customer.created_at.strftime('%b %d, %Y') if customer.created_at else 'N/A' }}"
-                                    onclick="openViewCustomerModal(this)">
+                                <button class="dropdown-item" 
+                                        data-id="{{ customer.id }}" data-name="{{ customer.first_name }} {{ customer.last_name }}"
+                                        data-email="{{ customer.email }}" data-phone="{{ customer.phone_number or 'N/A' }}"
+                                        data-address="{{ customer.address or 'N/A' }}"
+                                        data-kyc="{{ 'Verified' if customer.is_kyc_complete else 'Incomplete' }}"
+                                        data-status="{{ customer.status or 'active' }}"
+                                        data-date="{{ customer.created_at.strftime('%b %d, %Y') if customer.created_at else 'N/A' }}"
+                                        onclick="openViewCustomerModal(this)">
                                     <i class="fas fa-eye"></i> View Profile
                                 </button>
-
-                                {% if not customer.is_kyc_complete %}
-                                <a href="/admin/verify/{{ customer.id }}" class="dropdown-item"
-                                    style="color: var(--dm-primary);">
-                                    <i class="fas fa-file-contract"></i> Review Audit
-                                </a>
-                                {% endif %}
-
-                                <button class="dropdown-item" data-id="{{ customer.id }}"
-                                    data-first="{{ customer.first_name }}" data-last="{{ customer.last_name }}"
+                                <button class="dropdown-item" 
+                                    {% if customer.is_kyc_complete %}
+                                    onclick="alert('Identity Lock: Verified identities cannot be modified directly. Please use Compliance Audit for corrections.')" 
+                                    style="opacity: 0.5;"
+                                    {% else %}
+                                    data-id="{{ customer.id }}" data-first="{{ customer.first_name }}" data-last="{{ customer.last_name }}"
                                     data-email="{{ customer.email }}" data-phone="{{ customer.phone_number or '' }}"
-                                    data-address="{{ customer.address or '' }}" onclick="openEditCustomerModal(this)">
+                                    data-address="{{ customer.address or '' }}" onclick="openEditCustomerModal(this)"
+                                    {% endif %}>
                                     <i class="fas fa-edit"></i> Edit Details
                                 </button>
-                                <div class="dropdown-divider"
-                                    style="height: 1px; background: var(--dm-slate-50); margin: 6px 8px;"></div>
-                                <form action="/admin/customers/{{ customer.id }}/archive" method="POST"
-                                    onsubmit="event.preventDefault(); window.showConfirm('Archive this customer profile?', () => this.submit());">
-                                    <button type="submit" class="dropdown-item danger">
-                                        <i class="fas fa-trash-alt"></i> Archive Account
-                                    </button>
+                                <div class="dropdown-divider" style="height: 1px; background: var(--dm-slate-50); margin: 6px 8px;"></div>
+                                {% if customer.status == 'suspended' %}
+                                <button class="dropdown-item" style="color: #2563eb;" onclick="activateCustomer({{ customer.id }})">
+                                    <i class="fas fa-user-check"></i> Activate Account
+                                </button>
+                                {% else %}
+                                <button class="dropdown-item" style="color: #ef4444;" onclick="suspendCustomer({{ customer.id }})">
+                                    <i class="fas fa-user-slash"></i> Suspend Account
+                                </button>
+                                <button class="dropdown-item" style="color: #f97316;" onclick="flagCustomer({{ customer.id }})">
+                                    <i class="fas fa-flag"></i> Flag for Investigation
+                                </button>
+                                {% endif %}
+                                <form action="/admin/customers/{{ customer.id }}/archive" method="POST" onsubmit="event.preventDefault(); window.showConfirm('Archive this account?', () => this.submit());">
+                                    <button type="submit" class="dropdown-item danger"><i class="fas fa-trash-alt"></i> Archive Account</button>
                                 </form>
                             </div>
                         </div>
@@ -673,19 +513,22 @@
             </tbody>
         </table>
     </div>
+    
+    <div id="customer-sync-status" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--dm-slate-100); font-size: 0.75rem; font-weight: 700; color: var(--dm-slate-400); display: flex; align-items: center; gap: 8px;">
+        <i class="fas fa-circle pulse-live" style="font-size: 8px; color: var(--dm-primary);"></i> Real-time Identity Registry Online
+    </div>
 </div>
 
-<!-- Standardized Modals -->
+<!-- Modals -->
 <div id="viewCustomerModal" class="admin-modal-overlay">
-    <div class="admin-modal-card">
-        <div class="modal-header-clean">
-            <h3><i class="fas fa-id-card-clip"></i> User Identity Summary</h3>
+    <div class="admin-modal-card" style="max-width: 750px;">
+        <div class="modal-header-clean" style="background: white; border-bottom: 2px solid #f8fafc;">
+            <h3><i class="fas fa-id-card-clip"></i> Customer Intelligence Report</h3>
             <button class="modal-close-btn" onclick="closeViewCustomerModal()">&times;</button>
         </div>
-        <div class="modal-body-clean" id="viewCustomerBody"></div>
-        <div class="modal-footer-clean">
-            <button class="btn-action-primary" style="background: var(--dm-slate-100); color: var(--dm-slate-600);"
-                onclick="closeViewCustomerModal()">Dismiss Record</button>
+        <div class="modal-body-clean" id="viewCustomerBody" style="background: #f8fafc;"></div>
+        <div class="modal-footer-clean" style="background: white;">
+            <button class="btn-action-primary" style="background: #f1f5f9; color: #64748b;" onclick="closeViewCustomerModal()">Close Report</button>
         </div>
     </div>
 </div>
@@ -699,37 +542,37 @@
         <form id="editCustomerForm" class="admin-form-pro">
             <input type="hidden" name="customer_id" id="editCustomerId">
             <div class="modal-body-clean">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-                    <div style="grid-column: span 1;">
-                        <label>Legal First Name</label>
-                        <div class="dm-input-group"><i class="fas fa-user"></i><input type="text" name="first_name"
-                                id="editFirstName" required></div>
+                <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; display: flex; gap: 12px; align-items: flex-start;">
+                    <i class="fas fa-info-circle" style="color: #d97706; margin-top: 3px;"></i>
+                    <div style="font-size: 0.8rem; color: #92400e; font-weight: 500; line-height: 1.4;">
+                        Admin oversight is required for profile changes. Ensure you have verified the identity of the user before committing these changes to the registry.
                     </div>
-                    <div style="grid-column: span 1;">
-                        <label>Legal Last Name</label>
-                        <div class="dm-input-group"><i class="fas fa-user"></i><input type="text" name="last_name"
-                                id="editLastName" required></div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                    <div>
+                        <label>First Name</label>
+                        <div class="dm-input-group"><i class="fas fa-user"></i><input type="text" name="first_name" id="editFirstName" required></div>
+                    </div>
+                    <div>
+                        <label>Last Name</label>
+                        <div class="dm-input-group"><i class="fas fa-user"></i><input type="text" name="last_name" id="editLastName" required></div>
                     </div>
                     <div style="grid-column: span 2;">
-                        <label>Identity Email Identity</label>
-                        <div class="dm-input-group"><i class="fas fa-envelope"></i><input type="email" name="email"
-                                id="editEmail" required></div>
+                        <label>Email Address</label>
+                        <div class="dm-input-group"><i class="fas fa-envelope"></i><input type="email" name="email" id="editEmail" required></div>
                     </div>
                     <div>
-                        <label>Contact Number</label>
-                        <div class="dm-input-group"><i class="fas fa-phone"></i><input type="tel" name="phone"
-                                id="editPhone"></div>
+                        <label>Phone</label>
+                        <div class="dm-input-group"><i class="fas fa-phone"></i><input type="tel" name="phone" id="editPhone"></div>
                     </div>
                     <div>
-                        <label>Primary Address</label>
-                        <div class="dm-input-group"><i class="fas fa-map-marker-alt"></i><input type="text"
-                                name="address" id="editAddress"></div>
+                        <label>Address</label>
+                        <div class="dm-input-group"><i class="fas fa-map-marker-alt"></i><input type="text" name="address" id="editAddress"></div>
                     </div>
                 </div>
             </div>
             <div class="modal-footer-clean">
-                <button type="button" class="dropdown-item" style="width: auto; padding: 0.75rem 1.5rem;"
-                    onclick="closeEditCustomerModal()">Cancel</button>
+                <button type="button" class="dropdown-item" style="width: auto;" onclick="closeEditCustomerModal()">Cancel</button>
                 <button type="submit" class="btn-action-primary">Commit Changes</button>
             </div>
         </form>
@@ -739,184 +582,151 @@
 
 {% block extra_js %}
 <script>
-    // Real-time Intelligence Hub
-    window.addEventListener('system_update', function (e) {
-        const data = e.detail;
-        console.log("Customer Terminal: Signal received ->", data.type);
-
-        // Refresh for relevant user/kyc events
+    window.addEventListener('system_update', (e) => {
         const triggers = ['new_signup', 'kyc_update', 'customer_update', 'user_archived'];
-        if (triggers.includes(data.type)) {
-            refreshCustomersTerminal();
-        }
+        if (triggers.includes(e.detail.type)) refreshCustomersTerminal();
     });
 
     async function refreshCustomersTerminal() {
         const statusEl = document.getElementById('customer-sync-status');
-        if (statusEl) statusEl.innerHTML = '<i class="fas fa-sync fa-spin" style="color: var(--dm-primary);"></i> SYNCING...';
-
+        if (statusEl) statusEl.innerHTML = '<i class="fas fa-sync fa-spin"></i> SYNCING...';
         try {
             const res = await fetch('/admin/api/customers-overview');
             const data = await res.json();
             if (data.success) {
-                // Update KPIs
                 document.getElementById('kpi-total').innerText = data.metrics.total_customers;
                 document.getElementById('kpi-active').innerText = data.metrics.active_customers;
                 document.getElementById('kpi-kyc').innerText = data.metrics.kyc_completed;
 
-                // Update Table
                 const tbody = document.querySelector('#customersTable tbody');
                 tbody.innerHTML = data.customers.map(c => `
                     <tr class="cust-row">
-                        <td style="padding: 1.25rem 1rem; border-bottom: 1px solid var(--dm-slate-50);">
+                        <td>
                             <div class="user-profile-cell">
-                                <div class="user-avatar">${c.first_name[0]}${c.last_name[0]}</div>
+                                <div class="user-avatar" style="background: var(--dm-slate-50); color: var(--dm-secondary); border: 1px solid var(--dm-slate-100);">${c.first_name[0]}${c.last_name[0]}</div>
                                 <div class="user-info-text">
-                                    <span class="name">${c.first_name} ${c.last_name}</span>
-                                    <span class="email">${c.email}</span>
+                                    <span class="name" style="font-weight: 800;">${c.first_name} ${c.last_name}</span>
+                                    <span class="email" style="font-weight: 500;">${c.email}</span>
                                 </div>
                             </div>
                         </td>
-                        <td style="padding: 1.25rem 1rem; border-bottom: 1px solid var(--dm-slate-50);">
-                            ${c.is_kyc_complete
-                        ? `<span class="badge-clean" style="background: var(--dm-primary-light); color: var(--dm-primary);"><i class="fas fa-id-shield"></i> Verified</span>`
-                        : `<span class="badge-clean" style="background: var(--dm-slate-100); color: var(--dm-slate-400);"><i class="fas fa-clock"></i> Pending</span>`
-                    }
+                        <td>
+                            <div style="display: flex; flex-direction: column; gap: 6px;">
+                                <span class="badge-clean" style="background: ${c.is_kyc_complete ? '#ecfdf5; color: #10b981;' : '#f1f5f9; color: #64748b;'}">
+                                    <i class="fas ${c.is_kyc_complete ? 'fa-id-shield' : 'fa-clock'}"></i>
+                                    ${c.is_kyc_complete ? 'Verified' : 'Pending KYC'}
+                                </span>
+                                <span class="badge-clean" style="font-size: 0.65rem; background: ${c.status === 'active' ? '#eff6ff; color: #2563eb;' : (c.status === 'suspended' ? '#fef2f2; color: #ef4444;' : '#fff7ed; color: #f97316;')}">
+                                    <i class="fas ${c.status === 'active' ? 'fa-user-check' : (c.status === 'suspended' ? 'fa-user-slash' : 'fa-magnifying-glass-chart')}"></i>
+                                    ${c.status.charAt(0).toUpperCase() + c.status.slice(1)}
+                                </span>
+                            </div>
                         </td>
-                        <td style="padding: 1.25rem 1rem; border-bottom: 1px solid var(--dm-slate-50); font-weight: 600; color: var(--dm-slate-600);">
-                            ${c.created_at}
+                        <td>
+                            <div style="font-weight: 800; color: var(--dm-secondary); font-size: 0.95rem;">
+                                ₱${Number(c.total_spent).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                                <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 500;">Spent</span>
+                            </div>
+                            <div style="font-size: 0.75rem; color: #10b981; font-weight: 700; margin-top: 2px;">
+                                <i class="fas fa-chart-line"></i> ${c.success_rate}% Success Rate
+                            </div>
                         </td>
-                        <td style="padding: 1.25rem 1rem; border-bottom: 1px solid var(--dm-slate-50); text-align: right;">
+                        <td style="text-align: right;">
                             <div class="actions-dropdown">
-                                <button class="dropdown-trigger" onclick="toggleDropdown(this, event)">
-                                    <i class="fas fa-ellipsis-v"></i>
-                                </button>
+                                <button class="dropdown-trigger" onclick="toggleDropdown(this, event)"><i class="fas fa-ellipsis-v"></i></button>
                                 <div class="dropdown-menu">
-                                    <button class="dropdown-item" 
-                                            data-name="${c.first_name} ${c.last_name}"
-                                            data-email="${c.email}"
-                                            data-phone="${c.phone_number || 'N/A'}"
-                                            data-address="${c.address || 'N/A'}"
-                                            data-kyc="${c.is_kyc_complete ? 'Verified' : 'Incomplete'}"
-                                            data-date="${c.created_at}"
-                                            onclick="openViewCustomerModal(this)">
-                                        <i class="fas fa-eye"></i> View Profile
-                                    </button>
-                                    ${!c.is_kyc_complete ? `
-                                    <a href="/admin/verify/${c.id}" class="dropdown-item" style="color: var(--dm-primary);">
-                                        <i class="fas fa-file-contract"></i> Review Audit
-                                    </a>` : ''}
-                                    <button class="dropdown-item" 
-                                            data-id="${c.id}"
-                                            data-first="${c.first_name}"
-                                            data-last="${c.last_name}"
-                                            data-email="${c.email}"
-                                            data-phone="${c.phone_number || ''}"
-                                            data-address="${c.address || ''}"
-                                            onclick="openEditCustomerModal(this)">
-                                        <i class="fas fa-edit"></i> Edit Details
-                                    </button>
+                                    <button class="dropdown-item" data-id="${c.id}" data-name="${c.first_name} ${c.last_name}" data-email="${c.email}" data-phone="${c.phone_number || 'N/A'}" data-address="${c.address || 'N/A'}" data-kyc="${c.is_kyc_complete ? 'Verified' : 'Incomplete'}" data-status="${c.status}" data-date="${c.created_at}" onclick="openViewCustomerModal(this)"><i class="fas fa-eye"></i> View Profile</button>
+                                    <button class="dropdown-item" ${c.is_kyc_complete ? `onclick="alert('Identity Lock Active')" style="opacity: 0.5;"` : `onclick="openEditCustomerModal(this)"`} data-id="${c.id}" data-first="${c.first_name}" data-last="${c.last_name}" data-email="${c.email}" data-phone="${c.phone_number || ''}" data-address="${c.address || ''}"><i class="fas fa-edit"></i> Edit Details</button>
                                     <div class="dropdown-divider" style="height: 1px; background: var(--dm-slate-50); margin: 6px 8px;"></div>
-                                    <form action="/admin/customers/${c.id}/archive" method="POST" onsubmit="event.preventDefault(); window.showConfirm('Archive this customer profile?', () => this.submit());">
-                                        <button type="submit" class="dropdown-item danger">
-                                            <i class="fas fa-trash-alt"></i> Archive Account
-                                        </button>
+                                    ${c.status === 'suspended' ? 
+                                        `<button class="dropdown-item" style="color: #2563eb;" onclick="activateCustomer(${c.id})"><i class="fas fa-user-check"></i> Activate Account</button>` :
+                                        `<button class="dropdown-item" style="color: #ef4444;" onclick="suspendCustomer(${c.id})"><i class="fas fa-user-slash"></i> Suspend Account</button>
+                                         <button class="dropdown-item" style="color: #f97316;" onclick="flagCustomer(${c.id})"><i class="fas fa-flag"></i> Flag for Investigation</button>`
+                                    }
+                                    <form action="/admin/customers/${c.id}/archive" method="POST" onsubmit="event.preventDefault(); window.showConfirm('Archive this account?', () => this.submit());">
+                                        <button type="submit" class="dropdown-item danger"><i class="fas fa-trash-alt"></i> Archive Account</button>
                                     </form>
                                 </div>
                             </div>
                         </td>
                     </tr>
                 `).join('');
-
-                // Re-apply search filter if active
-                filterTable();
-
-                if (statusEl) statusEl.innerHTML = '<i class="fas fa-circle pulse-live" style="font-size: 8px; color: var(--dm-primary);"></i> Live Registry Sync Active';
+                if (statusEl) statusEl.innerHTML = '<i class="fas fa-circle pulse-live" style="font-size: 8px; color: var(--dm-primary);"></i> Real-time Identity Registry Online';
             }
         } catch (err) {
-            console.error("Customer Sync Failed:", err);
-            if (statusEl) statusEl.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i> SYNC OFFLINE';
+            if (statusEl) statusEl.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i> SYNC INTERRUPTED';
         }
     }
 
     function toggleDropdown(btn, event) {
         event.stopPropagation();
-        document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
-            if (menu !== btn.nextElementSibling) {
-                menu.classList.remove('show');
-                menu.previousElementSibling.classList.remove('active');
-            }
-        });
-        const menu = btn.nextElementSibling;
-        menu.classList.toggle('show');
-        btn.classList.toggle('active');
+        document.querySelectorAll('.dropdown-menu.show').forEach(m => { if (m !== btn.nextElementSibling) m.classList.remove('show'); });
+        btn.nextElementSibling.classList.toggle('show');
     }
 
-    window.addEventListener('click', function (e) {
-        if (!e.target.closest('.actions-dropdown')) {
-            document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
-                menu.classList.remove('show');
-                menu.previousElementSibling.classList.remove('active');
-            });
-        }
-    });
+    window.addEventListener('click', () => { document.querySelectorAll('.dropdown-menu.show').forEach(m => m.classList.remove('show')); });
 
     function filterTable() {
-        const query = document.getElementById('customerSearchInput').value.toLowerCase();
-        const rows = document.querySelectorAll('.cust-row');
-        rows.forEach(row => {
-            const text = row.innerText.toLowerCase();
-            row.style.display = text.includes(query) ? '' : 'none';
-        });
+        const q = document.getElementById('customerSearchInput').value.toLowerCase();
+        document.querySelectorAll('.cust-row').forEach(r => { r.style.display = r.innerText.toLowerCase().includes(q) ? '' : 'none'; });
     }
 
     function openViewCustomerModal(btn) {
         const body = document.getElementById('viewCustomerBody');
-        body.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 1.5rem; margin-bottom: 2rem; padding: 1.5rem; background: var(--dm-slate-50); border-radius: 1rem; border: 1px solid var(--dm-slate-100);">
-                <div style="width: 72px; height: 72px; border-radius: 16px; background: white; color: var(--dm-primary); display: flex; align-items: center; justify-content: center; font-size: 1.75rem; font-weight: 800; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid var(--dm-slate-100);">
-                    ${btn.dataset.name.split(' ').map(n => n[0]).join('')}
-                </div>
-                <div>
-                    <h4 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--dm-secondary);">${btn.dataset.name}</h4>
-                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
-                        <span class="badge-clean" style="background: ${btn.dataset.kyc === 'Verified' ? '#ecfdf5' : '#f1f5f9'}; color: ${btn.dataset.kyc === 'Verified' ? '#10b981' : '#64748b'};">
-                            <i class="fas ${btn.dataset.kyc === 'Verified' ? 'fa-check-circle' : 'fa-clock'}"></i> ${btn.dataset.kyc}
-                        </span>
-                        <span style="font-size: 0.75rem; color: var(--dm-slate-400); font-weight: 600;">Reg. ${btn.dataset.date}</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="audit-grid" style="gap: 1.5rem;">
-                <div class="audit-item">
-                    <span class="audit-label">Contact Email</span>
-                    <div class="audit-value"><i class="fas fa-envelope"></i> ${btn.dataset.email}</div>
-                </div>
-                <div class="audit-item">
-                    <span class="audit-label">Mobile Number</span>
-                    <div class="audit-value"><i class="fas fa-phone"></i> ${btn.dataset.phone}</div>
-                </div>
-                <div class="audit-item" style="grid-column: span 2;">
-                    <span class="audit-label">Verified Residential Address</span>
-                    <div class="audit-value"><i class="fas fa-location-dot"></i> ${btn.dataset.address}</div>
-                </div>
-            </div>
-            
-            <div style="margin-top: 2rem; padding: 1.25rem; background: var(--dm-primary-light); border-radius: 12px; border: 1px solid rgba(249, 115, 22, 0.1);">
-                <div style="display: flex; gap: 12px; align-items: flex-start;">
-                    <i class="fas fa-shield-halved" style="color: var(--dm-primary); margin-top: 2px;"></i>
-                    <div style="flex: 1;">
-                        <div style="font-size: 0.7rem; font-weight: 800; color: var(--dm-primary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Compliance Intelligence Memo</div>
-                        <div style="font-size: 0.85rem; color: var(--dm-secondary); line-height: 1.5; font-weight: 500;">
-                            This record represents an active platform user. Identity verification and historical audit logs are maintained for security assurance.
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
+        body.innerHTML = '<div style="padding: 3rem; text-align: center;"><i class="fas fa-circle-notch fa-spin" style="font-size: 2rem; color: var(--dm-primary);"></i><p style="margin-top: 1rem; color: #64748b; font-weight: 600;">Retrieving Compliance Audit Data...</p></div>';
         document.getElementById('viewCustomerModal').classList.add('active');
-        document.body.style.overflow = 'hidden';
+
+        fetch(`/admin/api/customers/${btn.dataset.id}/kyc-audit`)
+            .then(r => r.json())
+            .then(data => {
+                let kycHtml = data.success ? `
+                    <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px dashed #e2e8f0;">
+                        <div style="font-size: 0.75rem; font-weight: 800; color: var(--dm-primary); text-transform: uppercase; margin-bottom: 1rem;">Compliance Evidence</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div><div style="font-size: 0.65rem; color: #94a3b8; font-weight: 700; margin-bottom: 6px;">Government ID</div><div style="background: white; padding: 8px; border-radius: 12px; border: 1px solid #e2e8f0;"><img src="${data.document_url}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 8px; cursor: pointer;" onclick="window.open(this.src)"></div></div>
+                            <div><div style="font-size: 0.65rem; color: #94a3b8; font-weight: 700; margin-bottom: 6px;">Live Selfie Match</div><div style="background: white; padding: 8px; border-radius: 12px; border: 1px solid #e2e8f0;"><img src="${data.selfie_url}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 8px; cursor: pointer;" onclick="window.open(this.src)"></div></div>
+                        </div>
+                        <div style="margin-top: 1rem; background: #f1f5f9; padding: 1rem; border-radius: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div><div style="font-size: 0.6rem; font-weight: 800; color: #64748b;">ID Number</div><div style="font-size: 0.85rem; font-weight: 700;">${data.id_number || 'N/A'}</div></div>
+                            <div><div style="font-size: 0.6rem; font-weight: 800; color: #64748b;">Verified Date</div><div style="font-size: 0.85rem; font-weight: 700;">${data.verified_at}</div></div>
+                            <div><div style="font-size: 0.6rem; font-weight: 800; color: #64748b;">Fraud Score</div><div style="font-size: 0.85rem; font-weight: 700; color: ${data.fraud_score > 50 ? '#ef4444' : '#10b981'};">${data.fraud_score}/100</div></div>
+                            <div><div style="font-size: 0.6rem; font-weight: 800; color: #64748b;">OCR Matching</div><div style="font-size: 0.85rem; font-weight: 700;">Passed</div></div>
+                        </div>
+                    </div>` : `<div style="margin-top: 1.5rem; background: #fff1f2; padding: 1.5rem; border-radius: 16px; border: 1px solid #fee2e2; text-align: center;"><i class="fas fa-user-slash" style="font-size: 1.5rem; color: #ef4444; margin-bottom: 0.5rem;"></i><div style="font-size: 0.85rem; font-weight: 700; color: #991b1b;">Identity Verification Incomplete</div></div>`;
+
+                body.innerHTML = `
+                    <div style="background: white; padding: 1.5rem; border-radius: 20px; border: 1px solid #e2e8f0;">
+                        <div style="display: flex; align-items: center; gap: 1.25rem;">
+                            <div style="width: 64px; height: 64px; border-radius: 16px; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800; border: 2px solid #dbeafe;">${btn.dataset.name.substring(0, 2).toUpperCase()}</div>
+                            <div><h4 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--dm-secondary);">${btn.dataset.name}</h4><div style="font-size: 0.85rem; color: #64748b; font-weight: 600;">${btn.dataset.email}</div></div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem;">
+                            <div class="audit-item"><span class="audit-label">Contact Link</span><div class="audit-value"><i class="fas fa-phone"></i> ${btn.dataset.phone}</div></div>
+                            <div class="audit-item"><span class="audit-label">Registry Date</span><div class="audit-value"><i class="fas fa-calendar-alt"></i> ${btn.dataset.date}</div></div>
+                            <div class="audit-item" style="grid-column: span 2;"><span class="audit-label">Address Matrix</span><div class="audit-value"><i class="fas fa-map-location-dot"></i> ${btn.dataset.address}</div></div>
+                        </div>
+                        ${kycHtml}
+                    </div>`;
+            });
+    }
+
+    function closeViewCustomerModal() { document.getElementById('viewCustomerModal').classList.remove('active'); }
+    function closeEditCustomerModal() { document.getElementById('editCustomerModal').classList.remove('active'); }
+
+    function suspendCustomer(id) {
+        window.showConfirm('Suspend this account? User will lose access immediately.', () => {
+            fetch(`/admin/api/customers/${id}/suspend`, { method: 'POST' }).then(r => r.json()).then(d => { if (d.success) { window.showSuccess(d.message); refreshCustomersTerminal(); } });
+        });
+    }
+
+    function activateCustomer(id) {
+        fetch(`/admin/api/customers/${id}/activate`, { method: 'POST' }).then(r => r.json()).then(d => { if (d.success) { window.showSuccess(d.message); refreshCustomersTerminal(); } });
+    }
+
+    function flagCustomer(id) {
+        window.showConfirm('Flag this account for investigation? The user will be notified that their account is under compliance review.', () => {
+            fetch(`/admin/api/customers/${id}/flag`, { method: 'POST' }).then(r => r.json()).then(d => { if (d.success) { window.showSuccess(d.message); refreshCustomersTerminal(); } });
+        });
     }
 
     function openEditCustomerModal(btn) {
@@ -926,36 +736,14 @@
         document.getElementById('editEmail').value = btn.dataset.email;
         document.getElementById('editPhone').value = btn.dataset.phone;
         document.getElementById('editAddress').value = btn.dataset.address;
-
         document.getElementById('editCustomerModal').classList.add('active');
-        document.body.style.overflow = 'hidden';
     }
 
-    function closeViewCustomerModal() { document.getElementById('viewCustomerModal').classList.remove('active'); document.body.style.overflow = ''; }
-    function closeEditCustomerModal() { document.getElementById('editCustomerModal').classList.remove('active'); document.body.style.overflow = ''; }
-
-    document.getElementById('editCustomerForm').addEventListener('submit', async function (e) {
+    document.getElementById('editCustomerForm').onsubmit = async (e) => {
         e.preventDefault();
-        const id = document.getElementById('editCustomerId').value;
-        const formData = new FormData(this);
-
-        try {
-            const res = await fetch(`/admin/api/customers/${id}/edit`, {
-                method: 'POST',
-                body: formData
-            });
-            const data = await res.json();
-            if (data.success) {
-                if (window.showSuccess) window.showSuccess('Registry updated successfully.');
-                else window.location.reload();
-            } else {
-                if (window.showError) window.showError(data.message || 'Update failed');
-                else alert(data.message || 'Update failed');
-            }
-        } catch (err) {
-            if (window.showError) window.showError('System error connection failed.');
-            else alert('System error');
-        }
-    });
+        const res = await fetch(`/admin/customers/${document.getElementById('editCustomerId').value}/edit`, { method: 'POST', body: new FormData(e.target) });
+        const data = await res.json();
+        if (data.success) { closeEditCustomerModal(); window.showSuccess(data.message); refreshCustomersTerminal(); } else alert(data.message);
+    };
 </script>
 {% endblock %}

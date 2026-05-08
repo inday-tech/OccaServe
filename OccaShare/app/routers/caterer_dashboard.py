@@ -3791,10 +3791,11 @@ async def request_payout(
 
     db.flush() # Push new items to DB so we can query them below
 
-    # 3. Collection: Find all ready payout items
+    # 3. Collection: Find all ready payout items that are NOT already in a pending request
     ready_items = db.query(models.PayoutItem).join(models.Booking).filter(
         models.Booking.caterer_id == profile.id,
-        models.PayoutItem.status == 'ready'
+        models.PayoutItem.status == 'ready',
+        models.PayoutItem.payout_id == None
     ).all()
 
     total_ready = sum(item.amount for item in ready_items)
@@ -3806,18 +3807,27 @@ async def request_payout(
          )
 
     # 4. Processing: Create new Payout Record
+    import random
+    import string
+    
+    # Generate unique reference like WDR-ABC12
+    ref_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
+    p_ref = f"WDR-{ref_suffix}"
+
     new_payout = models.Payout(
         caterer_id=profile.id,
         amount=total_ready,
+        total_amount=total_ready,
+        payout_reference=p_ref,
         status='pending',
+        requested_at=datetime.now(),
         notes=f"Withdrawal requested via Dashboard. Method: {profile.payout_method}"
     )
     db.add(new_payout)
     db.flush()
 
-    # Move items to the new payout and mark as processing
+    # Link items to the new payout. Keep them 'ready' until admin releases the whole payout.
     for item in ready_items:
-        item.status = 'released' 
         item.payout_id = new_payout.id
     
     db.commit()

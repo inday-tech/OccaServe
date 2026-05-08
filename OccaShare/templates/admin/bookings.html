@@ -415,34 +415,31 @@
 <!-- KPI Grid -->
 <div class="kpi-grid-clean">
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: var(--dm-primary-light); color: var(--dm-primary);"><i
-                class="fas fa-calendar-check"></i></div>
+        <div class="kpi-icon-box" style="background: #eff6ff; color: #3b82f6;"><i class="fas fa-calendar-check"></i></div>
         <div class="kpi-info">
-            <h4>Total Bookings</h4>
+            <h4>Total Registry</h4>
             <span class="kpi-value" id="kpi-total">{{ metrics.total_bookings }}</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #fffbeb; color: #f59e0b;"><i class="fas fa-hourglass-half"></i>
-        </div>
+        <div class="kpi-icon-box" style="background: #fffbeb; color: #f59e0b;"><i class="fas fa-hourglass-half"></i></div>
         <div class="kpi-info">
             <h4>Pending Actions</h4>
             <span class="kpi-value" id="kpi-pending">{{ metrics.pending_bookings }}</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #f0fdf4; color: #10b981;"><i class="fas fa-check-circle"></i></div>
+        <div class="kpi-icon-box" style="background: var(--dm-primary-light); color: var(--dm-primary);"><i class="fas fa-coins"></i></div>
         <div class="kpi-info">
-            <h4>Fulfilled Events</h4>
-            <span class="kpi-value" id="kpi-fulfilled">{{ metrics.total_bookings - metrics.pending_bookings }}</span>
+            <h4>Realized Revenue</h4>
+            <span class="kpi-value" id="kpi-revenue" title="Paid transactions only">₱{{ "{:,.0f}".format(metrics.realized_revenue) }}</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: var(--dm-primary-light); color: var(--dm-primary);"><i
-                class="fas fa-coins"></i></div>
+        <div class="kpi-icon-box" style="background: #f1f5f9; color: #64748b;"><i class="fas fa-chart-line"></i></div>
         <div class="kpi-info">
-            <h4>Gross Revenue</h4>
-            <span class="kpi-value" id="kpi-revenue">₱{{ "{:,.0f}".format(metrics.total_revenue) }}</span>
+            <h4>Projected Revenue</h4>
+            <span class="kpi-value" id="kpi-projected" style="font-size: 1.1rem; color: #64748b;">₱{{ "{:,.0f}".format(metrics.projected_revenue) }}</span>
         </div>
     </div>
 </div>
@@ -494,12 +491,27 @@
                         <div style="font-size: 0.75rem; color: var(--dm-slate-400);">{{ booking.user.email }}</div>
                     </td>
                     <td>
-                        <span style="font-weight: 600; color: var(--dm-secondary);">{{ booking.caterer.business_name if
-                            booking.caterer else 'Platform Service' }}</span>
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <span style="font-weight: 700; color: var(--dm-secondary);">{{ booking.caterer.business_name if booking.caterer else 'Platform Service' }}</span>
+                            {% if booking.caterer and booking.caterer.verification_status == 'Verified' %}
+                            <span class="badge-clean" style="font-size: 0.65rem; background: #ecfdf5; color: #10b981; border-radius: 6px; padding: 2px 8px; width: fit-content;">
+                                <i class="fas fa-certificate" style="font-size: 8px;"></i> Verified Partner
+                            </span>
+                            {% else %}
+                            <span class="badge-clean" style="font-size: 0.65rem; background: #f1f5f9; color: #64748b; border-radius: 6px; padding: 2px 8px; width: fit-content;">
+                                <i class="fas fa-clock" style="font-size: 8px;"></i> Standard Partner
+                            </span>
+                            {% endif %}
+                        </div>
                     </td>
                     <td>
-                        <span style="font-weight: 700; color: var(--dm-secondary);">₱{{
-                            "{:,.2f}".format(booking.total_amount) if booking.total_amount else '0.00' }}</span>
+                        <div style="font-weight: 700; color: var(--dm-secondary);">₱{{ "{:,.2f}".format(booking.total_amount) if booking.total_amount else '0.00' }}</div>
+                        {% if booking.status == 'completed' %}
+                            <div style="font-size: 0.7rem; color: {% if booking.payout_id %}#10b981{% else %}#f59e0b{% endif %}; font-weight: 700;">
+                                <i class="fas {% if booking.payout_id %}fa-check-double{% else %}fa-clock{% endif %}"></i>
+                                {{ 'Settled' if booking.payout_id else 'Pending Payout' }}
+                            </div>
+                        {% endif %}
                     </td>
                     <td>
                         <span class="status-badge-pill status-{{ booking.status }}">
@@ -647,6 +659,31 @@
                     </div>`;
                 }
 
+                let auditTrailHtml = '';
+                if (b.history && b.history.length > 0) {
+                    auditTrailHtml = `
+                    <div style="margin-top: 1.5rem;">
+                        <div class="detail-label">Transaction Audit Trail</div>
+                        <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+                            ${b.history.map((h, i) => `
+                                <div style="display: flex; gap: 1rem; padding: 1rem; ${i < b.history.length - 1 ? 'border-bottom: 1px dashed #e2e8f0;' : ''}">
+                                    <div style="display: flex; flex-direction: column; align-items: center; min-width: 40px;">
+                                        <div style="width: 10px; height: 10px; border-radius: 50%; background: ${i === 0 ? 'var(--dm-primary)' : '#cbd5e1'}; z-index: 2;"></div>
+                                        ${i < b.history.length - 1 ? '<div style="width: 2px; flex-grow: 1; background: #e2e8f0; margin: 4px 0;"></div>' : ''}
+                                    </div>
+                                    <div style="flex-grow: 1;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <span style="font-weight: 700; font-size: 0.85rem; color: var(--dm-secondary); text-transform: uppercase;">${h.status}</span>
+                                            <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 600;">${h.created_at}</span>
+                                        </div>
+                                        ${h.notes ? `<div style="font-size: 0.8rem; color: #64748b; margin-top: 4px;">${h.notes}</div>` : ''}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>`;
+                }
+
                 body.innerHTML = `
                 <div class="detail-grid">
                     <div class="detail-item">
@@ -664,31 +701,49 @@
                         <div class="detail-value">${b.customer ? b.customer.name : 'Unknown User'}</div>
                         <div style="font-size: 0.8rem; color: #64748b;">${b.customer ? b.customer.email : 'No Email'}</div>
                     </div>
-                    <div class="detail-item">
-                        <div class="detail-label">Financial Status</div>
-                        <div class="detail-value">₱${b.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                        <div style="font-size: 0.8rem; color: #64748b;">Method: ${b.payment_method} | Status: ${b.payment_status}</div>
+                    <div class="detail-item" style="background: #fdf2f8; border-color: #fbcfe8;">
+                        <div class="detail-label" style="color: #be185d;">Financial Governance</div>
+                        <div class="detail-value" style="color: #9d174d;">₱${b.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                        <div style="font-size: 0.8rem; color: #be185d; font-weight: 600;">${b.payment_status.toUpperCase()} | Ref: ${b.payment_reference || 'N/A'}</div>
+                        ${b.payment_proof_url ? `<button onclick="window.open('${b.payment_proof_url}')" style="margin-top: 8px; width: 100%; padding: 6px; background: white; border: 1px solid #fbcfe8; border-radius: 6px; font-size: 0.7rem; font-weight: 700; color: #be185d; cursor: pointer;"><i class="fas fa-file-invoice-dollar"></i> View Payment Proof</button>` : ''}
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem;">
+                    <div>
+                        <div class="detail-label">Service Partner Trust</div>
+                        <div style="display: flex; align-items: center; gap: 10px; background: #f8fafc; padding: 0.75rem; border-radius: 10px; border: 1px solid #e2e8f0;">
+                            <div style="width: 32px; height: 32px; border-radius: 8px; background: ${b.is_caterer_verified ? '#ecfdf5' : '#f1f5f9'}; color: ${b.is_caterer_verified ? '#10b981' : '#64748b'}; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas ${b.is_caterer_verified ? 'fa-certificate' : 'fa-user'}"></i>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.85rem; font-weight: 700; color: var(--dm-secondary);">${b.payout_status}</div>
+                                <div style="font-size: 0.7rem; font-weight: 600; color: #64748b;">${b.is_caterer_verified ? 'Verified Identity' : 'Standard Identity'}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="detail-label">Event Venue Location</div>
+                        <div style="background: #f8fafc; padding: 0.75rem; border-radius: 10px; border: 1px solid #e2e8f0; font-size: 0.8rem; font-weight: 600; color: #64748b;">
+                            <i class="fas fa-map-marker-alt" style="color: var(--dm-primary);"></i> ${b.venue_address}
+                        </div>
                     </div>
                 </div>
 
                 <div style="margin-top: 1.5rem;">
-                    <div class="detail-label">Event Venue</div>
-                    <div class="detail-value" style="font-size: 0.9rem;">${b.venue_address}</div>
-                </div>
-
-                <div style="margin-top: 1.5rem;">
-                    <div class="detail-label">Menu Selection</div>
-                    <div style="background: #f1f5f9; border-radius: 0.75rem; padding: 1rem;">
+                    <div class="detail-label">Menu Item Architecture</div>
+                    <div style="background: #f8fafc; border-radius: 12px; padding: 1rem; border: 1px solid #e2e8f0;">
                         ${b.selected_items && b.selected_items.length > 0 ? b.selected_items.map(item => `
                             <div class="menu-item-row">
-                                <span style="font-weight: 600;">${item.name} x${item.quantity}</span>
-                                <span style="color: #64748b;">₱${item.price.toLocaleString()}</span>
+                                <span style="font-weight: 700; color: var(--dm-secondary);">${item.name} <span style="color: #94a3b8;">x${item.quantity}</span></span>
+                                <span style="font-weight: 800; color: var(--dm-secondary);">₱${item.price.toLocaleString()}</span>
                             </div>
-                        `).join('') : '<div style="color: #64748b; font-size: 0.85rem;">No menu items selected.</div>'}
+                        `).join('') : '<div style="color: #64748b; font-size: 0.85rem; text-align: center; padding: 1rem;">No detailed selections available.</div>'}
                     </div>
                 </div>
 
                 ${kycHtml}
+                ${auditTrailHtml}
                 `;
             }
         } catch (err) {

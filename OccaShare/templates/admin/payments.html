@@ -188,24 +188,24 @@
 
 <div class="kpi-grid-clean">
     <div class="kpi-card-clean highlight">
-        <span class="kpi-label">Total Net Commission</span>
-        <span class="kpi-value">₱{{ "{:,.2f}".format(total_commission) }}</span>
+        <span class="kpi-label">Total Realized Commission</span>
+        <span class="kpi-value">₱{{ "{:,.2f}".format(metrics.realized_commission) }}</span>
         <div class="kpi-trend trend-up">
-            <i class="fas fa-chart-line"></i> +{{ ((commission_rate) * 100)|int }}% Platform Fee
+            <i class="fas fa-shield-check"></i> ₱{{ "{:,.2f}".format(metrics.escrowed_commission) }} Escrowed
         </div>
     </div>
     <div class="kpi-card-clean">
         <span class="kpi-label">Gross Transaction Volume</span>
-        <span class="kpi-value">₱{{ "{:,.2f}".format(total_gross) }}</span>
+        <span class="kpi-value">₱{{ "{:,.2f}".format(metrics.total_gross) }}</span>
         <div class="kpi-trend" style="color: var(--dm-slate-400);">
-            Total Payment Throughput
+            <i class="fas fa-arrow-right-arrow-left"></i> Total System Throughput
         </div>
     </div>
     <div class="kpi-card-clean">
-        <span class="kpi-label">Monetized Bookings</span>
-        <span class="kpi-value">{{ bookings|length }}</span>
+        <span class="kpi-label">Monetized Transactions</span>
+        <span class="kpi-value">{{ ledger_items|length }}</span>
         <div class="kpi-trend" style="color: var(--dm-slate-400);">
-            Paid & Completed Events
+            <i class="fas fa-calendar-check"></i> {{ metrics.monetized_bookings_count }} Bookings Covered
         </div>
     </div>
 </div>
@@ -215,14 +215,12 @@
         <i class="fas fa-shield-halved"></i>
     </div>
     <div class="escrow-content">
-        <h4>Paymongo Escrow & Trust Model</h4>
+        <h4>OccaServe Monetization Architecture</h4>
         <p>
             Platform security ensures that 100% of the customer payment is held in the Platform's Paymongo Escrow
             account.
-            <strong>Why this protects Caterers:</strong> We guarantee payment is collected before the event starts.
-            <strong>Why this protects Customers:</strong> Funds are only liquidated to the Caterer once the event is
-            marked as complete.
-            The Admin serves as a neutral adjudicator in case of disputes.
+            <strong>Platform Revenue:</strong> Our fee is calculated per monetization event (Downpayment or Final Settlement).
+            <strong>Liquidation:</strong> Commission is only marked as <em>Realized</em> once the funds are formally released to the Caterer.
         </p>
     </div>
 </div>
@@ -236,45 +234,58 @@
         </button>
     </div>
     <div style="overflow-x: auto;">
-        {% if bookings %}
+        {% if ledger_items %}
         <table class="finance-table">
             <thead>
                 <tr>
-                    <th>Ref ID / Date</th>
-                    <th>Parties</th>
-                    <th>Gross Transaction</th>
-                    <th>Admin Commission</th>
+                    <th>Event / Reference</th>
+                    <th>Booking & Caterer</th>
+                    <th>Gross Payment</th>
+                    <th>Platform Fee</th>
                     <th>Net to Partner</th>
                     <th>Status</th>
                 </tr>
             </thead>
             <tbody>
-                {% for booking in bookings %}
-                {% set comm = (booking.total_amount or 0) * (commission_rate) %}
-                {% set net = (booking.total_amount or 0) - comm %}
+                {% for item in ledger_items %}
+                {% set gross = item.amount + item.commission_amount %}
                 <tr>
                     <td>
-                        <div style="font-weight: 700; color: var(--dm-secondary); font-size: 0.85rem;">#TXN-{{
-                            booking.id }}</div>
-                        <div style="font-size: 0.75rem; color: var(--dm-slate-400);">{{ booking.created_at.strftime('%b
-                            %d, %Y') }}</div>
-                    </td>
-                    <td>
-                        <div style="font-size: 0.85rem;">
-                            <span style="color: var(--dm-slate-400);">F:</span> {{ booking.user.first_name }} {{
-                            booking.user.last_name }}<br>
-                            <span style="color: var(--dm-slate-400);">T:</span> {{ booking.caterer.business_name if
-                            booking.caterer else 'Partner' }}
+                        <div style="font-weight: 700; color: var(--dm-secondary); font-size: 0.85rem;">
+                            {{ item.release_trigger | upper }} PAYMENT
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--dm-slate-400); font-family: monospace;">
+                            {{ item.payment_reference or 'REF-' ~ item.id }}
+                        </div>
+                        <div style="font-size: 0.7rem; color: var(--dm-slate-400); margin-top: 4px;">
+                            {{ item.created_at.strftime('%b %d, %Y %H:%M') if item.created_at else '---' }}
                         </div>
                     </td>
-                    <td><span class="amount-gross">₱{{ "{:,.2f}".format(booking.total_amount) }}</span></td>
-                    <td><span class="amount-commission">+ ₱{{ "{:,.2f}".format(comm) }}</span></td>
-                    <td><span style="color: var(--dm-emerald-500); font-weight: 700;">₱{{ "{:,.2f}".format(net)
-                            }}</span></td>
                     <td>
-                        <span class="status-pill">
-                            <i class="fas fa-check-circle"></i> Liquidated
-                        </span>
+                        <div style="font-size: 0.85rem; font-weight: 700; color: var(--dm-slate-700);">
+                            BK-{{ item.booking_id }}
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--dm-slate-500);">
+                            {{ item.booking.caterer.business_name if item.booking and item.booking.caterer else '---' }}
+                        </div>
+                    </td>
+                    <td><span class="amount-gross">₱{{ "{:,.2f}".format(gross) }}</span></td>
+                    <td><span class="amount-commission">+ ₱{{ "{:,.2f}".format(item.commission_amount) }}</span></td>
+                    <td><span style="color: var(--dm-emerald-500); font-weight: 700;">₱{{ "{:,.2f}".format(item.amount) }}</span></td>
+                    <td>
+                        {% if item.status == 'released' %}
+                            <span class="status-pill">
+                                <i class="fas fa-check-circle"></i> Realized
+                            </span>
+                        {% elif item.status == 'escrowed' %}
+                            <span class="status-pill" style="background: #eff6ff; color: #2563eb;">
+                                <i class="fas fa-clock"></i> Escrowed
+                            </span>
+                        {% else %}
+                            <span class="status-pill" style="background: #fff7ed; color: #c2410c;">
+                                <i class="fas fa-hourglass-start"></i> Ready
+                            </span>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
@@ -306,7 +317,7 @@
 
     function exportLedgerCSV() {
         const rows = [
-            ["Transaction ID", "Date", "Customer", "Caterer", "Gross Amount (PHP)", "Commission (PHP)", "Net to Partner (PHP)", "Status"]
+            ["Event Type", "Payment Reference", "Date", "Booking ID", "Caterer", "Gross Amount (PHP)", "Platform Fee (PHP)", "Net to Partner (PHP)", "Status"]
         ];
 
         const tableRows = document.querySelectorAll('.finance-table tbody tr');
@@ -316,24 +327,22 @@
         }
 
         tableRows.forEach(tr => {
-            const idCell = tr.querySelector('td:nth-child(1)');
-            const partiesCell = tr.querySelector('td:nth-child(2)');
+            const eventCell = tr.querySelector('td:nth-child(1)');
+            const bookingCell = tr.querySelector('td:nth-child(2)');
             
-            const id = idCell.querySelector('div:first-child').innerText.trim();
-            const date = idCell.querySelector('div:last-child').innerText.trim();
+            const eventType = eventCell.querySelector('div:first-child').innerText.trim();
+            const ref = eventCell.querySelector('div:nth-child(2)').innerText.trim();
+            const date = eventCell.querySelector('div:last-child').innerText.trim();
             
-            // Handle multiline text in parties cell
-            const partiesText = partiesCell.querySelector('div').innerText.trim();
-            const partiesLines = partiesText.split('\n').map(l => l.trim());
-            const customer = partiesLines[0].replace(/^F:\s*/, '');
-            const caterer = partiesLines[1].replace(/^T:\s*/, '');
+            const bookingId = bookingCell.querySelector('div:first-child').innerText.trim();
+            const caterer = bookingCell.querySelector('div:last-child').innerText.trim();
 
             const gross = tr.querySelector('td:nth-child(3)').innerText.replace(/[^0-9.]/g, '');
             const comm = tr.querySelector('td:nth-child(4)').innerText.replace(/[^0-9.]/g, '');
             const net = tr.querySelector('td:nth-child(5)').innerText.replace(/[^0-9.]/g, '');
             const status = tr.querySelector('td:nth-child(6)').innerText.trim();
 
-            rows.push([id, date, `"${customer}"`, `"${caterer}"`, gross, comm, net, status]);
+            rows.push([`"${eventType}"`, `"${ref}"`, `"${date}"`, `"${bookingId}"`, `"${caterer}"`, gross, comm, net, `"${status}"`]);
         });
 
         const csvContent = "data:text/csv;charset=utf-8," 
@@ -342,7 +351,7 @@
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `OccaServe_Finance_Ledger_${new Date().toISOString().split('T')[0]}.csv`);
+        link.setAttribute("download", `OccaServe_Monetization_Ledger_${new Date().toISOString().split('T')[0]}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);

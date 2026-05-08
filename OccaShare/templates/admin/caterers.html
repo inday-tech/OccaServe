@@ -73,11 +73,11 @@
         <table class="cust-table" id="caterersTable">
             <thead>
                 <tr>
-                    <th>Business & Domain</th>
+                    <th>Business & Performance</th>
                     <th>Representative</th>
-                    <th>Region</th>
-                    <th>Status</th>
-                    <th style="text-align: right;">Actions</th>
+                    <th>Operational Region</th>
+                    <th>Compliance & Status</th>
+                    <th style="text-align: right;">Registry Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -85,8 +85,14 @@
                 <tr class="cust-row">
                     <td>
                         <div style="font-weight: 700; color: var(--dm-secondary);">{{ caterer.business_name }}</div>
-                        <div style="font-size: 0.75rem; color: var(--dm-slate-400);">Joined {{
-                            caterer.created_at.strftime('%b %d, %Y') if caterer.created_at else 'TBD' }}</div>
+                        <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
+                            <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 600;">
+                                <i class="fas fa-star" style="color: #f59e0b;"></i> {{ "%.1f"|format(caterer.rating or 0) }}
+                            </span>
+                            <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 600;">
+                                <i class="fas fa-calendar-check" style="color: var(--dm-primary);"></i> {{ caterer.booking_count or 0 }} Bookings
+                            </span>
+                        </div>
                     </td>
                     <td>
                         <div style="font-weight: 600;">{{ caterer.user.first_name }} {{ caterer.user.last_name }}</div>
@@ -99,15 +105,26 @@
                         </div>
                         <div style="font-size: 0.75rem; color: var(--dm-slate-400); margin-left: 20px;">
                             {{ caterer.city }}
+                            {% if not caterer.contact_address and caterer.verification_status == 'Verified' %}
+                            <span style="color: #ef4444; font-size: 0.65rem; font-weight: 700; margin-left: 8px;">
+                                <i class="fas fa-triangle-exclamation"></i> ADDRESS AUDIT REQ.
+                            </span>
+                            {% endif %}
                         </div>
                     </td>
                     <td>
-                        <span class="badge-clean"
-                            style="background: {% if caterer.verification_status == 'Verified' %}#ecfdf5; color: #10b981;{% elif caterer.verification_status == 'Pending' %}#fff7ed; color: #f97316;{% else %}#fef2f2; color: #ef4444;{% endif %}">
-                            <i
-                                class="fas {% if caterer.verification_status == 'Verified' %}fa-check-circle{% elif caterer.verification_status == 'Pending' %}fa-clock{% else %}fa-ban{% endif %}"></i>
-                            {{ caterer.verification_status }}
-                        </span>
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                            <span class="badge-clean"
+                                style="font-size: 0.65rem; background: {% if caterer.verification_status == 'Verified' %}#ecfdf5; color: #10b981;{% elif caterer.verification_status == 'Pending' %}#fff7ed; color: #f97316;{% else %}#fef2f2; color: #ef4444;{% endif %}">
+                                <i class="fas {% if caterer.verification_status == 'Verified' %}fa-check-circle{% elif caterer.verification_status == 'Pending' %}fa-clock{% else %}fa-ban{% endif %}"></i>
+                                {{ caterer.verification_status }}
+                            </span>
+                            <span class="badge-clean"
+                                style="font-size: 0.65rem; background: {% if caterer.account_status == 'Active' %}#eff6ff; color: #2563eb;{% else %}#f1f5f9; color: #64748b;{% endif %}">
+                                <i class="fas {% if caterer.account_status == 'Active' %}fa-user-check{% else %}fa-user-slash{% endif %}"></i>
+                                {{ caterer.account_status }}
+                            </span>
+                        </div>
                     </td>
                     <td style="text-align: right;">
                         <div class="actions-dropdown">
@@ -123,16 +140,12 @@
                                     data-address="{{ caterer.contact_address or 'Not Specified' }}"
                                     data-joined="{{ caterer.created_at.strftime('%b %d, %Y') if caterer.created_at else 'TBD' }}"
                                     data-status="{{ caterer.verification_status }}"
+                                    data-account-status="{{ caterer.account_status }}"
+                                    data-rating="{{ caterer.rating or 0 }}"
+                                    data-bookings="{{ caterer.booking_count or 0 }}"
                                     onclick="openViewCatererModal(this)">
                                     <i class="fas fa-eye"></i> View Profile
                                 </button>
-
-                                {% if caterer.verification_status == 'Pending' %}
-                                <a href="/admin/verify/{{ caterer.user.id }}" class="dropdown-item"
-                                    style="color: var(--dm-primary);">
-                                    <i class="fas fa-file-contract"></i> Review Audit
-                                </a>
-                                {% endif %}
 
                                 <button class="dropdown-item" data-id="{{ caterer.id }}"
                                     data-business="{{ caterer.business_name }}"
@@ -142,12 +155,22 @@
                                     data-address="{{ caterer.contact_address or '' }}"
                                     data-lat="{{ caterer.latitude or '' }}"
                                     data-lon="{{ caterer.longitude or '' }}"
+                                    data-verified="{{ 'true' if caterer.verification_status == 'Verified' else 'false' }}"
                                     onclick="openEditCatererModal(this)">
                                     <i class="fas fa-edit"></i> Edit Details
                                 </button>
 
-                                <div class="dropdown-divider"
-                                    style="height: 1px; background: var(--dm-slate-50); margin: 6px 8px;"></div>
+                                <div class="dropdown-divider" style="height: 1px; background: var(--dm-slate-50); margin: 6px 8px;"></div>
+
+                                {% if caterer.account_status == 'Active' %}
+                                <button class="dropdown-item" style="color: #ef4444;" onclick="suspendCaterer({{ caterer.id }})">
+                                    <i class="fas fa-user-slash"></i> Suspend Partner
+                                </button>
+                                {% else %}
+                                <button class="dropdown-item" style="color: #2563eb;" onclick="activateCaterer({{ caterer.id }})">
+                                    <i class="fas fa-user-check"></i> Activate Partner
+                                </button>
+                                {% endif %}
 
                                 <form action="/admin/caterers/{{ caterer.id }}/archive" method="POST"
                                     onsubmit="event.preventDefault(); window.showConfirm('Archive this partner profile?', () => this.submit());">
@@ -319,10 +342,12 @@
                             <div class="dm-input-group">
                                 <i class="fas fa-phone-square"></i>
                                 <input type="tel" name="phone" id="editPhone" placeholder="Phone Number" required>
-                            <div style="margin-top: 1.5rem;">
-                                <div id="adminViewMap" style="height: 250px; width: 100%; border-radius: 12px; border: 1.5px solid #fff7ed;"></div>
                             </div>
                         </div>
+                    </div>
+
+                    <div style="margin-top: 0.5rem;">
+                        <div id="adminViewMap" style="height: 180px; width: 100%; border-radius: 12px; border: 1.5px solid #f1f5f9; background: #f8fafc;"></div>
                     </div>
 
                     <div class="form-row-pro">
@@ -430,46 +455,70 @@
                     <tr class="cust-row">
                         <td>
                             <div style="font-weight: 700; color: var(--dm-secondary);">${c.business_name}</div>
-                            <div style="font-size: 0.75rem; color: var(--dm-slate-400);">Joined ${c.created_at}</div>
+                            <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
+                                <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 600;">
+                                    <i class="fas fa-star" style="color: #f59e0b;"></i> ${c.rating.toFixed(1)}
+                                </span>
+                                <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 600;">
+                                    <i class="fas fa-calendar-check" style="color: var(--dm-primary);"></i> ${c.booking_count} Bookings
+                                </span>
+                            </div>
                         </td>
                         <td>
                             <div style="font-weight: 600;">${c.first_name} ${c.last_name}</div>
                             <div style="font-size: 0.8rem; color: var(--dm-slate-400);">${c.email}</div>
                         </td>
                         <td>
-                            <span style="color: var(--dm-slate-600); font-weight: 500;"><i class="fas fa-map-marker-alt" style="margin-right: 6px; color: var(--dm-primary); opacity: 0.7;"></i>${c.city}</span>
+                            <div style="font-weight: 500; color: var(--dm-slate-700); font-size: 0.9rem;">
+                                <i class="fas fa-map-marker-alt" style="margin-right: 6px; color: var(--dm-primary); opacity: 0.7;"></i>
+                                ${c.contact_address || 'No detailed address'}
+                            </div>
+                            <div style="font-size: 0.75rem; color: var(--dm-slate-400); margin-left: 20px;">
+                                ${c.city}
+                                ${(!c.contact_address && c.verification_status === 'Verified') ? `<span style="color: #ef4444; font-size: 0.65rem; font-weight: 700; margin-left: 8px;"><i class="fas fa-triangle-exclamation"></i> ADDRESS AUDIT REQ.</span>` : ''}
+                            </div>
                         </td>
                         <td>
-                            <span class="badge-clean" style="background: ${c.verification_status === 'Verified' ? '#ecfdf5; color: #10b981;' : (c.verification_status === 'Pending' ? '#fff7ed; color: #f97316;' : '#fef2f2; color: #ef4444;')}">
-                                ${c.verification_status}
-                            </span>
+                            <div style="display: flex; flex-direction: column; gap: 6px;">
+                                <span class="badge-clean" style="font-size: 0.65rem; background: ${c.verification_status === 'Verified' ? '#ecfdf5; color: #10b981;' : (c.verification_status === 'Pending' ? '#fff7ed; color: #f97316;' : '#fef2f2; color: #ef4444;')};">
+                                    <i class="fas ${c.verification_status === 'Verified' ? 'fa-check-circle' : (c.verification_status === 'Pending' ? 'fa-clock' : 'fa-ban')}"></i>
+                                    ${c.verification_status}
+                                </span>
+                                <span class="badge-clean" style="font-size: 0.65rem; background: ${c.account_status === 'Active' ? '#eff6ff; color: #2563eb;' : '#f1f5f9; color: #64748b;'};">
+                                    <i class="fas ${c.account_status === 'Active' ? 'fa-user-check' : 'fa-user-slash'}"></i>
+                                    ${c.account_status}
+                                </span>
+                            </div>
                         </td>
                         <td style="text-align: right;">
                             <div class="actions-dropdown">
                                 <button class="dropdown-trigger" onclick="toggleDropdown(this, event)"><i class="fas fa-ellipsis-v"></i></button>
                                 <div class="dropdown-menu">
                                     <button class="dropdown-item" 
-                                            data-business="${c.business_name}"
-                                            data-owner="${c.first_name} ${c.last_name}"
-                                            data-email="${c.email}"
-                                            data-city="${c.city}"
-                                            data-status="${c.verification_status}"
-                                            onclick="openViewCatererModal(this)">
+                                        data-business="${c.business_name}" data-owner="${c.first_name} ${c.last_name}"
+                                        data-email="${c.email}" data-phone="${c.contact_phone}"
+                                        data-city="${c.city}" data-address="${c.contact_address || 'Not Specified'}"
+                                        data-joined="${c.created_at}" data-status="${c.verification_status}"
+                                        data-account-status="${c.account_status}" data-rating="${c.rating}"
+                                        data-bookings="${c.booking_count}"
+                                        onclick="openViewCatererModal(this)">
                                         <i class="fas fa-eye"></i> View Profile
                                     </button>
-                                    ${c.verification_status === 'Pending' ? `<a href="/admin/verify/${c.user_id}" class="dropdown-item" style="color: var(--dm-primary);"><i class="fas fa-file-contract"></i> Review Audit</a>` : ''}
                                     <button class="dropdown-item" 
-                                            data-id="${c.id}" data-business="${c.business_name}"
-                                            data-first="${c.first_name}" data-last="${c.last_name}"
-                                            data-email="${c.email}" data-phone="${c.contact_phone}" 
-                                            data-city="${c.city}" 
-                                            data-address="${c.contact_address || ''}"
-                                            data-lat="${c.latitude || ''}"
-                                            data-lon="${c.longitude || ''}"
-                                            onclick="openEditCatererModal(this)">
+                                        data-id="${c.id}" data-business="${c.business_name}"
+                                        data-first="${c.first_name}" data-last="${c.last_name}"
+                                        data-email="${c.email}" data-phone="${c.contact_phone}" 
+                                        data-city="${c.city}" data-address="${c.contact_address || ''}"
+                                        data-lat="${c.latitude || ''}" data-lon="${c.longitude || ''}"
+                                        data-verified="${c.verification_status === 'Verified'}"
+                                        onclick="openEditCatererModal(this)">
                                         <i class="fas fa-edit"></i> Edit Details
                                     </button>
                                     <div class="dropdown-divider" style="height: 1px; background: var(--dm-slate-50); margin: 6px 8px;"></div>
+                                    ${c.account_status === 'Active' ? 
+                                        `<button class="dropdown-item" style="color: #ef4444;" onclick="suspendCaterer(${c.id})"><i class="fas fa-user-slash"></i> Suspend Partner</button>` :
+                                        `<button class="dropdown-item" style="color: #2563eb;" onclick="activateCaterer(${c.id})"><i class="fas fa-user-check"></i> Activate Partner</button>`
+                                    }
                                     <form action="/admin/caterers/${c.id}/archive" method="POST" onsubmit="event.preventDefault(); window.showConfirm('Archive this partner profile?', () => this.submit());">
                                         <button type="submit" class="dropdown-item danger"><i class="fas fa-trash-alt"></i> Archive Profile</button>
                                     </form>
@@ -532,9 +581,9 @@
     function openViewCatererModal(btn) {
         const body = document.getElementById('viewCatererBody');
         const status = btn.dataset.status;
-        const statusColor = status === 'Verified' ? '#10b981' : (status === 'Pending' ? '#f97316' : '#ef4444');
-        const statusBg = status === 'Verified' ? '#ecfdf5' : (status === 'Pending' ? '#fff7ed' : '#fef2f2');
-        const statusIcon = status === 'Verified' ? 'fa-check-double' : (status === 'Pending' ? 'fa-clock' : 'fa-ban');
+        const accStatus = btn.dataset.accountStatus;
+        const rating = btn.dataset.rating;
+        const bookings = btn.dataset.bookings;
 
         body.innerHTML = `
             <div style="background: #f8fafc; padding: 2rem; border-radius: 20px; margin-bottom: 2rem;">
@@ -546,11 +595,24 @@
                         <div style="font-size: 1.25rem; font-weight: 800; color: var(--dm-secondary); margin-bottom: 4px;">${btn.dataset.business}</div>
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <span style="font-size: 0.65rem; font-weight: 800; color: #16a34a; background: #f0fdf4; padding: 4px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 4px;">
-                                <i class="fas fa-check-double"></i> ${status}
+                                <i class="fas fa-shield-check"></i> ${status}
                             </span>
-                            <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 500;">Reg. ${btn.dataset.joined}</span>
+                            <span style="font-size: 0.65rem; font-weight: 800; color: ${accStatus === 'Active' ? '#2563eb' : '#64748b'}; background: ${accStatus === 'Active' ? '#eff6ff' : '#f1f5f9'}; padding: 4px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.05em;">
+                                ${accStatus}
+                            </span>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <div class="kpi-grid-clean" style="grid-template-columns: 1fr 1fr; margin-bottom: 2rem;">
+                <div class="kpi-card-clean" style="padding: 1rem; border: 1.5px solid #f1f5f9;">
+                    <div style="font-size: 0.65rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">Trust Rating</div>
+                    <div style="font-size: 1.25rem; font-weight: 800; color: #f59e0b;"><i class="fas fa-star"></i> ${rating} / 5.0</div>
+                </div>
+                <div class="kpi-card-clean" style="padding: 1rem; border: 1.5px solid #f1f5f9;">
+                    <div style="font-size: 0.65rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">Throughput</div>
+                    <div style="font-size: 1.25rem; font-weight: 800; color: var(--dm-primary);"><i class="fas fa-receipt"></i> ${bookings} Events</div>
                 </div>
             </div>
 
@@ -575,10 +637,12 @@
                 <div style="font-size: 0.65rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Authorized Representative & Operational Address</div>
                 <div style="display: flex; align-items: flex-start; gap: 8px; font-weight: 700; color: var(--dm-secondary); line-height: 1.4;">
                     <i class="fas fa-map-location-dot" style="color: #f97316; font-size: 0.9rem; margin-top: 3px;"></i>
-                    <div>
+                    <div style="flex: 1;">
                         <div>${btn.dataset.owner}</div>
                         <div style="font-size: 0.85rem; font-weight: 600; color: var(--dm-secondary);">${btn.dataset.address}</div>
                         <div style="font-size: 0.75rem; font-weight: 500; color: #64748b;">${btn.dataset.city}</div>
+                        
+                        <div style="margin-top: 1rem; height: 150px; width: 100%; border-radius: 12px; border: 1.5px solid #f1f5f9; overflow: hidden;" id="adminViewMap"></div>
                     </div>
                 </div>
             </div>
@@ -598,38 +662,97 @@
         document.getElementById('viewCatererModal').classList.add('active');
         document.body.style.overflow = 'hidden';
 
-        // Initialize Map in Modal
+        // Initialize Map with Safety Check
         setTimeout(() => {
-            const lat = parseFloat(btn.dataset.lat) || 14.2811;
-            const lng = parseFloat(btn.dataset.lon) || 121.4150;
-            const mapPos = { lat, lng };
-            const map = new google.maps.Map(document.getElementById('adminViewMap'), {
-                zoom: 15,
-                center: mapPos,
-                mapId: "DEMO_MAP_ID",
-                disableDefaultUI: true,
-                zoomControl: true
-            });
-            new google.maps.Marker({
-                position: mapPos,
-                map: map,
-                title: btn.dataset.business
-            });
-        }, 300);
+            if (typeof google !== 'undefined' && google.maps) {
+                const lat = parseFloat(btn.dataset.lat) || 14.2811;
+                const lng = parseFloat(btn.dataset.lon) || 121.4150;
+                const mapPos = { lat, lng };
+                const map = new google.maps.Map(document.getElementById('adminViewMap'), {
+                    zoom: 15,
+                    center: mapPos,
+                    mapId: "OCCA_ADMIN_VIEW",
+                    disableDefaultUI: true,
+                    zoomControl: true
+                });
+                new google.maps.Marker({
+                    position: mapPos,
+                    map: map,
+                    title: btn.dataset.business
+                });
+            } else {
+                const mapDiv = document.getElementById('adminViewMap');
+                if (mapDiv) {
+                    mapDiv.style.display = 'flex';
+                    mapDiv.style.alignItems = 'center';
+                    mapDiv.style.justifyContent = 'center';
+                    mapDiv.style.fontSize = '0.75rem';
+                    mapDiv.style.color = '#94a3b8';
+                    mapDiv.innerHTML = '<i class="fas fa-map-marked-alt" style="margin-right: 8px;"></i> Map preview unavailable';
+                }
+            }
+        }, 400);
     }
 
     function openEditCatererModal(btn) {
+        const isVerified = btn.dataset.verified === 'true';
+        
         document.getElementById('editCatererId').value = btn.dataset.id;
-        document.getElementById('editBusinessName').value = btn.dataset.business;
-        document.getElementById('editFullName').value = btn.dataset.first + " " + btn.dataset.last;
+        
+        const bizField = document.getElementById('editBusinessName');
+        bizField.value = btn.dataset.business;
+        bizField.readOnly = isVerified;
+        bizField.style.background = isVerified ? '#f8fafc' : '#ffffff';
+        bizField.style.cursor = isVerified ? 'not-allowed' : 'text';
+
+        const nameField = document.getElementById('editFullName');
+        nameField.value = btn.dataset.first + " " + btn.dataset.last;
+        nameField.readOnly = isVerified;
+        nameField.style.background = isVerified ? '#f8fafc' : '#ffffff';
+        nameField.style.cursor = isVerified ? 'not-allowed' : 'text';
+
         document.getElementById('editEmail').value = btn.dataset.email;
         document.getElementById('editPhone').value = btn.dataset.phone;
         document.getElementById('editCity').value = btn.dataset.city;
         document.getElementById('editAddress').value = btn.dataset.address;
         document.getElementById('admin-edit-lat').value = btn.dataset.lat;
         document.getElementById('admin-edit-lon').value = btn.dataset.lon;
+
+        // Visual Hint for Identity Lock
+        if (isVerified) {
+            const hint = document.createElement('div');
+            hint.id = 'identity-lock-hint';
+            hint.style = 'background: #f0f9ff; color: #0369a1; padding: 10px 15px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 10px; border: 1px solid #bae6fd;';
+            hint.innerHTML = '<i class="fas fa-lock"></i> Identity Lock Active: Core business details are verified and read-only.';
+            
+            const formBody = document.querySelector('#editCatererForm .modal-body-clean div');
+            if (!document.getElementById('identity-lock-hint')) {
+                formBody.prepend(hint);
+            }
+        } else {
+            const hint = document.getElementById('identity-lock-hint');
+            if (hint) hint.remove();
+        }
+
         document.getElementById('editCatererModal').classList.add('active');
         document.body.style.overflow = 'hidden';
+    }
+
+    async function suspendCaterer(id) {
+        if (!confirm("Are you sure you want to suspend this partner? They will no longer appear in the marketplace.")) return;
+        try {
+            const res = await fetch(`/admin/api/caterers/${id}/suspend`, { method: 'POST' });
+            const data = await res.json();
+            if (data.success) window.location.reload();
+        } catch (err) { alert("Failed to suspend partner."); }
+    }
+
+    async function activateCaterer(id) {
+        try {
+            const res = await fetch(`/admin/api/caterers/${id}/activate`, { method: 'POST' });
+            const data = await res.json();
+            if (data.success) window.location.reload();
+        } catch (err) { alert("Failed to activate partner."); }
     }
 
     const editForm = document.getElementById('editCatererForm');
@@ -829,11 +952,11 @@
         updateBtnState();
     }
 
-    // Real-time Update Hub
+    // Registry Sync Hub (Unified)
     window.addEventListener('system_update', function (e) {
-        const data = e.detail;
-        if (['new_signup', 'kyc_update', 'caterer_update', 'user_archived'].includes(data.type)) {
-            setTimeout(() => window.location.reload(), 1000);
+        if (['new_signup', 'kyc_update', 'caterer_update', 'user_archived'].includes(e.detail.type)) {
+            console.log("[SYSTEM] Real-time Partner Update Detected:", e.detail.type);
+            refreshCaterersTerminal();
         }
     });
 </script>

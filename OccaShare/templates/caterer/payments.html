@@ -313,9 +313,9 @@
             <tbody>
                 {% for p in payouts %}
                 <tr>
-                    <td><span class="pay-id" style="background: var(--color-neutral-100); color: var(--color-neutral-700);">TRX-{{ "%04d"|format(p.id) }}</span></td>
-                    <td><span class="pay-amount" style="font-weight: 800; color: var(--color-neutral-900);">₱{{ "{:,.2f}".format(p.amount) }}</span></td>
-                    <td><span class="pay-date">{{ p.created_at.strftime('%b %d, %Y') }}</span></td>
+                    <td><span class="pay-id" style="background: var(--color-neutral-100); color: var(--color-neutral-700);">{{ p.payout_reference or 'TRX-' ~ "%04d"|format(p.id) }}</span></td>
+                    <td><span class="pay-amount" style="font-weight: 800; color: var(--color-neutral-900);">₱{{ "{:,.2f}".format(p.total_amount or p.amount) }}</span></td>
+                    <td><span class="pay-date">{{ p.requested_at.strftime('%b %d, %Y %H:%M') if p.requested_at else p.created_at.strftime('%b %d, %Y') }}</span></td>
                     <td>
                         {% if p.status == 'completed' %}
                             <span class="pay-status-badge" style="background: #ecfdf5; color: #059669; border-color: #10b981;">Completed</span>

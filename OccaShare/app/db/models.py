@@ -97,6 +97,7 @@ class CatererProfile(Base):
     card_number = Column(String, nullable=True)
     cash_instructions = Column(Text, nullable=True)
     verification_status = Column(String, default='Pending') # Pending, Verified, Rejected
+    account_status = Column(String, default='Active') # Active, Suspended, Deactivated
     is_verified = Column(Boolean, default=False)
     
     # NEW: Refined Registration Fields
@@ -565,11 +566,15 @@ class Payout(Base):
     id = Column(Integer, primary_key=True, index=True)
     caterer_id = Column(Integer, ForeignKey("caterer_profiles.id"))
     amount = Column(Float)
+    total_amount = Column(Float, default=0.0)
+    payout_reference = Column(String, unique=True, index=True) # e.g. WDR-12345
     status = Column(String, default="pending") # pending, processing, completed
-    reference_number = Column(String, nullable=True)
+    reference_number = Column(String, nullable=True) # Bank Ref Number
     is_archived = Column(Boolean, default=False)
-    notes = Column(Text, nullable=True)
+    notes = Column(Text, nullable=True) # Caterer notes
+    admin_notes = Column(Text, nullable=True) # Admin notes
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    requested_at = Column(DateTime(timezone=True), server_default=func.now())
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
     caterer = relationship("CatererProfile", back_populates="payouts")
@@ -580,11 +585,14 @@ class PayoutItem(Base):
     __tablename__ = "payout_items"
 
     id = Column(Integer, primary_key=True, index=True)
-    payout_id = Column(Integer, ForeignKey("payouts.id"))
+    payout_id = Column(Integer, ForeignKey("payouts.id"), nullable=True)
     booking_id = Column(Integer, ForeignKey("bookings.id"))
-    amount = Column(Float)
+    amount = Column(Float) # Net to Caterer
+    commission_amount = Column(Float, default=0.0) # Platform Cut
+    payment_reference = Column(String, nullable=True) # Paymongo/External Ref
     status = Column(String, default="pending") # pending, escrowed, ready, released
     release_trigger = Column(String, default="on_completion") # immediate, on_completion
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     payout = relationship("Payout", back_populates="items")
     booking = relationship("Booking")
