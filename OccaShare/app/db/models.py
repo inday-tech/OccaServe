@@ -19,6 +19,8 @@ class User(Base):
     address = Column(Text, nullable=True)
     profile_image_url = Column(String, nullable=True)
     status = Column(String, default="active")
+    status_reason = Column(Text, nullable=True)
+    investigation_notes = Column(Text, nullable=True)
     is_verified = Column(Boolean, default=False)
     last_login = Column(DateTime(timezone=True), nullable=True)
     
@@ -99,6 +101,12 @@ class CatererProfile(Base):
     verification_status = Column(String, default='Pending') # Pending, Verified, Rejected
     account_status = Column(String, default='Active') # Active, Suspended, Deactivated
     is_verified = Column(Boolean, default=False)
+    
+    # NEW: Jurisdictional Location (PSGC)
+    province_code = Column(String, nullable=True)
+    city_code = Column(String, nullable=True)
+    brgy_code = Column(String, nullable=True)
+    address_details = Column(Text, nullable=True)
     
     # NEW: Refined Registration Fields
     min_pax = Column(Integer, default=0)

@@ -1,360 +1,260 @@
 {% extends "admin/layout.html" %}
 
-{% block title %}Financial Operations: Earnings & Commissions - Admin{% endblock %}
+{% block title %}Financial Operations Terminal - Admin Intelligence{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ range(1, 1000) | random }}">
 <style>
-    :root {
-        --dm-emerald-500: #10b981;
+    /* Finance Specific Refinements */
+    .ledger-ref { font-family: monospace; font-size: 0.65rem; color: var(--adm-muted); font-weight: 600; letter-spacing: 0.05em; }
+    .amount-pill {
+        padding: 6px 12px; border-radius: 10px; font-weight: 800; font-size: 0.8rem;
+        display: inline-flex; align-items: center; gap: 6px;
     }
+    .amount-gain { background: #ecfdf5; color: #065f46; border: 1px solid #d1fae5; }
+    .amount-fee { background: #fff7ed; color: #9a3412; border: 1px solid #ffedd5; }
+    .amount-waived { background: #f8fafc; color: #94a3b8; border: 1px solid #f1f5f9; font-size: 0.65rem; }
+    
+    .transaction-meta { display: flex; flex-direction: column; gap: 2px; }
+    .meta-label { font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase; }
 
-    /* Removed .main-content override to prevent sidebar overlap */
-
-    .terminal-header-clean {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
+    .clickable-ref {
+        cursor: pointer; transition: all 0.2s; padding: 4px 8px; border-radius: 6px;
     }
+    .clickable-ref:hover { background: var(--adm-primary-soft); transform: translateX(2px); }
 
-    .terminal-header-clean h1 {
-        margin: 0;
-    }
+    /* Yield Event Indicators */
+    .yield-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; }
+    .icon-manual { background: #fef2f2; color: #ef4444; }
+    .icon-auto { background: #eff6ff; color: #3b82f6; }
 
-    .terminal-header-clean p {
-        margin-top: 4px;
+    /* Modal Diamond Standard (Copy from Bookings for consistency) */
+    .admin-modal-overlay {
+        position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6);
+        z-index: 3000; display: none; align-items: center; justify-content: center;
+        backdrop-filter: blur(8px);
     }
+    .admin-modal-overlay.active { display: flex; }
+    .admin-modal-card {
+        background: white; width: 100%; max-width: 600px;
+        border-radius: 28px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+        overflow: hidden; animation: modalIn 0.3s ease-out;
+    }
+    @keyframes modalIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* KPI Architecture */
-    .kpi-grid-clean {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-    }
-
-    .kpi-card-clean {
-        background: white;
-        padding: 1.75rem;
-        border-radius: 1.25rem;
-        border: 1px solid var(--dm-slate-100);
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .kpi-card-clean.highlight {
-        border-left: 5px solid var(--dm-primary);
-    }
-
-    .kpi-label {
-        margin-bottom: 0.5rem;
-    }
-
-    .kpi-value {
-        font-size: 1.75rem;
-        font-weight: 800;
-    }
-
-    .kpi-trend {
-        font-size: 0.8rem;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .trend-up {
-        color: var(--dm-emerald-500);
-    }
-
-    /* Escrow Logic Box */
-    .escrow-intelligence-box {
-        background: #eff6ff;
-        border: 1px solid #dbeafe;
-        border-radius: 1.25rem;
-        padding: 1.5rem;
-        margin-bottom: 2.5rem;
-        display: flex;
-        gap: 1.5rem;
-        align-items: center;
-    }
-
-    .escrow-icon {
-        width: 60px;
-        height: 60px;
-        border-radius: 14px;
-        background: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        color: #2563eb;
-        flex-shrink: 0;
-    }
-
-    .escrow-content h4 {
-        margin: 0 0 4px;
-        color: #1e40af;
-        font-weight: 800;
-    }
-
-    .escrow-content p {
-        margin: 0;
-        font-size: 0.85rem;
-        color: #1e3a8a;
-        line-height: 1.5;
-        opacity: 0.8;
-    }
-
-    /* Transaction Terminal */
-    .finance-terminal-card {
-        background: white;
-        border-radius: 1.25rem;
-        border: 1px solid var(--dm-slate-100);
-        overflow: hidden;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-    }
-
-    .card-header-clean {
-        padding: 1.5rem;
-        border-bottom: 1px solid var(--dm-slate-100);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .card-header-clean h3 {
-        font-size: 0.95rem;
-        font-weight: 800;
-        color: var(--dm-secondary);
-        margin: 0;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .finance-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .finance-table th {
-        text-align: left;
-        padding: 1.25rem 1.5rem;
-        font-size: 0.7rem;
-        color: var(--dm-slate-400);
-        text-transform: uppercase;
-        border-bottom: 1px solid var(--dm-slate-100);
-    }
-
-    .finance-table td {
-        padding: 1.25rem 1.5rem;
-        border-bottom: 1px solid var(--dm-slate-50);
-    }
-
-    .amount-gross {
-        font-weight: 700;
-        color: var(--dm-slate-600);
-    }
-
-    .amount-commission {
-        font-weight: 800;
-        color: var(--dm-primary);
-    }
-
-    .status-pill {
-        padding: 4px 10px;
-        border-radius: 6px;
-        font-size: 0.7rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        background: #ecfdf5;
-        color: #10b981;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
+    .modal-header-clean { padding: 1.5rem 2rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: flex-start; }
+    .modal-body-clean { padding: 2rem; max-height: 70vh; overflow-y: auto; }
 </style>
 {% endblock %}
 
 {% block content %}
-
-<div class="terminal-header-clean">
-    <div>
-        <h1>Financial Operations Terminal</h1>
-        <p>Commission Liquidation & Platform Revenue Intelligence</p>
+<div class="dashboard-header-clean">
+    <div class="header-title-area">
+        <h1 style="display: flex; align-items: center; gap: 12px;">
+            <i class="fas fa-chart-line-up" style="color: var(--adm-primary);"></i>
+            Financial Intelligence
+        </h1>
+        <p>Real-time platform yield monitoring and commission liquidation ledger.</p>
     </div>
-</div>
-
-<div class="kpi-grid-clean">
-    <div class="kpi-card-clean highlight">
-        <span class="kpi-label">Total Realized Commission</span>
-        <span class="kpi-value">₱{{ "{:,.2f}".format(metrics.realized_commission) }}</span>
-        <div class="kpi-trend trend-up">
-            <i class="fas fa-shield-check"></i> ₱{{ "{:,.2f}".format(metrics.escrowed_commission) }} Escrowed
-        </div>
-    </div>
-    <div class="kpi-card-clean">
-        <span class="kpi-label">Gross Transaction Volume</span>
-        <span class="kpi-value">₱{{ "{:,.2f}".format(metrics.total_gross) }}</span>
-        <div class="kpi-trend" style="color: var(--dm-slate-400);">
-            <i class="fas fa-arrow-right-arrow-left"></i> Total System Throughput
-        </div>
-    </div>
-    <div class="kpi-card-clean">
-        <span class="kpi-label">Monetized Transactions</span>
-        <span class="kpi-value">{{ ledger_items|length }}</span>
-        <div class="kpi-trend" style="color: var(--dm-slate-400);">
-            <i class="fas fa-calendar-check"></i> {{ metrics.monetized_bookings_count }} Bookings Covered
-        </div>
-    </div>
-</div>
-
-<div class="escrow-intelligence-box">
-    <div class="escrow-icon">
-        <i class="fas fa-shield-halved"></i>
-    </div>
-    <div class="escrow-content">
-        <h4>OccaServe Monetization Architecture</h4>
-        <p>
-            Platform security ensures that 100% of the customer payment is held in the Platform's Paymongo Escrow
-            account.
-            <strong>Platform Revenue:</strong> Our fee is calculated per monetization event (Downpayment or Final Settlement).
-            <strong>Liquidation:</strong> Commission is only marked as <em>Realized</em> once the funds are formally released to the Caterer.
-        </p>
-    </div>
-</div>
-
-<div class="finance-terminal-card">
-    <div class="card-header-clean" style="padding: 1.25rem 2rem; background: var(--dm-slate-50); border-bottom: 1px solid var(--dm-slate-100);">
-        <h3><i class="fas fa-receipt" style="color: var(--dm-primary);"></i> Financial Ledger</h3>
-        <button class="btn-save" style="padding: 0.6rem 1.25rem; font-size: 0.75rem; border-radius: 10px; display: flex; align-items: center; gap: 8px;" onclick="exportLedgerCSV()">
-            <i class="fas fa-file-csv" style="font-size: 1rem;"></i> 
-            <span>Download Financial Data</span>
+    <div class="header-actions-area">
+        <button class="btn-clean" style="background: var(--adm-navy); color: white;" onclick="exportLedgerCSV()">
+            <i class="fas fa-file-invoice-dollar"></i> Download Audit Ledger
         </button>
     </div>
+</div>
+
+<!-- Yield Matrix -->
+<div class="kpi-grid-clean">
+    <div class="kpi-card-clean">
+        <div class="kpi-icon-box" style="background: #ecfdf5; color: #065f46;"><i class="fas fa-sack-dollar"></i></div>
+        <div class="kpi-info">
+            <h4>Realized Yield</h4>
+            <span class="kpi-value">₱{{ "{:,.2f}".format(metrics.realized_commission) }}</span>
+            <span class="trend-badge trend-up">LIQUID PROFIT</span>
+        </div>
+    </div>
+    <div class="kpi-card-clean">
+        <div class="kpi-icon-box" style="background: #eff6ff; color: #1e40af;"><i class="fas fa-vault"></i></div>
+        <div class="kpi-info">
+            <h4>Escrowed Flow</h4>
+            <span class="kpi-value">₱{{ "{:,.2f}".format(metrics.escrowed_commission) }}</span>
+            <span class="trend-badge" style="background: #dbeafe; color: #1e40af;">IN-FLIGHT YIELD</span>
+        </div>
+    </div>
+    <div class="kpi-card-clean">
+        <div class="kpi-icon-box" style="background: #fff7ed; color: #9a3412;"><i class="fas fa-receipt"></i></div>
+        <div class="kpi-info">
+            <h4>Yield Events</h4>
+            <span class="kpi-value">{{ metrics.monetized_bookings_count }}</span>
+            <span class="trend-badge" style="background: #ffedd5; color: #9a3412;">ACTIVE ASSETS</span>
+        </div>
+    </div>
+</div>
+
+<!-- Financial Ledger Terminal -->
+<div class="table-card-clean">
+    <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <i class="fas fa-building-columns" style="color: var(--adm-primary);"></i>
+            <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy); margin: 0; text-transform: uppercase; letter-spacing: 0.05em;">Monetization Ledger</h3>
+        </div>
+        <span style="font-size: 0.65rem; font-weight: 800; background: #f8fafc; color: var(--adm-muted); padding: 4px 10px; border-radius: 8px; border: 1px solid #e2e8f0;">AUDIT SYNCED</span>
+    </div>
+
     <div style="overflow-x: auto;">
-        {% if ledger_items %}
-        <table class="finance-table">
+        <table class="clean-table" id="financeTable">
             <thead>
                 <tr>
-                    <th>Event / Reference</th>
-                    <th>Booking & Caterer</th>
-                    <th>Gross Payment</th>
-                    <th>Platform Fee</th>
-                    <th>Net to Partner</th>
-                    <th>Status</th>
+                    <th>Entry & Origin Date</th>
+                    <th>Reference Source</th>
+                    <th>Gross Throughput</th>
+                    <th>Platform Yield</th>
+                    <th>Net Settlement</th>
+                    <th style="text-align: right;">State</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in ledger_items %}
                 {% set gross = item.amount + item.commission_amount %}
-                <tr>
+                <tr class="cust-row">
                     <td>
-                        <div style="font-weight: 700; color: var(--dm-secondary); font-size: 0.85rem;">
-                            {{ item.release_trigger | upper }} PAYMENT
-                        </div>
-                        <div style="font-size: 0.75rem; color: var(--dm-slate-400); font-family: monospace;">
-                            {{ item.payment_reference or 'REF-' ~ item.id }}
-                        </div>
-                        <div style="font-size: 0.7rem; color: var(--dm-slate-400); margin-top: 4px;">
-                            {{ item.created_at.strftime('%b %d, %Y %H:%M') if item.created_at else '---' }}
+                        <div class="transaction-meta">
+                            <span style="font-weight: 800; color: var(--adm-navy); font-size: 0.85rem;">{{ item.created_at.strftime('%b %d, %Y') if item.created_at else '---' }}</span>
+                            <span style="font-size: 0.7rem; color: var(--adm-muted); font-weight: 700;">{{ item.created_at.strftime('%I:%M %p') if item.created_at else '' }}</span>
                         </div>
                     </td>
                     <td>
-                        <div style="font-size: 0.85rem; font-weight: 700; color: var(--dm-slate-700);">
-                            BK-{{ item.booking_id }}
-                        </div>
-                        <div style="font-size: 0.75rem; color: var(--dm-slate-500);">
-                            {{ item.booking.caterer.business_name if item.booking and item.booking.caterer else '---' }}
+                        <div class="clickable-ref" onclick="openBookingAudit({{ item.booking_id }})">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div class="yield-icon {{ 'icon-manual' if 'MANUAL' in (item.payment_reference or '') else 'icon-auto' }}">
+                                    <i class="fas {{ 'fa-keyboard' if 'MANUAL' in (item.payment_reference or '') else 'fa-microchip' }}"></i>
+                                </div>
+                                <div class="transaction-meta">
+                                    <span style="font-weight: 800; color: var(--adm-primary); font-size: 0.85rem;">#BK-{{ item.booking_id }}</span>
+                                    <span class="ledger-ref">{{ item.payment_reference or 'SYSTEM_ADJ' }}</span>
+                                </div>
+                            </div>
                         </div>
                     </td>
-                    <td><span class="amount-gross">₱{{ "{:,.2f}".format(gross) }}</span></td>
-                    <td><span class="amount-commission">+ ₱{{ "{:,.2f}".format(item.commission_amount) }}</span></td>
-                    <td><span style="color: var(--dm-emerald-500); font-weight: 700;">₱{{ "{:,.2f}".format(item.amount) }}</span></td>
+                    <td><span style="font-weight: 700; color: var(--adm-muted); font-size: 0.9rem;">₱{{ "{:,.2f}".format(gross) }}</span></td>
                     <td>
-                        {% if item.status == 'released' %}
-                            <span class="status-pill">
-                                <i class="fas fa-check-circle"></i> Realized
-                            </span>
-                        {% elif item.status == 'escrowed' %}
-                            <span class="status-pill" style="background: #eff6ff; color: #2563eb;">
-                                <i class="fas fa-clock"></i> Escrowed
-                            </span>
+                        {% if item.commission_amount > 0 %}
+                            <span class="amount-pill amount-fee">+ ₱{{ "{:,.2f}".format(item.commission_amount) }}</span>
                         {% else %}
-                            <span class="status-pill" style="background: #fff7ed; color: #c2410c;">
-                                <i class="fas fa-hourglass-start"></i> Ready
-                            </span>
+                            <span class="amount-pill amount-waived">₱0.00 (WAIVED)</span>
+                        {% endif %}
+                    </td>
+                    <td><span class="amount-pill amount-gain">₱{{ "{:,.2f}".format(item.amount) }}</span></td>
+                    <td style="text-align: right;">
+                        {% if item.status == 'released' %}
+                            <span class="badge-clean" style="background: #ecfdf5; color: #059669;">REALIZED</span>
+                        {% else %}
+                            <span class="badge-clean badge-pending">ESCROWED</span>
                         {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-        {% else %}
-        <div style="text-align: center; padding: 5rem 2rem;">
-            <i class="fas fa-receipt" style="font-size: 3.5rem; color: var(--dm-slate-100); margin-bottom: 1.5rem;"></i>
-            <h3 style="color: var(--dm-secondary); font-weight: 700;">No Revenue Data Available</h3>
-            <p style="color: var(--dm-slate-400); font-size: 0.95rem;">Real-time earnings will populate once payments
-                are confirmed.</p>
-        </div>
-        {% endif %}
     </div>
 </div>
 
-{% endblock %}
+<!-- AUDIT MODAL -->
+<div id="bookingAuditModal" class="admin-modal-overlay">
+    <div class="admin-modal-card">
+        <div class="modal-header-clean">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div style="background: var(--adm-primary-soft); color: var(--adm-primary); width: 45px; height: 45px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                    <i class="fas fa-fingerprint"></i>
+                </div>
+                <div>
+                    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 900; color: var(--adm-navy);" id="modalBookingTitle">Booking Intelligence</h3>
+                    <p style="margin: 0; font-size: 0.75rem; color: var(--adm-muted); font-weight: 600;">Deep-trace financial audit data.</p>
+                </div>
+            </div>
+            <button onclick="closeAuditModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);">&times;</button>
+        </div>
+        <div class="modal-body-clean" id="auditModalBody">
+            <!-- Dynamic Content -->
+        </div>
+        <div style="padding: 1.5rem 2rem; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; gap: 12px;">
+            <button class="btn-clean" style="width: 100%; justify-content: center;" onclick="closeAuditModal()">Complete Review</button>
+        </div>
+    </div>
+</div>
 
-{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    // Real-time Update Listener
-    window.addEventListener('system_update', (e) => {
-        const data = e.detail;
-        if (data.type === 'payment_update' || data.type === 'booking_update') {
-            document.getElementById('syncStatus').innerHTML = '<i class="fas fa-rotate fa-spin" style="color: var(--dm-primary);"></i> Re-calculating Ledger...';
-            setTimeout(() => window.location.reload(), 1500);
+    async function openBookingAudit(id) {
+        const modal = document.getElementById('bookingAuditModal');
+        const body = document.getElementById('auditModalBody');
+        document.getElementById('modalBookingTitle').innerText = `#BK-${id} Intelligence`;
+        modal.classList.add('active');
+        body.innerHTML = '<div style="text-align: center; padding: 4rem;"><i class="fas fa-spinner fa-spin fa-2x" style="color: var(--adm-primary);"></i><p style="margin-top: 15px; font-weight: 700; color: var(--adm-muted);">RETRIEVING AUDIT DATA...</p></div>';
+
+        try {
+            const res = await fetch(`/admin/api/bookings/${id}/details`);
+            const data = await res.json();
+            
+            if (data.success) {
+                const b = data.booking;
+                body.innerHTML = `
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+                        <div style="background: #f8fafc; padding: 15px; border-radius: 16px; border: 1px solid #f1f5f9;">
+                            <span style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); display: block; margin-bottom: 5px;">CATERER ENTITY</span>
+                            <span style="font-weight: 800; color: var(--adm-navy);">${b.caterer_name}</span>
+                        </div>
+                        <div style="background: #f8fafc; padding: 15px; border-radius: 16px; border: 1px solid #f1f5f9;">
+                            <span style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); display: block; margin-bottom: 5px;">CUSTOMER SOURCE</span>
+                            <span style="font-weight: 800; color: var(--adm-navy);">${b.customer_name}</span>
+                        </div>
+                    </div>
+                    <div style="background: #fff; border: 1px solid #f1f5f9; border-radius: 20px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);">
+                        <h4 style="margin: 0 0 15px 0; font-size: 0.85rem; font-weight: 900; color: var(--adm-navy);">TRANSACTION ANALYSIS</h4>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                            <span style="color: var(--adm-muted); font-size: 0.8rem; font-weight: 600;">Total Amount</span>
+                            <span style="font-weight: 800; color: var(--adm-navy);">₱${b.total_amount.toLocaleString()}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                            <span style="color: var(--adm-muted); font-size: 0.8rem; font-weight: 600;">Paid Status</span>
+                            <span style="font-weight: 800; color: var(--adm-primary);">${b.status.toUpperCase()}</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                body.innerHTML = `<div style="padding: 2rem; text-align: center; color: #ef4444; font-weight: 700;">${data.message}</div>`;
+            }
+        } catch (e) {
+            body.innerHTML = '<div style="padding: 2rem; text-align: center; color: #ef4444; font-weight: 700;">Communication Failure</div>';
         }
-    });
+    }
+
+    function closeAuditModal() { document.getElementById('bookingAuditModal').classList.remove('active'); }
 
     function exportLedgerCSV() {
-        const rows = [
-            ["Event Type", "Payment Reference", "Date", "Booking ID", "Caterer", "Gross Amount (PHP)", "Platform Fee (PHP)", "Net to Partner (PHP)", "Status"]
-        ];
-
-        const tableRows = document.querySelectorAll('.finance-table tbody tr');
-        if (tableRows.length === 0) {
-            alert("No data available to export.");
-            return;
-        }
-
-        tableRows.forEach(tr => {
-            const eventCell = tr.querySelector('td:nth-child(1)');
-            const bookingCell = tr.querySelector('td:nth-child(2)');
-            
-            const eventType = eventCell.querySelector('div:first-child').innerText.trim();
-            const ref = eventCell.querySelector('div:nth-child(2)').innerText.trim();
-            const date = eventCell.querySelector('div:last-child').innerText.trim();
-            
-            const bookingId = bookingCell.querySelector('div:first-child').innerText.trim();
-            const caterer = bookingCell.querySelector('div:last-child').innerText.trim();
-
-            const gross = tr.querySelector('td:nth-child(3)').innerText.replace(/[^0-9.]/g, '');
-            const comm = tr.querySelector('td:nth-child(4)').innerText.replace(/[^0-9.]/g, '');
-            const net = tr.querySelector('td:nth-child(5)').innerText.replace(/[^0-9.]/g, '');
-            const status = tr.querySelector('td:nth-child(6)').innerText.trim();
-
-            rows.push([`"${eventType}"`, `"${ref}"`, `"${date}"`, `"${bookingId}"`, `"${caterer}"`, gross, comm, net, `"${status}"`]);
-        });
-
-        const csvContent = "data:text/csv;charset=utf-8," 
-            + rows.map(e => e.join(",")).join("\n");
-
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `OccaServe_Monetization_Ledger_${new Date().toISOString().split('T')[0]}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        Swal.fire({ title: 'Generating Audit Report...', didOpen: () => Swal.showLoading() });
+        setTimeout(() => {
+            const rows = [["Entry Date", "Time", "Booking ID", "Reference", "Gross Amount", "Platform Yield", "Net Settlement", "Status"]];
+            document.querySelectorAll('#financeTable tbody tr').forEach(tr => {
+                const cells = tr.querySelectorAll('td');
+                const date = cells[0].querySelector('span:first-child').innerText;
+                const time = cells[0].querySelector('span:last-child').innerText;
+                const bId = cells[1].querySelector('span:first-child').innerText;
+                const ref = cells[1].querySelector('.ledger-ref').innerText;
+                const gross = cells[2].innerText.replace('₱', '').replace(',', '');
+                const yield = cells[3].innerText.replace('+ ₱', '').replace(',', '').replace(' (WAIVED)', '');
+                const net = cells[4].innerText.replace('₱', '').replace(',', '');
+                const status = cells[5].innerText.trim();
+                rows.push([date, time, bId, ref, gross, yield, net, status]);
+            });
+            const csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.join(",")).join("\n");
+            const link = document.createElement("a");
+            link.setAttribute("href", encodeURI(csvContent));
+            link.setAttribute("download", `OccaServe_Monetization_Ledger_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            Swal.fire('Success', 'Financial audit ledger downloaded successfully.', 'success');
+        }, 1200);
     }
 </script>
 {% endblock %}

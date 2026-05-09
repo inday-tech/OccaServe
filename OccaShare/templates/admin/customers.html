@@ -1,510 +1,256 @@
 {% extends "admin/layout.html" %}
 
-{% block title %}Manage Customers - OccaServe Admin{% endblock %}
+{% block title %}Customer Intelligence Registry - Admin Terminal{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ range(1, 1000) | random }}">
 <style>
-    /* KPI Stats Architecture */
-    .kpi-grid-clean {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 1.5rem;
-        margin-bottom: 2rem;
+    :root {
+        --adm-danger: #ef4444;
+        --adm-warning: #f59e0b;
+        --adm-success: #10b981;
+    }
+    
+    /* Diamond Standard Layout Alignment */
+    .table-card-clean {
+        background: #fff; border-radius: 24px; border: 1px solid rgba(226, 232, 240, 0.8);
+        overflow: visible; transition: all 0.3s ease;
+        margin: 0 0 2rem 0; /* Align with KPI grid margins */
+    }
+    
+    .clean-table thead th {
+        font-size: 0.65rem; font-weight: 800; color: #64748b;
+        text-transform: uppercase; letter-spacing: 0.1em;
+        padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;
+        background: #f8fafc;
     }
 
-    .kpi-card-clean {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 1.25rem;
-        border: 1px solid var(--dm-slate-100);
-        display: flex;
-        align-items: center;
-        gap: 1.25rem;
-        transition: transform 0.2s, box-shadow 0.2s;
+    .cust-row {
+        border-bottom: 1px solid #f8fafc; transition: all 0.2s ease;
     }
-
-    .kpi-card-clean:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.03);
-    }
-
-    .kpi-icon-box {
-        width: 54px;
-        height: 54px;
-        border-radius: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.25rem;
-    }
-
-    .kpi-info h4 {
-        margin: 0;
-        font-size: 0.8rem;
-        color: var(--dm-slate-400);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    .kpi-info .kpi-value {
-        margin-top: 4px;
-        display: block;
-        font-size: 1.5rem;
-        font-weight: 800;
-        color: var(--dm-secondary);
-    }
-
-    /* Management Terminal */
-    .management-terminal {
-        background: white;
-        border-radius: 1.25rem;
-        border: 1px solid var(--dm-slate-100);
-        overflow: hidden;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-    }
-
-    .terminal-header {
-        padding: 1.5rem 2rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 1px solid var(--dm-slate-100);
-    }
-
-    /* Search Integration */
-    .search-clean {
-        position: relative;
-        min-width: 320px;
-    }
-
-    .dm-input-group {
-        position: relative;
-        margin-bottom: 0;
-    }
-
-    .dm-input-group i {
-        position: absolute;
-        left: 1.25rem;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--dm-slate-400);
-        font-size: 0.9rem;
-        transition: color 0.3s;
-    }
-
-    .dm-input-group input {
-        width: 100%;
-        padding: 0.75rem 1rem 0.75rem 3rem;
-        border: 1.5px solid var(--dm-slate-100);
-        border-radius: 12px;
-        font-size: 0.9rem;
-        font-weight: 500;
-        background: var(--dm-slate-50);
-        transition: all 0.2s;
-    }
-
-    .dm-input-group input:focus {
-        outline: none;
-        border-color: var(--dm-primary);
-        background: white;
-        box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.08);
-    }
-
-    /* Customer Table Matrix */
-    .cust-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .cust-table th {
-        background: var(--dm-slate-50);
-        padding: 1rem;
-        text-align: left;
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: var(--dm-slate-400);
-        text-transform: uppercase;
-        border-bottom: 1px solid var(--dm-slate-100);
-    }
-
-    .cust-table td {
-        padding: 1.25rem 1rem;
-        border-bottom: 1px solid var(--dm-slate-50);
-        vertical-align: middle;
-    }
-
     .cust-row:hover {
-        background: #fafafa;
+        background: #f8fafc; transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
     }
 
-    .user-profile-cell {
-        display: flex;
-        align-items: center;
-        gap: 12px;
+    .status-badge-dm {
+        padding: 5px 12px; border-radius: 10px; font-size: 0.6rem;
+        font-weight: 800; display: inline-flex; align-items: center; gap: 6px;
+        letter-spacing: 0.03em;
+    }
+    .status-active { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .status-suspended { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .status-flagged { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+
+    .action-dots-adm {
+        width: 36px; height: 36px; border-radius: 10px;
+        background: #f1f5f9; color: #64748b; display: flex;
+        align-items: center; justify-content: center; cursor: pointer;
+        transition: all 0.2s ease; border: 1px solid #e2e8f0;
+    }
+    .action-dots-adm:hover {
+        background: var(--adm-primary); color: white;
+        border-color: var(--adm-primary);
     }
 
-    .user-avatar {
-        width: 42px;
-        height: 42px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        font-size: 1rem;
+    .ltv-value {
+        font-family: 'Poppins', sans-serif; font-weight: 800;
+        color: var(--adm-navy); font-size: 0.95rem; line-height: 1;
+    }
+    .ltv-label {
+        font-size: 0.6rem; font-weight: 800; color: #10b981;
+        margin-top: 4px; letter-spacing: 0.05em; text-transform: uppercase;
     }
 
-    .user-info-text .name {
-        font-weight: 800;
-        color: var(--dm-secondary);
-        display: block;
+    /* Action Dropdown - Elite Anti-Overlap */
+    .action-menu-dm {
+        position: relative; display: inline-block;
     }
-
-    .user-info-text .email {
-        font-size: 0.8rem;
-        color: var(--dm-slate-400);
-        font-weight: 500;
+    .dropdown-menu-dm {
+        position: absolute; right: 0; top: 100%; margin-top: 10px;
+        width: 210px; background: white; border-radius: 16px;
+        box-shadow: 0 15px 35px -5px rgba(0,0,0,0.15), 0 10px 15px -10px rgba(0,0,0,0.1);
+        border: 1px solid #e2e8f0; z-index: 9999; padding: 6px;
+        display: none; transform-origin: top right;
     }
-
-    .badge-clean {
-        padding: 4px 10px;
-        border-radius: 6px;
-        font-size: 0.65rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
+    .dropdown-menu-dm.show { display: block !important; animation: dm-pop 0.2s ease-out; }
+    @keyframes dm-pop {
+        from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
     }
-
-    /* ACTION DROPDOWN */
-    .actions-dropdown {
-        position: relative;
-        display: inline-block;
-    }
-
-    .dropdown-trigger {
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        border: 1px solid var(--dm-slate-100);
-        background: white;
-        color: var(--dm-slate-400);
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s;
-    }
-
-    .dropdown-trigger:hover,
-    .dropdown-trigger.active {
-        background: var(--dm-slate-50);
-        color: var(--dm-primary);
-        border-color: var(--dm-primary);
-    }
-
-    .dropdown-menu {
-        position: absolute;
-        top: 100%;
-        right: 0;
-        width: 220px;
-        background: white;
-        border: 1px solid var(--dm-slate-100);
-        border-radius: 12px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        display: none;
-        z-index: 1000;
-        padding: 0.5rem;
-        margin-top: 8px;
-    }
-
-    .dropdown-menu.show {
-        display: block;
-    }
-
-    .dropdown-item {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 0.75rem 1rem;
-        border-radius: 8px;
-        color: var(--dm-slate-600);
-        font-size: 0.85rem;
-        font-weight: 600;
-        width: 100%;
-        border: none;
-        background: transparent;
-        cursor: pointer;
+    .dropdown-item-dm {
+        display: flex; align-items: center; gap: 10px;
+        padding: 10px 14px; border-radius: 10px; font-size: 0.75rem;
+        font-weight: 700; color: #475569; transition: all 0.2s;
+        cursor: pointer; border: none; background: none; width: 100%;
         text-align: left;
-        transition: all 0.2s;
-        text-decoration: none;
     }
+    .dropdown-item-dm:hover { background: #f1f5f9; color: var(--adm-primary); }
+    .dropdown-item-dm.danger:hover { background: #fff1f2; color: #e11d48; }
+    .dropdown-divider { height: 1px; background: #f1f5f9; margin: 4px 0; }
 
-    .dropdown-item:hover {
-        background: var(--dm-slate-50);
-        color: var(--dm-primary);
+    /* Pagination Elite */
+    .pagination-terminal {
+        padding: 1.25rem 2rem; background: #f8fafc;
+        border-top: 1px solid #f1f5f9; display: flex;
+        justify-content: space-between; align-items: center;
     }
-
-    .dropdown-item i {
-        width: 16px;
-        font-size: 0.9rem;
-        color: var(--dm-slate-400);
+    .pag-btn {
+        padding: 8px 16px; border-radius: 10px; border: 1px solid #e2e8f0;
+        background: white; font-size: 0.75rem; font-weight: 800;
+        color: var(--adm-navy); cursor: pointer; transition: all 0.2s;
+        display: flex; align-items: center; gap: 8px;
     }
-
-    .dropdown-item.danger {
-        color: #ef4444;
-    }
-
-    .dropdown-item.danger:hover {
-        background: #fef2f2;
-    }
-
-    /* MODAL SYSTEM */
-    .admin-modal-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(15, 23, 42, 0.4);
-        backdrop-filter: blur(8px);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 2000;
-        padding: 2rem;
-    }
-
-    .admin-modal-overlay.active {
-        display: flex;
-    }
-
-    .admin-modal-card {
-        background: white;
-        width: 100%;
-        max-width: 650px;
-        border-radius: 1.25rem;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-        overflow: hidden;
-    }
-
-    .modal-header-clean {
-        padding: 1.5rem 2rem;
-        border-bottom: 1px solid var(--dm-slate-100);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .modal-header-clean h3 {
-        margin: 0;
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: var(--dm-secondary);
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .modal-close-btn {
-        background: none;
-        border: none;
-        font-size: 1.5rem;
-        color: var(--dm-slate-400);
-        cursor: pointer;
-    }
-
-    .modal-body-clean {
-        padding: 2rem;
-    }
-
-    .modal-footer-clean {
-        padding: 1.25rem 2rem;
-        border-top: 1px solid var(--dm-slate-100);
-        display: flex;
-        justify-content: flex-end;
-        gap: 12px;
-    }
-
-    .audit-item {
-        margin-bottom: 1rem;
-    }
-
-    .audit-label {
-        font-size: 0.65rem;
-        font-weight: 800;
-        color: var(--dm-slate-400);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        display: block;
-        margin-bottom: 4px;
-    }
-
-    .audit-value {
-        font-size: 0.9rem;
-        font-weight: 700;
-        color: var(--dm-secondary);
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .btn-action-primary {
-        background: var(--dm-primary);
-        color: white;
-        border: none;
-        padding: 0.75rem 1.5rem;
-        border-radius: 10px;
-        font-weight: 700;
-        font-size: 0.9rem;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .pulse-live {
-        animation: pulse-live 2s infinite;
-    }
-
-    @keyframes pulse-live {
-        0% { transform: scale(0.95); opacity: 0.5; }
-        50% { transform: scale(1.1); opacity: 1; }
-        100% { transform: scale(0.95); opacity: 0.5; }
-    }
+    .pag-btn:hover:not(:disabled) { border-color: var(--adm-primary); color: var(--adm-primary); }
+    .pag-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="page-header-clean">
-    <div class="page-header">
-        <h1>Manage Customers</h1>
-        <p>Monitor and adjudicate individual platform participants.</p>
+<div class="dashboard-header-clean">
+    <div class="header-title-area">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+            <div style="background: var(--adm-primary-soft); color: var(--adm-primary); padding: 8px; border-radius: 10px;">
+                <i class="fas fa-users-viewfinder"></i>
+            </div>
+            <h5 style="margin: 0; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--adm-primary);">Governance Terminal</h5>
+        </div>
+        <h1>Customer Registry</h1>
+        <p>Strategic oversight of platform participants, transaction integrity, and identity lifecycle.</p>
     </div>
 </div>
 
+<!-- Elite KPI Matrix -->
 <div class="kpi-grid-clean">
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #eff6ff; color: #3b82f6;"><i class="fas fa-users"></i></div>
+        <div class="kpi-icon-box" style="background: #eff6ff; color: #1d4ed8;"><i class="fas fa-fingerprint"></i></div>
         <div class="kpi-info">
-            <h4>Total Registry</h4>
-            <span class="kpi-value" id="kpi-total">{{ metrics.total_customers }}</span>
+            <h4>Total Registered</h4>
+            <span class="kpi-value">{{ metrics.total_customers }}</span>
+            <span class="trend-badge trend-up">PLATFORM POPULATION</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #ecfdf5; color: #10b981;"><i class="fas fa-user-check"></i></div>
+        <div class="kpi-icon-box" style="background: #ecfdf4; color: #166534;"><i class="fas fa-shield-check"></i></div>
         <div class="kpi-info">
-            <h4>Active Profiles</h4>
-            <span class="kpi-value" id="kpi-active">{{ metrics.active_customers }}</span>
+            <h4>Verified Accounts</h4>
+            <span class="kpi-value">{{ metrics.active_customers }}</span>
+            <span class="trend-badge trend-up"><i class="fas fa-check"></i> TRUSTED</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: var(--dm-primary-light); color: var(--dm-primary);"><i class="fas fa-id-card"></i></div>
+        <div class="kpi-icon-box" style="background: #fffbeb; color: #92400e;"><i class="fas fa-user-shield"></i></div>
         <div class="kpi-info">
-            <h4>KYC Verified</h4>
-            <span class="kpi-value" id="kpi-kyc">{{ metrics.kyc_completed }}</span>
+            <h4>Risk Oversight</h4>
+            <span class="kpi-value">0</span>
+            <span class="trend-badge" style="background: #fef3c7; color: #92400e;">FLAGGED FOR AUDIT</span>
+        </div>
+    </div>
+    <div class="kpi-card-clean">
+        <div class="kpi-icon-box" style="background: var(--adm-primary-soft); color: var(--adm-primary);"><i class="fas fa-chart-line"></i></div>
+        <div class="kpi-info">
+            <h4>Engagement LTV</h4>
+            <span class="kpi-value">₱{{ "{:,.0f}".format(customers | map(attribute='bookings') | map('list') | sum(start=[]) | selectattr('status', 'equalto', 'completed') | map(attribute='total_amount') | sum if customers else 0) }}</span>
+            <span class="trend-badge" style="background: #f1f5f9; color: #475569;">GROSS VOLUME</span>
         </div>
     </div>
 </div>
 
-<div class="management-terminal">
-    <div class="terminal-header">
-        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--dm-secondary);">User Directory</h3>
-        <div class="dm-input-group" style="width: 320px;">
-            <i class="fas fa-search"></i>
-            <input type="text" id="customerSearchInput" placeholder="Filter by name, email..." onkeyup="filterTable()">
+<!-- Identity Registry Terminal -->
+<div class="table-card-clean" style="box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05);">
+    <div class="terminal-filter-strip" style="display: flex; justify-content: space-between; align-items: center; padding: 1.75rem 2rem; background: #fff; border-top-left-radius: 24px; border-top-right-radius: 24px;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="background: linear-gradient(135deg, var(--adm-primary), #6366f1); color: white; width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; box-shadow: 0 8px 16px -4px rgba(79, 70, 229, 0.4);">
+                <i class="fas fa-fingerprint"></i>
+            </div>
+            <div>
+                <h3 style="font-size: 1rem; font-weight: 800; color: var(--adm-navy); margin: 0; text-transform: uppercase; letter-spacing: 0.02em;">Participant Registry</h3>
+                <p style="font-size: 0.75rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Managed Identity Lifecycle & Compliance</p>
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <div style="position: relative;">
+                <select id="statusFilter" onchange="filterRegistry()" class="btn-clean" style="padding: 12px 18px; font-size: 0.8rem; font-weight: 700; background: #fff; border-radius: 12px; min-width: 240px; border: 1.5px solid #e2e8f0; color: var(--adm-navy); cursor: pointer; transition: all 0.2s;">
+                    <option value="all">Governance: All States</option>
+                    <option value="verified">State: Verified Only</option>
+                    <option value="pending">State: Pending KYC</option>
+                    <option value="suspended">State: Suspended Only</option>
+                </select>
+            </div>
+            
+            <button class="btn-clean" style="padding: 12px; background: #fff; width: 48px; height: 48px; border-radius: 12px; border: 1.5px solid #e2e8f0; color: #64748b; transition: all 0.2s;" title="Export Intelligence">
+                <i class="fas fa-download"></i>
+            </button>
         </div>
     </div>
 
-    <div style="overflow-x: auto;">
-        <table class="cust-table" id="customersTable">
+    <div style="overflow: visible; padding: 0 0 5rem 0;">
+        <table class="clean-table" id="registryTable" style="width: 100%; border-collapse: collapse;">
             <thead>
                 <tr>
-                    <th>Customer Identity</th>
-                    <th>Governance & KYC</th>
-                    <th>Engagement</th>
-                    <th style="text-align: right;">Actions</th>
+                    <th style="padding-left: 2rem; width: 30%;">Participant Identity</th>
+                    <th style="width: 25%;">Governance & Compliance</th>
+                    <th style="width: 15%;">LTV Engagement</th>
+                    <th style="width: 15%;">Join Date</th>
+                    <th style="text-align: right; padding-right: 2rem; width: 15%;">Registry Actions</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="registryBody">
                 {% for customer in customers %}
                 <tr class="cust-row">
-                    <td>
-                        <div class="user-profile-cell">
-                            <div class="user-avatar" style="background: var(--dm-slate-50); color: var(--dm-secondary); border: 1px solid var(--dm-slate-100);">
-                                {{ customer.first_name[0] }}{{ customer.last_name[0] }}
-                            </div>
-                            <div class="user-info-text">
-                                <span class="name">{{ customer.first_name }} {{ customer.last_name }}</span>
-                                <span class="email">{{ customer.email }}</span>
+                    <td style="padding: 1.5rem 0 1.5rem 2rem;">
+                        <div class="user-profile-cell" style="display: flex; align-items: center; gap: 14px; min-height: 52px;">
+                            <div class="registry-avatar" style="width: 52px; height: 52px; font-size: 1.1rem; background: #f1f5f9; border: 1.5px solid #e2e8f0; display: flex; align-items: center; justify-content: center;">{{ customer.first_name[0] }}{{ customer.last_name[0] }}</div>
+                            <div style="display: flex; flex-direction: column; justify-content: center;">
+                                <span style="font-weight: 800; color: var(--adm-navy); font-size: 0.9rem; display: block; line-height: 1.2; margin-bottom: 2px;">{{ customer.first_name }} {{ customer.last_name }}</span>
+                                <span style="font-size: 0.7rem; color: #64748b; font-weight: 700; letter-spacing: 0.02em; line-height: 1;">IDENTITY #{{ "%05d"|format(customer.id) }}</span>
                             </div>
                         </div>
                     </td>
                     <td>
                         <div style="display: flex; flex-direction: column; gap: 6px;">
-                            <span class="badge-clean" style="background: {% if customer.is_kyc_complete %}#ecfdf5; color: #10b981;{% else %}#f1f5f9; color: #64748b;{% endif %}">
-                                <i class="fas {% if customer.is_kyc_complete %}fa-id-shield{% else %}fa-clock{% endif %}"></i>
-                                {{ 'Verified' if customer.is_kyc_complete else 'Pending KYC' }}
+                            <span class="status-badge-dm {% if customer.is_verified %}status-active{% else %}status-flagged{% endif %}">
+                                <i class="fas {% if customer.is_verified %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %}"></i>
+                                {{ 'VERIFIED IDENTITY' if customer.is_verified else 'PENDING KYC' }}
                             </span>
-                            <span class="badge-clean" style="background: {% if customer.status == 'active' %}#eff6ff; color: #2563eb;{% elif customer.status == 'suspended' %}#fef2f2; color: #ef4444;{% else %}#fff7ed; color: #f97316;{% endif %}">
-                                <i class="fas {% if customer.status == 'active' %}fa-user-check{% elif customer.status == 'suspended' %}fa-user-slash{% else %}fa-magnifying-glass-chart{% endif %}"></i>
-                                {{ customer.status | title if customer.status else 'Active' }}
-                            </span>
+                            <div style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #64748b; font-weight: 600;">
+                                <i class="fas fa-envelope" style="font-size: 0.7rem; color: #94a3b8;"></i> {{ customer.email }}
+                            </div>
                         </div>
                     </td>
                     <td>
-                        <div style="font-weight: 800; color: var(--dm-secondary); font-size: 0.95rem;">
-                            ₱{{ "{:,.2f}".format(customer.bookings | selectattr('status', 'equalto', 'completed') | map(attribute='total_amount') | sum) }}
-                            <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 500;">Spent</span>
-                        </div>
-                        <div style="font-size: 0.75rem; color: #10b981; font-weight: 700; margin-top: 2px;">
-                            <i class="fas fa-chart-line"></i> 
-                            {% set total_b = customer.bookings | length %}
-                            {% set completed_b = customer.bookings | selectattr('status', 'equalto', 'completed') | list | length %}
-                            {{ (completed_b / total_b * 100) | round(1) if total_b > 0 else 100 }}% Success Rate
-                        </div>
+                        <div class="ltv-value">₱{{ "{:,.2f}".format(customer.bookings | selectattr('status', 'equalto', 'completed') | map(attribute='total_amount') | sum) }}</div>
+                        <div class="ltv-label">Lifetime Value</div>
                     </td>
-                    <td style="text-align: right;">
-                        <div class="actions-dropdown">
-                            <button class="dropdown-trigger" onclick="toggleDropdown(this, event)">
-                                <i class="fas fa-ellipsis-v"></i>
-                            </button>
-                            <div class="dropdown-menu">
-                                <button class="dropdown-item" 
-                                        data-id="{{ customer.id }}" data-name="{{ customer.first_name }} {{ customer.last_name }}"
-                                        data-email="{{ customer.email }}" data-phone="{{ customer.phone_number or 'N/A' }}"
-                                        data-address="{{ customer.address or 'N/A' }}"
-                                        data-kyc="{{ 'Verified' if customer.is_kyc_complete else 'Incomplete' }}"
-                                        data-status="{{ customer.status or 'active' }}"
-                                        data-date="{{ customer.created_at.strftime('%b %d, %Y') if customer.created_at else 'N/A' }}"
-                                        onclick="openViewCustomerModal(this)">
-                                    <i class="fas fa-eye"></i> View Profile
+                    <td>
+                        <div style="font-weight: 800; color: var(--adm-navy); font-size: 0.85rem; margin-bottom: 2px;">
+                            {{ customer.created_at.strftime('%b %d, %Y') if customer.created_at else 'Jan 01, 2024' }}
+                        </div>
+                        <span style="font-size: 0.65rem; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Established</span>
+                    </td>
+                    <td style="text-align: right; padding-right: 2rem;">
+                        <div class="action-menu-dm" style="display: inline-block;">
+                            <div class="action-dots-adm" onclick="toggleActionMenu(this, event)">
+                                <i class="fas fa-ellipsis-h"></i>
+                            </div>
+                            <div class="dropdown-menu-dm">
+                                <button class="dropdown-item-dm" onclick="auditCustomer('{{ customer.id }}')">
+                                    <i class="fas fa-search-plus"></i> Intelligence Audit
                                 </button>
-                                <button class="dropdown-item" 
-                                    {% if customer.is_kyc_complete %}
-                                    onclick="alert('Identity Lock: Verified identities cannot be modified directly. Please use Compliance Audit for corrections.')" 
-                                    style="opacity: 0.5;"
-                                    {% else %}
-                                    data-id="{{ customer.id }}" data-first="{{ customer.first_name }}" data-last="{{ customer.last_name }}"
-                                    data-email="{{ customer.email }}" data-phone="{{ customer.phone_number or '' }}"
-                                    data-address="{{ customer.address or '' }}" onclick="openEditCustomerModal(this)"
-                                    {% endif %}>
-                                    <i class="fas fa-edit"></i> Edit Details
+                                <button class="dropdown-item-dm" onclick="viewLedger('{{ customer.id }}')">
+                                    <i class="fas fa-receipt"></i> Transaction Ledger
                                 </button>
-                                <div class="dropdown-divider" style="height: 1px; background: var(--dm-slate-50); margin: 6px 8px;"></div>
-                                {% if customer.status == 'suspended' %}
-                                <button class="dropdown-item" style="color: #2563eb;" onclick="activateCustomer({{ customer.id }})">
-                                    <i class="fas fa-user-check"></i> Activate Account
+                                <button class="dropdown-item-dm" onclick="sendAlert('{{ customer.id }}')">
+                                    <i class="fas fa-bell"></i> Dispatch Alert
                                 </button>
-                                {% else %}
-                                <button class="dropdown-item" style="color: #ef4444;" onclick="suspendCustomer({{ customer.id }})">
-                                    <i class="fas fa-user-slash"></i> Suspend Account
+                                <div class="dropdown-divider"></div>
+                                <button class="dropdown-item-dm danger" onclick="flagAccount('{{ customer.id }}')">
+                                    <i class="fas fa-flag"></i> Flag Account
                                 </button>
-                                <button class="dropdown-item" style="color: #f97316;" onclick="flagCustomer({{ customer.id }})">
-                                    <i class="fas fa-flag"></i> Flag for Investigation
+                                <button class="dropdown-item-dm danger" onclick="suspendAccount('{{ customer.id }}')">
+                                    <i class="fas fa-user-slash"></i> Suspend Access
                                 </button>
-                                {% endif %}
-                                <form action="/admin/customers/{{ customer.id }}/archive" method="POST" onsubmit="event.preventDefault(); window.showConfirm('Archive this account?', () => this.submit());">
-                                    <button type="submit" class="dropdown-item danger"><i class="fas fa-trash-alt"></i> Archive Account</button>
-                                </form>
                             </div>
                         </div>
                     </td>
@@ -513,237 +259,258 @@
             </tbody>
         </table>
     </div>
-    
-    <div id="customer-sync-status" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--dm-slate-100); font-size: 0.75rem; font-weight: 700; color: var(--dm-slate-400); display: flex; align-items: center; gap: 8px;">
-        <i class="fas fa-circle pulse-live" style="font-size: 8px; color: var(--dm-primary);"></i> Real-time Identity Registry Online
-    </div>
-</div>
 
-<!-- Modals -->
-<div id="viewCustomerModal" class="admin-modal-overlay">
-    <div class="admin-modal-card" style="max-width: 750px;">
-        <div class="modal-header-clean" style="background: white; border-bottom: 2px solid #f8fafc;">
-            <h3><i class="fas fa-id-card-clip"></i> Customer Intelligence Report</h3>
-            <button class="modal-close-btn" onclick="closeViewCustomerModal()">&times;</button>
+    <!-- Elite Pagination Control -->
+    <div class="pagination-terminal">
+        <div style="font-size: 0.75rem; color: var(--adm-muted); font-weight: 700;">
+            Showing <span id="entryStart">1</span> to <span id="entryEnd">10</span> of <span id="totalEntries">{{ customers|length }}</span> participants
         </div>
-        <div class="modal-body-clean" id="viewCustomerBody" style="background: #f8fafc;"></div>
-        <div class="modal-footer-clean" style="background: white;">
-            <button class="btn-action-primary" style="background: #f1f5f9; color: #64748b;" onclick="closeViewCustomerModal()">Close Report</button>
+        <div style="display: flex; gap: 8px;">
+            <button class="pag-btn" id="prevBtn" onclick="changePage(-1)" disabled>
+                <i class="fas fa-chevron-left"></i> Previous
+            </button>
+            <button class="pag-btn" id="nextBtn" onclick="changePage(1)">
+                Next <i class="fas fa-chevron-right"></i>
+            </button>
         </div>
     </div>
 </div>
 
-<div id="editCustomerModal" class="admin-modal-overlay">
-    <div class="admin-modal-card">
+<!-- Intelligence Modals -->
+<div id="intelligenceModal" class="admin-modal-overlay">
+    <div class="admin-modal-card" style="max-width: 600px;">
         <div class="modal-header-clean">
-            <h3><i class="fas fa-user-shield"></i> Profile Adjudication</h3>
-            <button class="modal-close-btn" onclick="closeEditCustomerModal()">&times;</button>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="background: var(--adm-primary-soft); color: var(--adm-primary); width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-fingerprint"></i>
+                </div>
+                <div>
+                    <h3 style="font-size: 0.95rem; font-weight: 800; text-transform: uppercase; margin: 0;">Identity Adjudication</h3>
+                    <p style="font-size: 0.7rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Strategic profile overview and compliance check.</p>
+                </div>
+            </div>
+            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);" onclick="closeIntelligenceModal()">&times;</button>
         </div>
-        <form id="editCustomerForm" class="admin-form-pro">
-            <input type="hidden" name="customer_id" id="editCustomerId">
-            <div class="modal-body-clean">
-                <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; display: flex; gap: 12px; align-items: flex-start;">
-                    <i class="fas fa-info-circle" style="color: #d97706; margin-top: 3px;"></i>
-                    <div style="font-size: 0.8rem; color: #92400e; font-weight: 500; line-height: 1.4;">
-                        Admin oversight is required for profile changes. Ensure you have verified the identity of the user before committing these changes to the registry.
-                    </div>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-                    <div>
-                        <label>First Name</label>
-                        <div class="dm-input-group"><i class="fas fa-user"></i><input type="text" name="first_name" id="editFirstName" required></div>
-                    </div>
-                    <div>
-                        <label>Last Name</label>
-                        <div class="dm-input-group"><i class="fas fa-user"></i><input type="text" name="last_name" id="editLastName" required></div>
-                    </div>
-                    <div style="grid-column: span 2;">
-                        <label>Email Address</label>
-                        <div class="dm-input-group"><i class="fas fa-envelope"></i><input type="email" name="email" id="editEmail" required></div>
-                    </div>
-                    <div>
-                        <label>Phone</label>
-                        <div class="dm-input-group"><i class="fas fa-phone"></i><input type="tel" name="phone" id="editPhone"></div>
-                    </div>
-                    <div>
-                        <label>Address</label>
-                        <div class="dm-input-group"><i class="fas fa-map-marker-alt"></i><input type="text" name="address" id="editAddress"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer-clean">
-                <button type="button" class="dropdown-item" style="width: auto;" onclick="closeEditCustomerModal()">Cancel</button>
-                <button type="submit" class="btn-action-primary">Commit Changes</button>
-            </div>
-        </form>
+        <div class="modal-body-clean" id="intelligenceBody"></div>
+        <div class="modal-footer-clean">
+            <button class="btn-clean" style="background: white; border: 1px solid #e2e8f0;" onclick="closeIntelligenceModal()">Close Audit</button>
+            <button class="btn-clean" style="background: var(--adm-primary); color: white; font-weight: 800;">Generate Compliance Report</button>
+        </div>
     </div>
 </div>
+
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    window.addEventListener('system_update', (e) => {
-        const triggers = ['new_signup', 'kyc_update', 'customer_update', 'user_archived'];
-        if (triggers.includes(e.detail.type)) refreshCustomersTerminal();
-    });
+    // --- State & Pagination Engine ---
+    let currentPage = 1;
+    const entriesPerPage = 10;
+    const rows = Array.from(document.querySelectorAll('.cust-row'));
 
-    async function refreshCustomersTerminal() {
-        const statusEl = document.getElementById('customer-sync-status');
-        if (statusEl) statusEl.innerHTML = '<i class="fas fa-sync fa-spin"></i> SYNCING...';
+    function filterRegistry() {
+        const status = document.getElementById('statusFilter').value;
+        
+        const filteredRows = rows.filter(row => {
+            const badge = row.querySelector('.status-badge-dm').innerText.toLowerCase();
+            const matchesStatus = (status === 'all') || 
+                                 (status === 'verified' && badge.includes('verified')) ||
+                                 (status === 'pending' && badge.includes('pending')) ||
+                                 (status === 'suspended' && badge.includes('suspended'));
+            
+            return matchesStatus;
+        });
+
+        updatePagination(filteredRows);
+    }
+
+    function updatePagination(filteredRows) {
+        const total = filteredRows.length;
+        const totalPages = Math.ceil(total / entriesPerPage);
+        
+        if (currentPage > totalPages) currentPage = totalPages || 1;
+        
+        const start = (currentPage - 1) * entriesPerPage;
+        const end = start + entriesPerPage;
+        
+        rows.forEach(row => row.style.display = 'none');
+        filteredRows.slice(start, end).forEach(row => row.style.display = '');
+        
+        document.getElementById('entryStart').innerText = total === 0 ? 0 : start + 1;
+        document.getElementById('entryEnd').innerText = Math.min(end, total);
+        document.getElementById('totalEntries').innerText = total;
+        
+        document.getElementById('prevBtn').disabled = currentPage === 1;
+        document.getElementById('nextBtn').disabled = currentPage === totalPages || total === 0;
+    }
+
+    function changePage(delta) {
+        currentPage += delta;
+        filterRegistry();
+    }
+
+    // --- Interaction Logic (Diamond v6) ---
+    function toggleActionMenu(btn, event) {
+        event.stopPropagation();
+        const menu = btn.nextElementSibling;
+        document.querySelectorAll('.dropdown-menu-dm').forEach(m => {
+            if (m !== menu) m.classList.remove('show');
+        });
+        menu.classList.toggle('show');
+    }
+
+    window.onclick = () => {
+        document.querySelectorAll('.dropdown-menu-dm').forEach(m => m.classList.remove('show'));
+    };
+
+    async function auditCustomer(id) {
+        Swal.fire({
+            title: 'Initializing Audit',
+            text: 'Loading intelligence profile for participant #' + id,
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+        
         try {
-            const res = await fetch('/admin/api/customers-overview');
-            const data = await res.json();
-            if (data.success) {
-                document.getElementById('kpi-total').innerText = data.metrics.total_customers;
-                document.getElementById('kpi-active').innerText = data.metrics.active_customers;
-                document.getElementById('kpi-kyc').innerText = data.metrics.kyc_completed;
+            const res = await fetch(`/admin/api/customers/${id}/audit`);
+            const result = await res.json();
+            
+            if (result.success) {
+                const d = result.data;
+                const riskColor = d.risk_score > 70 ? '#ef4444' : (d.risk_score > 30 ? '#f59e0b' : '#10b981');
+                
+                document.getElementById('intelligenceBody').innerHTML = `
+                    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                        <div style="background: #f8fafc; padding: 1.5rem; display: flex; align-items: center; gap: 1rem; border-bottom: 1px solid #f1f5f9;">
+                            <div class="registry-avatar" style="width: 56px; height: 56px; font-size: 1.25rem;">${d.full_name[0]}</div>
+                            <div>
+                                <div style="font-weight: 800; color: var(--adm-navy); font-size: 1rem;">${d.full_name}</div>
+                                <div style="font-size: 0.8rem; color: var(--adm-muted); font-weight: 600;">${d.email}</div>
+                                <span class="status-badge-dm status-${d.status}" style="margin-top: 6px;">${d.status.toUpperCase()}</span>
+                            </div>
+                        </div>
+                        
+                        <div style="padding: 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div style="background: #f8fafc; padding: 1rem; border-radius: 12px; border: 1px solid #f1f5f9;">
+                                <div style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Engagement Metric</div>
+                                <div style="font-weight: 800; color: var(--adm-navy); font-size: 1.1rem; margin-top: 4px;">₱${d.lifetime_value.toLocaleString()}</div>
+                                <div style="font-size: 0.65rem; color: #10b981; font-weight: 700;">LIFETIME VALUE</div>
+                            </div>
+                            <div style="background: #f8fafc; padding: 1rem; border-radius: 12px; border: 1px solid #f1f5f9;">
+                                <div style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Reliability Score</div>
+                                <div style="font-weight: 800; color: ${riskColor}; font-size: 1.1rem; margin-top: 4px;">${d.risk_score}%</div>
+                                <div style="font-size: 0.65rem; color: var(--adm-muted); font-weight: 700;">RISK PROBABILITY</div>
+                            </div>
+                        </div>
 
-                const tbody = document.querySelector('#customersTable tbody');
-                tbody.innerHTML = data.customers.map(c => `
-                    <tr class="cust-row">
-                        <td>
-                            <div class="user-profile-cell">
-                                <div class="user-avatar" style="background: var(--dm-slate-50); color: var(--dm-secondary); border: 1px solid var(--dm-slate-100);">${c.first_name[0]}${c.last_name[0]}</div>
-                                <div class="user-info-text">
-                                    <span class="name" style="font-weight: 800;">${c.first_name} ${c.last_name}</span>
-                                    <span class="email" style="font-weight: 500;">${c.email}</span>
+                        <div style="padding: 0 1.5rem 1.5rem;">
+                            <div style="background: #eff6ff; padding: 1rem; border-radius: 12px; border: 1px solid #dbeafe; margin-bottom: 1rem;">
+                                <div style="font-size: 0.65rem; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 8px;">Governance Data</div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.75rem; font-weight: 700; color: #1e40af;">
+                                    <div>Total Bookings: ${d.total_bookings}</div>
+                                    <div>Cancellations: ${d.cancellations}</div>
+                                    <div>Established: ${d.join_date}</div>
+                                    <div>Identity: ${d.is_verified ? 'SECURED' : 'UNVERIFIED'}</div>
                                 </div>
                             </div>
-                        </td>
-                        <td>
-                            <div style="display: flex; flex-direction: column; gap: 6px;">
-                                <span class="badge-clean" style="background: ${c.is_kyc_complete ? '#ecfdf5; color: #10b981;' : '#f1f5f9; color: #64748b;'}">
-                                    <i class="fas ${c.is_kyc_complete ? 'fa-id-shield' : 'fa-clock'}"></i>
-                                    ${c.is_kyc_complete ? 'Verified' : 'Pending KYC'}
-                                </span>
-                                <span class="badge-clean" style="font-size: 0.65rem; background: ${c.status === 'active' ? '#eff6ff; color: #2563eb;' : (c.status === 'suspended' ? '#fef2f2; color: #ef4444;' : '#fff7ed; color: #f97316;')}">
-                                    <i class="fas ${c.status === 'active' ? 'fa-user-check' : (c.status === 'suspended' ? 'fa-user-slash' : 'fa-magnifying-glass-chart')}"></i>
-                                    ${c.status.charAt(0).toUpperCase() + c.status.slice(1)}
-                                </span>
+                            
+                            <div style="background: #fff7ed; padding: 1rem; border-radius: 12px; border: 1px solid #ffedd5;">
+                                <div style="font-size: 0.65rem; font-weight: 800; color: #9a3412; text-transform: uppercase; margin-bottom: 4px;">Investigation Notes</div>
+                                <div style="font-size: 0.75rem; color: #c2410c; font-weight: 600; line-height: 1.5;">${d.investigation_notes}</div>
                             </div>
-                        </td>
-                        <td>
-                            <div style="font-weight: 800; color: var(--dm-secondary); font-size: 0.95rem;">
-                                ₱${Number(c.total_spent).toLocaleString(undefined, {minimumFractionDigits: 2})}
-                                <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 500;">Spent</span>
-                            </div>
-                            <div style="font-size: 0.75rem; color: #10b981; font-weight: 700; margin-top: 2px;">
-                                <i class="fas fa-chart-line"></i> ${c.success_rate}% Success Rate
-                            </div>
-                        </td>
-                        <td style="text-align: right;">
-                            <div class="actions-dropdown">
-                                <button class="dropdown-trigger" onclick="toggleDropdown(this, event)"><i class="fas fa-ellipsis-v"></i></button>
-                                <div class="dropdown-menu">
-                                    <button class="dropdown-item" data-id="${c.id}" data-name="${c.first_name} ${c.last_name}" data-email="${c.email}" data-phone="${c.phone_number || 'N/A'}" data-address="${c.address || 'N/A'}" data-kyc="${c.is_kyc_complete ? 'Verified' : 'Incomplete'}" data-status="${c.status}" data-date="${c.created_at}" onclick="openViewCustomerModal(this)"><i class="fas fa-eye"></i> View Profile</button>
-                                    <button class="dropdown-item" ${c.is_kyc_complete ? `onclick="alert('Identity Lock Active')" style="opacity: 0.5;"` : `onclick="openEditCustomerModal(this)"`} data-id="${c.id}" data-first="${c.first_name}" data-last="${c.last_name}" data-email="${c.email}" data-phone="${c.phone_number || ''}" data-address="${c.address || ''}"><i class="fas fa-edit"></i> Edit Details</button>
-                                    <div class="dropdown-divider" style="height: 1px; background: var(--dm-slate-50); margin: 6px 8px;"></div>
-                                    ${c.status === 'suspended' ? 
-                                        `<button class="dropdown-item" style="color: #2563eb;" onclick="activateCustomer(${c.id})"><i class="fas fa-user-check"></i> Activate Account</button>` :
-                                        `<button class="dropdown-item" style="color: #ef4444;" onclick="suspendCustomer(${c.id})"><i class="fas fa-user-slash"></i> Suspend Account</button>
-                                         <button class="dropdown-item" style="color: #f97316;" onclick="flagCustomer(${c.id})"><i class="fas fa-flag"></i> Flag for Investigation</button>`
-                                    }
-                                    <form action="/admin/customers/${c.id}/archive" method="POST" onsubmit="event.preventDefault(); window.showConfirm('Archive this account?', () => this.submit());">
-                                        <button type="submit" class="dropdown-item danger"><i class="fas fa-trash-alt"></i> Archive Account</button>
-                                    </form>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                `).join('');
-                if (statusEl) statusEl.innerHTML = '<i class="fas fa-circle pulse-live" style="font-size: 8px; color: var(--dm-primary);"></i> Real-time Identity Registry Online';
+                        </div>
+                    </div>
+                `;
+                Swal.close();
+                document.getElementById('intelligenceModal').classList.add('active');
+            } else {
+                Swal.fire('Audit Failure', result.message, 'error');
             }
-        } catch (err) {
-            if (statusEl) statusEl.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i> SYNC INTERRUPTED';
+        } catch (e) {
+            Swal.fire('Critical Error', 'Adjudication server unreachable.', 'error');
         }
     }
 
-    function toggleDropdown(btn, event) {
-        event.stopPropagation();
-        document.querySelectorAll('.dropdown-menu.show').forEach(m => { if (m !== btn.nextElementSibling) m.classList.remove('show'); });
-        btn.nextElementSibling.classList.toggle('show');
-    }
-
-    window.addEventListener('click', () => { document.querySelectorAll('.dropdown-menu.show').forEach(m => m.classList.remove('show')); });
-
-    function filterTable() {
-        const q = document.getElementById('customerSearchInput').value.toLowerCase();
-        document.querySelectorAll('.cust-row').forEach(r => { r.style.display = r.innerText.toLowerCase().includes(q) ? '' : 'none'; });
-    }
-
-    function openViewCustomerModal(btn) {
-        const body = document.getElementById('viewCustomerBody');
-        body.innerHTML = '<div style="padding: 3rem; text-align: center;"><i class="fas fa-circle-notch fa-spin" style="font-size: 2rem; color: var(--dm-primary);"></i><p style="margin-top: 1rem; color: #64748b; font-weight: 600;">Retrieving Compliance Audit Data...</p></div>';
-        document.getElementById('viewCustomerModal').classList.add('active');
-
-        fetch(`/admin/api/customers/${btn.dataset.id}/kyc-audit`)
-            .then(r => r.json())
-            .then(data => {
-                let kycHtml = data.success ? `
-                    <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px dashed #e2e8f0;">
-                        <div style="font-size: 0.75rem; font-weight: 800; color: var(--dm-primary); text-transform: uppercase; margin-bottom: 1rem;">Compliance Evidence</div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                            <div><div style="font-size: 0.65rem; color: #94a3b8; font-weight: 700; margin-bottom: 6px;">Government ID</div><div style="background: white; padding: 8px; border-radius: 12px; border: 1px solid #e2e8f0;"><img src="${data.document_url}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 8px; cursor: pointer;" onclick="window.open(this.src)"></div></div>
-                            <div><div style="font-size: 0.65rem; color: #94a3b8; font-weight: 700; margin-bottom: 6px;">Live Selfie Match</div><div style="background: white; padding: 8px; border-radius: 12px; border: 1px solid #e2e8f0;"><img src="${data.selfie_url}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 8px; cursor: pointer;" onclick="window.open(this.src)"></div></div>
-                        </div>
-                        <div style="margin-top: 1rem; background: #f1f5f9; padding: 1rem; border-radius: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                            <div><div style="font-size: 0.6rem; font-weight: 800; color: #64748b;">ID Number</div><div style="font-size: 0.85rem; font-weight: 700;">${data.id_number || 'N/A'}</div></div>
-                            <div><div style="font-size: 0.6rem; font-weight: 800; color: #64748b;">Verified Date</div><div style="font-size: 0.85rem; font-weight: 700;">${data.verified_at}</div></div>
-                            <div><div style="font-size: 0.6rem; font-weight: 800; color: #64748b;">Fraud Score</div><div style="font-size: 0.85rem; font-weight: 700; color: ${data.fraud_score > 50 ? '#ef4444' : '#10b981'};">${data.fraud_score}/100</div></div>
-                            <div><div style="font-size: 0.6rem; font-weight: 800; color: #64748b;">OCR Matching</div><div style="font-size: 0.85rem; font-weight: 700;">Passed</div></div>
-                        </div>
-                    </div>` : `<div style="margin-top: 1.5rem; background: #fff1f2; padding: 1.5rem; border-radius: 16px; border: 1px solid #fee2e2; text-align: center;"><i class="fas fa-user-slash" style="font-size: 1.5rem; color: #ef4444; margin-bottom: 0.5rem;"></i><div style="font-size: 0.85rem; font-weight: 700; color: #991b1b;">Identity Verification Incomplete</div></div>`;
-
-                body.innerHTML = `
-                    <div style="background: white; padding: 1.5rem; border-radius: 20px; border: 1px solid #e2e8f0;">
-                        <div style="display: flex; align-items: center; gap: 1.25rem;">
-                            <div style="width: 64px; height: 64px; border-radius: 16px; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800; border: 2px solid #dbeafe;">${btn.dataset.name.substring(0, 2).toUpperCase()}</div>
-                            <div><h4 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--dm-secondary);">${btn.dataset.name}</h4><div style="font-size: 0.85rem; color: #64748b; font-weight: 600;">${btn.dataset.email}</div></div>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem;">
-                            <div class="audit-item"><span class="audit-label">Contact Link</span><div class="audit-value"><i class="fas fa-phone"></i> ${btn.dataset.phone}</div></div>
-                            <div class="audit-item"><span class="audit-label">Registry Date</span><div class="audit-value"><i class="fas fa-calendar-alt"></i> ${btn.dataset.date}</div></div>
-                            <div class="audit-item" style="grid-column: span 2;"><span class="audit-label">Address Matrix</span><div class="audit-value"><i class="fas fa-map-location-dot"></i> ${btn.dataset.address}</div></div>
-                        </div>
-                        ${kycHtml}
-                    </div>`;
-            });
-    }
-
-    function closeViewCustomerModal() { document.getElementById('viewCustomerModal').classList.remove('active'); }
-    function closeEditCustomerModal() { document.getElementById('editCustomerModal').classList.remove('active'); }
-
-    function suspendCustomer(id) {
-        window.showConfirm('Suspend this account? User will lose access immediately.', () => {
-            fetch(`/admin/api/customers/${id}/suspend`, { method: 'POST' }).then(r => r.json()).then(d => { if (d.success) { window.showSuccess(d.message); refreshCustomersTerminal(); } });
+    async function suspendAccount(id) {
+        const { value: reason } = await Swal.fire({
+            title: 'Immediate Suspension?',
+            text: "Provide a mandatory reason for the audit trail. The participant will lose platform access.",
+            icon: 'error',
+            input: 'textarea',
+            inputPlaceholder: 'Reason for suspension...',
+            showCancelButton: true,
+            confirmButtonText: 'Lock Account',
+            confirmButtonColor: '#ef4444'
         });
+
+        if (reason) {
+            Swal.fire({ title: 'Locking Identity', didOpen: () => Swal.showLoading() });
+            try {
+                const fd = new FormData();
+                fd.append('reason', reason);
+                const res = await fetch(`/admin/api/customers/${id}/suspend`, { method: 'POST', body: fd });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire('Account Locked', data.message, 'success').then(() => location.reload());
+                } else { Swal.fire('Error', data.message, 'error'); }
+            } catch (e) { Swal.fire('Error', 'Communication failure.', 'error'); }
+        }
     }
 
-    function activateCustomer(id) {
-        fetch(`/admin/api/customers/${id}/activate`, { method: 'POST' }).then(r => r.json()).then(d => { if (d.success) { window.showSuccess(d.message); refreshCustomersTerminal(); } });
-    }
-
-    function flagCustomer(id) {
-        window.showConfirm('Flag this account for investigation? The user will be notified that their account is under compliance review.', () => {
-            fetch(`/admin/api/customers/${id}/flag`, { method: 'POST' }).then(r => r.json()).then(d => { if (d.success) { window.showSuccess(d.message); refreshCustomersTerminal(); } });
+    async function flagAccount(id) {
+        const result = await Swal.fire({
+            title: 'Flag for Review?',
+            text: "This will elevate the risk profile of this participant for manual investigation.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Flag Participant',
+            confirmButtonColor: '#f59e0b'
         });
+
+        if (result.isConfirmed) {
+            try {
+                const res = await fetch(`/admin/api/customers/${id}/flag`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire('Identity Flagged', data.message, 'success').then(() => location.reload());
+                } else { Swal.fire('Error', data.message, 'error'); }
+            } catch (e) { Swal.fire('Error', 'Communication failure.', 'error'); }
+        }
     }
 
-    function openEditCustomerModal(btn) {
-        document.getElementById('editCustomerId').value = btn.dataset.id;
-        document.getElementById('editFirstName').value = btn.dataset.first;
-        document.getElementById('editLastName').value = btn.dataset.last;
-        document.getElementById('editEmail').value = btn.dataset.email;
-        document.getElementById('editPhone').value = btn.dataset.phone;
-        document.getElementById('editAddress').value = btn.dataset.address;
-        document.getElementById('editCustomerModal').classList.add('active');
+    async function sendAlert(id) {
+        const { value: message } = await Swal.fire({
+            title: 'Dispatch System Alert',
+            text: "This message will be sent directly to the customer's notification hub.",
+            input: 'textarea',
+            inputPlaceholder: 'System message content...',
+            showCancelButton: true,
+            confirmButtonText: 'Dispatch Message'
+        });
+
+        if (message) {
+            try {
+                const fd = new FormData();
+                fd.append('message', message);
+                const res = await fetch(`/admin/api/customers/${id}/send-alert`, { method: 'POST', body: fd });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire('Dispatched', data.message, 'success');
+                } else { Swal.fire('Error', data.message, 'error'); }
+            } catch (e) { Swal.fire('Error', 'Communication failure.', 'error'); }
+        }
     }
 
-    document.getElementById('editCustomerForm').onsubmit = async (e) => {
-        e.preventDefault();
-        const res = await fetch(`/admin/customers/${document.getElementById('editCustomerId').value}/edit`, { method: 'POST', body: new FormData(e.target) });
-        const data = await res.json();
-        if (data.success) { closeEditCustomerModal(); window.showSuccess(data.message); refreshCustomersTerminal(); } else alert(data.message);
-    };
+    function viewLedger(id) {
+        Swal.fire('Transaction Ledger', 'Feature coming soon: Direct view of all booking entries and financial history for this customer.', 'info');
+    }
+
+    function closeIntelligenceModal() {
+        document.getElementById('intelligenceModal').classList.remove('active');
+    }
+
+    // Initialize
+    filterRegistry();
 </script>
 {% endblock %}

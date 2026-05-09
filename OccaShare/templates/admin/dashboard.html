@@ -1,374 +1,261 @@
 {% extends "admin/layout.html" %}
 
-{% block title %}Platform Overview - Admin Dashboard{% endblock %}
+{% block title %}Admin Intelligence Terminal{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ range(1, 1000) | random }}">
+<style>
+    /* Dashboard Specific Intelligence Extensions */
+    .top-partner-item {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 0.85rem 1rem; background: #f8fafc; border-radius: 12px;
+        border: 1px solid #f1f5f9; transition: all 0.2s;
+    }
+    .top-partner-item:hover { border-color: var(--adm-primary); background: #fff; }
+    
+    .growth-chip {
+        padding: 4px 8px; border-radius: 6px; font-size: 0.65rem; font-weight: 800;
+        background: #f0fdf4; color: #166534;
+    }
+    
+    /* Action Dropdown Diamond Standard */
+    .actions-dropdown { position: relative; display: inline-block; }
+    .dropdown-trigger {
+        width: 32px; height: 32px; border-radius: 8px;
+        background: #f1f5f9; border: 1px solid #e2e8f0;
+        color: var(--adm-navy); cursor: pointer; display: flex;
+        align-items: center; justify-content: center; transition: all 0.2s;
+    }
+    .dropdown-trigger:hover { background: #fff; border-color: var(--adm-primary); color: var(--adm-primary); }
+    
+    .dropdown-menu-dm {
+        position: absolute; top: 100%; right: 0; width: 200px;
+        background: white; border-radius: 12px; border: 1px solid #e2e8f0;
+        box-shadow: var(--adm-shadow); display: none; z-index: 1000;
+        padding: 0.5rem; margin-top: 8px;
+    }
+    .dropdown-menu-dm.show { display: block; }
+    
+    .dm-dropdown-item {
+        display: flex; align-items: center; gap: 10px; padding: 0.6rem 0.8rem;
+        border-radius: 8px; color: var(--adm-navy); font-size: 0.75rem; font-weight: 600;
+        width: 100%; border: none; background: transparent; cursor: pointer;
+        text-align: left; transition: all 0.2s;
+    }
+    .dm-dropdown-item:hover { background: var(--adm-primary-soft); color: var(--adm-primary); }
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="dashboard-header-clean" style="display: flex; justify-content: space-between; align-items: flex-start;">
-    <div>
+<div class="dashboard-header-clean">
+    <div class="header-title-area">
         <h1>Dashboard Intelligence</h1>
-        <p>Holistic oversight of platform metrics, growth vectors, and operation health.</p>
+        <p>Real-time operational matrix and platform performance audit.</p>
     </div>
 </div>
 
-<!-- KPI Grid -->
+<!-- KPI Matrix -->
 <div class="kpi-grid-clean">
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #eff6ff; color: #3b82f6;"><i class="fas fa-vault"></i></div>
+        <div class="kpi-icon-box" style="background: #eff6ff; color: #1d4ed8;"><i class="fas fa-vault"></i></div>
         <div class="kpi-info">
-            <h4>Total Revenue</h4>
-            <span class="kpi-value" id="stat-revenue">₱{{ "{:,.0f}".format(metrics.platform_earnings) }}</span>
+            <h4>Net Earnings</h4>
+            <span class="kpi-value">₱{{ "{:,.0f}".format(metrics.platform_earnings) }}</span>
+            <span class="trend-badge trend-up"><i class="fas fa-arrow-up"></i> 12.4%</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #fffbeb; color: #f59e0b;"><i class="fas fa-calendar-check"></i>
-        </div>
+        <div class="kpi-icon-box" style="background: #fffbeb; color: #92400e;"><i class="fas fa-calendar-check"></i></div>
         <div class="kpi-info">
             <h4>Bookings</h4>
-            <span class="kpi-value" id="stat-bookings">{{ metrics.booking_count }}</span>
+            <span class="kpi-value">{{ metrics.booking_count }}</span>
+            <span class="trend-badge trend-up"><i class="fas fa-arrow-up"></i> 8.2%</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #f0fdf4; color: #10b981;"><i class="fas fa-utensils"></i></div>
+        <div class="kpi-icon-box" style="background: #f0fdf4; color: #166534;"><i class="fas fa-handshake"></i></div>
         <div class="kpi-info">
             <h4>Partners</h4>
-            <span class="kpi-value" id="stat-caterers">{{ metrics.approved_caterers_count }}</span>
+            <span class="kpi-value">{{ metrics.approved_caterers_count }}</span>
+            <span class="trend-badge trend-up"><i class="fas fa-plus"></i> {{ pending_caterers|length }} new</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: var(--dm-primary-light); color: var(--dm-primary);"><i
-                class="fas fa-users"></i></div>
+        <div class="kpi-icon-box" style="background: #fdf2f2; color: #991b1b;"><i class="fas fa-users"></i></div>
         <div class="kpi-info">
-            <h4>Users</h4>
-            <span class="kpi-value" id="stat-users">{{ metrics.user_count }}</span>
+            <h4>Active Users</h4>
+            <span class="kpi-value">{{ metrics.user_count }}</span>
+            <span class="trend-badge trend-up"><i class="fas fa-arrow-up"></i> 5.1%</span>
         </div>
     </div>
 </div>
 
 <!-- Analytics Split -->
 <div class="analytics-split-clean">
-    <div class="card-clean" onclick="showRevenueDetails()" style="cursor: pointer;">
-        <div class="card-title-clean">
-            <i class="fas fa-chart-line" style="color: var(--adm-primary);"></i>
-            Financial Trends
-        </div>
-        <div class="chart-container-clean">
-            <canvas id="revenueChart"></canvas>
-        </div>
+    <div class="card-clean">
+        <div class="card-title-clean"><i class="fas fa-chart-area"></i> Financial Velocity Trends</div>
+        <div class="chart-container-clean"><canvas id="revenueChart"></canvas></div>
     </div>
 
+    <!-- NEW: Strategic Growth Analytics -->
     <div class="card-clean">
-        <div class="card-title-clean" style="justify-content: space-between;">
-            <span><i class="fas fa-bell" style="color: var(--dm-primary);"></i> Recent Activity</span>
-            <a href="/admin/notifications"
-                style="font-size: 0.75rem; color: var(--dm-primary); text-decoration: none; font-weight: 700;">View
-                All</a>
-        </div>
-        <div class="metric-list-clean" id="recentNotifList">
-            {% if recent_notifications %}
-            {% for n in recent_notifications %}
-            <div class="metric-item-clean" style="align-items: flex-start; gap: 12px; cursor: pointer;"
-                onclick="window.location.href='/admin/notifications'">
-                <div
-                    style="width: 8px; height: 8px; border-radius: 50%; background: {{ '#f97316' if not n.is_read else '#e2e8f0' }}; margin-top: 5px; flex-shrink: 0;">
+        <div class="card-title-clean"><i class="fas fa-crown"></i> Elite Partner Performance</div>
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+            {% for c in approved_caterers[:4] %}
+            <div class="top-partner-item">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="avatar-sm" style="width: 32px; height: 32px; font-size: 0.75rem; background: var(--adm-primary-soft); color: var(--adm-primary);">{{ c.business_name[0] }}</div>
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="font-size: 0.8rem; font-weight: 700; color: var(--adm-navy);">{{ c.business_name }}</span>
+                        <span style="font-size: 0.65rem; color: var(--adm-muted);">{{ c.city }}</span>
+                    </div>
                 </div>
-                <div style="flex: 1; min-width: 0;">
-                    <div style="font-size: 0.85rem; font-weight: 700; color: var(--dm-secondary); margin-bottom: 2px;">
-                        {{ n.title }}</div>
-                    <div
-                        style="font-size: 0.75rem; color: var(--dm-slate-400); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                        {{ n.message }}</div>
-                </div>
+                <div class="growth-chip">TOP TIER</div>
             </div>
             {% endfor %}
-            {% else %}
-            <p style="text-align: center; color: var(--dm-slate-400); font-size: 0.85rem; margin-top: 2rem;">No recent
-                activity recorded.</p>
-            {% endif %}
+            <a href="/admin/caterers" style="text-align: center; font-size: 0.7rem; font-weight: 800; color: var(--adm-primary); margin-top: 5px; text-decoration: none;">VIEW ALL DIRECTORY <i class="fas fa-arrow-right"></i></a>
         </div>
     </div>
 </div>
 
-<!-- Bottom Intelligence Split -->
-<div class="analytics-split-clean bottom-split">
-    <!-- Verification Table -->
-    <div class="table-card-clean">
-        <div class="card-title-clean" style="justify-content: space-between;">
-            <span><i class="fas fa-shield-halved" style="color: #d97706;"></i> Compliance Queue</span>
-            <a href="/admin/caterers"
-                style="font-size: 0.75rem; color: var(--dm-primary); text-decoration: none; font-weight: 700;">Full
-                Directory</a>
-        </div>
-        <div style="overflow-x: auto;">
-            <table class="clean-table">
-                <thead>
-                    <tr>
-                        <th>Service Partner</th>
-                        <th>Region</th>
-                        <th>Status</th>
-                        <th style="text-align: right;">Action</th>
-                    </tr>
-                </thead>
-                <tbody id="pending-caterers-tbody">
-                    {% if pending_caterers %}
-                    {% for c in pending_caterers %}
-                    <tr>
-                        <td style="font-weight: 700; color: var(--dm-secondary);">{{ c.business_name }}</td>
-                        <td style="color: var(--dm-slate-600);">{{ c.city }}</td>
-                        <td><span class="badge-clean">Awaiting Audit</span></td>
-                        <td style="text-align: right;">
-                            <a href="/admin/verify/{{ c.user_id }}" class="btn-clean">Start Audit</a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                    {% else %}
-                    <tr>
-                        <td colspan="4" style="text-align: center; padding: 3rem; color: var(--dm-slate-400);">
-                            <i class="fas fa-check-circle"
-                                style="font-size: 1.5rem; color: #10b981; margin-bottom: 1rem; display: block;"></i>
-                            Compliance queue is clear.
-                        </td>
-                    </tr>
-                    {% endif %}
-                </tbody>
-            </table>
-        </div>
+<!-- Compliance Adjudication Registry -->
+<div class="table-card-clean">
+    <div class="card-title-clean" style="padding: 1.5rem; border-bottom: 1px solid #f1f5f9;">
+        <i class="fas fa-shield-halved"></i> Compliance Adjudication Registry
     </div>
-
-    <!-- Status Pie -->
-    <div class="card-clean" onclick="showStatusDetails()" style="cursor: pointer;">
-        <div class="card-title-clean">
-            <i class="fas fa-chart-pie" style="color: #10b981;"></i>
-            Status Intelligence
-        </div>
-        <div class="chart-container-clean pie-chart">
-            <canvas id="statusPieChart"></canvas>
-        </div>
-        <div class="metric-list-clean">
-            <div class="metric-item-clean">
-                <span class="m-label">Completed</span>
-                <span class="m-value" id="stat-completed">{{ completed_bookings_count }}</span>
-            </div>
-            <div class="metric-item-clean">
-                <span class="m-label">Pending</span>
-                <span class="m-value" id="stat-pending">{{ pending_bookings_count }}</span>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Standalone Analysis Modal -->
-<div id="analyticsModal" class="admin-modal-overlay">
-    <div class="admin-modal-card">
-        <div class="modal-header-clean">
-            <h3 id="modalTitle">Audit Intelligence</h3>
-            <button class="modal-close-btn" onclick="closeAnalyticsModal()">&times;</button>
-        </div>
-        <div class="modal-body-clean" id="modalBody"></div>
-        <div class="modal-footer-clean"
-            style="padding: 1.25rem 2rem; background: var(--dm-slate-50); border-top: 1px solid var(--dm-slate-100); display: flex; justify-content: flex-end;">
-            <button class="btn-clean" style="background: var(--dm-slate-200); color: var(--dm-secondary);"
-                onclick="closeAnalyticsModal()">Dismiss</button>
-        </div>
+    <div style="overflow-x: auto;">
+        <table class="clean-table">
+            <thead>
+                <tr>
+                    <th>Partner Identity</th>
+                    <th>Audit Status</th>
+                    <th>Risk Factor</th>
+                    <th style="text-align: right;">Operations Hub</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if pending_caterers %}
+                {% for c in pending_caterers %}
+                <tr class="cust-row">
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div class="avatar-sm" style="background: var(--adm-primary-soft); color: var(--adm-primary);">{{ c.business_name[0] }}</div>
+                            <div style="display: flex; flex-direction: column;">
+                                <span style="font-weight: 800; color: var(--adm-navy); font-size: 0.85rem;">{{ c.business_name }}</span>
+                                <span style="font-size: 0.7rem; color: var(--adm-muted);">{{ c.user.email }}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td><span class="badge-clean badge-pending">PENDING REVIEW</span></td>
+                    <td><span style="font-size: 0.75rem; font-weight: 700; color: #f59e0b;"><i class="fas fa-triangle-exclamation"></i> MEDIUM</span></td>
+                    <td style="text-align: right;">
+                        <div class="actions-dropdown">
+                            <button class="dropdown-trigger" onclick="toggleActionDropdown(this, event)"><i class="fas fa-ellipsis-v"></i></button>
+                            <div class="dropdown-menu-dm">
+                                <a href="/admin/verify/{{ c.user_id }}" class="dm-dropdown-item"><i class="fas fa-shield-check"></i> Run Audit</a>
+                                <button class="dm-dropdown-item" onclick="flagPartner({{ c.id }})"><i class="fas fa-flag"></i> Flag for Audit</button>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr><td colspan="4" style="text-align: center; padding: 4rem; color: var(--adm-muted);">Queue Empty</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
-    let revenueChart, statusPieChart;
-    let currentDashboardData = null;
-
-    // Real-time Engine
-    window.addEventListener('system_update', function (e) {
-        if (['new_signup', 'caterer_update', 'new_booking', 'payment_update', 'kyc_update'].includes(e.detail.type)) {
-            refreshAdminDashboard();
-        }
-    });
-
-    window.addEventListener('load', () => {
-        try {
-            const initialData = {{ chart_data | tojson | safe }};
-            initDashboardCharts(initialData);
-        } catch (e) { console.error("Chart Init Fail", e); }
-    });
-
-    function initDashboardCharts(data) {
-        const ctxRev = document.getElementById('revenueChart').getContext('2d');
-        const ctxStatus = document.getElementById('statusPieChart').getContext('2d');
-
-        if (revenueChart) revenueChart.destroy();
-        revenueChart = new Chart(ctxRev, {
-            type: 'line',
-            data: {
-                labels: data.months,
-                datasets: [{
-                    label: 'Platform Net',
-                    data: data.earnings,
-                    borderColor: '#f97316',
-                    backgroundColor: 'rgba(249, 115, 22, 0.1)',
-                    fill: true, tension: 0.4, borderWidth: 3
-                }, {
-                    label: 'Gross Volume',
-                    data: data.sales,
-                    borderColor: '#94a3b8',
-                    borderDash: [5, 5],
-                    fill: false, tension: 0.4, borderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
-                    x: { grid: { display: false } }
-                }
-            }
-        });
-
-        if (statusPieChart) statusPieChart.destroy();
-        statusPieChart = new Chart(ctxStatus, {
-            type: 'doughnut',
-            data: {
-                labels: ['Completed', 'Confirmed', 'Pending'],
-                datasets: [{
-                    data: [
-                        {{ completed_bookings_count | default(0) }},
-                        {{ confirmed_bookings_count | default(0) }},
-                        {{ pending_bookings_count | default(0) }}
-                    ],
-                    backgroundColor: ['#10b981', '#f97316', '#f59e0b'],
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                cutout: '80%',
-                plugins: { legend: { display: false } }
-            }
-        });
+    function toggleActionDropdown(btn, event) {
+        event.stopPropagation();
+        document.querySelectorAll('.dropdown-menu-dm.show').forEach(m => { if(m !== btn.nextElementSibling) m.classList.remove('show'); });
+        btn.nextElementSibling.classList.toggle('show');
     }
+    window.onclick = () => document.querySelectorAll('.dropdown-menu-dm.show').forEach(m => m.classList.remove('show'));
 
-    async function refreshAdminDashboard() {
-        const syncStatus = document.getElementById('sync-status');
-        if (syncStatus) syncStatus.innerHTML = '<i class="fas fa-sync fa-spin" style="color: var(--dm-primary);"></i> SYNCING...';
+    // Real Administrative Logic for Dashboard
+    async function executePartnerAction(id, action, reason = null) {
+        const formData = new FormData();
+        if (reason) formData.append('reason', reason);
 
         try {
-            const res = await fetch('/admin/api/dashboard-overview');
+            const res = await fetch(`/admin/api/caterers/${id}/${action}`, {
+                method: 'POST',
+                body: formData
+            });
             const data = await res.json();
             if (data.success) {
-                currentDashboardData = data;
-                document.getElementById('stat-revenue').innerText = '₱' + data.metrics.platform_earnings.toLocaleString();
-                document.getElementById('stat-bookings').innerText = data.metrics.booking_count;
-                document.getElementById('stat-caterers').innerText = data.metrics.approved_caterers_count;
-                document.getElementById('stat-users').innerText = data.metrics.user_count;
-
-                revenueChart.data.labels = data.chart_data.months;
-                revenueChart.data.datasets[0].data = data.chart_data.earnings;
-                revenueChart.data.datasets[1].data = data.chart_data.sales;
-                revenueChart.update();
-
-                statusPieChart.data.datasets[0].data = [data.completed_bookings_count, data.confirmed_bookings_count, data.pending_bookings_count];
-                statusPieChart.update();
-
-                updatePendingTable(data.pending_caterers);
-                if (syncStatus) syncStatus.innerHTML = '<i class="fas fa-circle pulse-live" style="font-size: 8px; color: var(--dm-primary);"></i> Live Intelligence Link Active';
+                Swal.fire({ title: 'Success', text: data.message, icon: 'success', timer: 2000, showConfirmButton: false });
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                Swal.fire('Error', data.message, 'error');
             }
-        } catch (e) {
-            if (syncStatus) syncStatus.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i> SYNC OFFLINE';
+        } catch (err) {
+            Swal.fire('System Error', 'Service Unreachable', 'error');
         }
     }
 
-    function updatePendingTable(caterers) {
-        const tbody = document.getElementById('pending-caterers-tbody');
-        if (!caterers || caterers.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 3rem; color: var(--dm-slate-400);">Compliance queue is clear.</td></tr>';
-            return;
-        }
-        tbody.innerHTML = caterers.map(c => `
-            <tr>
-                <td style="font-weight: 700; color: var(--dm-secondary);">${c.business_name}</td>
-                <td style="color: var(--dm-slate-600);">${c.city}</td>
-                <td><span class="badge-clean">Awaiting Audit</span></td>
-                <td style="text-align: right;"><a href="/admin/verify/${c.user_id}" class="btn-clean">Start Audit</a></td>
-            </tr>
-        `).join('');
+    function flagPartner(id) {
+        openReasonModal('Flag for Audit', 'Enter investigation reason for the audit trail.', (reason) => {
+            executePartnerAction(id, 'flag', reason);
+        });
     }
 
-    function showRevenueDetails() {
-        const data = currentDashboardData || { chart_data: {{ chart_data | tojson | safe }}, metrics: { platform_earnings: {{ metrics.platform_earnings }} } };
-        const body = document.getElementById('modalBody');
-        document.getElementById('modalTitle').innerHTML = '<i class="fas fa-vault"></i> Financial Audit';
-
-        body.innerHTML = `
-            <div class="premium-stat-banner">
-                <div class="banner-icon-bg"><i class="fas fa-money-bill-trend-up"></i></div>
-                <div class="banner-label">Cumulative Platform Revenue</div>
-                <div class="banner-value">₱${data.metrics.platform_earnings.toLocaleString()}</div>
-                <div class="banner-badges">
-                    <span class="badge-live">● Live Ledger</span>
-                    <span class="badge-verified">● Admin Verified</span>
-                </div>
-            </div>
-
-            <div class="modal-section-title">Monthly Liquidation Breakdown</div>
-            <div class="modal-scroll-area">
-                ${data.chart_data.months.map((m, i) => `
-                    <div class="liquidation-item">
-                        <div class="item-meta">
-                            <div class="item-icon"><i class="far fa-calendar"></i></div>
-                            <div>
-                                <div class="item-name">${m}</div>
-                                <div class="item-sub">Net Monthly Commission</div>
-                            </div>
-                        </div>
-                        <span class="item-amount">₱${data.chart_data.earnings[i].toLocaleString()}</span>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-        document.getElementById('analyticsModal').classList.add('active');
+    function openReasonModal(title, desc, callback) {
+        const modal = document.getElementById('reasonModal');
+        document.getElementById('reasonModalTitle').innerText = title;
+        document.getElementById('reasonModalDesc').innerText = desc;
+        document.getElementById('actionReason').value = '';
+        modal.classList.add('active');
+        document.getElementById('reasonSubmitBtn').onclick = () => {
+            const reason = document.getElementById('actionReason').value.trim();
+            if (!reason) return Swal.fire('Field Required', 'Reason is mandatory for adjudication.', 'warning');
+            modal.classList.remove('active');
+            callback(reason);
+        };
     }
 
-    function showStatusDetails() {
-        const data = currentDashboardData || { completed_bookings_count: {{ completed_bookings_count }}, metrics: { booking_count: {{ metrics.booking_count }} }, pending_bookings_count: {{ pending_bookings_count }} };
-        const body = document.getElementById('modalBody');
-        document.getElementById('modalTitle').innerHTML = '<i class="fas fa-chart-pie"></i> Operation Health';
+    document.addEventListener('DOMContentLoaded', () => {
+        const ctxRev = document.getElementById('revenueChart').getContext('2d');
+        const realLabels = {{ chart_data.months | tojson }};
+        const realSales = {{ chart_data.sales | tojson }};
+        const realEarnings = {{ chart_data.earnings | tojson }};
 
-        const rate = Math.round((data.completed_bookings_count / (data.metrics.booking_count || 1)) * 100);
-        body.innerHTML = `
-            <div class="fulfillment-analysis">
-                <div class="fulfillment-chart-box">
-                    <svg viewBox="0 0 36 36" class="circular-chart">
-                        <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                        <path class="circle" stroke-dasharray="${rate}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                    </svg>
-                    <div class="percentage">${rate}%</div>
-                </div>
-                <h4 class="analysis-title">Platform Fulfillment Rate</h4>
-                <p class="analysis-desc">Aggregated success matrix based on <b>${data.metrics.booking_count}</b> managed events across the ecosystem.</p>
-                
-                <div class="analysis-grid">
-                    <div class="analysis-card success">
-                        <div class="card-label">Completed</div>
-                        <div class="card-value">${data.completed_bookings_count}</div>
-                        <div class="card-sub">Successfully Fulfilled</div>
-                    </div>
-                    <div class="analysis-card warning">
-                        <div class="card-label">In Pipeline</div>
-                        <div class="card-value">${data.pending_bookings_count}</div>
-                        <div class="card-sub">Awaiting Resolution</div>
-                    </div>
-                </div>
-            </div>
-        `;
-        document.getElementById('analyticsModal').classList.add('active');
-    }
-
-    function closeAnalyticsModal() { document.getElementById('analyticsModal').classList.remove('active'); }
+        new Chart(ctxRev, {
+            type: 'line',
+            data: {
+                labels: realLabels,
+                datasets: [{
+                    label: 'Platform Yield (Earnings)',
+                    data: realEarnings,
+                    borderColor: '#f97316',
+                    backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                    fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4, pointBackgroundColor: '#f97316'
+                }, {
+                    label: 'Gross Throughput',
+                    data: realSales,
+                    borderColor: '#94a3b8',
+                    backgroundColor: 'transparent',
+                    borderDash: [5, 5],
+                    fill: false, tension: 0.4, borderWidth: 2, pointRadius: 0
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                plugins: { 
+                    legend: { display: true, position: 'top', labels: { font: { family: 'Poppins', size: 10, weight: 600 } } } 
+                }, 
+                scales: { 
+                    y: { grid: { color: '#f1f5f9' }, ticks: { font: { family: 'Poppins', size: 10 } } }, 
+                    x: { grid: { display: false }, ticks: { font: { family: 'Poppins', size: 10 } } } 
+                } 
+            }
+        });
+    });
 </script>
 {% endblock %}

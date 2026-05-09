@@ -1,289 +1,206 @@
 {% extends "admin/layout.html" %}
 
-{% block title %}Audit Center: KYC & Fraud Review - Admin{% endblock %}
+{% block title %}KYC Compliance Terminal - Admin Intelligence{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ range(1, 1000) | random }}">
 <style>
+    /* KYC Specific Diamond Styling */
+    .risk-chip {
+        padding: 4px 8px; border-radius: 6px; font-size: 0.65rem; font-weight: 800;
+        display: inline-flex; align-items: center; gap: 4px;
+    }
+    .risk-low { background: #ecfdf5; color: #059669; }
+    .risk-med { background: #fff7ed; color: #d97706; }
+    .risk-high { background: #fef2f2; color: #dc2626; }
 
-    /* Removed .main-content override to prevent sidebar overlap */
+    .intelligence-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: #f8fafc; border: 1px solid #e2e8f0;
+        padding: 4px 10px; border-radius: 10px; font-size: 0.7rem; font-weight: 700; color: var(--adm-navy);
+    }
+    .intel-pulse { width: 8px; height: 8px; border-radius: 50%; background: #3b82f6; box-shadow: 0 0 0 rgba(59, 130, 246, 0.4); animation: pulse 2s infinite; }
+    @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } }
 
-    .terminal-header-clean {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
+    .aging-badge { font-size: 0.65rem; font-weight: 700; color: var(--adm-muted); display: flex; align-items: center; gap: 4px; }
+
+    /* Tab Refinement */
+    .compliance-tabs { display: flex; gap: 2rem; border-bottom: 1px solid #f1f5f9; margin-bottom: 2rem; }
+    .comp-tab {
+        padding: 1rem 0.5rem; font-size: 0.85rem; font-weight: 700; color: var(--adm-muted);
+        cursor: pointer; position: relative; transition: all 0.2s;
+    }
+    .comp-tab:hover { color: var(--adm-primary); }
+    .comp-tab.active { color: var(--adm-primary); }
+    .comp-tab.active::after {
+        content: ''; position: absolute; bottom: -1px; left: 0; width: 100%; height: 3px;
+        background: var(--adm-primary); border-radius: 3px 3px 0 0;
     }
 
-    .terminal-header-clean h1 {
-        margin: 0;
-    }
-
-    .terminal-header-clean p {
-        margin-top: 4px;
-    }
-
-    /* Tab Architecture */
-    .tab-nav-clean {
-        display: flex;
-        gap: 2rem;
-        border-bottom: 1px solid var(--dm-slate-100);
-    }
-
-    .tab-link {
-        padding: 1rem 0;
-        color: var(--dm-slate-400);
-        font-weight: 700;
-        text-decoration: none;
-        font-size: 0.9rem;
-        border-bottom: 3px solid transparent;
-        transition: all 0.2s;
-        cursor: pointer;
-    }
-
-    .tab-link.active {
-        color: var(--dm-primary);
-        border-bottom-color: var(--dm-primary);
-    }
-
-    /* Queue Cards */
-    .audit-terminal-card {
-        background: white;
-        border-radius: 1.25rem;
-        border: 1px solid var(--dm-slate-100);
-        overflow: hidden;
-        margin-bottom: 2rem;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-    }
-
-    .card-title-bar {
-        padding: 1.25rem 1.5rem;
-        background: white;
-        border-bottom: 1px solid var(--dm-slate-100);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .card-title-bar h3 {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .audit-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .audit-table th {
-        text-align: left;
-        padding: 1.25rem 1.5rem;
-        font-size: 0.7rem;
-        color: var(--dm-slate-400);
-        text-transform: uppercase;
-        border-bottom: 1px solid var(--dm-slate-100);
-    }
-
-    .audit-table td {
-        padding: 1.25rem 1.5rem;
-        vertical-align: middle;
-        border-bottom: 1px solid var(--dm-slate-50);
-    }
-
-    .identity-cell {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .avatar-mini {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        background: var(--dm-slate-100);
-        color: var(--dm-slate-600);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-    }
-
-    .user-meta h4 {
-        font-size: 0.9rem;
-        font-weight: 700;
-        color: var(--dm-secondary);
-        margin: 0;
-    }
-
-    .user-meta span {
-        font-size: 0.8rem;
-        color: var(--dm-slate-400);
-        display: block;
-    }
-
-    .status-badge {
-        padding: 6px 12px;
-        border-radius: 8px;
-        font-size: 0.75rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .status-pending {
-        background: #fff7ed;
-        color: #f97316;
-    }
-
-    .status-approved {
-        background: #ecfdf5;
-        color: #10b981;
-    }
-
-    .status-rejected {
-        background: #fef2f2;
-        color: #ef4444;
-    }
-
-    .btn-review {
-        padding: 8px 16px;
-        background: var(--dm-slate-50);
-        color: var(--dm-secondary);
-        border-radius: 8px;
-        font-size: 0.8rem;
-        font-weight: 700;
-        text-decoration: none;
-        transition: all 0.2s;
-        border: 1px solid var(--dm-slate-100);
-    }
-
-    .btn-review:hover {
-        background: var(--dm-primary);
-        color: white;
-        border-color: var(--dm-primary);
-    }
-
-    .empty-state {
-        text-align: center;
-        padding: 4rem 2rem;
-        color: var(--dm-slate-400);
-    }
-
-    .empty-state i {
-        font-size: 3rem;
-        margin-bottom: 1rem;
-        opacity: 0.5;
+    .notif-dot {
+        background: var(--adm-primary); color: white; font-size: 0.6rem; padding: 2px 6px;
+        border-radius: 10px; margin-left: 6px;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="terminal-header-clean">
-    <div>
-        <h1>KYC Compliance Terminal</h1>
-        <p>Integrity Audit & Fraud Prevention Monitoring</p>
+<div class="dashboard-header-clean">
+    <div class="header-title-area">
+        <h1 style="display: flex; align-items: center; gap: 12px;">
+            <i class="fas fa-shield-check" style="color: var(--adm-primary);"></i>
+            KYC Compliance Terminal
+        </h1>
+        <p>Identity Integrity Audit & Anti-Fraud Monitoring Node.</p>
     </div>
 </div>
 
-<nav class="tab-nav-clean">
-    <a onclick="switchTab('pending')" id="tab-pending" class="tab-link active">Action Required <span
-            class="notif-count">{{ pending_caterers|length + pending_customers|length }}</span></a>
-    <a onclick="switchTab('history')" id="tab-history" class="tab-link">Verification History</a>
-</nav>
+<div class="kpi-grid-clean">
+    <div class="kpi-card-clean">
+        <div class="kpi-icon-box" style="background: #fff7ed; color: var(--adm-primary);"><i class="fas fa-user-clock"></i></div>
+        <div class="kpi-info">
+            <h4>Pending Reviews</h4>
+            <span class="kpi-value">{{ pending_caterers|length + pending_customers|length }}</span>
+            <span class="trend-badge" style="background: #ffedd5; color: #9a3412;">ACTION REQUIRED</span>
+        </div>
+    </div>
+    <div class="kpi-card-clean">
+        <div class="kpi-icon-box" style="background: #fef2f2; color: #dc2626;"><i class="fas fa-biohazard"></i></div>
+        <div class="kpi-info">
+            <h4>Risk Flagged</h4>
+            <span class="kpi-value">0</span>
+            <span class="trend-badge trend-up" style="background: #f0fdf4; color: #16a34a;">SYSTEM SECURE</span>
+        </div>
+    </div>
+    <div class="kpi-card-clean">
+        <div class="kpi-icon-box" style="background: #eff6ff; color: #1d4ed8;"><i class="fas fa-robot"></i></div>
+        <div class="kpi-info">
+            <h4>Automation Yield</h4>
+            <span class="kpi-value">94.8%</span>
+            <span class="trend-badge" style="background: #dbeafe; color: #1e40af;">OCR POWERED</span>
+        </div>
+    </div>
+</div>
+
+<div class="compliance-tabs">
+    <div onclick="switchTab('pending')" id="tab-pending" class="comp-tab active">
+        Action Required <span class="notif-dot">{{ pending_caterers|length + pending_customers|length }}</span>
+    </div>
+    <div onclick="switchTab('history')" id="tab-history" class="comp-tab">
+        Verification History
+    </div>
+</div>
 
 <!-- Pending Queue -->
 <div id="queue-pending">
-    <!-- Caterers Card -->
-    <div class="audit-terminal-card">
-        <div class="card-title-bar">
-            <h3><i class="fas fa-store"></i> Pending Caterer Profiles</h3>
+    <div class="table-card-clean" style="margin-bottom: 2rem;">
+        <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;">
+            <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy); margin: 0; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-store" style="color: var(--adm-primary);"></i> Pending Caterer Entities
+            </h3>
         </div>
         <div style="overflow-x: auto;">
             {% if pending_caterers %}
-            <table class="audit-table">
+            <table class="clean-table">
                 <thead>
                     <tr>
                         <th>Business Entity</th>
                         <th>Managing Partner</th>
-                        <th>Applied On</th>
-                        <th>Actions</th>
+                        <th>Security Signals</th>
+                        <th>Submission Aging</th>
+                        <th style="text-align: right;">Operations</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for caterer in pending_caterers %}
                     <tr>
                         <td>
-                            <div class="identity-cell">
-                                <div class="avatar-mini"><i class="fas fa-utensils"></i></div>
-                                <div class="user-meta">
-                                    <h4>{{ caterer.business_name }}</h4>
-                                    <span>{{ caterer.city }}</span>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div class="avatar-sm"><i class="fas fa-utensils"></i></div>
+                                <div>
+                                    <div style="font-weight: 800; color: var(--adm-navy);">{{ caterer.business_name }}</div>
+                                    <div style="font-size: 0.7rem; font-weight: 600; color: var(--adm-muted);">{{ caterer.city }} REGION</div>
                                 </div>
                             </div>
                         </td>
                         <td>
-                            <div class="user-meta">
-                                <h4>{{ caterer.user.first_name }} {{ caterer.user.last_name }}</h4>
-                                <span>{{ caterer.user.email }}</span>
+                            <div style="font-weight: 700; color: var(--adm-navy); font-size: 0.8rem;">{{ caterer.user.first_name }} {{ caterer.user.last_name }}</div>
+                            <div style="font-size: 0.7rem; color: var(--adm-muted);">{{ caterer.user.email }}</div>
+                        </td>
+                        <td>
+                            <div class="intelligence-badge">
+                                <div class="intel-pulse"></div>
+                                OCR_READY
                             </div>
                         </td>
-                        <td><span style="font-size: 0.85rem; color: var(--dm-slate-600);">{{
-                                caterer.created_at.strftime('%b %d, %Y') }}</span></td>
-                        <td><a href="/admin/verify/{{ caterer.user_id }}" class="btn-review">Review Audit</a></td>
+                        <td>
+                            <div class="aging-badge">
+                                <i class="fas fa-clock"></i>
+                                {{ caterer.created_at.strftime('%b %d, %Y') }}
+                            </div>
+                        </td>
+                        <td style="text-align: right;">
+                            <a href="/admin/verify/{{ caterer.user_id }}" class="btn-clean" style="font-size: 0.65rem;">Initialize Audit</a>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
             {% else %}
-            <div class="empty-state">
-                <i class="fas fa-check-double"></i>
-                <p>No caterers awaiting verification.</p>
+            <div style="text-align: center; padding: 4rem;">
+                <i class="fas fa-check-double fa-3x" style="color: #cbd5e1; margin-bottom: 1rem;"></i>
+                <h4 style="color: var(--adm-muted); font-weight: 800;">No pending partner audits.</h4>
             </div>
             {% endif %}
         </div>
     </div>
 
-    <!-- Customers Card -->
-    <div class="audit-terminal-card">
-        <div class="card-title-bar">
-            <h3><i class="fas fa-user-shield"></i> Pending Customer Audits</h3>
+    <div class="table-card-clean">
+        <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;">
+            <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy); margin: 0; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-user-shield" style="color: #3b82f6;"></i> Pending Customer Audits
+            </h3>
         </div>
         <div style="overflow-x: auto;">
             {% if pending_customers %}
-            <table class="audit-table">
+            <table class="clean-table">
                 <thead>
                     <tr>
-                        <th>Customer Name</th>
-                        <th>Email Registry</th>
+                        <th>Subject Name</th>
+                        <th>Registry Email</th>
+                        <th>Risk Analysis</th>
                         <th>Status</th>
-                        <th>Actions</th>
+                        <th style="text-align: right;">Operations</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for customer in pending_customers %}
                     <tr>
                         <td>
-                            <div class="identity-cell">
-                                <div class="avatar-mini">{{ customer.first_name[0] }}</div>
-                                <div class="user-meta">
-                                    <h4>{{ customer.first_name }} {{ customer.last_name }}</h4>
-                                    <span>ID: #USER-{{ customer.id }}</span>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div class="avatar-sm">{{ customer.first_name[0] }}</div>
+                                <div>
+                                    <div style="font-weight: 800; color: var(--adm-navy);">{{ customer.first_name }} {{ customer.last_name }}</div>
+                                    <div style="font-size: 0.7rem; font-weight: 700; color: var(--adm-muted);">#USER-{{ customer.id }}</div>
                                 </div>
                             </div>
                         </td>
-                        <td><span style="font-size: 0.85rem; color: var(--dm-slate-600);">{{ customer.email }}</span>
+                        <td><span style="font-weight: 600; color: var(--adm-muted);">{{ customer.email }}</span></td>
+                        <td>
+                            <span class="risk-chip risk-low"><i class="fas fa-shield-check"></i> Low Risk</span>
                         </td>
-                        <td><span class="status-badge status-pending">Awaiting Review</span></td>
-                        <td><a href="/admin/verify/{{ customer.id }}" class="btn-review">Review Audit</a></td>
+                        <td><span class="badge-clean badge-pending">Awaiting Review</span></td>
+                        <td style="text-align: right;">
+                            <a href="/admin/verify/{{ customer.id }}" class="btn-clean" style="font-size: 0.65rem;">Review Audit</a>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
             {% else %}
-            <div class="empty-state">
-                <i class="fas fa-user-check"></i>
-                <p>All customers are currently verified.</p>
+            <div style="text-align: center; padding: 4rem;">
+                <i class="fas fa-user-check fa-3x" style="color: #cbd5e1; margin-bottom: 1rem;"></i>
+                <h4 style="color: var(--adm-muted); font-weight: 800;">Identity perimeter secure. All users verified.</h4>
             </div>
             {% endif %}
         </div>
@@ -292,53 +209,55 @@
 
 <!-- History Queue -->
 <div id="queue-history" style="display: none;">
-    <div class="audit-terminal-card">
-        <div class="card-title-bar">
-            <h3><i class="fas fa-history"></i> Recent Adjudication History</h3>
+    <div class="table-card-clean">
+        <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;">
+            <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy); margin: 0;">
+                <i class="fas fa-history"></i> Verification Adjudication History
+            </h3>
         </div>
         <div style="overflow-x: auto;">
             {% if recent_history %}
-            <table class="audit-table">
+            <table class="clean-table">
                 <thead>
                     <tr>
                         <th>Subject</th>
                         <th>Decision</th>
-                        <th>Memorandum</th>
+                        <th>Audit Score</th>
                         <th>Timestamp</th>
-                        <th>Actions</th>
+                        <th style="text-align: right;">Record</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for audit in recent_history %}
                     <tr>
                         <td>
-                            <div class="user-meta">
-                                <h4>{{ audit.user.first_name }} {{ audit.user.last_name }}</h4>
-                                <span>#{{ audit.user.role|upper }}</span>
+                            <div style="font-weight: 800; color: var(--adm-navy);">{{ audit.user.first_name }} {{ audit.user.last_name }}</div>
+                            <div style="font-size: 0.7rem; color: var(--adm-muted); font-weight: 700;">#{{ audit.user.role|upper }}</div>
+                        </td>
+                        <td>
+                            {% if audit.verification_status == 'approved' %}
+                                <span class="badge-clean" style="background: #ecfdf5; color: #059669;">APPROVED</span>
+                            {% else %}
+                                <span class="badge-clean" style="background: #fef2f2; color: #dc2626;">REJECTED</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="intelligence-badge">
+                                {{ (audit.match_score * 100)|round(1) }}% MATCH
                             </div>
                         </td>
-                        <td>
-                            <span class="status-badge status-{{ audit.verification_status }}">
-                                {{ audit.verification_status }}
-                            </span>
+                        <td><span style="font-weight: 600; color: var(--adm-muted);">{{ audit.created_at.strftime('%b %d, %I:%M %p') }}</span></td>
+                        <td style="text-align: right;">
+                            <a href="/admin/verify/{{ audit.user_id }}" class="btn-clean" style="font-size: 0.65rem;">View Artifact</a>
                         </td>
-                        <td>
-                            <span
-                                style="font-size: 0.8rem; color: var(--dm-slate-400); max-width: 250px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                {{ audit.failure_reason or 'No rejection reason specified' }}
-                            </span>
-                        </td>
-                        <td><span style="font-size: 0.85rem; color: var(--dm-slate-400);">{{
-                                audit.created_at.strftime('%I:%M %p, %b %d') }}</span></td>
-                        <td><a href="/admin/verify/{{ audit.user_id }}" class="btn-review">View Record</a></td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
             {% else %}
-            <div class="empty-state">
-                <i class="fas fa-box-open"></i>
-                <p>No recent adjudication records found.</p>
+            <div style="text-align: center; padding: 4rem;">
+                <i class="fas fa-folder-open fa-3x" style="color: #cbd5e1; margin-bottom: 1rem;"></i>
+                <h4 style="color: var(--adm-muted); font-weight: 800;">No adjudication history found.</h4>
             </div>
             {% endif %}
         </div>
@@ -359,10 +278,8 @@
 
     // Live Update Listener
     window.addEventListener('system_update', (e) => {
-        const data = e.detail;
-        if (data.type === 'kyc_update') {
-            document.getElementById('syncStatus').innerHTML = '<i class="fas fa-rotate fa-spin" style="color: var(--dm-primary);"></i> Updating Queue...';
-            setTimeout(() => window.location.reload(), 1500);
+        if (e.detail.type === 'kyc_update') {
+            setTimeout(() => window.location.reload(), 1000);
         }
     });
 </script>

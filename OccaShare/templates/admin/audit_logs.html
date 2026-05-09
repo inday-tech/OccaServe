@@ -1,0 +1,388 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Audit Intelligence Terminal - Admin Terminal{% endblock %}
+
+{% block content %}
+<!-- Print Document Header (System Internal Use) -->
+<div class="audit-print-document-header">
+    <div class="print-brand-identity">
+        <img src="/static/img/logo.png" alt="OccaShare" class="print-logo-dim" onerror="this.style.display='none'">
+        <h1>OccaShare Intelligence Registry</h1>
+    </div>
+    <div class="print-metadata-grid">
+        <div class="meta-node"><span>Report ID:</span> <strong>#AUD-{{ now.strftime('%Y%m%d') }}</strong></div>
+        <div class="meta-node"><span>Operator:</span> <strong>{{ user.first_name }} {{ user.last_name }}</strong></div>
+        <div class="meta-node"><span>Timestamp:</span> <strong>{{ now.strftime('%b %d, %Y %H:%M:%S') }}</strong></div>
+    </div>
+</div>
+
+<!-- Main Admin Header -->
+<div class="admin-page-header no-print">
+    <div class="header-main-flex-v2">
+        <div class="title-intelligence-group">
+            <div class="intelligence-icon-glow">
+                <i class="fas fa-file-shield"></i>
+            </div>
+            <div class="title-text-stack">
+                <h1>Audit Intelligence Terminal</h1>
+                <p>Advanced security oversight and operational forensics.</p>
+            </div>
+        </div>
+        <div class="operational-actions-v2">
+            <button class="dm-btn-secondary" onclick="window.print()">
+                <i class="fas fa-print"></i> Generate Report
+            </button>
+            <a href="/admin/api/audit-logs/export" class="dm-btn-primary">
+                <i class="fas fa-download"></i> Export Dataset (CSV)
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Tactical Filter Engine Hub -->
+<div class="tactical-engine-card no-print">
+    <form action="/admin/audit-logs" method="GET" id="auditAutoFilterForm">
+        <div class="engine-header-v2">
+            <div class="engine-badge-stack">
+                <span class="engine-label-text"><i class="fas fa-microchip"></i> AUTOMATED INTELLIGENCE FILTERS</span>
+                <span class="engine-status-tag">Status: {{ total_count }} Entries Syncing</span>
+            </div>
+            <button type="button" class="btn-terminal-reset" onclick="window.location.href='/admin/audit-logs'">
+                <i class="fas fa-sync-alt"></i> Reset Engine
+            </button>
+        </div>
+        <div class="engine-body-v2">
+            <div class="filter-node-grid">
+                <div class="filter-node">
+                    <label class="dm-label-elite">Action Classification</label>
+                    <div class="dm-select-wrapper">
+                        <select class="dm-select-elite" name="category" onchange="this.form.submit()">
+                            <option value="">All Operational Streams</option>
+                            <option value="LOGIN" {% if filters.category == 'LOGIN' %}selected{% endif %}>Security Protocol: Login</option>
+                            <option value="ACCOUNT_ACTIVATED" {% if filters.category == 'ACCOUNT_ACTIVATED' %}selected{% endif %}>Admin Protocol: Activation</option>
+                            <option value="INVESTIGATION_UPDATE" {% if filters.category == 'INVESTIGATION_UPDATE' %}selected{% endif %}>System Protocol: Investigation</option>
+                            <option value="VERIFY_CATERER" {% if filters.category == 'VERIFY_CATERER' %}selected{% endif %}>Entity Protocol: Verification</option>
+                        </select>
+                        <i class="fas fa-chevron-down select-caret"></i>
+                    </div>
+                </div>
+
+                <div class="filter-node">
+                    <label class="dm-label-elite">Temporal Node (Date)</label>
+                    <div class="dm-input-wrapper">
+                        <input type="date" name="date" value="{{ filters.date }}" class="dm-input-elite" onchange="this.form.submit()">
+                        <i class="fas fa-calendar-day input-icon"></i>
+                    </div>
+                </div>
+
+                <div class="filter-node-sync">
+                    <div class="sync-intelligence-pill">
+                        <div class="sync-pulse"></div>
+                        <span class="sync-text">Real-time Filtering Active</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Audit Registry Results -->
+<div class="audit-registry-wrapper">
+    <div class="registry-scroller">
+        <table class="dm-intelligence-table">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Intelligence Node</th>
+                    <th>Operation</th>
+                    <th>Flux State</th>
+                    <th>Origin Node</th>
+                    <th>Tactical Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr class="dm-audit-row">
+                    <td>
+                        <div class="ts-cluster">
+                            <span class="ts-main">{{ log.timestamp.strftime('%b %d, %Y') }}</span>
+                            <span class="ts-sub">{{ log.timestamp.strftime('%H:%M:%S') }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="node-identity">
+                            <div class="node-avatar-v2 {{ 'sys-protocol' if not log.user else '' }}">
+                                {% if log.user %}
+                                {{ log.user.first_name[0] }}{{ log.user.last_name[0] }}
+                                {% else %}
+                                <i class="fas fa-shield-halved"></i>
+                                {% endif %}
+                            </div>
+                            <div class="node-details">
+                                <span class="node-primary">{{ log.user.first_name ~ ' ' ~ log.user.last_name if log.user else 'System Protocol' }}</span>
+                                <span class="node-secondary">{{ log.user.role|upper if log.user else 'CORE' }}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="dm-tag-action {{ log.action.lower() }}">
+                            {{ log.action.replace('_', ' ') }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if log.old_status or log.new_status %}
+                        <div class="flux-transition-v2">
+                            <span class="flux-origin">{{ log.old_status or 'Null' }}</span>
+                            <i class="fas fa-arrow-right-long flux-connector"></i>
+                            <span class="flux-destination">{{ log.new_status or 'Null' }}</span>
+                        </div>
+                        {% else %}
+                        <span class="flux-static-v2">Stable State</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="ip-intelligence-chip">
+                            <i class="fas fa-satellite-dish"></i>
+                            <span>{{ log.ip_address or '0.0.0.0' }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <p class="registry-narrative">{{ log.notes or 'Routine automated log entry captured.' }}</p>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="dm-empty-registry">
+                        <div class="empty-state-v2">
+                            <div class="empty-icon-container">
+                                <i class="fas fa-database"></i>
+                                <div class="empty-icon-ripple"></div>
+                            </div>
+                            <h3>No Operational Intelligence Identified</h3>
+                            <p>The system could not locate any logs matching your current filter criteria.</p>
+                            <button type="button" class="dm-btn-reset-empty" onclick="window.location.href='/admin/audit-logs'">
+                                <i class="fas fa-filter-circle-xmark"></i> Clear All Intelligence Filters
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination Hub V2 -->
+    {% if total_pages > 1 %}
+    <div class="dm-pagination-hub no-print">
+        <div class="pag-stats">
+            Displaying Page <strong>{{ current_page }}</strong> of <strong>{{ total_pages }}</strong>
+        </div>
+        <div class="pag-control-group">
+            <a href="/admin/audit-logs?page={{ current_page - 1 }}&category={{ filters.category }}&date={{ filters.date }}" 
+               class="dm-pag-btn {% if current_page == 1 %}disabled{% endif %}">
+                <i class="fas fa-chevron-left"></i> Previous
+            </a>
+            
+            <div class="dm-pag-numbers">
+                {% for p in range(1, total_pages + 1) %}
+                {% if p == 1 or p == total_pages or (p >= current_page - 2 and p <= current_page + 2) %}
+                <a href="/admin/audit-logs?page={{ p }}&category={{ filters.category }}&date={{ filters.date }}" 
+                   class="dm-pag-item {% if p == current_page %}active{% endif %}">{{ p }}</a>
+                {% elif p == current_page - 3 or p == current_page + 3 %}
+                <span class="dm-pag-dots">...</span>
+                {% endif %}
+                {% endfor %}
+            </div>
+
+            <a href="/admin/audit-logs?page={{ current_page + 1 }}&category={{ filters.category }}&date={{ filters.date }}" 
+               class="dm-pag-btn {% if current_page == total_pages %}disabled{% endif %}">
+                Next <i class="fas fa-chevron-right"></i>
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+
+    :root {
+        --dm-primary: #f97316;
+        --dm-secondary: #0f172a;
+        --dm-slate-50: #f8fafc;
+        --dm-slate-100: #f1f5f9;
+        --dm-slate-200: #e2e8f0;
+        --dm-slate-400: #94a3b8;
+        --dm-slate-600: #475569;
+        --dm-slate-800: #1e293b;
+        --dm-white: #ffffff;
+        --dm-radius: 20px;
+    }
+
+    /* GLOBAL POPPINS OVERRIDE */
+    .admin-main-content * {
+        font-family: 'Poppins', sans-serif !important;
+    }
+
+    /* PRINT HEADER (HIDDEN ON SCREEN) */
+    .audit-print-document-header { display: none; }
+    @media print {
+        .no-print { display: none !important; }
+        .audit-print-document-header { 
+            display: block !important; 
+            margin-bottom: 2rem; 
+            border-bottom: 3px solid var(--dm-secondary);
+            padding-bottom: 1.5rem;
+        }
+        .print-brand-identity { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+        .print-logo-dim { height: 40px; }
+        .print-metadata-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; font-size: 0.85rem; }
+        .audit-registry-wrapper { border: 1px solid var(--dm-slate-200); border-radius: 0; box-shadow: none; }
+        .dm-audit-row { page-break-inside: avoid; }
+    }
+
+    /* HEADER STYLES */
+    .header-main-flex-v2 { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem; }
+    .title-intelligence-group { display: flex; align-items: center; gap: 1.5rem; }
+    .intelligence-icon-glow {
+        width: 64px; height: 64px; border-radius: 18px;
+        background: linear-gradient(135deg, var(--dm-primary), #fb923c);
+        color: var(--dm-white); display: flex; align-items: center; justify-content: center;
+        font-size: 1.75rem; box-shadow: 0 15px 30px rgba(249, 115, 22, 0.25);
+    }
+    .title-text-stack h1 { font-size: 1.85rem; font-weight: 800; color: var(--dm-secondary); margin: 0; letter-spacing: -0.02em; }
+    .title-text-stack p { font-size: 0.95rem; color: var(--dm-slate-600); margin-top: 4px; font-weight: 500; }
+    .operational-actions-v2 { display: flex; gap: 1rem; }
+
+    /* BUTTON REFINEMENT */
+    .dm-btn-primary { 
+        background: var(--dm-secondary); color: var(--dm-white); border: none; padding: 0.85rem 1.75rem; 
+        border-radius: 14px; font-weight: 700; font-size: 0.85rem; text-decoration: none; 
+        display: flex; align-items: center; gap: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 6px rgba(15, 23, 42, 0.1);
+    }
+    .dm-btn-primary:hover { background: #1e293b; transform: translateY(-3px); box-shadow: 0 12px 20px rgba(15, 23, 42, 0.15); }
+    
+    .dm-btn-secondary { 
+        background: var(--dm-white); color: var(--dm-secondary); border: 2px solid var(--dm-slate-200); 
+        padding: 0.85rem 1.75rem; border-radius: 14px; font-weight: 700; font-size: 0.85rem; 
+        cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 10px;
+    }
+    .dm-btn-secondary:hover { border-color: var(--dm-secondary); background: var(--dm-slate-50); }
+
+    /* ENGINE HUB */
+    .tactical-engine-card { background: var(--dm-white); border-radius: var(--dm-radius); border: 1px solid var(--dm-slate-200); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.02); overflow: hidden; margin-bottom: 2rem; }
+    .engine-header-v2 { padding: 1.5rem 1.75rem; border-bottom: 1px solid var(--dm-slate-100); background: #fcfcfd; display: flex; justify-content: space-between; align-items: center; }
+    .engine-badge-stack { display: flex; flex-direction: column; gap: 4px; }
+    .engine-label-text { font-size: 0.7rem; font-weight: 800; color: var(--dm-slate-600); letter-spacing: 0.08em; }
+    .engine-status-tag { font-size: 0.85rem; font-weight: 700; color: var(--dm-secondary); }
+    .btn-terminal-reset { background: none; border: none; color: var(--dm-slate-400); font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: color 0.2s; display: flex; align-items: center; gap: 8px; }
+    .btn-terminal-reset:hover { color: var(--dm-primary); }
+
+    .engine-body-v2 { padding: 1.75rem; }
+    .filter-node-grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 2rem; align-items: flex-end; }
+    
+    .dm-label-elite { display: block; font-size: 0.7rem; font-weight: 800; color: var(--dm-slate-600); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+    
+    .dm-select-wrapper, .dm-input-wrapper { position: relative; }
+    .dm-select-elite, .dm-input-elite { 
+        width: 100%; padding: 0.85rem 1.25rem; border-radius: 14px; border: 2px solid var(--dm-slate-100); 
+        background: var(--dm-slate-50); font-size: 0.9rem; font-weight: 600; color: var(--dm-secondary); 
+        appearance: none; outline: none; transition: all 0.2s; cursor: pointer;
+    }
+    .dm-select-elite:focus, .dm-input-elite:focus { border-color: var(--dm-primary); background: var(--dm-white); box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.08); }
+    .select-caret, .input-icon { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: var(--dm-slate-400); pointer-events: none; font-size: 0.85rem; }
+
+    /* SYNC PILL */
+    .sync-intelligence-pill { display: flex; align-items: center; gap: 12px; background: #f0fdf4; padding: 0.85rem 1.5rem; border-radius: 14px; border: 1.5px solid #dcfce7; }
+    .sync-text { font-size: 0.8rem; font-weight: 700; color: #15803d; }
+    .sync-pulse { width: 10px; height: 10px; background: #10b981; border-radius: 50%; animation: dm-pulse 2s infinite; }
+    @keyframes dm-pulse {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    /* TABLE REGISTRY */
+    .audit-registry-wrapper { background: var(--dm-white); border-radius: 24px; border: 1px solid var(--dm-slate-200); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.03); overflow: hidden; }
+    .dm-intelligence-table { width: 100%; border-collapse: collapse; }
+    .dm-intelligence-table th { background: #fcfcfd; padding: 1.25rem 1.75rem; font-size: 0.75rem; font-weight: 800; color: var(--dm-slate-600); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--dm-slate-100); }
+    .dm-audit-row { border-bottom: 1px solid #f8fafc; transition: all 0.2s; }
+    .dm-audit-row:hover { background: #fcfcfd; }
+    .dm-audit-row td { padding: 1.5rem 1.75rem; vertical-align: middle; }
+
+    /* CLUSTER STYLES */
+    .ts-cluster { display: flex; flex-direction: column; gap: 2px; }
+    .ts-main { font-weight: 700; color: var(--dm-secondary); font-size: 0.85rem; }
+    .ts-sub { color: var(--dm-slate-400); font-size: 0.75rem; font-family: 'JetBrains Mono', monospace !important; }
+
+    .node-identity { display: flex; align-items: center; gap: 14px; }
+    .node-avatar-v2 { width: 44px; height: 44px; border-radius: 14px; background: var(--dm-slate-100); color: var(--dm-slate-600); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem; border: 2px solid var(--dm-white); box-shadow: 0 4px 6px rgba(0,0,0,0.04); }
+    .node-avatar-v2.sys-protocol { background: var(--dm-secondary); color: var(--dm-white); }
+    .node-primary { font-weight: 700; color: var(--dm-secondary); font-size: 0.85rem; display: block; }
+    .node-secondary { font-size: 0.65rem; color: var(--dm-slate-400); font-weight: 800; letter-spacing: 0.05em; }
+
+    /* TAGS */
+    .dm-tag-action { padding: 5px 14px; border-radius: 10px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; white-space: nowrap; }
+    .dm-tag-action.login { background: #e0f2fe; color: #0369a1; }
+    .dm-tag-action.account_activated { background: #dcfce7; color: #15803d; }
+    .dm-tag-action.investigation_update { background: #fef3c7; color: #b45309; }
+
+    /* FLUX */
+    .flux-transition-v2 { display: flex; align-items: center; gap: 12px; }
+    .flux-origin { font-size: 0.75rem; font-weight: 700; color: var(--dm-slate-400); background: var(--dm-slate-50); padding: 5px 10px; border-radius: 8px; }
+    .flux-connector { color: var(--dm-slate-200); font-size: 0.75rem; }
+    .flux-destination { font-size: 0.75rem; font-weight: 700; color: var(--dm-primary); background: #fff7ed; padding: 5px 10px; border-radius: 8px; }
+    .flux-static-v2 { font-size: 0.8rem; color: var(--dm-slate-400); font-weight: 500; }
+
+    /* CHIPS */
+    .ip-intelligence-chip { display: flex; align-items: center; gap: 10px; color: var(--dm-slate-600); font-size: 0.85rem; font-weight: 600; font-family: 'JetBrains Mono', monospace !important; background: var(--dm-slate-50); padding: 6px 14px; border-radius: 20px; width: fit-content; }
+    .ip-intelligence-chip i { color: var(--dm-slate-400); font-size: 0.8rem; }
+    .registry-narrative { font-size: 0.85rem; color: var(--dm-slate-600); line-height: 1.6; margin: 0; }
+
+    /* EMPTY STATE V2 REFINEMENT */
+    .dm-empty-registry { padding: 6rem 2rem !important; text-align: center; background: #fff; }
+    .empty-state-v2 { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    
+    .empty-icon-container { 
+        position: relative; width: 100px; height: 100px; 
+        background: var(--dm-slate-50); border-radius: 30px; 
+        display: flex; align-items: center; justify-content: center;
+        margin-bottom: 2rem; color: var(--dm-slate-200); font-size: 3rem;
+    }
+    .empty-icon-ripple {
+        position: absolute; width: 100%; height: 100%;
+        border: 2px solid var(--dm-slate-100); border-radius: 30px;
+        animation: ripple 2s infinite ease-out;
+    }
+    @keyframes ripple {
+        0% { transform: scale(1); opacity: 0.8; }
+        100% { transform: scale(1.6); opacity: 0; }
+    }
+
+    .empty-state-v2 h3 { font-size: 1.25rem; font-weight: 800; color: var(--dm-secondary); margin-bottom: 0.75rem; }
+    .empty-state-v2 p { font-size: 0.95rem; color: var(--dm-slate-400); max-width: 400px; margin-bottom: 2rem; font-weight: 500; }
+    
+    .dm-btn-reset-empty {
+        background: var(--dm-white); color: var(--dm-primary); 
+        border: 2px solid var(--dm-primary); padding: 0.75rem 1.5rem; 
+        border-radius: 12px; font-weight: 800; font-size: 0.8rem;
+        cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 10px;
+        text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .dm-btn-reset-empty:hover { background: var(--dm-primary); color: #fff; transform: translateY(-2px); box-shadow: 0 10px 15px rgba(249, 115, 22, 0.2); }
+
+    /* PAGINATION V2 */
+    .dm-pagination-hub { padding: 1.5rem 1.75rem; display: flex; justify-content: space-between; align-items: center; background: #fcfcfd; border-top: 1px solid var(--dm-slate-100); }
+    .pag-stats { font-size: 0.85rem; color: var(--dm-slate-600); font-weight: 500; }
+    .pag-control-group { display: flex; align-items: center; gap: 1.5rem; }
+    .dm-pag-btn { padding: 10px 22px; border-radius: 12px; border: 2px solid var(--dm-slate-200); background: var(--dm-white); font-size: 0.85rem; font-weight: 700; color: var(--dm-secondary); text-decoration: none; transition: all 0.2s; display: flex; align-items: center; gap: 10px; }
+    .dm-pag-btn:hover:not(.disabled) { border-color: var(--dm-primary); color: var(--dm-primary); transform: translateY(-1px); }
+    .dm-pag-btn.disabled { opacity: 0.5; pointer-events: none; background: var(--dm-slate-100); }
+    .dm-pag-numbers { display: flex; gap: 8px; }
+    .dm-pag-item { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 12px; font-size: 0.85rem; font-weight: 700; text-decoration: none; color: var(--dm-slate-600); transition: all 0.2s; }
+    .dm-pag-item:hover { background: var(--dm-slate-100); color: var(--dm-secondary); }
+    .dm-pag-item.active { background: var(--dm-primary); color: var(--dm-white); box-shadow: 0 8px 15px rgba(249, 115, 22, 0.3); }
+    .dm-pag-dots { color: var(--dm-slate-200); padding: 0 4px; }
+</style>
+{% endblock %}

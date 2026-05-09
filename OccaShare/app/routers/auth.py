@@ -798,13 +798,24 @@ def login(
                  return JSONResponse(content={"success": True, "redirect_url": f"/auth/pending?email={user.email}&uid={user.id}"})
              return RedirectResponse(url=f"/auth/pending?email={user.email}&uid={user.id}", status_code=status.HTTP_303_SEE_OTHER)
          
-         error_msg = "Please follow the email link to verify your account." if user.status == "pending_verification" else "Account is inactive or pending approval."
+         if user.status == "suspended":
+             error_msg = f"Your account has been suspended. Reason: {user.status_reason or 'No reason provided.'}"
+         elif user.status == "rejected":
+             error_msg = f"Your account application was rejected. Reason: {user.status_reason or 'Identity verification failed.'}"
+         elif user.status == "investigation":
+             error_msg = f"Your account is currently under investigation for compliance review. Reason: {user.status_reason or 'Routine security audit.'}"
+         elif user.status == "pending_verification":
+             error_msg = "Please follow the email link to verify your account."
+         else:
+             error_msg = "Account is inactive or pending approval."
+
          if is_ajax:
-            return JSONResponse(status_code=403, content={"success": False, "error": error_msg})
+             return JSONResponse(status_code=403, content={"success": False, "error": error_msg})
          return templates.TemplateResponse("auth/login.html", {
-            "request": request,
-            "error": error_msg
-        })
+             "request": request,
+             "error": error_msg,
+             "next_url": next_url
+         })
         
     if not user.is_email_verified and user.role != "admin":
         if user.auth_provider == 'email':

@@ -1,340 +1,383 @@
 {% extends "admin/layout.html" %}
 
-{% block title %}Payout Management - OccaShare Admin{% endblock %}
+{% block title %}Financial Hub - Secure Settlement Terminal{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ range(1, 1000) | random }}">
 <style>
-    .payouts-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2.5rem;
-    }
-    .p-metric-card {
-        background: white;
-        padding: 1.75rem;
-        border-radius: 1.5rem;
-        border: 1px solid #f1f5f9;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-    }
-    .p-metric-label {
-        font-size: 0.85rem;
-        font-weight: 700;
-        color: #64748b;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-bottom: 0.5rem;
-    }
-    .p-metric-value {
-        font-size: 2rem;
-        font-weight: 900;
-        color: #1e293b;
-    }
-    .payout-section-card {
-        background: white;
-        border-radius: 1.5rem;
-        border: 1px solid #f1f5f9;
-        padding: 2rem;
-        margin-bottom: 2.5rem;
-        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
-    }
-    .section-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 2rem;
-    }
-    .section-title {
-        font-size: 1.25rem;
-        font-weight: 800;
-        color: #1e293b;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
-    .payout-table {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
-    }
-    .payout-table th {
-        background: #f8fafc;
-        padding: 1rem;
-        text-align: left;
-        font-size: 0.8rem;
-        font-weight: 700;
-        color: #64748b;
-        border-bottom: 1px solid #f1f5f9;
-    }
-    .payout-table td {
-        padding: 1.25rem 1rem;
-        border-bottom: 1px solid #f1f5f9;
-        font-size: 0.9rem;
-    }
-    .method-pill {
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-size: 0.7rem;
-        font-weight: 800;
-        text-transform: uppercase;
-    }
-    .pill-gcash { background: #eff6ff; color: #2563eb; }
-    .pill-maya { background: #fdf2f8; color: #db2777; }
-    .pill-bank { background: #f0fdf4; color: #15803d; }
+    /* Financial Hub Customizations to match Diamond Standard */
+    .kpi-icon-req { background: #fee2e2; color: #ef4444; }
+    .kpi-icon-escrow { background: #fef3c7; color: #f59e0b; }
     
-    .btn-approve-payout {
-        background: #1e293b;
-        color: white;
-        border: none;
-        padding: 0.6rem 1.25rem;
-        border-radius: 0.75rem;
+    .method-pill-dm {
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.65rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        display: inline-block;
+    }
+    .pill-gcash { background: #eff6ff; color: #1d4ed8; }
+    .pill-maya { background: #fdf2f8; color: #be185d; }
+    .pill-bank { background: #f0fdf4; color: #15803d; }
+
+    .identity-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 0.75rem;
         font-weight: 700;
-        cursor: pointer;
+        color: var(--adm-navy);
+    }
+    .verified-check { color: #10b981; font-size: 0.8rem; }
+
+    /* Action Dropdown Override for consistency */
+    .actions-dropdown { position: relative; display: inline-block; }
+    .dropdown-trigger-dm {
+        width: 32px; height: 32px; border-radius: 8px;
+        background: #f1f5f9; border: 1px solid #e2e8f0;
+        color: var(--adm-navy); cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
         transition: all 0.2s;
-        font-size: 0.85rem;
     }
-    .btn-approve-payout:hover {
-        background: #0f172a;
-        transform: scale(1.05);
+    .dropdown-trigger-dm:hover { background: var(--adm-primary-soft); border-color: var(--adm-primary); color: var(--adm-primary); }
+
+    .dropdown-menu-dm {
+        position: absolute; top: 100%; right: 0; width: 220px;
+        background: white; border-radius: 12px; border: 1px solid #f1f5f9;
+        box-shadow: var(--adm-shadow); display: none; z-index: 9999 !important;
+        padding: 0.5rem; margin-top: 8px; animation: dropdownFade 0.2s ease-out;
     }
+    .dropdown-menu-dm.show { display: block; }
+    @keyframes dropdownFade { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+    .dropdown-item-dm {
+        width: 100%; padding: 10px 12px; display: flex; align-items: center; gap: 10px;
+        border: none; background: none; font-size: 0.8rem; font-weight: 600;
+        color: var(--adm-navy); border-radius: 8px; cursor: pointer; text-align: left;
+    }
+    .dropdown-item-dm:hover { background: var(--adm-primary-soft); color: var(--adm-primary); }
+    .dropdown-item-dm.danger:hover { background: #fef2f2; color: #ef4444; }
+
+    /* Modal Styling to match Bookings */
+    .modal-dm {
+        position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6);
+        z-index: 3000; display: none; align-items: center; justify-content: center;
+        backdrop-filter: blur(8px);
+    }
+    .modal-dm.active { display: flex; }
+    .modal-content-dm {
+        background: white; width: 100%; max-width: 500px;
+        border-radius: 24px; box-shadow: var(--adm-shadow);
+        overflow: hidden; animation: modalIn 0.3s ease-out;
+    }
+    @keyframes modalIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Fix for 3-dots visibility */
+    .table-card-clean { overflow: visible !important; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="page-header-clean">
-    <div class="page-header">
+<div class="dashboard-header-clean">
+    <div class="header-title-area">
         <h1>Financial Hub</h1>
-        <p>Manage caterer withdrawals and platform escrow settlements.</p>
+        <p>Strategic settlement terminal and escrow intelligence.</p>
+    </div>
+    <div class="header-actions">
+        <a href="#" class="btn-clean" onclick="location.reload()"><i class="fas fa-sync-alt"></i> Refresh Data</a>
     </div>
 </div>
 
-<div class="payouts-grid">
-    <div class="p-metric-card" style="border-left: 4px solid #ef4444;">
-        <div class="p-metric-label">Withdrawal Requests</div>
-        <div class="p-metric-value">₱{{ "{:,.2f}".format(pending_request_total) }}</div>
-        <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; margin-top: 0.5rem;">
-            {{ pending_requests|length }} active requests from caterers
+<div class="kpi-grid-clean">
+    <div class="kpi-card-clean">
+        <div class="kpi-icon-box kpi-icon-req">
+            <i class="fas fa-clock-rotate-left"></i>
+        </div>
+        <div class="kpi-info">
+            <h4>Pending Withdrawals</h4>
+            <span class="kpi-value">₱{{ "{:,.2f}".format(pending_request_total) }}</span>
+            <div class="trend-badge trend-down">
+                <i class="fas fa-hand-holding-dollar"></i> {{ pending_requests|length }} calls active
+            </div>
         </div>
     </div>
-    <div class="p-metric-card" style="border-left: 4px solid #f59e0b;">
-        <div class="p-metric-label">Escrowed (Ready)</div>
-        <div class="p-metric-value">₱{{ "{:,.2f}".format(ready_funds_total) }}</div>
-        <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; margin-top: 0.5rem;">
-            Funds ready for settlement but not yet requested
+    <div class="kpi-card-clean">
+        <div class="kpi-icon-box kpi-icon-escrow">
+            <i class="fas fa-vault"></i>
+        </div>
+        <div class="kpi-info">
+            <h4>Ready in Escrow</h4>
+            <span class="kpi-value">₱{{ "{:,.2f}".format(ready_funds_total) }}</span>
+            <div class="trend-badge trend-up">
+                <i class="fas fa-shield-check"></i> Audit cleared
+            </div>
         </div>
     </div>
 </div>
 
-<!-- 1. FORMAL WITHDRAWAL REQUESTS -->
-<div class="payout-section-card">
-    <div class="section-header">
-        <div class="section-title"><i class="fas fa-hand-holding-usd" style="color: #ef4444;"></i> Withdrawal Requests</div>
+<div class="table-card-clean" style="margin-bottom: 2rem;">
+    <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="font-size: 0.95rem; font-weight: 800; color: var(--adm-navy); margin: 0; display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-money-bill-transfer" style="color: var(--adm-primary);"></i> Active Settlement Queue
+        </h3>
+        <span class="badge-clean" style="background: var(--adm-primary-soft); color: var(--adm-primary);">GOVERNANCE SECURED</span>
     </div>
 
     {% if pending_requests %}
-    <div style="overflow-x: auto;">
-        <table class="payout-table">
-            <thead>
-                <tr>
-                    <th>Request ID</th>
-                    <th>Caterer</th>
-                    <th>Requested On</th>
-                    <th>Amount</th>
-                    <th>Payout Method</th>
-                    <th>Details</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for p in pending_requests %}
-                <tr>
-                    <td><strong>#{{ p.payout_reference }}</strong></td>
-                    <td>
-                        <div style="font-weight: 800; color: #1e293b;">{{ p.caterer.business_name }}</div>
-                        <div style="font-size: 0.75rem; color: #64748b;">{{ p.items|length }} booking items linked</div>
-                    </td>
-                    <td style="color: #64748b; font-weight: 600;">{{ p.requested_at.strftime('%b %d, %Y') }}</td>
-                    <td style="font-weight: 900; color: #1e293b; font-size: 1.1rem;">₱{{ "{:,.2f}".format(p.total_amount) }}</td>
-                    <td>
-                        {% set method = p.caterer.payout_method or 'GCash' %}
-                        <span class="method-pill pill-{{ method.lower() }}">{{ method }}</span>
-                    </td>
-                    <td>
-                        <div style="font-size: 0.8rem; font-weight: 700; color: #475569;">
-                            {% if p.caterer.payout_method == 'Bank' %}
-                                {{ p.caterer.bank_name }}: {{ p.caterer.bank_account_number }}
-                            {% elif p.caterer.payout_method == 'Maya' %}
-                                Maya: {{ p.caterer.maya_number }}
-                            {% else %}
-                                GCash: {{ p.caterer.gcash_number }}
-                            {% endif %}
-                        </div>
-                    </td>
-                    <td>
-                        <button class="btn-approve-payout" onclick="openApprovalModal({{ p.id }}, {{ p.total_amount }}, '{{ p.caterer.business_name }}', '{{ method }}')">
-                            Review & Approve
+    <table class="clean-table">
+        <thead>
+            <tr>
+                <th>Reference</th>
+                <th>Caterer Identity</th>
+                <th>Request Timeline</th>
+                <th>Net Settlement</th>
+                <th>Payout Target</th>
+                <th style="text-align: right;">Operations</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in pending_requests %}
+            <tr>
+                <td><span style="font-weight: 800; color: var(--adm-navy);">#{{ p.payout_reference }}</span></td>
+                <td>
+                    <div class="identity-chip">
+                        {{ p.caterer.business_name }}
+                        {% if p.caterer.is_verified %}
+                            <i class="fas fa-check-circle verified-check"></i>
+                        {% endif %}
+                    </div>
+                    <div style="font-size: 0.7rem; color: var(--adm-muted); font-weight: 700; margin-top: 4px; padding-left: 4px;">
+                        {{ p.items|length }} AUDITED TRANSACTIONS
+                    </div>
+                </td>
+                <td>
+                    <div style="font-weight: 700; color: var(--adm-navy); font-size: 0.8rem;">{{ p.requested_at.strftime('%b %d, %Y') }}</div>
+                    <div style="font-size: 0.65rem; color: var(--adm-muted); font-weight: 700;">REQUEST DISPATCHED</div>
+                </td>
+                <td><span style="font-weight: 900; color: var(--adm-navy); font-size: 1rem;">₱{{ "{:,.2f}".format(p.total_amount) }}</span></td>
+                <td>
+                    {% set method = p.caterer.payout_method or 'GCash' %}
+                    <span class="method-pill-dm pill-{{ method.lower() }}">{{ method }}</span>
+                    <div style="font-size: 0.7rem; font-weight: 800; color: var(--adm-muted); margin-top: 4px;">
+                        {% if method == 'Bank' %}{{ p.caterer.bank_account_number }}
+                        {% elif method == 'Maya' %}{{ p.caterer.maya_number }}
+                        {% else %}{{ p.caterer.gcash_number }}{% endif %}
+                    </div>
+                </td>
+                <td style="text-align: right;">
+                    <div class="actions-dropdown">
+                        <button class="dropdown-trigger-dm" onclick="toggleDropdown(this, event)">
+                            <i class="fas fa-ellipsis-v"></i>
                         </button>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+                        <div class="dropdown-menu-dm">
+                            <button class="dropdown-item-dm" onclick="auditPayout({{ p.id }})">
+                                <i class="fas fa-microscope"></i> Intelligence Audit
+                            </button>
+                            <button class="dropdown-item-dm" onclick="openSettleModal({{ p.id }}, {{ p.total_amount }}, '{{ p.caterer.business_name }}', '{{ method }}')">
+                                <i class="fas fa-paper-plane"></i> Manual Settlement
+                            </button>
+                            <div style="height: 1px; background: #f1f5f9; margin: 4px 0;"></div>
+                            <button class="dropdown-item-dm danger" onclick="rejectPayout({{ p.id }})">
+                                <i class="fas fa-ban"></i> Governance Reject
+                            </button>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
     {% else %}
-    <div style="text-align: center; padding: 4rem; color: #cbd5e1;">
-        <i class="fas fa-check-circle fa-4x" style="margin-bottom: 1.5rem; opacity: 0.5;"></i>
-        <h3 style="font-weight: 800; color: #94a3b8;">Queue is Clear</h3>
-        <p>No active withdrawal requests from caterers at this moment.</p>
+    <div style="text-align: center; padding: 4rem;">
+        <i class="fas fa-check-double fa-3x" style="color: #cbd5e1; margin-bottom: 1rem;"></i>
+        <h4 style="color: var(--adm-muted); font-weight: 800;">Settlement Queue Clear</h4>
     </div>
     {% endif %}
 </div>
 
-<!-- 2. ESCROWED FUNDS (PROACTIVE RELEASE) -->
-<div class="payout-section-card" style="opacity: 0.9;">
-    <div class="section-header">
-        <div class="section-title"><i class="fas fa-vault" style="color: #f59e0b;"></i> Escrowed Funds (Ready for Release)</div>
+<div class="table-card-clean" style="opacity: 0.8;">
+    <div style="padding: 1rem 1.5rem; border-bottom: 1px solid #f1f5f9;">
+        <h3 style="font-size: 0.85rem; font-weight: 800; color: var(--adm-muted); margin: 0;">
+            <i class="fas fa-vault"></i> ESCROW LEDGER
+        </h3>
     </div>
-    {% if ready_items %}
-    <div style="overflow-x: auto;">
-        <table class="payout-table">
-            <thead>
-                <tr>
-                    <th>Item</th>
-                    <th>Caterer</th>
-                    <th>Booking</th>
-                    <th>Amount</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in ready_items %}
-                <tr>
-                    <td>#{{ item.id }}</td>
-                    <td>{{ item.payout.caterer.business_name if item.payout else '---' }}</td>
-                    <td>BK-{{ item.booking_id }}</td>
-                    <td style="font-weight: 700;">₱{{ "{:,.2f}".format(item.amount) }}</td>
-                    <td><span class="method-pill" style="background: #fff7ed; color: #c2410c;">Ready</span></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% else %}
-    <p style="color: #94a3b8; font-size: 0.9rem; text-align: center;">No individual escrow items ready for settlement.</p>
-    {% endif %}
+    <table class="clean-table">
+        <thead>
+            <tr>
+                <th>Asset Ref</th>
+                <th>Origin Caterer</th>
+                <th>Booking</th>
+                <th>Escrow Value</th>
+                <th>Integrity</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in ready_items %}
+            <tr>
+                <td><span style="font-weight: 800; color: var(--adm-muted);">#ESC-{{ item.id }}</span></td>
+                <td><span style="font-weight: 700; color: var(--adm-navy);">{{ item.payout.caterer.business_name if item.payout else '---' }}</span></td>
+                <td><span class="badge-clean" style="background: #f8fafc; color: var(--adm-navy); border: 1px solid #e2e8f0;">BK-{{ item.booking_id }}</span></td>
+                <td><span style="font-weight: 800; color: var(--adm-navy);">₱{{ "{:,.2f}".format(item.amount) }}</span></td>
+                <td><span class="badge-clean" style="background: #ecfdf5; color: #059669;">LOCKED_SECURE</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 
-<!-- 3. RECENTLY COMPLETED -->
-<div class="payout-section-card" style="opacity: 0.8;">
-    <div class="section-header">
-        <div class="section-title"><i class="fas fa-history"></i> Payout History</div>
-    </div>
-    <div style="overflow-x: auto;">
-        <table class="payout-table">
-            <thead>
-                <tr>
-                    <th>Ref</th>
-                    <th>Caterer</th>
-                    <th>Completed At</th>
-                    <th>Total Amount</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for p in recent_completed %}
-                <tr>
-                    <td>#{{ p.payout_reference }}</td>
-                    <td>{{ p.caterer.business_name }}</td>
-                    <td>{{ p.completed_at.strftime('%b %d, %Y') }}</td>
-                    <td style="font-weight: 700;">₱{{ "{:,.2f}".format(p.total_amount) }}</td>
-                    <td><span class="method-pill" style="background: #f0fdf4; color: #166534;">Completed</span></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- APPROVAL MODAL -->
-<div id="approvalModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
-    <div style="background: white; width: 520px; padding: 2.5rem; border-radius: 2rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem;">
-            <div>
-                <h2 style="font-weight: 900; font-size: 1.75rem; color: #1e293b; margin-bottom: 0.25rem;">Fulfill Payout</h2>
-                <div style="font-size: 0.85rem; color: #64748b; font-weight: 600;">Standard Operating Procedure</div>
-            </div>
-            <button onclick="closeApprovalModal()" style="background: #f1f5f9; border: none; width: 36px; height: 36px; border-radius: 50%; color: #64748b; cursor: pointer;"><i class="fas fa-times"></i></button>
+<!-- SETTLE MODAL -->
+<div id="settleModal" class="modal-dm">
+    <div class="modal-content-dm">
+        <div style="padding: 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-weight: 800; color: var(--adm-navy); margin: 0;">Fulfill Settlement</h3>
+            <button onclick="closeModal('settleModal')" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--adm-muted);">&times;</button>
         </div>
+        <form id="settleForm" method="POST">
+            <div style="padding: 1.5rem;">
+                <div style="background: var(--adm-bg); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; border: 1px dashed #cbd5e1;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-size: 0.7rem; font-weight: 800; color: var(--adm-muted);">PAYOUT AMOUNT</span>
+                        <span id="modalMethodLabel" class="badge-clean" style="background: var(--adm-primary); color: white;">GCASH</span>
+                    </div>
+                    <div style="font-size: 1.5rem; font-weight: 900; color: var(--adm-navy);">₱<span id="modalAmountDisplay">0.00</span></div>
+                    <div style="font-size: 0.8rem; font-weight: 700; color: var(--adm-muted); margin-top: 4px;" id="modalCatererLabel">Caterer Name</div>
+                </div>
 
-        <!-- Workflow Guide -->
-        <div style="background: #f8fafc; border-radius: 1.25rem; padding: 1.5rem; margin-bottom: 2rem; border: 1px dashed #e2e8f0;">
-            <div style="font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem;">Process Steps</div>
-            <div style="display: flex; gap: 1rem; margin-bottom: 0.75rem;">
-                <div style="width: 24px; height: 24px; background: #1e293b; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 800; flex-shrink: 0;">1</div>
-                <div style="font-size: 0.85rem; color: #475569; line-height: 1.4;">
-                    Send <strong>₱<span id="modalAmountDisplay">0</span></strong> to <span id="modalCaterer" style="font-weight: 800; color: #1e293b;"></span> via <span id="modalMethod" style="font-weight: 800; color: #1e293b;"></span>.
-                    <button type="button" onclick="copyAmount()" style="background: #fff; border: 1px solid #cbd5e1; padding: 2px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; color: #1e293b; cursor: pointer; margin-left: 5px;">Copy Amt</button>
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; font-size: 0.75rem; font-weight: 800; color: var(--adm-navy); margin-bottom: 8px;">REFERENCE NUMBER</label>
+                    <input type="text" name="reference" placeholder="Enter transaction reference ID..." required
+                           style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #e2e8f0; font-size: 0.95rem; font-weight: 600; outline: none; box-sizing: border-box;">
                 </div>
             </div>
-            <div style="display: flex; gap: 1rem; margin-bottom: 0.75rem;">
-                <div style="width: 24px; height: 24px; background: #1e293b; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 800; flex-shrink: 0;">2</div>
-                <div style="font-size: 0.85rem; color: #475569; line-height: 1.4;">Note the <strong>Transaction Reference Number</strong> from your banking app.</div>
-            </div>
-            <div style="display: flex; gap: 1rem;">
-                <div style="width: 24px; height: 24px; background: #1e293b; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 800; flex-shrink: 0;">3</div>
-                <div style="font-size: 0.85rem; color: #475569; line-height: 1.4;">Enter the Reference Number below to finalize the record.</div>
-            </div>
-        </div>
-        
-        <form id="approvalForm" method="POST" action="">
-            <div style="margin-bottom: 2rem;">
-                <label style="display: block; font-size: 0.9rem; font-weight: 800; margin-bottom: 0.75rem; color: #475569;">Bank/GCash Reference Number</label>
-                <input type="text" name="reference" placeholder="e.g. GCash Ref #987654321" required 
-                       style="width: 100%; border: 2px solid #f1f5f9; border-radius: 1rem; padding: 1rem; box-sizing: border-box; font-size: 1rem; transition: border-color 0.2s; outline: none;"
-                       onfocus="this.style.borderColor='#1e293b'">
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
-                <button type="button" onclick="closeApprovalModal()" style="background: #f1f5f9; border: none; padding: 1rem; border-radius: 1rem; font-weight: 800; cursor: pointer; color: #475569;">Close</button>
-                <button type="submit" style="background: #1e293b; color: white; border: none; padding: 1rem; border-radius: 1rem; font-weight: 800; cursor: pointer;">Finalize Transfer</button>
+            <div style="padding: 1.25rem 1.5rem; background: #f8fafc; display: flex; gap: 12px;">
+                <button type="button" class="btn-clean" style="background: white; color: var(--adm-navy); border: 1px solid #e2e8f0; flex: 1; justify-content: center;" onclick="closeModal('settleModal')">Dismiss</button>
+                <button type="submit" class="btn-clean" style="flex: 2; justify-content: center;">Authorize Settlement</button>
             </div>
         </form>
     </div>
 </div>
 
+<!-- AUDIT MODAL -->
+<div id="auditModal" class="modal-dm">
+    <div class="modal-content-dm" style="max-width: 600px;">
+        <div style="padding: 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-weight: 800; color: var(--adm-navy); margin: 0;">Intelligence Audit</h3>
+            <button onclick="closeModal('auditModal')" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--adm-muted);">&times;</button>
+        </div>
+        <div style="padding: 1.5rem;" id="auditBody">
+            <!-- Dynamic Content -->
+        </div>
+        <div style="padding: 1.25rem 1.5rem; background: #f8fafc;">
+            <button class="btn-clean" style="width: 100%; justify-content: center;" onclick="closeModal('auditModal')">Close Audit</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    let currentAmountRaw = 0;
-
-    function openApprovalModal(payoutId, amount, caterer, method) {
-        currentAmountRaw = amount;
-        document.getElementById('modalAmountDisplay').innerText = amount.toLocaleString(undefined, {minimumFractionDigits: 2});
-        document.getElementById('modalCaterer').innerText = caterer;
-        document.getElementById('modalMethod').innerText = method;
-        document.getElementById('approvalForm').action = '/admin/payouts/' + payoutId + '/approve';
-        document.getElementById('approvalModal').style.display = 'flex';
-    }
-
-    function closeApprovalModal() {
-        document.getElementById('approvalModal').style.display = 'none';
-    }
-
-    function copyAmount() {
-        navigator.clipboard.writeText(currentAmountRaw.toString()).then(() => {
-            const btn = event.currentTarget;
-            const originalText = btn.innerText;
-            btn.innerText = 'Copied!';
-            btn.style.borderColor = '#10b981';
-            btn.style.color = '#10b981';
-            setTimeout(() => {
-                btn.innerText = originalText;
-                btn.style.borderColor = '#cbd5e1';
-                btn.style.color = '#1e293b';
-            }, 2000);
+    function toggleDropdown(btn, event) {
+        event.stopPropagation();
+        const menu = btn.nextElementSibling;
+        document.querySelectorAll('.dropdown-menu-dm').forEach(m => {
+            if (m !== menu) m.classList.remove('show');
         });
+        menu.classList.toggle('show');
     }
 
-    window.onclick = (e) => {
-        if(e.target == document.getElementById('approvalModal')) closeApprovalModal();
+    window.onclick = () => {
+        document.querySelectorAll('.dropdown-menu-dm').forEach(m => m.classList.remove('show'));
+    };
+
+    function openSettleModal(id, amount, caterer, method) {
+        document.getElementById('modalAmountDisplay').innerText = amount.toLocaleString(undefined, {minimumFractionDigits: 2});
+        document.getElementById('modalCatererLabel').innerText = caterer;
+        document.getElementById('modalMethodLabel').innerText = method.toUpperCase();
+        document.getElementById('settleForm').action = '/admin/payouts/' + id + '/approve';
+        document.getElementById('settleModal').classList.add('active');
     }
+
+    async function auditPayout(id) {
+        const modal = document.getElementById('auditModal');
+        const body = document.getElementById('auditBody');
+        modal.classList.add('active');
+        body.innerHTML = '<div style="text-align: center; padding: 3rem;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--adm-primary);"></i></div>';
+
+        try {
+            const res = await fetch(`/admin/api/payouts/${id}/audit`);
+            const data = await res.json();
+            if (data.success) {
+                const p = data.payout;
+                body.innerHTML = `
+                    <div style="background: #f8fafc; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden;">
+                        <div style="padding: 1rem; border-bottom: 1px solid #e2e8f0; background: #fff; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted);">REVENUE COMPOSITION: ${p.reference}</span>
+                            <span style="font-weight: 900; color: var(--adm-navy);">₱${p.total.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                        </div>
+                        <div style="padding: 0.75rem; max-height: 350px; overflow-y: auto;">
+                            ${p.items.map(item => `
+                                <div style="display: flex; justify-content: space-between; padding: 10px; background: white; border-radius: 10px; margin-bottom: 6px; border: 1px solid #f1f5f9;">
+                                    <div>
+                                        <div style="font-weight: 800; color: var(--adm-navy); font-size: 0.8rem;">Booking #BK-${item.booking_id}</div>
+                                        <div style="font-size: 0.65rem; color: var(--adm-muted); font-weight: 700;">${item.event_name}</div>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div style="font-weight: 900; color: var(--adm-navy); font-size: 0.9rem;">₱${item.amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                                        <div style="font-size: 0.6rem; color: var(--adm-muted); font-weight: 800;">COMMISSION: ₱${item.commission.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div style="margin-top: 1rem; padding: 1rem; background: var(--adm-primary-soft); border-radius: 12px; border: 1px solid #fed7aa;">
+                        <div style="display: flex; align-items: center; gap: 8px; color: var(--adm-primary); font-size: 0.75rem; font-weight: 700;">
+                            <i class="fas fa-shield-check"></i>
+                            Integrity Verified: All linked assets are locked and ready.
+                        </div>
+                    </div>
+                `;
+            } else {
+                body.innerHTML = `<div style="padding: 2rem; text-align: center; color: #ef4444; font-weight: 700;">${data.message}</div>`;
+            }
+        } catch (e) {
+            body.innerHTML = '<div style="padding: 2rem; text-align: center; color: #ef4444; font-weight: 700;">Communication Failure</div>';
+        }
+    }
+
+    async function rejectPayout(id) {
+        const { value: reason } = await Swal.fire({
+            title: 'Governance Rejection',
+            text: "Provide a mandatory reason for rejecting this settlement request.",
+            icon: 'warning',
+            input: 'textarea',
+            inputPlaceholder: 'Reason for rejection...',
+            showCancelButton: true,
+            confirmButtonText: 'Reject Request',
+            confirmButtonColor: '#ef4444',
+            inputValidator: (value) => { if (!value) return 'A reason is mandatory!' }
+        });
+
+        if (reason) {
+            Swal.fire({ title: 'Processing...', didOpen: () => Swal.showLoading() });
+            try {
+                const fd = new FormData();
+                fd.append('reason', reason);
+                const res = await fetch(`/admin/payouts/${id}/reject`, { method: 'POST', body: fd });
+                if (res.ok) {
+                    Swal.fire('Rejected', 'Withdrawal request marked as rejected.', 'success').then(() => location.reload());
+                } else {
+                    Swal.fire('Error', 'Failed to reject request.', 'error');
+                }
+            } catch (e) {
+                Swal.fire('Error', 'Communication failure.', 'error');
+            }
+        }
+    }
+
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 </script>
 {% endblock %}

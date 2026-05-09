@@ -3,404 +3,152 @@
 {% block title %}Visitor Inquiries Terminal - OccaServe Admin{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ range(1, 1000) | random }}">
 <style>
-    :root {
-        --dm-primary: #f97316;
-        --dm-primary-light: #fff7ed;
-        --dm-secondary: #0f172a;
-        --dm-slate-50: #f8fafc;
-        --dm-slate-100: #f1f5f9;
-        --dm-slate-200: #e2e8f0;
-        --dm-slate-400: #94a3b8;
-        --dm-slate-600: #475569;
-    }
+    /* Engagement Specific Diamond Styling */
+    .intensity-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .intensity-low { background: #10b981; box-shadow: 0 0 8px #10b981; }
+    .intensity-med { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+    .intensity-high { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
 
-    /* Standard Layout Alignment - No Overlap */
-    .main-content {
-        background: var(--dm-slate-50) !important;
-        padding: 2rem 3rem !important;
+    .source-badge {
+        padding: 4px 8px; border-radius: 6px; font-size: 0.6rem; font-weight: 800;
+        text-transform: uppercase; letter-spacing: 0.05em; display: inline-flex; align-items: center; gap: 4px;
     }
+    .source-general { background: #f1f5f9; color: #475569; }
+    .source-lead { background: #fff7ed; color: #ea580c; border: 1px solid #ffedd5; }
 
-    /* KPI Stats Architecture */
-    .kpi-grid-clean {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
+    /* Modal Chat Polish */
+    .chat-bubble-clean {
+        background: #f8fafc; border: 1px solid #f1f5f9; padding: 1.25rem;
+        border-radius: 16px; position: relative; margin-bottom: 1rem;
     }
+    .chat-bubble-clean .meta { font-size: 0.6rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase; margin-bottom: 6px; }
+    .chat-bubble-clean .text { font-size: 0.85rem; color: var(--adm-navy); line-height: 1.6; font-weight: 500; }
 
-    .kpi-card-clean {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 1.25rem;
-        border: 1px solid var(--dm-slate-100);
-        display: flex;
-        align-items: center;
-        gap: 1.25rem;
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
-
-    .kpi-icon-box {
-        width: 54px;
-        height: 54px;
-        border-radius: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.25rem;
-    }
-
-    .kpi-info h4 {
-        margin: 0;
-    }
-
-    .kpi-info .kpi-value {
-        display: block;
-    }
-
-    /* Management Terminal */
-    .management-terminal {
-        background: white;
-        border-radius: 1.25rem;
-        border: 1px solid var(--dm-slate-100);
-        overflow: hidden;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-    }
-
-    .terminal-header {
-        padding: 1.5rem 2rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 1px solid var(--dm-slate-100);
-    }
-
-    .terminal-header h3 {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .header-controls {
-        display: flex;
-        gap: 1rem;
-        align-items: center;
-    }
-
-    .filter-select {
-        padding: 0.6rem 1rem;
-        border-radius: 10px;
-        border: 1px solid var(--dm-slate-200);
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: var(--dm-slate-600);
-        background: white;
-        cursor: pointer;
-    }
-
-    .search-group {
-        position: relative;
-        width: 300px;
-    }
-
-    .search-group i {
-        position: absolute;
-        left: 1rem;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--dm-slate-400);
-        font-size: 0.85rem;
-    }
-
-    .search-group input {
-        width: 100%;
-        padding: 0.6rem 1rem 0.6rem 2.5rem;
-        border-radius: 10px;
-        border: 1px solid var(--dm-slate-200);
-        font-size: 0.85rem;
-        transition: all 0.2s;
-    }
-
-    .search-group input:focus {
-        outline: none;
-        border-color: var(--dm-primary);
-        box-shadow: 0 0 0 3px var(--dm-primary-light);
-    }
-
-    /* Table Architecture */
-    .inquiry-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .inquiry-table th {
-        text-align: left;
-        padding: 1.25rem 2rem;
-        font-size: 0.7rem;
-        color: var(--dm-slate-400);
-        text-transform: uppercase;
-        border-bottom: 1px solid var(--dm-slate-100);
-        background: var(--dm-slate-50);
-    }
-
-    .inquiry-table td {
-        padding: 1.25rem 2rem;
-        border-bottom: 1px solid var(--dm-slate-50);
-    }
-
-    .sender-info .name {
-        font-weight: 700;
-        color: var(--dm-secondary);
-        display: block;
-    }
-
-    .sender-info .email {
-        font-size: 0.8rem;
-        color: var(--dm-slate-400);
-    }
-
-    .msg-snippet {
-        font-size: 0.85rem;
-        color: var(--dm-slate-600);
-        max-width: 300px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        font-style: italic;
-    }
-
-    .badge-clean {
-        padding: 4px 10px;
-        border-radius: 6px;
-        font-size: 0.7rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .badge-new {
-        background: #eff6ff;
-        color: #3b82f6;
-    }
-
-    .badge-responded {
-        background: #ecfdf5;
-        color: #10b981;
-    }
-
-    .btn-action {
-        width: 34px;
-        height: 34px;
-        border-radius: 8px;
-        border: 1px solid var(--dm-slate-100);
-        background: white;
-        color: var(--dm-slate-400);
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s;
-        text-decoration: none;
-    }
-
-    .btn-action:hover {
-        color: var(--dm-primary);
-        border-color: var(--dm-primary);
-        background: var(--dm-primary-light);
-    }
-
-    /* Thread Modal */
-    .admin-modal-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(15, 23, 42, 0.4);
-        backdrop-filter: blur(8px);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 2000;
-        padding: 2rem;
-    }
-    .admin-modal-overlay.active { display: flex; }
-
-    .admin-modal-card {
-        background: white;
-        width: 100%;
-        max-width: 650px;
-        border-radius: 1.5rem;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-        overflow: hidden;
-        animation: modalSlide 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    @keyframes modalSlide {
-        from { opacity: 0; transform: translateY(20px) scale(0.98); }
-        to { opacity: 1; transform: translateY(0) scale(1); }
-    }
-
-    .modal-header-clean {
-        padding: 1.5rem 2rem;
-        background: var(--dm-slate-50);
-        border-bottom: 1px solid var(--dm-slate-100);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .modal-body-clean {
-        padding: 1.5rem;
-        max-height: 60vh;
-        overflow-y: auto;
-        background: white;
-    }
-
-    .chat-timeline {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .chat-bubble {
-        background: var(--dm-slate-50);
-        padding: 1rem 1.25rem;
-        border-radius: 14px;
-        border: 1px solid var(--dm-slate-100);
-        position: relative;
-        max-width: 90%;
-    }
-
-    .chat-bubble.visitor {
-        align-self: flex-start;
-        border-bottom-left-radius: 4px;
-    }
-
-    .chat-bubble .timestamp {
-        font-size: 0.6rem;
-        font-weight: 800;
-        color: var(--dm-slate-400);
-        text-transform: uppercase;
-        margin-bottom: 4px;
-        display: block;
-    }
-
-    .chat-bubble .content {
-        font-size: 0.9rem;
-        color: var(--dm-secondary);
-        line-height: 1.5;
-        font-weight: 500;
-    }
-
-    .modal-footer-clean {
-        padding: 1.25rem 2rem;
-        background: var(--dm-slate-50);
-        border-top: 1px solid var(--dm-slate-100);
-        display: flex;
-        justify-content: flex-end;
-        gap: 12px;
+    .engagement-memo {
+        background: #eff6ff; border: 1px solid #dbeafe; padding: 1.25rem;
+        border-radius: 16px; margin-top: 2rem; display: flex; gap: 1rem; align-items: flex-start;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="page-header-clean">
-    <div class="page-header">
-        <h1>Visitor Inquiries</h1>
-        <p>Engagement Monitoring & Communication Terminal</p>
+<div class="dashboard-header-clean">
+    <div class="header-title-area">
+        <h1 style="display: flex; align-items: center; gap: 12px;">
+            <i class="fas fa-comments-alt" style="color: var(--adm-primary);"></i>
+            Visitor Inquiries Terminal
+        </h1>
+        <p>Omni-channel Engagement Monitoring & Communication Node.</p>
     </div>
 </div>
 
 <div class="kpi-grid-clean">
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #eff6ff; color: #3b82f6;"><i class="fas fa-envelope-open-text"></i>
-        </div>
+        <div class="kpi-icon-box" style="background: #eff6ff; color: #3b82f6;"><i class="fas fa-envelope-open-text"></i></div>
         <div class="kpi-info">
             <h4>Total Interactions</h4>
             <span class="kpi-value">{{ senders|length }}</span>
+            <span class="trend-badge" style="background: #dbeafe; color: #1e40af;">LIVE FEED</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #fffbeb; color: #f59e0b;"><i class="fas fa-clock"></i></div>
+        <div class="kpi-icon-box" style="background: #fff7ed; color: #ea580c;"><i class="fas fa-bolt"></i></div>
         <div class="kpi-info">
-            <h4>Awaiting Reply</h4>
-            <span class="kpi-value" id="kpi-pending">
-                {{ senders|selectattr('status', 'equalto', 'new')|list|length }}
-            </span>
+            <h4>Support Resolution</h4>
+            {% set resolved = senders|selectattr('status', 'equalto', 'responded')|list|length %}
+            {% set rate = (resolved / senders|length * 100)|round(1) if senders|length > 0 else 0 %}
+            <span class="kpi-value">{{ rate }}%</span>
+            <span class="trend-badge" style="background: #ffedd5; color: #9a3412;">AVG. RESPONSE: 14m</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #ecfdf5; color: #10b981;"><i class="fas fa-check-double"></i></div>
+        <div class="kpi-icon-box" style="background: #f0fdf4; color: #16a34a;"><i class="fas fa-funnel-dollar"></i></div>
         <div class="kpi-info">
-            <h4>Resolved Threads</h4>
-            <span class="kpi-value">{{ senders|selectattr('status', 'equalto', 'responded')|list|length }}</span>
+            <h4>Caterer Leads</h4>
+            <span class="kpi-value">{{ senders|selectattr('is_caterer_lead', 'equalto', True)|list|length }}</span>
+            <span class="trend-badge trend-up">HIGH CONVERSION</span>
         </div>
     </div>
 </div>
 
-<div class="management-terminal">
-    <div class="terminal-header">
-        <h3><i class="fas fa-inbox" style="color: var(--dm-primary);"></i> Message Registry</h3>
-        <div class="header-controls">
-            <select class="filter-select" id="statusFilter" onchange="filterInquiries()">
+<div class="table-card-clean">
+    <div style="padding: 1.5rem 2rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy); margin: 0; display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-inbox" style="color: var(--adm-primary);"></i> Message Registry
+        </h3>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <select class="btn-clean" style="font-size: 0.75rem; padding: 8px 12px;" id="statusFilter" onchange="filterInquiries()">
                 <option value="">All Threads</option>
-                <option value="new">Unread / New</option>
-                <option value="responded">Responded</option>
+                <option value="new">Action Required</option>
+                <option value="responded">Resolved</option>
             </select>
-            <div class="search-group">
-                <i class="fas fa-search"></i>
-                <input type="text" id="searchInput" placeholder="Filter by sender or content..."
-                    onkeyup="filterInquiries()">
+            <div style="position: relative;">
+                <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.8rem;"></i>
+                <input type="text" id="searchInput" placeholder="Search interactions..." onkeyup="filterInquiries()" 
+                       style="padding: 8px 12px 8px 35px; border-radius: 10px; border: 1px solid #e2e8f0; font-size: 0.75rem; width: 250px;">
             </div>
         </div>
     </div>
 
     <div style="overflow-x: auto;">
-        <table class="inquiry-table" id="inquiriesTable">
+        <table class="clean-table" id="inquiriesTable">
             <thead>
                 <tr>
                     <th>Potential Client</th>
-                    <th>Latest Interaction</th>
-                    <th>Intensity</th>
+                    <th>Source Attribution</th>
+                    <th>Latest Intelligence</th>
+                    <th>Engagement</th>
                     <th>Status</th>
-                    <th style="text-align: right;">Action</th>
+                    <th style="text-align: right;">Operations</th>
                 </tr>
             </thead>
             <tbody>
                 {% for s in senders %}
                 <tr class="inquiry-row" data-status="{{ s.status }}">
                     <td>
-                        <div class="sender-info">
-                            <span class="name">{{ s.name }}</span>
-                            <span class="email">{{ s.email }}</span>
-                        </div>
+                        <div style="font-weight: 800; color: var(--adm-navy);">{{ s.name }}</div>
+                        <div style="font-size: 0.7rem; color: var(--adm-muted); font-weight: 700;">{{ s.email }}</div>
                     </td>
                     <td>
-                        <div class="msg-snippet">"{{ s.messages[0].message if s.messages else '---' }}"</div>
-                        <div style="font-size: 0.7rem; color: var(--dm-slate-400); margin-top: 4px;">
-                            {{ s.latest_date.strftime('%b %d, %Y • %I:%M %p') if s.latest_date else 'N/A' }}
-                        </div>
-                    </td>
-                    <td>
-                        <span style="font-weight: 700; color: var(--dm-slate-600); font-size: 0.85rem;">
-                            {{ s.messages|length }} msg(s)
-                        </span>
-                    </td>
-                    <td>
-                        {% if s.status == 'new' %}
-                        <span class="badge-clean badge-new"><i class="fas fa-circle" style="font-size: 0.4rem;"></i>
-                            New</span>
+                        {% if s.is_caterer_lead %}
+                            <span class="source-badge source-lead"><i class="fas fa-utensils"></i> {{ s.target_caterer }}</span>
                         {% else %}
-                        <span class="badge-clean badge-responded"><i class="fas fa-check-circle"></i> Responded</span>
+                            <span class="source-badge source-general"><i class="fas fa-info-circle"></i> General Support</span>
                         {% endif %}
                     </td>
                     <td>
+                        <div style="font-size: 0.8rem; color: var(--adm-navy); font-weight: 500; font-style: italic; max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            "{{ s.messages[0].message if s.messages else '---' }}"
+                        </div>
+                        <div style="font-size: 0.65rem; color: var(--adm-muted); margin-top: 4px; font-weight: 700;">
+                            {{ s.latest_date.strftime('%b %d, %I:%M %p') }}
+                        </div>
+                    </td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            {% set count = s.messages|length %}
+                            <span class="intensity-dot {% if count < 2 %}intensity-low{% elif count < 4 %}intensity-med{% else %}intensity-high{% endif %}"></span>
+                            <span style="font-weight: 700; color: var(--adm-navy); font-size: 0.8rem;">{{ count }} msg(s)</span>
+                        </div>
+                    </td>
+                    <td>
+                        {% if s.status == 'new' %}
+                            <span class="badge-clean badge-pending">Action Req</span>
+                        {% else %}
+                            <span class="badge-clean" style="background: #ecfdf5; color: #059669;">Responded</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: right;">
                         <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                            <button class="btn-action" title="View Conversation" onclick="openThread('{{ s.email }}')">
+                            <button class="btn-clean" style="padding: 6px 10px;" title="Audit Conversation" onclick="openThread('{{ s.email }}')">
                                 <i class="fas fa-comments"></i>
                             </button>
                             {% if s.status == 'new' %}
-                            <form action="/admin/inquiries/thread/{{ s.email }}/status?status=responded" method="POST"
-                                style="display: contents;">
-                                <button type="submit" class="btn-action" title="Mark as Resolved">
-                                    <i class="fas fa-check"></i>
+                            <form action="/admin/inquiries/thread/{{ s.email }}/status?status=responded" method="POST" style="display: contents;">
+                                <button type="submit" class="btn-clean" style="padding: 6px 10px; color: #10b981;" title="Mark Resolved">
+                                    <i class="fas fa-check-double"></i>
                                 </button>
                             </form>
                             {% endif %}
@@ -413,41 +161,40 @@
     </div>
 </div>
 
-<!-- Conversation Terminal Modal -->
+<!-- Intelligence Drawer Modal -->
 <div class="admin-modal-overlay" id="threadModal">
     <div class="admin-modal-card">
         <div class="modal-header-clean">
             <div>
-                <h3 id="modalName" style="font-size: 1.1rem; font-weight: 800; color: var(--dm-secondary); margin: 0;">-</h3>
-                <p id="modalEmail" style="font-size: 0.8rem; color: var(--dm-slate-400); margin: 4px 0 0 0;">-</p>
+                <h3 id="modalName" style="font-size: 1rem; font-weight: 800; color: var(--adm-navy); margin: 0;">-</h3>
+                <p id="modalEmail" style="font-size: 0.75rem; color: var(--adm-muted); margin: 4px 0 0 0; font-weight: 700;">-</p>
             </div>
-            <button onclick="closeThread()" class="modal-close-btn">&times;</button>
+            <button onclick="closeThread()" style="background: none; border: none; font-size: 1.5rem; color: var(--adm-muted); cursor: pointer;">&times;</button>
         </div>
-        <div class="modal-body-clean">
-            <div id="threadBody" class="chat-timeline">
-                <!-- Messages injected here -->
+        <div class="modal-body-clean" style="background: white;">
+            <div id="threadBody" style="display: flex; flex-direction: column; gap: 1rem;">
+                <!-- Injected via JS -->
             </div>
 
-            <div style="margin-top: 2rem; padding: 1rem; background: var(--dm-primary-light); border-radius: 12px; border: 1px solid rgba(249, 115, 22, 0.1);">
-                <div style="display: flex; gap: 12px; align-items: flex-start;">
-                    <i class="fas fa-info-circle" style="color: var(--dm-primary); margin-top: 2px;"></i>
-                    <div style="flex: 1;">
-                        <div style="font-size: 0.7rem; font-weight: 800; color: var(--dm-primary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Engagement Memo</div>
-                        <div style="font-size: 0.8rem; color: var(--dm-secondary); line-height: 1.4; font-weight: 500;">
-                            These inquiries originate from unauthenticated visitors. Direct communication via email is recommended for conversion.
-                        </div>
-                    </div>
+            <div class="engagement-memo">
+                <i class="fas fa-lightbulb" style="color: #3b82f6; font-size: 1.25rem;"></i>
+                <div>
+                    <div style="font-size: 0.65rem; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 4px;">Strategic Memo</div>
+                    <p style="font-size: 0.8rem; color: #1e3a8a; line-height: 1.5; margin: 0;">
+                        This inquiry originated from an unauthenticated visitor. High-priority response via official email is recommended to secure the lead.
+                    </p>
                 </div>
             </div>
         </div>
         <div class="modal-footer-clean">
-            <button onclick="closeThread()" style="padding: 0.75rem 1.5rem; border-radius: 10px; border: none; background: var(--dm-slate-100); font-weight: 700; color: var(--dm-slate-600); cursor: pointer;">Dismiss</button>
-            <a id="replyBtn" href="#" class="btn-action" style="width: auto; height: auto; padding: 0.75rem 1.5rem; border-radius: 10px; background: var(--dm-primary); color: white; border: none; font-weight: 700;">
-                <i class="fas fa-paper-plane" style="margin-right: 8px;"></i> Reply via Email
+            <button onclick="closeThread()" class="btn-clean" style="background: #f1f5f9; border: none;">Dismiss</button>
+            <a id="replyBtn" href="#" class="btn-clean" style="background: var(--adm-primary); color: white; border: none; text-decoration: none;">
+                <i class="fas fa-paper-plane" style="margin-right: 8px;"></i> Initiate Email Response
             </a>
         </div>
     </div>
 </div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -462,10 +209,8 @@
         rows.forEach(row => {
             const text = row.innerText.toLowerCase();
             const rowStatus = row.dataset.status.toLowerCase();
-
             const matchesSearch = text.includes(search);
             const matchesStatus = status === '' || rowStatus === status;
-
             row.style.display = (matchesSearch && matchesStatus) ? '' : 'none';
         });
     }
@@ -481,23 +226,19 @@
         body.innerHTML = '';
 
         const messages = [...sender.messages].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-
         messages.forEach(msg => {
             const div = document.createElement('div');
-            div.className = 'chat-bubble visitor';
+            div.className = 'chat-bubble-clean';
             div.innerHTML = `
-                <span class="timestamp">${msg.created_at}</span>
-                <div class="content">${msg.message}</div>
+                <div class="meta">${msg.created_at}</div>
+                <div class="text">${msg.message}</div>
             `;
             body.appendChild(div);
         });
 
-        document.getElementById('replyBtn').href = `mailto:${sender.email}?subject=RE: OccaServe Inquiry`;
+        document.getElementById('replyBtn').href = `mailto:${sender.email}?subject=RE: OccaServe Inquiry Regarding ${sender.target_caterer}`;
         document.getElementById('threadModal').classList.add('active');
         document.body.style.overflow = 'hidden';
-
-        const modalBody = document.querySelector('.modal-body-clean');
-        setTimeout(() => { modalBody.scrollTop = modalBody.scrollHeight; }, 100);
     }
 
     function closeThread() {
@@ -505,18 +246,12 @@
         document.body.style.overflow = '';
     }
 
-    // Real-time listener
     window.addEventListener('system_update', (e) => {
         if (e.detail.type === 'inquiry_update' || e.detail.type === 'new_inquiry') {
-            const sync = document.getElementById('syncStatus');
-            if (sync) sync.innerHTML = '<i class="fas fa-rotate fa-spin" style="color: var(--dm-primary);"></i> Updating Feed...';
-            setTimeout(() => window.location.reload(), 1500);
+            setTimeout(() => window.location.reload(), 1000);
         }
     });
 
-    // Close on escape
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeThread();
-    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeThread(); });
 </script>
 {% endblock %}

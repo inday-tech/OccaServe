@@ -9,15 +9,15 @@
     <title>{% block title %}Admin Dashboard - OccaServe{% endblock %}</title>
 
     <!-- Core Assets -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/admin/layout.css') }}?v=2.1">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/admin/layout.css') }}?v=4.0">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/alert_modal.css') }}?v=1.5">
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Google Maps API -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDP5J8gIy1VMGZpjAwfW57jDb6omNlL-c0&libraries=places"></script>
+    <script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v=1.4"></script>
+    <script src="{{ url_for('static', path='/js/main.js') }}?v=2.0"></script>
+    <script src="{{ url_for('static', path='/js/admin/layout.js') }}?v=3.0"></script>
+
 
     {% if wconfig and wconfig.favicon_url %}
     <link rel="icon" href="{{ wconfig.favicon_url }}">
@@ -28,263 +28,457 @@
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}">
 
     <style>
-        /* Essential Inline Overrides */
         .no-transition, .no-transition * { transition: none !important; }
     </style>
 </head>
 
 <body class="no-transition">
     <script>
-        // Apply historical scroll position and collapse state immediately
         (function () {
             const isCollapsed = localStorage.getItem('adminSidebarCollapsed') === 'true';
-            if (isCollapsed) {
-                // We apply to a wrapper later via ID, but we can also set a class on body or html
-                document.documentElement.classList.toggle('sidebar-icons-only', isCollapsed);
-            }
-            // Remove no-transition after a frame so future toggles ARE smooth
-            requestAnimationFrame(() => {
-                setTimeout(() => {
-                    document.body.classList.remove('no-transition');
-                }, 100);
-            });
+            if (isCollapsed) document.documentElement.classList.toggle('sidebar-icons-only', isCollapsed);
+            requestAnimationFrame(() => setTimeout(() => document.body.classList.remove('no-transition'), 100));
         })();
     </script>
 
-    <!-- Standalone Mobile Burger Button (Floating Style) -->
-    <button class="mobile-burger-btn" id="burgerBtn" onclick="toggleSidebar()" aria-label="Toggle navigation">
-        <i class="fas fa-bars"></i>
-    </button>
-
-    <!-- Sidebar Overlay -->
+    <!-- Sidebar Overlay (Mobile) -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
-    <div class="dashboard-wrapper" id="dashboardWrapper">
-        <aside class="sidebar" id="mainSidebar">
-            <div class="sidebar-header">
-                <div class="sidebar-toggle-row">
-                    <button type="button" id="desktopToggleBtn" class="desktop-toggle-btn"
-                        aria-label="Toggle Desktop Sidebar">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                </div>
+    <!-- ===================== SIDEBAR ===================== -->
+    <aside class="admin-sidebar" id="mainSidebar">
 
-                <div class="sidebar-user-profile">
-                    <div class="user-avatar-initials">
-                        {{ user.first_name[0] }}{{ user.last_name[0] }}
+        <!-- Brand Header -->
+        <div class="sidebar-brand">
+            <div class="brand-info brand-text-label">
+                <span class="brand-name">OccaServe</span>
+                <span class="brand-tagline">Admin Panel</span>
+            </div>
+            <button class="sidebar-collapse-btn" id="desktopToggleBtn" aria-label="Toggle Sidebar">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+        </div>
+
+        <!-- Admin Identity Card -->
+        <div class="sidebar-admin-card brand-text-label">
+            <div class="admin-avatar">
+                <span>{{ user.first_name[0] }}{{ user.last_name[0] }}</span>
+                <div class="admin-status-dot"></div>
+            </div>
+            <div class="admin-identity">
+                <span class="admin-name">{{ user.first_name }} {{ user.last_name }}</span>
+                <span class="admin-rank">
+                    <i class="fas fa-user-shield"></i> System Admin
+                </span>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="sidebar-nav">
+            <span class="nav-section-label brand-text-label">Main</span>
+            <ul class="nav-list">
+                <li>
+                    <a href="/admin/dashboard" class="nav-item {{ 'active' if active_page == 'dashboard' }}" onclick="closeSidebar()">
+                        <div class="nav-icon"><i class="fas fa-chart-pie"></i></div>
+                        <span class="nav-label">Overview</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/admin/caterers" class="nav-item {{ 'active' if active_page == 'caterers' }}" onclick="closeSidebar()">
+                        <div class="nav-icon"><i class="fas fa-utensils"></i></div>
+                        <span class="nav-label">Caterer Partners</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/admin/customers" class="nav-item {{ 'active' if active_page == 'customers' }}" onclick="closeSidebar()">
+                        <div class="nav-icon"><i class="fas fa-users"></i></div>
+                        <span class="nav-label">Customers</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/admin/bookings" class="nav-item {{ 'active' if active_page == 'bookings' }}" onclick="closeSidebar()">
+                        <div class="nav-icon"><i class="fas fa-calendar-check"></i></div>
+                        <span class="nav-label">All Bookings</span>
+                    </a>
+                </li>
+            </ul>
+
+            <span class="nav-section-label brand-text-label">Finance</span>
+            <ul class="nav-list">
+                <li>
+                    <a href="/admin/payouts" class="nav-item {{ 'active' if active_page == 'payouts' }}" onclick="closeSidebar()">
+                        <div class="nav-icon"><i class="fas fa-hand-holding-dollar"></i></div>
+                        <span class="nav-label">Payout Requests</span>
+                        <span id="payoutNotifBadge" class="nav-badge" style="display:none;">NEW</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/admin/payments" class="nav-item {{ 'active' if active_page == 'payments' }}" onclick="closeSidebar()">
+                        <div class="nav-icon"><i class="fas fa-chart-line"></i></div>
+                        <span class="nav-label">Earnings</span>
+                    </a>
+                </li>
+            </ul>
+
+            <span class="nav-section-label brand-text-label">Compliance</span>
+            <ul class="nav-list">
+                <li>
+                    <a href="/admin/kyc" class="nav-item {{ 'active' if active_page == 'kyc' }}" onclick="closeSidebar()">
+                        <div class="nav-icon"><i class="fas fa-shield-halved"></i></div>
+                        <span class="nav-label">KYC Compliance</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/admin/inquiries" class="nav-item {{ 'active' if active_page == 'inquiries' }}">
+                        <div class="nav-icon"><i class="fas fa-envelope-open-text"></i></div>
+                        <span class="nav-label">Visitor Inquiries</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/admin/feedback" class="nav-item {{ 'active' if active_page == 'feedback' }}" onclick="closeSidebar()">
+                        <div class="nav-icon"><i class="fas fa-star"></i></div>
+                        <span class="nav-label">Platform Reviews</span>
+                    </a>
+                </li>
+            </ul>
+
+            <span class="nav-section-label brand-text-label">System</span>
+            <ul class="nav-list">
+                <li>
+                    <a href="/admin/notifications" class="nav-item {{ 'active' if active_page == 'notifications' }}" id="adminNotifLink" onclick="closeSidebar()">
+                        <div class="nav-icon"><i class="fas fa-bell"></i></div>
+                        <span class="nav-label">Notifications</span>
+                        <span class="nav-badge nav-badge-red" id="adminNotifBadge" style="display:none;">0</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/admin/settings" class="nav-item {{ 'active' if active_page == 'settings' }}" onclick="closeSidebar()">
+                        <div class="nav-icon"><i class="fas fa-sliders"></i></div>
+                        <span class="nav-label">Site Settings</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/admin/archives" class="nav-item {{ 'active' if active_page == 'archives' }}" onclick="closeSidebar()">
+                        <div class="nav-icon"><i class="fas fa-box-archive"></i></div>
+                        <span class="nav-label">Archives</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Logout -->
+        <div class="sidebar-footer">
+            <a href="/auth/logout" class="nav-item nav-logout" onclick="closeSidebar()">
+                <div class="nav-icon"><i class="fas fa-right-from-bracket"></i></div>
+                <span class="nav-label brand-text-label">Logout</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- ===================== MAIN AREA ===================== -->
+    <div class="admin-main-wrapper" id="adminMainWrapper">
+
+        <!-- TOP HEADER: Diamond Standard v4 -->
+        <header class="admin-header" id="adminHeader">
+            <!-- Left: Command Hub -->
+            <div class="header-left">
+                <!-- Omni-Search Reactor -->
+                <div class="command-search-wrap">
+                    <div class="header-search" id="omniSearchTrigger">
+                        <i class="fas fa-magnifying-glass"></i>
+                        <input type="text" id="globalSearchInput" placeholder="Search platform..." autocomplete="off">
+                        <div class="search-kbd">
+                            <span>Ctrl</span><span>K</span>
+                        </div>
                     </div>
-                    <div class="user-info-container">
-                        <h2 class="user-full-name">{{ user.first_name }} {{ user.last_name }}</h2>
-                        <span class="user-role-label">Platform Administrator</span>
+                    <!-- Dynamic Search Results Panel -->
+                    <div id="omniSearchResults" class="omni-results-panel">
+                        <div class="results-scroller" id="searchResultsScroller">
+                            <div class="search-placeholder">
+                                <i class="fas fa-terminal"></i>
+                                <p>Type to search caterers, bookings, or system pages...</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <ul class="sidebar-menu" id="sidebarMenu">
-                <li>
-                    <a href="/admin/dashboard" class="{{ 'active' if active_page == 'overview' }}"
-                        onclick="closeSidebar()">
-                        <i class="fas fa-home"></i> <span>Overview</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/admin/caterers" class="{{ 'active' if active_page == 'caterers' }}"
-                        onclick="closeSidebar()">
-                        <i class="fas fa-utensils"></i> <span>Manage Caterers</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/admin/customers" class="{{ 'active' if active_page == 'customers' }}"
-                        onclick="closeSidebar()">
-                        <i class="fas fa-user-friends"></i> <span>Manage Customers</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/admin/bookings" class="{{ 'active' if active_page == 'bookings' }}"
-                        onclick="closeSidebar()">
-                        <i class="fas fa-calendar-check"></i> <span>All Bookings</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/admin/payouts" class="{{ 'active' if active_page == 'payouts' }}"
-                        onclick="closeSidebar()">
-                        <i class="fas fa-hand-holding-dollar"></i> <span>Payout Management</span>
-                        <span id="payoutNotifBadge" class="badge" style="display: none; background: #f59e0b; color: white; padding: 2px 6px; border-radius: 20px; font-size: 0.65rem; margin-left: auto; font-weight: 800;">NEW</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/admin/payments" class="{{ 'active' if active_page == 'payments' }}"
-                        onclick="closeSidebar()">
-                        <i class="fas fa-money-bill-trend-up"></i> <span>Earnings & Commissions</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/admin/kyc" class="{{ 'active' if active_page == 'kyc' }}" onclick="closeSidebar()">
-                        <i class="fas fa-shield-halved"></i> <span>Compliance</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/admin/inquiries" class="{{ 'active' if active_page == 'inquiries' }}">
-                        <i class="fas fa-envelope-open-text"></i> <span>Visitor Inquiries</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/admin/feedback" class="{{ 'active' if active_page == 'feedback' }}"
-                        onclick="closeSidebar()">
-                        <i class="fas fa-comment-dots"></i> <span>Platform Feedback</span>
-                    </a>
-                </li>
-                <li style="position: relative;">
-                    <a href="/admin/notifications" class="{{ 'active' if active_page == 'notifications' }}"
-                        id="adminNotifLink" onclick="closeSidebar()">
-                        <i class="fas fa-bell"></i> <span>Notifications</span>
-                        <span class="badge" id="adminNotifBadge"
-                            style="display: none; background: #ef4444; color: white; padding: 0.1rem 0.4rem; border-radius: 99px; font-size: 0.7rem; margin-left: auto;">0</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/admin/settings" class="{{ 'active' if active_page == 'settings' }}"
-                        onclick="closeSidebar()">
-                        <i class="fas fa-sliders"></i> <span>Site Settings</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/admin/archives" class="{{ 'active' if active_page == 'archives' }}"
-                        onclick="closeSidebar()">
-                        <i class="fas fa-archive"></i> <span>Archives</span>
-                    </a>
-                </li>
-                <li class="menu-divider"></li>
-                <li>
-                    <a href="/auth/logout" class="logout-link" onclick="closeSidebar()">
-                        <i class="fas fa-right-from-bracket"></i> <span>Logout</span>
-                    </a>
-                </li>
-            </ul>
-        </aside>
+            <!-- Right: Intelligence & Actions -->
+            <div class="header-right">
+                <!-- System Operational Pulse -->
+                <div class="system-heartbeat" title="All Systems Operational">
+                    <div class="pulse-dot"></div>
+                    <span class="heartbeat-label">Active</span>
+                </div>
 
-        <main class="main-content">
+                <!-- Live Operational Clock -->
+                <div class="header-clock" id="headerClock">
+                    <span class="clock-time">00:00:00</span>
+                    <span class="clock-date">May 09, 2026</span>
+                </div>
+
+                <div class="header-separator"></div>
+
+                <!-- Quick Action Reactor -->
+                <div class="header-dropdown-wrapper">
+                    <button class="header-icon-btn plus-btn" title="Quick Actions" onclick="toggleHeaderDropdown('quickActionsDropdown', this)">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <div class="premium-dropdown" id="quickActionsDropdown">
+                        <div class="dropdown-header">Quick Commands</div>
+                        <ul class="dropdown-links">
+                            <li><a href="/admin/caterers?action=verify"><i class="fas fa-shield-check"></i> Manual Verification</a></li>
+                            <li><a href="/admin/settings?tab=announcements"><i class="fas fa-bullhorn"></i> Push Announcement</a></li>
+                            <li><a href="/admin/bookings?view=urgent"><i class="fas fa-fire-flame-curved"></i> Review Urgent Bookings</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Notifications Center -->
+                <div class="header-dropdown-wrapper">
+                    <button class="header-icon-btn" title="Notifications" onclick="toggleHeaderDropdown('notificationsDropdown', this)">
+                        <i class="fas fa-bell"></i>
+                        <span class="header-badge" id="headerNotifDot" style="display:none;"></span>
+                    </button>
+                    <div class="premium-dropdown notifications-dropdown" id="notificationsDropdown">
+                        <div class="dropdown-header">
+                            <span>Notifications</span>
+                            <button class="mark-read-all" onclick="markAllNotificationsRead()">Mark all as read</button>
+                        </div>
+                        <div class="dropdown-body" id="headerNotifBody">
+                            <div class="empty-notif">
+                                <i class="fas fa-bell-slash"></i>
+                                <p>No new alerts</p>
+                            </div>
+                        </div>
+                        <div class="dropdown-footer">
+                            <a href="/admin/notifications">See All Notifications <i class="fas fa-chevron-right"></i></a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="header-separator"></div>
+
+                <!-- Profile Command Center -->
+                <div class="header-profile-section">
+                    <div class="header-profile-chip" onclick="toggleHeaderDropdown('profileDropdown', this)">
+                        <div class="chip-avatar">{{ user.first_name[0] }}{{ user.last_name[0] }}</div>
+                        <div class="chip-info">
+                            <span class="chip-name">{{ user.first_name }}</span>
+                            <span class="chip-role">System Admin</span>
+                        </div>
+                        <i class="fas fa-chevron-down chip-arrow"></i>
+                    </div>
+                    
+                    <div class="premium-dropdown profile-dropdown" id="profileDropdown">
+                        <div class="dropdown-user-info">
+                            <div class="user-avatar-large">{{ user.first_name[0] }}{{ user.last_name[0] }}</div>
+                            <div class="user-meta">
+                                <span class="user-full-name">{{ user.first_name }} {{ user.last_name }}</span>
+                                <span class="user-email">{{ user.email }}</span>
+                            </div>
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <ul class="dropdown-links">
+                            <li><a href="/admin/settings"><i class="fas fa-cog"></i> Account Settings</a></li>
+                            <li><a href="/admin/audit-logs"><i class="fas fa-file-shield"></i> System Audit Logs</a></li>
+                            <li><a href="/admin/health"><i class="fas fa-heart-pulse"></i> Platform Health</a></li>
+                        </ul>
+                        <div class="dropdown-divider"></div>
+                        <ul class="dropdown-links">
+                            <li><a href="/auth/logout" class="nav-logout text-danger"><i class="fas fa-right-from-bracket"></i> Sign Out</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- PAGE CONTENT -->
+        <main class="admin-page-content">
             {% block content %}{% endblock %}
         </main>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v=1.4"></script>
-    <script src="{{ url_for('static', path='/js/main.js') }}?v=2.0"></script>
-    <script src="{{ url_for('static', path='/js/admin/layout.js') }}?v=1.3"></script>
+    <!-- MOBILE OVERLAY -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
-    <!-- Inactivity Auto-Logout -->
-    <div id="inactivityModal" class="modal"
-        style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center;">
-        <div
-            style="background-color: #ffffff; padding: 2.5rem; border-radius: 1.5rem; max-width: 400px; width: 90%; text-align: center; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
-            <div style="font-size: 3rem; color: #f59e0b; margin-bottom: 1rem;"><i
-                    class="fas fa-exclamation-triangle"></i></div>
-            <h2 style="font-size: 1.25rem; font-weight: 700; color: #11141A; margin-bottom: 0.5rem;">Session Expiring
-                Soon</h2>
-            <p style="color: #64748b; margin-bottom: 2rem; font-size: 0.95rem;">You've been inactive for a while. Your
-                session will expire in 1 minute. Would you like to stay logged in?</p>
-            <button id="stayLoggedInBtn"
-                style="width: 100%; padding: 0.75rem; border-radius: 0.75rem; font-weight: 600; background: #FF7B54; color: white; border: none; cursor: pointer;">Yes,
-                keep me logged in</button>
+    <!-- ===================== GLOBAL MODALS ===================== -->
+    <!-- Administrative Action Reason Modal -->
+    <div id="reasonModal" class="admin-modal-overlay">
+        <div class="admin-modal-card" style="max-width: 450px;">
+            <div class="modal-header-clean">
+                <h3 id="reasonModalTitle"><i class="fas fa-exclamation-triangle"></i> Administrative Action</h3>
+                <button class="modal-close-btn" onclick="closeReasonModal()">&times;</button>
+            </div>
+            <div class="modal-body-clean">
+                <p id="reasonModalDesc" style="font-size: 0.85rem; color: #64748b; margin-bottom: 1.5rem;">Please provide a formal reason for this action. This will be visible to the user and recorded in the audit logs.</p>
+                <div class="dm-input-group">
+                    <i class="fas fa-comment-alt"></i>
+                    <textarea id="actionReason" placeholder="Enter mandatory reason..." style="width: 100%; min-height: 120px; padding: 1rem 1rem 1rem 3rem; border: 1.5px solid var(--dm-slate-100); border-radius: 12px; font-size: 0.9rem; font-family: inherit; resize: none;" required></textarea>
+                </div>
+            </div>
+            <div class="modal-footer-clean">
+                <button class="dropdown-item" style="width: auto;" onclick="closeReasonModal()">Cancel</button>
+                <button id="reasonSubmitBtn" class="btn-action-primary">Confirm Action</button>
+            </div>
         </div>
     </div>
 
+    <!-- Inactivity Logout Modal -->
+    <div id="inactivityModal" class="admin-modal-overlay">
+        <div class="admin-modal-card" style="max-width: 400px; text-align: center;">
+            <div class="modal-body-clean" style="padding: 2.5rem;">
+                <div style="font-size: 3rem; color: #f59e0b; margin-bottom: 1rem;"><i class="fas fa-clock"></i></div>
+                <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--dm-secondary); margin-bottom: 0.5rem;">Session Expiring Soon</h2>
+                <p style="color: var(--text-light); margin-bottom: 2rem; font-size: 0.9rem;">You've been inactive for a while. Your session will expire in 1 minute due to security protocols.</p>
+                <button id="stayLoggedInBtn" class="btn-action-primary" style="width: 100%;">Keep me logged in</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== SCRIPTS ===================== -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v=1.4"></script>
+    <script src="{{ url_for('static', path='/js/main.js') }}?v=2.0"></script>
+    <script src="{{ url_for('static', path='/js/admin/layout.js') }}?v=3.0"></script>
+
+
     <script>
-        // Real-Time Admin Communications Hub
+        // ===== REAL-TIME WEBSOCKET HUB =====
         (function () {
             const adminId = "{{ user.id }}";
             const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/user_${adminId}`;
-            let socket;
-            let reconnectAttempts = 0;
+            let socket, reconnectAttempts = 0;
             const maxAttempts = 10;
+
+            function setLiveStatus(connected) {
+                const li = document.getElementById('liveIndicator');
+                const txt = li && li.querySelector('.live-text');
+                if (!li) return;
+                if (connected) { li.classList.remove('offline'); if(txt) txt.textContent = 'Live'; }
+                else { li.classList.add('offline'); if(txt) txt.textContent = 'Offline'; }
+            }
 
             function updateBadge(count) {
                 const badge = document.getElementById('adminNotifBadge');
-                if (badge) {
-                    badge.textContent = count > 99 ? '99+' : count;
-                    badge.style.display = count > 0 ? 'inline-block' : 'none';
-                }
+                const dot   = document.getElementById('headerNotifDot');
+                if (badge) { badge.textContent = count > 99 ? '99+' : count; badge.style.display = count > 0 ? 'inline-block' : 'none'; }
+                if (dot)   { dot.style.display = count > 0 ? 'block' : 'none'; }
             }
 
             function connectWebSocket() {
-                if (reconnectAttempts >= maxAttempts) {
-                    console.warn("WebSocket: Max reconnection attempts reached.");
-                    return;
-                }
-
+                if (reconnectAttempts >= maxAttempts) return;
                 socket = new WebSocket(wsUrl);
-
                 socket.onopen = function () {
-                    console.log("Admin Intelligence Socket: Synchronized.");
                     reconnectAttempts = 0;
+                    setLiveStatus(true);
                     fetch('/admin/api/notifications/unread')
                         .then(r => r.json())
                         .then(data => data.success && updateBadge(data.unread_count))
-                        .catch(e => console.error("Error fetching initial notif count", e));
+                        .catch(e => console.error("Notif fetch error", e));
                 };
-
                 socket.onmessage = function (event) {
                     try {
                         const data = JSON.parse(event.data);
-                        console.log("Real-time Event:", data.type);
-
-                        // 1. Handle Global Notifications
                         if (data.type === 'new_notification') {
                             updateBadge(data.count);
-                            if (typeof window.showSuccess === 'function') {
-                                window.showSuccess(data.message, "System Alert");
-                            }
+                            if (typeof window.showSuccess === 'function') window.showSuccess(data.message, "System Alert");
                         }
-
-                        // 3. Handle Payout Requests (Financial Event)
                         if (data.type === 'new_payout_request') {
-                            const payoutBadge = document.getElementById('payoutNotifBadge');
-                            if (payoutBadge) payoutBadge.style.display = 'inline-block';
-                            
+                            const pb = document.getElementById('payoutNotifBadge');
+                            if (pb) pb.style.display = 'inline-block';
                             if (typeof Swal !== 'undefined') {
-                                Swal.fire({
-                                    title: 'New Withdrawal Request!',
-                                    text: data.message,
-                                    icon: 'warning',
-                                    showCancelButton: true,
-                                    confirmButtonText: 'Go to Payouts',
-                                    confirmButtonColor: '#1e293b'
-                                }).then((result) => {
-                                    if (result.isConfirmed) {
-                                        window.location.href = '/admin/payouts';
-                                    }
-                                });
+                                Swal.fire({ title: 'New Withdrawal Request!', text: data.message, icon: 'warning', showCancelButton: true, confirmButtonText: 'Go to Payouts', confirmButtonColor: '#1e293b' })
+                                .then(r => { if (r.isConfirmed) window.location.href = '/admin/payouts'; });
                             }
                         }
-
-                        // 2. Dispatch Custom Event for Page-Specific Real-time Updates
-                        // Pages like Dashboard, Caterers, and Customers can listen for this
                         window.dispatchEvent(new CustomEvent('system_update', { detail: data }));
-
-                    } catch (e) {
-                        console.error('Failed to parse WebSocket message:', e);
-                    }
+                    } catch (e) { console.error('WS parse error:', e); }
                 };
-
                 socket.onclose = function () {
                     reconnectAttempts++;
-                    console.log(`WebSocket disconnected. Reconnecting attempt ${reconnectAttempts}...`);
+                    setLiveStatus(false);
                     setTimeout(connectWebSocket, 3000 * Math.min(reconnectAttempts, 5));
                 };
-
-                socket.onerror = function (err) {
-                    console.error("WebSocket error:", err);
-                };
+                socket.onerror = function (err) { console.error("WebSocket error:", err); };
             }
 
-            if (adminId && adminId !== "None") {
-                connectWebSocket();
+            if (adminId && adminId !== "None") connectWebSocket();
+        })();
+
+        // ===== GLOBAL UTILITIES =====
+        function closeReasonModal() {
+            document.getElementById('reasonModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+        window.closeReasonModal = closeReasonModal;
+
+        window.showSuccess = function(message, title = "Success") {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ title, text: message, icon: 'success', confirmButtonColor: '#f97316', timer: 3000, timerProgressBar: true });
             }
+        };
+
+        window.showConfirm = function(message, onConfirm, title = "Are you sure?") {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ title, text: message, icon: 'warning', showCancelButton: true, confirmButtonColor: '#f97316', cancelButtonColor: '#64748b', confirmButtonText: 'Yes, proceed' })
+                .then(r => { if (r.isConfirmed && onConfirm) onConfirm(); });
+            }
+        };
+
+        // ===== OMNI-SEARCH =====
+        (function () {
+            const input  = document.getElementById('globalSearchInput');
+            const resBox = document.getElementById('omniSearchResults');
+            if (!input || !resBox) return;
+            let timeout = null;
+
+            input.addEventListener('input', (e) => {
+                clearTimeout(timeout);
+                const q = e.target.value.trim();
+                if (q.length < 2) { resBox.classList.remove('active'); resBox.innerHTML = ''; return; }
+                timeout = setTimeout(async () => {
+                    try {
+                        resBox.innerHTML = '<div style="padding:1rem;text-align:center;color:#94a3b8;font-size:0.8rem;"><i class="fas fa-spinner fa-spin"></i> Searching...</div>';
+                        resBox.classList.add('active');
+                        const r = await fetch(`/admin/api/omni-search?q=${encodeURIComponent(q)}`);
+                        const data = await r.json();
+                        if (data.success && data.results.length > 0) {
+                            resBox.innerHTML = data.results.map(i => `
+                                <a href="${i.link}" class="omni-result-item">
+                                    <div class="omni-result-icon"><i class="${i.icon}"></i></div>
+                                    <div class="omni-result-info">
+                                        <span class="omni-result-title">${i.title}</span>
+                                        <span class="omni-result-subtitle">${i.subtitle}</span>
+                                    </div>
+                                    <span class="omni-result-type">${i.type}</span>
+                                </a>
+                            `).join('');
+                        } else {
+                            resBox.innerHTML = '<div style="padding:1.5rem;text-align:center;color:#94a3b8;font-size:0.8rem;"><i class="fas fa-search" style="display:block;font-size:1.5rem;margin-bottom:0.5rem;opacity:0.4;"></i>No results found for "<b>' + q + '</b>"</div>';
+                        }
+                    } catch (e) {
+                        resBox.innerHTML = '<div style="padding:1rem;text-align:center;color:#ef4444;font-size:0.8rem;">Search error. Try again.</div>';
+                        console.error("Search error:", e);
+                    }
+                }, 280);
+            });
+
+            // Close on outside click
+            document.addEventListener('click', (e) => {
+                if (!input.closest('.header-search-wrap').contains(e.target)) {
+                    resBox.classList.remove('active');
+                }
+            });
+
+            // Ctrl+K / Cmd+K shortcut
+            document.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); input.focus(); input.select(); }
+                if (e.key === 'Escape') { resBox.classList.remove('active'); input.blur(); }
+            });
         })();
     </script>
 
+
     {% block extra_js %}{% endblock %}
 </body>
-
 </html>

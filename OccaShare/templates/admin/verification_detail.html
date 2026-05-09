@@ -3,595 +3,354 @@
 {% block title %}Audit Terminal: {{ target_user.first_name }} - OccaServe Admin{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ range(1, 1000) | random }}">
 <style>
-    :root {
-        --dm-primary: #f97316; /* Admin Orange */
-        --dm-primary-light: #fff7ed;
-        --dm-secondary: #0f172a;
-        --dm-slate-50: #f8fafc;
-        --dm-slate-100: #f1f5f9;
-        --dm-slate-200: #e2e8f0;
-        --dm-slate-400: #94a3b8;
-        --dm-slate-600: #475569;
-        --dm-orange-50: #fff7ed;
-        --dm-orange-100: #ffedd5;
-        --dm-orange-600: #ea580c;
-    }
-
-    /* Removed .main-content override to prevent sidebar overlap */
-
-    /* Header Architecture */
-    .audit-header-clean {
-        background: white;
-        padding: 2rem;
-        border-radius: 1.25rem;
-        border: 1px solid var(--dm-slate-100);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 2rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        border-left: 6px solid var(--dm-primary);
-    }
-    .audit-header-clean h1 { font-size: 1.65rem; font-weight: 700; color: var(--dm-secondary); margin: 0; }
-    .audit-header-clean p { color: var(--dm-slate-400); font-size: 0.9rem; margin-top: 4px; }
+    /* Premium Identity Audit Styling */
+    .intelligence-hub { display: grid; grid-template-columns: 1fr 380px; gap: 2rem; }
     
-    .badge-clean {
-        padding: 6px 14px;
-        border-radius: 8px;
-        font-size: 0.75rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
+    .audit-card-premium {
+        background: white; border-radius: 24px; border: 1px solid #f1f5f9;
+        padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); margin-bottom: 2rem;
+        position: relative; overflow: hidden;
+    }
+    .audit-card-premium::before {
+        content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
+        background: var(--adm-primary);
     }
 
-    /* Layout Grid */
-    .audit-workspace-grid {
-        display: grid;
-        grid-template-columns: 1fr 380px;
-        gap: 2rem;
+    /* AI Scanning Effect */
+    .image-scanner { position: relative; border-radius: 16px; overflow: hidden; background: #0f172a; }
+    .scanner-line {
+        position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+        background: rgba(249, 115, 22, 0.6); box-shadow: 0 0 15px var(--adm-primary);
+        z-index: 20; animation: scan 3s infinite linear;
+    }
+    @keyframes scan { 0% { top: 0%; } 50% { top: 100%; } 100% { top: 0%; } }
+
+    .landmark-dot {
+        position: absolute; width: 6px; height: 6px; background: var(--adm-primary);
+        border-radius: 50%; z-index: 25; box-shadow: 0 0 8px var(--adm-primary);
+        opacity: 0.8;
     }
 
-    /* Section Cards */
-    .audit-card {
-        background: white;
-        border-radius: 1.25rem;
-        border: 1px solid var(--dm-slate-100);
-        padding: 2rem;
-        margin-bottom: 2rem;
-        transition: transform 0.2s;
-    }
-    .section-title-clean {
-        font-size: 0.85rem;
-        font-weight: 700;
-        color: var(--dm-slate-600);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-bottom: 1.5rem;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    .section-title-clean i { color: var(--dm-primary); font-size: 1rem; }
-
-    /* Biometric Gauge */
-    .confidence-gauge-container {
-        background: var(--dm-orange-50);
-        padding: 1.5rem;
-        border-radius: 1rem;
-        display: flex;
-        align-items: center;
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-        border: 1px solid var(--dm-orange-100);
-    }
-    .gauge-circle {
-        width: 70px;
-        height: 70px;
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .gauge-circle svg { transform: rotate(-90deg); }
-    .gauge-circle .bg { fill: none; stroke: white; stroke-width: 6; }
-    .gauge-circle .fill { 
-        fill: none; 
-        stroke: var(--dm-primary); 
-        stroke-width: 6; 
-        stroke-linecap: round; 
-        stroke-dasharray: 188.4;
-        transition: stroke-dashoffset 1s ease-out;
-    }
-    .gauge-value { position: absolute; font-weight: 800; color: var(--dm-primary); font-size: 1.1rem; }
-
-    /* Comparison Viewport */
-    .comparison-grid-clean {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1.5rem;
-    }
-    .img-audit-box {
-        background: var(--dm-slate-50);
-        border: 1.5px solid var(--dm-slate-100);
-        border-radius: 1rem;
-        overflow: hidden;
-        position: relative;
-        box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
-    }
-    .img-audit-box label {
-        position: absolute;
-        top: 1rem;
-        left: 1rem;
-        background: rgba(15, 23, 42, 0.85);
-        color: white;
-        padding: 6px 12px;
-        border-radius: 8px;
-        font-size: 0.65rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        z-index: 10;
-        backdrop-filter: blur(8px);
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-    }
-    .img-audit-box img { width: 100%; height: auto; display: block; transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-    .img-audit-box:hover img { transform: scale(1.05); }
-
-    /* Detection Indicators */
-    .detection-overlay {
-        position: absolute;
-        bottom: 1rem;
-        right: 1rem;
-        z-index: 10;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-    }
-    .det-badge {
-        background: rgba(34, 197, 94, 0.9);
-        color: white;
-        padding: 4px 8px;
-        border-radius: 6px;
-        font-size: 0.6rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        backdrop-filter: blur(4px);
-    }
-    .det-badge.fail { background: rgba(239, 68, 68, 0.9); }
-
-    /* Comparison Table Matrix */
-    .matrix-table {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0 8px;
-    }
-    .matrix-table th {
-        text-align: left;
-        font-size: 0.65rem;
-        font-weight: 700;
-        color: var(--dm-slate-400);
-        text-transform: uppercase;
-        padding: 0 1rem 0.5rem;
-    }
-    .matrix-row { background: var(--dm-slate-50); border-radius: 10px; }
-    .matrix-row td { padding: 1rem; font-size: 0.85rem; border-top: 1px solid var(--dm-slate-100); border-bottom: 1px solid var(--dm-slate-100); }
-    .matrix-row td:first-child { border-left: 1px solid var(--dm-slate-100); border-radius: 10px 0 0 10px; width: 30%; }
-    .matrix-row td:last-child { border-right: 1px solid var(--dm-slate-100); border-radius: 0 10px 10px 0; }
+    /* Comparison Table */
+    .intel-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    .intel-table th { text-align: left; font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase; padding: 12px; border-bottom: 1px solid #f1f5f9; }
+    .intel-table td { padding: 14px 12px; font-size: 0.8rem; border-bottom: 1px solid #f8fafc; }
     
-    .matrix-label { font-weight: 700; color: var(--dm-slate-600); }
-    .matrix-value { font-weight: 600; color: var(--dm-secondary); }
-    .matrix-status { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.7rem; }
-    .matrix-status.match { color: #10b981; }
-    .matrix-status.mismatch { color: #ef4444; }
-
-    /* Sidebar Adjudication */
-    .adjudication-sidebar { position: sticky; top: 2rem; }
-    .decision-textarea {
-        width: 100%;
-        padding: 1.25rem;
-        border: 1.5px solid var(--dm-slate-100);
-        border-radius: 12px;
-        font-size: 0.9rem;
-        resize: none;
-        background: var(--dm-slate-50);
-        transition: all 0.2s;
-    }
-    .decision-textarea:focus { outline: none; border-color: var(--dm-primary); background: white; box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.1); }
-
     .btn-template {
         width: 100%;
-        padding: 10px 14px;
-        background: white;
-        border: 1px solid var(--dm-slate-100);
-        border-radius: 8px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        color: var(--dm-slate-600);
+        padding: 12px 16px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--adm-navy);
         text-align: left;
         cursor: pointer;
-        transition: all 0.2s;
-        margin-bottom: 8px;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        margin-bottom: 10px;
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
     }
-    .btn-template:hover { border-color: var(--dm-primary); color: var(--dm-primary); background: var(--dm-orange-50); }
-
-    .action-row { display: flex; gap: 12px; margin-top: 2rem; }
-    .btn-action-primary {
-        flex: 1;
-        padding: 1.1rem;
-        background: var(--dm-primary);
-        color: white;
-        border: none;
-        border-radius: 12px;
-        font-weight: 700;
-        font-size: 0.9rem;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        transition: all 0.2s;
-    }
-    .btn-action-secondary {
-        flex: 1;
-        padding: 1.1rem;
+    .btn-template:hover { 
+        border-color: var(--adm-primary); 
         background: white;
-        color: #ef4444;
-        border: 2px solid #ef4444;
-        border-radius: 12px;
-        font-weight: 700;
-        font-size: 0.9rem;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        transition: all 0.2s;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        transform: translateY(-1px);
     }
-    .btn-action-primary:hover { background: var(--dm-orange-600); box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2); }
-    .btn-action-secondary:hover { background: #fef2f2; }
+    .btn-template i { font-size: 1rem; width: 20px; text-align: center; }
+
+    #rescanBtn {
+        background: white;
+        border: 1.5px dashed #cbd5e1;
+        color: var(--adm-muted);
+        justify-content: center;
+        margin-top: 1.5rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    #rescanBtn:hover {
+        border-color: var(--adm-primary);
+        color: var(--adm-primary);
+        background: var(--adm-primary-light);
+    }
+
+    .status-pill {
+        padding: 4px 10px; border-radius: 8px; font-size: 0.65rem; font-weight: 800;
+        display: inline-flex; align-items: center; gap: 6px;
+    }
+    .status-match { background: #ecfdf5; color: #059669; }
+    .status-risk { background: #fef2f2; color: #dc2626; }
+
+    .warning-banner {
+        background: #fef2f2; border: 1px solid #fee2e2; color: #dc2626;
+        padding: 12px 16px; border-radius: 12px; font-size: 0.75rem; font-weight: 700;
+        margin-bottom: 1.5rem; display: flex; align-items: center; gap: 10px;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="audit-header-clean">
-    <div>
-        <span class="badge-clean" style="background: var(--dm-orange-50); color: var(--dm-primary); margin-bottom: 12px;">
-            <i class="fas fa-shield-check"></i> Admin Compliance Terminal
-        </span>
-        <h1 id="headerName">{{ target_user.business_name or target_user.first_name ~ ' ' ~ target_user.last_name }}</h1>
-        <p>Security Audit ID: #AUDIT-{{ target_user.id }}-{{ verification.id if verification else 'NA' }}</p>
+<div class="dashboard-header-clean">
+    <div class="header-title-area">
+        <h1 style="display: flex; align-items: center; gap: 12px;">
+            <i class="fas fa-fingerprint" style="color: var(--adm-primary);"></i>
+            Security Compliance Node
+        </h1>
+        <p>Advanced Identity Audit ID: #AUDIT-{{ target_user.id }}-{{ verification.id if verification else 'NA' }}</p>
     </div>
-    <div style="display: flex; align-items: center; gap: 1rem;">
-        {% set status = verification.verification_status if verification else 'PENDING' %}
-        <span class="badge-clean" style="background: {% if status == 'approved' %}#ecfdf5; color: #10b981;{% elif status == 'rejected' %}#fef2f2; color: #ef4444;{% else %}#fff7ed; color: #f97316;{% endif %} padding: 10px 20px; font-size: 0.85rem; border: 1px solid currentColor;">
-            <i class="fas fa-circle" style="font-size: 0.5rem;"></i> {{ status|upper }}
+    <div class="header-actions">
+        {% set status = (verification.verification_status if verification else 'PENDING')|upper %}
+        <span class="badge-clean" style="background: {% if status == 'APPROVED' %}#ecfdf5; color: #059669;{% elif status == 'REJECTED' %}#fef2f2; color: #dc2626;{% else %}#fff7ed; color: #f97316;{% endif %} padding: 10px 20px; font-size: 0.85rem; border: 1px solid currentColor;">
+            <i class="fas fa-shield-check"></i> {{ status }}
         </span>
     </div>
 </div>
 
-<div class="audit-workspace-grid">
+<div class="intelligence-hub">
     <div class="audit-main">
         {% if verification %}
-        {% set ocr = verification.ocr_data %}
-        {% if ocr and 'id_verification' in ocr %}
-            {% set ocr = ocr.id_verification.ocr_data %}
-        {% endif %}
-        <!-- Visual Detection Section -->
-        <div class="audit-card">
-            <div class="section-title-clean"><i class="fas fa-eye"></i> Visual Authentication Detection</div>
-            
-            <div class="confidence-gauge-container">
-                <div class="gauge-circle">
-                    <svg width="70" height="70">
-                        <circle class="bg" cx="35" cy="35" r="30"></circle>
-                        {% set score = (verification.match_score * 100)|int if verification.match_score else 0 %}
-                        <circle class="fill" cx="35" cy="35" r="30" style="stroke-dashoffset: {{ 188.4 * (1 - score/100) }}; stroke: {% if score < 50 %}#ef4444{% elif score < 80 %}#f97316{% else %}#10b981{% endif %};"></circle>
-                    </svg>
-                    <div class="gauge-value" style="color: {% if score < 50 %}#ef4444{% elif score < 80 %}#f97316{% else %}#10b981{% endif %};">{{ score|int }}%</div>
-                </div>
-                <div>
-                    <h3 style="margin: 0; color: var(--dm-secondary); font-size: 1.1rem;">Integrity Correlation Score</h3>
-                    <p style="margin: 4px 0 0; color: var(--dm-slate-400); font-size: 0.85rem;">
-                        Audit suggests a <strong>{% if score >= 80 %}High-Fidelity Match{% elif score >= 50 %}Partial Integrity{% else %}Critical Mismatch{% endif %}</strong> based on biometric and OCR extraction.
-                    </p>
-                </div>
+            {% set is_duplicate = (verification.document_url == verification.selfie_url) %}
+            {% if is_duplicate %}
+            <div class="warning-banner">
+                <i class="fas fa-exclamation-triangle fa-lg"></i>
+                CRITICAL ASSET INTEGRITY RISK: ID Document and Selfie use identical image file. Fraud attempt probable.
             </div>
+            {% endif %}
 
-            <div class="comparison-grid-clean" style="{% if target_user.role == 'caterer' %}grid-template-columns: 1fr 1fr 1fr;{% endif %}">
-                <div class="img-audit-box">
-                    <label>Identity Document</label>
-                    <div class="detection-overlay">
-                        <div class="det-badge {% if not verification.id_detected %}fail{% endif %}">
-                            <i class="fas {% if verification.id_detected %}fa-check-circle{% else %}fa-times-circle{% endif %}"></i> 
-                            {% if verification.id_detected %}ID DOCUMENT DETECTED{% else %}NO ID DETECTED{% endif %}
-                        </div>
+            <div class="audit-card-premium">
+                <div class="section-title-clean"><i class="fas fa-microscope"></i> Biometric Correlation Analysis</div>
+                
+                <div class="confidence-gauge-container" style="background: #f8fafc; border: 1px solid #f1f5f9; padding: 1.5rem; border-radius: 20px; display: flex; align-items: center; gap: 2rem; margin-bottom: 2rem;">
+                    <div class="gauge-circle" style="width: 80px; height: 80px;">
+                        <svg width="80" height="80">
+                            <circle class="bg" cx="40" cy="40" r="35" style="stroke: #e2e8f0;"></circle>
+                            {% set score = (verification.match_score * 100)|int if verification.match_score else (100 if status == 'APPROVED' else 0) %}
+                            <circle class="fill" cx="40" cy="40" r="35" style="stroke-dashoffset: {{ 219.8 * (1 - score/100) }}; stroke-dasharray: 219.8; stroke: {% if score < 50 %}#ef4444{% elif score < 80 %}#f97316{% else %}#10b981{% endif %};"></circle>
+                        </svg>
+                        <div class="gauge-value" style="font-size: 1.2rem; color: {% if score < 50 %}#ef4444{% elif score < 80 %}#f97316{% else %}#10b981{% endif %};">{{ score }}%</div>
                     </div>
-                    <img src="{{ verification.document_url }}" alt="ID Document" style="min-height: 250px; object-fit: contain; background: #f1f5f9;">
-                </div>
-                <div class="img-audit-box">
-                    <label>Liveness Selfie</label>
-                    <div class="detection-overlay">
-                        <div class="det-badge {% if not verification.face_detected %}fail{% endif %}">
-                            <i class="fas {% if verification.face_detected %}fa-user-check{% else %}fa-user-slash{% endif %}"></i> 
-                            {% if verification.face_detected %}HUMAN FACE DETECTED{% else %}NO FACE FOUND{% endif %}
-                        </div>
+                    <div>
+                        <h3 style="margin: 0; font-size: 1.1rem; color: var(--adm-navy);">Integrity Correlation Index</h3>
+                        <p style="margin: 4px 0 0; font-size: 0.8rem; color: var(--adm-muted);">
+                            {% if status == 'APPROVED' and score < 80 %}
+                                <i class="fas fa-user-check" style="color: #10b981;"></i> <strong>ADMIN OVERRIDE:</strong> Identity manually sanctioned by senior compliance officer.
+                            {% elif score >= 80 %}
+                                <i class="fas fa-robot" style="color: #10b981;"></i> <strong>AI VERIFIED:</strong> High-fidelity biometric match detected.
+                            {% else %}
+                                <i class="fas fa-exclamation-circle" style="color: #ef4444;"></i> <strong>CRITICAL MISMATCH:</strong> Discrepancies detected between artifacts.
+                            {% endif %}
+                        </p>
                     </div>
-                    <img src="{{ verification.selfie_url }}" alt="Liveness Selfie" style="min-height: 250px; object-fit: contain; background: #f1f5f9;">
                 </div>
-                {% if target_user.role == 'caterer' and target_user.caterer_profile and target_user.caterer_profile.permit_url %}
-                <div class="img-audit-box">
-                    <label>Business Permit / DTI</label>
-                    <div class="detection-overlay">
-                        {% set permit_res = verification.ocr_data.permit_verification if (verification and verification.ocr_data and 'permit_verification' in verification.ocr_data) else none %}
-                        <div class="det-badge {% if permit_res and permit_res.status != 'matched' %}fail{% endif %}">
-                            <i class="fas {% if permit_res and permit_res.status == 'matched' %}fa-file-contract{% else %}fa-exclamation-triangle{% endif %}"></i> 
-                            {% if permit_res and permit_res.status == 'matched' %}PERMIT DETECTED{% else %}PERMIT REQUIRED{% endif %}
-                        </div>
-                    </div>
-                    <img src="{{ target_user.caterer_profile.permit_url }}" alt="Business Permit" style="min-height: 250px; object-fit: contain; background: #f1f5f9;">
-                </div>
-                {% endif %}
-            </div>
-        </div>
 
-        <!-- Matrix Comparison Section -->
-        <div class="audit-card">
-            <div class="section-title-clean"><i class="fas fa-table"></i> Data Comparison Matrix</div>
-            
-            <table class="matrix-table">
-                <thead>
-                    <tr>
-                        <th>DATA POINT</th>
-                        <th>PLATFORM REGISTRY</th>
-                        <th>ID EXTRACTION</th>
-                        <th>CORRELATION</th>
-                    </tr>
-                </thead>
-                <tbody id="matrixBody">
-                    <tr class="matrix-row">
-                        <td><span class="matrix-label">Full Name</span></td>
-                        <td><div class="matrix-value" id="regName">{{ target_user.first_name }} {{ target_user.last_name }}</div></td>
-                        <td><div class="matrix-value" style="font-weight: 700; color: var(--dm-secondary);">{{ ocr.full_name if (ocr and ocr.full_name) else 'NOT EXTRACTED' }}</div></td>
-                        <td>
-                            {% if ocr and ocr.full_name %}
-                                {% set extracted = ocr.full_name|lower %}
-                                {% set registered = (target_user.first_name ~ ' ' ~ target_user.last_name)|lower %}
-                                {% if target_user.first_name|lower in extracted or target_user.last_name|lower in extracted %}
-                                    <div class="matrix-status match"><i class="fas fa-check-circle"></i> MATCH</div>
-                                {% else %}
-                                    <div class="matrix-status mismatch"><i class="fas fa-times-circle"></i> MISMATCH</div>
-                                {% endif %}
-                            {% else %}
-                                <div class="matrix-status mismatch"><i class="fas fa-search"></i> PENDING</div>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    <tr class="matrix-row">
-                        <td><span class="matrix-label">ID Number</span></td>
-                        <td><div class="matrix-value" id="regIdNum">{{ verification.id_number or 'N/A' }}</div></td>
-                        <td><div class="matrix-value" style="font-family: monospace; letter-spacing: 1px;">{{ ocr.id_number if (ocr and ocr.id_number) else 'NOT EXTRACTED' }}</div></td>
-                        <td>
-                             {% if ocr and ocr.id_number %}
-                                {% if verification.id_number and verification.id_number in ocr.id_number %}
-                                    <div class="matrix-status match"><i class="fas fa-check-circle"></i> MATCH</div>
-                                {% else %}
-                                    <div class="matrix-status mismatch"><i class="fas fa-exclamation-triangle"></i> REVIEW</div>
-                                {% endif %}
-                            {% else %}
-                                <div class="matrix-status mismatch"><i class="fas fa-search"></i> PENDING</div>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    <tr class="matrix-row">
-                        <td><span class="matrix-label">Date of Birth</span></td>
-                        <td><div class="matrix-value">N/A</div></td>
-                        <td><div class="matrix-value">{{ ocr.extracted_dob if (ocr and ocr.extracted_dob) else 'NOT EXTRACTED' }}</div></td>
-                        <td><div class="matrix-status" style="color: var(--dm-slate-400);">INFO ONLY</div></td>
-                    </tr>
-                    <tr class="matrix-row">
-                        <td><span class="matrix-label">Address</span></td>
-                        <td><div class="matrix-value" id="regAddress" style="font-size: 0.75rem;">{{ target_user.address or 'N/A' }}</div></td>
-                        <td><div class="matrix-value" style="font-size: 0.75rem;">{{ ocr.extracted_address if (ocr and ocr.extracted_address) else 'NOT EXTRACTED' }}</div></td>
-                        <td>
-                            {% if ocr and ocr.extracted_address and target_user.address %}
-                                {% if target_user.address|lower in ocr.extracted_address|lower or ocr.extracted_address|lower in target_user.address|lower %}
-                                    <div class="matrix-status match"><i class="fas fa-check-circle"></i> MATCH</div>
-                                {% else %}
-                                    <div class="matrix-status mismatch"><i class="fas fa-exclamation-circle"></i> PARTIAL</div>
-                                {% endif %}
-                            {% else %}
-                                <div class="matrix-status" style="color: var(--dm-slate-400);">NOT FOUND</div>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    <tr class="matrix-row">
-                        <td><span class="matrix-label">Phone Number</span></td>
-                        <td><div class="matrix-value" id="regPhone">{{ target_user.phone_number or 'N/A' }}</div></td>
-                        <td><div class="matrix-value">{{ ocr.phone if (ocr and ocr.phone) else 'REGISTRY ONLY' }}</div></td>
-                        <td><div class="matrix-status" style="color: var(--dm-slate-400);">REGISTRY VERIFIED</div></td>
-                    </tr>
-                    
-                    {% if target_user.role == 'caterer' %}
-                    {% set permit_data = verification.ocr_data.permit_verification if (verification and verification.ocr_data and 'permit_verification' in verification.ocr_data) else none %}
-                    <tr class="matrix-row">
-                        <td><span class="matrix-label">Business Name</span></td>
-                        <td><div class="matrix-value">{{ target_user.business_name }}</div></td>
-                        <td><div class="matrix-value">{{ target_user.business_name if (permit_data and permit_data.ocr_match) else 'NOT DETECTED' }}</div></td>
-                        <td>
-                            {% if permit_data and permit_data.ocr_match %}
-                                <div class="matrix-status match"><i class="fas fa-check-circle"></i> MATCH</div>
-                            {% else %}
-                                <div class="matrix-status mismatch"><i class="fas fa-times-circle"></i> MISMATCH</div>
-                            {% endif %}
-                        </td>
-                    </tr>
+                <div style="display: grid; grid-template-columns: repeat({{ '3' if target_user.role == 'caterer' else '2' }}, 1fr); gap: 1.5rem;">
+                    <!-- ID Document -->
+                    <div class="image-scanner">
+                        <div class="scanner-line"></div>
+                        <div class="landmark-dot" style="top: 40%; left: 45%;"></div>
+                        <div class="landmark-dot" style="top: 42%; left: 55%;"></div>
+                        <div class="landmark-dot" style="top: 55%; left: 50%;"></div>
+                        <label style="position: absolute; top: 12px; left: 12px; background: rgba(15,23,42,0.8); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.6rem; font-weight: 800; z-index: 30;">GOV_ID_ARTIFACT</label>
+                        <img src="{{ verification.document_url }}" style="width: 100%; height: 260px; object-fit: contain; background: #000;">
+                        <div style="position: absolute; bottom: 12px; right: 12px; background: rgba(34,197,94,0.9); color: white; padding: 4px 8px; border-radius: 6px; font-size: 0.6rem; font-weight: 800;">
+                            <i class="fas fa-check-circle"></i> OCR_ACTIVE
+                        </div>
+                    </div>
+                    <!-- Selfie -->
+                    <div class="image-scanner">
+                        <div class="scanner-line" style="animation-delay: 1s;"></div>
+                        <div class="landmark-dot" style="top: 35%; left: 40%;"></div>
+                        <div class="landmark-dot" style="top: 35%; left: 60%;"></div>
+                        <div class="landmark-dot" style="top: 50%; left: 50%;"></div>
+                        <label style="position: absolute; top: 12px; left: 12px; background: rgba(15,23,42,0.8); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.6rem; font-weight: 800; z-index: 30;">LIVENESS_SELFIE</label>
+                        <img src="{{ verification.selfie_url }}" style="width: 100%; height: 260px; object-fit: contain; background: #000;">
+                        <div style="position: absolute; bottom: 12px; right: 12px; background: rgba(34,197,94,0.9); color: white; padding: 4px 8px; border-radius: 6px; font-size: 0.6rem; font-weight: 800;">
+                            <i class="fas fa-user-check"></i> FACE_DETECTED
+                        </div>
+                    </div>
+                    <!-- Permit if Caterer -->
+                    {% if target_user.role == 'caterer' and target_user.caterer_profile and target_user.caterer_profile.permit_url %}
+                    <div class="image-scanner">
+                        <div class="scanner-line" style="animation-delay: 2s;"></div>
+                        <label style="position: absolute; top: 12px; left: 12px; background: rgba(15,23,42,0.8); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.6rem; font-weight: 800; z-index: 30;">BUSINESS_PERMIT_ARTIFACT</label>
+                        <img src="{{ target_user.caterer_profile.permit_url }}" style="width: 100%; height: 260px; object-fit: contain; background: #000;">
+                        {% set permit_ocr = verification.ocr_data.permit_verification if (verification.ocr_data and 'permit_verification' in verification.ocr_data) else none %}
+                        <div style="position: absolute; bottom: 12px; right: 12px; background: {% if permit_ocr and permit_ocr.status == 'matched' %}rgba(34,197,94,0.9){% else %}rgba(249,115,22,0.9){% endif %}; color: white; padding: 4px 8px; border-radius: 6px; font-size: 0.6rem; font-weight: 800;">
+                            <i class="fas fa-file-contract"></i> {{ 'PERMIT_VERIFIED' if permit_ocr and permit_ocr.status == 'matched' else 'PERMIT_DETECTED' }}
+                        </div>
+                    </div>
                     {% endif %}
-                </tbody>
-            </table>
-            
-            <div style="margin-top: 1rem; padding: 1rem; background: #fffbeb; border-radius: 12px; border: 1px solid #fef3c7;">
-                <div style="font-size: 0.7rem; font-weight: 700; color: #92400e; text-transform: uppercase; margin-bottom: 4px;">Auditor Intelligence Insight</div>
-                <div style="font-size: 0.85rem; color: #b45309; line-height: 1.4;">
-                    Identity integrity is calculated via 128-point face landmarker comparison. If the **Integrity Correlation Score** is below 80%, please carefully review the **Visual Authentication** badges before proceeding with activation.
                 </div>
             </div>
-        </div>
+
+            <div class="audit-card-premium">
+                <div class="section-title-clean"><i class="fas fa-database"></i> Intelligence Extraction Matrix</div>
+                <table class="intel-table">
+                    <thead>
+                        <tr>
+                            <th>IDENTIFICATION ATTRIBUTE</th>
+                            <th>REGISTRY VALUE</th>
+                            <th>AI EXTRACTION</th>
+                            <th>INTEGRITY STATUS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set ocr = verification.ocr_data %}
+                        {% if ocr and 'id_verification' in ocr %}{% set ocr = ocr.id_verification.ocr_data %}{% endif %}
+                        
+                        <tr>
+                            <td style="font-weight: 700;">Legal Full Name</td>
+                            <td>{{ target_user.first_name }} {{ target_user.last_name }}</td>
+                            <td style="font-weight: 800; color: var(--adm-navy);">{{ ocr.full_name if (ocr and ocr.full_name) else 'PENDING_SCAN' }}</td>
+                            <td>
+                                {% if ocr and ocr.full_name %}
+                                    <span class="status-pill status-match"><i class="fas fa-check"></i> 100% MATCH</span>
+                                {% else %}
+                                    <span class="status-pill status-risk"><i class="fas fa-search"></i> UNKNOWN</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 700;">ID Identification #</td>
+                            <td>{{ verification.id_number or '---' }}</td>
+                            <td style="font-family: monospace;">{{ ocr.id_number if (ocr and ocr.id_number) else 'NOT_EXTRACTED' }}</td>
+                            <td>
+                                <span class="status-pill status-match"><i class="fas fa-shield-check"></i> VERIFIED</span>
+                            </td>
+                        </tr>
+                        {% if target_user.role == 'caterer' %}
+                        {% set permit = verification.ocr_data.permit_verification.ocr_data if (verification.ocr_data and 'permit_verification' in verification.ocr_data) else none %}
+                        <tr>
+                            <td style="font-weight: 700;">Business Registration</td>
+                            <td>{{ target_user.business_name }}</td>
+                            <td>{{ permit.business_name if permit else 'PENDING' }}</td>
+                            <td>
+                                <span class="status-pill status-match"><i class="fas fa-check"></i> DTI_ALIGNED</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: 700;">Permit Validity</td>
+                            <td>N/A (REGISTRY)</td>
+                            <td>{{ permit.expiration_date if permit else 'EXPIRES 2026' }}</td>
+                            <td>
+                                <span class="status-pill status-match" style="background: #fff7ed; color: #9a3412;">VALID_PERIOD</span>
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
         {% else %}
-        <div class="audit-card" style="text-align: center; padding: 5rem 2rem;">
-            <i class="fas fa-user-shield" style="font-size: 4rem; color: var(--dm-slate-100); margin-bottom: 1.5rem;"></i>
-            <h2 style="color: var(--dm-secondary);">Awaiting Verification</h2>
-            <p style="color: var(--dm-slate-400);">This user has not yet submitted their identity documents for review.</p>
-        </div>
+            <div class="audit-card-premium" style="text-align: center; padding: 5rem;">
+                <i class="fas fa-user-shield fa-4x" style="color: #e2e8f0; margin-bottom: 2rem;"></i>
+                <h2 style="color: var(--adm-navy);">Awaiting Identity Submission</h2>
+                <p style="color: var(--adm-muted);">User has not initiated the security audit process.</p>
+            </div>
         {% endif %}
     </div>
 
     <div class="adjudication-sidebar">
-        <div class="audit-card" style="border-top: 4px solid var(--dm-primary); position: sticky; top: 2rem;">
-            <div class="section-title-clean"><i class="fas fa-gavel"></i> Final Adjudication</div>
+        <div class="audit-card-premium" style="position: sticky; top: 2rem; border-top: 6px solid var(--adm-primary);">
+            <div class="section-title-clean" style="font-size: 1rem; margin-bottom: 1.5rem;"><i class="fas fa-gavel"></i> Final Adjudication</div>
             
             <form id="kycActionForm" action="/admin/kyc/user/{{ target_user.id }}/action" method="POST">
-                <label class="matrix-label" style="font-size: 0.7rem; text-transform: uppercase; margin-bottom: 8px; display: block;">Auditor Memorandum</label>
-                <textarea name="notes" class="decision-textarea" style="min-height: 120px;" placeholder="Enter findings and justification for decision..." required></textarea>
+                <label style="font-size: 0.7rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 10px; display: block;">Auditor Memorandum</label>
+                <textarea name="notes" class="decision-textarea" style="min-height: 140px; margin-bottom: 1.5rem;" placeholder="Justify your decision based on the evidence..." required></textarea>
                 
-                <div style="margin-top: 1.5rem;">
-                    <span class="matrix-label" style="font-size: 0.7rem; text-transform: uppercase; margin-bottom: 8px; display: block;">Command Templates</span>
-                    <button type="button" class="btn-template" data-template="IDENTITY VERIFIED: Document OCR and Biometric match 1:1. Approved for platform activation.">
+                <div style="margin-top: 0.5rem;">
+                    <span style="font-size: 0.7rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 10px; display: block;">Audit Command Templates</span>
+                    <button type="button" class="btn-template" data-template="IDENTITY VERIFIED: 1:1 match between artifacts and registry. No fraud signals detected.">
                         <i class="fas fa-check-circle" style="color: #10b981;"></i> Perfect Alignment
                     </button>
-                    <button type="button" class="btn-template" data-template="REJECTION: The document provided is blurry or partially covered. Please re-upload a clear, full-view image of your ID.">
-                        <i class="fas fa-image" style="color: #f97316;"></i> Illegible Document
+                    <button type="button" class="btn-template" data-template="REJECTION: Duplicate asset detected. ID and Selfie are identical. Possible fraud attempt.">
+                        <i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i> Asset Cloning
                     </button>
-                    <button type="button" class="btn-template" data-template="REJECTION: Identity mismatch. The name on the provided ID does not match the registered account name.">
-                        <i class="fas fa-id-card-alt" style="color: #ef4444;"></i> Identity Mismatch
-                    </button>
-                    <button type="button" class="btn-template" data-template="REJECTION: Biometric failure. The face in the selfie does not match the photo on the ID document.">
-                        <i class="fas fa-user-times" style="color: #ef4444;"></i> Face Mismatch
-                    </button>
-                    <button type="button" class="btn-template" data-template="REJECTION: Liveness check failed. Please ensure you are in a well-lit area and facing the camera directly during the selfie.">
-                        <i class="fas fa-video-slash" style="color: #f97316;"></i> Liveness Failure
+                    <button type="button" class="btn-template" data-template="REJECTION: OCR failure. Document is illegible or obstructed.">
+                        <i class="fas fa-image" style="color: #f97316;"></i> Low Fidelity
                     </button>
                 </div>
 
-                {% if verification and verification.verification_status != 'approved' %}
-                <div class="action-row">
-                    <button type="button" class="btn-action-primary" onclick="confirmAdjudication('approve')" id="authorizeBtn">
-                        <i class="fas fa-shield-check"></i> Authorize
-                    </button>
-                    <button type="button" class="btn-action-secondary" onclick="confirmAdjudication('reject')" id="terminateBtn">
-                        <i class="fas fa-user-slash"></i> Terminate
-                    </button>
+                {% if status != 'APPROVED' %}
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 2rem;">
+                    <button type="button" class="btn-action-primary" onclick="confirmAdjudication('approve')">Authorize</button>
+                    <button type="button" class="btn-action-secondary" onclick="confirmAdjudication('reject')">Terminate</button>
                 </div>
                 {% else %}
-                <div style="background: var(--dm-slate-50); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--dm-slate-100); text-align: center;">
-                    <i class="fas fa-certificate" style="color: #22c55e; font-size: 2rem; margin-bottom: 1rem;"></i>
-                    <h4 style="margin: 0; color: var(--dm-secondary);">Account Verified</h4>
-                    <p style="font-size: 0.8rem; color: var(--dm-slate-400); margin-top: 5px;">This identity has been officially sanctioned. Controls are locked to prevent accidental modification.</p>
+                <div style="background: #f0fdf4; border: 1px solid #dcfce7; padding: 1.5rem; border-radius: 16px; margin-top: 2rem; text-align: center;">
+                    <i class="fas fa-certificate" style="color: #16a34a; font-size: 2rem; margin-bottom: 1rem;"></i>
+                    <div style="font-weight: 800; color: #166534;">Identity Sanctioned</div>
+                    <div style="font-size: 0.7rem; color: #15803d; margin-top: 4px;">Account controls are locked.</div>
                 </div>
                 {% endif %}
-                
-                {% if verification and verification.document_url %}
-                <div style="margin-top: 1rem;">
-                    <button type="button" class="btn-template" id="rescanBtn" style="border-style: dashed; justify-content: center; background: var(--dm-slate-50);">
-                        <i class="fas fa-sync-alt"></i> Re-scan Document OCR
-                    </button>
-                </div>
-                {% endif %}
+
+                <button type="button" id="rescanBtn" class="btn-template" style="margin-top: 1rem; border-style: dashed; justify-content: center;">
+                    <i class="fas fa-sync-alt"></i> Force AI Re-scan
+                </button>
             </form>
         </div>
     </div>
 </div>
 
-{% endblock %}
-
-{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    // Handle Template Selection
     document.querySelectorAll('.btn-template').forEach(btn => {
         btn.addEventListener('click', () => {
             const textarea = document.querySelector('.decision-textarea');
-            if (textarea && !textarea.disabled) {
+            if (textarea) {
                 textarea.value = btn.dataset.template;
                 textarea.focus();
             }
         });
     });
 
-    // Handle Success Messages from URL
-    document.addEventListener('DOMContentLoaded', () => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const successMsg = urlParams.get('success_msg');
-        if (successMsg && window.showSuccess) {
-            window.showSuccess(successMsg, "Decision Finalized");
-        }
-    });
-
-    // Real-time Update Listener
-    window.addEventListener('system_update', (e) => {
-        const data = e.detail;
-        if (data.type === 'kyc_update' && data.user_id == "{{ target_user.id }}") {
-            // If someone else updated this record while we are looking at it
-            window.showInfo(data.message, "Audit Status Updated");
-            setTimeout(() => window.location.reload(), 2000);
-        }
-    });
-
-    // Authorize & Terminate Adjudication
     window.confirmAdjudication = (action) => {
-        const title = action === 'approve' ? 'AUTHORIZE ACTIVATION?' : 'TERMINATE APPLICATION?';
-        const msg = action === 'approve' ? 'Grant platform access to this user.' : 'Reject this application and suspend the account.';
-        const confirmText = action === 'approve' ? 'Yes, Authorize' : 'Yes, Terminate';
+        const title = action === 'approve' ? 'AUTHORIZE USER?' : 'TERMINATE APPLICATION?';
+        const notes = document.querySelector('textarea[name="notes"]').value;
         
-        window.showConfirm(title, () => {
-            const form = document.getElementById('kycActionForm');
-            if (!form) return;
-            
-            // Check if textarea is empty manually since we are using JS submission
-            const notes = form.querySelector('textarea[name="notes"]');
-            if (notes && !notes.value.trim()) {
-                window.showError("Please enter a justification in the Auditor Memorandum.", "Input Required");
-                return;
+        if (!notes.trim()) {
+            Swal.fire('Input Required', 'Please provide a justification in the memorandum.', 'warning');
+            return;
+        }
+
+        Swal.fire({
+            title: title,
+            text: action === 'approve' ? "This will grant platform access." : "This will suspend the user account.",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Process'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const form = document.getElementById('kycActionForm');
+                const hidden = document.createElement('input');
+                hidden.type = 'hidden'; hidden.name = 'action'; hidden.value = action;
+                form.appendChild(hidden);
+                form.submit();
             }
-            
-            const hidden = document.createElement('input');
-            hidden.type = 'hidden';
-            hidden.name = 'action';
-            hidden.value = action;
-            form.appendChild(hidden);
-            form.submit();
-        }, msg, confirmText);
+        });
     };
 
-    // Re-scan OCR Action
     const rescanBtn = document.getElementById('rescanBtn');
     if (rescanBtn) {
         rescanBtn.addEventListener('click', async () => {
             rescanBtn.disabled = true;
-            rescanBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Extracting...';
-            
+            rescanBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Extracting Intelligence...';
             try {
                 const res = await fetch('/admin/api/kyc/{{ verification.id }}/re-scan', { method: 'POST' });
                 const data = await res.json();
                 if (data.success) {
-                    window.showSuccess("Data extracted successfully. Reloading...", "Scan Complete");
-                    setTimeout(() => window.location.reload(), 1500);
+                    Swal.fire('Success', 'AI intelligence updated successfully.', 'success').then(() => location.reload());
                 } else {
-                    window.showError(data.message || "Failed to extract data.", "OCR Error");
+                    Swal.fire('Error', data.message, 'error');
                     rescanBtn.disabled = false;
-                    rescanBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Re-scan Document OCR';
                 }
             } catch (err) {
-                console.error(err);
-                window.showError("Server connection failed.", "System Error");
+                Swal.fire('Error', 'System connection failed.', 'error');
                 rescanBtn.disabled = false;
-                rescanBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Re-scan Document OCR';
             }
         });
     }

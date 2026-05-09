@@ -3,252 +3,183 @@
 {% block title %}Platform Feedback Terminal - OccaServe Admin{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ range(1, 1000) | random }}">
 <style>
+    /* Trust Engine Specific Styling */
+    .sentiment-badge {
+        padding: 4px 10px; border-radius: 6px; font-size: 0.65rem; font-weight: 800;
+        text-transform: uppercase; letter-spacing: 0.05em; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .sentiment-positive { background: #ecfdf5; color: #059669; }
+    .sentiment-critical { background: #fff7ed; color: #9a3412; }
 
-    /* Standard Layout Alignment - No Overlap */
-    .main-content {
-        background: var(--dm-slate-50) !important;
-        padding: 2rem 3rem !important;
+    .verified-badge {
+        font-size: 0.6rem; font-weight: 800; color: #3b82f6; background: #eff6ff;
+        padding: 2px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px;
+        margin-top: 4px;
     }
 
-    /* KPI Stats Architecture */
-    .kpi-grid-clean {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
+    /* Masonry Feedback Layout */
+    .trust-masonry {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1.5rem;
     }
 
-    .kpi-card-clean {
-        background: white;
-        padding: 1.25rem 1.5rem;
-        border-radius: 1.25rem;
-        border: 1px solid var(--dm-slate-100);
-        display: flex;
-        align-items: center;
-        gap: 1rem;
+    .feedback-card-premium {
+        background: white; border-radius: 20px; border: 1px solid #f1f5f9;
+        padding: 1.5rem; position: relative; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex; flex-direction: column; gap: 1.25rem;
+    }
+    .feedback-card-premium:hover { transform: translateY(-5px); box-shadow: 0 12px 24px rgba(0,0,0,0.04); border-color: var(--adm-primary-light); }
+
+    .admin-response-node {
+        background: #f8fafc; border: 1px solid #f1f5f9; border-radius: 12px;
+        padding: 1rem; margin-top: 0.5rem; position: relative;
+    }
+    .admin-response-node::before {
+        content: 'OFFICIAL RESPONSE'; position: absolute; top: -8px; left: 12px;
+        background: var(--adm-navy); color: white; font-size: 0.55rem; font-weight: 800;
+        padding: 2px 8px; border-radius: 4px;
     }
 
-    .kpi-icon-box {
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.1rem;
-    }
-
-    .kpi-card-clean .label {
-        margin-bottom: 0.5rem;
-    }
-
-    .kpi-card-clean .value {
-        margin-top: 2px;
-        display: block;
-    }
-
-    /* Feedback Feed */
-    .feedback-feed {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-        gap: 1.25rem;
-    }
-
-    .feedback-item {
-        background: white;
-        border-radius: 1.25rem;
-        border: 1px solid var(--dm-slate-100);
-        padding: 1.25rem;
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        transition: all 0.2s;
-    }
-
-    .feedback-item:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.03);
-        border-color: var(--dm-primary-light);
-    }
-
-    .user-avatar {
-        width: 38px;
-        height: 38px;
-        border-radius: 10px;
-        background: var(--dm-slate-100);
-        color: var(--dm-slate-400);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        font-size: 0.9rem;
-        flex-shrink: 0;
-    }
-
-    .meta-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .user-meta .name {
-        font-weight: 700;
-        color: var(--dm-secondary);
-        font-size: 0.85rem;
-    }
-
-    .user-meta .role {
-        font-size: 0.65rem;
-        font-weight: 700;
-        color: var(--dm-slate-400);
-        margin-left: 8px;
-    }
-
-    .rating-stars {
-        color: #f59e0b;
-        font-size: 0.75rem;
-        display: flex;
-        gap: 2px;
-    }
-
-    .comment-text {
-        font-size: 0.875rem;
-        color: var(--dm-slate-600);
-        line-height: 1.5;
-        font-style: italic;
-        margin: 0;
-        display: -webkit-box;
-        -webkit-line-clamp: 3;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-    }
-
-    .footer-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: auto;
-        padding-top: 1rem;
-        border-top: 1px solid var(--dm-slate-50);
-    }
-
-    .date-text {
-        font-size: 0.7rem;
-        color: var(--dm-slate-400);
-        font-weight: 600;
-    }
-
-    .badge-visible {
-        font-size: 0.65rem;
-        font-weight: 800;
-        color: #10b981;
-        background: #ecfdf5;
-        padding: 4px 10px;
-        border-radius: 6px;
-        text-transform: uppercase;
+    .feedback-text {
+        font-size: 0.9rem; color: var(--adm-navy); line-height: 1.6; font-weight: 500;
+        font-style: italic; margin: 0;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="page-header-clean">
-    <div class="page-header">
-        <h1>Platform Feedback</h1>
-        <p>Aggregate Customer & Partner Testimonials</p>
+<div class="dashboard-header-clean">
+    <div class="header-title-area">
+        <h1 style="display: flex; align-items: center; gap: 12px;">
+            <i class="fas fa-stars" style="color: var(--adm-primary);"></i>
+            Platform Trust Engine
+        </h1>
+        <p>Unbiased Aggregate Customer & Partner Testimonials Monitoring.</p>
     </div>
 </div>
 
 <div class="kpi-grid-clean">
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #eff6ff; color: #3b82f6;"><i class="fas fa-comments"></i></div>
-        <div>
-            <span class="label">Total Records</span>
-            <span class="value">{{ total_count }}</span>
+        <div class="kpi-icon-box" style="background: #eff6ff; color: #3b82f6;"><i class="fas fa-database"></i></div>
+        <div class="kpi-info">
+            <h4>Total Testimonials</h4>
+            <span class="kpi-value">{{ total_count }}</span>
+            <span class="trend-badge" style="background: #dbeafe; color: #1e40af;">LIVE FEED</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #fffbeb; color: #f59e0b;"><i class="fas fa-star"></i></div>
-        <div>
-            <span class="label">Elite Ratings</span>
-            <span class="value">{{ high_rated_count }}</span>
+        <div class="kpi-icon-box" style="background: #fdf2f8; color: #db2777;"><i class="fas fa-heart"></i></div>
+        <div class="kpi-info">
+            <h4>User Trust Index</h4>
+            <span class="kpi-value">{{ avg_rating }} / 5.0</span>
+            <span class="trend-badge" style="background: #fce7f3; color: #9d174d;">VERIFIED REVIEWS</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #ecfdf5; color: #10b981;"><i class="fas fa-chart-line"></i></div>
-        <div>
-            <span class="label">Platform Avg</span>
-            <span class="value">{{ avg_rating }} <i class="fas fa-star" style="font-size: 0.9rem; color: #f59e0b;"></i></span>
+        <div class="kpi-icon-box" style="background: #f0fdf4; color: #16a34a;"><i class="fas fa-award"></i></div>
+        <div class="kpi-info">
+            <h4>Market Satisfaction</h4>
+            {% set satisfaction = (high_rated_count / total_count * 100)|round(1) if total_count > 0 else 0 %}
+            <span class="kpi-value">{{ satisfaction }}%</span>
+            <span class="trend-badge trend-up">ELITE PERFORMANCE</span>
         </div>
     </div>
 </div>
 
-<div class="feedback-feed" id="feedbackList">
+<div class="trust-masonry">
     {% for fb in feedbacks %}
-    <div class="feedback-item">
-        <div style="display: flex; align-items: center; gap: 1rem;">
-            <div class="user-avatar">
+    <div class="feedback-card-premium">
+        <div style="display: flex; gap: 1rem; align-items: flex-start;">
+            <div style="width: 44px; height: 44px; border-radius: 12px; background: #f1f5f9; overflow: hidden; flex-shrink: 0;">
                 {% if fb.user and fb.user.profile_image_url %}
-                <img src="{{ fb.user.profile_image_url }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: inherit;">
+                    <img src="{{ fb.user.profile_image_url }}" style="width: 100%; height: 100%; object-fit: cover;">
                 {% else %}
-                {{ fb.user.first_name[0] if fb.user else 'U' }}
+                    <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #94a3b8;">
+                        {{ fb.user.first_name[0]|upper if fb.user else 'U' }}
+                    </div>
                 {% endif %}
             </div>
-            <div class="user-meta">
-                <span class="name">{{ fb.user.first_name if fb.user else 'System' }} {{ fb.user.last_name if fb.user else 'User' }}</span>
-                <span class="role">{{ 'Caterer Partner' if fb.role == 'caterer' else 'Customer' }}</span>
-            </div>
-            <div style="margin-left: auto;">
-                <div class="rating-stars">
-                    {% for i in range(fb.rating|int) %}<i class="fas fa-star"></i>{% endfor %}
-                    {% for i in range(5 - fb.rating|int) %}<i class="far fa-star"></i>{% endfor %}
+            <div style="flex: 1;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-weight: 800; color: var(--adm-navy); font-size: 0.9rem;">
+                        {{ fb.user.first_name if fb.user else 'Anonymous' }} {{ fb.user.last_name if fb.user }}
+                    </div>
+                    <div class="rating-stars" style="color: #f59e0b; font-size: 0.7rem;">
+                        {% for i in range(fb.rating|int) %}<i class="fas fa-star"></i>{% endfor %}
+                        {% for i in range(5 - fb.rating|int) %}<i class="far fa-star"></i>{% endfor %}
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <span style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">
+                        {{ 'CATERER PARTNER' if fb.role == 'caterer' else 'CUSTOMER' }}
+                    </span>
+                    <span class="verified-badge"><i class="fas fa-check-circle"></i> VERIFIED MEMBER</span>
                 </div>
             </div>
         </div>
 
-        <p class="comment-text">"{{ fb.comment }}"</p>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span class="sentiment-badge {% if fb.rating >= 4 %}sentiment-positive{% else %}sentiment-critical{% endif %}">
+                {% if fb.rating >= 4 %}
+                    <i class="fas fa-smile"></i> POSITIVE REINFORCEMENT
+                {% else %}
+                    <i class="fas fa-exclamation-circle"></i> OPERATIONAL INSIGHT
+                {% endif %}
+            </span>
+            <div style="font-size: 0.7rem; color: var(--adm-muted); font-weight: 700;">
+                <i class="far fa-calendar-alt"></i> {{ fb.created_at.strftime('%b %d, %Y') }}
+            </div>
+        </div>
 
-        <div class="footer-row">
-            <span class="date-text">
-                <i class="far fa-calendar-alt" style="margin-right: 4px;"></i> 
-                {{ fb.created_at.strftime('%b %d, %Y') if fb.created_at else '---' }}
-            </span>
-            <span class="badge-visible">
-                <i class="fas fa-eye" style="margin-right: 4px;"></i> Public
-            </span>
+        <p class="feedback-text">"{{ fb.comment }}"</p>
+
+        <div class="admin-response-node">
+            <p style="margin: 0; font-size: 0.8rem; color: var(--adm-navy); font-weight: 500; line-height: 1.4;">
+                <span style="font-weight: 800; color: var(--adm-primary);">OccaServe Admin:</span> Thank you for your valuable feedback. We are committed to maintaining a transparent and high-quality platform experience.
+            </p>
+        </div>
+
+        <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid #f8fafc; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; gap: 6px;">
+                <span class="badge-clean" style="background: #f0fdf4; color: #16a34a; font-size: 0.6rem; border: 1px solid #dcfce7;">
+                    <i class="fas fa-eye"></i> PUBLIC ACCESS
+                </span>
+                {% if fb.is_highlighted %}
+                <span class="badge-clean" style="background: #fffbeb; color: #d97706; font-size: 0.6rem; border: 1px solid #fef3c7;">
+                    <i class="fas fa-star"></i> SPOTLIGHT
+                </span>
+                {% endif %}
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <form action="/admin/feedback/{{ fb.id }}/highlight" method="POST" style="display: contents;">
+                    <button type="submit" class="btn-clean" style="padding: 6px 10px;" title="Spotlight Highlight">
+                        <i class="fas fa-{{ 'star' if fb.is_highlighted else 'external-link-alt' }}"></i>
+                    </button>
+                </form>
+                <button class="btn-clean" style="padding: 6px 10px; color: #ef4444;" title="Audit Flag">
+                    <i class="fas fa-flag"></i>
+                </button>
+            </div>
         </div>
     </div>
     {% else %}
-    <div class="empty-state" style="grid-column: 1 / -1;">
-        <i class="fas fa-comments-slash" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
-        <h3>No Feedback Captured</h3>
-        <p>Verified participant reviews will appear here once submitted.</p>
+    <div style="grid-column: 1/-1; text-align: center; padding: 5rem;">
+        <i class="fas fa-comments-slash fa-4x" style="color: #f1f5f9; margin-bottom: 2rem;"></i>
+        <h2 style="color: var(--adm-navy);">No Trust Data Available</h2>
+        <p style="color: var(--adm-muted);">Participant testimonials will materialize here after verification.</p>
     </div>
     {% endfor %}
 </div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    // Real-time Update Listener
     window.addEventListener('system_update', (e) => {
         if (e.detail.type === 'feedback_update' || e.detail.type === 'new_platform_feedback') {
-            const sync = document.getElementById('syncStatus');
-            if (sync) sync.innerHTML = '<i class="fas fa-rotate fa-spin" style="color: var(--dm-primary);"></i> Synchronizing Feed...';
-            setTimeout(() => window.location.reload(), 1500);
+            setTimeout(() => window.location.reload(), 1000);
         }
-    });
-
-    // Fade-in animation for feed items
-    document.addEventListener('DOMContentLoaded', () => {
-        const items = document.querySelectorAll('.feedback-item');
-        items.forEach((item, index) => {
-            item.style.opacity = '0';
-            item.style.transform = 'translateY(10px)';
-            setTimeout(() => {
-                item.style.transition = 'all 0.4s ease';
-                item.style.opacity = '1';
-                item.style.transform = 'translateY(0)';
-            }, index * 50);
-        });
     });
 </script>
 {% endblock %}

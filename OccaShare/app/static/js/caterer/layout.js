@@ -124,38 +124,6 @@
         }
     });
 
-    // ─── Desktop Sidebar Toggle ──────────────────────────────────────────────
-    const desktopToggleBtn = document.getElementById('desktopToggleBtn');
-    if (desktopToggleBtn) {
-        desktopToggleBtn.addEventListener('click', function () {
-            const wrapper = document.querySelector('.dashboard-wrapper');
-            if (wrapper) {
-                wrapper.classList.toggle('sidebar-icons-only');
-
-                // Save mode to backend
-                const isIconsOnly = wrapper.classList.contains('sidebar-icons-only');
-                const newMode = isIconsOnly ? 'icons' : 'full';
-
-                fetch('/caterer/api/sidebar-mode', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ mode: newMode })
-                }).catch(err => {
-                    console.error("Failed to save sidebar mode:", err);
-                });
-
-                // Dispatch resize event immediately so charts start adjusting
-                window.dispatchEvent(new Event('resize'));
-
-                // Dispatch resize event again after CSS transition completes
-                setTimeout(() => {
-                    window.dispatchEvent(new Event('resize'));
-                }, 310); // wait for CSS transition (300ms) + small buffer
-            }
-        });
-    }
 
     // ─── Header Dropdowns (Profile, Messages, Notifications) ───────────────────
     window.toggleHeaderDropdown = function (dropdownId, triggerEl) {

@@ -1,183 +1,331 @@
 {% extends "admin/layout.html" %}
 
-{% block title %}Manage Caterers - Admin Dashboard{% endblock %}
+{% block title %}Partner Registry - Admin Intelligence{% endblock %}
 
 {% block extra_css %}
-<!-- Specific page styles moved to layout.css -->
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ range(1, 1000) | random }}">
+<style>
+    /* Registry Specific Refinements */
+    .partner-identity-cell {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .partner-avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        background: var(--adm-primary-soft);
+        color: var(--adm-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 0.95rem;
+        flex-shrink: 0;
+        border: 1px solid rgba(249, 115, 22, 0.1);
+    }
+
+    .performance-mini {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: #10b981;
+    }
+
+    .terminal-filter-strip {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.25rem 1.5rem;
+        background: #fff;
+        border-bottom: 1px solid var(--adm-border-light);
+    }
+
+    /* Action Dropdown Diamond Standard */
+    .actions-dropdown {
+        position: relative;
+        display: inline-block;
+    }
+
+    .dropdown-trigger {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: var(--adm-bg);
+        border: 1px solid var(--adm-border-light);
+        color: var(--adm-navy);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .dropdown-trigger:hover {
+        background: #fff;
+        border-color: var(--adm-primary);
+        color: var(--adm-primary);
+    }
+
+    .dropdown-menu-dm {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        width: 220px;
+        background: white;
+        border-radius: 12px;
+        border: 1px solid var(--adm-border-light);
+        box-shadow: var(--adm-shadow);
+        display: none;
+        z-index: 1000;
+        padding: 0.5rem;
+        margin-top: 8px;
+        animation: dropdownFade 0.2s ease-out;
+    }
+
+    .dropdown-menu-dm.show {
+        display: block;
+    }
+
+    @keyframes dropdownFade {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .dm-dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        color: var(--adm-navy);
+        font-size: 0.8rem;
+        font-weight: 600;
+        width: 100%;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        text-align: left;
+        transition: all 0.2s;
+    }
+
+    .dm-dropdown-item:hover {
+        background: var(--adm-primary-soft);
+        color: var(--adm-primary);
+    }
+
+    .dm-dropdown-item i {
+        width: 16px;
+        font-size: 0.9rem;
+        opacity: 0.7;
+    }
+
+    .dm-dropdown-item.danger {
+        color: #ef4444;
+    }
+
+    .dm-dropdown-item.danger:hover {
+        background: #fef2f2;
+        color: #ef4444;
+    }
+
+    .category-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        background: #f8fafc;
+        border: 1.5px solid #f1f5f9;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .category-pill:hover {
+        border-color: var(--adm-primary);
+    }
+
+    .category-pill input {
+        display: none;
+    }
+
+    .category-pill:has(input:checked) {
+        background: var(--adm-primary-soft);
+        border-color: var(--adm-primary);
+        color: var(--adm-primary);
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="page-header-clean" style="display: flex; justify-content: space-between; align-items: flex-start;">
-    <div>
-        <h1>Manage Caterers</h1>
-        <p>Monitor and adjudicate professional catering partners.</p>
+<div class="dashboard-header-clean">
+    <div class="header-title-area">
+        <h1>Caterer Partners</h1>
+        <p>Strategic management of platform-certified catering providers.</p>
     </div>
-    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.75rem;">
-        <button class="btn-add-pro" onclick="openAddCatererModal()">
-            <i class="fas fa-plus"></i> Add New Partner
+    <div class="header-actions-area">
+        <button class="btn-clean" style="background: var(--adm-navy); color: white;" onclick="openAddCatererModal()">
+            <i class="fas fa-plus"></i> Onboard Partner
         </button>
     </div>
 </div>
 
-<!-- KPI Dashboard -->
+<!-- KPI Metrics Cluster -->
 <div class="kpi-grid-clean">
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #eff6ff; color: #3b82f6;"><i class="fas fa-store"></i></div>
+        <div class="kpi-icon-box" style="background: #eff6ff; color: #1d4ed8;"><i class="fas fa-store"></i></div>
         <div class="kpi-info">
-            <h4>Total Listings</h4>
-            <span class="kpi-value" id="kpi-total">{{ metrics.total_caterers }}</span>
+            <h4>Total Partners</h4>
+            <span class="kpi-value">{{ metrics.total_caterers }}</span>
+            <span class="trend-badge trend-up">LIVE DIRECTORY</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #fffbeb; color: #f59e0b;"><i class="fas fa-hourglass-half"></i>
+        <div class="kpi-icon-box" style="background: #fffbeb; color: #92400e;"><i class="fas fa-shield-halved"></i>
         </div>
         <div class="kpi-info">
-            <h4>Pending Review</h4>
-            <span class="kpi-value" id="kpi-pending">{{ metrics.pending_caterers_count }}</span>
+            <h4>Audit Queue</h4>
+            <span class="kpi-value">{{ metrics.pending_caterers_count }}</span>
+            <span class="trend-badge" style="background: #fef3c7; color: #92400e;">ACTION REQ</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #ecfdf5; color: #10b981;"><i class="fas fa-check-double"></i></div>
+        <div class="kpi-icon-box" style="background: #f0fdf4; color: #166534;"><i class="fas fa-check-double"></i></div>
         <div class="kpi-info">
             <h4>Verified</h4>
-            <span class="kpi-value" id="kpi-verified">{{ metrics.approved_caterers_count }}</span>
+            <span class="kpi-value">{{ metrics.approved_caterers_count }}</span>
+            <span class="trend-badge trend-up"><i class="fas fa-check"></i> TRUSTED</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #fef2f2; color: #ef4444;"><i class="fas fa-ban"></i></div>
+        <div class="kpi-icon-box" style="background: #fdf2f2; color: #991b1b;"><i class="fas fa-ban"></i></div>
         <div class="kpi-info">
-            <h4>Rejected</h4>
+            <h4>Suspended</h4>
             <span class="kpi-value">{{ metrics.rejected_caterers_count }}</span>
+            <span class="trend-badge" style="background: #fee2e2; color: #991b1b;">RESTRICTED</span>
         </div>
     </div>
 </div>
 
-<div class="management-terminal">
-    <div class="terminal-header" style="padding: 1.5rem 2rem; border-bottom: 1px solid var(--dm-slate-100); display: flex; justify-content: space-between; align-items: center; background: #ffffff;">
-        <div style="display: flex; align-items: center; gap: 1.25rem;">
-            <div style="width: 48px; height: 48px; border-radius: 12px; background: var(--dm-slate-50); color: var(--dm-primary); display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
-                <i class="fas fa-address-book"></i>
-            </div>
-            <div>
-                <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--dm-secondary);">Partner Registry</h3>
-                <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: var(--dm-slate-400); font-weight: 500;">Authorized Business Service Directory</p>
-            </div>
+<!-- Main Registry Terminal -->
+<div class="table-card-clean">
+    <div class="terminal-filter-strip">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <i class="fas fa-list-check" style="color: var(--adm-primary);"></i>
+            <h3
+                style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy); margin: 0; text-transform: uppercase; letter-spacing: 0.05em;">
+                Partner Registry</h3>
         </div>
-        <div class="search-group-pro">
-            <i class="fas fa-search"></i>
-            <input type="text" id="catererSearchInput" placeholder="Search by name, business or email..." onkeyup="filterCaterers()">
+        <div style="display: flex; gap: 10px;">
+            <select id="catererStatusFilter" onchange="filterCaterers()" class="btn-clean"
+                style="padding: 6px 14px; font-size: 0.8rem; font-weight: 700;">
+                <option value="all">Filter: All Partners</option>
+                <option value="VERIFIED">Status: Verified</option>
+                <option value="AUDIT">Status: Audit Req</option>
+                <option value="SUSPENDED">Status: Suspended</option>
+            </select>
         </div>
     </div>
 
     <div style="overflow-x: auto;">
-        <table class="cust-table" id="caterersTable">
+        <table class="clean-table" id="caterersTable">
             <thead>
                 <tr>
-                    <th>Business & Performance</th>
-                    <th>Representative</th>
-                    <th>Operational Region</th>
-                    <th>Compliance & Status</th>
-                    <th style="text-align: right;">Registry Actions</th>
+                    <th>Business Identity</th>
+                    <th>Executive Lead</th>
+                    <th>Region</th>
+                    <th>Audit State</th>
+                    <th style="text-align: right;">Operations Hub</th>
                 </tr>
             </thead>
             <tbody>
                 {% for caterer in caterers %}
                 <tr class="cust-row">
                     <td>
-                        <div style="font-weight: 700; color: var(--dm-secondary);">{{ caterer.business_name }}</div>
-                        <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
-                            <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 600;">
-                                <i class="fas fa-star" style="color: #f59e0b;"></i> {{ "%.1f"|format(caterer.rating or 0) }}
-                            </span>
-                            <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 600;">
-                                <i class="fas fa-calendar-check" style="color: var(--dm-primary);"></i> {{ caterer.booking_count or 0 }} Bookings
-                            </span>
+                        <div class="partner-identity-cell">
+                            <div class="partner-avatar">{{ caterer.business_name[0] }}</div>
+                            <div>
+                                <div style="font-weight: 800; color: var(--adm-navy); font-size: 0.9rem;">{{
+                                    caterer.business_name }}</div>
+                                <div class="performance-mini">
+                                    <i class="fas fa-star"></i> 
+                                    {% if caterer.rating and caterer.rating > 0 %}
+                                        {{ "%.1f"|format(caterer.rating) }} Platform Score
+                                    {% else %}
+                                        <span style="color: var(--adm-muted); opacity: 0.8;">NEW PARTNER</span>
+                                    {% endif %}
+                                </div>
+                            </div>
                         </div>
                     </td>
                     <td>
-                        <div style="font-weight: 600;">{{ caterer.user.first_name }} {{ caterer.user.last_name }}</div>
-                        <div style="font-size: 0.8rem; color: var(--dm-slate-400);">{{ caterer.user.email }}</div>
+                        <div style="font-weight: 700; color: var(--adm-navy); font-size: 0.85rem;">{{
+                            caterer.user.first_name }} {{ caterer.user.last_name }}</div>
+                        <div style="font-size: 0.75rem; color: var(--adm-muted);">{{ caterer.user.email }}</div>
                     </td>
+                    <td><span style="font-weight: 600; color: var(--adm-muted); font-size: 0.85rem;">{{ caterer.city or
+                            'General Area' }}</span></td>
                     <td>
-                        <div style="font-weight: 500; color: var(--dm-slate-700); font-size: 0.9rem;">
-                            <i class="fas fa-map-marker-alt" style="margin-right: 6px; color: var(--dm-primary); opacity: 0.7;"></i>
-                            {{ caterer.contact_address if caterer.contact_address else 'No detailed address' }}
-                        </div>
-                        <div style="font-size: 0.75rem; color: var(--dm-slate-400); margin-left: 20px;">
-                            {{ caterer.city }}
-                            {% if not caterer.contact_address and caterer.verification_status == 'Verified' %}
-                            <span style="color: #ef4444; font-size: 0.65rem; font-weight: 700; margin-left: 8px;">
-                                <i class="fas fa-triangle-exclamation"></i> ADDRESS AUDIT REQ.
-                            </span>
-                            {% endif %}
-                        </div>
-                    </td>
-                    <td>
-                        <div style="display: flex; flex-direction: column; gap: 6px;">
-                            <span class="badge-clean"
-                                style="font-size: 0.65rem; background: {% if caterer.verification_status == 'Verified' %}#ecfdf5; color: #10b981;{% elif caterer.verification_status == 'Pending' %}#fff7ed; color: #f97316;{% else %}#fef2f2; color: #ef4444;{% endif %}">
-                                <i class="fas {% if caterer.verification_status == 'Verified' %}fa-check-circle{% elif caterer.verification_status == 'Pending' %}fa-clock{% else %}fa-ban{% endif %}"></i>
-                                {{ caterer.verification_status }}
-                            </span>
-                            <span class="badge-clean"
-                                style="font-size: 0.65rem; background: {% if caterer.account_status == 'Active' %}#eff6ff; color: #2563eb;{% else %}#f1f5f9; color: #64748b;{% endif %}">
-                                <i class="fas {% if caterer.account_status == 'Active' %}fa-user-check{% else %}fa-user-slash{% endif %}"></i>
-                                {{ caterer.account_status }}
-                            </span>
-                        </div>
+                        {% if caterer.verification_status == 'Verified' %}
+                        <span class="badge-clean badge-active">VERIFIED</span>
+                        {% elif caterer.verification_status == 'Pending Review' %}
+                        <span class="badge-clean badge-pending">AUDIT REQ</span>
+                        {% else %}
+                        <span class="badge-clean" style="background: #f1f5f9; color: #64748b;">{{
+                            caterer.verification_status }}</span>
+                        {% endif %}
                     </td>
                     <td style="text-align: right;">
                         <div class="actions-dropdown">
-                            <button class="dropdown-trigger" onclick="toggleDropdown(this, event)">
-                                <i class="fas fa-ellipsis-v"></i>
+                            <button class="dropdown-trigger" onclick="toggleActionDropdown(this, event)">
+                                <i class="fas fa-ellipsis-h"></i>
                             </button>
-                            <div class="dropdown-menu">
-                                <button class="dropdown-item" data-business="{{ caterer.business_name | e }}"
-                                    data-owner="{{ caterer.user.first_name }} {{ caterer.user.last_name }}"
-                                    data-email="{{ caterer.user.email }}" 
-                                    data-phone="{{ caterer.user.phone_number }}"
-                                    data-city="{{ caterer.city }}"
-                                    data-address="{{ caterer.contact_address or 'Not Specified' }}"
-                                    data-joined="{{ caterer.created_at.strftime('%b %d, %Y') if caterer.created_at else 'TBD' }}"
+                            <div class="dropdown-menu-dm">
+                                <a href="/admin/verify/{{ caterer.user_id }}" class="dm-dropdown-item">
+                                    <i class="fas fa-shield-check"></i> Compliance Audit
+                                </a>
+                                <button class="dm-dropdown-item" data-id="{{ caterer.id }}"
+                                    data-business="{{ caterer.business_name }}" 
+                                    data-full-name="{{ caterer.user.first_name }} {{ caterer.user.last_name }}"
+                                    data-email="{{ caterer.user.email }}"
+                                    data-phone="{{ caterer.contact_phone or caterer.phone }}" 
                                     data-status="{{ caterer.verification_status }}"
-                                    data-account-status="{{ caterer.account_status }}"
-                                    data-rating="{{ caterer.rating or 0 }}"
-                                    data-bookings="{{ caterer.booking_count or 0 }}"
-                                    onclick="openViewCatererModal(this)">
-                                    <i class="fas fa-eye"></i> View Profile
+                                    data-province-code="{{ caterer.province_code }}"
+                                    data-city-code="{{ caterer.city_code }}"
+                                    data-brgy-code="{{ caterer.brgy_code }}"
+                                    data-address-details="{{ caterer.address_details }}"
+                                    onclick="openEditModal(this)">
+                                    <i class="fas fa-edit"></i> Edit Business Profile
                                 </button>
-
-                                <button class="dropdown-item" data-id="{{ caterer.id }}"
-                                    data-business="{{ caterer.business_name }}"
-                                    data-first="{{ caterer.user.first_name }}" data-last="{{ caterer.user.last_name }}"
-                                    data-email="{{ caterer.user.email }}" data-phone="{{ caterer.user.phone_number }}"
-                                    data-city="{{ caterer.city }}" 
-                                    data-address="{{ caterer.contact_address or '' }}"
-                                    data-lat="{{ caterer.latitude or '' }}"
-                                    data-lon="{{ caterer.longitude or '' }}"
-                                    data-verified="{{ 'true' if caterer.verification_status == 'Verified' else 'false' }}"
-                                    onclick="openEditCatererModal(this)">
-                                    <i class="fas fa-edit"></i> Edit Details
-                                </button>
-
-                                <div class="dropdown-divider" style="height: 1px; background: var(--dm-slate-50); margin: 6px 8px;"></div>
-
-                                {% if caterer.account_status == 'Active' %}
-                                <button class="dropdown-item" style="color: #ef4444;" onclick="suspendCaterer({{ caterer.id }})">
-                                    <i class="fas fa-user-slash"></i> Suspend Partner
+                                <div style="height: 1px; background: #f1f5f9; margin: 4px 8px;"></div>
+                                {% if caterer.verification_status == 'Rejected' or caterer.verification_status ==
+                                'Suspended' %}
+                                <button class="dm-dropdown-item" style="color: #2563eb;"
+                                    onclick="restorePartner({{ caterer.id }})">
+                                    <i class="fas fa-rotate-left"></i> Restore Access
                                 </button>
                                 {% else %}
-                                <button class="dropdown-item" style="color: #2563eb;" onclick="activateCaterer({{ caterer.id }})">
-                                    <i class="fas fa-user-check"></i> Activate Partner
+                                <button class="dm-dropdown-item" style="color: #f97316;"
+                                    onclick="flagPartner({{ caterer.id }})">
+                                    <i class="fas fa-flag"></i> Flag for Audit
+                                </button>
+                                <button class="dm-dropdown-item danger" onclick="suspendPartner({{ caterer.id }})">
+                                    <i class="fas fa-ban"></i> Suspend Partner
                                 </button>
                                 {% endif %}
-
-                                <form action="/admin/caterers/{{ caterer.id }}/archive" method="POST"
-                                    onsubmit="event.preventDefault(); window.showConfirm('Archive this partner profile?', () => this.submit());">
-                                    <button type="submit" class="dropdown-item danger">
-                                        <i class="fas fa-trash-alt"></i> Archive Profile
-                                    </button>
-                                </form>
                             </div>
                         </div>
                     </td>
@@ -188,776 +336,796 @@
     </div>
 </div>
 
-<!-- Standardized Modals -->
-<div id="viewCatererModal" class="admin-modal-overlay">
-    <div class="admin-modal-card">
-        <div class="modal-header-clean">
-            <h3><i class="fas fa-id-card-clip"></i> Partner Identity Summary</h3>
-            <button class="modal-close-btn" onclick="closeViewCatererModal()">&times;</button>
-        </div>
-        <div class="modal-body-clean" id="viewCatererBody"></div>
-        <div class="modal-footer-clean">
-            <button class="btn-secondary-pro" style="width: 100%; justify-content: center; background: #f1f5f9; color: #475569;"
-                onclick="closeViewCatererModal()">Dismiss Record</button>
-        </div>
-    </div>
-</div>
+<!-- Onboard New Partner Intelligence Suite -->
+<style>
+    @media (max-width: 768px) {
+        .onboard-grid {
+            grid-template-columns: 1fr !important;
+            gap: 1.5rem !important;
+        }
+
+        .onboard-matrix-col {
+            border-left: none !important;
+            padding-left: 0 !important;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 1.5rem !important;
+        }
+
+        .admin-modal-card {
+            width: 98% !important;
+            margin: 10px !important;
+        }
+    }
+
+    .status-indicator {
+        font-size: 0.65rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        padding: 2px 8px;
+        border-radius: 4px;
+        display: none;
+    }
+
+    .status-indicator.show {
+        display: inline-block;
+    }
+
+    .status-ok {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .status-error {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .input-error {
+        border-color: #ef4444 !important;
+        background: #fffafb !important;
+    }
+
+    .input-success {
+        border-color: #10b981 !important;
+        background: #f0fdf4 !important;
+    }
+</style>
 
 <div id="addCatererModal" class="admin-modal-overlay">
-    <div class="admin-modal-card">
-        <div class="modal-header-clean" style="padding: 1.75rem 2.5rem;">
-            <h3><i class="fas fa-plus-circle"></i> Onboard New Partner</h3>
-            <button class="modal-close-btn" onclick="closeAddCatererModal()">&times;</button>
+    <div class="admin-modal-card"
+        style="max-width: 900px; width: 95%; display: flex; flex-direction: column; max-height: 90vh;">
+        <div class="modal-header-clean"
+            style="border-bottom: 1px solid #f1f5f9; padding: 1.25rem 2rem; flex-shrink: 0;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div
+                    style="width: 36px; height: 36px; background: var(--adm-primary-soft); color: var(--adm-primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
+                    <i class="fas fa-plus-circle"></i>
+                </div>
+                <div>
+                    <h3
+                        style="font-size: 0.9rem; font-weight: 800; text-transform: uppercase; margin: 0; color: var(--adm-navy);">
+                        Onboard New Partner</h3>
+                    <p style="font-size: 0.7rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Data-driven
+                        identity initialization with real-time audit.</p>
+                </div>
+            </div>
+            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);"
+                onclick="closeAddCatererModal()">&times;</button>
         </div>
-        <form id="addCatererForm" class="admin-form-pro" novalidate>
-            <div class="modal-body-clean" style="padding: 2rem 2.5rem;">
-                <!-- Refined spacing: Reduced gaps between fields as requested -->
-                <div style="display: flex; flex-direction: column; gap: 1.25rem;">
 
-                    <div class="form-row-pro">
-                        <label>Business Identity Name</label>
+        <form id="addCatererForm" style="display: contents;">
+            <div class="modal-body-clean" style="overflow-y: auto; padding: 1.5rem 2rem; flex-grow: 1;">
+                <div class="onboard-grid" style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 2.5rem;">
+
+                    <!-- Primary Identity Column -->
+                    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                        <h4
+                            style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: -0.25rem;">
+                            Business & Identity</h4>
+
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <div class="dm-input-group">
+                                <i class="fas fa-store"></i>
+                                <input type="text" name="business_name" id="onboard_biz_name"
+                                    placeholder="Official Business Name" required>
+                            </div>
+                            <div id="biz_name_status" class="status-indicator"></div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 0.4fr 1fr; gap: 8px;">
+                            <div class="dm-input-group">
+                                <i class="fas fa-user"></i>
+                                <input type="text" name="first_name" id="onboard_fname" placeholder="First Name"
+                                    required>
+                            </div>
+                            <div class="dm-input-group">
+                                <input type="text" name="middle_initial" id="onboard_mi" placeholder="M.I."
+                                    maxlength="2">
+                            </div>
+                            <div class="dm-input-group">
+                                <input type="text" name="last_name" id="onboard_lname" placeholder="Last Name" required>
+                            </div>
+                        </div>
+                        <div id="name_audit_status" class="status-indicator"
+                            style="margin-top: -8px; margin-bottom: 5px;"></div>
+
+                        <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px;">
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <div class="dm-input-group">
+                                    <i class="fas fa-envelope"></i>
+                                    <input type="email" name="email" id="onboard_email" placeholder="Gmail Address"
+                                        required>
+                                </div>
+                                <div id="email_audit_status" class="status-indicator"></div>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <div class="dm-input-group">
+                                    <i class="fas fa-phone"></i>
+                                    <input type="tel" name="phone" id="onboard_phone" placeholder="09XXXXXXXXX"
+                                        maxlength="11" required>
+                                </div>
+                                <div id="phone_audit_status" class="status-indicator"></div>
+                            </div>
+                        </div>
+
+                        <h4
+                            style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: -0.25rem; margin-top: 0.5rem;">
+                            Jurisdictional Location (Official PSGC)</h4>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <div class="dm-input-group">
+                                <i class="fas fa-map"></i>
+                                <select name="province" id="onboard_province" onchange="fetchMunicipalities()">
+                                    <option value="" disabled selected>Province</option>
+                                </select>
+                            </div>
+                            <div class="dm-input-group">
+                                <i class="fas fa-city"></i>
+                                <select name="municipality" id="onboard_city" onchange="fetchBarangays()" disabled>
+                                    <option value="" disabled selected>City/Muni</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <div class="dm-input-group">
+                                <i class="fas fa-location-dot"></i>
+                                <select name="barangay" id="onboard_brgy" disabled>
+                                    <option value="" disabled selected>Barangay</option>
+                                </select>
+                            </div>
+                            <div class="dm-input-group">
+                                <i class="fas fa-road"></i>
+                                <input type="text" name="street" placeholder="Bldg/Street/Subd" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Service Matrix Column -->
+                    <div class="onboard-matrix-col"
+                        style="display: flex; flex-direction: column; gap: 1.25rem; padding-left: 2rem; border-left: 1px solid #f1f5f9;">
+                        <h4
+                            style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: -0.25rem;">
+                            Operational Matrix</h4>
+
+                        <div
+                            style="background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #f1f5f9;">
+                            <label
+                                style="display: block; font-size: 0.65rem; font-weight: 800; color: var(--adm-navy); margin-bottom: 8px; text-transform: uppercase;">Event
+                                Categories</label>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                <label
+                                    style="display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--adm-muted); cursor: pointer;"><input
+                                        type="checkbox" name="events" value="Wedding"> Wedding</label>
+                                <label
+                                    style="display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--adm-muted); cursor: pointer;"><input
+                                        type="checkbox" name="events" value="Corporate"> Corporate</label>
+                                <label
+                                    style="display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--adm-muted); cursor: pointer;"><input
+                                        type="checkbox" name="events" value="Birthday"> Birthday</label>
+                                <label
+                                    style="display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--adm-muted); cursor: pointer;"><input
+                                        type="checkbox" name="events" value="Debut"> Debut</label>
+                                <label
+                                    style="display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--adm-muted); cursor: pointer;"><input
+                                        type="checkbox" name="events" value="Party"> Social Party</label>
+                            </div>
+                        </div>
+
+                        <div
+                            style="background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #f1f5f9;">
+                            <label
+                                style="display: block; font-size: 0.65rem; font-weight: 800; color: var(--adm-navy); margin-bottom: 8px; text-transform: uppercase;">Cuisine
+                                Specialty</label>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                <label
+                                    style="display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--adm-muted); cursor: pointer;"><input
+                                        type="checkbox" name="cuisines" value="Filipino"> Filipino</label>
+                                <label
+                                    style="display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--adm-muted); cursor: pointer;"><input
+                                        type="checkbox" name="cuisines" value="Italian"> Italian</label>
+                                <label
+                                    style="display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--adm-muted); cursor: pointer;"><input
+                                        type="checkbox" name="cuisines" value="Japanese"> Japanese</label>
+                                <label
+                                    style="display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--adm-muted); cursor: pointer;"><input
+                                        type="checkbox" name="cuisines" value="American"> American</label>
+                            </div>
+                        </div>
+
+                        <div
+                            style="margin-top: auto; padding: 0.75rem; background: var(--adm-primary-soft); border-radius: 10px; border: 1px solid var(--adm-primary-light);">
+                            <div style="display: flex; gap: 10px;">
+                                <i class="fas fa-circle-info"
+                                    style="color: var(--adm-primary); margin-top: 2px; font-size: 0.8rem;"></i>
+                                <p
+                                    style="font-size: 0.65rem; color: var(--adm-navy); font-weight: 600; margin: 0; line-height: 1.4;">
+                                    New partners will receive a secure temporary password via email once onboarding is
+                                    finalized.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer-clean"
+                style="padding: 1.25rem 2rem; background: #f8fafc; border-top: 1px solid #f1f5f9; flex-shrink: 0; display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn-clean"
+                    style="background: white; border: 1px solid #e2e8f0; color: var(--adm-navy); font-size: 0.75rem;"
+                    onclick="closeAddCatererModal()">Abort</button>
+                <button type="submit" class="btn-clean"
+                    style="background: var(--adm-primary); color: white; padding: 0.75rem 2rem; font-weight: 800; font-size: 0.75rem;">Initialize
+                    Partner Profile</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Partner Profile Modal (Diamond v5) -->
+<div id="editCatererModal" class="admin-modal-overlay">
+    <div class="admin-modal-card" style="max-width: 850px; width: 95%; display: flex; flex-direction: column; max-height: 90vh;">
+        <div class="modal-header-clean" style="border-bottom: 1px solid #f1f5f9; padding: 1.25rem 2rem; flex-shrink: 0;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 36px; height: 36px; background: var(--adm-primary-soft); color: var(--adm-primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
+                    <i class="fas fa-edit"></i>
+                </div>
+                <div>
+                    <h3 style="font-size: 0.9rem; font-weight: 800; text-transform: uppercase; margin: 0; color: var(--adm-navy);">Edit Partner Profile</h3>
+                    <p style="font-size: 0.7rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Update business intelligence and jurisdictional data.</p>
+                </div>
+            </div>
+            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);" onclick="closeEditModal()">&times;</button>
+        </div>
+
+        <form id="editCatererForm" style="display: contents;">
+            <input type="hidden" name="caterer_id" id="edit_caterer_id">
+            <div class="modal-body-clean" style="overflow-y: auto; padding: 1.5rem 2rem; flex-grow: 1;">
+                
+                <div id="identity_lock_banner" style="display: none; background: #fff7ed; border: 1px solid #ffedd5; padding: 12px; border-radius: 10px; margin-bottom: 1.5rem;">
+                    <p style="margin: 0; color: #9a3412; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-lock"></i> IDENTITY LOCK ACTIVE: Core business fields are locked for Verified partners.
+                    </p>
+                </div>
+
+                <div class="onboard-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                    <!-- Column 1: Identity -->
+                    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                        <h4 style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: -0.25rem;">Entity Identity</h4>
+                        
                         <div class="dm-input-group">
                             <i class="fas fa-store"></i>
-                            <input type="text" name="business_name" id="val-business-name"
-                                placeholder="Enter business name" required>
+                            <input type="text" name="business_name" id="edit_biz_name" placeholder="Business Name" required>
                         </div>
-                        <div class="validation-msg" id="msg-business-name"></div>
-                    </div>
 
-                    <div class="form-row-pro">
-                        <label>Full Authorized Name</label>
                         <div class="dm-input-group">
                             <i class="fas fa-user-tie"></i>
-                            <input type="text" name="full_name" id="val-full-name" placeholder="e.g. Juan Dela Cruz"
-                                required>
+                            <input type="text" name="full_name" id="edit_full_name" placeholder="Full Name (Signatory)" readonly style="background: #f8fafc;">
                         </div>
-                        <div class="validation-msg" id="msg-full-name"></div>
-                    </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-                        <div class="form-row-pro">
-                            <label>Business Email</label>
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
                             <div class="dm-input-group">
                                 <i class="fas fa-envelope"></i>
-                                <input type="email" name="email" id="val-email" placeholder="example@gmail.com"
-                                    required>
+                                <input type="email" name="email" id="edit_email" placeholder="Gmail Address" required>
                             </div>
-                            <div class="validation-msg" id="msg-email"></div>
+                            <div id="edit_email_status" class="status-indicator"></div>
                         </div>
-                        <div class="form-row-pro">
-                            <label>Primary Hotline</label>
+
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
                             <div class="dm-input-group">
                                 <i class="fas fa-phone"></i>
-                                <input type="tel" name="phone" id="val-phone" placeholder="09XXXXXXXXX" maxlength="11"
-                                    required>
+                                <input type="tel" name="phone" id="edit_phone" placeholder="Contact Phone" required>
                             </div>
-                            <div class="validation-msg" id="msg-phone"></div>
+                            <div id="edit_phone_status" class="status-indicator"></div>
                         </div>
                     </div>
 
-                    <div class="form-row-pro">
-                        <label>Detailed Address (Purok, Barangay, Street)</label>
-                        <div class="dm-input-group">
-                            <i class="fas fa-location-dot"></i>
-                            <textarea name="contact_address" id="val-address" placeholder="e.g. Purok 4, Brgy. San Juan" required rows="2"></textarea>
-                        </div>
-                    </div>
-
-                    <div class="form-row-pro">
-                        <label>Operational Domain (Laguna Regions)</label>
-                        <div class="dm-input-group">
-                            <i class="fas fa-map-location-dot"></i>
-                            <select name="city" id="val-city" required>
-                                <option value="" disabled selected>Select Municipality...</option>
-                                <optgroup label="Core Districts">
-                                    <option value="Sta. Cruz, Laguna">Sta. Cruz (Capital)</option>
-                                    <option value="Pagsanjan, Laguna">Pagsanjan</option>
-                                    <option value="Lumban, Laguna">Lumban</option>
-                                </optgroup>
-                                <optgroup label="South/East Laguna">
-                                    <option value="San Pablo, Laguna">San Pablo City</option>
-                                    <option value="Calamba, Laguna">Calamba City</option>
-                                    <option value="Los Baños, Laguna">Los Baños</option>
-                                    <option value="Bay, Laguna">Bay</option>
-                                </optgroup>
-                                <optgroup label="Coastal Districts">
-                                    <option value="Siniloan, Laguna">Siniloan</option>
-                                    <option value="Paete, Laguna">Paete</option>
-                                    <option value="Pakil, Laguna">Pakil</option>
-                                </optgroup>
-                            </select>
-                        </div>
-                    </div>
-
-                    <input type="hidden" name="latitude" id="admin-add-lat">
-                    <input type="hidden" name="longitude" id="admin-add-lon">
-
-                </div>
-            </div>
-            <div class="modal-footer-clean">
-                <button type="button" class="btn-secondary-pro" onclick="closeAddCatererModal()">Cancel</button>
-                <button type="submit" class="btn-add-pro" id="btn-initialize">Initialize Profile</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<div id="editCatererModal" class="admin-modal-overlay">
-    <div class="admin-modal-card">
-        <div class="modal-header-clean">
-            <h3><i class="fas fa-user-shield"></i> Adjudicate Partner Identity</h3>
-            <button class="modal-close-btn" onclick="closeEditCatererModal()">&times;</button>
-        </div>
-        <form id="editCatererForm" class="admin-form-pro">
-            <input type="hidden" name="caterer_id" id="editCatererId">
-            <div class="modal-body-clean" style="padding: 2rem 2.5rem;">
-                <div style="display: flex; flex-direction: column; gap: 1.5rem;">
-                    
-                    <div class="form-row-pro">
-                        <label>Business Identity</label>
-                        <div class="dm-input-group">
-                            <i class="fas fa-store"></i>
-                            <input type="text" name="business_name" id="editBusinessName" placeholder="Business Name" required>
-                        </div>
-                    </div>
-
-                    <div class="form-row-pro">
-                        <label>Authorized Signatory</label>
-                        <div class="dm-input-group">
-                            <i class="fas fa-user-tie"></i>
-                            <input type="text" name="full_name" id="editFullName" placeholder="Full Authorized Name" required>
-                        </div>
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-                        <div class="form-row-pro">
-                            <label>Business Email Identity</label>
-                            <div class="dm-input-group">
-                                <i class="fas fa-envelope-open"></i>
-                                <input type="email" name="email" id="editEmail" placeholder="Email Address" required>
-                            </div>
-                        </div>
-                        <div class="form-row-pro">
-                            <label>Primary Hotline</label>
-                            <div class="dm-input-group">
-                                <i class="fas fa-phone-square"></i>
-                                <input type="tel" name="phone" id="editPhone" placeholder="Phone Number" required>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style="margin-top: 0.5rem;">
-                        <div id="adminViewMap" style="height: 180px; width: 100%; border-radius: 12px; border: 1.5px solid #f1f5f9; background: #f8fafc;"></div>
-                    </div>
-
-                    <div class="form-row-pro">
-                        <label>Detailed Address (Purok, Barangay, Street)</label>
-                        <div class="dm-input-group">
-                            <i class="fas fa-location-dot"></i>
-                            <textarea name="contact_address" id="editAddress" placeholder="e.g. Purok 1, Brgy. Malabanan" required rows="2"></textarea>
-                        </div>
-                    </div>
-
-                    <div class="form-row-pro">
-                        <label>Operational Domain (Laguna)</label>
+                    <!-- Column 2: Jurisdiction -->
+                    <div style="display: flex; flex-direction: column; gap: 1.25rem; border-left: 1px solid #f1f5f9; padding-left: 2rem;" class="onboard-matrix-col">
+                        <h4 style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: -0.25rem;">Jurisdictional Data</h4>
+                        
                         <div class="dm-input-group">
                             <i class="fas fa-map-marker-alt"></i>
-                            <select name="city" id="editCity" required>
-                                <option value="Sta. Cruz, Laguna">Sta. Cruz, Laguna</option>
-                                <option value="Pagsanjan, Laguna">Pagsanjan, Laguna</option>
-                                <option value="Lumban, Laguna">Lumban, Laguna</option>
-                                <option value="San Pablo, Laguna">San Pablo, Laguna</option>
-                                <option value="Calamba, Laguna">Calamba, Laguna</option>
-                                <option value="Los Baños, Laguna">Los Baños, Laguna</option>
-                                <option value="Bay, Laguna">Bay, Laguna</option>
-                                <option value="Siniloan, Laguna">Siniloan, Laguna</option>
-                                <option value="Paete, Laguna">Paete, Laguna</option>
-                                <option value="Pakil, Laguna">Pakil, Laguna</option>
+                            <select id="edit_province" name="province" required onchange="loadEditCities(this.value)">
+                                <option value="" disabled selected>Select Province</option>
                             </select>
                         </div>
+
+                        <div class="dm-input-group">
+                            <i class="fas fa-city"></i>
+                            <select id="edit_city" name="city" required onchange="loadEditBrgys(this.value)">
+                                <option value="" disabled selected>Select City/Municipality</option>
+                            </select>
+                        </div>
+
+                        <div class="dm-input-group">
+                            <i class="fas fa-building"></i>
+                            <select id="edit_barangay" name="barangay" required>
+                                <option value="" disabled selected>Select Barangay</option>
+                            </select>
+                        </div>
+
+                        <div class="dm-input-group">
+                            <i class="fas fa-road"></i>
+                            <input type="text" name="address_details" id="edit_address_details" placeholder="Street / House No. / Landmark">
+                        </div>
                     </div>
-
-                    <input type="hidden" name="latitude" id="admin-edit-lat">
-                    <input type="hidden" name="longitude" id="admin-edit-lon">
-
                 </div>
             </div>
-            <div class="modal-footer-clean">
-                <button type="button" class="btn-secondary-pro" onclick="closeEditCatererModal()">Abort</button>
-                <button type="submit" class="btn-add-pro">Commit Changes</button>
+
+            <div class="modal-footer-clean" style="padding: 1.25rem 2rem; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 12px; flex-shrink: 0;">
+                <button type="button" class="btn-clean" style="background: white; border: 1px solid var(--adm-border-light);" onclick="closeEditModal()">Dismiss</button>
+                <button type="submit" class="btn-clean" style="background: var(--adm-primary); color: white; min-width: 160px; font-weight: 800;">
+                    <i class="fas fa-save"></i> Commit Changes
+                </button>
             </div>
         </form>
     </div>
 </div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    // --- ADMIN AUTO-GEO FETCH LOGIC ---
-    let adminGeoTimeout;
-    async function adminFetchGeo(addressId, cityId, latId, lonId) {
-        clearTimeout(adminGeoTimeout);
-        adminGeoTimeout = setTimeout(async () => {
-            const addr = document.getElementById(addressId).value.trim();
-            const city = document.getElementById(cityId).value.trim();
-            const full = `${addr} ${city}`.trim();
-            if (full.length < 5) return;
 
-            console.log(\"[ADMIN GEO] Fetching for: \", full);
-            try {
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(full)}&limit=1`);
-                const data = await res.json();
-                if (data && data.length > 0) {
-                    document.getElementById(latId).value = data[0].lat;
-                    document.getElementById(lonId).value = data[0].lon;
-                    console.log(\"[ADMIN GEO] Linked to coordinates: \", data[0].lat, data[0].lon);
-                }
-            } catch (err) {
-                console.error(\"[ADMIN GEO] Error: \", err);
-            }
-        }, 1500);
-    }
 
-    // Attach to Add Modal
-    setTimeout(() => {
-        const addAddr = document.getElementById('val-address');
-        const addCity = document.getElementById('val-city');
-        if(addAddr) addAddr.oninput = () => adminFetchGeo('val-address', 'val-city', 'admin-add-lat', 'admin-add-lon');
-        if(addCity) addCity.onchange = () => adminFetchGeo('val-address', 'val-city', 'admin-add-lat', 'admin-add-lon');
-
-        const editAddr = document.getElementById('editAddress');
-        const editCity = document.getElementById('editCity');
-        if(editAddr) editAddr.oninput = () => adminFetchGeo('editAddress', 'editCity', 'admin-edit-lat', 'admin-edit-lon');
-        if(editCity) editCity.onchange = () => adminFetchGeo('editAddress', 'editCity', 'admin-edit-lat', 'admin-edit-lon');
-    }, 1000);
-
-    // Real-time Hub
-    window.addEventListener('system_update', function (e) {
-        if (['new_signup', 'kyc_update', 'caterer_update', 'user_archived'].includes(e.detail.type)) {
-            refreshCaterersTerminal();
-        }
-    });
-
-    async function refreshCaterersTerminal() {
-        const statusEl = document.getElementById('caterer-sync-status');
-        if (statusEl) statusEl.innerHTML = '<i class="fas fa-sync fa-spin" style="color: var(--dm-primary);"></i> SYNCING...';
-
-        try {
-            const res = await fetch('/admin/api/caterers-overview');
-            const data = await res.json();
-            if (data.success) {
-                document.getElementById('kpi-total').innerText = data.metrics.total_caterers;
-                document.getElementById('kpi-pending').innerText = data.metrics.pending_caterers_count;
-                document.getElementById('kpi-verified').innerText = data.metrics.approved_caterers_count;
-
-                const tbody = document.querySelector('#caterersTable tbody');
-                tbody.innerHTML = data.caterers.map(c => `
-                    <tr class="cust-row">
-                        <td>
-                            <div style="font-weight: 700; color: var(--dm-secondary);">${c.business_name}</div>
-                            <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
-                                <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 600;">
-                                    <i class="fas fa-star" style="color: #f59e0b;"></i> ${c.rating.toFixed(1)}
-                                </span>
-                                <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 600;">
-                                    <i class="fas fa-calendar-check" style="color: var(--dm-primary);"></i> ${c.booking_count} Bookings
-                                </span>
-                            </div>
-                        </td>
-                        <td>
-                            <div style="font-weight: 600;">${c.first_name} ${c.last_name}</div>
-                            <div style="font-size: 0.8rem; color: var(--dm-slate-400);">${c.email}</div>
-                        </td>
-                        <td>
-                            <div style="font-weight: 500; color: var(--dm-slate-700); font-size: 0.9rem;">
-                                <i class="fas fa-map-marker-alt" style="margin-right: 6px; color: var(--dm-primary); opacity: 0.7;"></i>
-                                ${c.contact_address || 'No detailed address'}
-                            </div>
-                            <div style="font-size: 0.75rem; color: var(--dm-slate-400); margin-left: 20px;">
-                                ${c.city}
-                                ${(!c.contact_address && c.verification_status === 'Verified') ? `<span style="color: #ef4444; font-size: 0.65rem; font-weight: 700; margin-left: 8px;"><i class="fas fa-triangle-exclamation"></i> ADDRESS AUDIT REQ.</span>` : ''}
-                            </div>
-                        </td>
-                        <td>
-                            <div style="display: flex; flex-direction: column; gap: 6px;">
-                                <span class="badge-clean" style="font-size: 0.65rem; background: ${c.verification_status === 'Verified' ? '#ecfdf5; color: #10b981;' : (c.verification_status === 'Pending' ? '#fff7ed; color: #f97316;' : '#fef2f2; color: #ef4444;')};">
-                                    <i class="fas ${c.verification_status === 'Verified' ? 'fa-check-circle' : (c.verification_status === 'Pending' ? 'fa-clock' : 'fa-ban')}"></i>
-                                    ${c.verification_status}
-                                </span>
-                                <span class="badge-clean" style="font-size: 0.65rem; background: ${c.account_status === 'Active' ? '#eff6ff; color: #2563eb;' : '#f1f5f9; color: #64748b;'};">
-                                    <i class="fas ${c.account_status === 'Active' ? 'fa-user-check' : 'fa-user-slash'}"></i>
-                                    ${c.account_status}
-                                </span>
-                            </div>
-                        </td>
-                        <td style="text-align: right;">
-                            <div class="actions-dropdown">
-                                <button class="dropdown-trigger" onclick="toggleDropdown(this, event)"><i class="fas fa-ellipsis-v"></i></button>
-                                <div class="dropdown-menu">
-                                    <button class="dropdown-item" 
-                                        data-business="${c.business_name}" data-owner="${c.first_name} ${c.last_name}"
-                                        data-email="${c.email}" data-phone="${c.contact_phone}"
-                                        data-city="${c.city}" data-address="${c.contact_address || 'Not Specified'}"
-                                        data-joined="${c.created_at}" data-status="${c.verification_status}"
-                                        data-account-status="${c.account_status}" data-rating="${c.rating}"
-                                        data-bookings="${c.booking_count}"
-                                        onclick="openViewCatererModal(this)">
-                                        <i class="fas fa-eye"></i> View Profile
-                                    </button>
-                                    <button class="dropdown-item" 
-                                        data-id="${c.id}" data-business="${c.business_name}"
-                                        data-first="${c.first_name}" data-last="${c.last_name}"
-                                        data-email="${c.email}" data-phone="${c.contact_phone}" 
-                                        data-city="${c.city}" data-address="${c.contact_address || ''}"
-                                        data-lat="${c.latitude || ''}" data-lon="${c.longitude || ''}"
-                                        data-verified="${c.verification_status === 'Verified'}"
-                                        onclick="openEditCatererModal(this)">
-                                        <i class="fas fa-edit"></i> Edit Details
-                                    </button>
-                                    <div class="dropdown-divider" style="height: 1px; background: var(--dm-slate-50); margin: 6px 8px;"></div>
-                                    ${c.account_status === 'Active' ? 
-                                        `<button class="dropdown-item" style="color: #ef4444;" onclick="suspendCaterer(${c.id})"><i class="fas fa-user-slash"></i> Suspend Partner</button>` :
-                                        `<button class="dropdown-item" style="color: #2563eb;" onclick="activateCaterer(${c.id})"><i class="fas fa-user-check"></i> Activate Partner</button>`
-                                    }
-                                    <form action="/admin/caterers/${c.id}/archive" method="POST" onsubmit="event.preventDefault(); window.showConfirm('Archive this partner profile?', () => this.submit());">
-                                        <button type="submit" class="dropdown-item danger"><i class="fas fa-trash-alt"></i> Archive Profile</button>
-                                    </form>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                `).join('');
-                if (statusEl) statusEl.innerHTML = '<i class="fas fa-circle pulse-live" style="font-size: 8px; color: var(--dm-primary);"></i> Live Partner Sync Active';
-            }
-        } catch (err) {
-            if (statusEl) statusEl.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i> SYNC OFFLINE';
-        }
-    }
-
-    // --- Admin Terminal Core Logic ---
-    function toggleDropdown(btn, event) {
+    // --- UI State Management (Diamond v6) ---
+    function toggleActionDropdown(btn, event) {
         event.stopPropagation();
-        document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
-            if (menu !== btn.nextElementSibling) {
-                menu.classList.remove('show');
-                menu.previousElementSibling.classList.remove('active');
-            }
+        const menu = btn.nextElementSibling;
+        document.querySelectorAll('.dropdown-menu-dm').forEach(m => {
+            if (m !== menu) m.classList.remove('show');
         });
-        btn.nextElementSibling.classList.toggle('show');
-        btn.classList.toggle('active');
+        menu.classList.toggle('show');
     }
 
-    window.addEventListener('click', () => {
-        document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
-            menu.classList.remove('show');
-            menu.previousElementSibling.classList.remove('active');
-        });
-    });
+    // Close dropdowns on outside click
+    window.onclick = () => {
+        document.querySelectorAll('.dropdown-menu-dm').forEach(m => m.classList.remove('show'));
+    };
 
     function filterCaterers() {
-        const query = document.getElementById('catererSearchInput').value.toLowerCase();
-        const rows = document.querySelectorAll('.cust-row');
-        rows.forEach(row => { row.style.display = row.innerText.toLowerCase().includes(query) ? '' : 'none'; });
+        const s = document.getElementById('catererStatusFilter').value.toLowerCase();
+        document.querySelectorAll('.cust-row').forEach(r => {
+            const stat = r.querySelector('.badge-clean')?.innerText.toLowerCase() || '';
+            r.style.display = (s === 'all' || stat.includes(s)) ? '' : 'none';
+        });
     }
 
-    // Modal Control Hub
     function openAddCatererModal() {
         document.getElementById('addCatererModal').classList.add('active');
-        document.body.style.overflow = 'hidden';
+        if (document.getElementById('onboard_province').options.length <= 1) fetchProvinces();
     }
-    function closeAddCatererModal() {
-        document.getElementById('addCatererModal').classList.remove('active');
-        document.body.style.overflow = '';
-    }
-    function closeViewCatererModal() {
-        document.getElementById('viewCatererModal').classList.remove('active');
-        document.body.style.overflow = '';
-    }
-    function closeEditCatererModal() {
-        document.getElementById('editCatererModal').classList.remove('active');
-        document.body.style.overflow = '';
-    }
+    function closeAddCatererModal() { document.getElementById('addCatererModal').classList.remove('active'); }
 
-    function openViewCatererModal(btn) {
-        const body = document.getElementById('viewCatererBody');
-        const status = btn.dataset.status;
-        const accStatus = btn.dataset.accountStatus;
-        const rating = btn.dataset.rating;
-        const bookings = btn.dataset.bookings;
+    // Real Administrative Logic
+    async function executePartnerAction(id, action, reason = null) {
+        const formData = new FormData();
+        if (reason) formData.append('reason', reason);
 
-        body.innerHTML = `
-            <div style="background: #f8fafc; padding: 2rem; border-radius: 20px; margin-bottom: 2rem;">
-                <div style="background: #ffffff; padding: 1.5rem; border-radius: 16px; display: flex; align-items: center; gap: 1.25rem; box-shadow: 0 4px 12px rgba(0,0,0,0.03); border: 1px solid #f1f5f9;">
-                    <div style="width: 64px; height: 64px; border-radius: 14px; background: #fff7ed; color: #f97316; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800; border: 2px solid #ffedd5;">
-                        ${btn.dataset.business.substring(0, 2).toUpperCase()}
-                    </div>
-                    <div>
-                        <div style="font-size: 1.25rem; font-weight: 800; color: var(--dm-secondary); margin-bottom: 4px;">${btn.dataset.business}</div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 0.65rem; font-weight: 800; color: #16a34a; background: #f0fdf4; padding: 4px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 4px;">
-                                <i class="fas fa-shield-check"></i> ${status}
-                            </span>
-                            <span style="font-size: 0.65rem; font-weight: 800; color: ${accStatus === 'Active' ? '#2563eb' : '#64748b'}; background: ${accStatus === 'Active' ? '#eff6ff' : '#f1f5f9'}; padding: 4px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.05em;">
-                                ${accStatus}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="kpi-grid-clean" style="grid-template-columns: 1fr 1fr; margin-bottom: 2rem;">
-                <div class="kpi-card-clean" style="padding: 1rem; border: 1.5px solid #f1f5f9;">
-                    <div style="font-size: 0.65rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">Trust Rating</div>
-                    <div style="font-size: 1.25rem; font-weight: 800; color: #f59e0b;"><i class="fas fa-star"></i> ${rating} / 5.0</div>
-                </div>
-                <div class="kpi-card-clean" style="padding: 1rem; border: 1.5px solid #f1f5f9;">
-                    <div style="font-size: 0.65rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">Throughput</div>
-                    <div style="font-size: 1.25rem; font-weight: 800; color: var(--dm-primary);"><i class="fas fa-receipt"></i> ${bookings} Events</div>
-                </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; padding: 0 1rem;">
-                <div>
-                    <div style="font-size: 0.65rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Contact Email</div>
-                    <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--dm-secondary);">
-                        <i class="fas fa-envelope" style="color: #f97316; font-size: 0.9rem;"></i>
-                        ${btn.dataset.email}
-                    </div>
-                </div>
-                <div>
-                    <div style="font-size: 0.65rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Mobile Number</div>
-                    <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--dm-secondary);">
-                        <i class="fas fa-phone" style="color: #f97316; font-size: 0.9rem;"></i>
-                        ${btn.dataset.phone}
-                    </div>
-                </div>
-            </div>
-
-            <div style="margin-bottom: 2rem; padding: 0 1rem;">
-                <div style="font-size: 0.65rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Authorized Representative & Operational Address</div>
-                <div style="display: flex; align-items: flex-start; gap: 8px; font-weight: 700; color: var(--dm-secondary); line-height: 1.4;">
-                    <i class="fas fa-map-location-dot" style="color: #f97316; font-size: 0.9rem; margin-top: 3px;"></i>
-                    <div style="flex: 1;">
-                        <div>${btn.dataset.owner}</div>
-                        <div style="font-size: 0.85rem; font-weight: 600; color: var(--dm-secondary);">${btn.dataset.address}</div>
-                        <div style="font-size: 0.75rem; font-weight: 500; color: #64748b;">${btn.dataset.city}</div>
-                        
-                        <div style="margin-top: 1rem; height: 150px; width: 100%; border-radius: 12px; border: 1.5px solid #f1f5f9; overflow: hidden;" id="adminViewMap"></div>
-                    </div>
-                </div>
-            </div>
-            
-            <div style="padding: 1.5rem; background: #ffffff; border-radius: 16px; border: 1.5px solid #fff7ed; display: flex; gap: 1.25rem; align-items: flex-start; margin-bottom: 1rem; box-shadow: 0 4px 15px rgba(249, 115, 22, 0.03);">
-                <div style="width: 40px; height: 40px; border-radius: 10px; background: #fff7ed; display: flex; align-items: center; justify-content: center; color: #f97316; flex-shrink: 0;">
-                    <i class="fas fa-shield-halved"></i>
-                </div>
-                <div style="flex: 1;">
-                    <div style="font-size: 0.72rem; font-weight: 900; color: #ea580c; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">Compliance Intelligence Memo</div>
-                    <div style="font-size: 0.82rem; color: #475569; line-height: 1.6; font-weight: 500;">
-                        This record represents an active platform partner. Business identity verification and operational history are maintained for security assurance and quality compliance.
-                    </div>
-                </div>
-            </div>
-        `;
-        document.getElementById('viewCatererModal').classList.add('active');
-        document.body.style.overflow = 'hidden';
-
-        // Initialize Map with Safety Check
-        setTimeout(() => {
-            if (typeof google !== 'undefined' && google.maps) {
-                const lat = parseFloat(btn.dataset.lat) || 14.2811;
-                const lng = parseFloat(btn.dataset.lon) || 121.4150;
-                const mapPos = { lat, lng };
-                const map = new google.maps.Map(document.getElementById('adminViewMap'), {
-                    zoom: 15,
-                    center: mapPos,
-                    mapId: "OCCA_ADMIN_VIEW",
-                    disableDefaultUI: true,
-                    zoomControl: true
-                });
-                new google.maps.Marker({
-                    position: mapPos,
-                    map: map,
-                    title: btn.dataset.business
-                });
+        try {
+            const res = await fetch(`/admin/api/caterers/${id}/${action}`, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (data.success) {
+                Swal.fire({ title: 'Action Executed', text: data.message, icon: 'success', timer: 2000, showConfirmButton: false });
+                setTimeout(() => window.location.reload(), 1500);
             } else {
-                const mapDiv = document.getElementById('adminViewMap');
-                if (mapDiv) {
-                    mapDiv.style.display = 'flex';
-                    mapDiv.style.alignItems = 'center';
-                    mapDiv.style.justifyContent = 'center';
-                    mapDiv.style.fontSize = '0.75rem';
-                    mapDiv.style.color = '#94a3b8';
-                    mapDiv.innerHTML = '<i class="fas fa-map-marked-alt" style="margin-right: 8px;"></i> Map preview unavailable';
-                }
+                Swal.fire('Error', data.message, 'error');
             }
-        }, 400);
+        } catch (err) {
+            Swal.fire('System Error', 'Could not reach adjudication server.', 'error');
+        }
     }
 
-    function openEditCatererModal(btn) {
-        const isVerified = btn.dataset.verified === 'true';
+    function restorePartner(id) {
+        Swal.fire({
+            title: 'Restore Access?',
+            text: "This will reactivate the partner entity and allow them to take bookings.",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Restore Access',
+            confirmButtonColor: '#10b981'
+        }).then((result) => {
+            if (result.isConfirmed) executePartnerAction(id, 'activate');
+        });
+    }
+
+    function suspendPartner(id) {
+        openReasonModal('Suspend Partner', 'Please state the reason for immediate suspension.', (reason) => {
+            executePartnerAction(id, 'suspend', reason);
+        });
+    }
+
+    function flagPartner(id) {
+        openReasonModal('Flag for Review', 'State the reason for compliance investigation.', (reason) => {
+            executePartnerAction(id, 'flag', reason);
+        });
+    }
+
+    function openReasonModal(title, desc, callback) {
+        const modal = document.getElementById('reasonModal');
+        document.getElementById('reasonModalTitle').innerText = title;
+        document.getElementById('reasonModalDesc').innerText = desc;
+        document.getElementById('actionReason').value = '';
+        modal.classList.add('active');
+
+        document.getElementById('reasonSubmitBtn').onclick = () => {
+            const reason = document.getElementById('actionReason').value.trim();
+            if (!reason) return Swal.fire('Mandatory Field', 'Please provide a reason for the audit trail.', 'warning');
+            modal.classList.remove('active');
+            callback(reason);
+        };
+    }
+
+    // --- Edit Partner Intelligence Suite ---
+    async function openEditModal(btn) {
+        const id = btn.getAttribute('data-id');
+        const bizName = btn.getAttribute('data-business');
+        const email = btn.getAttribute('data-email');
+        const phone = btn.getAttribute('data-phone');
+        const fullName = btn.getAttribute('data-full-name');
+        const status = btn.getAttribute('data-status');
         
-        document.getElementById('editCatererId').value = btn.dataset.id;
+        const provCode = btn.getAttribute('data-province-code');
+        const cityCode = btn.getAttribute('data-city-code');
+        const brgyCode = btn.getAttribute('data-brgy-code');
+        const addressDetails = btn.getAttribute('data-address-details');
+
+        document.getElementById('edit_caterer_id').value = id;
+        document.getElementById('edit_biz_name').value = bizName;
+        document.getElementById('edit_full_name').value = fullName;
+        document.getElementById('edit_email').value = email;
+        document.getElementById('edit_phone').value = phone;
+        document.getElementById('edit_address_details').value = addressDetails || "";
+
+        // Identity Lock Enforcement
+        const banner = document.getElementById('identity_lock_banner');
+        const bizInp = document.getElementById('edit_biz_name');
+        const nameInp = document.getElementById('edit_full_name');
         
-        const bizField = document.getElementById('editBusinessName');
-        bizField.value = btn.dataset.business;
-        bizField.readOnly = isVerified;
-        bizField.style.background = isVerified ? '#f8fafc' : '#ffffff';
-        bizField.style.cursor = isVerified ? 'not-allowed' : 'text';
-
-        const nameField = document.getElementById('editFullName');
-        nameField.value = btn.dataset.first + " " + btn.dataset.last;
-        nameField.readOnly = isVerified;
-        nameField.style.background = isVerified ? '#f8fafc' : '#ffffff';
-        nameField.style.cursor = isVerified ? 'not-allowed' : 'text';
-
-        document.getElementById('editEmail').value = btn.dataset.email;
-        document.getElementById('editPhone').value = btn.dataset.phone;
-        document.getElementById('editCity').value = btn.dataset.city;
-        document.getElementById('editAddress').value = btn.dataset.address;
-        document.getElementById('admin-edit-lat').value = btn.dataset.lat;
-        document.getElementById('admin-edit-lon').value = btn.dataset.lon;
-
-        // Visual Hint for Identity Lock
-        if (isVerified) {
-            const hint = document.createElement('div');
-            hint.id = 'identity-lock-hint';
-            hint.style = 'background: #f0f9ff; color: #0369a1; padding: 10px 15px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 10px; border: 1px solid #bae6fd;';
-            hint.innerHTML = '<i class="fas fa-lock"></i> Identity Lock Active: Core business details are verified and read-only.';
-            
-            const formBody = document.querySelector('#editCatererForm .modal-body-clean div');
-            if (!document.getElementById('identity-lock-hint')) {
-                formBody.prepend(hint);
-            }
+        if (status === 'Verified') {
+            banner.style.display = 'block';
+            bizInp.readOnly = true;
+            bizInp.style.background = '#f8fafc';
+            nameInp.readOnly = true;
+            nameInp.style.background = '#f8fafc';
         } else {
-            const hint = document.getElementById('identity-lock-hint');
-            if (hint) hint.remove();
+            banner.style.display = 'none';
+            bizInp.readOnly = false;
+            bizInp.style.background = 'transparent';
+            nameInp.readOnly = false;
+            nameInp.style.background = 'transparent';
         }
 
         document.getElementById('editCatererModal').classList.add('active');
-        document.body.style.overflow = 'hidden';
+        await loadEditProvinces(provCode, cityCode, brgyCode);
     }
 
-    async function suspendCaterer(id) {
-        if (!confirm("Are you sure you want to suspend this partner? They will no longer appear in the marketplace.")) return;
+    function closeEditModal() { document.getElementById('editCatererModal').classList.remove('active'); }
+
+    // --- Edit Submission Logic ---
+    document.getElementById('editCatererForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const cid = document.getElementById('edit_caterer_id').value;
+        const fd = new FormData(e.target);
+        
+        // Add names for legacy sync
+        const provEl = document.getElementById('edit_province');
+        const cityEl = document.getElementById('edit_city');
+        const brgyEl = document.getElementById('edit_barangay');
+        
+        if (provEl.selectedIndex > 0) fd.append('province_name', provEl.options[provEl.selectedIndex].text);
+        if (cityEl.selectedIndex > 0) fd.append('city_name', cityEl.options[cityEl.selectedIndex].text);
+        if (brgyEl.selectedIndex > 0) fd.append('brgy_name', brgyEl.options[brgyEl.selectedIndex].text);
+
         try {
-            const res = await fetch(`/admin/api/caterers/${id}/suspend`, { method: 'POST' });
+            const res = await fetch(`/admin/api/caterers/${cid}/edit`, { method: 'POST', body: fd });
             const data = await res.json();
-            if (data.success) window.location.reload();
-        } catch (err) { alert("Failed to suspend partner."); }
-    }
-
-    async function activateCaterer(id) {
-        try {
-            const res = await fetch(`/admin/api/caterers/${id}/activate`, { method: 'POST' });
-            const data = await res.json();
-            if (data.success) window.location.reload();
-        } catch (err) { alert("Failed to activate partner."); }
-    }
-
-    const editForm = document.getElementById('editCatererForm');
-    if (editForm) {
-        editForm.onsubmit = async (e) => {
-            e.preventDefault();
-            const catererId = document.getElementById('editCatererId').value;
-            const formData = new FormData(editForm);
-            
-            try {
-                const res = await fetch(`/admin/api/caterers/${catererId}/edit`, {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await res.json();
-                if (data.success) {
-                    window.location.reload();
-                } else {
-                    alert(data.message || 'Update failed');
-                }
-            } catch (err) {
-                alert('Connection Error: Unable to update partner.');
-            }
-        };
-    }
-
-    // --- Smart Real-time Validation Engine (High Fidelity) ---
-    const addForm = document.getElementById('addCatererForm');
-    if (addForm) {
-        const fields = {
-            bizName: document.getElementById('val-business-name'),
-            fullName: document.getElementById('val-full-name'),
-            email: document.getElementById('val-email'),
-            phone: document.getElementById('val-phone'),
-            city: addForm.querySelector('select[name="city"]')
-        };
-        const submitBtn = document.getElementById('btn-initialize');
-
-        const state = {
-            bizName: false,
-            fullName: false,
-            email: false,
-            phone: false,
-            city: false
-        };
-
-        const updateBtnState = () => {
-            const allValid = Object.values(state).every(v => v === true);
-            submitBtn.disabled = !allValid;
-            submitBtn.style.opacity = allValid ? '1' : '0.6';
-            submitBtn.style.cursor = allValid ? 'pointer' : 'not-allowed';
-        };
-
-        const validateField = async (field, msgId, validator, stateKey) => {
-            const value = field.value.trim();
-            const msgEl = document.getElementById(msgId);
-            const group = field.parentElement;
-
-            group.classList.add('validating');
-            const result = await validator(value);
-            group.classList.remove('validating');
-
-            if (result.error) {
-                msgEl.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${result.message}`;
-                msgEl.className = 'validation-msg error';
-                group.classList.add('error');
-                group.classList.remove('success');
-                state[stateKey] = false;
-            } else {
-                msgEl.innerHTML = `<i class="fas fa-check-circle"></i> ${result.message || 'Field verified'}`;
-                msgEl.className = 'validation-msg success';
-                group.classList.add('success');
-                group.classList.remove('error');
-                state[stateKey] = true;
-            }
-            updateBtnState();
-        };
-
-        // Validators
-        const bizValidator = async (val) => {
-            if (val.length < 3) return { error: true, message: 'Minimum 3 characters required' };
-            if (!/^[a-zA-Z0-9\s\.]+$/.test(val)) return { error: true, message: 'Letters, numbers, spaces, and dots allowed' };
-            if (/^\d+$/.test(val)) return { error: true, message: 'Business name cannot be purely numeric' };
-
-            try {
-                const res = await fetch(`/admin/caterers/check-availability?business_name=${encodeURIComponent(val)}`);
-                const data = await res.json();
-                if (data.business_name_taken) return { error: true, message: 'This business identity is already in our registry' };
-            } catch (e) { return { error: false, message: 'Unique business identity' }; }
-            return { error: false, message: 'Professional business identity' };
-        };
-
-        const personNameValidator = async (val) => {
-            if (val.length < 5) return { error: true, message: 'Full name too short (min 5 characters)' };
-            if (!/^[a-zA-Z\s\-]+$/.test(val)) return { error: true, message: 'No numbers or special characters allowed' };
-            
-            const parts = val.trim().split(/\s+/);
-            if (parts.length < 2) return { error: true, message: 'Please enter both first and last name' };
-            
-            // Local Check: Duplicate names (e.g. "John John")
-            const uniqueParts = new Set(parts.map(p => p.toLowerCase()));
-            if (uniqueParts.size !== parts.length) {
-                return { error: true, message: 'Repetitive names detected (e.g. John John)' };
-            }
-
-            try {
-                const res = await fetch(`/admin/caterers/check-availability?full_name=${encodeURIComponent(val)}`);
-                const data = await res.json();
-                if (data.name_taken) return { error: true, message: 'This signatory is already registered as a partner' };
-            } catch (e) { }
-            
-            return { error: false, message: 'Professional identity verified' };
-        };
-
-        const emailValidator = async (val) => {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(val)) return { error: true, message: 'Please enter a valid email address' };
-            if (!val.endsWith('@gmail.com')) return { error: true, message: 'Only @gmail.com addresses are permitted' };
-
-            try {
-                const res = await fetch(`/admin/caterers/check-availability?email=${encodeURIComponent(val)}`);
-                const data = await res.json();
-                if (data.email_taken) return { error: true, message: 'Email identity already registered' };
-            } catch (e) { return { error: false, message: 'Valid and available email' }; }
-            return { error: false, message: 'Secure business email' };
-        };
-
-        const phoneValidator = async (val) => {
-            if (!val.startsWith('09')) return { error: true, message: 'Hotline must start with 09' };
-            if (val.length !== 11) return { error: true, message: 'Phone number must be exactly 11 digits' };
-            if (/(\d)\1{2,}/.test(val)) return { error: true, message: 'Repetitive numbers detected (e.g. 111)' };
-
-            try {
-                const res = await fetch(`/admin/caterers/check-availability?phone=${encodeURIComponent(val)}`);
-                const data = await res.json();
-                if (data.phone_taken) return { error: true, message: 'Mobile number already in use' };
-            } catch (e) { }
-
-            return { error: false, message: 'Valid Philippine mobile signature' };
-        };
-
-        // Event Listeners
-        fields.bizName.addEventListener('blur', () => validateField(fields.bizName, 'msg-business-name', bizValidator, 'bizName'));
-        fields.fullName.addEventListener('input', () => validateField(fields.fullName, 'msg-full-name', personNameValidator, 'fullName'));
-        fields.email.addEventListener('blur', () => validateField(fields.email, 'msg-email', emailValidator, 'email'));
-        fields.phone.addEventListener('input', (e) => {
-            e.target.value = e.target.value.replace(/[^0-9]/g, '');
-            validateField(fields.phone, 'msg-phone', phoneValidator, 'phone');
-        });
-        fields.city.addEventListener('change', () => {
-            state.city = fields.city.value !== "";
-            updateBtnState();
-        });
-
-        addForm.onsubmit = async (e) => {
-            e.preventDefault();
-            
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processing Identity...';
-
-            const formData = new FormData(addForm);
-
-            try {
-                const res = await fetch('/admin/caterers/add', { method: 'POST', body: formData });
-                const data = await res.json();
-                if (data.success) {
-                    window.location.reload();
-                } else {
-                    if (data.errors) {
-                        // Map server-side errors back to fields
-                        Object.keys(data.errors).forEach(key => {
-                            const field = fields[key] || (key === 'full_name' ? fields.fullName : null) || (key === 'business_name' ? fields.bizName : null);
-                            if (field) {
-                                const msgEl = document.getElementById(`msg-${field.id.split('val-')[1]}`);
-                                if (msgEl) {
-                                    msgEl.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${data.errors[key]}`;
-                                    msgEl.className = 'validation-msg error';
-                                    field.parentElement.classList.add('error');
-                                }
-                            }
-                        });
-                        alert('Adjudication Error: Please review the highlighted fields.');
-                    } else {
-                        alert('Adjudication Error: ' + (data.message || 'Onboarding failed'));
-                    }
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = 'Initialize Profile';
-                }
-            } catch (err) {
-                alert('Connection Error: Unable to reach the security gateway.');
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = 'Initialize Profile';
-            }
-        };
-
-        // Initial state check
-        updateBtnState();
-    }
-
-    // Registry Sync Hub (Unified)
-    window.addEventListener('system_update', function (e) {
-        if (['new_signup', 'kyc_update', 'caterer_update', 'user_archived'].includes(e.detail.type)) {
-            console.log("[SYSTEM] Real-time Partner Update Detected:", e.detail.type);
-            refreshCaterersTerminal();
-        }
+            if (data.success) {
+                Swal.fire('Updated', data.message, 'success').then(() => location.reload());
+            } else { Swal.fire('Error', data.message, 'error'); }
+        } catch (e) { Swal.fire('Error', 'Communication failure.', 'error'); }
     });
+
+    // --- Official PSGC Geographic Engine ---
+    const PSGC_BASE = 'https://psgc.gitlab.io/api';
+
+    async function fetchProvinces() {
+        try {
+            const res = await fetch(`${PSGC_BASE}/provinces/`);
+            const provinces = await res.json();
+            const sel = document.getElementById('onboard_province');
+            // Populate provinces
+            provinces.sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.code; opt.textContent = p.name;
+                sel.appendChild(opt);
+            });
+        } catch (err) { console.error("PSGC Province Load Failed", err); }
+    }
+
+    async function fetchMunicipalities() {
+        const provCode = document.getElementById('onboard_province').value;
+        const citySel = document.getElementById('onboard_city');
+        const brgySel = document.getElementById('onboard_brgy');
+
+        citySel.innerHTML = '<option value="" disabled selected>Loading...</option>';
+        brgySel.innerHTML = '<option value="" disabled selected>Barangay</option>';
+        brgySel.disabled = true;
+
+        try {
+            const res = await fetch(`${PSGC_BASE}/provinces/${provCode}/cities-municipalities/`);
+            const cities = await res.json();
+            citySel.innerHTML = '<option value="" disabled selected>Select City/Muni</option>';
+            cities.sort((a, b) => a.name.localeCompare(b.name)).forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.code; opt.textContent = c.name;
+                citySel.appendChild(opt);
+            });
+            citySel.disabled = false;
+        } catch (err) { citySel.innerHTML = '<option value="" disabled>Error loading</option>'; }
+    }
+
+    async function fetchBarangays() {
+        const cityCode = document.getElementById('onboard_city').value;
+        const brgySel = document.getElementById('onboard_brgy');
+        brgySel.innerHTML = '<option value="" disabled selected>Loading...</option>';
+
+        try {
+            const res = await fetch(`${PSGC_BASE}/cities-municipalities/${cityCode}/barangays/`);
+            const brgys = await res.json();
+            brgySel.innerHTML = '<option value="" disabled selected>Select Barangay</option>';
+            brgys.sort((a, b) => a.name.localeCompare(b.name)).forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b.code; opt.textContent = b.name;
+                brgySel.appendChild(opt);
+            });
+            brgySel.disabled = false;
+        } catch (err) { brgySel.innerHTML = '<option value="" disabled>Error loading</option>'; }
+    }
+
+    // --- Identity Audit Engine (Triple-Check with Logical Validation) ---
+    let auditTimeout;
+    function runIdentityAudit() {
+        clearTimeout(auditTimeout);
+        auditTimeout = setTimeout(async () => {
+            const emailInp = document.getElementById('onboard_email');
+            const phoneInp = document.getElementById('onboard_phone');
+            const fnameInp = document.getElementById('onboard_fname');
+            const lnameInp = document.getElementById('onboard_lname');
+            const miInp = document.getElementById('onboard_mi');
+
+            const email = emailInp.value.trim().toLowerCase();
+            const phone = phoneInp.value.replace(/\D/g, '');
+            const fname = fnameInp.value.trim().toLowerCase();
+            const lname = lnameInp.value.trim().toLowerCase();
+            const mi = miInp.value.replace(/\./g, '').trim().toLowerCase();
+
+            // 1. Logical Validation: Identical Name Check
+            const nameStat = document.getElementById('name_audit_status');
+            if (fname && lname && fname === lname) {
+                nameStat.textContent = 'INVALID: IDENTICAL FIRST & LAST NAME';
+                nameStat.className = 'status-indicator show status-error';
+                fnameInp.className = lnameInp.className = 'input-error';
+                return;
+            }
+
+            // 2. Elite Contact Precision: 09 Prefix & Anti-Repetitive
+            const phoneStat = document.getElementById('phone_audit_status');
+            if (phoneInp.value) {
+                if (!phoneInp.value.startsWith('09')) {
+                    phoneStat.textContent = 'INVALID PREFIX (MUST START WITH 09)';
+                    phoneStat.className = 'status-indicator show status-error';
+                    phoneInp.className = 'input-error';
+                    return;
+                }
+                if (phone.length === 11) {
+                    // Check for repetitive bogus patterns (e.g., 09000000000)
+                    const suffix = phone.substring(2);
+                    if (/^(.)\1+$/.test(suffix)) {
+                        phoneStat.textContent = 'INVALID: REPETITIVE/BOGUS PATTERN';
+                        phoneStat.className = 'status-indicator show status-error';
+                        phoneInp.className = 'input-error';
+                        return;
+                    }
+                } else if (phone.length > 0) {
+                    phoneStat.textContent = 'INVALID LENGTH (11 DIGITS)';
+                    phoneStat.className = 'status-indicator show status-error';
+                    phoneInp.className = 'input-error';
+                }
+            }
+
+            let params = new URLSearchParams();
+            if (email) params.append('email', email);
+            if (phone.length === 11) params.append('phone', phone);
+            if (fname && lname && fname !== lname) {
+                params.append('first_name', fname);
+                params.append('last_name', lname);
+                if (mi) params.append('middle_initial', mi);
+            }
+
+            if (params.toString() === "") return;
+
+            try {
+                const res = await fetch(`/admin/api/caterers/audit-identity?${params.toString()}`);
+                const data = await res.json();
+
+                // Email Audit UI
+                const emailStat = document.getElementById('email_audit_status');
+                if (email) {
+                    emailStat.textContent = data.email_taken ? 'IDENTITY TAKEN' : '✓ IDENTITY SECURED';
+                    emailStat.className = `status-indicator show ${data.email_taken ? 'status-error' : 'status-ok'}`;
+                    emailInp.className = data.email_taken ? 'input-error' : 'input-success';
+                }
+
+                // Phone Audit UI
+                if (phone.length === 11) {
+                    phoneStat.textContent = data.phone_taken ? 'NUMBER REGISTERED' : '✓ NUMBER SECURED';
+                    phoneStat.className = `status-indicator show ${data.phone_taken ? 'status-error' : 'status-ok'}`;
+                    phoneInp.className = data.phone_taken ? 'input-error' : 'input-success';
+                }
+
+                // Signatory Name Audit UI
+                if (fname && lname && fname !== lname) {
+                    nameStat.textContent = data.name_collision ? 'IDENTITY COLLISION' : '✓ IDENTITY CLEAR';
+                    nameStat.className = `status-indicator show ${data.name_collision ? 'status-error' : 'status-ok'}`;
+                    fnameInp.className = lnameInp.className = data.name_collision ? 'input-error' : 'input-success';
+                }
+
+            } catch (e) { }
+        }, 600);
+    }
+
+    // Listeners for real-time audit
+    ['onboard_email', 'onboard_phone', 'onboard_fname', 'onboard_lname', 'onboard_mi'].forEach(id => {
+        document.getElementById(id).addEventListener('input', runIdentityAudit);
+    });
+
+    // Business Name Audit
+    let bizCheckTimeout;
+    document.getElementById('onboard_biz_name').addEventListener('input', (e) => {
+        const name = e.target.value.trim().toLowerCase();
+        const inp = e.target;
+        const status = document.getElementById('biz_name_status');
+        clearTimeout(bizCheckTimeout);
+        if (name.length < 3) { status.className = 'status-indicator'; inp.className = ''; return; }
+
+        status.textContent = 'Auditing...'; status.className = 'status-indicator show';
+        bizCheckTimeout = setTimeout(async () => {
+            const res = await fetch(`/admin/api/caterers/audit-identity?business_name=${encodeURIComponent(name)}`);
+            const data = await res.json();
+            status.textContent = data.business_name_taken ? 'BUSINESS NAME TAKEN' : '✓ BUSINESS NAME AVAILABLE';
+            status.className = `status-indicator show ${data.business_name_taken ? 'status-error' : 'status-ok'}`;
+            inp.className = data.business_name_taken ? 'input-error' : 'input-success';
+        }, 500);
+    });
+
+    function openAddCatererModal() {
+        document.getElementById('addCatererModal').classList.add('active');
+        if (document.getElementById('onboard_province').options.length <= 1) fetchProvinces();
+    }
+    function closeAddCatererModal() { document.getElementById('addCatererModal').classList.remove('active'); }
+
+    document.getElementById('addCatererForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+
+        // Policy & Audit Verification
+        const email = fd.get('email');
+        if (!email.toLowerCase().endsWith('@gmail.com')) return Swal.fire('Policy Violation', 'Gmail identities only.', 'error');
+
+        // Check for collisions again before submission
+        const emailStat = document.getElementById('email_audit_status').textContent;
+        const phoneStat = document.getElementById('phone_audit_status').textContent;
+        if (emailStat.includes('TAKEN') || phoneStat.includes('TAKEN')) {
+            return Swal.fire('Audit Failure', 'Identity markers are already in use.', 'error');
+        }
+
+        // Standardize full name
+        const fname = fd.get('first_name');
+        const lname = fd.get('last_name');
+        const mi = fd.get('middle_initial');
+        const full_name = mi ? `${fname} ${mi} ${lname}` : `${fname} ${lname}`;
+        fd.append('full_name', full_name);
+
+        // Jurisdictional Precision (Names + Codes)
+        const pSel = document.getElementById('onboard_province');
+        const cSel = document.getElementById('onboard_city');
+        const bSel = document.getElementById('onboard_brgy');
+
+        fd.set('province', pSel.options[pSel.selectedIndex].text);
+        fd.set('municipality', cSel.options[cSel.selectedIndex].text);
+        fd.set('barangay', bSel.options[bSel.selectedIndex].text);
+        
+        fd.append('province_code', pSel.value);
+        fd.append('city_code', cSel.value);
+        fd.append('brgy_code', bSel.value);
+
+        const events = Array.from(e.target.querySelectorAll('input[name="events"]:checked')).map(i => i.value);
+        const cuisines = Array.from(e.target.querySelectorAll('input[name="cuisines"]:checked')).map(i => i.value);
+        fd.append('event_types', JSON.stringify(events));
+        fd.append('cuisine_types', JSON.stringify(cuisines));
+
+        Swal.fire({ title: 'Adjudicating Profile', text: 'Initializing data-driven profile...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        try {
+            const res = await fetch('/admin/caterers/add', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (data.success) {
+                Swal.fire('Identity Verified', data.message, 'success').then(() => location.reload());
+            } else {
+                Swal.fire('Error', data.message || 'Audit failed.', 'error');
+            }
+        } catch (err) { Swal.fire('Error', 'Communication failure.', 'error'); }
+    };
+
+    // --- Edit Mode PSGC Loaders ---
+    async function loadEditProvinces(selectedProv, selectedCity, selectedBrgy) {
+        const provSel = document.getElementById('edit_province');
+        try {
+            const res = await fetch(`${PSGC_BASE}/provinces/`);
+            const provinces = await res.json();
+            provSel.innerHTML = '<option value="" disabled>Select Province</option>';
+            provinces.sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
+                const opt = new Option(p.name, p.code);
+                if (p.code === selectedProv) opt.selected = true;
+                provSel.add(opt);
+            });
+            if (selectedProv) await loadEditCities(selectedProv, selectedCity, selectedBrgy);
+        } catch (e) { }
+    }
+
+    async function loadEditCities(provCode, selectedCity, selectedBrgy) {
+        const citySel = document.getElementById('edit_city');
+        try {
+            const res = await fetch(`${PSGC_BASE}/provinces/${provCode}/cities-municipalities/`);
+            const cities = await res.json();
+            citySel.innerHTML = '<option value="" disabled>Select City/Muni</option>';
+            cities.sort((a, b) => a.name.localeCompare(b.name)).forEach(c => {
+                const opt = new Option(c.name, c.code);
+                if (c.code === selectedCity) opt.selected = true;
+                citySel.add(opt);
+            });
+            if (selectedCity) await loadEditBrgys(selectedCity, selectedBrgy);
+        } catch (e) { }
+    }
+
+    async function loadEditBrgys(cityCode, selectedBrgy) {
+        const brgySel = document.getElementById('edit_barangay');
+        try {
+            const res = await fetch(`${PSGC_BASE}/cities-municipalities/${cityCode}/barangays/`);
+            const brgys = await res.json();
+            brgySel.innerHTML = '<option value="" disabled>Select Barangay</option>';
+            brgys.sort((a, b) => a.name.localeCompare(b.name)).forEach(b => {
+                const opt = new Option(b.name, b.code);
+                if (b.code === selectedBrgy) opt.selected = true;
+                brgySel.add(opt);
+            });
+        } catch (e) { }
+    }
 </script>
 {% endblock %}
+ck %}
+%}

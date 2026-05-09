@@ -1,544 +1,241 @@
 {% extends "admin/layout.html" %}
 
-{% block title %}Platform Bookings - Admin Dashboard{% endblock %}
+{% block title %}Operational Bookings - Admin Intelligence{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ range(1, 1000) | random }}">
 <style>
-    /* Header Architecture */
-    .terminal-header-top {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
+    /* Diamond Standard Layout Alignment */
+    .table-card-clean {
+        background: #fff; border-radius: 24px; border: 1px solid rgba(226, 232, 240, 0.8);
+        overflow: visible; transition: all 0.3s ease;
+        margin-bottom: 2rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05);
     }
-
-    .terminal-header-top h1 {
-        margin: 0;
-    }
-
-    .terminal-header-top p {
-        margin-top: 4px;
-    }
-
-    .sync-status-clean {
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: var(--dm-slate-400);
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    /* KPI Grid */
-    .kpi-grid-clean {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-    }
-
-    .kpi-card-clean {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 1.25rem;
-        border: 1px solid var(--dm-slate-100);
-        display: flex;
-        align-items: center;
-        gap: 1.25rem;
-    }
-
-    .kpi-icon-box {
-        width: 54px;
-        height: 54px;
-        border-radius: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.25rem;
-    }
-
-    .kpi-info h4 {
-        margin: 0;
-    }
-
-    .kpi-info .kpi-value {
-        margin-top: 4px;
-        display: block;
-    }
-
-    /* Management Terminal */
-    .management-terminal {
-        background: white;
-        border-radius: 1.25rem;
-        border: 1px solid var(--dm-slate-100);
-        padding: 2rem;
-    }
-
-    .terminal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 2rem;
-    }
-
-    .header-controls-pro {
-        display: flex;
-        gap: 1rem;
-        align-items: center;
-    }
-
-    .filter-select-pro {
-        padding: 0.75rem 1rem;
-        border: 1.5px solid var(--dm-slate-100);
-        border-radius: 10px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: var(--dm-secondary);
-        outline: none;
-        background: var(--dm-slate-50);
-    }
-
-    .search-group-pro {
-        position: relative;
-        width: 320px;
-    }
-
-    .search-group-pro i {
-        position: absolute;
-        left: 1.25rem;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--dm-slate-400);
-        font-size: 0.9rem;
-    }
-
-    .search-group-pro input {
-        width: 100%;
-        padding: 0.75rem 1rem 0.75rem 3rem;
-        border: 1.5px solid var(--dm-slate-100);
-        border-radius: 10px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        background: var(--dm-slate-50);
-        transition: all 0.2s;
-    }
-
-    .search-group-pro input:focus {
-        border-color: var(--dm-primary);
-        background: white;
-    }
-
-    /* Table Matrix */
-    .cust-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .cust-table th {
-        text-align: left;
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: var(--dm-slate-400);
-        text-transform: uppercase;
-        padding: 1rem;
-        border-bottom: 1px solid var(--dm-slate-100);
-    }
-
-    .cust-table td {
-        padding: 1.25rem 1rem;
-        border-bottom: 1px solid var(--dm-slate-50);
-        vertical-align: middle;
-    }
-
-    .cust-row:hover {
-        background: #fcfcfc;
-    }
-
-    .status-badge-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 4px 10px;
-        border-radius: 99px;
-        font-size: 0.7rem;
-        font-weight: 700;
-        text-transform: uppercase;
-    }
-
-    .status-pending {
-        background: #fff7ed;
-        color: #f97316;
-    }
-
-    .status-confirmed {
-        background: #eff6ff;
-        color: #3b82f6;
-    }
-
-    .status-completed {
-        background: #ecfdf5;
-        color: #10b981;
-    }
-
-    .status-cancelled {
-        background: #fef2f2;
-        color: #ef4444;
-    }
-
-    /* MODAL SYSTEM (Standardized) */
-    .admin-modal-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(15, 23, 42, 0.4);
-        backdrop-filter: blur(8px);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 2000;
-        padding: 2rem;
-        overflow-y: auto;
-        /* Fix: Allow scrolling for tall modals */
-    }
-
-    .admin-modal-overlay.active {
-        display: flex;
-    }
-
-    .admin-modal-card {
-        background: white;
-        width: 100%;
-        max-width: 800px;
-        border-radius: 1.25rem;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-        overflow: hidden;
-        animation: modalSlide 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        margin: auto;
-        /* Center in scrollable overlay */
-        max-height: 95vh;
-        /* Max height for the card itself */
-        display: flex;
-        flex-direction: column;
-    }
-
-    @keyframes modalSlide {
-        from {
-            opacity: 0;
-            transform: translateY(20px) scale(0.98);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-        }
-    }
-
-    .modal-header-clean {
-        padding: 1.5rem 2rem;
-        background: var(--dm-slate-50);
-        border-bottom: 1px solid var(--dm-slate-100);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .modal-header-clean h3 {
-        margin: 0;
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: var(--dm-secondary);
-    }
-
-    .modal-close-btn {
-        background: none;
-        border: none;
-        font-size: 1.5rem;
-        color: var(--dm-slate-400);
-        cursor: pointer;
-    }
-
-    .modal-body-clean {
-        padding: 2rem;
-        overflow-y: auto;
-    }
-
-    /* Booking Detail Layout */
-    .detail-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1.5rem;
-    }
-
-    .detail-item {
+    
+    .clean-table thead th {
+        font-size: 0.65rem; font-weight: 800; color: #64748b;
+        text-transform: uppercase; letter-spacing: 0.1em;
+        padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;
         background: #f8fafc;
-        padding: 1.25rem;
-        border-radius: 0.75rem;
-        border: 1px solid #e2e8f0;
     }
 
-    .detail-label {
-        font-size: 0.7rem;
-        text-transform: uppercase;
-        color: #64748b;
-        font-weight: 700;
-        margin-bottom: 0.25rem;
+    .cust-row {
+        border-bottom: 1px solid #f8fafc; transition: all 0.2s ease;
+    }
+    .cust-row:hover {
+        background: #f8fafc; transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
     }
 
-    .detail-value {
-        font-weight: 700;
-        color: var(--dm-secondary);
+    /* Booking Specific Badges */
+    .status-badge-dm {
+        padding: 5px 12px; border-radius: 10px; font-size: 0.6rem;
+        font-weight: 800; display: inline-flex; align-items: center; gap: 6px;
+        letter-spacing: 0.03em;
+    }
+    .status-confirmed { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .status-pending { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+    .status-completed { background: #eff6ff; color: #1e40af; border: 1px solid #dbeafe; }
+    .status-cancelled { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .status-neutral { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+
+    .action-dots-adm {
+        width: 36px; height: 36px; border-radius: 10px;
+        background: #f1f5f9; color: #64748b; display: flex;
+        align-items: center; justify-content: center; cursor: pointer;
+        transition: all 0.2s ease; border: 1px solid #e2e8f0;
+    }
+    .action-dots-adm:hover {
+        background: var(--adm-primary); color: white;
+        border-color: var(--adm-primary);
     }
 
-    .menu-item-row {
-        display: flex;
-        justify-content: space-between;
-        padding: 0.75rem 0;
-        border-bottom: 1px dashed #e2e8f0;
+    /* Action Dropdown - Elite Anti-Overlap */
+    .action-menu-dm {
+        position: relative; display: inline-block;
     }
-
-    /* Action Dropdown */
-    .actions-dropdown {
-        position: relative;
-        display: inline-block;
+    .dropdown-menu-dm {
+        position: absolute; right: 0; top: 100%; margin-top: 10px;
+        width: 220px; background: white; border-radius: 16px;
+        box-shadow: 0 15px 35px -5px rgba(0,0,0,0.15), 0 10px 15px -10px rgba(0,0,0,0.1);
+        border: 1px solid #e2e8f0; z-index: 9999; padding: 6px;
+        display: none; transform-origin: top right;
     }
-
-    .dropdown-trigger {
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        border: 1px solid var(--dm-slate-100);
-        background: white;
-        color: var(--dm-slate-400);
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+    .dropdown-menu-dm.show { display: block !important; animation: dm-pop 0.2s ease-out; }
+    @keyframes dm-pop {
+        from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
     }
-
-    .dropdown-trigger:hover,
-    .dropdown-trigger.active {
-        color: var(--dm-primary);
-        border-color: var(--dm-primary);
-    }
-
-    .dropdown-menu {
-        position: absolute;
-        top: 100%;
-        right: 0;
-        width: 210px;
-        background: white;
-        border: 1px solid var(--dm-slate-100);
-        border-radius: 12px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        display: none;
-        z-index: 1000;
-        padding: 0.5rem;
-        margin-top: 8px;
-    }
-
-    .dropdown-menu.show {
-        display: block;
-    }
-
-    .dropdown-item {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 0.75rem 1rem;
-        border-radius: 8px;
-        color: var(--dm-slate-600);
-        font-size: 0.85rem;
-        font-weight: 600;
-        width: 100%;
-        border: none;
-        background: transparent;
-        cursor: pointer;
+    
+    .dropdown-item-dm {
+        display: flex; align-items: center; gap: 10px;
+        padding: 10px 14px; border-radius: 10px; font-size: 0.75rem;
+        font-weight: 700; color: #475569; transition: all 0.2s;
+        cursor: pointer; border: none; background: none; width: 100%;
         text-align: left;
     }
-
-    .dropdown-item:hover {
-        background: var(--dm-slate-50);
-        color: var(--dm-primary);
-    }
-
-    .dropdown-item.danger {
-        color: #ef4444;
-    }
-
-    @media (max-width: 1200px) {
-        .kpi-grid-clean {
-            grid-template-columns: repeat(2, 1fr);
-        }
-    }
-
-    @media (max-width: 768px) {
-        .kpi-grid-clean {
-            grid-template-columns: 1fr;
-        }
-
-        .terminal-header-top {
-            flex-direction: column;
-            gap: 1.5rem;
-        }
-
-        .terminal-header {
-            flex-direction: column;
-            gap: 1rem;
-            align-items: flex-start;
-        }
-
-        .header-controls-pro {
-            width: 100%;
-            flex-direction: column;
-        }
-
-        .search-group-pro {
-            width: 100%;
-        }
-
-        .cust-table th:nth-child(4),
-        .cust-table td:nth-child(4) {
-            display: none;
-        }
-
-        .detail-grid {
-            grid-template-columns: 1fr;
-        }
-    }
+    .dropdown-item-dm:hover { background: #f1f5f9; color: var(--adm-primary); }
+    .dropdown-item-dm.danger:hover { background: #fff1f2; color: #e11d48; }
+    .dropdown-divider { height: 1px; background: #f1f5f9; margin: 4px 0; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="terminal-header-top">
-    <div>
+<div class="dashboard-header-clean">
+    <div class="header-title-area">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+            <div style="background: var(--adm-primary-soft); color: var(--adm-primary); padding: 8px; border-radius: 10px;">
+                <i class="fas fa-calendar-check"></i>
+            </div>
+            <h5 style="margin: 0; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--adm-primary);">Administrative Terminal</h5>
+        </div>
         <h1>Platform Bookings</h1>
-        <p>Comprehensive oversight of all platform transactions and reservation flows.</p>
+        <p>Comprehensive oversight of platform transactions, fulfillment flows, and dispute governance.</p>
     </div>
 </div>
 
-<!-- KPI Grid -->
+<!-- Intelligence KPI Matrix -->
 <div class="kpi-grid-clean">
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #eff6ff; color: #3b82f6;"><i class="fas fa-calendar-check"></i></div>
+        <div class="kpi-icon-box" style="background: linear-gradient(135deg, #eff6ff, #dbeafe); color: #1d4ed8;"><i class="fas fa-calendar-check"></i></div>
         <div class="kpi-info">
             <h4>Total Registry</h4>
-            <span class="kpi-value" id="kpi-total">{{ metrics.total_bookings }}</span>
+            <span class="kpi-value">{{ metrics.total_bookings }}</span>
+            <span class="trend-badge trend-up">LIVE FLOW</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #fffbeb; color: #f59e0b;"><i class="fas fa-hourglass-half"></i></div>
+        <div class="kpi-icon-box" style="background: linear-gradient(135deg, #fffbeb, #fef3c7); color: #92400e;"><i class="fas fa-hourglass-half"></i></div>
         <div class="kpi-info">
-            <h4>Pending Actions</h4>
-            <span class="kpi-value" id="kpi-pending">{{ metrics.pending_bookings }}</span>
+            <h4>Pending Audit</h4>
+            <span class="kpi-value">{{ metrics.pending_bookings }}</span>
+            <span class="trend-badge" style="background: #fef3c7; color: #92400e;">ACTION REQ</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: var(--dm-primary-light); color: var(--dm-primary);"><i class="fas fa-coins"></i></div>
+        <div class="kpi-icon-box" style="background: linear-gradient(135deg, var(--adm-primary-soft), #e0e7ff); color: var(--adm-primary);"><i class="fas fa-coins"></i></div>
         <div class="kpi-info">
-            <h4>Realized Revenue</h4>
-            <span class="kpi-value" id="kpi-revenue" title="Paid transactions only">₱{{ "{:,.0f}".format(metrics.realized_revenue) }}</span>
+            <h4>Realized Yield</h4>
+            <span class="kpi-value">₱{{ "{:,.0f}".format(metrics.realized_revenue) }}</span>
+            <span class="trend-badge trend-up">VERIFIED</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #f1f5f9; color: #64748b;"><i class="fas fa-chart-line"></i></div>
+        <div class="kpi-icon-box" style="background: linear-gradient(135deg, #f1f5f9, #e2e8f0); color: #64748b;"><i class="fas fa-chart-line"></i></div>
         <div class="kpi-info">
-            <h4>Projected Revenue</h4>
-            <span class="kpi-value" id="kpi-projected" style="font-size: 1.1rem; color: #64748b;">₱{{ "{:,.0f}".format(metrics.projected_revenue) }}</span>
+            <h4>Projection</h4>
+            <span class="kpi-value" style="font-size: 1.1rem; color: #64748b;">₱{{ "{:,.0f}".format(metrics.projected_revenue) }}</span>
+            <span class="trend-badge" style="background: #e2e8f0; color: #64748b;">UNCERTAIN</span>
         </div>
     </div>
 </div>
 
-<div class="management-terminal">
-    <div class="terminal-header">
-        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--dm-secondary);">Booking Registry</h3>
-        <div class="header-controls-pro">
-            <select class="filter-select-pro" id="statusFilter" onchange="filterBookings()">
-                <option value="">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="confirmed">Confirmed</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-            </select>
-            <div class="search-group-pro">
-                <i class="fas fa-search"></i>
-                <input type="text" id="bookingSearchInput" placeholder="Search events or clients..."
-                    onkeyup="filterBookings()">
+<!-- Booking Terminal -->
+<div class="table-card-clean">
+    <div class="terminal-filter-strip" style="display: flex; justify-content: space-between; align-items: center; padding: 1.75rem 2rem; background: #fff; border-top-left-radius: 24px; border-top-right-radius: 24px;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="background: linear-gradient(135deg, var(--adm-primary), #6366f1); color: white; width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; box-shadow: 0 8px 16px -4px rgba(79, 70, 229, 0.4);">
+                <i class="fas fa-layer-group"></i>
             </div>
+            <div>
+                <h3 style="font-size: 1rem; font-weight: 800; color: var(--adm-navy); margin: 0; text-transform: uppercase; letter-spacing: 0.02em;">Booking Registry</h3>
+                <p style="font-size: 0.75rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Managed Transaction Integrity & Fulfillment</p>
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <select id="statusFilter" onchange="filterBookings()" class="btn-clean" style="padding: 12px 18px; font-size: 0.8rem; font-weight: 700; background: #fff; border-radius: 12px; min-width: 240px; border: 1.5px solid #e2e8f0; color: var(--adm-navy); cursor: pointer; transition: all 0.2s;">
+                <option value="all">Governance: All Status</option>
+                <option value="pending">Status: Pending Only</option>
+                <option value="confirmed">Status: Confirmed Only</option>
+                <option value="completed">Status: Completed Only</option>
+                <option value="cancelled">Status: Cancelled Only</option>
+            </select>
+            
+            <button class="btn-clean" style="padding: 12px; background: #fff; width: 48px; height: 48px; border-radius: 12px; border: 1.5px solid #e2e8f0; color: #64748b; transition: all 0.2s;" title="Export Registry">
+                <i class="fas fa-download"></i>
+            </button>
         </div>
     </div>
 
-    <div style="overflow-x: auto;">
-        <table class="cust-table" id="bookingsTable">
+    <div style="overflow: visible; padding: 0 0 5rem 0;">
+        <table class="clean-table" id="bookingsTable" style="width: 100%; border-collapse: collapse;">
             <thead>
                 <tr>
-                    <th>Reference & Date</th>
-                    <th>Customer</th>
-                    <th>Service Partner</th>
-                    <th>Value</th>
-                    <th>Status</th>
-                    <th style="text-align: right;">Actions</th>
+                    <th style="padding-left: 2rem; width: 20%;">Reference & Date</th>
+                    <th style="width: 20%;">Customer Identity</th>
+                    <th style="width: 20%;">Partner Entity</th>
+                    <th style="width: 15%;">Financial Value</th>
+                    <th style="width: 15%;">Status</th>
+                    <th style="text-align: right; padding-right: 2rem; width: 10%;">Operations</th>
                 </tr>
             </thead>
             <tbody>
                 {% for booking in bookings %}
                 <tr class="cust-row">
-                    <td>
-                        <div style="display: flex; flex-direction: column;">
-                            <span style="font-weight: 800; color: var(--dm-primary);">#BK-{{ booking.id }}</span>
-                            <span style="font-size: 0.75rem; color: var(--dm-slate-400);">{{
-                                booking.event_date.strftime('%b %d, %Y') if booking.event_date else 'TBD' }}</span>
+                    <td style="padding: 1.5rem 0 1.5rem 2rem;">
+                        <div class="booking-ref-cell">
+                            <span style="font-weight: 800; color: var(--adm-primary); font-size: 0.95rem;">#BK-{{ booking.id }}</span>
+                            <span style="font-size: 0.75rem; color: var(--adm-muted); font-weight: 700;">{{ booking.event_date.strftime('%b %d, %Y') if booking.event_date else 'TBD' }}</span>
                         </div>
                     </td>
                     <td>
-                        <div style="font-weight: 600; color: var(--dm-secondary);">{{ booking.user.first_name }} {{
-                            booking.user.last_name }}</div>
-                        <div style="font-size: 0.75rem; color: var(--dm-slate-400);">{{ booking.user.email }}</div>
+                        <div style="font-weight: 800; color: var(--adm-navy); font-size: 0.9rem; display: block; margin-bottom: 2px;">{{ booking.user.first_name }} {{ booking.user.last_name }}</div>
+                        <div style="font-size: 0.7rem; color: #64748b; font-weight: 700;">{{ booking.user.email }}</div>
                     </td>
                     <td>
-                        <div style="display: flex; flex-direction: column; gap: 4px;">
-                            <span style="font-weight: 700; color: var(--dm-secondary);">{{ booking.caterer.business_name if booking.caterer else 'Platform Service' }}</span>
-                            {% if booking.caterer and booking.caterer.verification_status == 'Verified' %}
-                            <span class="badge-clean" style="font-size: 0.65rem; background: #ecfdf5; color: #10b981; border-radius: 6px; padding: 2px 8px; width: fit-content;">
-                                <i class="fas fa-certificate" style="font-size: 8px;"></i> Verified Partner
+                        <div style="font-weight: 800; color: var(--adm-navy); font-size: 0.9rem; display: block; margin-bottom: 4px;">{{ booking.caterer.business_name if booking.caterer else 'Internal Service' }}</div>
+                        {% if booking.caterer and booking.caterer.verification_status == 'Verified' %}
+                            <span class="status-badge-dm status-active" style="padding: 2px 8px; font-size: 0.55rem;">
+                                <i class="fas fa-shield-check"></i> VERIFIED PARTNER
                             </span>
-                            {% else %}
-                            <span class="badge-clean" style="font-size: 0.65rem; background: #f1f5f9; color: #64748b; border-radius: 6px; padding: 2px 8px; width: fit-content;">
-                                <i class="fas fa-clock" style="font-size: 8px;"></i> Standard Partner
-                            </span>
-                            {% endif %}
-                        </div>
-                    </td>
-                    <td>
-                        <div style="font-weight: 700; color: var(--dm-secondary);">₱{{ "{:,.2f}".format(booking.total_amount) if booking.total_amount else '0.00' }}</div>
-                        {% if booking.status == 'completed' %}
-                            <div style="font-size: 0.7rem; color: {% if booking.payout_id %}#10b981{% else %}#f59e0b{% endif %}; font-weight: 700;">
-                                <i class="fas {% if booking.payout_id %}fa-check-double{% else %}fa-clock{% endif %}"></i>
-                                {{ 'Settled' if booking.payout_id else 'Pending Payout' }}
-                            </div>
                         {% endif %}
                     </td>
                     <td>
-                        <span class="status-badge-pill status-{{ booking.status }}">
-                            <i class="fas fa-circle" style="font-size: 6px;"></i>
-                            {{ booking.status.title() }}
+                        <div style="font-family: 'Poppins', sans-serif; font-weight: 800; color: var(--adm-navy); font-size: 1rem;">₱{{ "{:,.2f}".format(booking.total_amount) if booking.total_amount else '0.00' }}</div>
+                        <div style="font-size: 0.6rem; color: var(--adm-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Total Amount</div>
+                    </td>
+                    <td>
+                        <span class="status-badge-dm 
+                            {% if booking.status == 'confirmed' %}status-confirmed
+                            {% elif booking.status == 'pending' %}status-pending
+                            {% elif booking.status == 'completed' %}status-completed
+                            {% elif booking.status == 'cancelled' %}status-cancelled
+                            {% else %}status-neutral{% endif %}">
+                            <i class="fas 
+                                {% if booking.status == 'confirmed' %}fa-check-circle
+                                {% elif booking.status == 'pending' %}fa-clock
+                                {% elif booking.status == 'completed' %}fa-star
+                                {% elif booking.status == 'cancelled' %}fa-times-circle
+                                {% else %}fa-info-circle{% endif %}"></i>
+                            {{ booking.status.upper() }}
                         </span>
                     </td>
-                    <td style="text-align: right;">
-                        <div class="actions-dropdown">
-                            <button class="dropdown-trigger" onclick="toggleDropdown(event, {{ booking.id }})">
-                                <i class="fas fa-ellipsis-v"></i>
-                            </button>
-                            <div id="dropdown-{{ booking.id }}" class="dropdown-menu">
-                                <button onclick="viewBookingDetails({{ booking.id }})" class="dropdown-item">
-                                    <i class="fas fa-eye"></i> View Full Details
+                    <td style="text-align: right; padding-right: 2rem;">
+                        <div class="action-menu-dm" style="display: inline-block;">
+                            <div class="action-dots-adm" onclick="toggleActionMenu(this, event)">
+                                <i class="fas fa-ellipsis-h"></i>
+                            </div>
+                            <div class="dropdown-menu-dm">
+                                <button class="dropdown-item-dm" onclick="viewBookingDetails({{ booking.id }})">
+                                    <i class="fas fa-search-plus"></i> Intelligence Audit
                                 </button>
-                                <a href="/admin/verify/{{ booking.user_id }}" class="dropdown-item">
-                                    <i class="fas fa-user-shield"></i> User Compliance
-                                </a>
-                                <div class="dropdown-divider"
-                                    style="height: 1px; background: var(--dm-slate-50); margin: 6px 8px;"></div>
-                                <form action="/admin/bookings/{{ booking.id }}/archive" method="POST"
-                                    onsubmit="event.preventDefault(); window.showConfirm('Archive this booking record?', () => this.submit());">
-                                    <button type="submit" class="dropdown-item danger">
-                                        <i class="fas fa-archive"></i> Archive Record
-                                    </button>
-                                </form>
+                                <button class="dropdown-item-dm" onclick="reconcilePayment({{ booking.id }})">
+                                    <i class="fas fa-hand-holding-dollar"></i> Governance Reconciliation
+                                </button>
+                                <button class="dropdown-item-dm" onclick="forceComplete({{ booking.id }})">
+                                    <i class="fas fa-check-double"></i> Force Completion
+                                </button>
+                                <button class="dropdown-item-dm" onclick="dispatchAlert({{ booking.id }})">
+                                    <i class="fas fa-bell"></i> Dispatch Alert
+                                </button>
+                                <div class="dropdown-divider"></div>
+                                <button class="dropdown-item-dm danger" onclick="cancelBooking({{ booking.id }})">
+                                    <i class="fas fa-ban"></i> Governance Cancellation
+                                </button>
+                                <button class="dropdown-item-dm danger" onclick="flagDispute({{ booking.id }})">
+                                    <i class="fas fa-flag"></i> Flag Dispute
+                                </button>
                             </div>
                         </div>
                     </td>
@@ -551,60 +248,49 @@
 
 <!-- Details Modal -->
 <div id="bookingDetailModal" class="admin-modal-overlay">
-    <div class="admin-modal-card">
+    <div class="admin-modal-card" style="max-width: 600px;">
         <div class="modal-header-clean">
-            <h3><i class="fas fa-chart-pie" style="color: var(--dm-primary); margin-right: 10px;"></i> <span
-                    id="detailBookingId">#BK-000</span> Intelligence</h3>
-            <button class="modal-close-btn" onclick="closeModal('bookingDetailModal')">&times;</button>
-        </div>
-        <div class="modal-body-clean" id="modalBody">
-            <div style="text-align: center; padding: 3rem;">
-                <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--dm-primary);"></i>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="background: var(--adm-primary-soft); color: var(--adm-primary); width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-chart-pie"></i>
+                </div>
+                <div>
+                    <h3 style="font-size: 0.95rem; font-weight: 800; text-transform: uppercase; margin: 0;"><span id="detailBookingId">#BK-000</span> Intelligence</h3>
+                    <p style="font-size: 0.7rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Strategic transaction audit and fulfillment log.</p>
+                </div>
             </div>
+            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);" onclick="closeModal('bookingDetailModal')">&times;</button>
         </div>
-        <div class="modal-footer-clean"
-            style="padding: 1.5rem 2rem; background: var(--dm-slate-50); border-top: 1px solid var(--dm-slate-100); display: flex; justify-content: flex-end; gap: 1rem;">
-            <button class="dropdown-item"
-                style="width: auto; padding: 0.75rem 1.5rem; background: white; border: 1px solid var(--dm-slate-100);"
-                onclick="closeModal('bookingDetailModal')">Close</button>
-            <button class="btn-add-pro"
-                style="padding: 0.75rem 1.5rem; background: var(--dm-primary); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;"
-                onclick="window.print()"><i class="fas fa-print"></i> Export Record</button>
+        <div class="modal-body-clean" id="modalBody"></div>
+        <div class="modal-footer-clean">
+            <button class="btn-clean" style="background: #f1f5f9; color: var(--adm-navy); font-weight: 800;" onclick="closeModal('bookingDetailModal')">Dismiss Audit</button>
+            <button class="btn-clean" style="background: var(--adm-primary); color: white; font-weight: 800;">Download Audit Log</button>
         </div>
     </div>
 </div>
-
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    function toggleDropdown(event, id) {
+    function toggleActionMenu(btn, event) {
         event.stopPropagation();
-        const menu = document.getElementById(`dropdown-${id}`);
-        const isShown = menu.classList.contains('show');
-
-        // Close all other menus
-        document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
-
-        if (!isShown) menu.classList.add('show');
+        const menu = btn.nextElementSibling;
+        document.querySelectorAll('.dropdown-menu-dm').forEach(m => {
+            if (m !== menu) m.classList.remove('show');
+        });
+        menu.classList.toggle('show');
     }
 
-    document.addEventListener('click', () => {
-        document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
-    });
+    window.onclick = () => {
+        document.querySelectorAll('.dropdown-menu-dm').forEach(m => m.classList.remove('show'));
+    };
 
     function filterBookings() {
-        const status = document.getElementById('statusFilter').value.toLowerCase();
-        const search = document.getElementById('bookingSearchInput').value.toLowerCase();
-        const rows = document.querySelectorAll('#bookingsTable tbody tr');
-
-        rows.forEach(row => {
-            const rowStatus = row.querySelector('.status-badge-pill').innerText.toLowerCase();
-            const rowText = row.innerText.toLowerCase();
-            const matchesStatus = status === '' || rowStatus.includes(status);
-            const matchesSearch = search === '' || rowText.includes(search);
-
-            row.style.display = (matchesStatus && matchesSearch) ? '' : 'none';
+        const s = document.getElementById('statusFilter').value.toLowerCase();
+        document.querySelectorAll('.cust-row').forEach(r => {
+            const stat = r.querySelector('.status-badge-dm')?.innerText.toLowerCase() || '';
+            r.style.display = (s === 'all' || stat.includes(s.replace('status: ', '').replace(' only', ''))) ? '' : 'none';
         });
     }
 
@@ -612,147 +298,206 @@
         const modal = document.getElementById('bookingDetailModal');
         const body = document.getElementById('modalBody');
         modal.classList.add('active');
-        body.innerHTML = '<div style="text-align: center; padding: 3rem;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--dm-primary);"></i></div>';
+        body.innerHTML = '<div style="text-align: center; padding: 3rem;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--adm-primary);"></i></div>';
 
         try {
             const res = await fetch(`/admin/api/bookings/${id}/details`);
             const data = await res.json();
-
             if (data.success) {
                 const b = data.booking;
-                const kyc = b.customer ? b.customer.kyc : null;
                 document.getElementById('detailBookingId').innerText = `#BK-${b.id}`;
-
-                let kycHtml = '';
-                if (kyc) {
-                    kycHtml = `
-                    <div style="margin-top: 2rem; padding: 1.5rem; background: #fff7ed; border-radius: 1rem; border: 1px solid #ffedd5;">
-                        <h4 style="margin: 0 0 1rem 0; font-size: 0.9rem; color: #c2410c; display: flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-user-shield"></i> Compliance & Identity Audit
-                        </h4>
-                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
-                            <div class="detail-item" style="background: white;">
-                                <div class="detail-label">Match Integrity</div>
-                                <div class="detail-value" style="color: ${kyc.match_score >= 80 ? '#10b981' : '#f97316'};">
-                                    ${kyc.match_score}% High Confidence
-                                </div>
-                            </div>
-                            <div class="detail-item" style="background: white;">
-                                <div class="detail-label">Liveness Check</div>
-                                <div class="detail-value">${kyc.liveness}</div>
-                            </div>
-                            <div class="detail-item" style="background: white;">
-                                <div class="detail-label">Registry Name</div>
-                                <div class="detail-value">${kyc.ocr_name}</div>
-                            </div>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
-                            <div>
-                                <div class="detail-label">Provided ID Document</div>
-                                <img src="${kyc.id_url}" style="width: 100%; border-radius: 8px; border: 1px solid #fed7aa; height: 120px; object-fit: cover;">
-                            </div>
-                            <div>
-                                <div class="detail-label">Liveness Selfie</div>
-                                <img src="${kyc.selfie_url}" style="width: 100%; border-radius: 8px; border: 1px solid #fed7aa; height: 120px; object-fit: cover;">
-                            </div>
-                        </div>
-                    </div>`;
-                }
-
-                let auditTrailHtml = '';
-                if (b.history && b.history.length > 0) {
-                    auditTrailHtml = `
-                    <div style="margin-top: 1.5rem;">
-                        <div class="detail-label">Transaction Audit Trail</div>
-                        <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
-                            ${b.history.map((h, i) => `
-                                <div style="display: flex; gap: 1rem; padding: 1rem; ${i < b.history.length - 1 ? 'border-bottom: 1px dashed #e2e8f0;' : ''}">
-                                    <div style="display: flex; flex-direction: column; align-items: center; min-width: 40px;">
-                                        <div style="width: 10px; height: 10px; border-radius: 50%; background: ${i === 0 ? 'var(--dm-primary)' : '#cbd5e1'}; z-index: 2;"></div>
-                                        ${i < b.history.length - 1 ? '<div style="width: 2px; flex-grow: 1; background: #e2e8f0; margin: 4px 0;"></div>' : ''}
-                                    </div>
-                                    <div style="flex-grow: 1;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                                            <span style="font-weight: 700; font-size: 0.85rem; color: var(--dm-secondary); text-transform: uppercase;">${h.status}</span>
-                                            <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 600;">${h.created_at}</span>
-                                        </div>
-                                        ${h.notes ? `<div style="font-size: 0.8rem; color: #64748b; margin-top: 4px;">${h.notes}</div>` : ''}
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>`;
-                }
-
+                const ri = b.risk_intelligence;
+                const riskColor = ri.score > 70 ? '#ef4444' : (ri.score > 30 ? '#f59e0b' : '#10b981');
+                
                 body.innerHTML = `
-                <div class="detail-grid">
-                    <div class="detail-item">
-                        <div class="detail-label">Event Focus</div>
-                        <div class="detail-value">${b.event_name}</div>
-                        <div style="font-size: 0.8rem; color: #64748b;">${b.event_type} | ${b.guest_count} Guests</div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-label">Logistics Schedule</div>
-                        <div class="detail-value">${b.event_date}</div>
-                        <div style="font-size: 0.8rem; color: #64748b;">Time: ${b.event_time}</div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-label">Primary Client</div>
-                        <div class="detail-value">${b.customer ? b.customer.name : 'Unknown User'}</div>
-                        <div style="font-size: 0.8rem; color: #64748b;">${b.customer ? b.customer.email : 'No Email'}</div>
-                    </div>
-                    <div class="detail-item" style="background: #fdf2f8; border-color: #fbcfe8;">
-                        <div class="detail-label" style="color: #be185d;">Financial Governance</div>
-                        <div class="detail-value" style="color: #9d174d;">₱${b.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                        <div style="font-size: 0.8rem; color: #be185d; font-weight: 600;">${b.payment_status.toUpperCase()} | Ref: ${b.payment_reference || 'N/A'}</div>
-                        ${b.payment_proof_url ? `<button onclick="window.open('${b.payment_proof_url}')" style="margin-top: 8px; width: 100%; padding: 6px; background: white; border: 1px solid #fbcfe8; border-radius: 6px; font-size: 0.7rem; font-weight: 700; color: #be185d; cursor: pointer;"><i class="fas fa-file-invoice-dollar"></i> View Payment Proof</button>` : ''}
-                    </div>
-                </div>
+                    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                        <!-- Fraud Intelligence Header -->
+                        <div style="background: ${riskColor}10; padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid ${riskColor}20;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-shield-virus" style="color: ${riskColor}; font-size: 1.2rem;"></i>
+                                <span style="font-weight: 800; color: ${riskColor}; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Fraud Intelligence Score: ${ri.level}</span>
+                            </div>
+                            <div style="font-weight: 900; color: ${riskColor}; font-size: 1.2rem;">${ri.score}%</div>
+                        </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem;">
-                    <div>
-                        <div class="detail-label">Service Partner Trust</div>
-                        <div style="display: flex; align-items: center; gap: 10px; background: #f8fafc; padding: 0.75rem; border-radius: 10px; border: 1px solid #e2e8f0;">
-                            <div style="width: 32px; height: 32px; border-radius: 8px; background: ${b.is_caterer_verified ? '#ecfdf5' : '#f1f5f9'}; color: ${b.is_caterer_verified ? '#10b981' : '#64748b'}; display: flex; align-items: center; justify-content: center;">
-                                <i class="fas ${b.is_caterer_verified ? 'fa-certificate' : 'fa-user'}"></i>
+                        <div style="background: #f8fafc; padding: 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 1rem;">
+                            <div style="background: white; width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); font-weight: 800; color: var(--adm-primary);">
+                                ${(b.customer_name || 'U').charAt(0)}${(b.customer_name || ' ').split(' ').pop().charAt(0)}
                             </div>
                             <div>
-                                <div style="font-size: 0.85rem; font-weight: 700; color: var(--dm-secondary);">${b.payout_status}</div>
-                                <div style="font-size: 0.7rem; font-weight: 600; color: #64748b;">${b.is_caterer_verified ? 'Verified Identity' : 'Standard Identity'}</div>
+                                <div style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase;">Primary Participant</div>
+                                <div style="font-weight: 800; color: var(--adm-navy); font-size: 1.1rem;">${b.customer_name}</div>
+                            </div>
+                        </div>
+                        
+                        <div style="padding: 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div style="background: #f8fafc; padding: 1rem; border-radius: 12px; border: 1px solid #f1f5f9;">
+                                <div style="font-size: 0.6rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Event Logistics</div>
+                                <div style="font-weight: 700; color: var(--adm-navy); margin-top: 4px; font-size: 0.85rem;">${b.event_date}</div>
+                                <div style="font-size: 0.75rem; color: var(--adm-muted); font-weight: 600;">${b.event_type} | ${b.guest_count} Guests</div>
+                            </div>
+                            <div style="background: #f8fafc; padding: 1rem; border-radius: 12px; border: 1px solid #f1f5f9;">
+                                <div style="font-size: 0.6rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Financial Commitment</div>
+                                <div style="font-weight: 800; color: var(--adm-navy); font-size: 1rem; margin-top: 4px;">₱${b.total_amount.toLocaleString()}</div>
+                                <span class="status-badge-dm status-active" style="padding: 2px 6px; font-size: 0.5rem; margin-top: 4px;">SECURED VIA PLATFORM</span>
+                            </div>
+                        </div>
+
+                        <!-- Risk Anomalies -->
+                        <div style="padding: 0 1.5rem 1.5rem;">
+                            <div style="background: #fff; border: 1.5px solid ${ri.score > 0 ? riskColor + '40' : '#e2e8f0'}; border-radius: 14px; padding: 1rem;">
+                                <div style="font-size: 0.65rem; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+                                    <i class="fas fa-microchip"></i> Automated Anomaly Scanner
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    ${ri.indicators.length > 0 ? 
+                                        ri.indicators.map(ind => `
+                                            <div style="display: flex; align-items: flex-start; gap: 8px; font-size: 0.75rem; font-weight: 700; color: ${riskColor}; background: ${riskColor}08; padding: 8px 12px; border-radius: 8px; border-left: 3px solid ${riskColor};">
+                                                <i class="fas fa-exclamation-triangle" style="margin-top: 2px;"></i>
+                                                <span>${ind}</span>
+                                            </div>
+                                        `).join('') : 
+                                        `<div style="font-size: 0.75rem; color: #10b981; font-weight: 700; text-align: center; padding: 10px;">
+                                            <i class="fas fa-check-circle"></i> No digital anomalies detected in this transaction.
+                                        </div>`
+                                    }
+                                </div>
+                            </div>
+
+                            <div style="background: #f8fafc; padding: 1rem; border-radius: 12px; border: 1px solid #f1f5f9; margin-top: 1rem;">
+                                <div style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase; margin-bottom: 4px;">Participant Notes</div>
+                                <div style="font-size: 0.8rem; color: var(--adm-navy); font-weight: 600; line-height: 1.5;">${b.special_requests}</div>
                             </div>
                         </div>
                     </div>
-                    <div>
-                        <div class="detail-label">Event Venue Location</div>
-                        <div style="background: #f8fafc; padding: 0.75rem; border-radius: 10px; border: 1px solid #e2e8f0; font-size: 0.8rem; font-weight: 600; color: #64748b;">
-                            <i class="fas fa-map-marker-alt" style="color: var(--dm-primary);"></i> ${b.venue_address}
-                        </div>
-                    </div>
-                </div>
-
-                <div style="margin-top: 1.5rem;">
-                    <div class="detail-label">Menu Item Architecture</div>
-                    <div style="background: #f8fafc; border-radius: 12px; padding: 1rem; border: 1px solid #e2e8f0;">
-                        ${b.selected_items && b.selected_items.length > 0 ? b.selected_items.map(item => `
-                            <div class="menu-item-row">
-                                <span style="font-weight: 700; color: var(--dm-secondary);">${item.name} <span style="color: #94a3b8;">x${item.quantity}</span></span>
-                                <span style="font-weight: 800; color: var(--dm-secondary);">₱${item.price.toLocaleString()}</span>
-                            </div>
-                        `).join('') : '<div style="color: #64748b; font-size: 0.85rem; text-align: center; padding: 1rem;">No detailed selections available.</div>'}
-                    </div>
-                </div>
-
-                ${kycHtml}
-                ${auditTrailHtml}
                 `;
             }
-        } catch (err) {
-            body.innerHTML = '<div style="color: #ef4444; padding: 2rem; text-align: center;">Error loading booking intelligence.</div>';
+        } catch (err) { body.innerHTML = '<div style="color: #ef4444; padding: 2rem; text-align: center;">Error loading record.</div>'; }
+    }
+
+    async function reconcilePayment(id) {
+        const { value: notes } = await Swal.fire({
+            title: 'Governance Reconciliation',
+            text: "Mandatory: Provide an audit justification for this manual payment verification.",
+            input: 'textarea',
+            inputPlaceholder: 'Reason for manual reconciliation...',
+            showCancelButton: true,
+            confirmButtonText: 'Verify & Reconcile',
+            confirmButtonColor: '#10b981',
+            inputValidator: (value) => { if (!value) return 'You must provide a justification!' }
+        });
+
+        if (notes) {
+            Swal.fire({ title: 'Processing...', didOpen: () => Swal.showLoading() });
+            try {
+                const fd = new FormData();
+                fd.append('notes', notes);
+                const res = await fetch(`/admin/api/bookings/${id}/reconcile`, { method: 'POST', body: fd });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire('Reconciled', data.message, 'success').then(() => location.reload());
+                } else { Swal.fire('Error', data.message, 'error'); }
+            } catch (e) { Swal.fire('Error', 'Communication failure.', 'error'); }
         }
     }
 
-    function closeModal(id) {
-        document.getElementById(id).classList.remove('active');
+    async function forceComplete(id) {
+        const { value: notes } = await Swal.fire({
+            title: 'Administrative Force Completion',
+            text: "Mandatory: Justify the manual completion of this booking flow.",
+            input: 'textarea',
+            inputPlaceholder: 'Audit justification...',
+            showCancelButton: true,
+            confirmButtonText: 'Force Complete',
+            confirmButtonColor: '#4f46e5',
+            inputValidator: (value) => { if (!value) return 'Justification is required for this override!' }
+        });
+
+        if (notes) {
+            Swal.fire({ title: 'Overriding State...', didOpen: () => Swal.showLoading() });
+            try {
+                const fd = new FormData();
+                fd.append('notes', notes);
+                const res = await fetch(`/admin/api/bookings/${id}/force-complete`, { method: 'POST', body: fd });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire('Flow Completed', data.message, 'success').then(() => location.reload());
+                } else { Swal.fire('Error', data.message, 'error'); }
+            } catch (e) { Swal.fire('Error', 'Communication failure.', 'error'); }
+        }
     }
+
+    async function cancelBooking(id) {
+        const { value: reason } = await Swal.fire({
+            title: 'Governance Cancellation',
+            text: "Mandatory: Provide a clear justification for terminating this transaction. This action is irreversible.",
+            icon: 'warning',
+            input: 'textarea',
+            inputPlaceholder: 'Reason for termination...',
+            showCancelButton: true,
+            confirmButtonText: 'Terminate Flow',
+            confirmButtonColor: '#ef4444',
+            inputValidator: (value) => { if (!value) return 'A reason is mandatory for cancellations!' }
+        });
+
+        if (reason) {
+            Swal.fire({ title: 'Terminating Flow...', didOpen: () => Swal.showLoading() });
+            try {
+                const fd = new FormData();
+                fd.append('reason', reason);
+                const res = await fetch(`/admin/api/bookings/${id}/cancel`, { method: 'POST', body: fd });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire('Terminated', data.message, 'success').then(() => location.reload());
+                } else { Swal.fire('Error', data.message, 'error'); }
+            } catch (e) { Swal.fire('Error', 'Communication failure.', 'error'); }
+        }
+    }
+
+    async function flagDispute(id) {
+        const result = await Swal.fire({
+            title: 'Flag for Resolution?',
+            text: "This will move the booking to the Dispute queue for manual investigation.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Flag Dispute',
+            confirmButtonColor: '#f59e0b'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const res = await fetch(`/admin/api/bookings/${id}/flag-dispute`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire('Dispute Flagged', data.message, 'success').then(() => location.reload());
+                } else { Swal.fire('Error', data.message, 'error'); }
+            } catch (e) { Swal.fire('Error', 'Communication failure.', 'error'); }
+        }
+    }
+
+    async function dispatchAlert(id) {
+        const { value: message } = await Swal.fire({
+            title: 'Dispatch Booking Alert',
+            text: "Send a system notification to both the Customer and Caterer.",
+            input: 'textarea',
+            inputPlaceholder: 'System alert message...',
+            showCancelButton: true,
+            confirmButtonText: 'Dispatch Alert'
+        });
+
+        if (message) {
+            try {
+                const fd = new FormData();
+                fd.append('message', message);
+                const res = await fetch(`/admin/api/bookings/${id}/send-alert`, { method: 'POST', body: fd });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire('Dispatched', data.message, 'success');
+                } else { Swal.fire('Error', data.message, 'error'); }
+            } catch (e) { Swal.fire('Error', 'Communication failure.', 'error'); }
+        }
+    }
+
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 </script>
 {% endblock %}
