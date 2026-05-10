@@ -43,7 +43,7 @@ from .db.database import SessionLocal
 async def maintenance_middleware(request: Request, call_next):
     # 1. Skip check for Static Files and Admin routes
     path = request.url.path
-    if path.startswith("/static") or path.startswith("/admin") or path.startswith("/api/admin"):
+    if path.startswith("/static") or path.startswith("/admin") or path.startswith("/api/admin") or path == "/favicon.ico":
         return await call_next(request)
 
     # 2. Fetch Config (Optimized: Check if it's in request state if we had it, but for now fetch)
@@ -72,7 +72,7 @@ async def maintenance_middleware(request: Request, call_next):
                         "request": request,
                         "message": config.maintenance_message,
                         "config": config
-                    })
+                    }, status_code=503)
                 else:
                     return JSONResponse(
                         status_code=503,
