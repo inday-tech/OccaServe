@@ -38,6 +38,7 @@ def ensure_columns():
             ("investigation_notes", "TEXT"),
         ]
 
+
         for col_name, col_type in users_columns:
             try:
                 conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_type};"))
