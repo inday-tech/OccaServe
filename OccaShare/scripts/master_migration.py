@@ -57,8 +57,11 @@ def master_migration():
             ("is_kyc_complete", "BOOLEAN DEFAULT FALSE"),
             ("kyc_attempts", "INTEGER DEFAULT 0"),
             ("must_change_password", "BOOLEAN DEFAULT FALSE"),
-            ("is_archived", "BOOLEAN DEFAULT FALSE")
+            ("is_archived", "BOOLEAN DEFAULT FALSE"),
+            ("status_reason", "TEXT"),
+            ("investigation_notes", "TEXT")
         ]
+
         
         # Caterer Profiles
         caterer_cols = [

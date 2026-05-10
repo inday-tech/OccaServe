@@ -34,7 +34,10 @@ def ensure_columns():
             ("is_archived", "BOOLEAN DEFAULT FALSE"),
             ("created_at", "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"),
             ("updated_at", "TIMESTAMP WITH TIME ZONE"),
+            ("status_reason", "TEXT"),
+            ("investigation_notes", "TEXT"),
         ]
+
 
         for col_name, col_type in users_columns:
             try:
