@@ -7,52 +7,183 @@
 <style>
     /* Archive Specific Diamond Styling */
     .archive-pill-container {
-        display: flex; gap: 12px; margin-bottom: 2rem; overflow-x: auto; padding-bottom: 10px;
+        display: flex;
+        gap: 12px;
+        margin-bottom: 2rem;
+        overflow-x: auto;
+        padding: 4px;
+        padding-bottom: 12px;
     }
+
     .archive-pill {
-        padding: 10px 20px; border-radius: 14px; background: white; border: 1px solid #f1f5f9;
-        font-size: 0.8rem; font-weight: 800; color: var(--adm-muted); cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; gap: 10px;
+        padding: 12px 24px;
+        border-radius: 16px;
+        background: white;
+        border: 1.5px solid #f1f5f9;
+        font-size: 0.8rem;
+        font-weight: 800;
+        color: var(--adm-muted);
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        align-items: center;
+        gap: 12px;
         white-space: nowrap;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
     }
-    .archive-pill.active { background: var(--adm-primary); color: white; border-color: var(--adm-primary); box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2); }
-    .archive-pill .count { background: rgba(0,0,0,0.05); padding: 2px 8px; border-radius: 6px; font-size: 0.7rem; }
-    .archive-pill.active .count { background: rgba(255,255,255,0.2); }
+
+    .archive-pill:hover {
+        border-color: var(--adm-primary-light);
+        transform: translateY(-2px);
+    }
+
+    .archive-pill.active {
+        background: var(--adm-primary);
+        color: white;
+        border-color: var(--adm-primary);
+        box-shadow: 0 10px 15px -3px rgba(249, 115, 22, 0.25);
+    }
+
+    .archive-pill .count {
+        background: rgba(0, 0, 0, 0.05);
+        padding: 2px 10px;
+        border-radius: 8px;
+        font-size: 0.7rem;
+        font-family: 'Poppins';
+    }
+
+    .archive-pill.active .count {
+        background: rgba(255, 255, 255, 0.25);
+    }
 
     .sla-badge {
-        font-size: 0.65rem; font-weight: 800; color: #ef4444; background: #fee2e2;
-        padding: 4px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.05em;
+        font-size: 0.65rem;
+        font-weight: 800;
+        color: #ef4444;
+        background: #fee2e2;
+        padding: 6px 12px;
+        border-radius: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border: 1px solid rgba(239, 68, 68, 0.1);
     }
 
     .recovery-card {
-        background: white; border-radius: 16px; border: 1px solid #f1f5f9;
-        padding: 1.5rem; transition: all 0.2s; display: flex; align-items: center; gap: 1.5rem;
-        margin-bottom: 1rem;
+        background: white;
+        border-radius: 20px;
+        border: 1px solid #f1f5f9;
+        padding: 1.75rem;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        margin-bottom: 1.25rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
     }
-    .recovery-card:hover { transform: translateY(-3px); box-shadow: 0 8px 16px rgba(0,0,0,0.03); border-color: var(--adm-primary-light); }
+
+    .recovery-card:hover {
+        transform: translateY(-4px) scale(1.005);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05);
+        border-color: var(--adm-primary-light);
+    }
+
+    .recovery-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 16px;
+        background: #f8fafc;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        color: var(--adm-primary);
+        flex-shrink: 0;
+        transition: all 0.3s;
+    }
+
+    .recovery-card:hover .recovery-icon {
+        background: var(--adm-primary-soft);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 6rem 2rem;
+        background: #fcfcfc;
+        border: 2px dashed #f1f5f9;
+        border-radius: 24px;
+        margin-top: 1rem;
+    }
+
+    /* Action Buttons Elite */
+    .btn-restore {
+        background: #ecfdf5;
+        color: #059669;
+        border: 1.5px solid #d1fae5;
+        padding: 10px 20px;
+        border-radius: 12px;
+        font-weight: 800;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-restore:hover {
+        background: #059669;
+        color: white;
+        border-color: #059669;
+    }
+
+    .btn-purge {
+        background: #fef2f2;
+        color: #dc2626;
+        border: 1.5px solid #fee2e2;
+        padding: 10px 20px;
+        border-radius: 12px;
+        font-weight: 800;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-purge:hover {
+        background: #dc2626;
+        color: white;
+        border-color: #dc2626;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="dashboard-header-clean">
     <div class="header-title-area">
-        <h1 style="display: flex; align-items: center; gap: 12px;">
-            <i class="fas fa-history" style="color: var(--adm-primary);"></i>
+        <h1 style="display: flex; align-items: center; gap: 15px; font-family: 'Poppins', sans-serif;">
             System Archives Terminal
         </h1>
-        <p>Restore previously archived records or perform permanent data purging.</p>
+        <p style="font-family: 'Poppins', sans-serif;">Operational safety net for decommissioned records and transaction
+            integrity restoration.</p>
     </div>
-    <div style="background: #eff6ff; border: 1px solid #dbeafe; padding: 12px 16px; border-radius: 12px; display: flex; align-items: center; gap: 12px;">
-        <i class="fas fa-shield-check" style="color: #3b82f6;"></i>
-        <div style="font-size: 0.75rem; color: #1e40af; font-weight: 700;">
-            RETENTION POLICY: Records are held for 30 days before permanent automated purge.
+    <div
+        style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 1.5px solid #bfdbfe; padding: 14px 20px; border-radius: 16px; display: flex; align-items: center; gap: 14px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08);">
+        <i class="fas fa-shield-check" style="color: #2563eb; font-size: 1.2rem;"></i>
+        <div>
+            <div
+                style="font-size: 0.75rem; color: #1e40af; font-weight: 800; text-transform: uppercase; letter-spacing: 0.02em;">
+                Data Retention Protocol</div>
+            <div style="font-size: 0.7rem; color: #3b82f6; font-weight: 600;">Records are automatically purged after 30
+                days of inactivity.</div>
         </div>
     </div>
 </div>
 
 <div class="archive-pill-container">
     <button class="archive-pill active" onclick="switchTab('caterers')">
-        <i class="fas fa-utensils"></i> Caterers <span class="count">{{ caterers|length }}</span>
+        <i class="fas fa-utensils"></i> Caterer Partners <span class="count">{{ caterers|length }}</span>
     </button>
     <button class="archive-pill" onclick="switchTab('customers')">
         <i class="fas fa-users"></i> Customers <span class="count">{{ customers|length }}</span>
@@ -61,44 +192,87 @@
         <i class="fas fa-calendar-check"></i> Bookings <span class="count">{{ bookings|length }}</span>
     </button>
     <button class="archive-pill" onclick="switchTab('reviews')">
-        <i class="fas fa-star"></i> Reviews <span class="count">{{ reviews|length }}</span>
-    </button>
-    <button class="archive-pill" onclick="switchTab('payouts')">
-        <i class="fas fa-wallet"></i> Payouts <span class="count">{{ payouts|length }}</span>
+        <i class="fas fa-star"></i> Trust Reviews <span class="count">{{ reviews|length }}</span>
     </button>
 </div>
 
-<div class="table-card-clean" style="padding: 2rem;">
+<div class="table-card-clean" style="padding: 2.5rem; background: transparent; border: none; box-shadow: none;">
     <!-- Caterers Tab -->
     <div id="caterers-section" class="tab-section">
         {% for c in caterers %}
         <div class="recovery-card">
-            <div style="width: 48px; height: 48px; border-radius: 12px; background: #f8fafc; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: var(--adm-primary);">
-                <i class="fas fa-store"></i>
-            </div>
+            <div class="recovery-icon"><i class="fas fa-store"></i></div>
             <div style="flex: 1;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h3 style="margin: 0; font-size: 1rem; font-weight: 800; color: var(--adm-navy);">{{ c.business_name }}</h3>
-                    <span class="sla-badge">Purge in 14 Days</span>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <h3 style="margin: 0; font-size: 1.05rem; font-weight: 800; color: var(--adm-navy);">{{
+                        c.business_name }}</h3>
+                    <span class="sla-badge">Purge Protection Active</span>
                 </div>
-                <div style="font-size: 0.75rem; color: var(--adm-muted); margin-top: 4px; font-weight: 700;">
-                    <i class="far fa-user"></i> {{ c.user.first_name }} {{ c.user.last_name }} • <i class="far fa-clock"></i> Archived: {{ c.updated_at.strftime('%b %d, %Y') }}
+                <div style="font-size: 0.75rem; color: var(--adm-muted); font-weight: 700; display: flex; gap: 16px;">
+                    <span><i class="far fa-user" style="color: var(--adm-primary);"></i> Executive: {{ c.user.first_name
+                        }} {{ c.user.last_name }}</span>
+                    <span><i class="far fa-clock" style="color: var(--adm-primary);"></i> Archived: {{
+                        c.updated_at.strftime('%b %d, %Y') }}</span>
+                    <span><i class="fas fa-id-card" style="color: var(--adm-primary);"></i> ID: #CT-{{ c.id }}</span>
                 </div>
             </div>
-            <div style="display: flex; gap: 8px;">
-                <form action="/admin/caterers/{{ c.id }}/restore" method="POST">
-                    <button class="btn-clean" style="color: #10b981; border-color: #10b981;">Restore</button>
-                </form>
-                <form action="/admin/caterers/{{ c.id }}/purge" method="POST">
-                    <button class="btn-clean" style="color: #ef4444; border-color: #ef4444;">Purge</button>
-                </form>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-restore" onclick="processArchive('caterers', {{ c.id }}, 'restore')">
+                    <i class="fas fa-rotate-left"></i> Restore
+                </button>
+                <button class="btn-purge" onclick="processArchive('caterers', {{ c.id }}, 'purge')">
+                    <i class="fas fa-trash-can"></i> Delete
+                </button>
             </div>
         </div>
         {% else %}
-        <div style="text-align: center; padding: 5rem;">
-            <i class="fas fa-shield-check fa-4x" style="color: #f1f5f9; margin-bottom: 2rem;"></i>
-            <h2 style="color: var(--adm-navy);">Data Integrity All-Clear</h2>
-            <p style="color: var(--adm-muted);">No archived caterer profiles detected. Database health is optimal.</p>
+        <div class="empty-state">
+            <div
+                style="width: 80px; height: 80px; background: #f8fafc; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 2rem; color: #cbd5e1; font-size: 2.5rem;">
+                <i class="fas fa-shield-check"></i>
+            </div>
+            <h2 style="color: var(--adm-navy); font-weight: 800; margin-bottom: 0.5rem;">Registry Integrity Optimal</h2>
+            <p style="color: var(--adm-muted); font-weight: 600;">No archived caterer profiles detected in the recovery
+                pool.</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Customers Tab -->
+    <div id="customers-section" class="tab-section" style="display: none;">
+        {% for u in customers %}
+        <div class="recovery-card">
+            <div class="recovery-icon"><i class="fas fa-user-shield"></i></div>
+            <div style="flex: 1;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <h3 style="margin: 0; font-size: 1.05rem; font-weight: 800; color: var(--adm-navy);">{{ u.first_name
+                        }} {{ u.last_name }}</h3>
+                    <span class="sla-badge">Purge Protection Active</span>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--adm-muted); font-weight: 700; display: flex; gap: 16px;">
+                    <span><i class="far fa-envelope" style="color: var(--adm-primary);"></i> {{ u.email }}</span>
+                    <span><i class="far fa-clock" style="color: var(--adm-primary);"></i> Archived: {{
+                        u.updated_at.strftime('%b %d, %Y') }}</span>
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-restore" onclick="processArchive('customers', {{ u.id }}, 'restore')">
+                    <i class="fas fa-rotate-left"></i> Restore
+                </button>
+                <button class="btn-purge" onclick="processArchive('customers', {{ u.id }}, 'purge')">
+                    <i class="fas fa-trash-can"></i> Delete
+                </button>
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div
+                style="width: 80px; height: 80px; background: #f8fafc; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 2rem; color: #cbd5e1; font-size: 2.5rem;">
+                <i class="fas fa-users-slash"></i>
+            </div>
+            <h2 style="color: var(--adm-navy); font-weight: 800; margin-bottom: 0.5rem;">Customer Base Intact</h2>
+            <p style="color: var(--adm-muted); font-weight: 600;">No archived customer profiles found in the recovery
+                pool.</p>
         </div>
         {% endfor %}
     </div>
@@ -107,65 +281,126 @@
     <div id="bookings-section" class="tab-section" style="display: none;">
         {% for b in bookings %}
         <div class="recovery-card">
-            <div style="width: 48px; height: 48px; border-radius: 12px; background: #f8fafc; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: var(--adm-primary);">
-                <i class="fas fa-receipt"></i>
-            </div>
+            <div class="recovery-icon"><i class="fas fa-receipt"></i></div>
             <div style="flex: 1;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h3 style="margin: 0; font-size: 1rem; font-weight: 800; color: var(--adm-navy);">Booking #BK-{{ b.id }}</h3>
-                    <span class="sla-badge">Purge in 28 Days</span>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <h3 style="margin: 0; font-size: 1.05rem; font-weight: 800; color: var(--adm-navy);">Booking #BK-{{
+                        b.id }}</h3>
+                    <span class="sla-badge">Financial Data Preserved</span>
                 </div>
-                <div style="font-size: 0.75rem; color: var(--adm-muted); margin-top: 4px; font-weight: 700;">
-                    <i class="fas fa-calendar-day"></i> Event Date: {{ b.event_date.strftime('%b %d, %Y') }} • <i class="far fa-clock"></i> Archived: {{ b.updated_at.strftime('%b %d, %I:%M %p') }}
+                <div style="font-size: 0.75rem; color: var(--adm-muted); font-weight: 700; display: flex; gap: 16px;">
+                    <span><i class="fas fa-calendar-day" style="color: var(--adm-primary);"></i> Event: {{
+                        b.event_date.strftime('%b %d, %Y') }}</span>
+                    <span><i class="far fa-clock" style="color: var(--adm-primary);"></i> Archived: {{
+                        b.updated_at.strftime('%b %d, %I:%M %p') }}</span>
+                    <span><i class="fas fa-coins" style="color: var(--adm-primary);"></i> Value: ₱{{
+                        "{:,.2f}".format(b.total_amount or 0) }}</span>
                 </div>
             </div>
-            <div style="display: flex; gap: 8px;">
-                <form action="/admin/bookings/{{ b.id }}/restore" method="POST">
-                    <button class="btn-clean" style="color: #10b981; border-color: #10b981;">Restore</button>
-                </form>
-                <form action="/admin/bookings/{{ b.id }}/purge" method="POST">
-                    <button class="btn-clean" style="color: #ef4444; border-color: #ef4444;">Purge</button>
-                </form>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-restore" onclick="processArchive('bookings', {{ b.id }}, 'restore')">
+                    <i class="fas fa-rotate-left"></i> Restore
+                </button>
+                <button class="btn-purge" onclick="processArchive('bookings', {{ b.id }}, 'purge')">
+                    <i class="fas fa-trash-can"></i> Delete
+                </button>
             </div>
         </div>
         {% else %}
-        <div style="text-align: center; padding: 5rem;">
-            <i class="fas fa-receipt fa-4x" style="color: #f1f5f9; margin-bottom: 2rem;"></i>
-            <h2 style="color: var(--adm-navy);">No Historical Gaps</h2>
-            <p style="color: var(--adm-muted);">All booking records are currently active in the platform.</p>
+        <div class="empty-state">
+            <div
+                style="width: 80px; height: 80px; background: #f8fafc; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 2rem; color: #cbd5e1; font-size: 2.5rem;">
+                <i class="fas fa-calendar-check"></i>
+            </div>
+            <h2 style="color: var(--adm-navy); font-weight: 800; margin-bottom: 0.5rem;">Transaction Ledger Clear</h2>
+            <p style="color: var(--adm-muted); font-weight: 600;">All booking records are currently active in the
+                platform.</p>
         </div>
         {% endfor %}
     </div>
 
-    <!-- Other tabs follow same pattern -->
-    <div id="customers-section" class="tab-section" style="display: none;">
-        <div style="text-align: center; padding: 5rem;">
-            <i class="fas fa-users-slash fa-4x" style="color: #f1f5f9; margin-bottom: 2rem;"></i>
-            <h2 style="color: var(--adm-navy);">Customer Base Intact</h2>
-            <p style="color: var(--adm-muted);">No archived customer profiles found in the recovery pool.</p>
+    <!-- Reviews Tab -->
+    <div id="reviews-section" class="tab-section" style="display: none;">
+        {% for r in reviews %}
+        <div class="recovery-card">
+            <div class="recovery-icon"><i class="fas fa-star"></i></div>
+            <div style="flex: 1;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <h3 style="margin: 0; font-size: 1rem; font-weight: 800; color: var(--adm-navy);">Review by {{
+                        r.user.first_name }} ({{ r.rating }} Stars)</h3>
+                    <span class="sla-badge">Trust Data Held</span>
+                </div>
+                <p style="margin: 4px 0; font-size: 0.8rem; color: var(--adm-navy); font-style: italic; opacity: 0.8;">
+                    "{{ r.comment[:100] }}{{ '...' if r.comment|length > 100 }}"</p>
+                <div style="font-size: 0.75rem; color: var(--adm-muted); font-weight: 700; margin-top: 4px;">
+                    <i class="far fa-clock" style="color: var(--adm-primary);"></i> Archived: {{
+                    r.updated_at.strftime('%b %d, %Y') }}
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-restore" onclick="processArchive('reviews', {{ r.id }}, 'restore')">
+                    <i class="fas fa-rotate-left"></i> Restore
+                </button>
+                <button class="btn-purge" onclick="processArchive('reviews', {{ r.id }}, 'purge')">
+                    <i class="fas fa-trash-can"></i> Delete
+                </button>
+            </div>
         </div>
+        {% else %}
+        <div class="empty-state">
+            <div
+                style="width: 80px; height: 80px; background: #f8fafc; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 2rem; color: #cbd5e1; font-size: 2.5rem;">
+                <i class="fas fa-comment-slash"></i>
+            </div>
+            <h2 style="color: var(--adm-navy); font-weight: 800; margin-bottom: 0.5rem;">Trust Score Intact</h2>
+            <p style="color: var(--adm-muted); font-weight: 600;">No archived reviews detected in the recovery terminal.
+            </p>
+        </div>
+        {% endfor %}
     </div>
 </div>
 
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     function switchTab(tabId) {
-        // Update pills
         document.querySelectorAll('.archive-pill').forEach(pill => {
             pill.classList.remove('active');
-            if (pill.innerText.toLowerCase().includes(tabId)) {
+            if (pill.innerHTML.toLowerCase().includes(tabId)) {
                 pill.classList.add('active');
             }
         });
 
-        // Update sections
         document.querySelectorAll('.tab-section').forEach(section => {
             section.style.display = 'none';
         });
         const target = document.getElementById(`${tabId}-section`);
         if (target) target.style.display = 'block';
+    }
+
+    function processArchive(type, id, action) {
+        const isPurge = action === 'purge';
+        const title = isPurge ? 'Permanent Delete?' : 'Restore Record?';
+        const desc = isPurge ? 'This action is irreversible. All data related to this record will be permanently deleted.' : 'This will return the record to the active registry.';
+        const variant = isPurge ? 'danger' : 'success';
+
+        openConfirmModal(title, desc, () => {
+            Swal.fire({ title: 'Processing Transaction...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            fetch(`/admin/api/archives/${type}/${id}/${action}`, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire('Success', data.message, 'success').then(() => location.reload());
+                    } else {
+                        Swal.fire('Operation Failed', data.message, 'error');
+                    }
+                })
+                .catch(() => {
+                    Swal.fire('Critical Error', 'Communication with the governance server failed.', 'error');
+                });
+        }, { variant: variant });
     }
 </script>
 {% endblock %}

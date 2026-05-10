@@ -7,39 +7,122 @@
 <style>
     /* KYC Specific Diamond Styling */
     .risk-chip {
-        padding: 4px 8px; border-radius: 6px; font-size: 0.65rem; font-weight: 800;
-        display: inline-flex; align-items: center; gap: 4px;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 0.65rem;
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
     }
-    .risk-low { background: #ecfdf5; color: #059669; }
-    .risk-med { background: #fff7ed; color: #d97706; }
-    .risk-high { background: #fef2f2; color: #dc2626; }
+
+    .risk-low {
+        background: #ecfdf5;
+        color: #059669;
+    }
+
+    .risk-med {
+        background: #fff7ed;
+        color: #d97706;
+    }
+
+    .risk-high {
+        background: #fef2f2;
+        color: #dc2626;
+    }
 
     .intelligence-badge {
-        display: inline-flex; align-items: center; gap: 6px;
-        background: #f8fafc; border: 1px solid #e2e8f0;
-        padding: 4px 10px; border-radius: 10px; font-size: 0.7rem; font-weight: 700; color: var(--adm-navy);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        padding: 4px 10px;
+        border-radius: 10px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--adm-navy);
     }
-    .intel-pulse { width: 8px; height: 8px; border-radius: 50%; background: #3b82f6; box-shadow: 0 0 0 rgba(59, 130, 246, 0.4); animation: pulse 2s infinite; }
-    @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } }
 
-    .aging-badge { font-size: 0.65rem; font-weight: 700; color: var(--adm-muted); display: flex; align-items: center; gap: 4px; }
+    .intel-pulse {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #3b82f6;
+        box-shadow: 0 0 0 rgba(59, 130, 246, 0.4);
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% {
+            transform: scale(0.95);
+            box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+        }
+
+        70% {
+            transform: scale(1);
+            box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+        }
+
+        100% {
+            transform: scale(0.95);
+            box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+        }
+    }
+
+    .aging-badge {
+        font-size: 0.65rem;
+        font-weight: 700;
+        color: var(--adm-muted);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
 
     /* Tab Refinement */
-    .compliance-tabs { display: flex; gap: 2rem; border-bottom: 1px solid #f1f5f9; margin-bottom: 2rem; }
-    .comp-tab {
-        padding: 1rem 0.5rem; font-size: 0.85rem; font-weight: 700; color: var(--adm-muted);
-        cursor: pointer; position: relative; transition: all 0.2s;
+    .compliance-tabs {
+        display: flex;
+        gap: 2rem;
+        border-bottom: 1px solid #f1f5f9;
+        margin-bottom: 2rem;
     }
-    .comp-tab:hover { color: var(--adm-primary); }
-    .comp-tab.active { color: var(--adm-primary); }
+
+    .comp-tab {
+        padding: 1rem 0.5rem;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--adm-muted);
+        cursor: pointer;
+        position: relative;
+        transition: all 0.2s;
+    }
+
+    .comp-tab:hover {
+        color: var(--adm-primary);
+    }
+
+    .comp-tab.active {
+        color: var(--adm-primary);
+    }
+
     .comp-tab.active::after {
-        content: ''; position: absolute; bottom: -1px; left: 0; width: 100%; height: 3px;
-        background: var(--adm-primary); border-radius: 3px 3px 0 0;
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background: var(--adm-primary);
+        border-radius: 3px 3px 0 0;
     }
 
     .notif-dot {
-        background: var(--adm-primary); color: white; font-size: 0.6rem; padding: 2px 6px;
-        border-radius: 10px; margin-left: 6px;
+        background: var(--adm-primary);
+        color: white;
+        font-size: 0.6rem;
+        padding: 2px 6px;
+        border-radius: 10px;
+        margin-left: 6px;
     }
 </style>
 {% endblock %}
@@ -47,7 +130,7 @@
 {% block content %}
 <div class="dashboard-header-clean">
     <div class="header-title-area">
-        <h1 style="display: flex; align-items: center; gap: 12px;">
+        <h1 style="display: flex; align-items: center;">
             <i class="fas fa-shield-check" style="color: var(--adm-primary);"></i>
             KYC Compliance Terminal
         </h1>
@@ -57,7 +140,8 @@
 
 <div class="kpi-grid-clean">
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #fff7ed; color: var(--adm-primary);"><i class="fas fa-user-clock"></i></div>
+        <div class="kpi-icon-box" style="background: #fff7ed; color: var(--adm-primary);"><i
+                class="fas fa-user-clock"></i></div>
         <div class="kpi-info">
             <h4>Pending Reviews</h4>
             <span class="kpi-value">{{ pending_caterers|length + pending_customers|length }}</span>
@@ -95,7 +179,8 @@
 <div id="queue-pending">
     <div class="table-card-clean" style="margin-bottom: 2rem;">
         <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;">
-            <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy); margin: 0; display: flex; align-items: center; gap: 10px;">
+            <h3
+                style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy); margin: 0; display: flex; align-items: center; gap: 10px;">
                 <i class="fas fa-store" style="color: var(--adm-primary);"></i> Pending Caterer Entities
             </h3>
         </div>
@@ -118,13 +203,16 @@
                             <div style="display: flex; align-items: center; gap: 12px;">
                                 <div class="avatar-sm"><i class="fas fa-utensils"></i></div>
                                 <div>
-                                    <div style="font-weight: 800; color: var(--adm-navy);">{{ caterer.business_name }}</div>
-                                    <div style="font-size: 0.7rem; font-weight: 600; color: var(--adm-muted);">{{ caterer.city }} REGION</div>
+                                    <div style="font-weight: 800; color: var(--adm-navy);">{{ caterer.business_name }}
+                                    </div>
+                                    <div style="font-size: 0.7rem; font-weight: 600; color: var(--adm-muted);">{{
+                                        caterer.city }} REGION</div>
                                 </div>
                             </div>
                         </td>
                         <td>
-                            <div style="font-weight: 700; color: var(--adm-navy); font-size: 0.8rem;">{{ caterer.user.first_name }} {{ caterer.user.last_name }}</div>
+                            <div style="font-weight: 700; color: var(--adm-navy); font-size: 0.8rem;">{{
+                                caterer.user.first_name }} {{ caterer.user.last_name }}</div>
                             <div style="font-size: 0.7rem; color: var(--adm-muted);">{{ caterer.user.email }}</div>
                         </td>
                         <td>
@@ -140,7 +228,8 @@
                             </div>
                         </td>
                         <td style="text-align: right;">
-                            <a href="/admin/verify/{{ caterer.user_id }}" class="btn-clean" style="font-size: 0.65rem;">Initialize Audit</a>
+                            <a href="/admin/verify/{{ caterer.user_id }}" class="btn-clean"
+                                style="font-size: 0.65rem;">Initialize Audit</a>
                         </td>
                     </tr>
                     {% endfor %}
@@ -157,7 +246,8 @@
 
     <div class="table-card-clean">
         <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;">
-            <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy); margin: 0; display: flex; align-items: center; gap: 10px;">
+            <h3
+                style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy); margin: 0; display: flex; align-items: center; gap: 10px;">
                 <i class="fas fa-user-shield" style="color: #3b82f6;"></i> Pending Customer Audits
             </h3>
         </div>
@@ -180,8 +270,10 @@
                             <div style="display: flex; align-items: center; gap: 12px;">
                                 <div class="avatar-sm">{{ customer.first_name[0] }}</div>
                                 <div>
-                                    <div style="font-weight: 800; color: var(--adm-navy);">{{ customer.first_name }} {{ customer.last_name }}</div>
-                                    <div style="font-size: 0.7rem; font-weight: 700; color: var(--adm-muted);">#USER-{{ customer.id }}</div>
+                                    <div style="font-weight: 800; color: var(--adm-navy);">{{ customer.first_name }} {{
+                                        customer.last_name }}</div>
+                                    <div style="font-size: 0.7rem; font-weight: 700; color: var(--adm-muted);">#USER-{{
+                                        customer.id }}</div>
                                 </div>
                             </div>
                         </td>
@@ -191,7 +283,8 @@
                         </td>
                         <td><span class="badge-clean badge-pending">Awaiting Review</span></td>
                         <td style="text-align: right;">
-                            <a href="/admin/verify/{{ customer.id }}" class="btn-clean" style="font-size: 0.65rem;">Review Audit</a>
+                            <a href="/admin/verify/{{ customer.id }}" class="btn-clean"
+                                style="font-size: 0.65rem;">Review Audit</a>
                         </td>
                     </tr>
                     {% endfor %}
@@ -200,7 +293,8 @@
             {% else %}
             <div style="text-align: center; padding: 4rem;">
                 <i class="fas fa-user-check fa-3x" style="color: #cbd5e1; margin-bottom: 1rem;"></i>
-                <h4 style="color: var(--adm-muted); font-weight: 800;">Identity perimeter secure. All users verified.</h4>
+                <h4 style="color: var(--adm-muted); font-weight: 800;">Identity perimeter secure. All users verified.
+                </h4>
             </div>
             {% endif %}
         </div>
@@ -231,14 +325,16 @@
                     {% for audit in recent_history %}
                     <tr>
                         <td>
-                            <div style="font-weight: 800; color: var(--adm-navy);">{{ audit.user.first_name }} {{ audit.user.last_name }}</div>
-                            <div style="font-size: 0.7rem; color: var(--adm-muted); font-weight: 700;">#{{ audit.user.role|upper }}</div>
+                            <div style="font-weight: 800; color: var(--adm-navy);">{{ audit.user.first_name }} {{
+                                audit.user.last_name }}</div>
+                            <div style="font-size: 0.7rem; color: var(--adm-muted); font-weight: 700;">#{{
+                                audit.user.role|upper }}</div>
                         </td>
                         <td>
                             {% if audit.verification_status == 'approved' %}
-                                <span class="badge-clean" style="background: #ecfdf5; color: #059669;">APPROVED</span>
+                            <span class="badge-clean" style="background: #ecfdf5; color: #059669;">APPROVED</span>
                             {% else %}
-                                <span class="badge-clean" style="background: #fef2f2; color: #dc2626;">REJECTED</span>
+                            <span class="badge-clean" style="background: #fef2f2; color: #dc2626;">REJECTED</span>
                             {% endif %}
                         </td>
                         <td>
@@ -246,9 +342,11 @@
                                 {{ (audit.match_score * 100)|round(1) }}% MATCH
                             </div>
                         </td>
-                        <td><span style="font-weight: 600; color: var(--adm-muted);">{{ audit.created_at.strftime('%b %d, %I:%M %p') }}</span></td>
+                        <td><span style="font-weight: 600; color: var(--adm-muted);">{{ audit.created_at.strftime('%b
+                                %d, %I:%M %p') }}</span></td>
                         <td style="text-align: right;">
-                            <a href="/admin/verify/{{ audit.user_id }}" class="btn-clean" style="font-size: 0.65rem;">View Artifact</a>
+                            <a href="/admin/verify/{{ audit.user_id }}" class="btn-clean"
+                                style="font-size: 0.65rem;">View Artifact</a>
                         </td>
                     </tr>
                     {% endfor %}

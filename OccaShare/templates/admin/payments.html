@@ -6,51 +6,147 @@
 <link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ range(1, 1000) | random }}">
 <style>
     /* Finance Specific Refinements */
-    .ledger-ref { font-family: monospace; font-size: 0.65rem; color: var(--adm-muted); font-weight: 600; letter-spacing: 0.05em; }
-    .amount-pill {
-        padding: 6px 12px; border-radius: 10px; font-weight: 800; font-size: 0.8rem;
-        display: inline-flex; align-items: center; gap: 6px;
+    .ledger-ref {
+        font-family: monospace;
+        font-size: 0.65rem;
+        color: var(--adm-muted);
+        font-weight: 600;
+        letter-spacing: 0.05em;
     }
-    .amount-gain { background: #ecfdf5; color: #065f46; border: 1px solid #d1fae5; }
-    .amount-fee { background: #fff7ed; color: #9a3412; border: 1px solid #ffedd5; }
-    .amount-waived { background: #f8fafc; color: #94a3b8; border: 1px solid #f1f5f9; font-size: 0.65rem; }
-    
-    .transaction-meta { display: flex; flex-direction: column; gap: 2px; }
-    .meta-label { font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase; }
+
+    .amount-pill {
+        padding: 6px 12px;
+        border-radius: 10px;
+        font-weight: 800;
+        font-size: 0.8rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .amount-gain {
+        background: #ecfdf5;
+        color: #065f46;
+        border: 1px solid #d1fae5;
+    }
+
+    .amount-fee {
+        background: #fff7ed;
+        color: #9a3412;
+        border: 1px solid #ffedd5;
+    }
+
+    .amount-waived {
+        background: #f8fafc;
+        color: #94a3b8;
+        border: 1px solid #f1f5f9;
+        font-size: 0.65rem;
+    }
+
+    .transaction-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .meta-label {
+        font-size: 0.65rem;
+        font-weight: 800;
+        color: var(--adm-muted);
+        text-transform: uppercase;
+    }
 
     .clickable-ref {
-        cursor: pointer; transition: all 0.2s; padding: 4px 8px; border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+        padding: 4px 8px;
+        border-radius: 6px;
     }
-    .clickable-ref:hover { background: var(--adm-primary-soft); transform: translateX(2px); }
+
+    .clickable-ref:hover {
+        background: var(--adm-primary-soft);
+        transform: translateX(2px);
+    }
 
     /* Yield Event Indicators */
-    .yield-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; }
-    .icon-manual { background: #fef2f2; color: #ef4444; }
-    .icon-auto { background: #eff6ff; color: #3b82f6; }
+    .yield-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+    }
+
+    .icon-manual {
+        background: #fef2f2;
+        color: #ef4444;
+    }
+
+    .icon-auto {
+        background: #eff6ff;
+        color: #3b82f6;
+    }
 
     /* Modal Diamond Standard (Copy from Bookings for consistency) */
     .admin-modal-overlay {
-        position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6);
-        z-index: 3000; display: none; align-items: center; justify-content: center;
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.6);
+        z-index: 3000;
+        display: none;
+        align-items: center;
+        justify-content: center;
         backdrop-filter: blur(8px);
     }
-    .admin-modal-overlay.active { display: flex; }
-    .admin-modal-card {
-        background: white; width: 100%; max-width: 600px;
-        border-radius: 28px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
-        overflow: hidden; animation: modalIn 0.3s ease-out;
-    }
-    @keyframes modalIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-    .modal-header-clean { padding: 1.5rem 2rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: flex-start; }
-    .modal-body-clean { padding: 2rem; max-height: 70vh; overflow-y: auto; }
+    .admin-modal-overlay.active {
+        display: flex;
+    }
+
+    .admin-modal-card {
+        background: white;
+        width: 100%;
+        max-width: 600px;
+        border-radius: 28px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        overflow: hidden;
+        animation: modalIn 0.3s ease-out;
+    }
+
+    @keyframes modalIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .modal-header-clean {
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .modal-body-clean {
+        padding: 2rem;
+        max-height: 70vh;
+        overflow-y: auto;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="dashboard-header-clean">
     <div class="header-title-area">
-        <h1 style="display: flex; align-items: center; gap: 12px;">
+        <h1 style="display: flex; align-items: center;">
             <i class="fas fa-chart-line-up" style="color: var(--adm-primary);"></i>
             Financial Intelligence
         </h1>
@@ -93,12 +189,17 @@
 
 <!-- Financial Ledger Terminal -->
 <div class="table-card-clean">
-    <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+    <div
+        style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
         <div style="display: flex; align-items: center; gap: 12px;">
             <i class="fas fa-building-columns" style="color: var(--adm-primary);"></i>
-            <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy); margin: 0; text-transform: uppercase; letter-spacing: 0.05em;">Monetization Ledger</h3>
+            <h3
+                style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy); margin: 0; text-transform: uppercase; letter-spacing: 0.05em;">
+                Monetization Ledger</h3>
         </div>
-        <span style="font-size: 0.65rem; font-weight: 800; background: #f8fafc; color: var(--adm-muted); padding: 4px 10px; border-radius: 8px; border: 1px solid #e2e8f0;">AUDIT SYNCED</span>
+        <span
+            style="font-size: 0.65rem; font-weight: 800; background: #f8fafc; color: var(--adm-muted); padding: 4px 10px; border-radius: 8px; border: 1px solid #e2e8f0;">AUDIT
+            SYNCED</span>
     </div>
 
     <div style="overflow-x: auto;">
@@ -119,37 +220,44 @@
                 <tr class="cust-row">
                     <td>
                         <div class="transaction-meta">
-                            <span style="font-weight: 800; color: var(--adm-navy); font-size: 0.85rem;">{{ item.created_at.strftime('%b %d, %Y') if item.created_at else '---' }}</span>
-                            <span style="font-size: 0.7rem; color: var(--adm-muted); font-weight: 700;">{{ item.created_at.strftime('%I:%M %p') if item.created_at else '' }}</span>
+                            <span style="font-weight: 800; color: var(--adm-navy); font-size: 0.85rem;">{{
+                                item.created_at.strftime('%b %d, %Y') if item.created_at else '---' }}</span>
+                            <span style="font-size: 0.7rem; color: var(--adm-muted); font-weight: 700;">{{
+                                item.created_at.strftime('%I:%M %p') if item.created_at else '' }}</span>
                         </div>
                     </td>
                     <td>
                         <div class="clickable-ref" onclick="openBookingAudit({{ item.booking_id }})">
                             <div style="display: flex; align-items: center; gap: 10px;">
-                                <div class="yield-icon {{ 'icon-manual' if 'MANUAL' in (item.payment_reference or '') else 'icon-auto' }}">
-                                    <i class="fas {{ 'fa-keyboard' if 'MANUAL' in (item.payment_reference or '') else 'fa-microchip' }}"></i>
+                                <div
+                                    class="yield-icon {{ 'icon-manual' if 'MANUAL' in (item.payment_reference or '') else 'icon-auto' }}">
+                                    <i
+                                        class="fas {{ 'fa-keyboard' if 'MANUAL' in (item.payment_reference or '') else 'fa-microchip' }}"></i>
                                 </div>
                                 <div class="transaction-meta">
-                                    <span style="font-weight: 800; color: var(--adm-primary); font-size: 0.85rem;">#BK-{{ item.booking_id }}</span>
+                                    <span
+                                        style="font-weight: 800; color: var(--adm-primary); font-size: 0.85rem;">#BK-{{
+                                        item.booking_id }}</span>
                                     <span class="ledger-ref">{{ item.payment_reference or 'SYSTEM_ADJ' }}</span>
                                 </div>
                             </div>
                         </div>
                     </td>
-                    <td><span style="font-weight: 700; color: var(--adm-muted); font-size: 0.9rem;">₱{{ "{:,.2f}".format(gross) }}</span></td>
+                    <td><span style="font-weight: 700; color: var(--adm-muted); font-size: 0.9rem;">₱{{
+                            "{:,.2f}".format(gross) }}</span></td>
                     <td>
                         {% if item.commission_amount > 0 %}
-                            <span class="amount-pill amount-fee">+ ₱{{ "{:,.2f}".format(item.commission_amount) }}</span>
+                        <span class="amount-pill amount-fee">+ ₱{{ "{:,.2f}".format(item.commission_amount) }}</span>
                         {% else %}
-                            <span class="amount-pill amount-waived">₱0.00 (WAIVED)</span>
+                        <span class="amount-pill amount-waived">₱0.00 (WAIVED)</span>
                         {% endif %}
                     </td>
                     <td><span class="amount-pill amount-gain">₱{{ "{:,.2f}".format(item.amount) }}</span></td>
                     <td style="text-align: right;">
                         {% if item.status == 'released' %}
-                            <span class="badge-clean" style="background: #ecfdf5; color: #059669;">REALIZED</span>
+                        <span class="badge-clean" style="background: #ecfdf5; color: #059669;">REALIZED</span>
                         {% else %}
-                            <span class="badge-clean badge-pending">ESCROWED</span>
+                        <span class="badge-clean badge-pending">ESCROWED</span>
                         {% endif %}
                     </td>
                 </tr>
@@ -164,21 +272,27 @@
     <div class="admin-modal-card">
         <div class="modal-header-clean">
             <div style="display: flex; align-items: center; gap: 15px;">
-                <div style="background: var(--adm-primary-soft); color: var(--adm-primary); width: 45px; height: 45px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                <div
+                    style="background: var(--adm-primary-soft); color: var(--adm-primary); width: 45px; height: 45px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
                     <i class="fas fa-fingerprint"></i>
                 </div>
                 <div>
-                    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 900; color: var(--adm-navy);" id="modalBookingTitle">Booking Intelligence</h3>
-                    <p style="margin: 0; font-size: 0.75rem; color: var(--adm-muted); font-weight: 600;">Deep-trace financial audit data.</p>
+                    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 900; color: var(--adm-navy);"
+                        id="modalBookingTitle">Booking Intelligence</h3>
+                    <p style="margin: 0; font-size: 0.75rem; color: var(--adm-muted); font-weight: 600;">Deep-trace
+                        financial audit data.</p>
                 </div>
             </div>
-            <button onclick="closeAuditModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);">&times;</button>
+            <button onclick="closeAuditModal()"
+                style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);">&times;</button>
         </div>
         <div class="modal-body-clean" id="auditModalBody">
             <!-- Dynamic Content -->
         </div>
-        <div style="padding: 1.5rem 2rem; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; gap: 12px;">
-            <button class="btn-clean" style="width: 100%; justify-content: center;" onclick="closeAuditModal()">Complete Review</button>
+        <div
+            style="padding: 1.5rem 2rem; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; gap: 12px;">
+            <button class="btn-clean" style="width: 100%; justify-content: center;" onclick="closeAuditModal()">Complete
+                Review</button>
         </div>
     </div>
 </div>
@@ -195,7 +309,7 @@
         try {
             const res = await fetch(`/admin/api/bookings/${id}/details`);
             const data = await res.json();
-            
+
             if (data.success) {
                 const b = data.booking;
                 body.innerHTML = `

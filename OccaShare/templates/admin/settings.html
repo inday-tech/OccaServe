@@ -1,109 +1,177 @@
 {% set active_page = 'settings' %}
 {% extends "admin/layout.html" %}
 
-{% block title %}Platform Configuration - OccaServe Admin{% endblock %}
+{% block title %}Platform Intelligence - OccaServe Admin{% endblock %}
 
 {% block extra_css %}
 <style>
     :root {
         --dm-primary: #f97316;
-        --dm-primary-light: #fff7ed;
+        --dm-primary-glow: rgba(249, 115, 22, 0.15);
         --dm-secondary: #0f172a;
-        --dm-slate-50: #f8fafc;
-        --dm-slate-100: #f1f5f9;
-        --dm-slate-200: #e2e8f0;
-        --dm-slate-400: #94a3b8;
-        --dm-slate-600: #475569;
+        --dm-glass: rgba(255, 255, 255, 0.7);
+        --dm-border: rgba(226, 232, 240, 0.8);
+        --dm-text-muted: #64748b;
     }
 
     .main-content {
-        background: var(--dm-slate-50) !important;
-        padding: 2rem 3rem !important;
+        background: radial-gradient(circle at top right, #f8fafc, #f1f5f9) !important;
+        padding: 2.5rem !important;
     }
 
-    .settings-container {
+    .terminal-container {
         display: grid;
-        grid-template-columns: 280px 1fr;
-        gap: 2rem;
-        align-items: start;
+        grid-template-columns: 300px 1fr;
+        gap: 2.5rem;
+        align-items: flex-start;
     }
 
-    /* Sidebar Navigation */
-    .settings-nav {
-        background: white;
-        border-radius: 1.25rem;
-        border: 1px solid var(--dm-slate-100);
-        padding: 1rem;
+    /* Glass Sidebar */
+    .terminal-nav {
+        background: var(--dm-glass);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--dm-border);
+        border-radius: 2rem;
+        padding: 1.5rem;
         position: sticky;
         top: 2rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.02);
     }
 
-    .nav-btn {
+    .nav-header {
+        padding: 0 1rem 1.5rem;
+        border-bottom: 1px solid var(--dm-border);
+        margin-bottom: 1.5rem;
+    }
+
+    .nav-header h4 {
+        margin: 0;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--dm-text-muted);
+        font-weight: 800;
+    }
+
+    .terminal-btn {
         width: 100%;
         padding: 1rem 1.25rem;
-        border-radius: 12px;
+        border-radius: 1rem;
         border: none;
-        background: none;
+        background: transparent;
         display: flex;
         align-items: center;
         gap: 1rem;
-        color: var(--dm-slate-600);
+        color: var(--dm-text-muted);
         font-weight: 700;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         text-align: left;
+        margin-bottom: 0.5rem;
     }
 
-    .nav-btn i {
+    .terminal-btn i {
         font-size: 1.1rem;
-        width: 20px;
+        width: 24px;
         text-align: center;
     }
 
-    .nav-btn:hover {
-        background: var(--dm-slate-50);
+    .terminal-btn:hover {
+        background: rgba(255,255,255,0.5);
         color: var(--dm-secondary);
+        transform: translateX(5px);
     }
 
-    .nav-btn.active {
-        background: var(--dm-primary-light);
+    .terminal-btn.active {
+        background: white;
         color: var(--dm-primary);
+        box-shadow: 0 10px 20px rgba(249, 115, 22, 0.1);
     }
 
     /* Content Area */
-    .settings-form-card {
-        background: white;
-        border-radius: 1.5rem;
-        border: 1px solid var(--dm-slate-100);
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+    .terminal-display {
+        background: var(--dm-glass);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--dm-border);
+        border-radius: 2.5rem;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.03);
         overflow: hidden;
+        min-height: 600px;
+        display: flex;
+        flex-direction: column;
     }
 
-    .panel-header {
-        padding: 2rem 2.5rem;
-        border-bottom: 1px solid var(--dm-slate-100);
-        background: var(--dm-slate-50);
+    .page-header-clean .header-title-area {
+        flex: 1;
+        text-align: left;
     }
 
-    .panel-header h2 {}
-
-    .panel-header p {}
-
-    .panel-body {
-        padding: 2.5rem;
+    .page-header-clean h1 {
+        font-size: 1.65rem;
+        font-weight: 800;
+        color: var(--dm-secondary);
+        letter-spacing: -0.02em;
+        margin: 0 0 0.1rem 0;
     }
 
-    .settings-group {
+    .page-header-clean p {
+        color: var(--dm-text-muted);
+        font-size: 0.85rem;
+        font-weight: 500;
+        margin: 0;
+    }
+
+    .display-header {
+        padding: 2rem 3rem;
+        border-bottom: 1px solid var(--dm-border);
+        background: rgba(255,255,255,0.3);
+    }
+
+    .display-header h2 {
+        margin: 0;
+        font-size: 1.4rem;
+        font-weight: 800;
+        color: var(--dm-secondary);
+        letter-spacing: -0.01em;
+    }
+
+    .display-header p {
+        margin: 0.25rem 0 0;
+        color: var(--dm-text-muted);
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+
+    .display-body {
+        padding: 3rem;
+        flex: 1;
+    }
+
+    /* Panels */
+    .terminal-panel {
+        display: none;
+        animation: panelIn 0.4s ease-out;
+    }
+
+    .terminal-panel.active {
+        display: block;
+    }
+
+    @keyframes panelIn {
+        from { opacity: 0; transform: translateY(15px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Modern Inputs */
+    .input-wrapper {
         margin-bottom: 2rem;
     }
 
-    .settings-group:last-child {
-        margin-bottom: 0;
-    }
-
-    .label-clean {
+    .label-premium {
         display: block;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         font-weight: 800;
         color: var(--dm-secondary);
         text-transform: uppercase;
@@ -111,476 +179,503 @@
         margin-bottom: 0.75rem;
     }
 
-    .input-clean {
+    .input-premium {
         width: 100%;
-        padding: 0.85rem 1.25rem;
-        border-radius: 12px;
-        border: 1.5px solid var(--dm-slate-200);
+        padding: 1rem 1.5rem;
+        border-radius: 1.25rem;
+        border: 1.5px solid var(--dm-border);
+        background: white;
+        font-family: 'Poppins', sans-serif;
         font-size: 0.95rem;
-        color: var(--dm-secondary);
-        transition: all 0.2s;
-        background: var(--dm-slate-50);
+        transition: all 0.3s;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
     }
 
-    .input-clean:focus {
+    .input-premium:focus {
         outline: none;
         border-color: var(--dm-primary);
-        background: white;
-        box-shadow: 0 0 0 4px var(--dm-primary-light);
+        box-shadow: 0 0 0 4px var(--dm-primary-glow);
     }
 
-    .grid-2 {
+    /* Intelligence Grid */
+    .intel-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 1.5rem;
+        gap: 2rem;
     }
 
-    /* Custom Switch */
-    .switch-container {
+    /* Asset Upload */
+    .asset-box {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        padding: 1.25rem;
-        background: var(--dm-slate-50);
-        border-radius: 12px;
-        border: 1px solid var(--dm-slate-100);
-    }
-
-    .switch-label h4 {
-        margin: 0;
-        font-size: 0.95rem;
-        font-weight: 800;
-        color: var(--dm-secondary);
-    }
-
-    .switch-label p {
-        margin: 4px 0 0;
-        font-size: 0.8rem;
-        color: var(--dm-slate-400);
-    }
-
-    .switch-toggle {
-        width: 52px;
-        height: 28px;
-        background: var(--dm-slate-200);
-        border-radius: 20px;
-        position: relative;
-        cursor: pointer;
-        transition: all 0.3s;
-    }
-
-    .switch-toggle::after {
-        content: '';
-        position: absolute;
-        top: 4px;
-        left: 4px;
-        width: 20px;
-        height: 20px;
+        gap: 2rem;
+        padding: 2rem;
         background: white;
-        border-radius: 50%;
+        border-radius: 1.5rem;
+        border: 2px dashed var(--dm-border);
+        cursor: pointer;
         transition: all 0.3s;
     }
 
-    .switch-toggle.active {
-        background: var(--dm-primary);
-    }
-
-    .switch-toggle.active::after {
-        left: calc(100% - 24px);
-    }
-
-    /* Upload Box */
-    .upload-zone {
-        display: flex;
-        align-items: center;
-        gap: 1.5rem;
-        padding: 1.5rem;
-        border: 2px dashed var(--dm-slate-200);
-        border-radius: 16px;
-        background: var(--dm-slate-50);
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-
-    .upload-zone:hover {
+    .asset-box:hover {
         border-color: var(--dm-primary);
-        background: var(--dm-primary-light);
+        background: var(--dm-primary-glow);
     }
 
-    .preview-circle {
-        width: 64px;
-        height: 64px;
-        border-radius: 12px;
-        background: white;
-        border: 1px solid var(--dm-slate-200);
+    .asset-preview {
+        width: 80px;
+        height: 80px;
+        border-radius: 1rem;
+        background: #f8fafc;
+        border: 1px solid var(--dm-border);
         display: flex;
         align-items: center;
         justify-content: center;
         overflow: hidden;
     }
 
-    .preview-circle img {
-        width: 100%;
-        height: 100%;
+    .asset-preview img {
+        max-width: 100%;
+        max-height: 100%;
         object-fit: contain;
     }
 
-    .settings-footer {
-        padding: 1.5rem 2.5rem;
-        background: white;
-        border-top: 1px solid var(--dm-slate-100);
+    /* Maintenance Toggle (High Fidelity) */
+    .maint-terminal {
+        background: #fff1f2;
+        border: 1px solid #fee2e2;
+        border-radius: 2rem;
+        padding: 2.5rem;
         display: flex;
-        justify-content: flex-end;
-        gap: 1rem;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
     }
 
-    .btn-save {
+    .maint-info h3 {
+        margin: 0;
+        color: #991b1b;
+        font-weight: 800;
+    }
+
+    .maint-info p {
+        margin: 0.5rem 0 0;
+        color: #ef4444;
+        font-weight: 500;
+    }
+
+    .ios-switch {
+        position: relative;
+        width: 64px;
+        height: 34px;
+        background: #cbd5e1;
+        border-radius: 34px;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .ios-switch.active { background: #ef4444; }
+
+    .ios-switch::after {
+        content: '';
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 28px;
+        height: 28px;
+        background: white;
+        border-radius: 50%;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .ios-switch.active::after { left: 33px; }
+
+    /* Sync Footer */
+    .display-footer {
+        padding: 2rem 3rem;
+        background: rgba(255,255,255,0.5);
+        border-top: 1px solid var(--dm-border);
+        display: flex;
+        justify-content: flex-end;
+        gap: 1.5rem;
+        align-items: center;
+    }
+
+    .btn-sync {
         background: var(--dm-primary);
         color: white;
         border: none;
-        padding: 0.85rem 2rem;
-        border-radius: 12px;
+        padding: 1rem 3rem;
+        border-radius: 1.25rem;
         font-weight: 800;
+        font-size: 1rem;
         cursor: pointer;
-        transition: all 0.2s;
-        box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
+        transition: all 0.3s;
+        box-shadow: 0 10px 20px var(--dm-primary-glow);
+        display: flex;
+        align-items: center;
+        gap: 12px;
     }
 
-    .btn-save:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 15px rgba(249, 115, 22, 0.3);
+    .btn-sync:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 30px var(--dm-primary-glow);
+        filter: brightness(1.1);
     }
 
-    .settings-panel {
-        display: none;
+    .btn-sync:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
     }
 
-    .settings-panel.active {
-        display: block;
-        animation: fadeIn 0.3s ease;
+    /* Audit Logs Tab */
+    .audit-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
     }
 
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(5px);
-        }
+    .audit-item {
+        background: white;
+        border: 1px solid var(--dm-border);
+        border-radius: 1.25rem;
+        padding: 1.25rem;
+        display: flex;
+        gap: 1.5rem;
+        align-items: flex-start;
+    }
 
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    .audit-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: #f8fafc;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--dm-primary);
+        font-size: 1.2rem;
+    }
+
+    .audit-info { flex: 1; }
+
+    .audit-meta {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+    }
+
+    .audit-time { font-size: 0.8rem; color: var(--dm-text-muted); font-weight: 600; }
+    .audit-action { font-weight: 800; color: var(--dm-secondary); }
+    .audit-notes { font-size: 0.9rem; color: var(--dm-text-muted); line-height: 1.6; }
+
+    /* Toast Notification */
+    #toast-container {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        z-index: 9999;
+    }
+
+    .toast-premium {
+        background: var(--dm-secondary);
+        color: white;
+        padding: 1.25rem 2rem;
+        border-radius: 1.25rem;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        font-weight: 700;
+        animation: toastIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes toastIn {
+        from { opacity: 0; transform: translateX(50px); }
+        to { opacity: 1; transform: translateX(0); }
     }
 
     @media (max-width: 1024px) {
-        .settings-container {
-            grid-template-columns: 1fr;
-        }
-
-        .settings-nav {
-            position: static;
-            display: flex;
-            overflow-x: auto;
-            gap: 0.5rem;
-            padding: 0.5rem;
-        }
-
-        .nav-btn {
-            white-space: nowrap;
-            width: auto;
-        }
+        .terminal-container { grid-template-columns: 1fr; }
+        .terminal-nav { position: static; }
+        .intel-grid { grid-template-columns: 1fr; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="page-header-clean">
-    <h1>Platform Configuration</h1>
-    <p>Calibrate system behaviors, visual identifiers, and financial parameters.</p>
+    <div class="header-title-area">
+        <h1>Platform Configuration</h1>
+        <p>Calibrate system behaviors, visual identifiers, and financial parameters.</p>
+    </div>
 </div>
 
-<div class="settings-container">
-    <aside class="settings-nav">
-        <button class="nav-btn active" onclick="switchTab('general', this)">
-            <i class="fas fa-sliders"></i> General
+<div class="terminal-container">
+    <aside class="terminal-nav">
+        <div class="nav-header">
+            <h4>System Nodes</h4>
+        </div>
+        <button class="terminal-btn active" onclick="switchTab('general', this)">
+            <i class="fas fa-sliders"></i> General Intelligence
         </button>
-        <button class="nav-btn" onclick="switchTab('appearance', this)">
-            <i class="fas fa-palette"></i> Appearance
+        <button class="terminal-btn" onclick="switchTab('appearance', this)">
+            <i class="fas fa-palette"></i> Visual Branding
         </button>
-        <button class="nav-btn" onclick="switchTab('social', this)">
-            <i class="fas fa-share-nodes"></i> Social Links
+        <button class="terminal-btn" onclick="switchTab('social', this)">
+            <i class="fas fa-share-nodes"></i> Connectivity
         </button>
-        <button class="nav-btn" onclick="switchTab('maintenance', this)">
-            <i class="fas fa-screwdriver-wrench"></i> Maintenance
+        <button class="terminal-btn" onclick="switchTab('maintenance', this)">
+            <i class="fas fa-screwdriver-wrench"></i> Operational Shield
         </button>
-        <button class="nav-btn" onclick="switchTab('security', this)">
-            <i class="fas fa-shield-halved"></i> Security
+        <button class="terminal-btn" onclick="switchTab('security', this)">
+            <i class="fas fa-shield-halved"></i> Credential Layer
+        </button>
+        <button class="terminal-btn" onclick="switchTab('audit', this)" style="border-top: 1px solid var(--dm-border); margin-top: 1rem; padding-top: 1.5rem;">
+            <i class="fas fa-clock-rotate-left"></i> Change History
         </button>
     </aside>
 
-    <form class="settings-form-card" action="/admin/settings/update" method="POST" enctype="multipart/form-data">
-        <!-- General Panel -->
-        <div id="general" class="settings-panel active">
-            <div class="panel-header">
-                <h2>General Intelligence</h2>
-                <p>Core platform identity and standard operational rates.</p>
-            </div>
-            <div class="panel-body">
-                <div class="grid-2">
-                    <div class="settings-group">
-                        <label class="label-clean">Platform Name</label>
-                        <input type="text" name="site_name" class="input-clean" value="{{ config.site_name }}" required>
-                    </div>
-                    <div class="settings-group">
-                        <label class="label-clean">Support Gateway</label>
-                        <input type="email" name="support_email" class="input-clean" value="{{ config.support_email }}"
-                            required>
-                    </div>
+    <div class="terminal-display">
+        <form id="settingsForm" onsubmit="handleSync(event)">
+            <!-- General Panel -->
+            <div id="general" class="terminal-panel active">
+                <div class="display-header">
+                    <h2>General Intelligence</h2>
+                    <p>Core platform identity and standard operational rates.</p>
                 </div>
-                <div class="grid-2">
-                    <div class="settings-group">
-                        <label class="label-clean">Commission Rate (%)</label>
-                        <input type="number" step="0.1" name="commission" class="input-clean"
-                            value="{{ config.commission_rate }}">
-                    </div>
-                    <div class="settings-group">
-                        <label class="label-clean">Max Attachment Size (MB)</label>
-                        <input type="number" name="max_upload" class="input-clean"
-                            value="{{ config.max_file_size_mb }}">
-                    </div>
-                </div>
-                <div class="settings-group">
-                    <label class="label-clean">Meta Description (SEO)</label>
-                    <textarea name="seo_desc" class="input-clean" rows="3"
-                        required>{{ config.seo_description }}</textarea>
-                </div>
-            </div>
-        </div>
-
-        <!-- Appearance Panel -->
-        <div id="appearance" class="settings-panel">
-            <div class="panel-header">
-                <h2>Visual Assets</h2>
-                <p>Manage the platform's public branding and browser identifiers.</p>
-            </div>
-            <div class="panel-body">
-                <div class="settings-group">
-                    <label class="label-clean">Primary Platform Logo</label>
-                    <label class="upload-zone">
-                        <div class="preview-circle">
-                            <img src="{{ config.logo_url if config.logo_url else '/static/images/logo.png' }}"
-                                id="logo-preview">
+                <div class="display-body">
+                    <div class="intel-grid">
+                        <div class="input-wrapper">
+                            <label class="label-premium">Platform Name</label>
+                            <input type="text" name="site_name" class="input-premium" value="{{ config.site_name }}" required>
                         </div>
-                        <div style="flex: 1;">
-                            <div style="font-weight: 800; color: var(--dm-secondary);">Replace Logo</div>
-                            <div style="font-size: 0.75rem; color: var(--dm-slate-400);">Recommended: 512x128px PNG
+                        <div class="input-wrapper">
+                            <label class="label-premium">Support Gateway</label>
+                            <input type="email" name="support_email" class="input-premium" value="{{ config.support_email }}" required>
+                        </div>
+                    </div>
+                    <div class="intel-grid">
+                        <div class="input-wrapper">
+                            <label class="label-premium">Commission Rate (%)</label>
+                            <input type="number" step="0.1" name="commission" class="input-premium" value="{{ config.commission_rate }}" min="0" max="100">
+                        </div>
+                        <div class="input-wrapper">
+                            <label class="label-premium">Max Attachment Size (MB)</label>
+                            <input type="number" name="max_upload" class="input-premium" value="{{ config.max_file_size_mb }}" min="1" max="50">
+                        </div>
+                    </div>
+                    <div class="input-wrapper">
+                        <label class="label-premium">Meta Description (SEO)</label>
+                        <textarea name="seo_desc" class="input-premium" rows="3" required style="resize: none;">{{ config.seo_description }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Appearance Panel -->
+            <div id="appearance" class="terminal-panel">
+                <div class="display-header">
+                    <h2>Visual Branding</h2>
+                    <p>Manage the platform's public identifiers and browser assets.</p>
+                </div>
+                <div class="display-body">
+                    <div class="input-wrapper">
+                        <label class="label-premium">Primary Platform Logo</label>
+                        <label class="asset-box">
+                            <div class="asset-preview">
+                                <img src="{{ config.logo_url if config.logo_url else '/static/images/logo.png' }}" id="logo-preview">
                             </div>
-                        </div>
-                        <input type="file" name="logo" style="display: none;"
-                            onchange="previewImg(this, 'logo-preview')">
-                    </label>
-                </div>
-                <div class="settings-group">
-                    <label class="label-clean">Browser Favicon</label>
-                    <label class="upload-zone">
-                        <div class="preview-circle">
-                            <img src="{{ config.favicon_url if config.favicon_url else '/favicon.ico' }}"
-                                id="fav-preview">
-                        </div>
-                        <div style="flex: 1;">
-                            <div style="font-weight: 800; color: var(--dm-secondary);">Replace Favicon</div>
-                            <div style="font-size: 0.75rem; color: var(--dm-slate-400);">Recommended: 32x32px ICO/PNG
+                            <div style="flex: 1;">
+                                <div style="font-weight: 800; color: var(--dm-secondary);">Replace Logo</div>
+                                <div style="font-size: 0.75rem; color: var(--dm-text-muted);">Recommended: 512x128px PNG (Transparent)</div>
                             </div>
-                        </div>
-                        <input type="file" name="favicon" style="display: none;"
-                            onchange="previewImg(this, 'fav-preview')">
-                    </label>
+                            <input type="file" name="logo" style="display: none;" onchange="previewImg(this, 'logo-preview')">
+                        </label>
+                    </div>
+                    <div class="input-wrapper">
+                        <label class="label-premium">Browser Favicon</label>
+                        <label class="asset-box">
+                            <div class="asset-preview">
+                                <img src="{{ config.favicon_url if config.favicon_url else '/favicon.ico' }}" id="fav-preview">
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 800; color: var(--dm-secondary);">Replace Favicon</div>
+                                <div style="font-size: 0.75rem; color: var(--dm-text-muted);">Recommended: 32x32px ICO/PNG</div>
+                            </div>
+                            <input type="file" name="favicon" style="display: none;" onchange="previewImg(this, 'fav-preview')">
+                        </label>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Social Panel -->
-        <div id="social" class="settings-panel">
-            <div class="panel-header">
-                <h2>External Connectivity</h2>
-                <p>Sync your platform with official social media channels.</p>
-            </div>
-            <div class="panel-body">
-                <div class="settings-group">
-                    <label class="label-clean">Facebook Handle</label>
-                    <input type="text" name="fb_link" class="input-clean" placeholder="https://facebook.com/..."
-                        value="{{ config.facebook_link or '' }}">
+            <!-- Social Panel -->
+            <div id="social" class="terminal-panel">
+                <div class="display-header">
+                    <h2>Connectivity</h2>
+                    <p>Sync your platform with official social media channels.</p>
                 </div>
-                <div class="settings-group">
-                    <label class="label-clean">Instagram Handle</label>
-                    <input type="text" name="ig_link" class="input-clean" placeholder="https://instagram.com/..."
-                        value="{{ config.instagram_link or '' }}">
-                </div>
-                <div class="settings-group">
-                    <label class="label-clean">X (Twitter) Handle</label>
-                    <input type="text" name="tw_link" class="input-clean" placeholder="https://x.com/..."
-                        value="{{ config.twitter_link or '' }}">
+                <div class="display-body">
+                    <div class="input-wrapper">
+                        <label class="label-premium">Facebook Link</label>
+                        <input type="url" name="fb_link" class="input-premium" placeholder="https://facebook.com/..." value="{{ config.facebook_link or '' }}">
+                    </div>
+                    <div class="input-wrapper">
+                        <label class="label-premium">Instagram Link</label>
+                        <input type="url" name="ig_link" class="input-premium" placeholder="https://instagram.com/..." value="{{ config.instagram_link or '' }}">
+                    </div>
+                    <div class="input-wrapper">
+                        <label class="label-premium">X (Twitter) Link</label>
+                        <input type="url" name="tw_link" class="input-premium" placeholder="https://x.com/..." value="{{ config.twitter_link or '' }}">
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Maintenance Panel -->
-        <div id="maintenance" class="settings-panel">
-            <div class="panel-header">
-                <h2>Operation Control</h2>
-                <p>Throttle public access during critical system maintenance.</p>
-            </div>
-            <div class="panel-body">
-                <div class="settings-group">
-                    <div class="switch-container">
-                        <div class="switch-label">
-                            <h4>Maintenance Mode</h4>
+            <!-- Maintenance Panel -->
+            <div id="maintenance" class="terminal-panel">
+                <div class="display-header">
+                    <h2>Operational Shield</h2>
+                    <p>Throttle public access during critical system maintenance.</p>
+                </div>
+                <div class="display-body">
+                    <div class="maint-terminal">
+                        <div class="maint-info">
+                            <h3>Maintenance Mode</h3>
                             <p>Restrict all non-admin traffic to the platform.</p>
                         </div>
-                        <div class="switch-toggle {{ 'active' if config.maintenance_mode else '' }}" id="maintSwitch"
-                            onclick="toggleMaint(this)">
-                            <input type="hidden" name="maintenance_mode" id="maintVal"
-                                value="{{ 'on' if config.maintenance_mode else 'off' }}">
+                        <div class="ios-switch {{ 'active' if config.maintenance_mode else '' }}" id="maintSwitch" onclick="toggleMaint(this)">
+                            <input type="hidden" name="maintenance_mode" id="maintVal" value="{{ 'on' if config.maintenance_mode else 'off' }}">
                         </div>
                     </div>
-                </div>
-                <div class="settings-group">
-                    <label class="label-clean">Maintenance Interstitial Message</label>
-                    <textarea name="maint_msg" class="input-clean" rows="4">{{ config.maintenance_message }}</textarea>
-                </div>
-            </div>
-        </div>
-
-        <!-- Security Panel -->
-        <div id="security" class="settings-panel">
-            <div class="panel-header">
-                <h2>Administrative Shield</h2>
-                <p>Update your credential layer to maintain system security.</p>
-            </div>
-            <div class="panel-body">
-                <div
-                    style="background: #f8fafc; border-radius: 16px; padding: 2rem; border: 1px solid #e2e8f0; text-align: center;">
-                    <div
-                        style="width: 56px; height: 56px; border-radius: 14px; background: white; color: var(--dm-primary); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin: 0 auto 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-                        <i class="fas fa-key"></i>
-                    </div>
-                    <h3 style="margin: 0; font-weight: 800; color: var(--dm-secondary);">Change Admin Password</h3>
-                    <p style="color: var(--dm-slate-400); font-size: 0.9rem; margin: 0.5rem 0 1.5rem;">Protect your
-                        administrative gateway by cycling your credentials.</p>
-                    <button type="button" class="btn-save"
-                        style="background: white; border: 1.5px solid var(--dm-slate-200); color: var(--dm-secondary); box-shadow: none;"
-                        onclick="openPassModal()">Update Password</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="settings-footer">
-            <button type="reset" class="nav-btn"
-                style="width: auto; background: var(--dm-slate-100); color: var(--dm-slate-600);">Discard
-                Changes</button>
-            <button type="submit" class="btn-save">Sync Configuration</button>
-        </div>
-    </form>
-</div>
-
-<!-- Password Modal -->
-<div id="passModal" class="admin-modal-overlay">
-    <div class="admin-modal-card" style="max-width: 480px; position: relative;">
-        <!-- Relocated Close Button to Top Right -->
-        <button class="modal-close-btn" onclick="closePassModal()"
-            style="position: absolute; top: 1.5rem; right: 1.5rem; z-index: 10; color: #ef4444; font-size: 1.25rem; opacity: 0.8; transition: opacity 0.2s;">&times;</button>
-
-        <div class="modal-header-clean" style="padding: 1.5rem 2rem 1rem;">
-            <h3 style="margin: 0; display: flex; align-items: center; gap: 10px;">
-                <i class="fas fa-shield-halved" style="color: var(--dm-primary);"></i>
-                Update Gateway Credentials
-            </h3>
-        </div>
-
-        <form id="passForm" onsubmit="handlePass(event)">
-            <div class="modal-body-clean" style="padding: 1rem 2rem 1.5rem !important;">
-                <div class="settings-group" style="margin-bottom: 1rem;">
-                    <label class="label-clean"
-                        style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase; color: var(--dm-secondary); margin-bottom: 6px; display: block;">Current
-                        Administrative Key</label>
-                    <div class="dm-input-group">
-                        <input type="password" name="current_password" class="input-clean"
-                            placeholder="Enter existing password" required
-                            style="width: 100%; padding: 0.85rem 1.25rem; border: 1.5px solid var(--dm-slate-100); border-radius: 12px; background: var(--dm-slate-50);">
+                    <div class="input-wrapper">
+                        <label class="label-premium">Interstitial Notification Message</label>
+                        <textarea name="maint_msg" class="input-premium" rows="5" style="resize: none;">{{ config.maintenance_message }}</textarea>
                     </div>
                 </div>
+            </div>
 
-                <div class="settings-group" style="margin-bottom: 1rem;">
-                    <label class="label-clean"
-                        style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase; color: var(--dm-secondary); margin-bottom: 6px; display: block;">New
-                        Secure Password</label>
-                    <div class="dm-input-group">
-                        <input type="password" id="new_password" name="new_password" class="input-clean"
-                            placeholder="Minimum 8 characters" required
-                            style="width: 100%; padding: 0.85rem 1.25rem; border: 1.5px solid var(--dm-slate-100); border-radius: 12px; background: var(--dm-slate-50);"
-                            oninput="validatePassword(this.value)">
-                    </div>
-                    <!-- Password Strength Checklist -->
-                    <div id="password-checklist"
-                        style="margin-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-                        <div id="check-length" class="check-item"
-                            style="font-size: 0.65rem; color: var(--dm-slate-400); font-weight: 600;"><i
-                                class="fas fa-circle" style="font-size: 6px; margin-right: 5px;"></i> 8+ Characters
+            <!-- Security Panel -->
+            <div id="security" class="terminal-panel">
+                <div class="display-header">
+                    <h2>Credential Layer</h2>
+                    <p>Update your administrative key to maintain system integrity.</p>
+                </div>
+                <div class="display-body">
+                    <div style="background: white; border-radius: 2rem; padding: 3rem; border: 1px solid var(--dm-border); text-align: center;">
+                        <div style="width: 70px; height: 70px; border-radius: 20px; background: #fff7ed; color: var(--dm-primary); display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 1.5rem; box-shadow: 0 10px 20px rgba(0,0,0,0.02);">
+                            <i class="fas fa-key"></i>
                         </div>
-                        <div id="check-upper" class="check-item"
-                            style="font-size: 0.65rem; color: var(--dm-slate-400); font-weight: 600;"><i
-                                class="fas fa-circle" style="font-size: 6px; margin-right: 5px;"></i> Uppercase Letter
-                        </div>
-                        <div id="check-number" class="check-item"
-                            style="font-size: 0.65rem; color: var(--dm-slate-400); font-weight: 600;"><i
-                                class="fas fa-circle" style="font-size: 6px; margin-right: 5px;"></i> A Number</div>
-                        <div id="check-symbol" class="check-item"
-                            style="font-size: 0.65rem; color: var(--dm-slate-400); font-weight: 600;"><i
-                                class="fas fa-circle" style="font-size: 6px; margin-right: 5px;"></i> Special Symbol
-                        </div>
+                        <h3 style="margin: 0; font-weight: 800; color: var(--dm-secondary);">Rotate Administrative Key</h3>
+                        <p style="color: var(--dm-text-muted); font-size: 0.95rem; margin: 0.5rem 0 2rem;">Protect your gateway by cycling your credentials regularly.</p>
+                        <button type="button" class="btn-sync" style="margin: 0 auto; background: var(--dm-secondary);" onclick="openPassModal()">Update Password</button>
                     </div>
-                </div>
-
-                <div class="settings-group" style="margin-bottom: 1.25rem;">
-                    <label class="label-clean"
-                        style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase; color: var(--dm-secondary); margin-bottom: 6px; display: block;">Confirm
-                        New Password</label>
-                    <div class="dm-input-group">
-                        <input type="password" id="confirm_password" name="confirm_password" class="input-clean"
-                            placeholder="Re-type new password" required
-                            style="width: 100%; padding: 0.85rem 1.25rem; border: 1.5px solid var(--dm-slate-100); border-radius: 12px; background: var(--dm-slate-50);">
-                    </div>
-                </div>
-
-                <div
-                    style="padding: 1rem; background: #fffbeb; border-radius: 12px; border: 1px solid #fef3c7; display: flex; gap: 12px; align-items: flex-start;">
-                    <i class="fas fa-triangle-exclamation" style="color: #d97706; margin-top: 3px;"></i>
-                    <p style="margin: 0; font-size: 0.8rem; color: #92400e; line-height: 1.4; font-weight: 500;">
-                        Changing your password will invalidate all existing sessions. You will be required to log in
-                        again with your new credentials.
-                    </p>
                 </div>
             </div>
-            <div class="modal-footer-clean"
-                style="padding: 1rem 2rem 1.5rem; display: flex; gap: 12px; justify-content: flex-end;">
-                <button type="button" class="btn-save"
-                    style="background: var(--dm-slate-100); color: var(--dm-slate-600); box-shadow: none;"
-                    onclick="closePassModal()">Cancel</button>
-                <button type="submit" id="btn-update-pass" class="btn-save" disabled>Update Password</button>
+
+            <!-- Audit Logs Panel -->
+            <div id="audit" class="terminal-panel">
+                <div class="display-header">
+                    <h2>Change History</h2>
+                    <p>Audit trail of administrative configuration adjustments.</p>
+                </div>
+                <div class="display-body">
+                    <div class="audit-list">
+                        {% for log in audit_logs %}
+                        <div class="audit-item">
+                            <div class="audit-icon">
+                                <i class="fas fa-{{ 'shield-halved' if 'SECURITY' in log.action else 'gear' }}"></i>
+                            </div>
+                            <div class="audit-info">
+                                <div class="audit-meta">
+                                    <span class="audit-action">{{ log.action.replace('_', ' ') }}</span>
+                                    <span class="audit-time">{{ log.timestamp.strftime('%b %d, %Y %I:%M %p') }}</span>
+                                </div>
+                                <div class="audit-notes">{{ log.notes }}</div>
+                                <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 8px;">
+                                    <i class="fas fa-network-wired"></i> IP: {{ log.ip_address or 'System' }} | Admin: {{ log.user.first_name }}
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div style="text-align: center; padding: 4rem; color: var(--dm-text-muted);">
+                            <i class="fas fa-box-open" style="font-size: 3rem; opacity: 0.2; margin-bottom: 1rem; display: block;"></i>
+                            No recent configuration changes logged.
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="display-footer" id="formActions">
+                <button type="button" class="terminal-btn" style="width: auto; margin-bottom: 0;" onclick="window.location.reload()">Discard Changes</button>
+                <button type="submit" class="btn-sync" id="syncBtn">
+                    <i class="fas fa-cloud-arrow-up"></i> Sync Configuration
+                </button>
             </div>
         </form>
     </div>
 </div>
+
+<!-- Password Modal -->
+<div id="passModal" class="admin-modal-overlay">
+    <div class="admin-modal-card" style="max-width: 500px; padding: 0; overflow: hidden; border-radius: 2.5rem;">
+        <div class="display-header" style="background: white; border-bottom: 1px solid var(--dm-border);">
+             <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="font-size: 1.25rem;">Update Credentials</h2>
+                <button onclick="closePassModal()" style="border: none; background: none; font-size: 1.5rem; color: var(--dm-text-muted); cursor: pointer;">&times;</button>
+             </div>
+        </div>
+        <form id="passForm" onsubmit="handlePass(event)" style="padding: 2.5rem;">
+            <div class="input-wrapper">
+                <label class="label-premium">Current Administrative Key</label>
+                <input type="password" name="current_password" class="input-premium" placeholder="Verify identity" required>
+            </div>
+            <div class="input-wrapper">
+                <label class="label-premium">New Secure Password</label>
+                <input type="password" id="new_password" name="new_password" class="input-premium" placeholder="Min. 8 characters" required oninput="validatePassword(this.value)">
+                
+                <div id="password-checklist" style="margin-top: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div id="check-length" class="check-item" style="font-size: 0.7rem; color: #94a3b8; font-weight: 600;"><i class="fas fa-circle" style="font-size: 6px; margin-right: 6px;"></i> 8+ Characters</div>
+                    <div id="check-upper" class="check-item" style="font-size: 0.7rem; color: #94a3b8; font-weight: 600;"><i class="fas fa-circle" style="font-size: 6px; margin-right: 6px;"></i> Uppercase</div>
+                    <div id="check-number" class="check-item" style="font-size: 0.7rem; color: #94a3b8; font-weight: 600;"><i class="fas fa-circle" style="font-size: 6px; margin-right: 6px;"></i> Number</div>
+                    <div id="check-symbol" class="check-item" style="font-size: 0.7rem; color: #94a3b8; font-weight: 600;"><i class="fas fa-circle" style="font-size: 6px; margin-right: 6px;"></i> Symbol</div>
+                </div>
+            </div>
+            <div class="input-wrapper">
+                <label class="label-premium">Confirm New Password</label>
+                <input type="password" id="confirm_password" name="confirm_password" class="input-premium" placeholder="Re-type for validation" required>
+            </div>
+            
+            <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 1.25rem; border-radius: 1.25rem; margin-bottom: 2rem; display: flex; gap: 12px;">
+                <i class="fas fa-triangle-exclamation" style="color: #d97706; margin-top: 3px;"></i>
+                <p style="margin: 0; font-size: 0.8rem; color: #92400e; line-height: 1.5; font-weight: 500;">
+                    Rotating your key will invalidate all active sessions. You must log in again immediately after sync.
+                </p>
+            </div>
+
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                <button type="button" class="terminal-btn" style="width: auto; margin: 0;" onclick="closePassModal()">Cancel</button>
+                <button type="submit" id="btn-update-pass" class="btn-sync" disabled style="padding: 1rem 2rem;">Update Key</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="toast-container"></div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
     function switchTab(tabId, btn) {
-        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.terminal-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
 
-        document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.terminal-panel').forEach(p => p.classList.remove('active'));
         document.getElementById(tabId).classList.add('active');
+
+        // Hide/Show Sync button for Audit tab
+        document.getElementById('formActions').style.display = (tabId === 'audit') ? 'none' : 'flex';
     }
 
     function toggleMaint(el) {
@@ -596,6 +691,47 @@
         }
     }
 
+    function showToast(msg, type = 'success') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = 'toast-premium';
+        toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}" style="color: ${type === 'success' ? '#10b981' : '#f43f5e'}; font-size: 1.2rem;"></i> ${msg}`;
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+    }
+
+    async function handleSync(e) {
+        e.preventDefault();
+        const btn = document.getElementById('syncBtn');
+        const originalContent = btn.innerHTML;
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing Node...';
+
+        try {
+            const formData = new FormData(e.target);
+            const res = await fetch('/admin/settings/update', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                showToast(data.message);
+                // Refresh audit log implicitly by reloading if needed, or just stay
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                showToast(data.message, 'error');
+            }
+        } catch (err) {
+            showToast('Synchronized failed. Connection error.', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalContent;
+        }
+    }
+
+    // Password Logic
     function openPassModal() { document.getElementById('passModal').classList.add('active'); }
     function closePassModal() { document.getElementById('passModal').classList.remove('active'); }
 
@@ -609,13 +745,10 @@
         const passField = document.getElementById('new_password');
         const allValid = Object.values(checks).every(v => v);
 
-        // Field Highlighting Logic
         if (pass.length > 0) {
             passField.style.borderColor = allValid ? '#10b981' : '#ef4444';
-            passField.style.background = allValid ? '#f0fdf4' : '#fef2f2';
         } else {
-            passField.style.borderColor = 'var(--dm-slate-100)';
-            passField.style.background = 'var(--dm-slate-50)';
+            passField.style.borderColor = 'var(--dm-border)';
         }
 
         const updateItem = (id, valid) => {
@@ -624,74 +757,68 @@
                 el.style.color = valid ? '#10b981' : '#ef4444';
                 el.querySelector('i').className = valid ? 'fas fa-check-circle' : 'fas fa-times-circle';
             } else {
-                el.style.color = 'var(--dm-slate-400)';
+                el.style.color = '#94a3b8';
                 el.querySelector('i').className = 'fas fa-circle';
             }
         };
 
         Object.keys(checks).forEach(k => updateItem(k, checks[k]));
-        checkMatch();
-        document.getElementById('btn-update-pass').disabled = !allValid || !checkMatch();
+        const match = checkMatch();
+        document.getElementById('btn-update-pass').disabled = !allValid || !match;
     }
 
     function checkMatch() {
         const pass = document.getElementById('new_password').value;
         const confirm = document.getElementById('confirm_password').value;
         const confirmField = document.getElementById('confirm_password');
-
         if (confirm.length > 0) {
             const match = pass === confirm;
             confirmField.style.borderColor = match ? '#10b981' : '#ef4444';
-            confirmField.style.background = match ? '#f0fdf4' : '#fef2f2';
             return match;
-        } else {
-            confirmField.style.borderColor = 'var(--dm-slate-100)';
-            confirmField.style.background = 'var(--dm-slate-50)';
-            return false;
         }
+        confirmField.style.borderColor = 'var(--dm-border)';
+        return false;
     }
 
-    // Add listener for confirm field
-    document.getElementById('confirm_password').addEventListener('input', checkMatch);
-
-    // Clear error on current password input
-    document.querySelector('input[name="current_password"]').addEventListener('input', function () {
-        this.style.borderColor = 'var(--dm-slate-100)';
-        this.style.background = 'var(--dm-slate-50)';
+    document.getElementById('confirm_password').addEventListener('input', () => {
+        const pass = document.getElementById('new_password').value;
+        const checks = {
+            length: pass.length >= 8,
+            upper: /[A-Z]/.test(pass),
+            number: /[0-9]/.test(pass),
+            symbol: /[^A-Za-z0-9]/.test(pass)
+        };
+        const allValid = Object.values(checks).every(v => v);
+        const match = checkMatch();
+        document.getElementById('btn-update-pass').disabled = !allValid || !match;
     });
 
     async function handlePass(e) {
         e.preventDefault();
-        const currentPassField = e.target.querySelector('input[name="current_password"]');
-        const pass = document.getElementById('new_password').value;
-        const confirm = document.getElementById('confirm_password').value;
-
-        if (pass !== confirm) {
-            checkMatch(); // Ensure field turns red
-            return;
-        }
-
         const btn = document.getElementById('btn-update-pass');
+        const original = btn.innerHTML;
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-rotate fa-spin"></i> Processing...';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Rotating...';
 
         try {
-            const res = await fetch('/admin/profile/change-password', { method: 'POST', body: new FormData(e.target) });
+            const res = await fetch('/admin/profile/change-password', {
+                method: 'POST',
+                body: new FormData(e.target)
+            });
             const data = await res.json();
             if (data.success) {
-                alert('Password updated successfully!');
-                closePassModal();
+                showToast(data.message);
+                setTimeout(() => window.location.href = '/?auth_modal=login&reason=password_changed', 2000);
             } else {
-                // If the error is likely due to current password
-                if (data.message && data.message.toLowerCase().includes('current')) {
-                    currentPassField.style.borderColor = '#ef4444';
-                    currentPassField.style.background = '#fef2f2';
-                    currentPassField.focus();
-                }
-                alert(data.message || 'Failed to update password.');
+                showToast(data.message, 'error');
+                btn.disabled = false;
+                btn.innerHTML = original;
             }
-        } catch (err) { alert('An error occurred.'); }
-        finally { btn.disabled = false; btn.innerHTML = 'Update Password'; }
+        } catch (err) {
+            showToast('Sync failed.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = original;
+        }
     }
 </script>
 {% endblock %}

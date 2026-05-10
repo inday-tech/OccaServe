@@ -10,111 +10,218 @@
         --adm-warning: #f59e0b;
         --adm-success: #10b981;
     }
-    
+
     /* Diamond Standard Layout Alignment */
     .table-card-clean {
-        background: #fff; border-radius: 24px; border: 1px solid rgba(226, 232, 240, 0.8);
-        overflow: visible; transition: all 0.3s ease;
-        margin: 0 0 2rem 0; /* Align with KPI grid margins */
+        background: #fff;
+        border-radius: 24px;
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        overflow: visible;
+        transition: all 0.3s ease;
+        margin: 0 0 2rem 0;
+        /* Align with KPI grid margins */
     }
-    
+
     .clean-table thead th {
-        font-size: 0.65rem; font-weight: 800; color: #64748b;
-        text-transform: uppercase; letter-spacing: 0.1em;
-        padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;
+        font-size: 0.65rem;
+        font-weight: 800;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid #f1f5f9;
         background: #f8fafc;
     }
 
     .cust-row {
-        border-bottom: 1px solid #f8fafc; transition: all 0.2s ease;
+        border-bottom: 1px solid #f8fafc;
+        transition: all 0.2s ease;
     }
+
     .cust-row:hover {
-        background: #f8fafc; transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        background: #f8fafc;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
     }
 
     .status-badge-dm {
-        padding: 5px 12px; border-radius: 10px; font-size: 0.6rem;
-        font-weight: 800; display: inline-flex; align-items: center; gap: 6px;
+        padding: 5px 12px;
+        border-radius: 10px;
+        font-size: 0.6rem;
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
         letter-spacing: 0.03em;
     }
-    .status-active { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
-    .status-suspended { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
-    .status-flagged { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+
+    .status-active {
+        background: #dcfce7;
+        color: #166534;
+        border: 1px solid #bbf7d0;
+    }
+
+    .status-suspended {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+    }
+
+    .status-flagged {
+        background: #fef3c7;
+        color: #92400e;
+        border: 1px solid #fde68a;
+    }
 
     .action-dots-adm {
-        width: 36px; height: 36px; border-radius: 10px;
-        background: #f1f5f9; color: #64748b; display: flex;
-        align-items: center; justify-content: center; cursor: pointer;
-        transition: all 0.2s ease; border: 1px solid #e2e8f0;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: #f1f5f9;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: 1px solid #e2e8f0;
     }
+
     .action-dots-adm:hover {
-        background: var(--adm-primary); color: white;
+        background: var(--adm-primary);
+        color: white;
         border-color: var(--adm-primary);
     }
 
     .ltv-value {
-        font-family: 'Poppins', sans-serif; font-weight: 800;
-        color: var(--adm-navy); font-size: 0.95rem; line-height: 1;
+        font-family: 'Poppins', sans-serif;
+        font-weight: 800;
+        color: var(--adm-navy);
+        font-size: 0.95rem;
+        line-height: 1;
     }
+
     .ltv-label {
-        font-size: 0.6rem; font-weight: 800; color: #10b981;
-        margin-top: 4px; letter-spacing: 0.05em; text-transform: uppercase;
+        font-size: 0.6rem;
+        font-weight: 800;
+        color: #10b981;
+        margin-top: 4px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
     }
 
     /* Action Dropdown - Elite Anti-Overlap */
     .action-menu-dm {
-        position: relative; display: inline-block;
+        position: relative;
+        display: inline-block;
     }
+
     .dropdown-menu-dm {
-        position: absolute; right: 0; top: 100%; margin-top: 10px;
-        width: 210px; background: white; border-radius: 16px;
-        box-shadow: 0 15px 35px -5px rgba(0,0,0,0.15), 0 10px 15px -10px rgba(0,0,0,0.1);
-        border: 1px solid #e2e8f0; z-index: 9999; padding: 6px;
-        display: none; transform-origin: top right;
+        position: absolute;
+        right: 0;
+        top: 100%;
+        margin-top: 10px;
+        width: 210px;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.15), 0 10px 15px -10px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e2e8f0;
+        z-index: 9999;
+        padding: 6px;
+        display: none;
+        transform-origin: top right;
     }
-    .dropdown-menu-dm.show { display: block !important; animation: dm-pop 0.2s ease-out; }
+
+    .dropdown-menu-dm.show {
+        display: block !important;
+        animation: dm-pop 0.2s ease-out;
+    }
+
     @keyframes dm-pop {
-        from { opacity: 0; transform: scale(0.95) translateY(-10px); }
-        to { opacity: 1; transform: scale(1) translateY(0); }
+        from {
+            opacity: 0;
+            transform: scale(0.95) translateY(-10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
     }
+
     .dropdown-item-dm {
-        display: flex; align-items: center; gap: 10px;
-        padding: 10px 14px; border-radius: 10px; font-size: 0.75rem;
-        font-weight: 700; color: #475569; transition: all 0.2s;
-        cursor: pointer; border: none; background: none; width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 10px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #475569;
+        transition: all 0.2s;
+        cursor: pointer;
+        border: none;
+        background: none;
+        width: 100%;
         text-align: left;
     }
-    .dropdown-item-dm:hover { background: #f1f5f9; color: var(--adm-primary); }
-    .dropdown-item-dm.danger:hover { background: #fff1f2; color: #e11d48; }
-    .dropdown-divider { height: 1px; background: #f1f5f9; margin: 4px 0; }
+
+    .dropdown-item-dm:hover {
+        background: #f1f5f9;
+        color: var(--adm-primary);
+    }
+
+    .dropdown-item-dm.danger:hover {
+        background: #fff1f2;
+        color: #e11d48;
+    }
+
+    .dropdown-divider {
+        height: 1px;
+        background: #f1f5f9;
+        margin: 4px 0;
+    }
 
     /* Pagination Elite */
     .pagination-terminal {
-        padding: 1.25rem 2rem; background: #f8fafc;
-        border-top: 1px solid #f1f5f9; display: flex;
-        justify-content: space-between; align-items: center;
+        padding: 1.25rem 2rem;
+        background: #f8fafc;
+        border-top: 1px solid #f1f5f9;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
+
     .pag-btn {
-        padding: 8px 16px; border-radius: 10px; border: 1px solid #e2e8f0;
-        background: white; font-size: 0.75rem; font-weight: 800;
-        color: var(--adm-navy); cursor: pointer; transition: all 0.2s;
-        display: flex; align-items: center; gap: 8px;
+        padding: 8px 16px;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        background: white;
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--adm-navy);
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
-    .pag-btn:hover:not(:disabled) { border-color: var(--adm-primary); color: var(--adm-primary); }
-    .pag-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .pag-btn:hover:not(:disabled) {
+        border-color: var(--adm-primary);
+        color: var(--adm-primary);
+    }
+
+    .pag-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="dashboard-header-clean">
     <div class="header-title-area">
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-            <div style="background: var(--adm-primary-soft); color: var(--adm-primary); padding: 8px; border-radius: 10px;">
-                <i class="fas fa-users-viewfinder"></i>
-            </div>
-            <h5 style="margin: 0; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--adm-primary);">Governance Terminal</h5>
-        </div>
         <h1>Customer Registry</h1>
         <p>Strategic oversight of platform participants, transaction integrity, and identity lifecycle.</p>
     </div>
@@ -147,10 +254,13 @@
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: var(--adm-primary-soft); color: var(--adm-primary);"><i class="fas fa-chart-line"></i></div>
+        <div class="kpi-icon-box" style="background: var(--adm-primary-soft); color: var(--adm-primary);"><i
+                class="fas fa-chart-line"></i></div>
         <div class="kpi-info">
             <h4>Engagement LTV</h4>
-            <span class="kpi-value">₱{{ "{:,.0f}".format(customers | map(attribute='bookings') | map('list') | sum(start=[]) | selectattr('status', 'equalto', 'completed') | map(attribute='total_amount') | sum if customers else 0) }}</span>
+            <span class="kpi-value">₱{{ "{:,.0f}".format(customers | map(attribute='bookings') | map('list') |
+                sum(start=[]) | selectattr('status', 'equalto', 'completed') | map(attribute='total_amount') | sum if
+                customers else 0) }}</span>
             <span class="trend-badge" style="background: #f1f5f9; color: #475569;">GROSS VOLUME</span>
         </div>
     </div>
@@ -158,28 +268,36 @@
 
 <!-- Identity Registry Terminal -->
 <div class="table-card-clean" style="box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05);">
-    <div class="terminal-filter-strip" style="display: flex; justify-content: space-between; align-items: center; padding: 1.75rem 2rem; background: #fff; border-top-left-radius: 24px; border-top-right-radius: 24px;">
+    <div class="terminal-filter-strip"
+        style="display: flex; justify-content: space-between; align-items: center; padding: 1.75rem 2rem; background: #fff; border-top-left-radius: 24px; border-top-right-radius: 24px;">
         <div style="display: flex; align-items: center; gap: 16px;">
-            <div style="background: linear-gradient(135deg, var(--adm-primary), #6366f1); color: white; width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; box-shadow: 0 8px 16px -4px rgba(79, 70, 229, 0.4);">
+            <div
+                style="background: linear-gradient(135deg, var(--adm-primary), #6366f1); color: white; width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; box-shadow: 0 8px 16px -4px rgba(79, 70, 229, 0.4);">
                 <i class="fas fa-fingerprint"></i>
             </div>
             <div>
-                <h3 style="font-size: 1rem; font-weight: 800; color: var(--adm-navy); margin: 0; text-transform: uppercase; letter-spacing: 0.02em;">Participant Registry</h3>
-                <p style="font-size: 0.75rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Managed Identity Lifecycle & Compliance</p>
+                <h3
+                    style="font-size: 1rem; font-weight: 800; color: var(--adm-navy); margin: 0; text-transform: uppercase; letter-spacing: 0.02em;">
+                    Participant Registry</h3>
+                <p style="font-size: 0.75rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Managed Identity
+                    Lifecycle & Compliance</p>
             </div>
         </div>
-        
+
         <div style="display: flex; gap: 12px; align-items: center;">
             <div style="position: relative;">
-                <select id="statusFilter" onchange="filterRegistry()" class="btn-clean" style="padding: 12px 18px; font-size: 0.8rem; font-weight: 700; background: #fff; border-radius: 12px; min-width: 240px; border: 1.5px solid #e2e8f0; color: var(--adm-navy); cursor: pointer; transition: all 0.2s;">
+                <select id="statusFilter" onchange="filterRegistry()" class="btn-clean"
+                    style="padding: 12px 18px; font-size: 0.8rem; font-weight: 700; background: #fff; border-radius: 12px; min-width: 240px; border: 1.5px solid #e2e8f0; color: var(--adm-navy); cursor: pointer; transition: all 0.2s;">
                     <option value="all">Governance: All States</option>
                     <option value="verified">State: Verified Only</option>
                     <option value="pending">State: Pending KYC</option>
                     <option value="suspended">State: Suspended Only</option>
                 </select>
             </div>
-            
-            <button class="btn-clean" style="padding: 12px; background: #fff; width: 48px; height: 48px; border-radius: 12px; border: 1.5px solid #e2e8f0; color: #64748b; transition: all 0.2s;" title="Export Intelligence">
+
+            <button class="btn-clean"
+                style="padding: 12px; background: #fff; width: 48px; height: 48px; border-radius: 12px; border: 1.5px solid #e2e8f0; color: #64748b; transition: all 0.2s;"
+                title="Export Intelligence">
                 <i class="fas fa-download"></i>
             </button>
         </div>
@@ -200,34 +318,47 @@
                 {% for customer in customers %}
                 <tr class="cust-row">
                     <td style="padding: 1.5rem 0 1.5rem 2rem;">
-                        <div class="user-profile-cell" style="display: flex; align-items: center; gap: 14px; min-height: 52px;">
-                            <div class="registry-avatar" style="width: 52px; height: 52px; font-size: 1.1rem; background: #f1f5f9; border: 1.5px solid #e2e8f0; display: flex; align-items: center; justify-content: center;">{{ customer.first_name[0] }}{{ customer.last_name[0] }}</div>
+                        <div class="user-profile-cell"
+                            style="display: flex; align-items: center; gap: 14px; min-height: 52px;">
+                            <div class="registry-avatar"
+                                style="width: 52px; height: 52px; font-size: 1.1rem; background: #f1f5f9; border: 1.5px solid #e2e8f0; display: flex; align-items: center; justify-content: center;">
+                                {{ customer.first_name[0] }}{{ customer.last_name[0] }}</div>
                             <div style="display: flex; flex-direction: column; justify-content: center;">
-                                <span style="font-weight: 800; color: var(--adm-navy); font-size: 0.9rem; display: block; line-height: 1.2; margin-bottom: 2px;">{{ customer.first_name }} {{ customer.last_name }}</span>
-                                <span style="font-size: 0.7rem; color: #64748b; font-weight: 700; letter-spacing: 0.02em; line-height: 1;">IDENTITY #{{ "%05d"|format(customer.id) }}</span>
+                                <span
+                                    style="font-weight: 800; color: var(--adm-navy); font-size: 0.9rem; display: block; line-height: 1.2; margin-bottom: 2px;">{{
+                                    customer.first_name }} {{ customer.last_name }}</span>
+                                <span
+                                    style="font-size: 0.7rem; color: #64748b; font-weight: 700; letter-spacing: 0.02em; line-height: 1;">IDENTITY
+                                    #{{ "%05d"|format(customer.id) }}</span>
                             </div>
                         </div>
                     </td>
                     <td>
                         <div style="display: flex; flex-direction: column; gap: 6px;">
-                            <span class="status-badge-dm {% if customer.is_verified %}status-active{% else %}status-flagged{% endif %}">
-                                <i class="fas {% if customer.is_verified %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %}"></i>
+                            <span
+                                class="status-badge-dm {% if customer.is_verified %}status-active{% else %}status-flagged{% endif %}">
+                                <i
+                                    class="fas {% if customer.is_verified %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %}"></i>
                                 {{ 'VERIFIED IDENTITY' if customer.is_verified else 'PENDING KYC' }}
                             </span>
-                            <div style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #64748b; font-weight: 600;">
-                                <i class="fas fa-envelope" style="font-size: 0.7rem; color: #94a3b8;"></i> {{ customer.email }}
+                            <div
+                                style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #64748b; font-weight: 600;">
+                                <i class="fas fa-envelope" style="font-size: 0.7rem; color: #94a3b8;"></i> {{
+                                customer.email }}
                             </div>
                         </div>
                     </td>
                     <td>
-                        <div class="ltv-value">₱{{ "{:,.2f}".format(customer.bookings | selectattr('status', 'equalto', 'completed') | map(attribute='total_amount') | sum) }}</div>
+                        <div class="ltv-value">₱{{ "{:,.2f}".format(customer.bookings | selectattr('status', 'equalto',
+                            'completed') | map(attribute='total_amount') | sum) }}</div>
                         <div class="ltv-label">Lifetime Value</div>
                     </td>
                     <td>
                         <div style="font-weight: 800; color: var(--adm-navy); font-size: 0.85rem; margin-bottom: 2px;">
                             {{ customer.created_at.strftime('%b %d, %Y') if customer.created_at else 'Jan 01, 2024' }}
                         </div>
-                        <span style="font-size: 0.65rem; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Established</span>
+                        <span
+                            style="font-size: 0.65rem; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Established</span>
                     </td>
                     <td style="text-align: right; padding-right: 2rem;">
                         <div class="action-menu-dm" style="display: inline-block;">
@@ -235,6 +366,15 @@
                                 <i class="fas fa-ellipsis-h"></i>
                             </div>
                             <div class="dropdown-menu-dm">
+                                <button class="dropdown-item-dm" onclick="openEditModal(this)"
+                                    data-id="{{ customer.id }}"
+                                    data-fname="{{ customer.first_name }}"
+                                    data-lname="{{ customer.last_name }}"
+                                    data-email="{{ customer.email }}"
+                                    data-phone="{{ customer.phone_number }}"
+                                    data-address="{{ customer.address }}">
+                                    <i class="fas fa-user-edit"></i> Edit Profile
+                                </button>
                                 <button class="dropdown-item-dm" onclick="auditCustomer('{{ customer.id }}')">
                                     <i class="fas fa-search-plus"></i> Intelligence Audit
                                 </button>
@@ -251,6 +391,11 @@
                                 <button class="dropdown-item-dm danger" onclick="suspendAccount('{{ customer.id }}')">
                                     <i class="fas fa-user-slash"></i> Suspend Access
                                 </button>
+                                <div class="dropdown-divider"></div>
+                                <button class="dropdown-item-dm" onclick="archiveItem('customers', '{{ customer.id }}')"
+                                    style="color: #64748b;">
+                                    <i class="fas fa-archive"></i> Archive Participant
+                                </button>
                             </div>
                         </div>
                     </td>
@@ -263,7 +408,8 @@
     <!-- Elite Pagination Control -->
     <div class="pagination-terminal">
         <div style="font-size: 0.75rem; color: var(--adm-muted); font-weight: 700;">
-            Showing <span id="entryStart">1</span> to <span id="entryEnd">10</span> of <span id="totalEntries">{{ customers|length }}</span> participants
+            Showing <span id="entryStart">1</span> to <span id="entryEnd">10</span> of <span id="totalEntries">{{
+                customers|length }}</span> participants
         </div>
         <div style="display: flex; gap: 8px;">
             <button class="pag-btn" id="prevBtn" onclick="changePage(-1)" disabled>
@@ -281,21 +427,75 @@
     <div class="admin-modal-card" style="max-width: 600px;">
         <div class="modal-header-clean">
             <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="background: var(--adm-primary-soft); color: var(--adm-primary); width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                <div
+                    style="background: var(--adm-primary-soft); color: var(--adm-primary); width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
                     <i class="fas fa-fingerprint"></i>
                 </div>
                 <div>
-                    <h3 style="font-size: 0.95rem; font-weight: 800; text-transform: uppercase; margin: 0;">Identity Adjudication</h3>
-                    <p style="font-size: 0.7rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Strategic profile overview and compliance check.</p>
+                    <h3 style="font-size: 0.95rem; font-weight: 800; text-transform: uppercase; margin: 0;">Identity
+                        Adjudication</h3>
+                    <p style="font-size: 0.7rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Strategic
+                        profile overview and compliance check.</p>
                 </div>
             </div>
-            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);" onclick="closeIntelligenceModal()">&times;</button>
+            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);"
+                onclick="closeIntelligenceModal()">&times;</button>
         </div>
         <div class="modal-body-clean" id="intelligenceBody"></div>
         <div class="modal-footer-clean">
-            <button class="btn-clean" style="background: white; border: 1px solid #e2e8f0;" onclick="closeIntelligenceModal()">Close Audit</button>
-            <button class="btn-clean" style="background: var(--adm-primary); color: white; font-weight: 800;">Generate Compliance Report</button>
+            <button class="btn-clean" style="background: white; color: var(--adm-navy); border: 1px solid #e2e8f0;"
+                onclick="closeIntelligenceModal()">Close Audit</button>
+            <button class="btn-clean" style="background: var(--adm-primary); color: white; font-weight: 800;">Generate
+                Compliance Report</button>
         </div>
+    </div>
+</div>
+
+<!-- Edit Customer Modal -->
+<div id="editCustomerModal" class="admin-modal-overlay">
+    <div class="admin-modal-card" style="max-width: 500px;">
+        <div class="modal-header-clean">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="background: var(--adm-primary-soft); color: var(--adm-primary); width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-user-edit"></i>
+                </div>
+                <div>
+                    <h3 style="font-size: 0.95rem; font-weight: 800; text-transform: uppercase; margin: 0;">Edit Participant Profile</h3>
+                    <p style="font-size: 0.7rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Update core identity and contact parameters.</p>
+                </div>
+            </div>
+            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);" onclick="closeEditModal()">&times;</button>
+        </div>
+        <form id="editCustomerForm">
+            <input type="hidden" id="edit_customer_id" name="customer_id">
+            <div class="modal-body-clean" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="dm-input-group" style="position: relative; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0 12px; display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-user" style="color: #94a3b8; font-size: 0.8rem;"></i>
+                        <input type="text" name="first_name" id="edit_fname" placeholder="First Name" required style="border: none; padding: 12px 0; font-size: 0.85rem; font-weight: 600; width: 100%; outline: none; background: transparent;">
+                    </div>
+                    <div class="dm-input-group" style="position: relative; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0 12px; display: flex; align-items: center; gap: 10px;">
+                        <input type="text" name="last_name" id="edit_lname" placeholder="Last Name" required style="border: none; padding: 12px 0; font-size: 0.85rem; font-weight: 600; width: 100%; outline: none; background: transparent;">
+                    </div>
+                </div>
+                <div class="dm-input-group" style="position: relative; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0 12px; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-envelope" style="color: #94a3b8; font-size: 0.8rem;"></i>
+                    <input type="email" name="email" id="edit_email" placeholder="Email Address" required style="border: none; padding: 12px 0; font-size: 0.85rem; font-weight: 600; width: 100%; outline: none; background: transparent;">
+                </div>
+                <div class="dm-input-group" style="position: relative; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0 12px; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-phone" style="color: #94a3b8; font-size: 0.8rem;"></i>
+                    <input type="tel" name="phone" id="edit_phone" placeholder="Phone Number" style="border: none; padding: 12px 0; font-size: 0.85rem; font-weight: 600; width: 100%; outline: none; background: transparent;">
+                </div>
+                <div class="dm-input-group" style="position: relative; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0 12px; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-map-marker-alt" style="color: #94a3b8; font-size: 0.8rem;"></i>
+                    <input type="text" name="address" id="edit_address" placeholder="Address" style="border: none; padding: 12px 0; font-size: 0.85rem; font-weight: 600; width: 100%; outline: none; background: transparent;">
+                </div>
+            </div>
+            <div class="modal-footer-clean" style="padding: 1.25rem; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 12px;">
+                <button type="button" class="btn-clean" style="background: white; color: var(--adm-navy); border: 1px solid #e2e8f0;" onclick="closeEditModal()">Cancel</button>
+                <button type="submit" class="btn-clean" style="background: var(--adm-primary); color: white; font-weight: 800;">Commit Changes</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -311,14 +511,14 @@
 
     function filterRegistry() {
         const status = document.getElementById('statusFilter').value;
-        
+
         const filteredRows = rows.filter(row => {
             const badge = row.querySelector('.status-badge-dm').innerText.toLowerCase();
-            const matchesStatus = (status === 'all') || 
-                                 (status === 'verified' && badge.includes('verified')) ||
-                                 (status === 'pending' && badge.includes('pending')) ||
-                                 (status === 'suspended' && badge.includes('suspended'));
-            
+            const matchesStatus = (status === 'all') ||
+                (status === 'verified' && badge.includes('verified')) ||
+                (status === 'pending' && badge.includes('pending')) ||
+                (status === 'suspended' && badge.includes('suspended'));
+
             return matchesStatus;
         });
 
@@ -328,19 +528,19 @@
     function updatePagination(filteredRows) {
         const total = filteredRows.length;
         const totalPages = Math.ceil(total / entriesPerPage);
-        
+
         if (currentPage > totalPages) currentPage = totalPages || 1;
-        
+
         const start = (currentPage - 1) * entriesPerPage;
         const end = start + entriesPerPage;
-        
+
         rows.forEach(row => row.style.display = 'none');
         filteredRows.slice(start, end).forEach(row => row.style.display = '');
-        
+
         document.getElementById('entryStart').innerText = total === 0 ? 0 : start + 1;
         document.getElementById('entryEnd').innerText = Math.min(end, total);
         document.getElementById('totalEntries').innerText = total;
-        
+
         document.getElementById('prevBtn').disabled = currentPage === 1;
         document.getElementById('nextBtn').disabled = currentPage === totalPages || total === 0;
     }
@@ -371,15 +571,15 @@
             allowOutsideClick: false,
             didOpen: () => Swal.showLoading()
         });
-        
+
         try {
             const res = await fetch(`/admin/api/customers/${id}/audit`);
             const result = await res.json();
-            
+
             if (result.success) {
                 const d = result.data;
                 const riskColor = d.risk_score > 70 ? '#ef4444' : (d.risk_score > 30 ? '#f59e0b' : '#10b981');
-                
+
                 document.getElementById('intelligenceBody').innerHTML = `
                     <div style="background: white; border: 1px solid #e2e8f0; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
                         <div style="background: #f8fafc; padding: 1.5rem; display: flex; align-items: center; gap: 1rem; border-bottom: 1px solid #f1f5f9;">
@@ -432,74 +632,46 @@
         }
     }
 
-    async function suspendAccount(id) {
-        const { value: reason } = await Swal.fire({
-            title: 'Immediate Suspension?',
-            text: "Provide a mandatory reason for the audit trail. The participant will lose platform access.",
-            icon: 'error',
-            input: 'textarea',
-            inputPlaceholder: 'Reason for suspension...',
-            showCancelButton: true,
-            confirmButtonText: 'Lock Account',
-            confirmButtonColor: '#ef4444'
-        });
-
-        if (reason) {
+    function suspendAccount(id) {
+        openReasonModal('Immediate Suspension?', 'Provide a mandatory reason for the audit trail. The participant will lose platform access.', (reason) => {
             Swal.fire({ title: 'Locking Identity', didOpen: () => Swal.showLoading() });
-            try {
-                const fd = new FormData();
-                fd.append('reason', reason);
-                const res = await fetch(`/admin/api/customers/${id}/suspend`, { method: 'POST', body: fd });
-                const data = await res.json();
-                if (data.success) {
-                    Swal.fire('Account Locked', data.message, 'success').then(() => location.reload());
-                } else { Swal.fire('Error', data.message, 'error'); }
-            } catch (e) { Swal.fire('Error', 'Communication failure.', 'error'); }
-        }
+            const fd = new FormData();
+            fd.append('reason', reason);
+            fetch(`/admin/api/customers/${id}/suspend`, { method: 'POST', body: fd })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) Swal.fire('Account Locked', data.message, 'success').then(() => location.reload());
+                    else Swal.fire('Error', data.message, 'error');
+                })
+                .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
+        }, { variant: 'danger' });
     }
 
-    async function flagAccount(id) {
-        const result = await Swal.fire({
-            title: 'Flag for Review?',
-            text: "This will elevate the risk profile of this participant for manual investigation.",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Flag Participant',
-            confirmButtonColor: '#f59e0b'
-        });
-
-        if (result.isConfirmed) {
-            try {
-                const res = await fetch(`/admin/api/customers/${id}/flag`, { method: 'POST' });
-                const data = await res.json();
-                if (data.success) {
-                    Swal.fire('Identity Flagged', data.message, 'success').then(() => location.reload());
-                } else { Swal.fire('Error', data.message, 'error'); }
-            } catch (e) { Swal.fire('Error', 'Communication failure.', 'error'); }
-        }
+    function flagAccount(id) {
+        openConfirmModal('Flag for Review?', 'This will elevate the risk profile of this participant for manual investigation.', () => {
+            fetch(`/admin/api/customers/${id}/flag`, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) Swal.fire('Identity Flagged', data.message, 'success').then(() => location.reload());
+                    else Swal.fire('Error', data.message, 'error');
+                })
+                .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
+        }, { variant: 'warning' });
     }
 
-    async function sendAlert(id) {
-        const { value: message } = await Swal.fire({
-            title: 'Dispatch System Alert',
-            text: "This message will be sent directly to the customer's notification hub.",
-            input: 'textarea',
-            inputPlaceholder: 'System message content...',
-            showCancelButton: true,
-            confirmButtonText: 'Dispatch Message'
-        });
-
-        if (message) {
-            try {
-                const fd = new FormData();
-                fd.append('message', message);
-                const res = await fetch(`/admin/api/customers/${id}/send-alert`, { method: 'POST', body: fd });
-                const data = await res.json();
-                if (data.success) {
-                    Swal.fire('Dispatched', data.message, 'success');
-                } else { Swal.fire('Error', data.message, 'error'); }
-            } catch (e) { Swal.fire('Error', 'Communication failure.', 'error'); }
-        }
+    function sendAlert(id) {
+        openReasonModal('Dispatch System Alert', "This message will be sent directly to the customer's notification hub.", (message) => {
+            Swal.fire({ title: 'Dispatching...', didOpen: () => Swal.showLoading() });
+            const fd = new FormData();
+            fd.append('message', message);
+            fetch(`/admin/api/customers/${id}/send-alert`, { method: 'POST', body: fd })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) Swal.fire('Dispatched', data.message, 'success');
+                    else Swal.fire('Error', data.message, 'error');
+                })
+                .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
+        }, { variant: 'info' });
     }
 
     function viewLedger(id) {
@@ -508,6 +680,57 @@
 
     function closeIntelligenceModal() {
         document.getElementById('intelligenceModal').classList.remove('active');
+    }
+
+    // --- Edit Participant Suite ---
+    function openEditModal(btn) {
+        document.getElementById('edit_customer_id').value = btn.getAttribute('data-id');
+        document.getElementById('edit_fname').value = btn.getAttribute('data-fname');
+        document.getElementById('edit_lname').value = btn.getAttribute('data-lname');
+        document.getElementById('edit_email').value = btn.getAttribute('data-email');
+        document.getElementById('edit_phone').value = btn.getAttribute('data-phone') || '';
+        document.getElementById('edit_address').value = btn.getAttribute('data-address') || '';
+        document.getElementById('editCustomerModal').classList.add('active');
+    }
+
+    function closeEditModal() {
+        document.getElementById('editCustomerModal').classList.remove('active');
+    }
+
+    document.getElementById('editCustomerForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('edit_customer_id').value;
+        const fd = new FormData(e.target);
+
+        Swal.fire({ title: 'Updating Participant...', didOpen: () => Swal.showLoading() });
+
+        try {
+            const res = await fetch(`/admin/api/customers/${id}/edit`, {
+                method: 'POST',
+                body: fd
+            });
+            const data = await res.json();
+            if (data.success) {
+                Swal.fire('Updated', data.message, 'success').then(() => location.reload());
+            } else {
+                Swal.fire('Error', data.message, 'error');
+            }
+        } catch (e) {
+            Swal.fire('Error', 'Communication failure.', 'error');
+        }
+    });
+
+    function archiveItem(type, id) {
+        openConfirmModal('Archive Participant?', 'This will move the participant to archives for 30 days. You can restore them if needed.', () => {
+            Swal.fire({ title: 'Archiving...', didOpen: () => Swal.showLoading() });
+            fetch(`/admin/api/archives/${type}/${id}/archive`, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) Swal.fire('Archived', data.message, 'success').then(() => location.reload());
+                    else Swal.fire('Error', data.message, 'error');
+                })
+                .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
+        }, { variant: 'archive' });
     }
 
     // Initialize

@@ -17,6 +17,8 @@ from sqlalchemy import text
 from starlette.middleware.sessions import SessionMiddleware
 from .core.config import settings
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+from .core.security import SECRET_KEY, ALGORITHM
+from jose import jwt, JWTError
 
 app = FastAPI()
 
@@ -37,6 +39,50 @@ async def add_website_config(request: Request, call_next):
 
 # Better: Global Template Context Processor
 from .db.database import SessionLocal
+@app.middleware("http")
+async def maintenance_middleware(request: Request, call_next):
+    # 1. Skip check for Static Files and Admin routes
+    path = request.url.path
+    if path.startswith("/static") or path.startswith("/admin") or path.startswith("/api/admin"):
+        return await call_next(request)
+
+    # 2. Fetch Config (Optimized: Check if it's in request state if we had it, but for now fetch)
+    db = SessionLocal()
+    try:
+        config = db.query(models.WebsiteConfig).first()
+        if config and config.maintenance_mode:
+            # 3. Check if current user is an admin
+            token = request.cookies.get("access_token")
+            is_admin = False
+            if token:
+                if token.startswith("Bearer "): token = token.split(" ")[1]
+                try:
+                    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                    email: str = payload.get("sub")
+                    user = db.query(models.User).filter(models.User.email == email).first()
+                    if user and user.role == "admin":
+                        is_admin = True
+                except: pass
+            
+            if not is_admin:
+                # Return Maintenance Page (HTML) or JSON if API
+                if "text/html" in request.headers.get("accept", ""):
+                    from .core.templates import templates
+                    return templates.TemplateResponse("maintenance.html", {
+                        "request": request,
+                        "message": config.maintenance_message,
+                        "config": config
+                    })
+                else:
+                    return JSONResponse(
+                        status_code=503,
+                        content={"success": False, "message": config.maintenance_message}
+                    )
+    finally:
+        db.close()
+
+    return await call_next(request)
+
 @app.middleware("http")
 async def db_session_middleware(request: Request, call_next):
     request.state.db = SessionLocal()
@@ -139,8 +185,7 @@ app.include_router(notifications.router)
 app.include_router(chat.router)
 app.include_router(caterer_feed.router)
 
-from .core.security import SECRET_KEY, ALGORITHM
-from jose import jwt, JWTError
+# --- WebSocket Implementation ---
 
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):

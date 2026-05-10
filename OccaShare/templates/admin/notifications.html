@@ -5,58 +5,137 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ range(1, 1000) | random }}">
 <style>
-    /* Nerve Center Specific Diamond Styling */
     .notif-card-premium {
-        background: white; border-radius: 16px; border: 1px solid #f1f5f9;
-        padding: 1.25rem 1.5rem; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        display: flex; align-items: flex-start; gap: 1.25rem; margin-bottom: 1rem;
-        position: relative; overflow: hidden; text-decoration: none;
+        background: white;
+        border-radius: 16px;
+        border: 1px solid #f1f5f9;
+        padding: 1.5rem;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        align-items: flex-start;
+        gap: 1.5rem;
+        margin-bottom: 1.25rem;
+        position: relative;
+        overflow: hidden;
+        text-decoration: none;
     }
-    .notif-card-premium:hover { transform: translateX(8px); border-color: var(--adm-primary-light); background: #fcfcfc; }
-    .notif-card-premium.unread { border-left: 4px solid var(--adm-primary); background: #fff7ed; }
-    
+
+    .notif-card-premium:hover {
+        transform: translateX(8px);
+        border-color: var(--adm-primary-light);
+        background: #fcfcfc;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    }
+
+    .notif-card-premium.unread {
+        border-left: 5px solid var(--adm-primary);
+        background: #fff7ed;
+    }
+
     .notif-icon-node {
-        width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0;
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
     }
-    .type-warning { background: #fee2e2; color: #ef4444; }
-    .type-reminder { background: #fef3c7; color: #d97706; }
-    .type-info { background: #eff6ff; color: #3b82f6; }
-    .type-success { background: #dcfce7; color: #16a34a; }
+
+    .type-warning {
+        background: #fee2e2;
+        color: #ef4444;
+    }
+
+    .type-reminder {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .type-info {
+        background: #eff6ff;
+        color: #3b82f6;
+    }
+
+    .type-success {
+        background: #dcfce7;
+        color: #16a34a;
+    }
 
     .time-divider {
-        font-size: 0.65rem; font-weight: 800; color: var(--adm-muted);
-        text-transform: uppercase; letter-spacing: 0.1em;
-        margin: 2rem 0 1rem 0; display: flex; align-items: center; gap: 1rem;
+        font-size: 0.7rem;
+        font-weight: 800;
+        color: var(--adm-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin: 2.5rem 0 1.25rem 0;
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
     }
-    .time-divider::after { content: ''; flex: 1; height: 1px; background: #f1f5f9; }
 
-    .notif-title { font-weight: 800; color: var(--adm-navy); font-size: 0.95rem; margin: 0 0 4px 0; }
-    .notif-msg { font-size: 0.85rem; color: var(--adm-muted); line-height: 1.5; font-weight: 500; margin: 0; }
+    .time-divider::after {
+        content: '';
+        flex: 1;
+        height: 1.5px;
+        background: #f1f5f9;
+    }
+
+    .notif-title {
+        font-family: 'Poppins', sans-serif;
+        font-weight: 800;
+        color: var(--adm-navy);
+        font-size: 0.95rem;
+        margin: 0 0 6px 0;
+    }
+
+    .notif-msg {
+        font-family: 'Poppins', sans-serif;
+        font-size: 0.85rem;
+        color: #475569;
+        line-height: 1.6;
+        font-weight: 500;
+        margin: 0;
+    }
+
+    .unread-dot {
+        width: 12px;
+        height: 12px;
+        background: var(--adm-primary);
+        border-radius: 50%;
+        box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.1);
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="dashboard-header-clean">
     <div class="header-title-area">
-        <h1 style="display: flex; align-items: center; gap: 12px;">
-            <i class="fas fa-satellite-dish" style="color: var(--adm-primary);"></i>
-            System Nerve Center
+        <h1 style="display: flex; align-items: center; gap: 15px; font-family: 'Poppins', sans-serif;">
+            System Notification Center
         </h1>
-        <p>Real-time operational alerts and administrative feedback loops.</p>
+        <p style="font-family: 'Poppins', sans-serif;">Real-time operational alerts and administrative feedback loops.
+        </p>
     </div>
     <div class="header-actions">
-        <button class="btn-clean" id="markAllRead" style="font-size: 0.75rem; padding: 10px 16px;">
+        <button class="btn-clean" id="markAllRead"
+            style="font-size: 0.75rem; padding: 12px 20px; font-weight: 800; background: var(--adm-navy); color: white; border-radius: 12px;">
             <i class="fas fa-check-double"></i> Mark All as Resolved
         </button>
     </div>
 </div>
 
-<div class="table-card-clean" style="padding: 2rem;">
-    <div style="display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 1rem;">
-        <button class="btn-clean active" style="font-size: 0.75rem; border: none; background: none; border-bottom: 2px solid var(--adm-primary); border-radius: 0;">
-            All Intelligence ({{ notifications|length }})
+<div class="table-card-clean" style="padding: 2.5rem;">
+    <div style="display: flex; gap: 2rem; margin-bottom: 2.5rem; border-bottom: 2px solid #f1f5f9;">
+        <button class="tab-btn active" onclick="switchTab('all', this)"
+            style="font-size: 0.8rem; font-weight: 800; border: none; background: none; border-bottom: 2px solid var(--adm-primary); border-radius: 0; padding-bottom: 12px; color: var(--adm-navy); cursor: pointer; transition: all 0.3s;">
+            All Intelligence <span
+                style="background: #f1f5f9; padding: 2px 8px; border-radius: 6px; margin-left: 6px;">{{
+                notifications|length }}</span>
         </button>
-        <button class="btn-clean" style="font-size: 0.75rem; border: none; background: none; border-radius: 0; color: var(--adm-muted);">
+        <button class="tab-btn" onclick="switchTab('unresolved', this)"
+            style="font-size: 0.8rem; font-weight: 800; border: none; background: none; border-radius: 0; padding-bottom: 12px; color: var(--adm-muted); cursor: pointer; transition: all 0.3s;">
             Unresolved Actions
         </button>
     </div>
@@ -64,94 +143,134 @@
     <div class="notifications-feed">
         {% set today = None %}
         {% for n in notifications %}
-            {% set n_date = n.created_at.strftime('%Y-%m-%d') %}
-            {% if today != n_date %}
-                <div class="time-divider">
-                    {% if n_date == now.strftime('%Y-%m-%d') %}
-                        TODAY'S OPERATIONS
-                    {% else %}
-                        {{ n.created_at.strftime('%b %d, %Y')|upper }}
-                    {% endif %}
-                </div>
-                {% set today = n_date %}
+        {% set n_date = n.created_at.strftime('%Y-%m-%d') %}
+        {% if today != n_date %}
+        <div class="time-divider">
+            {% if n_date == now.strftime('%Y-%m-%d') %}
+            TODAY'S OPERATIONS
+            {% else %}
+            {{ n.created_at.strftime('%b %d, %Y')|upper }}
             {% endif %}
+        </div>
+        {% set today = n_date %}
+        {% endif %}
 
-            <a href="{{ n.link or '#' }}" class="notif-card-premium {% if not n.is_read %}unread{% endif %}" data-id="{{ n.id }}">
-                <div class="notif-icon-node type-{{ n.type }}">
-                    {% if n.type == 'warning' %}
-                        <i class="fas fa-exclamation-triangle"></i>
-                    {% elif n.type == 'reminder' %}
-                        <i class="fas fa-clock"></i>
-                    {% elif n.type == 'success' %}
-                        <i class="fas fa-check-circle"></i>
-                    {% else %}
-                        <i class="fas fa-info-circle"></i>
-                    {% endif %}
-                </div>
-                <div style="flex: 1;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <h3 class="notif-title">{{ n.title }}</h3>
-                        <span style="font-size: 0.65rem; color: var(--adm-muted); font-weight: 700;">
-                            <i class="far fa-clock"></i> {{ n.created_at.strftime('%I:%M %p') }}
-                        </span>
-                    </div>
-                    <p class="notif-msg">{{ n.message }}</p>
-                    {% if n.link %}
-                    <div style="margin-top: 10px; font-size: 0.7rem; font-weight: 800; color: var(--adm-primary);">
-                        <i class="fas fa-external-link-alt"></i> EXECUTE REQUIRED ACTION
-                    </div>
-                    {% endif %}
-                </div>
-                <div style="padding-left: 1rem;">
-                    {% if not n.is_read %}
-                        <div style="width: 10px; height: 10px; background: var(--adm-primary); border-radius: 50%;"></div>
-                    {% endif %}
-                </div>
-            </a>
-        {% else %}
-            <div style="text-align: center; padding: 5rem;">
-                <i class="fas fa-bell-slash fa-4x" style="color: #f1f5f9; margin-bottom: 2rem;"></i>
-                <h2 style="color: var(--adm-navy);">Nerve Center Idle</h2>
-                <p style="color: var(--adm-muted);">No operational alerts detected in the current horizon.</p>
+        <div class="notif-card-premium {% if not n.is_read %}unread{% endif %}" data-id="{{ n.id }}"
+            style="cursor: pointer;">
+            <div class="notif-icon-node type-{{ n.type }}">
+                {% if n.type == 'warning' %}
+                <i class="fas fa-exclamation-triangle"></i>
+                {% elif n.type == 'reminder' %}
+                <i class="fas fa-clock"></i>
+                {% elif n.type == 'success' %}
+                <i class="fas fa-check-circle"></i>
+                {% else %}
+                <i class="fas fa-info-circle"></i>
+                {% endif %}
             </div>
+            <div style="flex: 1;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <h3 class="notif-title">{{ n.title }}</h3>
+                    <span
+                        style="font-size: 0.7rem; color: var(--adm-muted); font-weight: 700; background: #f8fafc; padding: 4px 10px; border-radius: 8px;">
+                        <i class="far fa-clock"></i> {{ n.created_at.strftime('%I:%M %p') }}
+                    </span>
+                </div>
+                <p class="notif-msg">{{ n.message }}</p>
+                {% if n.link %}
+                <a href="{{ n.link }}"
+                    style="display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 0.7rem; font-weight: 800; color: var(--adm-primary); text-decoration: none; background: var(--adm-primary-soft); padding: 6px 12px; border-radius: 8px; transition: all 0.2s;">
+                    <i class="fas fa-external-link-alt"></i> EXECUTE REQUIRED ACTION
+                </a>
+                {% endif %}
+            </div>
+            <div style="padding-left: 1rem; align-self: center;">
+                {% if not n.is_read %}
+                <div class="unread-dot"></div>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 6rem 2rem;">
+            <div
+                style="width: 100px; height: 100px; background: #f8fafc; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 2rem; color: #cbd5e1; font-size: 3rem;">
+                <i class="fas fa-bell-slash"></i>
+            </div>
+            <h2 style="color: var(--adm-navy); font-weight: 800;">Nerve Center Idle</h2>
+            <p style="color: var(--adm-muted); font-weight: 600;">No operational alerts detected in the current horizon.
+            </p>
+        </div>
         {% endfor %}
     </div>
 </div>
-
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+    // Tab Switching Logic
+    function switchTab(mode, btn) {
+        document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.remove('active');
+            b.style.borderBottom = 'none';
+            b.style.color = 'var(--adm-muted)';
+        });
+        btn.classList.add('active');
+        btn.style.borderBottom = '2px solid var(--adm-primary)';
+        btn.style.color = 'var(--adm-navy)';
+
+        const cards = document.querySelectorAll('.notif-card-premium');
+        cards.forEach(card => {
+            if (mode === 'all') {
+                card.style.display = 'flex';
+            } else {
+                card.style.display = card.classList.contains('unread') ? 'flex' : 'none';
+            }
+        });
+    }
+
     // Mark as read when clicked
     document.querySelectorAll('.notif-card-premium').forEach(card => {
         card.addEventListener('click', async (e) => {
             const notifId = card.dataset.id;
-            if (notifId) {
-                await fetch(`/admin/api/notifications/${notifId}/mark-read`, { method: 'POST' });
+            if (notifId && card.classList.contains('unread')) {
+                const res = await fetch(`/admin/api/notifications/${notifId}/mark-read`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    card.classList.remove('unread');
+                    const dot = card.querySelector('.unread-dot');
+                    if (dot) dot.style.display = 'none';
+                }
             }
         });
     });
 
     document.getElementById('markAllRead').addEventListener('click', async () => {
-        Swal.fire({
-            title: 'Resolve All Alerts?',
-            text: "This will mark all current notifications as read.",
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Yes, Resolve'
-        }).then(async (result) => {
-            if (result.isConfirmed) {
-                // We'll need a mark all as read API or loop through
-                Swal.fire('Processing...', 'Updating system logs.', 'info');
-                setTimeout(() => window.location.reload(), 1000);
+        openConfirmModal(
+            'Resolve All Intelligence?',
+            'This will archive all pending alerts and mark them as resolved in the system logs. This action is recorded for audit purposes.',
+            async () => {
+                const res = await fetch('/admin/api/notifications/mark-all-read', { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire({
+                        title: 'Success',
+                        text: data.message,
+                        icon: 'success',
+                        confirmButtonColor: 'var(--adm-primary)'
+                    }).then(() => window.location.reload());
+                }
             }
-        });
+        );
     });
 
     window.addEventListener('system_update', (e) => {
         if (e.detail.type === 'new_notification') {
-            window.location.reload();
+            if (typeof showToast === 'function') {
+                showToast("New operational alert received.");
+            } else {
+                window.location.reload();
+            }
         }
     });
 </script>

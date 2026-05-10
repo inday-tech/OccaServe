@@ -173,8 +173,11 @@
 {% block content %}
 <div class="dashboard-header-clean">
     <div class="header-title-area">
-        <h1>Caterer Partners</h1>
-        <p>Strategic management of platform-certified catering providers.</p>
+        <h1 style="display: flex; align-items: center; gap: 15px; font-family: 'Poppins', sans-serif;">
+            <img src="{{ url_for('static', path='/images/brand_icon.png') }}" style="width: 32px; height: 32px;" alt="OccaServe">
+            Caterer Partners
+        </h1>
+        <p style="font-family: 'Poppins', sans-serif;">Strategic management of platform-certified catering providers.</p>
     </div>
     <div class="header-actions-area">
         <button class="btn-clean" style="background: var(--adm-navy); color: white;" onclick="openAddCatererModal()">
@@ -324,6 +327,10 @@
                                 </button>
                                 <button class="dm-dropdown-item danger" onclick="suspendPartner({{ caterer.id }})">
                                     <i class="fas fa-ban"></i> Suspend Partner
+                                </button>
+                                <div style="height: 1px; background: #f1f5f9; margin: 4px 8px;"></div>
+                                <button class="dm-dropdown-item" onclick="archiveItem('caterers', {{ caterer.id }})" style="color: #64748b;">
+                                    <i class="fas fa-archive"></i> Archive Partner
                                 </button>
                                 {% endif %}
                             </div>
@@ -673,7 +680,7 @@
             </div>
 
             <div class="modal-footer-clean" style="padding: 1.25rem 2rem; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 12px; flex-shrink: 0;">
-                <button type="button" class="btn-clean" style="background: white; border: 1px solid var(--adm-border-light);" onclick="closeEditModal()">Dismiss</button>
+                <button type="button" class="btn-clean" style="background: white; color: var(--adm-navy); border: 1px solid var(--adm-border-light);" onclick="closeEditModal()">Dismiss</button>
                 <button type="submit" class="btn-clean" style="background: var(--adm-primary); color: white; min-width: 160px; font-weight: 800;">
                     <i class="fas fa-save"></i> Commit Changes
                 </button>
@@ -740,15 +747,8 @@
     }
 
     function restorePartner(id) {
-        Swal.fire({
-            title: 'Restore Access?',
-            text: "This will reactivate the partner entity and allow them to take bookings.",
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Yes, Restore Access',
-            confirmButtonColor: '#10b981'
-        }).then((result) => {
-            if (result.isConfirmed) executePartnerAction(id, 'activate');
+        openConfirmModal('Restore Access?', 'This will reactivate the partner entity and allow them to take bookings.', () => {
+            executePartnerAction(id, 'activate');
         });
     }
 
@@ -764,20 +764,6 @@
         });
     }
 
-    function openReasonModal(title, desc, callback) {
-        const modal = document.getElementById('reasonModal');
-        document.getElementById('reasonModalTitle').innerText = title;
-        document.getElementById('reasonModalDesc').innerText = desc;
-        document.getElementById('actionReason').value = '';
-        modal.classList.add('active');
-
-        document.getElementById('reasonSubmitBtn').onclick = () => {
-            const reason = document.getElementById('actionReason').value.trim();
-            if (!reason) return Swal.fire('Mandatory Field', 'Please provide a reason for the audit trail.', 'warning');
-            modal.classList.remove('active');
-            callback(reason);
-        };
-    }
 
     // --- Edit Partner Intelligence Suite ---
     async function openEditModal(btn) {
@@ -1125,7 +1111,17 @@
             });
         } catch (e) { }
     }
+    function archiveItem(type, id) {
+        openConfirmModal('Archive Partner?', 'This will decommission the partner and move them to archives for 30 days. You can restore them if needed.', () => {
+            Swal.fire({ title: 'Archiving Partner...', didOpen: () => Swal.showLoading() });
+            fetch(`/admin/api/archives/${type}/${id}/archive`, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) Swal.fire('Archived', data.message, 'success').then(() => location.reload());
+                    else Swal.fire('Error', data.message, 'error');
+                })
+                .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
+        }, { variant: 'archive' });
+    }
 </script>
 {% endblock %}
-ck %}
-%}

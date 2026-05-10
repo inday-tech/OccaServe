@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Maintenance - OccaShare</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #f97316;
+            --primary-dark: #ea580c;
+            --primary-soft: #fff7ed;
+            --navy: #0f172a;
+            --glass: rgba(255, 255, 255, 0.9);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            /* Vibrant Orange Shade Background */
+            background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 50%, #fed7aa 100%);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            color: var(--navy);
+        }
+
+        /* Decorative background shapes */
+        .shape {
+            position: absolute;
+            background: var(--primary);
+            filter: blur(120px);
+            opacity: 0.15;
+            z-index: -1;
+            border-radius: 50%;
+            animation: float 15s infinite alternate ease-in-out;
+        }
+
+        .shape-1 {
+            width: 500px;
+            height: 500px;
+            top: -100px;
+            right: -100px;
+        }
+
+        .shape-2 {
+            width: 400px;
+            height: 400px;
+            bottom: -100px;
+            left: -100px;
+            background: #fb923c;
+            animation-delay: -5s;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translate(0, 0) scale(1);
+            }
+
+            100% {
+                transform: translate(100px, 50px) scale(1.2);
+            }
+        }
+
+        .maintenance-card {
+            background: var(--glass);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 48px;
+            padding: 4rem;
+            text-align: center;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 40px 100px -20px rgba(249, 115, 22, 0.15),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+            animation: fadeInScale 1s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+        }
+
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .logo-container {
+            width: 140px;
+            height: 140px;
+            background: white;
+            border-radius: 36px;
+            margin: 0 auto 2.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 15px 35px rgba(249, 115, 22, 0.1);
+            padding: 20px;
+            position: relative;
+            animation: logoFloat 4s infinite ease-in-out;
+        }
+
+        @keyframes logoFloat {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .logo-container img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        /* If no logo, show wrench */
+        .logo-placeholder {
+            font-size: 3.5rem;
+            color: var(--primary);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: #fff7ed;
+            border: 1px solid #ffedd5;
+            padding: 8px 24px;
+            border-radius: 100px;
+            color: var(--primary-dark);
+            font-size: 0.8rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 2rem;
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--primary);
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(2.5);
+                opacity: 0;
+            }
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--navy);
+            letter-spacing: -0.02em;
+        }
+
+        h1 span {
+            color: var(--primary);
+        }
+
+        p {
+            font-size: 1.05rem;
+            color: #475569;
+            line-height: 1.8;
+            margin-bottom: 3rem;
+            font-weight: 500;
+        }
+
+        .divider {
+            height: 1px;
+            background: linear-gradient(to right, transparent, #e2e8f0, transparent);
+            margin-bottom: 2rem;
+        }
+
+        footer {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            font-weight: 600;
+        }
+
+        footer strong {
+            color: var(--navy);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="shape shape-1"></div>
+    <div class="shape shape-2"></div>
+
+    <div class="maintenance-card">
+        <div class="logo-container">
+            {% if config and config.logo_url %}
+            <img src="{{ config.logo_url }}" alt="OccaShare Logo">
+            {% else %}
+            <i class="fas fa-screwdriver-wrench logo-placeholder"></i>
+            {% endif %}
+        </div>
+
+        <div class="status-badge">
+            <div class="pulse-dot"></div>
+            System Optimization In Progress
+        </div>
+
+        <h1>We are <span>Optimizing</span></h1>
+
+        <p>{{ message }}</p>
+
+        <footer>
+            &copy; 2026 <strong>OccaServe Platform</strong>.
+            <div
+                style="margin-top: 5px; opacity: 0.7; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em;">
+                Administrative Transparency Protocol Enabled
+            </div>
+        </footer>
+    </div>
+</body>
+
+</html>

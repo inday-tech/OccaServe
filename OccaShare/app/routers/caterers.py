@@ -73,11 +73,12 @@ def get_caterer_profile(request: Request, caterer_id: int, db: Session = Depends
         })
     
     # Otherwise, show the standalone profile (e.g., for guests or other roles)
+    active_packages = [p for p in caterer.packages if p.is_active and p.status == 'active']
     return templates.TemplateResponse("caterer/profile.html", {
         "request": request, 
         "caterer": caterer,
-        "packages": caterer.packages,
-        "gallery_items": caterer.gallery_items,
+        "packages": active_packages,
+        "gallery_items": [g for g in caterer.gallery_items if not g.is_archived],
         "reviews": caterer.reviews,
         "user": user,
         "nav_page": "caterers"
@@ -102,11 +103,12 @@ def get_caterer_by_slug(request: Request, slug: str, db: Session = Depends(datab
             user = auth.verify_token(param, db)
         except: pass
 
+    active_packages = [p for p in caterer.packages if p.is_active and p.status == 'active']
     return templates.TemplateResponse("caterer/profile.html", {
         "request": request, 
         "caterer": caterer,
-        "packages": caterer.packages,
-        "gallery_items": caterer.gallery_items,
+        "packages": active_packages,
+        "gallery_items": [g for g in caterer.gallery_items if not g.is_archived],
         "nav_page": "caterers"
     })
 

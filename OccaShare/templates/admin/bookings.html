@@ -7,88 +7,176 @@
 <style>
     /* Diamond Standard Layout Alignment */
     .table-card-clean {
-        background: #fff; border-radius: 24px; border: 1px solid rgba(226, 232, 240, 0.8);
-        overflow: visible; transition: all 0.3s ease;
-        margin-bottom: 2rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05);
+        background: #fff;
+        border-radius: 24px;
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        overflow: visible;
+        transition: all 0.3s ease;
+        margin-bottom: 2rem;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05);
     }
-    
+
     .clean-table thead th {
-        font-size: 0.65rem; font-weight: 800; color: #64748b;
-        text-transform: uppercase; letter-spacing: 0.1em;
-        padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;
+        font-size: 0.65rem;
+        font-weight: 800;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid #f1f5f9;
         background: #f8fafc;
     }
 
     .cust-row {
-        border-bottom: 1px solid #f8fafc; transition: all 0.2s ease;
+        border-bottom: 1px solid #f8fafc;
+        transition: all 0.2s ease;
     }
+
     .cust-row:hover {
-        background: #f8fafc; transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        background: #f8fafc;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
     }
 
     /* Booking Specific Badges */
     .status-badge-dm {
-        padding: 5px 12px; border-radius: 10px; font-size: 0.6rem;
-        font-weight: 800; display: inline-flex; align-items: center; gap: 6px;
+        padding: 5px 12px;
+        border-radius: 10px;
+        font-size: 0.6rem;
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
         letter-spacing: 0.03em;
     }
-    .status-confirmed { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
-    .status-pending { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
-    .status-completed { background: #eff6ff; color: #1e40af; border: 1px solid #dbeafe; }
-    .status-cancelled { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
-    .status-neutral { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+
+    .status-confirmed {
+        background: #dcfce7;
+        color: #166534;
+        border: 1px solid #bbf7d0;
+    }
+
+    .status-pending {
+        background: #fef3c7;
+        color: #92400e;
+        border: 1px solid #fde68a;
+    }
+
+    .status-completed {
+        background: #eff6ff;
+        color: #1e40af;
+        border: 1px solid #dbeafe;
+    }
+
+    .status-cancelled {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+    }
+
+    .status-neutral {
+        background: #f1f5f9;
+        color: #475569;
+        border: 1px solid #e2e8f0;
+    }
 
     .action-dots-adm {
-        width: 36px; height: 36px; border-radius: 10px;
-        background: #f1f5f9; color: #64748b; display: flex;
-        align-items: center; justify-content: center; cursor: pointer;
-        transition: all 0.2s ease; border: 1px solid #e2e8f0;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: #f1f5f9;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: 1px solid #e2e8f0;
     }
+
     .action-dots-adm:hover {
-        background: var(--adm-primary); color: white;
+        background: var(--adm-primary);
+        color: white;
         border-color: var(--adm-primary);
     }
 
     /* Action Dropdown - Elite Anti-Overlap */
     .action-menu-dm {
-        position: relative; display: inline-block;
+        position: relative;
+        display: inline-block;
     }
+
     .dropdown-menu-dm {
-        position: absolute; right: 0; top: 100%; margin-top: 10px;
-        width: 220px; background: white; border-radius: 16px;
-        box-shadow: 0 15px 35px -5px rgba(0,0,0,0.15), 0 10px 15px -10px rgba(0,0,0,0.1);
-        border: 1px solid #e2e8f0; z-index: 9999; padding: 6px;
-        display: none; transform-origin: top right;
+        position: absolute;
+        right: 0;
+        top: 100%;
+        margin-top: 10px;
+        width: 220px;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.15), 0 10px 15px -10px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e2e8f0;
+        z-index: 9999;
+        padding: 6px;
+        display: none;
+        transform-origin: top right;
     }
-    .dropdown-menu-dm.show { display: block !important; animation: dm-pop 0.2s ease-out; }
+
+    .dropdown-menu-dm.show {
+        display: block !important;
+        animation: dm-pop 0.2s ease-out;
+    }
+
     @keyframes dm-pop {
-        from { opacity: 0; transform: scale(0.95) translateY(-10px); }
-        to { opacity: 1; transform: scale(1) translateY(0); }
+        from {
+            opacity: 0;
+            transform: scale(0.95) translateY(-10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
     }
-    
+
     .dropdown-item-dm {
-        display: flex; align-items: center; gap: 10px;
-        padding: 10px 14px; border-radius: 10px; font-size: 0.75rem;
-        font-weight: 700; color: #475569; transition: all 0.2s;
-        cursor: pointer; border: none; background: none; width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 10px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #475569;
+        transition: all 0.2s;
+        cursor: pointer;
+        border: none;
+        background: none;
+        width: 100%;
         text-align: left;
     }
-    .dropdown-item-dm:hover { background: #f1f5f9; color: var(--adm-primary); }
-    .dropdown-item-dm.danger:hover { background: #fff1f2; color: #e11d48; }
-    .dropdown-divider { height: 1px; background: #f1f5f9; margin: 4px 0; }
+
+    .dropdown-item-dm:hover {
+        background: #f1f5f9;
+        color: var(--adm-primary);
+    }
+
+    .dropdown-item-dm.danger:hover {
+        background: #fff1f2;
+        color: #e11d48;
+    }
+
+    .dropdown-divider {
+        height: 1px;
+        background: #f1f5f9;
+        margin: 4px 0;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="dashboard-header-clean">
     <div class="header-title-area">
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-            <div style="background: var(--adm-primary-soft); color: var(--adm-primary); padding: 8px; border-radius: 10px;">
-                <i class="fas fa-calendar-check"></i>
-            </div>
-            <h5 style="margin: 0; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--adm-primary);">Administrative Terminal</h5>
-        </div>
         <h1>Platform Bookings</h1>
         <p>Comprehensive oversight of platform transactions, fulfillment flows, and dispute governance.</p>
     </div>
@@ -97,7 +185,8 @@
 <!-- Intelligence KPI Matrix -->
 <div class="kpi-grid-clean">
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: linear-gradient(135deg, #eff6ff, #dbeafe); color: #1d4ed8;"><i class="fas fa-calendar-check"></i></div>
+        <div class="kpi-icon-box" style="background: linear-gradient(135deg, #eff6ff, #dbeafe); color: #1d4ed8;"><i
+                class="fas fa-calendar-check"></i></div>
         <div class="kpi-info">
             <h4>Total Registry</h4>
             <span class="kpi-value">{{ metrics.total_bookings }}</span>
@@ -105,7 +194,8 @@
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: linear-gradient(135deg, #fffbeb, #fef3c7); color: #92400e;"><i class="fas fa-hourglass-half"></i></div>
+        <div class="kpi-icon-box" style="background: linear-gradient(135deg, #fffbeb, #fef3c7); color: #92400e;"><i
+                class="fas fa-hourglass-half"></i></div>
         <div class="kpi-info">
             <h4>Pending Audit</h4>
             <span class="kpi-value">{{ metrics.pending_bookings }}</span>
@@ -113,7 +203,9 @@
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: linear-gradient(135deg, var(--adm-primary-soft), #e0e7ff); color: var(--adm-primary);"><i class="fas fa-coins"></i></div>
+        <div class="kpi-icon-box"
+            style="background: linear-gradient(135deg, var(--adm-primary-soft), #e0e7ff); color: var(--adm-primary);"><i
+                class="fas fa-coins"></i></div>
         <div class="kpi-info">
             <h4>Realized Yield</h4>
             <span class="kpi-value">₱{{ "{:,.0f}".format(metrics.realized_revenue) }}</span>
@@ -121,10 +213,12 @@
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: linear-gradient(135deg, #f1f5f9, #e2e8f0); color: #64748b;"><i class="fas fa-chart-line"></i></div>
+        <div class="kpi-icon-box" style="background: linear-gradient(135deg, #f1f5f9, #e2e8f0); color: #64748b;"><i
+                class="fas fa-chart-line"></i></div>
         <div class="kpi-info">
             <h4>Projection</h4>
-            <span class="kpi-value" style="font-size: 1.1rem; color: #64748b;">₱{{ "{:,.0f}".format(metrics.projected_revenue) }}</span>
+            <span class="kpi-value" style="font-size: 1.1rem; color: #64748b;">₱{{
+                "{:,.0f}".format(metrics.projected_revenue) }}</span>
             <span class="trend-badge" style="background: #e2e8f0; color: #64748b;">UNCERTAIN</span>
         </div>
     </div>
@@ -132,27 +226,35 @@
 
 <!-- Booking Terminal -->
 <div class="table-card-clean">
-    <div class="terminal-filter-strip" style="display: flex; justify-content: space-between; align-items: center; padding: 1.75rem 2rem; background: #fff; border-top-left-radius: 24px; border-top-right-radius: 24px;">
+    <div class="terminal-filter-strip"
+        style="display: flex; justify-content: space-between; align-items: center; padding: 1.75rem 2rem; background: #fff; border-top-left-radius: 24px; border-top-right-radius: 24px;">
         <div style="display: flex; align-items: center; gap: 16px;">
-            <div style="background: linear-gradient(135deg, var(--adm-primary), #6366f1); color: white; width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; box-shadow: 0 8px 16px -4px rgba(79, 70, 229, 0.4);">
+            <div
+                style="background: linear-gradient(135deg, var(--adm-primary), #6366f1); color: white; width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; box-shadow: 0 8px 16px -4px rgba(79, 70, 229, 0.4);">
                 <i class="fas fa-layer-group"></i>
             </div>
             <div>
-                <h3 style="font-size: 1rem; font-weight: 800; color: var(--adm-navy); margin: 0; text-transform: uppercase; letter-spacing: 0.02em;">Booking Registry</h3>
-                <p style="font-size: 0.75rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Managed Transaction Integrity & Fulfillment</p>
+                <h3
+                    style="font-size: 1rem; font-weight: 800; color: var(--adm-navy); margin: 0; text-transform: uppercase; letter-spacing: 0.02em;">
+                    Booking Registry</h3>
+                <p style="font-size: 0.75rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Managed Transaction
+                    Integrity & Fulfillment</p>
             </div>
         </div>
-        
+
         <div style="display: flex; gap: 12px; align-items: center;">
-            <select id="statusFilter" onchange="filterBookings()" class="btn-clean" style="padding: 12px 18px; font-size: 0.8rem; font-weight: 700; background: #fff; border-radius: 12px; min-width: 240px; border: 1.5px solid #e2e8f0; color: var(--adm-navy); cursor: pointer; transition: all 0.2s;">
+            <select id="statusFilter" onchange="filterBookings()" class="btn-clean"
+                style="padding: 12px 18px; font-size: 0.8rem; font-weight: 700; background: #fff; border-radius: 12px; min-width: 240px; border: 1.5px solid #e2e8f0; color: var(--adm-navy); cursor: pointer; transition: all 0.2s;">
                 <option value="all">Governance: All Status</option>
                 <option value="pending">Status: Pending Only</option>
                 <option value="confirmed">Status: Confirmed Only</option>
                 <option value="completed">Status: Completed Only</option>
                 <option value="cancelled">Status: Cancelled Only</option>
             </select>
-            
-            <button class="btn-clean" style="padding: 12px; background: #fff; width: 48px; height: 48px; border-radius: 12px; border: 1.5px solid #e2e8f0; color: #64748b; transition: all 0.2s;" title="Export Registry">
+
+            <button class="btn-clean"
+                style="padding: 12px; background: #fff; width: 48px; height: 48px; border-radius: 12px; border: 1.5px solid #e2e8f0; color: #64748b; transition: all 0.2s;"
+                title="Export Registry">
                 <i class="fas fa-download"></i>
             </button>
         </div>
@@ -175,25 +277,35 @@
                 <tr class="cust-row">
                     <td style="padding: 1.5rem 0 1.5rem 2rem;">
                         <div class="booking-ref-cell">
-                            <span style="font-weight: 800; color: var(--adm-primary); font-size: 0.95rem;">#BK-{{ booking.id }}</span>
-                            <span style="font-size: 0.75rem; color: var(--adm-muted); font-weight: 700;">{{ booking.event_date.strftime('%b %d, %Y') if booking.event_date else 'TBD' }}</span>
+                            <span style="font-weight: 800; color: var(--adm-primary); font-size: 0.95rem;">#BK-{{
+                                booking.id }}</span>
+                            <span style="font-size: 0.75rem; color: var(--adm-muted); font-weight: 700;">{{
+                                booking.event_date.strftime('%b %d, %Y') if booking.event_date else 'TBD' }}</span>
                         </div>
                     </td>
                     <td>
-                        <div style="font-weight: 800; color: var(--adm-navy); font-size: 0.9rem; display: block; margin-bottom: 2px;">{{ booking.user.first_name }} {{ booking.user.last_name }}</div>
+                        <div
+                            style="font-weight: 800; color: var(--adm-navy); font-size: 0.9rem; display: block; margin-bottom: 2px;">
+                            {{ booking.user.first_name }} {{ booking.user.last_name }}</div>
                         <div style="font-size: 0.7rem; color: #64748b; font-weight: 700;">{{ booking.user.email }}</div>
                     </td>
                     <td>
-                        <div style="font-weight: 800; color: var(--adm-navy); font-size: 0.9rem; display: block; margin-bottom: 4px;">{{ booking.caterer.business_name if booking.caterer else 'Internal Service' }}</div>
+                        <div
+                            style="font-weight: 800; color: var(--adm-navy); font-size: 0.9rem; display: block; margin-bottom: 4px;">
+                            {{ booking.caterer.business_name if booking.caterer else 'Internal Service' }}</div>
                         {% if booking.caterer and booking.caterer.verification_status == 'Verified' %}
-                            <span class="status-badge-dm status-active" style="padding: 2px 8px; font-size: 0.55rem;">
-                                <i class="fas fa-shield-check"></i> VERIFIED PARTNER
-                            </span>
+                        <span class="status-badge-dm status-active" style="padding: 2px 8px; font-size: 0.55rem;">
+                            <i class="fas fa-shield-check"></i> VERIFIED PARTNER
+                        </span>
                         {% endif %}
                     </td>
                     <td>
-                        <div style="font-family: 'Poppins', sans-serif; font-weight: 800; color: var(--adm-navy); font-size: 1rem;">₱{{ "{:,.2f}".format(booking.total_amount) if booking.total_amount else '0.00' }}</div>
-                        <div style="font-size: 0.6rem; color: var(--adm-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Total Amount</div>
+                        <div
+                            style="font-family: 'Poppins', sans-serif; font-weight: 800; color: var(--adm-navy); font-size: 1rem;">
+                            ₱{{ "{:,.2f}".format(booking.total_amount) if booking.total_amount else '0.00' }}</div>
+                        <div
+                            style="font-size: 0.6rem; color: var(--adm-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">
+                            Total Amount</div>
                     </td>
                     <td>
                         <span class="status-badge-dm 
@@ -236,6 +348,11 @@
                                 <button class="dropdown-item-dm danger" onclick="flagDispute({{ booking.id }})">
                                     <i class="fas fa-flag"></i> Flag Dispute
                                 </button>
+                                <div class="dropdown-divider"></div>
+                                <button class="dropdown-item-dm" onclick="archiveItem('bookings', {{ booking.id }})"
+                                    style="color: #64748b;">
+                                    <i class="fas fa-archive"></i> Archive Booking
+                                </button>
                             </div>
                         </div>
                     </td>
@@ -251,20 +368,26 @@
     <div class="admin-modal-card" style="max-width: 600px;">
         <div class="modal-header-clean">
             <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="background: var(--adm-primary-soft); color: var(--adm-primary); width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                <div
+                    style="background: var(--adm-primary-soft); color: var(--adm-primary); width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
                     <i class="fas fa-chart-pie"></i>
                 </div>
                 <div>
-                    <h3 style="font-size: 0.95rem; font-weight: 800; text-transform: uppercase; margin: 0;"><span id="detailBookingId">#BK-000</span> Intelligence</h3>
-                    <p style="font-size: 0.7rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Strategic transaction audit and fulfillment log.</p>
+                    <h3 style="font-size: 0.95rem; font-weight: 800; text-transform: uppercase; margin: 0;"><span
+                            id="detailBookingId">#BK-000</span> Intelligence</h3>
+                    <p style="font-size: 0.7rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Strategic
+                        transaction audit and fulfillment log.</p>
                 </div>
             </div>
-            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);" onclick="closeModal('bookingDetailModal')">&times;</button>
+            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);"
+                onclick="closeModal('bookingDetailModal')">&times;</button>
         </div>
         <div class="modal-body-clean" id="modalBody"></div>
         <div class="modal-footer-clean">
-            <button class="btn-clean" style="background: #f1f5f9; color: var(--adm-navy); font-weight: 800;" onclick="closeModal('bookingDetailModal')">Dismiss Audit</button>
-            <button class="btn-clean" style="background: var(--adm-primary); color: white; font-weight: 800;">Download Audit Log</button>
+            <button class="btn-clean" style="background: #f1f5f9; color: var(--adm-navy); font-weight: 800;"
+                onclick="closeModal('bookingDetailModal')">Dismiss Audit</button>
+            <button class="btn-clean" style="background: var(--adm-primary); color: white; font-weight: 800;">Download
+                Audit Log</button>
         </div>
     </div>
 </div>
@@ -308,7 +431,7 @@
                 document.getElementById('detailBookingId').innerText = `#BK-${b.id}`;
                 const ri = b.risk_intelligence;
                 const riskColor = ri.score > 70 ? '#ef4444' : (ri.score > 30 ? '#f59e0b' : '#10b981');
-                
+
                 body.innerHTML = `
                     <div style="background: white; border: 1px solid #e2e8f0; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
                         <!-- Fraud Intelligence Header -->
@@ -350,17 +473,17 @@
                                     <i class="fas fa-microchip"></i> Automated Anomaly Scanner
                                 </div>
                                 <div style="display: flex; flex-direction: column; gap: 8px;">
-                                    ${ri.indicators.length > 0 ? 
-                                        ri.indicators.map(ind => `
+                                    ${ri.indicators.length > 0 ?
+                        ri.indicators.map(ind => `
                                             <div style="display: flex; align-items: flex-start; gap: 8px; font-size: 0.75rem; font-weight: 700; color: ${riskColor}; background: ${riskColor}08; padding: 8px 12px; border-radius: 8px; border-left: 3px solid ${riskColor};">
                                                 <i class="fas fa-exclamation-triangle" style="margin-top: 2px;"></i>
                                                 <span>${ind}</span>
                                             </div>
-                                        `).join('') : 
-                                        `<div style="font-size: 0.75rem; color: #10b981; font-weight: 700; text-align: center; padding: 10px;">
+                                        `).join('') :
+                        `<div style="font-size: 0.75rem; color: #10b981; font-weight: 700; text-align: center; padding: 10px;">
                                             <i class="fas fa-check-circle"></i> No digital anomalies detected in this transaction.
                                         </div>`
-                                    }
+                    }
                                 </div>
                             </div>
 
@@ -375,83 +498,49 @@
         } catch (err) { body.innerHTML = '<div style="color: #ef4444; padding: 2rem; text-align: center;">Error loading record.</div>'; }
     }
 
-    async function reconcilePayment(id) {
-        const { value: notes } = await Swal.fire({
-            title: 'Governance Reconciliation',
-            text: "Mandatory: Provide an audit justification for this manual payment verification.",
-            input: 'textarea',
-            inputPlaceholder: 'Reason for manual reconciliation...',
-            showCancelButton: true,
-            confirmButtonText: 'Verify & Reconcile',
-            confirmButtonColor: '#10b981',
-            inputValidator: (value) => { if (!value) return 'You must provide a justification!' }
-        });
-
-        if (notes) {
+    function reconcilePayment(id) {
+        openReasonModal('Governance Reconciliation', 'Mandatory: Provide an audit justification for this manual payment verification.', (notes) => {
             Swal.fire({ title: 'Processing...', didOpen: () => Swal.showLoading() });
-            try {
-                const fd = new FormData();
-                fd.append('notes', notes);
-                const res = await fetch(`/admin/api/bookings/${id}/reconcile`, { method: 'POST', body: fd });
-                const data = await res.json();
-                if (data.success) {
-                    Swal.fire('Reconciled', data.message, 'success').then(() => location.reload());
-                } else { Swal.fire('Error', data.message, 'error'); }
-            } catch (e) { Swal.fire('Error', 'Communication failure.', 'error'); }
-        }
+            const fd = new FormData();
+            fd.append('notes', notes);
+            fetch(`/admin/api/bookings/${id}/reconcile`, { method: 'POST', body: fd })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) Swal.fire('Reconciled', data.message, 'success').then(() => location.reload());
+                    else Swal.fire('Error', data.message, 'error');
+                })
+                .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
+        });
     }
 
-    async function forceComplete(id) {
-        const { value: notes } = await Swal.fire({
-            title: 'Administrative Force Completion',
-            text: "Mandatory: Justify the manual completion of this booking flow.",
-            input: 'textarea',
-            inputPlaceholder: 'Audit justification...',
-            showCancelButton: true,
-            confirmButtonText: 'Force Complete',
-            confirmButtonColor: '#4f46e5',
-            inputValidator: (value) => { if (!value) return 'Justification is required for this override!' }
-        });
-
-        if (notes) {
+    function forceComplete(id) {
+        openReasonModal('Force Completion', 'Mandatory: Justify the manual completion of this booking flow.', (notes) => {
             Swal.fire({ title: 'Overriding State...', didOpen: () => Swal.showLoading() });
-            try {
-                const fd = new FormData();
-                fd.append('notes', notes);
-                const res = await fetch(`/admin/api/bookings/${id}/force-complete`, { method: 'POST', body: fd });
-                const data = await res.json();
-                if (data.success) {
-                    Swal.fire('Flow Completed', data.message, 'success').then(() => location.reload());
-                } else { Swal.fire('Error', data.message, 'error'); }
-            } catch (e) { Swal.fire('Error', 'Communication failure.', 'error'); }
-        }
+            const fd = new FormData();
+            fd.append('notes', notes);
+            fetch(`/admin/api/bookings/${id}/force-complete`, { method: 'POST', body: fd })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) Swal.fire('Flow Completed', data.message, 'success').then(() => location.reload());
+                    else Swal.fire('Error', data.message, 'error');
+                })
+                .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
+        });
     }
 
-    async function cancelBooking(id) {
-        const { value: reason } = await Swal.fire({
-            title: 'Governance Cancellation',
-            text: "Mandatory: Provide a clear justification for terminating this transaction. This action is irreversible.",
-            icon: 'warning',
-            input: 'textarea',
-            inputPlaceholder: 'Reason for termination...',
-            showCancelButton: true,
-            confirmButtonText: 'Terminate Flow',
-            confirmButtonColor: '#ef4444',
-            inputValidator: (value) => { if (!value) return 'A reason is mandatory for cancellations!' }
-        });
-
-        if (reason) {
+    function cancelBooking(id) {
+        openReasonModal('Governance Cancellation', 'Provide a clear justification for terminating this transaction. Irreversible.', (reason) => {
             Swal.fire({ title: 'Terminating Flow...', didOpen: () => Swal.showLoading() });
-            try {
-                const fd = new FormData();
-                fd.append('reason', reason);
-                const res = await fetch(`/admin/api/bookings/${id}/cancel`, { method: 'POST', body: fd });
-                const data = await res.json();
-                if (data.success) {
-                    Swal.fire('Terminated', data.message, 'success').then(() => location.reload());
-                } else { Swal.fire('Error', data.message, 'error'); }
-            } catch (e) { Swal.fire('Error', 'Communication failure.', 'error'); }
-        }
+            const fd = new FormData();
+            fd.append('reason', reason);
+            fetch(`/admin/api/bookings/${id}/cancel`, { method: 'POST', body: fd })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) Swal.fire('Terminated', data.message, 'success').then(() => location.reload());
+                    else Swal.fire('Error', data.message, 'error');
+                })
+                .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
+        }, { variant: 'danger' });
     }
 
     async function flagDispute(id) {
@@ -475,27 +564,32 @@
         }
     }
 
-    async function dispatchAlert(id) {
-        const { value: message } = await Swal.fire({
-            title: 'Dispatch Booking Alert',
-            text: "Send a system notification to both the Customer and Caterer.",
-            input: 'textarea',
-            inputPlaceholder: 'System alert message...',
-            showCancelButton: true,
-            confirmButtonText: 'Dispatch Alert'
-        });
+    function dispatchAlert(id) {
+        openReasonModal('Dispatch System Alert', "This message will be sent directly to the customer's notification hub.", (message) => {
+            Swal.fire({ title: 'Dispatching...', didOpen: () => Swal.showLoading() });
+            const fd = new FormData();
+            fd.append('message', message);
+            fetch(`/admin/api/bookings/${id}/send-alert`, { method: 'POST', body: fd })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) Swal.fire('Dispatched', data.message, 'success');
+                    else Swal.fire('Error', data.message, 'error');
+                })
+                .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
+        }, { variant: 'info' });
+    }
 
-        if (message) {
-            try {
-                const fd = new FormData();
-                fd.append('message', message);
-                const res = await fetch(`/admin/api/bookings/${id}/send-alert`, { method: 'POST', body: fd });
-                const data = await res.json();
-                if (data.success) {
-                    Swal.fire('Dispatched', data.message, 'success');
-                } else { Swal.fire('Error', data.message, 'error'); }
-            } catch (e) { Swal.fire('Error', 'Communication failure.', 'error'); }
-        }
+    function archiveItem(type, id) {
+        openConfirmModal('Archive Booking?', 'This transaction will be moved to archives for 30 days. You can restore it if needed.', () => {
+            Swal.fire({ title: 'Archiving...', didOpen: () => Swal.showLoading() });
+            fetch(`/admin/api/archives/${type}/${id}/archive`, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) Swal.fire('Archived', data.message, 'success').then(() => location.reload());
+                    else Swal.fire('Error', data.message, 'error');
+                })
+                .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
+        }, { variant: 'archive' });
     }
 
     function closeModal(id) { document.getElementById(id).classList.remove('active'); }

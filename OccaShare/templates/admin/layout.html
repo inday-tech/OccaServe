@@ -9,7 +9,8 @@
     <title>{% block title %}Admin Dashboard - OccaServe{% endblock %}</title>
 
     <!-- Core Assets -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/admin/layout.css') }}?v=4.0">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -28,7 +29,10 @@
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}">
 
     <style>
-        .no-transition, .no-transition * { transition: none !important; }
+        .no-transition,
+        .no-transition * {
+            transition: none !important;
+        }
     </style>
 </head>
 
@@ -77,25 +81,29 @@
             <span class="nav-section-label brand-text-label">Main</span>
             <ul class="nav-list">
                 <li>
-                    <a href="/admin/dashboard" class="nav-item {{ 'active' if active_page == 'dashboard' }}" onclick="closeSidebar()">
+                    <a href="/admin/dashboard" class="nav-item {{ 'active' if active_page == 'dashboard' }}"
+                        onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-chart-pie"></i></div>
                         <span class="nav-label">Overview</span>
                     </a>
                 </li>
                 <li>
-                    <a href="/admin/caterers" class="nav-item {{ 'active' if active_page == 'caterers' }}" onclick="closeSidebar()">
+                    <a href="/admin/caterers" class="nav-item {{ 'active' if active_page == 'caterers' }}"
+                        onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-utensils"></i></div>
                         <span class="nav-label">Caterer Partners</span>
                     </a>
                 </li>
                 <li>
-                    <a href="/admin/customers" class="nav-item {{ 'active' if active_page == 'customers' }}" onclick="closeSidebar()">
+                    <a href="/admin/customers" class="nav-item {{ 'active' if active_page == 'customers' }}"
+                        onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-users"></i></div>
                         <span class="nav-label">Customers</span>
                     </a>
                 </li>
                 <li>
-                    <a href="/admin/bookings" class="nav-item {{ 'active' if active_page == 'bookings' }}" onclick="closeSidebar()">
+                    <a href="/admin/bookings" class="nav-item {{ 'active' if active_page == 'bookings' }}"
+                        onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-calendar-check"></i></div>
                         <span class="nav-label">All Bookings</span>
                     </a>
@@ -105,14 +113,16 @@
             <span class="nav-section-label brand-text-label">Finance</span>
             <ul class="nav-list">
                 <li>
-                    <a href="/admin/payouts" class="nav-item {{ 'active' if active_page == 'payouts' }}" onclick="closeSidebar()">
+                    <a href="/admin/payouts" class="nav-item {{ 'active' if active_page == 'payouts' }}"
+                        onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-hand-holding-dollar"></i></div>
                         <span class="nav-label">Payout Requests</span>
                         <span id="payoutNotifBadge" class="nav-badge" style="display:none;">NEW</span>
                     </a>
                 </li>
                 <li>
-                    <a href="/admin/payments" class="nav-item {{ 'active' if active_page == 'payments' }}" onclick="closeSidebar()">
+                    <a href="/admin/payments" class="nav-item {{ 'active' if active_page == 'payments' }}"
+                        onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-chart-line"></i></div>
                         <span class="nav-label">Earnings</span>
                     </a>
@@ -122,7 +132,8 @@
             <span class="nav-section-label brand-text-label">Compliance</span>
             <ul class="nav-list">
                 <li>
-                    <a href="/admin/kyc" class="nav-item {{ 'active' if active_page == 'kyc' }}" onclick="closeSidebar()">
+                    <a href="/admin/kyc" class="nav-item {{ 'active' if active_page == 'kyc' }}"
+                        onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-shield-halved"></i></div>
                         <span class="nav-label">KYC Compliance</span>
                     </a>
@@ -134,7 +145,8 @@
                     </a>
                 </li>
                 <li>
-                    <a href="/admin/feedback" class="nav-item {{ 'active' if active_page == 'feedback' }}" onclick="closeSidebar()">
+                    <a href="/admin/feedback" class="nav-item {{ 'active' if active_page == 'feedback' }}"
+                        onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-star"></i></div>
                         <span class="nav-label">Platform Reviews</span>
                     </a>
@@ -144,20 +156,23 @@
             <span class="nav-section-label brand-text-label">System</span>
             <ul class="nav-list">
                 <li>
-                    <a href="/admin/notifications" class="nav-item {{ 'active' if active_page == 'notifications' }}" id="adminNotifLink" onclick="closeSidebar()">
+                    <a href="/admin/notifications" class="nav-item {{ 'active' if active_page == 'notifications' }}"
+                        id="adminNotifLink" onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-bell"></i></div>
                         <span class="nav-label">Notifications</span>
                         <span class="nav-badge nav-badge-red" id="adminNotifBadge" style="display:none;">0</span>
                     </a>
                 </li>
                 <li>
-                    <a href="/admin/settings" class="nav-item {{ 'active' if active_page == 'settings' }}" onclick="closeSidebar()">
+                    <a href="/admin/settings" class="nav-item {{ 'active' if active_page == 'settings' }}"
+                        onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-sliders"></i></div>
                         <span class="nav-label">Site Settings</span>
                     </a>
                 </li>
                 <li>
-                    <a href="/admin/archives" class="nav-item {{ 'active' if active_page == 'archives' }}" onclick="closeSidebar()">
+                    <a href="/admin/archives" class="nav-item {{ 'active' if active_page == 'archives' }}"
+                        onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-box-archive"></i></div>
                         <span class="nav-label">Archives</span>
                     </a>
@@ -204,11 +219,6 @@
 
             <!-- Right: Intelligence & Actions -->
             <div class="header-right">
-                <!-- System Operational Pulse -->
-                <div class="system-heartbeat" title="All Systems Operational">
-                    <div class="pulse-dot"></div>
-                    <span class="heartbeat-label">Active</span>
-                </div>
 
                 <!-- Live Operational Clock -->
                 <div class="header-clock" id="headerClock">
@@ -220,22 +230,27 @@
 
                 <!-- Quick Action Reactor -->
                 <div class="header-dropdown-wrapper">
-                    <button class="header-icon-btn plus-btn" title="Quick Actions" onclick="toggleHeaderDropdown('quickActionsDropdown', this)">
+                    <button class="header-icon-btn plus-btn" title="Quick Actions"
+                        onclick="toggleHeaderDropdown('quickActionsDropdown', this)">
                         <i class="fas fa-plus"></i>
                     </button>
                     <div class="premium-dropdown" id="quickActionsDropdown">
                         <div class="dropdown-header">Quick Commands</div>
                         <ul class="dropdown-links">
-                            <li><a href="/admin/caterers?action=verify"><i class="fas fa-shield-check"></i> Manual Verification</a></li>
-                            <li><a href="/admin/settings?tab=announcements"><i class="fas fa-bullhorn"></i> Push Announcement</a></li>
-                            <li><a href="/admin/bookings?view=urgent"><i class="fas fa-fire-flame-curved"></i> Review Urgent Bookings</a></li>
+                            <li><a href="/admin/caterers?action=verify"><i class="fas fa-shield-check"></i> Manual
+                                    Verification</a></li>
+                            <li><a href="/admin/settings?tab=announcements"><i class="fas fa-bullhorn"></i> Push
+                                    Announcement</a></li>
+                            <li><a href="/admin/bookings?view=urgent"><i class="fas fa-fire-flame-curved"></i> Review
+                                    Urgent Bookings</a></li>
                         </ul>
                     </div>
                 </div>
 
                 <!-- Notifications Center -->
                 <div class="header-dropdown-wrapper">
-                    <button class="header-icon-btn" title="Notifications" onclick="toggleHeaderDropdown('notificationsDropdown', this)">
+                    <button class="header-icon-btn" title="Notifications"
+                        onclick="toggleHeaderDropdown('notificationsDropdown', this)">
                         <i class="fas fa-bell"></i>
                         <span class="header-badge" id="headerNotifDot" style="display:none;"></span>
                     </button>
@@ -251,7 +266,8 @@
                             </div>
                         </div>
                         <div class="dropdown-footer">
-                            <a href="/admin/notifications">See All Notifications <i class="fas fa-chevron-right"></i></a>
+                            <a href="/admin/notifications">See All Notifications <i
+                                    class="fas fa-chevron-right"></i></a>
                         </div>
                     </div>
                 </div>
@@ -268,7 +284,7 @@
                         </div>
                         <i class="fas fa-chevron-down chip-arrow"></i>
                     </div>
-                    
+
                     <div class="premium-dropdown profile-dropdown" id="profileDropdown">
                         <div class="dropdown-user-info">
                             <div class="user-avatar-large">{{ user.first_name[0] }}{{ user.last_name[0] }}</div>
@@ -280,12 +296,14 @@
                         <div class="dropdown-divider"></div>
                         <ul class="dropdown-links">
                             <li><a href="/admin/settings"><i class="fas fa-cog"></i> Account Settings</a></li>
-                            <li><a href="/admin/audit-logs"><i class="fas fa-file-shield"></i> System Audit Logs</a></li>
+                            <li><a href="/admin/audit-logs"><i class="fas fa-file-shield"></i> System Audit Logs</a>
+                            </li>
                             <li><a href="/admin/health"><i class="fas fa-heart-pulse"></i> Platform Health</a></li>
                         </ul>
                         <div class="dropdown-divider"></div>
                         <ul class="dropdown-links">
-                            <li><a href="/auth/logout" class="nav-logout text-danger"><i class="fas fa-right-from-bracket"></i> Sign Out</a></li>
+                            <li><a href="/auth/logout" class="nav-logout text-danger"><i
+                                        class="fas fa-right-from-bracket"></i> Sign Out</a></li>
                         </ul>
                     </div>
                 </div>
@@ -304,21 +322,75 @@
     <!-- ===================== GLOBAL MODALS ===================== -->
     <!-- Administrative Action Reason Modal -->
     <div id="reasonModal" class="admin-modal-overlay">
-        <div class="admin-modal-card" style="max-width: 450px;">
-            <div class="modal-header-clean">
-                <h3 id="reasonModalTitle"><i class="fas fa-exclamation-triangle"></i> Administrative Action</h3>
-                <button class="modal-close-btn" onclick="closeReasonModal()">&times;</button>
-            </div>
-            <div class="modal-body-clean">
-                <p id="reasonModalDesc" style="font-size: 0.85rem; color: #64748b; margin-bottom: 1.5rem;">Please provide a formal reason for this action. This will be visible to the user and recorded in the audit logs.</p>
-                <div class="dm-input-group">
-                    <i class="fas fa-comment-alt"></i>
-                    <textarea id="actionReason" placeholder="Enter mandatory reason..." style="width: 100%; min-height: 120px; padding: 1rem 1rem 1rem 3rem; border: 1.5px solid var(--dm-slate-100); border-radius: 12px; font-size: 0.9rem; font-family: inherit; resize: none;" required></textarea>
+        <div class="admin-modal-card" style="max-width: 500px; width: 95%;">
+            <div class="modal-header-clean" style="border-bottom: 1px solid #f1f5f9; padding: 1.25rem 2rem;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div id="reasonModalIconBox"
+                        style="width: 36px; height: 36px; background: #fff7ed; color: #f97316; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div>
+                        <h3 id="reasonModalTitle"
+                            style="font-size: 0.95rem; font-weight: 800; text-transform: uppercase; margin: 0; color: var(--adm-navy);">
+                            Administrative Action</h3>
+                        <p id="reasonModalDesc"
+                            style="font-size: 0.7rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Formal
+                            adjudication requires audit-logged reasoning.</p>
+                    </div>
                 </div>
+                <button
+                    style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);"
+                    onclick="closeReasonModal()">&times;</button>
             </div>
-            <div class="modal-footer-clean">
-                <button class="dropdown-item" style="width: auto;" onclick="closeReasonModal()">Cancel</button>
-                <button id="reasonSubmitBtn" class="btn-action-primary">Confirm Action</button>
+            <div class="modal-body-clean" style="padding: 1.5rem 2rem;">
+                <div style="position: relative; margin-bottom: 0.5rem;">
+                    <i class="fas fa-quote-left"
+                        style="position: absolute; left: 1rem; top: 1rem; color: #e2e8f0; font-size: 1.25rem;"></i>
+                    <textarea id="actionReason" placeholder="Enter mandatory reason for audit trail..."
+                        style="width: 100%; min-height: 140px; padding: 1rem 1rem 1rem 3rem; border: 1.5px solid #e2e8f0; border-radius: 16px; font-size: 0.9rem; font-family: 'Poppins', sans-serif; font-weight: 500; resize: none; outline: none; transition: border-color 0.2s;"
+                        onfocus="this.style.borderColor='var(--adm-primary)'" onblur="this.style.borderColor='#e2e8f0'"
+                        required></textarea>
+                </div>
+                <p
+                    style="font-size: 0.65rem; color: #94a3b8; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-info-circle"></i> This reason will be recorded in the system audit logs for
+                    accountability.
+                </p>
+            </div>
+            <div class="modal-footer-clean"
+                style="padding: 1.25rem 2rem; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 12px;">
+                <button type="button" class="btn-clean"
+                    style="background: white; border: 1px solid #e2e8f0; color: var(--adm-navy); font-weight: 700; font-size: 0.75rem;"
+                    onclick="closeReasonModal()">Cancel</button>
+                <button id="reasonSubmitBtn" class="btn-clean"
+                    style="background: var(--adm-primary); color: white; min-width: 150px; font-weight: 800; font-size: 0.75rem;">Confirm
+                    Action</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Administrative Confirmation Modal (Simple Yes/No) -->
+    <div id="confirmModal" class="admin-modal-overlay">
+        <div class="admin-modal-card" style="max-width: 450px; width: 95%; text-align: center;">
+            <div class="modal-body-clean" style="padding: 3rem 2rem;">
+                <div id="confirmModalIconBox"
+                    style="width: 80px; height: 80px; background: #fff7ed; color: #f97316; border-radius: 24px; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin: 0 auto 1.5rem; box-shadow: 0 10px 15px -3px rgba(249, 115, 22, 0.2);">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <h3 id="confirmModalTitle"
+                    style="font-size: 1.25rem; font-weight: 800; color: var(--adm-navy); margin-bottom: 0.75rem;">Are
+                    you sure?</h3>
+                <p id="confirmModalDesc"
+                    style="font-size: 0.9rem; color: var(--adm-muted); font-weight: 500; line-height: 1.6; margin-bottom: 2rem;">
+                    This action may have irreversible consequences on the platform's operational integrity.</p>
+                <div style="display: flex; gap: 12px; justify-content: center;">
+                    <button type="button" class="btn-clean"
+                        style="background: white; border: 1px solid #e2e8f0; color: var(--adm-navy); font-weight: 700; flex: 1; padding: 0.75rem;"
+                        onclick="closeConfirmModal()">No, Abort</button>
+                    <button id="confirmSubmitBtn" class="btn-clean"
+                        style="background: var(--adm-primary); color: white; font-weight: 800; flex: 1; padding: 0.75rem;">Yes,
+                        Continue</button>
+                </div>
             </div>
         </div>
     </div>
@@ -328,8 +400,10 @@
         <div class="admin-modal-card" style="max-width: 400px; text-align: center;">
             <div class="modal-body-clean" style="padding: 2.5rem;">
                 <div style="font-size: 3rem; color: #f59e0b; margin-bottom: 1rem;"><i class="fas fa-clock"></i></div>
-                <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--dm-secondary); margin-bottom: 0.5rem;">Session Expiring Soon</h2>
-                <p style="color: var(--text-light); margin-bottom: 2rem; font-size: 0.9rem;">You've been inactive for a while. Your session will expire in 1 minute due to security protocols.</p>
+                <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--dm-secondary); margin-bottom: 0.5rem;">
+                    Session Expiring Soon</h2>
+                <p style="color: var(--text-light); margin-bottom: 2rem; font-size: 0.9rem;">You've been inactive for a
+                    while. Your session will expire in 1 minute due to security protocols.</p>
                 <button id="stayLoggedInBtn" class="btn-action-primary" style="width: 100%;">Keep me logged in</button>
             </div>
         </div>
@@ -340,6 +414,103 @@
     <script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v=1.4"></script>
     <script src="{{ url_for('static', path='/js/main.js') }}?v=2.0"></script>
     <script src="{{ url_for('static', path='/js/admin/layout.js') }}?v=3.0"></script>
+
+    <script>
+        // --- Diamond Standard Global Modal Controllers ---
+        function openReasonModal(title, desc, callback, options = {}) {
+            const modal = document.getElementById('reasonModal');
+            const titleEl = document.getElementById('reasonModalTitle');
+            const descEl = document.getElementById('reasonModalDesc');
+            const input = document.getElementById('actionReason');
+            const submitBtn = document.getElementById('reasonSubmitBtn');
+            const iconBox = document.getElementById('reasonModalIconBox');
+
+            titleEl.innerText = title;
+            descEl.innerText = desc;
+            input.value = '';
+
+            // Customize aesthetics based on intent
+            if (options.variant === 'danger') {
+                iconBox.style.background = '#fef2f2';
+                iconBox.style.color = '#ef4444';
+                submitBtn.style.background = '#ef4444';
+            } else if (options.variant === 'warning') {
+                iconBox.style.background = '#fffbeb';
+                iconBox.style.color = '#f59e0b';
+                submitBtn.style.background = '#f59e0b';
+            } else {
+                iconBox.style.background = '#eff6ff';
+                iconBox.style.color = '#3b82f6';
+                submitBtn.style.background = 'var(--adm-primary)';
+            }
+
+            modal.classList.add('active');
+
+            submitBtn.onclick = () => {
+                const reason = input.value.trim();
+                if (!reason) {
+                    Swal.fire({ title: 'Mandatory Audit Reason', text: 'Please justify this action for the platform logs.', icon: 'warning', toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 });
+                    return;
+                }
+                modal.classList.remove('active');
+                callback(reason);
+            };
+        }
+
+        function closeReasonModal() {
+            document.getElementById('reasonModal').classList.remove('active');
+        }
+
+        function openConfirmModal(title, desc, callback, options = {}) {
+            const modal = document.getElementById('confirmModal');
+            const titleEl = document.getElementById('confirmModalTitle');
+            const descEl = document.getElementById('confirmModalDesc');
+            const submitBtn = document.getElementById('confirmSubmitBtn');
+            const iconBox = document.getElementById('confirmModalIconBox');
+
+            titleEl.innerText = title;
+            descEl.innerText = desc;
+
+            if (options.variant === 'danger') {
+                iconBox.style.background = '#fef2f2';
+                iconBox.style.color = '#ef4444';
+                iconBox.innerHTML = '<i class="fas fa-trash-alt"></i>';
+                submitBtn.style.background = '#ef4444';
+            } else if (options.variant === 'archive') {
+                iconBox.style.background = '#f1f5f9';
+                iconBox.style.color = '#64748b';
+                iconBox.innerHTML = '<i class="fas fa-archive"></i>';
+                submitBtn.style.background = '#64748b';
+            } else {
+                iconBox.style.background = '#fff7ed';
+                iconBox.style.color = '#f97316';
+                iconBox.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+                submitBtn.style.background = 'var(--adm-primary)';
+            }
+
+            modal.classList.add('active');
+
+            submitBtn.onclick = () => {
+                modal.classList.remove('active');
+                callback();
+            };
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirmModal').classList.remove('active');
+        }
+
+        // --- Custom SweetAlert Styling Override ---
+        const DiamondSwal = Swal.mixin({
+            customClass: {
+                popup: 'diamond-swal-popup',
+                title: 'diamond-swal-title',
+                confirmButton: 'diamond-swal-confirm',
+                cancelButton: 'diamond-swal-cancel'
+            },
+            buttonsStyling: false
+        });
+    </script>
 
 
     <script>
@@ -354,15 +525,15 @@
                 const li = document.getElementById('liveIndicator');
                 const txt = li && li.querySelector('.live-text');
                 if (!li) return;
-                if (connected) { li.classList.remove('offline'); if(txt) txt.textContent = 'Live'; }
-                else { li.classList.add('offline'); if(txt) txt.textContent = 'Offline'; }
+                if (connected) { li.classList.remove('offline'); if (txt) txt.textContent = 'Live'; }
+                else { li.classList.add('offline'); if (txt) txt.textContent = 'Offline'; }
             }
 
             function updateBadge(count) {
                 const badge = document.getElementById('adminNotifBadge');
-                const dot   = document.getElementById('headerNotifDot');
+                const dot = document.getElementById('headerNotifDot');
                 if (badge) { badge.textContent = count > 99 ? '99+' : count; badge.style.display = count > 0 ? 'inline-block' : 'none'; }
-                if (dot)   { dot.style.display = count > 0 ? 'block' : 'none'; }
+                if (dot) { dot.style.display = count > 0 ? 'block' : 'none'; }
             }
 
             function connectWebSocket() {
@@ -388,7 +559,7 @@
                             if (pb) pb.style.display = 'inline-block';
                             if (typeof Swal !== 'undefined') {
                                 Swal.fire({ title: 'New Withdrawal Request!', text: data.message, icon: 'warning', showCancelButton: true, confirmButtonText: 'Go to Payouts', confirmButtonColor: '#1e293b' })
-                                .then(r => { if (r.isConfirmed) window.location.href = '/admin/payouts'; });
+                                    .then(r => { if (r.isConfirmed) window.location.href = '/admin/payouts'; });
                             }
                         }
                         window.dispatchEvent(new CustomEvent('system_update', { detail: data }));
@@ -412,22 +583,22 @@
         }
         window.closeReasonModal = closeReasonModal;
 
-        window.showSuccess = function(message, title = "Success") {
+        window.showSuccess = function (message, title = "Success") {
             if (typeof Swal !== 'undefined') {
                 Swal.fire({ title, text: message, icon: 'success', confirmButtonColor: '#f97316', timer: 3000, timerProgressBar: true });
             }
         };
 
-        window.showConfirm = function(message, onConfirm, title = "Are you sure?") {
+        window.showConfirm = function (message, onConfirm, title = "Are you sure?") {
             if (typeof Swal !== 'undefined') {
                 Swal.fire({ title, text: message, icon: 'warning', showCancelButton: true, confirmButtonColor: '#f97316', cancelButtonColor: '#64748b', confirmButtonText: 'Yes, proceed' })
-                .then(r => { if (r.isConfirmed && onConfirm) onConfirm(); });
+                    .then(r => { if (r.isConfirmed && onConfirm) onConfirm(); });
             }
         };
 
         // ===== OMNI-SEARCH =====
         (function () {
-            const input  = document.getElementById('globalSearchInput');
+            const input = document.getElementById('globalSearchInput');
             const resBox = document.getElementById('omniSearchResults');
             if (!input || !resBox) return;
             let timeout = null;
@@ -481,4 +652,5 @@
 
     {% block extra_js %}{% endblock %}
 </body>
+
 </html>
