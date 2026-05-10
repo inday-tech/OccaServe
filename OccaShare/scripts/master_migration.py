@@ -61,6 +61,7 @@ def master_migration():
             ("status_reason", "TEXT"),
             ("investigation_notes", "TEXT")
         ]
+
         
         # Caterer Profiles
         caterer_cols = [
