@@ -63,7 +63,17 @@ def master_migration():
             ("must_change_password", "BOOLEAN DEFAULT FALSE"),
             ("is_archived", "BOOLEAN DEFAULT FALSE"),
             ("status_reason", "TEXT"),
-            ("investigation_notes", "TEXT")
+            ("investigation_notes", "TEXT"),
+            ("is_active", "BOOLEAN DEFAULT TRUE"),
+            ("facebook_id", "VARCHAR"),
+            ("google_id", "VARCHAR"),
+            ("instagram_id", "VARCHAR"),
+            ("auth_provider", "VARCHAR DEFAULT 'local'"),
+            ("is_email_verified", "BOOLEAN DEFAULT FALSE"),
+            ("verification_code", "VARCHAR"),
+            ("otp_expires_at", "TIMESTAMP WITH TIME ZONE"),
+            ("reset_token", "VARCHAR"),
+            ("reset_token_expires", "TIMESTAMP WITH TIME ZONE")
         ]
 
         
@@ -151,7 +161,9 @@ def master_migration():
             ("markup_type", "VARCHAR DEFAULT 'percentage'"),
             ("markup_value", "FLOAT DEFAULT 0.0"),
             ("reservation_fee", "FLOAT DEFAULT 0.0"),
-            ("booking_lead_time", "INTEGER DEFAULT 7")
+            ("booking_lead_time", "INTEGER DEFAULT 7"),
+            ("cost_price", "FLOAT DEFAULT 0.0"),
+            ("cost_breakdown", "JSONB")
         ]
         
         # Identity Verifications
@@ -182,6 +194,7 @@ def master_migration():
             ("notes", "TEXT"),
             ("completed_at", "TIMESTAMP WITH TIME ZONE"),
             ("total_amount", "FLOAT DEFAULT 0.0"),
+            ("payout_reference", "VARCHAR"),
             ("reference_number", "VARCHAR"),
             ("admin_notes", "TEXT"),
             ("requested_at", "TIMESTAMP WITH TIME ZONE")
@@ -214,6 +227,11 @@ def master_migration():
         
         # Quotations
         quotation_cols = [
+            ("total_amount", "FLOAT"),
+            ("valid_until", "DATE"),
+            ("status", "VARCHAR DEFAULT 'pending'"),
+            ("notes", "TEXT"),
+            ("terms_conditions", "TEXT"),
             ("caterer_signature", "TEXT"),
             ("customer_signature", "TEXT"),
             ("caterer_signed_at", "TIMESTAMP WITH TIME ZONE"),
@@ -227,6 +245,13 @@ def master_migration():
             ("caption", "VARCHAR"),
             ("display_order", "INTEGER DEFAULT 0"),
             ("is_archived", "BOOLEAN DEFAULT FALSE")
+        ]
+        
+        # Platform Feedback
+        feedback_cols = [
+            ("feedback_type", "VARCHAR"),
+            ("content", "TEXT"),
+            ("status", "VARCHAR DEFAULT 'pending'")
         ]
 
         # Apply helper
@@ -250,6 +275,7 @@ def master_migration():
         add_cols("website_config", config_cols)
         add_cols("quotations", quotation_cols)
         add_cols("caterer_gallery", gallery_cols)
+        add_cols("platform_feedback", feedback_cols)
         
         # Create Social Posts table if missing
         try:
