@@ -14,6 +14,16 @@ from sqlalchemy import text
 # Create tables (will be handled by releaseCommand on Railway, but kept here as fallback)
 # Base.metadata.create_all(bind=engine)
 
+import traceback
+from fastapi.responses import PlainTextResponse
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    error_msg = f"Unhandled Exception: {type(exc).__name__}: {str(exc)}\n\n"
+    error_msg += "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+    print(error_msg)
+    return PlainTextResponse(content=error_msg, status_code=500)
+
 from starlette.middleware.sessions import SessionMiddleware
 from .core.config import settings
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
