@@ -40,7 +40,8 @@ def master_migration():
             ("paymongo_link_id", "VARCHAR"),
             ("paymongo_link_url", "VARCHAR"),
             ("payment_verification_data", "JSONB"),
-            ("proof_image_hash", "VARCHAR")
+            ("proof_image_hash", "VARCHAR"),
+            ("actual_cost_breakdown", "JSONB")
         ]
         
         # Reviews Table
@@ -74,7 +75,27 @@ def master_migration():
             ("border_radius", "INTEGER DEFAULT 12"),
             ("sidebar_mode", "VARCHAR DEFAULT 'full'"),
             ("show_platform_logo", "BOOLEAN DEFAULT TRUE"),
-            ("profile_views", "INTEGER DEFAULT 0")
+            ("profile_views", "INTEGER DEFAULT 0"),
+            ("province_code", "VARCHAR"),
+            ("city_code", "VARCHAR"),
+            ("brgy_code", "VARCHAR"),
+            ("address_details", "TEXT"),
+            ("min_pax", "INTEGER DEFAULT 0"),
+            ("starting_price", "FLOAT DEFAULT 0.0"),
+            ("sample_menu_url", "VARCHAR"),
+            ("permit_url", "VARCHAR"),
+            ("gov_id_url", "VARCHAR"),
+            ("latitude", "FLOAT"),
+            ("longitude", "FLOAT"),
+            ("glass_mode", "BOOLEAN DEFAULT FALSE"),
+            ("sidebar_color", "VARCHAR DEFAULT '#000000'"),
+            ("header_color", "VARCHAR DEFAULT '#FFFFFF'"),
+            ("dashboard_texture", "VARCHAR DEFAULT 'none'"),
+            ("sidebar_decoration", "VARCHAR DEFAULT 'none'"),
+            ("header_decoration", "VARCHAR DEFAULT 'none'"),
+            ("booking_policy", "TEXT"),
+            ("payment_policy", "TEXT"),
+            ("cancellation_policy", "TEXT")
         ]
         
         # Menu Items
@@ -86,7 +107,9 @@ def master_migration():
             ("is_addon", "BOOLEAN DEFAULT FALSE"),
             ("serving_size", "VARCHAR"),
             ("dietary_tags", "VARCHAR[]"),
-            ("allergen_info", "VARCHAR[]")
+            ("allergen_info", "VARCHAR[]"),
+            ("cost_price", "FLOAT DEFAULT 0.0"),
+            ("cost_breakdown", "JSONB")
         ]
         
         # Catering Packages
@@ -109,7 +132,9 @@ def master_migration():
             ("equipment_cost", "FLOAT DEFAULT 0.0"),
             ("ingredient_total_cost", "FLOAT DEFAULT 0.0"),
             ("markup_type", "VARCHAR DEFAULT 'percentage'"),
-            ("markup_value", "FLOAT DEFAULT 0.0")
+            ("markup_value", "FLOAT DEFAULT 0.0"),
+            ("reservation_fee", "FLOAT DEFAULT 0.0"),
+            ("booking_lead_time", "INTEGER DEFAULT 7")
         ]
         
         # Identity Verifications
