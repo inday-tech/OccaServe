@@ -544,6 +544,21 @@ html, body {
 }
 .sidebar-overlay.active { display: block; }
 
+/* Mobile Burger Button */
+.mobile-burger-btn {
+    display: none;
+    background: transparent;
+    border: none;
+    color: var(--dm-secondary);
+    font-size: 1.4rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem 0.25rem 0;
+    transition: color 0.2s;
+}
+.mobile-burger-btn:hover {
+    color: var(--primary-color);
+}
+
 /* ---- MOBILE ---- */
 @media (max-width: 1024px) {
     .admin-sidebar {
@@ -553,7 +568,7 @@ html, body {
     .admin-sidebar.active { transform: translateX(0); box-shadow: 20px 0 50px rgba(0,0,0,0.3); }
     .admin-main-wrapper { margin-left: 0 !important; }
     .admin-header { padding: 0 1.25rem; }
-    .mobile-burger { display: flex; }
+    .mobile-burger-btn { display: block; }
     .header-search { width: 200px; }
     .live-indicator { display: none; }
     .admin-page-content { padding: 1.5rem 1.25rem; }
