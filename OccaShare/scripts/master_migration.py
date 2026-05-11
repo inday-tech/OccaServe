@@ -95,7 +95,21 @@ def master_migration():
             ("header_decoration", "VARCHAR DEFAULT 'none'"),
             ("booking_policy", "TEXT"),
             ("payment_policy", "TEXT"),
-            ("cancellation_policy", "TEXT")
+            ("cancellation_policy", "TEXT"),
+            ("gcash_number", "VARCHAR"),
+            ("gcash_qr_url", "VARCHAR"),
+            ("maya_number", "VARCHAR"),
+            ("maya_qr_url", "VARCHAR"),
+            ("bank_name", "VARCHAR"),
+            ("bank_account_name", "VARCHAR"),
+            ("bank_account_number", "VARCHAR"),
+            ("bank_qr_url", "VARCHAR"),
+            ("card_bank", "VARCHAR"),
+            ("card_holder_name", "VARCHAR"),
+            ("card_number", "VARCHAR"),
+            ("cash_instructions", "TEXT"),
+            ("verification_status", "VARCHAR DEFAULT 'Pending'"),
+            ("account_status", "VARCHAR DEFAULT 'Active'")
         ]
         
         # Menu Items
