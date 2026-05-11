@@ -41,7 +41,9 @@ def master_migration():
             ("paymongo_link_url", "VARCHAR"),
             ("payment_verification_data", "JSONB"),
             ("proof_image_hash", "VARCHAR"),
-            ("actual_cost_breakdown", "JSONB")
+            ("actual_cost_breakdown", "JSONB"),
+            ("special_requests", "TEXT"),
+            ("caterer_notes", "TEXT")
         ]
         
         # Reviews Table
@@ -50,7 +52,8 @@ def master_migration():
             ("was_punctual", "BOOLEAN DEFAULT FALSE"),
             ("is_highlighted", "BOOLEAN DEFAULT FALSE"),
             ("caterer_reply", "TEXT"),
-            ("is_helpful", "BOOLEAN DEFAULT FALSE")
+            ("is_helpful", "BOOLEAN DEFAULT FALSE"),
+            ("is_archived", "BOOLEAN DEFAULT FALSE")
         ]
         
         # Users Table
@@ -177,13 +180,19 @@ def master_migration():
         payout_cols = [
             ("is_archived", "BOOLEAN DEFAULT FALSE"),
             ("notes", "TEXT"),
-            ("completed_at", "TIMESTAMP WITH TIME ZONE")
+            ("completed_at", "TIMESTAMP WITH TIME ZONE"),
+            ("total_amount", "FLOAT DEFAULT 0.0"),
+            ("reference_number", "VARCHAR"),
+            ("admin_notes", "TEXT"),
+            ("requested_at", "TIMESTAMP WITH TIME ZONE")
         ]
         
         # Payout Items
         payout_item_cols = [
             ("status", "VARCHAR DEFAULT 'pending'"),
-            ("release_trigger", "VARCHAR DEFAULT 'on_completion'")
+            ("release_trigger", "VARCHAR DEFAULT 'on_completion'"),
+            ("commission_amount", "FLOAT DEFAULT 0.0"),
+            ("payment_reference", "VARCHAR")
         ]
         
         # Website Config
@@ -192,7 +201,32 @@ def master_migration():
             ("commission_fixed_amount", "FLOAT DEFAULT 20.0"),
             ("max_file_size_mb", "INTEGER DEFAULT 5"),
             ("maintenance_mode", "BOOLEAN DEFAULT FALSE"),
-            ("maintenance_message", "TEXT")
+            ("maintenance_message", "TEXT"),
+            ("site_name", "VARCHAR DEFAULT 'OccaShare'"),
+            ("support_email", "VARCHAR DEFAULT 'support@occashare.com'"),
+            ("seo_description", "TEXT"),
+            ("logo_url", "VARCHAR"),
+            ("favicon_url", "VARCHAR"),
+            ("facebook_link", "VARCHAR"),
+            ("instagram_link", "VARCHAR"),
+            ("twitter_link", "VARCHAR")
+        ]
+        
+        # Quotations
+        quotation_cols = [
+            ("caterer_signature", "TEXT"),
+            ("customer_signature", "TEXT"),
+            ("caterer_signed_at", "TIMESTAMP WITH TIME ZONE"),
+            ("customer_signed_at", "TIMESTAMP WITH TIME ZONE"),
+            ("contract_url", "VARCHAR")
+        ]
+        
+        # Caterer Gallery
+        gallery_cols = [
+            ("media_type", "VARCHAR DEFAULT 'image'"),
+            ("caption", "VARCHAR"),
+            ("display_order", "INTEGER DEFAULT 0"),
+            ("is_archived", "BOOLEAN DEFAULT FALSE")
         ]
 
         # Apply helper
@@ -214,6 +248,8 @@ def master_migration():
         add_cols("payouts", payout_cols)
         add_cols("payout_items", payout_item_cols)
         add_cols("website_config", config_cols)
+        add_cols("quotations", quotation_cols)
+        add_cols("caterer_gallery", gallery_cols)
         
         # Create Social Posts table if missing
         try:
