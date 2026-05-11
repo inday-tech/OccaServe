@@ -197,7 +197,9 @@ def master_migration():
             ("payout_reference", "VARCHAR"),
             ("reference_number", "VARCHAR"),
             ("admin_notes", "TEXT"),
-            ("requested_at", "TIMESTAMP WITH TIME ZONE")
+            ("requested_at", "TIMESTAMP WITH TIME ZONE"),
+            ("created_at", "TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP"),
+            ("updated_at", "TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP")
         ]
         
         # Payout Items
@@ -205,7 +207,9 @@ def master_migration():
             ("status", "VARCHAR DEFAULT 'pending'"),
             ("release_trigger", "VARCHAR DEFAULT 'on_completion'"),
             ("commission_amount", "FLOAT DEFAULT 0.0"),
-            ("payment_reference", "VARCHAR")
+            ("payment_reference", "VARCHAR"),
+            ("created_at", "TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP"),
+            ("updated_at", "TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP")
         ]
         
         # Website Config
