@@ -14,6 +14,16 @@ from sqlalchemy import text
 # Create tables (will be handled by releaseCommand on Railway, but kept here as fallback)
 # Base.metadata.create_all(bind=engine)
 
+
+
+from starlette.middleware.sessions import SessionMiddleware
+from .core.config import settings
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+from .core.security import SECRET_KEY, ALGORITHM
+from jose import jwt, JWTError
+
+app = FastAPI()
+
 import traceback
 from fastapi.responses import PlainTextResponse
 
@@ -23,14 +33,6 @@ async def global_exception_handler(request: Request, exc: Exception):
     error_msg += "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
     print(error_msg)
     return PlainTextResponse(content=error_msg, status_code=500)
-
-from starlette.middleware.sessions import SessionMiddleware
-from .core.config import settings
-from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
-from .core.security import SECRET_KEY, ALGORITHM
-from jose import jwt, JWTError
-
-app = FastAPI()
 
 # Removed conflicting root route to allow website.router landing page to load
 # @app.get("/", include_in_schema=False)
