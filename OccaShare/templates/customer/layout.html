@@ -12,7 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/layout.css') }}?v=5.2">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/layout.css') }}?v=5.3">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v=1.4">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/alert_modal.css') }}?v=1.5">
@@ -42,11 +42,6 @@
 
     <!-- Sidebar Overlay (Mobile) -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
-
-    <!-- Floating Mobile Toggle (Arrow) -->
-    <button class="floating-burger" onclick="toggleSidebar()" aria-label="Toggle Menu">
-        <i class="fas fa-chevron-right"></i>
-    </button>
 
     <!-- ===================== SIDEBAR ===================== -->
     <aside class="customer-sidebar" id="mainSidebar">
@@ -163,8 +158,13 @@
         <!-- ===================== HEADER ===================== -->
         <header class="customer-header" id="mainHeader">
 
-            <!-- LEFT: Search -->
+            <!-- LEFT: Hamburger (Mobile) + Search -->
             <div class="header-left">
+                <!-- Hamburger Burger Button (Mobile/Tablet only) -->
+                <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleSidebar()" aria-label="Open Menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+
                 <div class="command-search-wrap" id="searchWrap">
                     <div class="header-search" id="headerSearchBox">
                         <i class="fas fa-magnifying-glass search-icon"></i>
@@ -345,7 +345,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="{{ url_for('static', path='/js/main.js') }}?v=4.1"></script>
     <script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v=1.4"></script>
-    <script src="{{ url_for('static', path='/js/customer/layout.js') }}?v=3.0"></script>
+    <script src="{{ url_for('static', path='/js/customer/layout.js') }}?v=3.1"></script>
 
 
     <script>
@@ -367,10 +367,6 @@
     </script>
 
     {% block extra_js %}{% endblock %}
-    <!-- Mobile Overlay -->
-    <div id="sidebarOverlay"
-        style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1050; display: none; backdrop-filter: blur(4px);"
-        onclick="closeSidebar()"></div>
 
     <!-- Mobile FAB -->
     <div class="mobile-fab-elite" onclick="window.location.href='/customer/marketplace'">

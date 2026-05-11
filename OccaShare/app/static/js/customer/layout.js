@@ -1,5 +1,5 @@
 /**
- * OccaServe Customer Portal — Layout JS v3.0
+ * OccaServe Customer Portal — Layout JS v3.1
  * Clean, functional, real-time. No jargon.
  */
 
@@ -48,15 +48,18 @@ window.toggleSidebar = function () {
     const sidebar  = document.getElementById('mainSidebar');
     const overlay  = document.getElementById('sidebarOverlay');
     if (!sidebar) return;
-    sidebar.classList.toggle('active');
-    if (overlay) overlay.style.display = sidebar.classList.contains('active') ? 'block' : 'none';
+    const isOpen = sidebar.classList.toggle('active');
+    if (overlay) overlay.classList.toggle('active', isOpen);
+    // Prevent body scroll when sidebar is open on mobile
+    document.body.style.overflow = isOpen ? 'hidden' : '';
 };
 
 window.closeSidebar = function () {
     const sidebar = document.getElementById('mainSidebar');
     const overlay = document.getElementById('sidebarOverlay');
     if (sidebar) sidebar.classList.remove('active');
-    if (overlay) overlay.style.display = 'none';
+    if (overlay) overlay.classList.remove('active');
+    document.body.style.overflow = '';
 };
 
 /* ============================================================
