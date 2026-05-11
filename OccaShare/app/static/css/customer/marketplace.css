@@ -28,27 +28,24 @@ body {
     color: var(--mkt-slate);
 }
 
-h1, h2, h3, .Poppins-font {
-    font-family: 'Poppins', sans-serif;
+h1, h2, h3, .Poppins-font, button, a {
+    font-family: 'Poppins', sans-serif !important;
 }
 
 /* --- Premium Page Header --- */
-.mkt-hero-text h1, .page-header h1 {
-    font-size: 2.15rem !important;
+.page-header-elite h1 {
+    font-size: 1.6rem !important;
     font-weight: 800 !important;
-    margin-bottom: 0.35rem !important;
+    color: var(--text-dark) !important;
     letter-spacing: -0.03em !important;
-    color: var(--mkt-dark) !important;
-    line-height: 1.15 !important;
+    margin: 0 !important;
 }
 
-.mkt-hero-text p, .page-header p {
-    font-size: 1rem !important;
-    color: var(--mkt-gray) !important;
-    font-weight: 400 !important;
-    line-height: 1.6 !important;
-    opacity: 1 !important;
-    margin: 0 !important;
+.page-header-elite p {
+    font-size: 0.88rem !important;
+    color: var(--dm-slate-400) !important;
+    font-weight: 500 !important;
+    margin: 4px 0 0 !important;
 }
 
 /* --- Layout Container --- */
@@ -68,18 +65,18 @@ h1, h2, h3, .Poppins-font {
 .mkt-grid-premium {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1.75rem;
-    margin-bottom: 4rem;
+    gap: 1.25rem;
+    margin-bottom: 2rem;
 }
 
 /* --- Card Redesign — Eye-catching Premium --- */
 .caterer-card-premium {
-    background: var(--mkt-card-bg);
-    border-radius: var(--mkt-radius);
+    background: #fff;
+    border-radius: 1.25rem;
     overflow: hidden;
-    border: 1px solid var(--mkt-border);
-    box-shadow: var(--mkt-shadow-card);
-    transition: var(--mkt-transition);
+    border: 1px solid var(--dm-slate-100);
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.04);
+    transition: var(--transition-standard);
     position: relative;
     display: flex;
     flex-direction: column;
@@ -159,10 +156,9 @@ h1, h2, h3, .Poppins-font {
 .card-name-row {
     display: flex;
     align-items: center;
-    gap: 0.35rem;
-    margin-bottom: 0.5rem;
+    gap: 6px;
+    margin-bottom: 4px;
     max-width: 100%;
-    overflow: hidden;
 }
 
 .card-name-row .card-title {
@@ -183,10 +179,10 @@ h1, h2, h3, .Poppins-font {
 
 /* --- Card Title --- */
 .card-title {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--mkt-dark);
-    margin: 0 0 0.5rem 0;
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--text-dark);
+    margin: 0;
     line-height: 1.3;
     display: -webkit-box;
     -webkit-line-clamp: 1;
@@ -274,41 +270,38 @@ h1, h2, h3, .Poppins-font {
     margin-top: 0.85rem !important;
 }
 
-.btn-edit-full {
-    background: var(--mkt-card-bg) !important;
-    border: 1.5px solid #e2e8f0 !important;
-    color: var(--mkt-dark) !important;
-    padding: 0.7rem !important;
-    border-radius: 0.75rem !important;
-    font-weight: 600 !important;
-    font-size: 0.88rem !important;
+.btn-premium-explore {
+    background: linear-gradient(135deg, #FF7B54, #ea580c) !important;
+    color: #ffffff !important;
+    padding: 0.85rem !important;
+    border-radius: 12px !important;
+    font-weight: 800 !important;
+    font-size: 0.82rem !important;
     width: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    transition: var(--mkt-transition);
+    gap: 10px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     text-decoration: none;
-    letter-spacing: 0.01em;
+    border: none;
+    box-shadow: 0 4px 12px rgba(255, 123, 84, 0.2);
     cursor: pointer;
 }
 
-.btn-edit-full i {
-    font-size: 0.88rem;
+.btn-premium-explore:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(255, 123, 84, 0.35);
+    filter: brightness(1.05);
+}
+
+.btn-premium-explore i {
+    font-size: 0.75rem;
     transition: transform 0.3s ease;
 }
 
-.btn-edit-full:hover {
-    background: linear-gradient(135deg, #f97316, #ea580c) !important;
-    border-color: #f97316 !important;
-    color: #ffffff !important;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(249, 115, 22, 0.25);
-}
-
-.btn-edit-full:hover i {
-    color: #ffffff !important;
-    transform: translateX(2px);
+.btn-premium-explore:hover i {
+    transform: translateX(3px);
 }
 
 /* --- Search Box Styling --- */

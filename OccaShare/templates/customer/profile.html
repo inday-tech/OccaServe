@@ -1,173 +1,265 @@
 {% set active_page = 'profile' %}
 {% extends "customer/layout.html" %}
 
-{% block title %}My Profile - OccaShare{% endblock %}
+{% block title %}My Profile - OccaServe Elite{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/profile.css') }}?v=1.4">
 <style>
-    /* ============================================
-       PROFILE — DIAMOND STANDARD REFINEMENTS
-       ============================================ */
-    
-    /* ── Global Page Padding ── */
-    .main-content {
-        padding: 2rem 2rem 6rem !important; /* Bottom padding for FAB safety */
+    :root {
+        --up-slate-900: #0f172a;
+        --up-orange: #FF7B54;
+        --up-emerald: #10b981;
+        --dm-slate-50: #f8fafc;
+        --dm-slate-100: #f1f5f9;
+        --dm-slate-200: #e2e8f0;
+        --dm-slate-400: #94a3b8;
     }
 
-    @media (max-width: 768px) {
-        .main-content {
-            padding: 4rem 1rem 7rem !important; /* Extra bottom for mobile FAB */
-        }
-    }
-
-    /* ── Page Header ── */
-    .page-header {
-        margin-bottom: 2.5rem !important;
-    }
-    @media (max-width: 768px) {
-        .page-header { text-align: center; margin-bottom: 1.5rem !important; }
-    }
-
-    /* ── Profile Layout Grid ── */
+    /* ── Layout Grid (Dashboard Sync) ── */
     .profile-layout-grid {
         display: grid;
         grid-template-columns: 340px 1fr;
-        gap: 2rem;
+        gap: 1.25rem;
         align-items: flex-start;
     }
 
-    @media (max-width: 1024px) {
-        .profile-layout-grid {
-            grid-template-columns: 1fr;
-            gap: 1.5rem;
-        }
+    .panel-elite {
+        background: #fff;
+        border-radius: 1.25rem;
+        border: 1px solid var(--dm-slate-100);
+        padding: 1.5rem;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.04);
     }
 
-    /* ── Card Styling ── */
-    .card-premium {
-        background: #ffffff;
-        border-radius: 1.5rem !important;
-        border: 1px solid #f1f5f9 !important;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03) !important;
-        padding: 2rem !important;
-        transition: transform 0.2s, box-shadow 0.2s;
+    /* ── Modal Isolation ── */
+    body.modal-open { overflow: hidden; }
+    body.modal-open .customer-sidebar { z-index: 1 !important; }
+    body.modal-open .customer-header { z-index: 1 !important; }
+    body.modal-open .customer-main-wrapper {
+        margin-left: 0 !important;
     }
 
-    /* ── Avatar Section ── */
-    .avatar-view-large {
-        width: 140px !important;
-        height: 140px !important;
-        border-radius: 2rem !important;
-        background: #f8fafc;
-        border: 4px solid #ffffff;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    .modal-overlay {
+        background: rgba(15, 23, 42, 0.4) !important;
+        backdrop-filter: blur(8px) !important;
+    }
+    .identity-card {
+        text-align: center;
+        padding: 2rem 1.5rem;
+    }
+
+    .avatar-wrapper-elite {
+        width: 120px;
+        height: 120px;
+        margin: 0 auto 1.5rem;
+        position: relative;
+    }
+
+    .avatar-view-elite {
+        width: 100%;
+        height: 100%;
+        border-radius: 1.25rem;
+        background: var(--dm-slate-50);
+        border: 4px solid #fff;
+        box-shadow: 0 10px 25px -10px rgba(0,0,0,0.1);
         overflow: hidden;
         display: flex;
         align-items: center;
         justify-content: center;
     }
-    .avatar-view-large img {
+
+    .avatar-view-elite img {
         width: 100%;
         height: 100%;
         object-fit: cover;
     }
-    .avatar-initials-large {
+
+    .avatar-initials-elite {
         width: 100%;
         height: 100%;
-        background: linear-gradient(135deg, #f97316, #ea580c);
-        color: white;
+        background: linear-gradient(135deg, var(--up-orange), #ea580c);
+        color: #fff;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 3rem;
-        font-weight: 800;
+        font-size: 2.5rem;
+        font-weight: 900;
     }
 
-    /* ── Verified Pill ── */
-    .security-status.verified {
-        display: inline-flex;
+    .btn-camera-float {
+        position: absolute;
+        bottom: -5px;
+        right: -5px;
+        width: 38px;
+        height: 38px;
+        background: var(--up-orange);
+        color: #fff;
+        border: 3px solid #fff;
+        border-radius: 12px;
+        display: flex;
         align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 1.25rem;
-        background: #f0fdf4 !important;
-        color: #166534 !important;
-        border: 1px solid #dcfce7 !important;
-        border-radius: 2rem;
-        font-size: 0.75rem;
-        font-weight: 700;
-        margin-top: 1rem;
+        justify-content: center;
+        font-size: 0.9rem;
+        cursor: pointer;
+        box-shadow: 0 4px 10px rgba(255, 123, 84, 0.3);
+        transition: all 0.2s;
     }
 
-    /* ── Form Groups ── */
-    .form-group-premium {
-        margin-bottom: 1.5rem;
+    .btn-camera-float:hover { transform: scale(1.1); }
+
+    .identity-name {
+        font-size: 1.35rem;
+        font-weight: 900;
+        color: var(--up-slate-900);
+        letter-spacing: -0.02em;
+        margin-bottom: 4px;
     }
-    .form-group-premium label {
-        display: block;
-        font-size: 0.75rem;
-        font-weight: 800;
-        color: #64748b;
-        margin-bottom: 0.625rem;
+
+    .identity-sub {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: var(--dm-slate-400);
         text-transform: uppercase;
         letter-spacing: 0.05em;
     }
-    .form-group-premium input {
-        width: 100%;
-        height: 52px;
-        background: #f8fafc;
-        border: 1.5px solid #e2e8f0;
-        border-radius: 0.875rem;
-        padding: 0 1.25rem;
-        font-size: 0.95rem;
-        font-weight: 600;
-        color: #0f172a;
-        transition: all 0.2s;
-    }
-    .form-group-premium input:focus {
-        background: #ffffff;
-        border-color: #f97316;
-        box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.08);
-        outline: none;
+
+    .verification-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        background: rgba(16, 185, 129, 0.05);
+        color: var(--up-emerald);
+        border-radius: 20px;
+        font-size: 0.65rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        margin-top: 1.25rem;
     }
 
-    .form-group-premium input:disabled {
-        background: #f1f5f9;
-        color: #94a3b8;
-        cursor: not-allowed;
+    /* ── Form Terminal (Right) ── */
+    .terminal-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 2rem;
     }
 
-    /* ── Logout Button (Consistent Premium Card) ── */
-    .logout-card {
-        margin-top: 1rem;
-    }
-    .btn-logout-premium {
+    .terminal-header i {
+        width: 40px;
+        height: 40px;
+        background: var(--dm-slate-50);
+        border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 0.75rem;
-        width: 100%;
-        height: 52px;
-        background: #ffffff;
-        border: 1.5px solid #fee2e2;
-        border-radius: 1rem;
-        color: #ef4444;
-        font-weight: 800;
-        font-size: 0.95rem;
-        text-decoration: none;
-        transition: all 0.2s;
-    }
-    .btn-logout-premium:hover {
-        background: #fef2f2;
-        border-color: #fca5a5;
-    }
-    .btn-logout-premium:active {
-        transform: scale(0.98);
+        color: var(--up-orange);
+        font-size: 1rem;
     }
 
-    /* ── Modal ── */
-    .modal-overlay {
-        backdrop-filter: blur(8px) !important;
+    .terminal-header h3 {
+        font-size: 1.1rem;
+        font-weight: 850;
+        color: var(--up-slate-900);
+        margin: 0;
+    }
+
+    .form-elite-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-elite-group label {
+        display: block;
+        font-size: 0.65rem;
+        font-weight: 800;
+        color: var(--dm-slate-400);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 8px;
+    }
+
+    .form-elite-input {
+        width: 100%;
+        height: 52px;
+        background: var(--dm-slate-50);
+        border: 1px solid var(--dm-slate-100);
+        border-radius: 12px;
+        padding: 0 1.25rem;
+        font-size: 0.92rem;
+        font-weight: 600;
+        color: var(--up-slate-900);
+        transition: all 0.2s;
+    }
+
+    .form-elite-input:focus {
+        background: #fff;
+        border-color: var(--up-orange);
+        box-shadow: 0 0 0 4px rgba(255, 123, 84, 0.05);
+        outline: none;
+    }
+
+    .form-elite-input:disabled {
+        background: #f1f5f9;
+        color: var(--dm-slate-400);
+        cursor: not-allowed;
+    }
+
+    .btn-update-elite {
+        height: 52px;
+        padding: 0 2rem;
+        background: var(--up-slate-900);
+        color: #fff;
+        border: none;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 850;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-update-elite:hover { background: #000; transform: translateY(-2px); }
+
+    /* ── Security Section ── */
+    .security-terminal {
+        margin-top: 1.25rem;
+    }
+
+    .security-info {
+        font-size: 0.82rem;
+        color: var(--dm-slate-400);
+        font-weight: 500;
+        line-height: 1.5;
+        margin-bottom: 1.25rem;
+    }
+
+    .btn-security-action {
+        width: 100%;
+        height: 48px;
+        background: #fff;
+        border: 1.5px solid var(--dm-slate-100);
+        color: var(--up-slate-900);
+        font-weight: 850;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        border-radius: 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 0.2s;
+    }
+
+    .btn-security-action:hover { background: var(--dm-slate-50); border-color: var(--up-orange); }
+
+    .page-header { margin-bottom: 2.5rem; }
+    .page-header h1 { font-size: 1.6rem; font-weight: 800; color: var(--up-slate-900); margin: 0; letter-spacing: -0.03em; }
+    .page-header p { font-size: 0.88rem; color: var(--dm-slate-400); font-weight: 500; margin: 4px 0 0; }
+
+    @media (max-width: 1024px) {
+        .profile-layout-grid { grid-template-columns: 1fr; }
     }
 </style>
 {% endblock %}
@@ -178,135 +270,123 @@
 
 {% block content %}
 <div class="page-header">
-    <h1>Profile Settings</h1>
-    <p>Manage your personal information and account preferences.</p>
+    <h1>Account Settings</h1>
+    <p>Manage your identity and security preferences.</p>
 </div>
 
 <div class="profile-layout-grid">
-    <!-- Sidebar: Photo & Security -->
-    <div class="profile-aside">
-        <div class="card-premium avatar-card-center" style="text-align: center;">
-            <div class="avatar-upload-group" style="position: relative; display: inline-block; margin-bottom: 1.5rem;">
-                <div class="avatar-view-large">
+    <!-- Left Terminal: Identity -->
+    <div class="identity-terminal">
+        <div class="panel-elite identity-card">
+            <div class="avatar-wrapper-elite">
+                <div class="avatar-view-elite">
                     {% if user.profile_image_url %}
-                    <img src="{{ user.profile_image_url }}" alt="Avatar" id="avatarPreview" onerror="this.onerror=null; this.parentNode.innerHTML='<div class=&quot;avatar-initials-large&quot;>{{ user.first_name[0] if user.first_name else "" }}{{ user.last_name[0] if user.last_name else "" }}</div>';">
+                    <img src="{{ user.profile_image_url }}" alt="Avatar" id="avatarPreview" onerror="this.onerror=null; this.parentNode.innerHTML='<div class=&quot;avatar-initials-elite&quot;>{{ user.first_name[0] if user.first_name else "" }}{{ user.last_name[0] if user.last_name else "" }}</div>';">
                     {% else %}
-                    <div class="avatar-initials-large">
+                    <div class="avatar-initials-elite">
                         {{ user.first_name[0] if user.first_name else '?' }}{{ user.last_name[0] if user.last_name else '' }}
                     </div>
                     {% endif %}
                 </div>
                 <form action="/customer/profile/photo?success_msg=Profile+photo+updated+successfully" method="POST" enctype="multipart/form-data" id="photoForm">
-                    <label for="photoInput" class="btn-icon-float" style="position: absolute; bottom: 0; right: 0; width: 44px; height: 44px; background: #f97316; border: 3px solid #ffffff; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                    <label for="photoInput" class="btn-camera-float">
                         <i class="fas fa-camera"></i>
                         <input type="file" id="photoInput" name="file" onchange="this.form.submit()" hidden>
                     </label>
                 </form>
             </div>
-            <h3 style="margin: 0; font-size: 1.5rem; font-weight: 800; color: #0f172a;">{{ user.first_name }} {{ user.last_name }}</h3>
-            <p style="margin: 0.25rem 0 0; color: #64748b; font-size: 0.85rem; font-weight: 600;">Customer since {{ user.created_at.strftime('%Y') }}</p>
-
-            <div class="security-status verified">
-                <i class="fas fa-check-circle"></i>
-                <span>Account Verified</span>
+            <div class="identity-name">{{ user.first_name }} {{ user.last_name }}</div>
+            <div class="identity-sub">Verified Customer Since {{ user.created_at.strftime('%Y') }}</div>
+            <div class="verification-pill">
+                <i class="fas fa-check-circle"></i> Account Verified
             </div>
         </div>
 
-        <div class="card-premium" style="margin-top: 1.5rem;">
-            <h4 style="margin: 0 0 0.75rem; font-size: 1.1rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 0.75rem;">
-                <i class="fas fa-lock" style="color: #f97316;"></i> Security
-            </h4>
-            <p style="margin: 0 0 1.5rem; color: #64748b; font-size: 0.85rem; line-height: 1.6; font-weight: 500;">Maintain a strong password to keep your account safe from unauthorized access.</p>
-            <button type="button" class="btn-primary w-100" onclick="openPasswordModal()" style="height: 48px; border-radius: 0.75rem; font-weight: 800;">Change Password</button>
+        <div class="panel-elite security-terminal">
+            <div class="terminal-header" style="margin-bottom: 1rem;">
+                <i class="fas fa-shield-alt"></i>
+                <h3>Security Pulse</h3>
+            </div>
+            <p class="security-info">Protect your account by maintaining a strong password and monitoring activity.</p>
+            <button type="button" class="btn-security-action" onclick="openPasswordModal()">
+                <i class="fas fa-key"></i> Change Password
+            </button>
         </div>
+
+        <a href="/auth/logout" class="btn-security-action" style="margin-top: 1.25rem; color: #ef4444; border-color: #fee2e2;" onclick="confirmLogout(event)">
+            <i class="fas fa-sign-out-alt"></i> Sign Out
+        </a>
     </div>
 
-    <!-- Main Form -->
-    <div class="profile-main-form">
-        <div class="card-premium">
-            <h3 style="margin: 0 0 2rem; font-size: 1.25rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 0.75rem;">
-                <i class="fas fa-id-card" style="color: #64748b;"></i> Personal Information
-            </h3>
+    <!-- Right Terminal: Form -->
+    <div class="form-terminal">
+        <div class="panel-elite">
+            <div class="terminal-header">
+                <i class="fas fa-user-circle"></i>
+                <h3>Personal Information</h3>
+            </div>
             <form action="/customer/profile/update?success_msg=Profile+information+updated+successfully" method="POST">
-                <div class="form-row-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem;">
-                    <div class="form-group-premium">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                    <div class="form-elite-group">
                         <label>First Name</label>
-                        <input type="text" name="first_name" value="{{ user.first_name }}" required placeholder="First name">
+                        <input type="text" name="first_name" class="form-elite-input" value="{{ user.first_name }}" required>
                     </div>
-                    <div class="form-group-premium">
+                    <div class="form-elite-group">
                         <label>Last Name</label>
-                        <input type="text" name="last_name" value="{{ user.last_name }}" required placeholder="Last name">
+                        <input type="text" name="last_name" class="form-elite-input" value="{{ user.last_name }}" required>
                     </div>
                 </div>
 
-                <div class="form-group-premium">
+                <div class="form-elite-group">
                     <label>Email Address</label>
-                    <div style="position: relative; display: flex; align-items: center;">
-                        <input type="email" value="{{ user.email }}" disabled style="padding-right: 3rem;">
-                        <i class="fas fa-lock" style="position: absolute; right: 1.25rem; color: #94a3b8; font-size: 0.85rem;"></i>
+                    <div style="position: relative;">
+                        <input type="email" class="form-elite-input" value="{{ user.email }}" disabled style="padding-right: 3.5rem;">
+                        <i class="fas fa-lock" style="position: absolute; right: 1.25rem; top: 50%; transform: translateY(-50%); color: var(--dm-slate-400); font-size: 0.8rem;"></i>
                     </div>
-                    <small style="display: block; margin-top: 0.625rem; font-size: 0.75rem; color: #94a3b8; font-weight: 500;">Primary account email cannot be changed.</small>
+                    <p style="margin: 8px 0 0; font-size: 0.72rem; color: var(--dm-slate-400); font-weight: 500;">Your primary email address is locked for security.</p>
                 </div>
 
-                <div class="form-group-premium" style="margin-bottom: 2.5rem;">
+                <div class="form-elite-group" style="margin-bottom: 2.5rem;">
                     <label>Phone Number</label>
-                    <input type="text" name="phone_number" value="{{ user.phone_number or '' }}" placeholder="+63 9XX XXX XXXX">
+                    <input type="text" name="phone_number" class="form-elite-input" value="{{ user.phone_number or '' }}" placeholder="+63 9XX XXX XXXX">
                 </div>
 
-                <div class="form-actions-premium">
-                    <button type="submit" class="btn-primary" style="height: 52px; padding: 0 2rem; border-radius: 0.875rem; font-weight: 800; font-size: 0.95rem;">Update Profile Information</button>
-                </div>
+                <button type="submit" class="btn-update-elite">Update Account Profile</button>
             </form>
-        </div>
-
-        <!-- Optional: Sign Out Card -->
-        <div class="logout-card">
-            <a href="/logout" class="btn-logout-premium">
-                <i class="fas fa-sign-out-alt"></i> Sign Out
-            </a>
         </div>
     </div>
 </div>
 
-<!-- Change Password Modal -->
-<div id="passwordModal" class="modal-overlay" style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index: 9999; backdrop-filter: blur(8px); align-items: center; justify-content: center;">
-    <div class="card-premium modal-content" style="width: 100%; max-width: 450px; margin: 0; padding: 0; overflow: hidden; animation: modalSlideUp 0.3s ease-out; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
-        
-        <div class="modal-header" style="padding: 1.5rem 2rem; border-bottom: 1.5px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; background: #f8fafc;">
-            <h3 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: #0f172a;">
-                <i class="fas fa-key" style="color: #f97316; margin-right: 0.5rem;"></i>
-                Update Password
+<!-- Password Modal (Dashboard Style) -->
+<div id="passwordModal" style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.6); z-index: 9999; backdrop-filter: blur(8px); align-items: center; justify-content: center;">
+    <div class="panel-elite" style="width: 100%; max-width: 450px; padding: 0; overflow: hidden; animation: modalSlideUp 0.3s ease-out;">
+        <div style="padding: 1.5rem; background: var(--dm-slate-50); border-bottom: 1px solid var(--dm-slate-100); display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 850; color: var(--up-slate-900);">
+                <i class="fas fa-key" style="color: var(--up-orange); margin-right: 8px;"></i> Security Update
             </h3>
-            <button type="button" onclick="closePasswordModal()" style="background: none; border: none; font-size: 1.75rem; color: #94a3b8; cursor: pointer; line-height: 1; padding: 0;">&times;</button>
+            <button onclick="closePasswordModal()" style="background: none; border: none; font-size: 1.5rem; color: var(--dm-slate-400); cursor: pointer;">&times;</button>
         </div>
         
-        <form id="changePasswordForm" onsubmit="handlePasswordChange(event)" style="padding: 2rem;" novalidate>
-            <div id="passwordFormError" style="display: none; background: #fef2f2; color: #b91c1c; padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem; font-size: 0.85rem; font-weight: 600; border: 1px solid #fecaca; align-items: flex-start; gap: 0.75rem;">
-                <i class="fas fa-exclamation-circle" style="margin-top: 0.2rem;"></i>
-                <span id="passwordFormErrorText"></span>
+        <form id="changePasswordForm" onsubmit="handlePasswordChange(event)" style="padding: 2rem;">
+            <div id="passwordFormError" style="display: none; background: #fef2f2; color: #ef4444; padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem; font-size: 0.82rem; font-weight: 700;"></div>
+
+            <div class="form-elite-group">
+                <label>Current Password</label>
+                <input type="password" name="current_password" class="form-elite-input" required>
+            </div>
+            <div class="form-elite-group">
+                <label>New Password</label>
+                <input type="password" name="new_password" id="new_password" class="form-elite-input" required minlength="8">
+                <p style="margin: 8px 0 0; font-size: 0.72rem; color: var(--dm-slate-400); font-weight: 500;">Min. 8 characters with symbols.</p>
+            </div>
+            <div class="form-elite-group" style="margin-bottom: 2rem;">
+                <label>Confirm Password</label>
+                <input type="password" name="confirm_password" id="confirm_password" class="form-elite-input" required>
             </div>
 
-            <div class="form-group-premium">
-                <label>Current Password</label>
-                <input type="password" name="current_password" required placeholder="Enter current password">
-            </div>
-            
-            <div class="form-group-premium">
-                <label>New Password</label>
-                <input type="password" name="new_password" id="new_password" required placeholder="e.g. Abc123!@" minlength="8">
-                <span style="display: block; font-size: 0.75rem; color: #94a3b8; margin-top: 0.625rem; line-height: 1.4; font-weight: 500;">Password must be at least 8 characters with letters, numbers and special symbols.</span>
-            </div>
-            
-            <div class="form-group-premium" style="margin-bottom: 2rem;">
-                <label>Confirm New Password</label>
-                <input type="password" name="confirm_password" id="confirm_password" required placeholder="Retype new password">
-            </div>
-            
             <div style="display: flex; gap: 1rem;">
-                <button type="button" onclick="closePasswordModal()" style="flex: 1; height: 48px; border-radius: 0.75rem; font-weight: 800; color: #64748b; background: #f1f5f9; border: none; cursor: pointer; text-transform: uppercase;">Cancel</button>
-                <button type="submit" id="submitPasswordBtn" class="btn-primary" style="flex: 2; height: 48px; border-radius: 0.75rem;">
-                    <span class="btn-text" style="color: white !important;">Save New Password</span>
-                </button>
+                <button type="button" onclick="closePasswordModal()" class="btn-security-action" style="flex: 1;">Cancel</button>
+                <button type="submit" id="submitPasswordBtn" class="btn-update-elite" style="flex: 2;">Update Password</button>
             </div>
         </form>
     </div>
@@ -320,98 +400,51 @@
 </style>
 
 <script>
-function openPasswordModal() {
-    document.getElementById('passwordModal').style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-}
-
-function closePasswordModal() {
-    document.getElementById('passwordModal').style.display = 'none';
-    document.body.style.overflow = 'auto';
-    document.getElementById('changePasswordForm').reset();
-    document.getElementById('passwordFormError').style.display = 'none';
-    const submitBtn = document.getElementById('submitPasswordBtn');
-    submitBtn.disabled = false;
-    submitBtn.innerHTML = '<span class="btn-text">Save Changes</span>';
-}
-
-async function handlePasswordChange(event) {
-    event.preventDefault();
-    const form = event.target;
-    const newPass = document.getElementById('new_password').value;
-    const confPass = document.getElementById('confirm_password').value;
-    const errorContainer = document.getElementById('passwordFormError');
-    const errorText = document.getElementById('passwordFormErrorText');
-    const submitBtn = document.getElementById('submitPasswordBtn');
-    
-    function showError(msg) {
-        errorText.innerText = msg;
-        errorContainer.style.display = 'flex';
-    }
-
-    if (!form.current_password.value || !newPass || !confPass) {
-        showError('Please fill out all the password fields.');
-        return;
+    function openPasswordModal() { 
+        document.getElementById('passwordModal').style.display = 'flex'; 
+        document.body.classList.add('modal-open');
     }
     
-    if (newPass.length < 8) {
-        showError('Your new password must be at least 8 characters long.');
-        return;
+    function closePasswordModal() { 
+        document.getElementById('passwordModal').style.display = 'none'; 
+        document.body.classList.remove('modal-open');
+        document.getElementById('changePasswordForm').reset();
     }
     
-    if (!/[A-Z]/.test(newPass)) {
-        showError('Your new password must contain at least one uppercase letter.');
-        return;
-    }
-
-    if (!/[a-z]/.test(newPass)) {
-        showError('Your new password must contain at least one lowercase letter.');
-        return;
-    }
-
-    if (!/[0-9]/.test(newPass)) {
-        showError('Your new password must contain at least one number.');
-        return;
-    }
-
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(newPass)) {
-        showError('Your new password must contain at least one special character.');
-        return;
-    }
-
-    if (newPass !== confPass) {
-        showError('Your new passwords do not match. Please try again.');
-        return;
-    }
-    
-    errorContainer.style.display = 'none';
-    
-    // UI state
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-    
-    try {
-        const formData = new FormData(form);
-        const response = await fetch('/customer/profile/change-password', {
-            method: 'POST',
-            body: formData
-        });
+    async function handlePasswordChange(event) {
+        event.preventDefault();
+        const form = event.target;
+        const errorEl = document.getElementById('passwordFormError');
+        const submitBtn = document.getElementById('submitPasswordBtn');
         
-        const result = await response.json();
-        
-        if (result.success) {
-            window.showSuccess('Password updated successfully!');
-            closePasswordModal();
-        } else {
-            window.showError(result.message || 'Failed to update password.');
+        if (form.new_password.value !== form.confirm_password.value) {
+            errorEl.innerText = 'Passwords do not match.';
+            errorEl.style.display = 'block';
+            return;
         }
-    } catch (error) {
-        console.error('Error:', error);
-        window.showError('An error occurred. Please try again.');
-    } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = '<span class="btn-text">Save Changes</span>';
+
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Saving...';
+        
+        try {
+            const formData = new FormData(form);
+            const r = await fetch('/customer/profile/change-password', { method: 'POST', body: formData });
+            const result = await r.json();
+            
+            if (result.success) {
+                Swal.fire('Success', 'Password updated!', 'success');
+                closePasswordModal();
+            } else {
+                errorEl.innerText = result.message || 'Update failed.';
+                errorEl.style.display = 'block';
+            }
+        } catch (e) {
+            errorEl.innerText = 'An error occurred.';
+            errorEl.style.display = 'block';
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Update Password';
+        }
     }
-}
 </script>
-{% endblock %}
+{% endblock %}

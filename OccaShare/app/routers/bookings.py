@@ -12,6 +12,7 @@ import shutil
 import os
 import uuid
 import base64
+import httpx
 from ..services.realtime import manager
 from ..services.notification import NotificationService
 
@@ -74,22 +75,30 @@ async def my_bookings_redirect():
 
 # --- Dedicated A La Carte Checkout ---
 @router.get("/alacarte/checkout/{caterer_id}")
-async def alacarte_checkout_page(request: Request, caterer_id: int, menu_id: int, db: Session = Depends(database.get_db)):
+async def alacarte_checkout_page(request: Request, caterer_id: int, menu_id: str, db: Session = Depends(database.get_db)):
     user = get_current_user_from_session(request, db)
     if not user:
         return RedirectResponse(url=f"/auth/login?next=/bookings/alacarte/checkout/{caterer_id}?menu_id={menu_id}")
     
     caterer = db.query(models.CatererProfile).get(caterer_id)
-    menu_item = db.query(models.MenuItem).get(menu_id)
     
-    if not caterer or not menu_item:
+    # Parse multiple IDs
+    try:
+        id_list = [int(id_str.strip()) for id_str in menu_id.split(",") if id_str.strip()]
+    except ValueError:
+        return RedirectResponse(url="/marketplace", status_code=303)
+
+    menu_items = db.query(models.MenuItem).filter(models.MenuItem.id.in_(id_list)).all()
+    
+    if not caterer or not menu_items:
         return RedirectResponse(url="/marketplace", status_code=303)
         
     return templates.TemplateResponse("customer/booking_wizard/alacarte_checkout.html", {
         "request": request,
         "user": user,
         "caterer": caterer,
-        "menu_item": menu_item,
+        "menu_items": menu_items,
+        "menu_id_raw": menu_id,
         "current_step": 1
     })
 
@@ -97,7 +106,7 @@ async def alacarte_checkout_page(request: Request, caterer_id: int, menu_id: int
 async def alacarte_checkout_draft(
     request: Request,
     caterer_id: int = Form(...),
-    menu_id: int = Form(...),
+    menu_id: str = Form(...),
     full_name: str = Form(...),
     contact_number: str = Form(...),
     delivery_date: str = Form(...),
@@ -132,13 +141,18 @@ async def alacarte_checkout_draft(
         db.add(new_booking)
         db.flush()
 
-        # Add Menu Item to Draft
-        booking_item = models.BookingMenuItem(
-            booking_id=new_booking.id,
-            menu_item_id=menu_id,
-            price=total_amount / quantity if quantity > 0 else 0
-        )
-        db.add(booking_item)
+        # Add Menu Items to Draft
+        id_list = [int(id_str.strip()) for id_str in menu_id.split(",") if id_str.strip()]
+        menu_items = db.query(models.MenuItem).filter(models.MenuItem.id.in_(id_list)).all()
+        
+        for m_item in menu_items:
+            booking_item = models.BookingMenuItem(
+                booking_id=new_booking.id,
+                menu_item_id=m_item.id,
+                price=m_item.price
+            )
+            db.add(booking_item)
+            
         db.commit()
 
         return {"success": True, "booking_id": new_booking.id}
@@ -150,7 +164,7 @@ async def alacarte_checkout_draft(
 async def alacarte_checkout_submit(
     request: Request,
     caterer_id: int = Form(...),
-    menu_id: int = Form(...),
+    menu_id: str = Form(...),
     full_name: str = Form(...),
     contact_number: str = Form(...),
     delivery_date: str = Form(...),
@@ -213,14 +227,16 @@ async def alacarte_checkout_submit(
             db.add(booking)
             db.flush()
 
-            # Add Menu Item if core record was created here
-            menu_item = db.query(models.MenuItem).get(menu_id)
-            booking_item = models.BookingMenuItem(
-                booking_id=booking.id,
-                menu_item_id=menu_id,
-                price=menu_item.price if menu_item else 0
-            )
-            db.add(booking_item)
+            # Add Multiple Menu Items
+            id_list = [int(id_str.strip()) for id_str in menu_id.split(",") if id_str.strip()]
+            menu_items = db.query(models.MenuItem).filter(models.MenuItem.id.in_(id_list)).all()
+            for m_item in menu_items:
+                booking_item = models.BookingMenuItem(
+                    booking_id=booking.id,
+                    menu_item_id=m_item.id,
+                    price=m_item.price
+                )
+                db.add(booking_item)
 
         db.commit()
         return {"success": True, "booking_id": booking.id}
@@ -298,7 +314,10 @@ async def step_menu_page(caterer_id: int, request: Request, db: Session = Depend
     caterer = db.query(models.CatererProfile).get(caterer_id)
     if not caterer: raise HTTPException(status_code=404)
     
-    packages = db.query(models.CateringPackage).filter(models.CateringPackage.caterer_id == caterer_id).all()
+    packages = db.query(models.CateringPackage).filter(
+        models.CateringPackage.caterer_id == caterer_id,
+        models.CateringPackage.is_active == True
+    ).all()
     
     return templates.TemplateResponse("customer/booking_wizard/step_menu.html", {
         "request": request,
@@ -352,10 +371,13 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
     
     caterer = db.query(models.CatererProfile).get(data["caterer_id"])
     
-    addon_items = db.query(models.MenuItem).filter(
+    # All active items for this caterer (to allow swapping)
+    all_menu_items = db.query(models.MenuItem).filter(
         models.MenuItem.caterer_id == caterer.id,
-        models.MenuItem.is_addon == True
+        models.MenuItem.is_archived == False
     ).all()
+    
+    addon_items = [i for i in all_menu_items if i.is_addon]
 
     # Get selected addons if existing booking
     selected_addon_ids = []
@@ -368,6 +390,7 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
         "booking": booking,
         "package": package,
         "caterer": caterer,
+        "all_menu_items": all_menu_items,
         "addon_items": addon_items,
         "selected_addon_ids": selected_addon_ids,
         "user": user,
@@ -385,19 +408,27 @@ async def step_details_submit(
     event_type: str = Form(...),
     event_date: date = Form(...),
     event_time: time = Form(...),
-    event_end_time: Optional[time] = Form(None),
+    event_end_time_str: Optional[str] = Form(None, alias="event_end_time"),
     guest_count: int = Form(...),
     venue_address: str = Form(...),
-    total_price: float = Form(...),
-    reservation_fee: float = Form(...),
+    total_price: float = Form(0.0),
+    reservation_fee: float = Form(0.0),
     selected_items: list[int] = Form([]),
     selected_addons: list[int] = Form([]),
     special_requests: Optional[str] = Form(""),
     db: Session = Depends(database.get_db)
 ):
+    # Safely parse times and IDs
+    event_end_time = None
+    if event_end_time_str and event_end_time_str.strip():
+        try:
+            event_end_time = time.fromisoformat(event_end_time_str)
+        except:
+            pass
     # Safely parse IDs from strings to handle empty form values
     package_id = int(package_id_str) if package_id_str and package_id_str.strip() else None
     booking_id = int(booking_id_str) if booking_id_str and booking_id_str.strip() else None
+
     user = get_current_user_from_session(request, db)
     if not user: return RedirectResponse(url=f"/auth/login?next=/packages/{package_id}")
 
@@ -549,10 +580,16 @@ async def step_payment_v2_page(booking_id: int, request: Request, db: Session = 
 
     booking = db.query(models.Booking).get(booking_id)
     if not booking: raise HTTPException(status_code=404)
+
+    # Get signed quotation to enforce contractual amounts
+    from ..services.quotation import quotation_service
+    quotation = quotation_service.get_quotation_by_booking(db, booking_id)
+
     return templates.TemplateResponse("customer/booking_wizard/step_payment.html", {
         "request": request,
         "booking_id": booking_id,
         "booking": booking,
+        "quotation": quotation,
         "profile": booking.caterer,
         "user": user,
         "current_step": 4,
@@ -649,8 +686,8 @@ async def step_payment_submit(
                         "description": f"Reservation Fee for Booking #{booking.id}",
                         "remarks": f"booking_id:{booking.id}",
                         "redirect": {
-                            "success": f"{base_url}/bookings/my?payment=success",
-                            "failed": f"{base_url}/bookings/my?payment=failed"
+                            "success": f"{base_url}/bookings/success/{booking.id}",
+                            "failed": f"{base_url}/bookings/step/payment/{booking.id}?payment=failed"
                         }
                     }
                 }
@@ -658,7 +695,6 @@ async def step_payment_submit(
             
             async with httpx.AsyncClient() as client:
                 try:
-                    import httpx
                     response = await client.post(url, json=payload, auth=(paymongo_secret, ""))
                     if response.status_code == 200:
                         data = response.json()

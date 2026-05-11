@@ -70,11 +70,18 @@
     // ─── Desktop Collapse Toggle ──────────────────────────────────────────────
     if (collapseBtn) {
         collapseBtn.addEventListener('click', function () {
-            const isCollapsed = htmlEl.classList.toggle('sidebar-icons-only');
-            localStorage.setItem('adminSidebarCollapsed', isCollapsed ? 'true' : 'false');
-            // Trigger resize so charts re-paint
-            window.dispatchEvent(new Event('resize'));
-            setTimeout(() => window.dispatchEvent(new Event('resize')), 320);
+            if (window.innerWidth <= 1024) {
+                if (sidebar.classList.contains('active')) {
+                    window.closeSidebar();
+                } else {
+                    window.openSidebar();
+                }
+            } else {
+                const isCollapsed = htmlEl.classList.toggle('sidebar-icons-only');
+                localStorage.setItem('adminSidebarCollapsed', isCollapsed ? 'true' : 'false');
+                window.dispatchEvent(new Event('resize'));
+                setTimeout(() => window.dispatchEvent(new Event('resize')), 320);
+            }
         });
     }
 

@@ -3,372 +3,216 @@
 {% block wizard_title %}Secure Payment{% endblock %}
 
 {% block step_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_payment.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/wizard_navigation.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}?v=11.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_payment.css') }}?v=11.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/wizard_navigation.css') }}?v=11.0">
 {% endblock %}
 
 {% block wizard_content %}
-<div class="wizard-header-content">
-    <h2 class="wizard-title font-playfair">Secure Payment Selection</h2>
-    <p class="wizard-subtitle">Choose your preferred payment method to view details.</p>
+<div class="wizard-header-content animate-up">
+    <h2 class="wizard-title">Secure Payment Selection</h2>
+    <p class="wizard-subtitle">Finalize your booking by settling the contractual deposit or full amount.</p>
 </div>
 
-<form action="/bookings/step/payment/{{ booking.id }}" method="POST" enctype="multipart/form-data" class="payment-form"
-    id="wizard-payment-form">
+<form action="/bookings/step/payment/{{ booking.id }}" method="POST" enctype="multipart/form-data" class="payment-form" id="wizard-payment-form">
     <input type="hidden" name="booking_id" value="{{ booking.id }}">
     <input type="hidden" name="payment_method" id="selected-method" value="">
-
-    <!-- Payment Plan Selector -->
-    <div class="checkout-section-header" style="margin-top: 0;">
-        <div class="section-icon-badge"><i class="fas fa-hand-holding-usd"></i></div>
-        <h3>Choose Payment Plan</h3>
-        <p>Select how much you want to pay today</p>
-    </div>
-
-    <div class="payment-plan-grid"
-        style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem;">
-        <div class="plan-card active"
-            onclick="handlePlanSelect('downpayment', this, {{ booking.reservation_fee or 0 }})"
-            style="border: 2px solid var(--primary-color); padding: 1.5rem; border-radius: 1rem; cursor: pointer; background: #f0f9ff; transition: all 0.2s;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                <span
-                    style="font-size: 0.75rem; font-weight: 800; color: var(--primary-color); text-transform: uppercase;">Partial</span>
-                <i class="fas fa-check-circle" style="color: var(--primary-color);"></i>
-            </div>
-            <h4 style="margin: 0; font-weight: 800; color: #1e293b;">Downpayment</h4>
-            <p style="margin: 0.25rem 0 0; font-size: 0.8rem; color: #64748b;">Secure your event date</p>
-            <div style="margin-top: 1rem; font-size: 1.1rem; font-weight: 800; color: #1e293b;">₱{{
-                "{:,.2f}".format(booking.reservation_fee or 0) }}</div>
-        </div>
-
-        <div class="plan-card" onclick="handlePlanSelect('full', this, {{ booking.total_amount or 0 }})"
-            style="border: 2px solid #e2e8f0; padding: 1.5rem; border-radius: 1rem; cursor: pointer; transition: all 0.2s;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                <span
-                    style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Total</span>
-                <i class="far fa-circle" style="color: #cbd5e1;"></i>
-            </div>
-            <h4 style="margin: 0; font-weight: 800; color: #1e293b;">Full Payment</h4>
-            <p style="margin: 0.25rem 0 0; font-size: 0.8rem; color: #64748b;">Settle everything now</p>
-            <div style="margin-top: 1rem; font-size: 1.1rem; font-weight: 800; color: #1e293b;">₱{{
-                "{:,.2f}".format(booking.total_amount or 0) }}</div>
-        </div>
-    </div>
-
     <input type="hidden" name="payment_plan" id="selected-plan" value="downpayment">
 
-    <!-- Amount Summary -->
-    <div class="payment-amount-summary checkout-card animate-up">
-        <div class="checkout-brand">
-            {% if profile.logo_url %}
-            <img src="{{ profile.logo_url }}" alt="Logo" class="checkout-logo">
-            {% endif %}
-            <div class="checkout-merchant">
-                <span class="merchant-label">Paying to</span>
-                <span class="merchant-name">{{ profile.business_name }}</span>
-            </div>
-        </div>
-        <div class="checkout-divider"></div>
-        <div class="amount-row">
-            <span class="label" id="summary-amount-label">Reservation Deposit</span>
-            <span class="value main-total" id="summary-amount-value">₱{{ "{:,.2f}".format(booking.reservation_fee or 0)
-                }}</span>
-        </div>
-    </div>
-
-    <!-- ── PAYMENT METHOD SELECTION (ICON-GRID) ── -->
-    <div class="checkout-section-header">
-        <div class="section-icon-badge"><i class="fas fa-wallet"></i></div>
-        <h3>Select Payment Method</h3>
-        <p>Choose an option to show account details</p>
-    </div>
-
-    <div class="payment-icon-grid">
-        <div class="method-icon-card gcash-theme" onclick="handleMethodSelect('GCash', this)">
-            <div class="mic-icon"><i class="fas fa-mobile-alt"></i></div>
-            <div class="mic-name">GCash</div>
-        </div>
-        <div class="method-icon-card maya-theme" onclick="handleMethodSelect('Maya', this)">
-            <div class="mic-icon"><i class="fas fa-bolt"></i></div>
-            <div class="mic-name">Maya</div>
-        </div>
-        <div class="method-icon-card bank-theme" onclick="handleMethodSelect('Bank', this)">
-            <div class="mic-icon"><i class="fas fa-university"></i></div>
-            <div class="mic-name">Bank</div>
-        </div>
-        <div class="method-icon-card card-theme" onclick="handleMethodSelect('Debit Card', this)">
-            <div class="mic-icon"><i class="fas fa-credit-card"></i></div>
-            <div class="mic-name">Debit Card</div>
-        </div>
-        <div class="method-icon-card cash-theme" onclick="handleMethodSelect('Cash', this)">
-            <div class="mic-icon"><i class="fas fa-hand-holding-usd"></i></div>
-            <div class="mic-name">Cash</div>
-        </div>
-    </div>
-
-    <!-- ── DYNAMIC DETAILS CONTAINER ── -->
-    <div class="dynamic-payment-details" id="methods-container" style="display: none;">
-        <!-- GCash -->
-        <div class="payment-content-block" data-method-content="GCash" style="display: none;">
-            <div class="compact-detail-card gcash-theme">
-                {% if profile.gcash_number %}
-                <div class="cdc-header"><i class="fas fa-mobile-alt"></i> GCash Info</div>
-                <div class="cdc-body">
-                    <div class="cdc-row"><span>Account</span> <strong>{{ profile.gcash_name or profile.business_name
-                            }}</strong></div>
-                    <div class="cdc-row"><span>Number</span> <strong class="text-primary">{{ profile.gcash_number
-                            }}</strong></div>
-                </div>
-                {% if profile.gcash_qr_url %}
-                <div class="qr-preview-sm">
-                    <img src="{{ profile.gcash_qr_url }}" alt="GCash QR">
-                </div>
-                {% endif %}
-                <div class="cdc-footer">
-                    <a href="gcash://app" class="btn-app-link gcash-link-sm"><i class="fas fa-external-link-alt"></i>
-                        Open GCash App</a>
-                </div>
+    <!-- ── FINANCIAL SUMMARY (DIAMOND STANDARD) ── -->
+    <div class="payment-summary-premium animate-up" style="animation-delay: 0.1s;">
+        <div class="summary-merchant-info">
+            <div class="paying-to-box">
+                {% if profile.logo_url %}
+                <img src="{{ profile.logo_url }}" alt="Logo" class="merchant-logo-sm">
                 {% else %}
-                <div class="no-details"><i class="fas fa-info-circle"></i> No GCash details set.</div>
+                <div class="merchant-logo-sm" style="display: flex; align-items: center; justify-content: center; background: var(--up-slate-800); color: white; font-weight: 900;">{{ profile.business_name[0] }}</div>
                 {% endif %}
+                <div class="merchant-meta">
+                    <h5>Securing Booking for</h5>
+                    <p>{{ profile.business_name }}</p>
+                </div>
+            </div>
+            <div class="contract-ref-badge" style="background: rgba(255,255,255,0.1); padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.75rem; font-weight: 700;">
+                <i class="fas fa-file-contract"></i> Agreement #BK-{{ booking.id }}
             </div>
         </div>
 
-        <!-- Maya -->
-        <div class="payment-content-block" data-method-content="Maya" style="display: none;">
-            <div class="compact-detail-card maya-theme">
-                {% if profile.maya_number %}
-                <div class="cdc-header"><i class="fas fa-bolt"></i> Maya Info</div>
-                <div class="cdc-body">
-                    <div class="cdc-row"><span>Account</span> <strong>{{ profile.business_name }}</strong></div>
-                    <div class="cdc-row"><span>Number</span> <strong class="text-success">{{ profile.maya_number
-                            }}</strong></div>
-                </div>
-                {% if profile.maya_qr_url %}
-                <div class="qr-preview-sm">
-                    <img src="{{ profile.maya_qr_url }}" alt="Maya QR">
-                </div>
-                {% endif %}
-                <div class="cdc-footer">
-                    <a href="paymaya://app" class="btn-app-link maya-link-sm"><i class="fas fa-bolt"></i> Pay via Maya
-                        App</a>
-                </div>
-                {% else %}
-                <div class="no-details"><i class="fas fa-info-circle"></i> No Maya details set.</div>
-                {% endif %}
+        <div class="summary-rows">
+            <div class="s-row">
+                <span class="lbl">Total Contract Amount</span>
+                <span class="val">₱{{ "{:,.2f}".format(booking.total_amount or 0) }}</span>
+            </div>
+            <div class="s-row" id="plan-breakdown-row">
+                <span class="lbl">Contractual Deposit (Selected Tier)</span>
+                <span class="val" id="summary-tier-val">₱{{ "{:,.2f}".format(booking.reservation_fee or 0) }}</span>
+            </div>
+            
+            <div class="s-row to-pay-now">
+                <span class="lbl">Amount Payable Today</span>
+                <span class="val" id="to-pay-val">₱{{ "{:,.2f}".format(booking.reservation_fee or 0) }}</span>
+            </div>
+
+            <div class="s-row balance-row" id="balance-row">
+                <span class="lbl">Remaining Balance After Payment</span>
+                <span class="val" id="balance-val">₱{{ "{:,.2f}".format((booking.total_amount|float or 0.0) - (booking.reservation_fee|float or 0.0)) }}</span>
             </div>
         </div>
 
-        <!-- Bank -->
-        <div class="payment-content-block" data-method-content="Bank" style="display: none;">
-            <div class="compact-detail-card bank-theme">
-                {% if profile.bank_name %}
-                <div class="cdc-header"><i class="fas fa-university"></i> Bank Info</div>
-                <div class="cdc-body">
-                    <div class="cdc-row"><span>Bank</span> <strong>{{ profile.bank_name }}</strong></div>
-                    <div class="cdc-row"><span>Account</span> <strong>{{ profile.bank_account_name }}</strong></div>
-                    <div class="cdc-row"><span>Number</span> <strong class="text-navy">{{ profile.bank_account_number
-                            }}</strong></div>
-                </div>
-                {% if profile.bank_qr_url %}
-                <div class="qr-preview-sm">
-                    <img src="{{ profile.bank_qr_url }}" alt="Bank QR">
-                </div>
-                {% endif %}
-                {% else %}
-                <div class="no-details"><i class="fas fa-info-circle"></i> No Bank details set.</div>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Debit Card -->
-        <div class="payment-content-block" data-method-content="Debit Card" style="display: none;">
-            <div class="compact-detail-card card-theme">
-                {% if profile.card_number %}
-                <div class="cdc-header"><i class="fas fa-credit-card"></i> Card Info</div>
-                <div class="cdc-body">
-                    <div class="cdc-row"><span>Bank / Provider</span> <strong>{{ profile.card_bank or 'Debit Card'
-                            }}</strong></div>
-                    <div class="cdc-row"><span>Card Holder</span> <strong>{{ profile.card_holder_name }}</strong></div>
-                    <div class="cdc-row"><span>Card Number</span> <strong class="text-primary">{{ profile.card_number
-                            }}</strong></div>
-                </div>
-                <p class="card-hint-sm text-center mt-3"><i class="fas fa-info-circle"></i> Use these details for your
-                    online transfer or card payment.</p>
-                {% else %}
-                <div class="no-details"><i class="fas fa-info-circle"></i> No Debit Card details set.</div>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Cash -->
-        <div class="payment-content-block" data-method-content="Cash" style="display: none;">
-            <div class="compact-detail-card cash-theme">
-                <div class="cdc-header"><i class="fas fa-hand-holding-usd"></i> Instructions</div>
-                <div class="cdc-body">
-                    <div class="cdc-instruction">
-                        {% if profile.cash_instructions %}
-                        {{ profile.cash_instructions }}
-                        {% else %}
-                        Please settle the deposit directly with the caterer. Mark this as complete once arranged.
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
+        <div style="margin-top: 1.5rem; text-align: center;">
+            <a href="/bookings/step/quotation/{{ booking.id }}" style="font-size: 0.75rem; color: var(--up-slate-400); text-decoration: underline;">
+                <i class="fas fa-eye"></i> View Signed Service Agreement
+            </a>
         </div>
     </div>
 
-    <!-- Proof Upload -->
-    <div class="proof-upload-outer animate-up" id="proof-upload-section" style="display: none;">
-        <div class="c-card-premium upload-premium-card">
-            <div class="up-header">
-                <div class="up-icon"><i class="fas fa-file-invoice-dollar"></i></div>
-                <div class="up-text">
-                    <h4>Payment Proof</h4>
-                    <p>Upload your transaction receipt below</p>
-                </div>
-            </div>
+    <!-- ── PAYMENT PLAN SELECTION (STRICT ENFORCEMENT) ── -->
+    {% if quotation and quotation.downpayment_percent == 100 %}
+    <div class="checkout-section-header animate-up" style="animation-delay: 0.2s; margin-bottom: 1rem;">
+        <h3 style="font-size: 0.85rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; color: var(--up-emerald-500);">
+            <i class="fas fa-file-signature"></i> Binding Full Payment
+        </h3>
+        <p>Based on your signed agreement, full settlement is required to finalize.</p>
+    </div>
+    <input type="hidden" name="payment_plan" id="selected-plan" value="full">
+    <div class="plan-card active animate-up" style="animation-delay: 0.25s; border-color: var(--up-emerald-500); background: #f0fdf4; cursor: default;">
+        <span class="plan-tag" style="color: var(--up-emerald-500);">Contractual Commitment</span>
+        <h4 class="plan-title">Full Contract Payment</h4>
+        <div class="plan-amount">₱{{ "{:,.2f}".format(booking.total_amount or 0) }}</div>
+        <div class="plan-check" style="color: var(--up-emerald-500);"><i class="fas fa-check-double"></i></div>
+    </div>
+    {% else %}
+    <div class="checkout-section-header animate-up" style="animation-delay: 0.2s; margin-bottom: 1rem;">
+        <h3 style="font-size: 0.85rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; color: var(--up-slate-900);">1. Confirm Payment Plan</h3>
+        <p style="font-size: 0.75rem; color: var(--up-orange); font-weight: 700;">
+            <i class="fas fa-info-circle"></i> Selection must meet or exceed your signed commitment.
+        </p>
+    </div>
 
-            <div class="upload-dropzone" onclick="document.getElementById('payment_proof').click()">
-                <div class="dropzone-content">
-                    <i class="fas fa-cloud-upload-alt"></i>
-                    <p class="primary-text">Click or drag receipt image here</p>
-                    <p class="secondary-text">Supports JPG, PNG (Max 5MB)</p>
-                </div>
-                <input type="file" name="payment_proof" id="payment_proof" accept="image/*" class="hidden-input"
-                    onchange="handleProofUpload(this)">
-            </div>
+    <div class="payment-plan-grid animate-up" style="animation-delay: 0.25s;">
+        <!-- Downpayment Option (Binding) -->
+        <div class="plan-card active" id="plan-downpayment" onclick="updatePaymentPlan('downpayment', {{ booking.reservation_fee or 0 }}, {{ booking.total_amount or 0 }})">
+            <span class="plan-tag">Binding Minimum</span>
+            <h4 class="plan-title">Downpayment ({{ quotation.downpayment_percent if quotation else 30 }}%)</h4>
+            <p class="plan-desc">As agreed in Section 2 of Contract</p>
+            <div class="plan-amount">₱{{ "{:,.2f}".format(booking.reservation_fee or 0) }}</div>
+            <div class="plan-check"><i class="fas fa-check-circle"></i></div>
+        </div>
 
-            <div id="file-preview-container" class="file-preview-container" style="display: none;">
-                <div class="file-info-bar">
-                    <i class="fas fa-image"></i>
-                    <span id="file-name-text">receipt.jpg</span>
-                    <button type="button" class="remove-file-btn" onclick="removeProofFile()"><i
-                            class="fas fa-times"></i></button>
-                </div>
-                <div class="image-preview-wrapper">
-                    <img id="proof-preview-img" src="" alt="Proof Preview">
-                </div>
-            </div>
+        <!-- Full Payment Option (Voluntary Upgrade) -->
+        <div class="plan-card" id="plan-full" onclick="updatePaymentPlan('full', {{ booking.total_amount or 0 }}, {{ booking.total_amount or 0 }})">
+            <span class="plan-tag">Voluntary Settlement</span>
+            <h4 class="plan-title">Full Payment</h4>
+            <p class="plan-desc">Settle balance now (Recommended)</p>
+            <div class="plan-amount">₱{{ "{:,.2f}".format(booking.total_amount or 0) }}</div>
+            <div class="plan-check"><i class="far fa-circle"></i></div>
         </div>
     </div>
+    <input type="hidden" name="payment_plan" id="selected-plan" value="downpayment">
+    {% endif %}
+
+    <!-- ── PAYMENT METHOD SELECTION ── -->
+    <div class="checkout-section-header animate-up" style="animation-delay: 0.3s; margin-bottom: 1rem; margin-top: 2rem;">
+        <h3 style="font-size: 0.85rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; color: var(--up-slate-900);">2. Select Secure Method</h3>
     </div>
 
-    <!-- Processing Overlay -->
-    <div id="payment-processing" class="gateway-processing-overlay" style="display: none;">
-        <div class="processing-card">
-            <div class="spinner-box">
-                <div class="gateway-loader"></div>
-            </div>
-            <h4 id="processing-status">Preparing Secure Gateway...</h4>
-            <div class="progress-bar-container">
-                <div class="progress-bar-fill" id="progress-bar"></div>
-            </div>
+    <div class="method-grid-modern animate-up" style="animation-delay: 0.35s;">
+        <!-- Paymongo (Gateway) -->
+        <div class="method-card-modern" onclick="selectMethod('Paymongo', this)">
+            <div class="method-icon-wrap"><i class="fas fa-shield-alt"></i></div>
+            <span class="method-label">Secure Gateway</span>
+            <span class="gateway-badge">Paymongo Verified</span>
+        </div>
+
+        <!-- GCash (Manual - Restricted/Emergency) -->
+        <div class="method-card-modern" onclick="selectMethod('GCash', this)">
+            <div class="method-icon-wrap"><i class="fas fa-mobile-alt"></i></div>
+            <span class="method-label">GCash Transfer</span>
+        </div>
+
+        <!-- Maya/Bank (Grouped) -->
+        <div class="method-card-modern" onclick="selectMethod('Bank/Maya', this)">
+            <div class="method-icon-wrap"><i class="fas fa-university"></i></div>
+            <span class="method-label">Bank / Maya</span>
+        </div>
+    </div>
+
+    <!-- ── SECURITY TRUST BAR ── -->
+    <div class="security-trust-bar animate-up" style="animation-delay: 0.4s;">
+        <div class="trust-item">
+            <i class="fas fa-lock"></i>
+            <span>256-bit SSL Encrypted</span>
+        </div>
+        <div class="trust-item">
+            <i class="fas fa-check-shield"></i>
+            <span>PCI-DSS Compliant</span>
+        </div>
+        <div class="trust-item">
+            <i class="fas fa-bolt"></i>
+            <span>Instant Verification</span>
         </div>
     </div>
 
     <!-- Actions -->
-    <div class="wizard-actions">
-        <a href="/bookings/step/quotation/{{ booking.id }}" class="btn-wizard-back">
-            <i class="fas fa-arrow-left"></i> Previous Step
+    <div class="wizard-actions animate-up" style="animation-delay: 0.5s; margin-top: 3rem; display: flex; justify-content: space-between; align-items: center;">
+        <a href="/bookings/step/quotation/{{ booking.id }}" class="btn-wizard-back" style="font-weight: 800; color: var(--up-slate-400); text-decoration: none;">
+            <i class="fas fa-arrow-left"></i> Back to Agreement
         </a>
-        <button type="submit" class="btn-wizard-next" id="submit-payment-btn" disabled>
-            Please Select a Payment Method
+        <button type="submit" class="btn-wizard-next" id="submit-payment-btn" disabled 
+            style="background: var(--up-slate-900); color: white; padding: 1rem 3rem; border-radius: 12px; font-weight: 900; border: none; cursor: pointer; opacity: 0.5;">
+            Select Method to Continue
         </button>
     </div>
 </form>
 
 <script>
-    function handlePlanSelect(plan, element, amount) {
-        // Update Plans UI
-        document.querySelectorAll('.plan-card').forEach(p => {
-            p.classList.remove('active');
-            p.style.border = '2px solid #e2e8f0';
-            p.style.background = 'white';
-            p.querySelector('.fas, .far').className = 'far fa-circle';
-            p.querySelector('.fas, .far').style.color = '#cbd5e1';
-            p.querySelector('span').style.color = '#64748b';
-        });
+    function updatePaymentPlan(plan, amount, total) {
+        // Update UI Classes
+        document.getElementById('plan-downpayment').classList.remove('active');
+        document.getElementById('plan-full').classList.remove('active');
+        document.getElementById('plan-' + plan).classList.add('active');
 
-        element.classList.add('active');
-        element.style.border = '2px solid var(--primary-color)';
-        element.style.background = '#f0f9ff';
-        element.querySelector('.far, .fas').className = 'fas fa-check-circle';
-        element.querySelector('.far, .fas').style.color = 'var(--primary-color)';
-        element.querySelector('span').style.color = 'var(--primary-color)';
+        // Update Icons
+        document.querySelector('#plan-downpayment .plan-check i').className = (plan === 'downpayment') ? 'fas fa-check-circle' : 'far fa-circle';
+        document.querySelector('#plan-full .plan-check i').className = (plan === 'full') ? 'fas fa-check-circle' : 'far fa-circle';
 
         // Update Hidden Input
         document.getElementById('selected-plan').value = plan;
 
-        // Update Summary
-        const label = document.getElementById('summary-amount-label');
-        const value = document.getElementById('summary-amount-value');
-        label.innerText = plan === 'full' ? 'Full Payment Amount' : 'Reservation Deposit';
-        value.innerText = '₱' + amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        // Update Summary Card
+        const toPayEl = document.getElementById('to-pay-val');
+        const balanceEl = document.getElementById('balance-val');
+        const balanceRow = document.getElementById('balance-row');
+        
+        const formattedPay = '₱' + amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        toPayEl.textContent = formattedPay;
 
-        console.log('[StepPayment] Plan selected:', plan, 'Amount:', amount);
+        const balance = total - amount;
+        const formattedBalance = '₱' + balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        balanceEl.textContent = formattedBalance;
+
+        // Visibility of balance row
+        balanceRow.style.opacity = (balance > 0) ? '1' : '0.3';
+        
+        console.log('[Payment] Plan switched to:', plan, 'Paying:', amount);
     }
 
-    function handleMethodSelect(method, element) {
-        // Toggle Active Classes
-        document.querySelectorAll('.method-icon-card').forEach(c => c.classList.remove('active'));
+    function selectMethod(method, element) {
+        document.querySelectorAll('.method-card-modern').forEach(c => c.classList.remove('active'));
         element.classList.add('active');
 
-        // Update Hidden Input
         document.getElementById('selected-method').value = method;
 
-        // Show Details Container
-        const container = document.getElementById('methods-container');
-        container.style.display = 'block';
-
-        // Show Specific Content
-        document.querySelectorAll('.payment-content-block').forEach(b => b.style.display = 'none');
-        const content = document.querySelector(`[data-method-content="${method}"]`);
-        if (content) content.style.display = 'block';
-
-        // Show Upload Section
-        document.getElementById('proof-upload-section').style.display = 'block';
-
-        // Enable Submit Button
         const submitBtn = document.getElementById('submit-payment-btn');
         submitBtn.disabled = false;
         submitBtn.style.opacity = '1';
-        submitBtn.style.pointerEvents = 'auto';
-        submitBtn.innerHTML = `Confirm & Submit ${method} Receipt`;
-    }
-
-    function handleProofUpload(input) {
-        const previewContainer = document.getElementById('file-preview-container');
-        const previewImg = document.getElementById('proof-preview-img');
-        const fileNameText = document.getElementById('file-name-text');
-        const dropzone = document.querySelector('.upload-dropzone');
-
-        if (input.files && input.files[0]) {
-            const reader = new FileReader();
-
-            reader.onload = function (e) {
-                previewImg.src = e.target.result;
-                fileNameText.textContent = input.files[0].name;
-                previewContainer.style.display = 'block';
-                dropzone.style.display = 'none';
-            }
-
-            reader.readAsDataURL(input.files[0]);
+        submitBtn.innerHTML = (method === 'Paymongo') ? 'Proceed to Secure Checkout <i class="fas fa-arrow-right"></i>' : 'Continue with ' + method;
+        
+        if (method === 'Paymongo') {
+            submitBtn.style.background = '#10b981'; // Emerald for secure gateway
+        } else {
+            submitBtn.style.background = '#0f172a';
         }
     }
-
-    function removeProofFile() {
-        const input = document.getElementById('payment_proof');
-        const previewContainer = document.getElementById('file-preview-container');
-        const dropzone = document.querySelector('.upload-dropzone');
-
-        input.value = '';
-        previewContainer.style.display = 'none';
-        dropzone.style.display = 'flex';
-    }
 </script>
-{% endblock %}
-
-{% block step_js %}
-<script src="{{ url_for('static', path='/js/customer/booking_wizard/step_payment.js') }}"></script>
 {% endblock %}

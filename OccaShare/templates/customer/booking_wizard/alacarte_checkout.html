@@ -578,19 +578,23 @@
             <div class="bill-card-premium">
                 <h3 class="bill-title">Bill Summary</h3>
                 
+                {% set base_total = 0 %}
+                {% for item in menu_items %}
+                {% set base_total = base_total + item.price %}
                 <div class="bill-item-wrap">
                     <div class="bill-item-thumb">
-                         <img src="{{ menu_item.image_url if menu_item.image_url else '/static/images/placeholder_dish.jpg' }}" alt="{{ menu_item.name }}">
+                         <img src="{{ item.image_url if item.image_url else '/static/images/placeholder_dish.jpg' }}" alt="{{ item.name }}">
                     </div>
                     <div class="bill-item-info">
-                        <h4>{{ menu_item.name }}</h4>
-                        <p>₱{{ "{:,.0f}".format(menu_item.price) }} / Tray</p>
+                        <h4>{{ item.name }}</h4>
+                        <p>₱{{ "{:,.0f}".format(item.price) }} / Tray</p>
                     </div>
                 </div>
+                {% endfor %}
 
                 <div class="bill-row">
                     <span>Base Total</span>
-                    <span id="sum-base-price">₱{{ "{:,.2f}".format(menu_item.price) }}</span>
+                    <span id="sum-base-price">₱{{ "{:,.2f}".format(base_total) }}</span>
                 </div>
                 <div class="bill-row">
                     <span>Quantity</span>
@@ -605,7 +609,7 @@
 
                 <div class="bill-total-impact">
                     <span class="bill-total-label">Grand Total</span>
-                    <span class="bill-total-value" id="sum-grand-total">₱{{ "{:,.2f}".format(menu_item.price + 150) }}</span>
+                    <span class="bill-total-value" id="sum-grand-total">₱{{ "{:,.2f}".format(base_total + 150) }}</span>
                 </div>
 
                 <button type="button" class="btn-secure-checkout" onclick="nextScreen(currentScreen + 1)">
@@ -620,9 +624,9 @@
 
 {% block step_js %}
 <script>
-    window.itemPrice = parseFloat("{{ menu_item.price }}") || 0;
+    window.itemPrice = parseFloat("{{ base_total }}") || 0;
     window.catererId = "{{ caterer.id }}";
-    window.menuId = "{{ menu_item.id }}";
+    window.menuId = "{{ menu_id_raw }}";
     window.isVerified = {% if user.is_verified %}true{% else %}false{% endif %};
 </script>
 <script src="{{ url_for('static', path='/js/customer/alacarte_checkout.js') }}?v={{ range(1, 9999) | random }}"></script>

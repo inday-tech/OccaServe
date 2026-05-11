@@ -1,488 +1,302 @@
 {% extends "customer/layout.html" %}
 
-{% block title %}My Bookings - OccaServe Dashboard{% endblock %}
+{% block title %}My Bookings - OccaServe{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/bookings.css') }}?v=1.2">
 <style>
-    /* ============================================
-       BOOKINGS — MOBILE-FIRST REDESIGN
-       ============================================ */
-    @media (max-width: 768px) {
-
-        /* ── Main content: burger + FAB clearance ── */
-        .main-content {
-            padding: 4rem 1rem 5rem !important;
-        }
-
-        /* ── Page Header ── */
-        .page-header {
-            flex-direction: column !important;
-            align-items: stretch !important;
-            gap: 0.5rem !important;
-            padding-top: 0 !important;
-            margin-bottom: 1rem !important;
-        }
-        .page-header h1 {
-            font-size: 1.4rem !important;
-            margin-bottom: 0 !important;
-            line-height: 1.2 !important;
-        }
-        .page-header p {
-            font-size: 0.82rem !important;
-            margin: 0 0 0.5rem 0 !important;
-            color: #64748b !important;
-        }
-
-        /* ── New Booking CTA: Full width, prominent ── */
-        .page-header .btn-primary {
-            width: 100% !important;
-            justify-content: center !important;
-            padding: 0.75rem !important;
-            font-size: 0.92rem !important;
-            font-weight: 700 !important;
-            border-radius: 0.75rem !important;
-            min-height: 48px !important;
-            display: flex !important;
-            align-items: center !important;
-            gap: 0.5rem !important;
-            box-sizing: border-box !important;
-        }
-
-        /* ── All Bookings Card ── */
-        .c-card-premium {
-            padding: 1rem !important;
-            border-radius: 0.875rem !important;
-            border: 1px solid #f0f2f5 !important;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03) !important;
-        }
-
-        /* ── Card Header (All Bookings + Search) ── */
-        .c-card-premium > div[style*="space-between"] {
-            flex-direction: column !important;
-            align-items: stretch !important;
-            gap: 0.625rem !important;
-            margin-bottom: 1rem !important;
-        }
-        .c-card-premium > div[style*="space-between"] h3 {
-            font-size: 1.05rem !important;
-            margin: 0 !important;
-        }
-
-        /* ── Search Bar: matches input style ── */
-        .search-box-pro {
-            width: 100% !important;
-            height: 48px !important;
-            border-radius: 0.75rem !important;
-            border: 1.5px solid #e2e8f0 !important;
-            padding: 0 0.875rem !important;
-            box-sizing: border-box !important;
-            box-shadow: none !important;
-            background: #f8fafc !important;
-            transition: border-color 0.2s, box-shadow 0.2s !important;
-        }
-        .search-box-pro:focus-within {
-            border-color: #f97316 !important;
-            background: #ffffff !important;
-            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.08) !important;
-        }
-        .search-box-pro i {
-            font-size: 0.9rem !important;
-            color: #94a3b8 !important;
-        }
-        .search-input-pro {
-            font-size: 0.88rem !important;
-            height: 100% !important;
-        }
-
-        /* ── Hide Desktop Table ── */
-        .premium-table-wrapper { display: none !important; }
-
-        /* ── Mobile Booking Cards ── */
-        .bookings-mobile-list {
-            display: flex !important;
-            flex-direction: column;
-            gap: 0.5rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .mob-bk-card {
-            background: #ffffff;
-            border-radius: 0.875rem;
-            padding: 0.875rem 1rem;
-            border: 1px solid #f0f2f5;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
-            cursor: pointer;
-            transition: box-shadow 0.2s, border-color 0.2s;
-            text-decoration: none;
-            color: inherit;
-            display: flex !important;
-            flex-direction: column;
-            gap: 0.5rem;
-            min-height: 44px;
-        }
-        .mob-bk-card:active {
-            box-shadow: 0 2px 12px rgba(249, 115, 22, 0.12);
-            border-color: rgba(249, 115, 22, 0.2);
-        }
-
-        /* ── Card Top: Icon + Title + Arrow ── */
-        .mob-bk-top {
-            display: flex !important;
-            align-items: center;
-            gap: 0.625rem;
-        }
-        .mob-bk-icon {
-            width: 36px;
-            height: 36px;
-            min-width: 36px;
-            background: rgba(249, 115, 22, 0.1);
-            color: #f97316;
-            border-radius: 0.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.85rem;
-            flex-shrink: 0;
-        }
-        .mob-bk-title {
-            font-weight: 800;
-            font-size: 0.85rem;
-            color: #0f172a;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            display: block;
-            line-height: 1.2;
-        }
-        .mob-bk-id {
-            font-size: 0.68rem;
-            color: #94a3b8;
-            font-weight: 600;
-            display: block;
-            margin-top: 1px;
-        }
-        .mob-bk-arrow {
-            font-size: 0.65rem;
-            color: #d1d5db;
-            margin-left: auto;
-            padding-left: 0.5rem;
-            flex-shrink: 0;
-        }
-
-        /* ── Card Bottom: Meta left, Price+Status right ── */
-        .mob-bk-bottom {
-            display: flex !important;
-            align-items: flex-end;
-            justify-content: space-between;
-            padding-top: 0.375rem;
-            border-top: 1px solid #f8f8f8;
-        }
-        .mob-bk-meta {
-            font-size: 0.7rem;
-            color: #64748b;
-            font-weight: 600;
-            display: block;
-            line-height: 1.5;
-        }
-        .mob-bk-meta i {
-            margin-right: 3px;
-            font-size: 0.6rem;
-            width: 12px;
-            display: inline-block;
-        }
-        .mob-bk-amount {
-            font-size: 0.92rem;
-            font-weight: 800;
-            color: #0f172a;
-            display: block;
-            text-align: right;
-        }
-
-        /* ── Pagination ── */
-        .pagination-container-p {
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 0.375rem;
-            margin-top: 0.75rem;
-            padding-top: 0.75rem;
-        }
-        .pagination-info {
-            width: 100%;
-            text-align: center;
-            font-size: 0.78rem;
-        }
-        .btn-pagination {
-            min-height: 44px !important;
-            font-size: 0.75rem !important;
-            padding: 0.375rem 0.5rem !important;
-        }
-        .page-num-btn {
-            min-height: 36px !important;
-            min-width: 36px !important;
-        }
-
-        /* ── Empty State ── */
-        .empty-state {
-            padding: 3rem 1.5rem !important;
-        }
-        .empty-state h2 {
-            font-size: 1.2rem !important;
-        }
-        .empty-state p {
-            font-size: 0.85rem !important;
-        }
-        .empty-state .btn-primary {
-            min-height: 44px !important;
-            font-size: 0.9rem !important;
-        }
+    :root {
+        --up-slate-900: #0f172a;
+        --up-orange: #FF7B54;
+        --up-emerald: #10b981;
+        --up-amber: #f59e0b;
+        --up-indigo: #6366f1;
+        --dm-slate-50: #f8fafc;
+        --dm-slate-100: #f1f5f9;
+        --dm-slate-400: #94a3b8;
     }
 
-    /* ── Phone: ≤ 480px ── */
-    @media (max-width: 480px) {
-        .main-content {
-            padding: 3.75rem 0.75rem 5rem !important;
-        }
-        .page-header h1 {
-            font-size: 1.25rem !important;
-        }
-        .page-header p {
-            font-size: 0.78rem !important;
-        }
-        .page-header .btn-primary {
-            padding: 0.625rem !important;
-            font-size: 0.88rem !important;
-            min-height: 44px !important;
-        }
-        .c-card-premium {
-            padding: 0.875rem !important;
-        }
-        .c-card-premium > div[style*="space-between"] h3 {
-            font-size: 0.95rem !important;
-        }
-        .search-box-pro {
-            height: 44px !important;
-        }
-        .search-input-pro {
-            font-size: 0.85rem !important;
-        }
-        .mob-bk-card {
-            padding: 0.75rem 0.875rem !important;
-            border-radius: 0.75rem !important;
-            gap: 0.375rem !important;
-        }
-        .mob-bk-icon {
-            width: 32px !important;
-            height: 32px !important;
-            min-width: 32px !important;
-            font-size: 0.8rem !important;
-        }
-        .mob-bk-title {
-            font-size: 0.82rem !important;
-        }
-        .mob-bk-id {
-            font-size: 0.62rem !important;
-        }
-        .mob-bk-meta {
-            font-size: 0.65rem !important;
-        }
-        .mob-bk-amount {
-            font-size: 0.85rem !important;
-        }
+    /* ── PAGE HEADER ── */
+    .dash-header { margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: flex-end; }
+    .dash-header h1 {
+        font-size: 1.6rem; font-weight: 800;
+        color: var(--up-slate-900); letter-spacing: -0.03em; margin: 0;
+    }
+    .dash-header p {
+        font-size: 0.88rem; color: var(--dm-slate-400);
+        font-weight: 500; margin: 4px 0 0;
     }
 
-    /* Hide mobile cards on desktop */
-    @media (min-width: 769px) {
-        .bookings-mobile-list { display: none !important; }
+    /* ── STAT CARDS ── */
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.25rem;
+        margin-bottom: 1.25rem;
+    }
+    .stat-card {
+        background: #fff;
+        border-radius: 1.25rem;
+        border: 1px solid var(--dm-slate-100);
+        padding: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.04);
+        transition: all 0.3s ease;
+    }
+    .stat-card:hover { transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); }
+    
+    .stat-icon {
+        width: 48px; height: 48px;
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+    .si-indigo { background: rgba(99, 102, 241, 0.1); color: var(--up-indigo); }
+    .si-green  { background: rgba(16, 185, 129, 0.1); color: var(--up-emerald); }
+    .si-amber  { background: rgba(245, 158, 11, 0.1); color: var(--up-amber); }
+
+    .stat-body h4 {
+        font-size: 0.65rem; font-weight: 700;
+        color: var(--dm-slate-400);
+        text-transform: uppercase; letter-spacing: 0.05em;
+        margin: 0 0 2px;
+    }
+    .stat-value {
+        font-size: 1.4rem; font-weight: 800;
+        color: var(--up-slate-900);
+        line-height: 1.1;
+    }
+
+    /* ── MAIN PANEL ── */
+    .panel {
+        background: #fff;
+        border-radius: 1.25rem;
+        border: 1px solid var(--dm-slate-100);
+        overflow: hidden;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.04);
+        margin-bottom: 1.25rem;
+    }
+    .panel-header {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--dm-slate-50);
+        display: flex; justify-content: space-between; align-items: center;
+    }
+    .panel-header h3 {
+        font-size: 1rem; font-weight: 800;
+        color: var(--up-slate-900); margin: 0;
+    }
+
+    /* ── SEARCH BOX ── */
+    .search-wrap { position: relative; width: 300px; }
+    .search-wrap i { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--dm-slate-400); font-size: 0.85rem; }
+    .search-input {
+        width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; border-radius: 12px;
+        border: 1px solid var(--dm-slate-100); background: var(--dm-slate-50);
+        font-size: 0.85rem; font-weight: 600; color: var(--up-slate-900);
+        transition: all 0.2s;
+    }
+    .search-input:focus { border-color: var(--up-orange); outline: none; background: #fff; }
+
+    /* ── DATA TABLE ── */
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th {
+        text-align: left; padding: 1rem 1.5rem;
+        font-size: 0.68rem; font-weight: 800;
+        color: var(--dm-slate-400); text-transform: uppercase;
+        letter-spacing: 0.05em; background: #fcfcfd;
+        border-bottom: 1px solid var(--dm-slate-100);
+    }
+    .data-table td {
+        padding: 1.1rem 1.5rem;
+        border-bottom: 1px solid var(--dm-slate-50);
+        font-size: 0.85rem;
+    }
+    .data-table tr:hover td { background: #fafbfc; }
+    .data-table tr:last-child td { border-bottom: none; }
+
+    .booking-name { font-weight: 700; color: var(--up-slate-900); }
+    .booking-sub  { font-size: 0.72rem; color: var(--dm-slate-400); margin-top: 2px; font-weight: 600; }
+    .id-tag { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: var(--up-slate-900); margin-right: 6px; }
+
+    /* ── STATUS TAGS ── */
+    .status-tag {
+        font-size: 0.65rem; font-weight: 800; text-transform: uppercase;
+        padding: 4px 10px; border-radius: 8px; letter-spacing: 0.04em;
+        display: inline-flex; align-items: center; gap: 6px;
+    }
+    .tag-confirmed { background: rgba(16,185,129,0.1); color: #10b981; }
+    .tag-pending   { background: rgba(249,115,22,0.1); color: #f97316; }
+    .tag-amber     { background: rgba(245,158,11,0.1); color: #b45309; }
+    .tag-slate     { background: #f1f5f9; color: #475569; }
+
+    /* Pulsing Amber for Payment */
+    @keyframes pulse-amber {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.05); opacity: 0.8; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    .pulse-amber { animation: pulse-amber 2s infinite; }
+
+    /* ── ACTIONS ── */
+    .btn-action-soft {
+        font-size: 0.75rem; font-weight: 800; text-transform: uppercase;
+        padding: 8px 16px; border-radius: 10px; text-decoration: none;
+        transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn-settle { background: var(--up-slate-900); color: #fff !important; }
+    .btn-settle:hover { background: #000; transform: translateY(-2px); }
+    .btn-view { background: var(--dm-slate-50); color: var(--up-slate-900) !important; border: 1px solid var(--dm-slate-100); }
+    .btn-view:hover { background: var(--dm-slate-100); }
+
+    /* Empty State */
+    .empty-panel { padding: 4rem 2rem; text-align: center; }
+    .empty-panel i { font-size: 2.5rem; color: var(--dm-slate-100); margin-bottom: 1rem; display: block; }
+    .empty-panel h4 { font-size: 1.1rem; font-weight: 800; color: var(--up-slate-900); margin-bottom: 0.5rem; }
+    .empty-panel p { font-size: 0.85rem; color: var(--dm-slate-400); font-weight: 500; margin-bottom: 2rem; }
+
+    @media (max-width: 1024px) {
+        .stats-row { grid-template-columns: 1fr 1fr; }
+        .dash-header { flex-direction: column; align-items: stretch; gap: 1rem; }
+        .search-wrap { width: 100%; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
-    <div>
-        <h1>My Bookings</h1>
-        <p>Manage your catering reservations.</p>
+<div>
+    <!-- Page Header -->
+    <div class="dash-header">
+        <div>
+            <h1>My Bookings</h1>
+            <p>Historical registry and active logistic journey.</p>
+        </div>
+        <a href="/customer/marketplace" class="btn-action-primary" style="text-decoration: none; padding: 0.75rem 1.5rem; border-radius: 12px; font-weight: 800; font-size: 0.9rem;">
+            <i class="fas fa-plus"></i> New Booking
+        </a>
     </div>
-    <a href="/customer/marketplace" class="btn-primary"
-        style="padding: 0.6rem 1.25rem; border-radius: 12px; font-weight: 700; display: flex; align-items: center; gap: 0.6rem; text-decoration: none; font-size: 0.9rem;">
-        <i class="fas fa-plus"></i> New Booking
-    </a>
-</div>
 
-<div class="c-card-premium">
-    <div
-        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
-        <h3 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--secondary-color);">All Bookings</h3>
-        <div class="search-box-pro" style="width: 300px;">
-            <i class="fas fa-search"></i>
-            <input type="text" id="bookingSearchInput" class="search-input-pro"
-                placeholder="Search events or caterers..." onkeyup="filterBookings()">
+    <!-- Stat Cards -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-icon si-indigo"><i class="fas fa-calendar-check"></i></div>
+            <div class="stat-body">
+                <h4>Reservations</h4>
+                <div class="stat-value">{{ stats.total_reservations }}</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon si-green"><i class="fas fa-wallet"></i></div>
+            <div class="stat-body">
+                <h4>Total Spent</h4>
+                <div class="stat-value">₱{{ "{:,.0f}".format(stats.total_spent) }}</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon si-amber"><i class="fas fa-receipt"></i></div>
+            <div class="stat-body">
+                <h4>Obligations</h4>
+                <div class="stat-value">₱{{ "{:,.0f}".format(stats.pending_obligations) }}</div>
+            </div>
         </div>
     </div>
 
+    <!-- Main Panel -->
+    <div class="panel">
+        <div class="panel-header">
+            <h3>Active Registry</h3>
+            <div class="search-wrap">
+                <i class="fas fa-search"></i>
+                <input type="text" id="bookingSearchInput" class="search-input" 
+                    placeholder="Search ID or Caterer..." onkeyup="filterBookings()">
+            </div>
+        </div>
 
-    {% if bookings %}
-    <div class="premium-table-wrapper">
-        <table class="premium-table" id="bookingsPremiumTable">
+        {% if bookings %}
+        <table class="data-table">
             <thead>
                 <tr>
-                    <th style="width: 25%;">Event & ID</th>
-                    <th style="width: 20%;">Caterer & Package</th>
-                    <th style="width: 15%;">Date & Time</th>
-                    <th style="width: 10%;">Guests</th>
-                    <th style="width: 15%;">Amount</th>
-                    <th style="width: 15%;">Status</th>
-                    <th style="text-align: right;">Actions</th>
+                    <th>Booking Entity</th>
+                    <th>Timeline</th>
+                    <th>Financials</th>
+                    <th>Status</th>
+                    <th style="text-align: right;">Audit</th>
                 </tr>
             </thead>
             <tbody>
-                {% for booking in bookings %}
-                <tr class="premium-row booking-row-item"
-                    data-search="{{ (booking.event_name or '')|lower }} {{ (booking.caterer.business_name or '')|lower }} BK-{{ "
-                    %03d" | format(booking.id) }}">
-                    <td class="premium-cell">
-                        <div style="font-weight: 700; color: var(--secondary-color); font-size: 1rem;">{{
-                            booking.event_name or 'N/A' }}</div>
-                        <div style="font-size: 0.8rem; color: var(--text-light); font-weight: 600;">BK-{{ "%03d" |
-                            format(booking.id) }}</div>
+                {% for b in bookings %}
+                <tr class="booking-row-item" data-search="{{ (b.event_name or '')|lower }} {{ (b.caterer.business_name or '')|lower }} BK-{{ "%03d" | format(b.id) }}">
+                    <td>
+                        <div class="booking-name">{{ b.event_name or 'N/A' }}</div>
+                        <div class="booking-sub"><span class="id-tag">BK-{{ "%03d" | format(b.id) }}</span> {{ b.caterer.business_name }}</div>
                     </td>
-                    <td class="premium-cell">
-                        <div style="font-weight: 700; color: var(--secondary-color); font-size: 0.95rem;">{{
-                            booking.caterer.business_name if booking.caterer else 'Unknown' }}</div>
-                        <div style="font-size: 0.8rem; color: var(--text-light);">{{ booking.package.name if
-                            booking.package else 'Custom Menu' }}</div>
+                    <td>
+                        <div style="font-weight:700; color: var(--up-slate-900);">{{ b.event_date.strftime('%b %d, %Y') }}</div>
+                        <div class="booking-sub"><i class="far fa-clock"></i> {{ b.event_time.strftime('%I:%M %p') if b.event_time else 'TBD' }}</div>
                     </td>
-                    <td class="premium-cell">
-                        <div style="font-weight: 600; color: var(--secondary-color); font-size: 0.9rem;">{{
-                            booking.event_date.strftime('%b %d, %Y') }}</div>
-                        <div style="font-size: 0.75rem; color: var(--text-light);"><i class="far fa-clock"
-                                style="margin-right: 3px;"></i> {{ booking.event_time.strftime('%I:%M %p') if
-                            booking.event_time else 'TBD' }}</div>
+                    <td>
+                        <div style="font-weight:800; color: var(--up-slate-900);">₱{{ "{:,.2f}".format(b.total_amount or 0) }}</div>
+                        <div class="booking-sub">{{ b.guest_count }} GUESTS</div>
                     </td>
-                    <td class="premium-cell">
-                        <span style="font-weight: 600; color: var(--secondary-color);">{{ booking.guest_count }}</span>
+                    <td>
+                        {% set sc = b.status %}
+                        {% set status_cfg = {
+                            'confirmed': ('tag-confirmed', 'Confirmed', ''),
+                            'completed': ('tag-confirmed', 'Completed', ''),
+                            'pending': ('tag-pending', 'Reviewing', ''),
+                            'pending_payment': ('tag-amber pulse-amber', 'Settle Now', 'fa-exclamation-circle'),
+                            'awaiting_payment': ('tag-amber pulse-amber', 'Settle Now', 'fa-exclamation-circle'),
+                            'cancelled': ('tag-slate', 'Cancelled', ''),
+                            'draft': ('tag-slate', 'Draft', '')
+                        }.get(sc, ('tag-slate', sc|capitalize, '')) %}
+                        <span class="status-tag {{ status_cfg[0] }}">
+                            {% if status_cfg[2] %}<i class="fas {{ status_cfg[2] }}"></i>{% endif %}
+                            {{ status_cfg[1] }}
+                        </span>
                     </td>
-                    <td class="premium-cell">
-                        <div style="font-weight: 800; color: var(--secondary-color); font-size: 1.05rem;">₱{{
-                            "{:,.0f}".format(booking.total_amount) if booking.total_amount else '0' }}</div>
-                    </td>
-                    <td class="premium-cell">
-                        {% set status_class = {
-                        'confirmed': 'p-badge-confirmed',
-                        'completed': 'p-badge-confirmed',
-                        'pending': 'p-badge-pending',
-                        'awaiting_payment': 'p-badge-pending',
-                        'awaiting_caterer': 'p-badge-pending',
-                        'cancelled': 'p-badge-cancelled',
-                        'draft': 'p-badge-draft'
-                        }.get(booking.status, 'p-badge-pending') %}
-                        {% set status_label = {
-                        'pending_quotation': 'Reviewing',
-                        'awaiting_caterer': 'Pending Caterer',
-                        'awaiting_payment': 'Payment Due',
-                        'draft': 'Draft'
-                        }.get(booking.status, booking.status|capitalize) %}
-                        <span class="p-badge {{ status_class }}">{{ status_label }}</span>
-                    </td>
-                    <td class="premium-cell" style="text-align: right;">
-                        <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-                            {% if booking.status == 'draft' %}
-                            <a href="/bookings/continue/{{ booking.id }}" class="btn-pagination"
-                                style="background: var(--primary-color); color: white; border: none; text-decoration: none;">Resume</a>
-                            {% else %}
-                            <a href="/customer/bookings/manage/{{ booking.id }}" class="btn-pagination"
-                                style="text-decoration: none;" title="Manage Booking"><i class="fas fa-cog"></i>
-                                Manage</a>
-                            {% endif %}
-                        </div>
+                    <td style="text-align: right;">
+                        {% if b.status in ['pending_payment', 'awaiting_payment'] %}
+                        <a href="/bookings/step/payment/{{ b.id }}" class="btn-action-soft btn-settle">
+                            Pay <i class="fas fa-credit-card"></i>
+                        </a>
+                        {% elif b.status == 'draft' %}
+                        <a href="/bookings/continue/{{ b.id }}" class="btn-action-soft btn-settle">
+                            Resume <i class="fas fa-play"></i>
+                        </a>
+                        {% else %}
+                        <a href="/customer/bookings/manage/{{ b.id }}" class="btn-action-soft btn-view">
+                            View <i class="fas fa-fingerprint"></i>
+                        </a>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-    </div>
 
-    {# ===== MOBILE BOOKING CARDS ===== #}
-    <div class="bookings-mobile-list">
-        {% for booking in bookings %}
-        {% set status_label = {
-            'pending_quotation': 'Reviewing',
-            'awaiting_caterer': 'Pending',
-            'awaiting_payment': 'Payment Due',
-            'draft': 'Draft',
-            'confirmed': 'Confirmed',
-            'completed': 'Done',
-            'cancelled': 'Cancelled'
-        }.get(booking.status, booking.status|capitalize|replace('_',' ')) %}
-        {% set badge_bg = '#fff7ed' %}
-        {% set badge_color = '#ea580c' %}
-        {% if booking.status in ['confirmed','completed'] %}
-            {% set badge_bg = '#f0fdf4' %}{% set badge_color = '#16a34a' %}
-        {% elif booking.status == 'cancelled' %}
-            {% set badge_bg = '#fef2f2' %}{% set badge_color = '#dc2626' %}
-        {% elif booking.status == 'draft' %}
-            {% set badge_bg = '#f8fafc' %}{% set badge_color = '#64748b' %}
+        <!-- Pagination -->
+        <div style="padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; background: #fcfcfd; border-top: 1px solid var(--dm-slate-50);">
+            <div style="font-size: 0.75rem; font-weight: 700; color: var(--dm-slate-400);">
+                Entry <span id="startRange" style="color: var(--up-slate-900);">0</span> - <span id="endRange" style="color: var(--up-slate-900);">0</span> of <span id="totalEntries" style="color: var(--up-slate-900);">0</span>
+            </div>
+            <div id="pageNumbers" style="display: flex; gap: 6px;"></div>
+        </div>
+
+        {% else %}
+        <div class="empty-panel">
+            <i class="fas fa-calendar-xmark"></i>
+            <h4>No Bookings Found</h4>
+            <p>You haven't started your catering journey yet.</p>
+            <a href="/customer/marketplace" class="btn-action-primary" style="text-decoration: none; padding: 0.75rem 1.5rem; border-radius: 12px; font-weight: 800;">Browse Caterers</a>
+        </div>
         {% endif %}
-
-        <a class="mob-bk-card"
-           href="{% if booking.status == 'draft' %}/bookings/continue/{{ booking.id }}{% else %}/customer/bookings/manage/{{ booking.id }}{% endif %}">
-            <div class="mob-bk-top">
-                <div class="mob-bk-icon"><i class="fas fa-utensils"></i></div>
-                <div style="min-width:0; flex:1;">
-                    <span class="mob-bk-title">{{ booking.event_name or 'N/A' }}</span>
-                    <span class="mob-bk-id">BK-{{ "%03d" | format(booking.id) }} &nbsp;·&nbsp; {{ booking.caterer.business_name if booking.caterer else 'Unknown' }}</span>
-                </div>
-                <i class="fas fa-chevron-right mob-bk-arrow"></i>
-            </div>
-            <div class="mob-bk-bottom">
-                <div>
-                    <span class="mob-bk-meta"><i class="fas fa-calendar-alt"></i>{{ booking.event_date.strftime('%b %d, %Y') }}</span>
-                    <span class="mob-bk-meta" style="margin-top:2px;"><i class="fas fa-users"></i>{{ booking.guest_count }} guests</span>
-                </div>
-                <div style="text-align:right;">
-                    <span class="mob-bk-amount">₱{{ "{:,.0f}".format(booking.total_amount) if booking.total_amount else '0' }}</span>
-                    <span style="display:block; font-size:0.65rem; font-weight:800; text-transform:uppercase; padding:0.2rem 0.6rem; border-radius:2rem; margin-top:3px; background:{{ badge_bg }}; color:{{ badge_color }};">{{ status_label }}</span>
-                </div>
-            </div>
-        </a>
-        {% endfor %}
     </div>
-
-    <!-- Pagination -->
-    <div class="pagination-container-p">
-        <div class="pagination-info">
-            Showing <span id="startRange">0</span> to <span id="endRange">0</span> of <span id="totalEntries">0</span>
-            bookings
-        </div>
-        <div class="pagination-buttons">
-            <button id="prevPage" class="btn-pagination"><i class="fas fa-chevron-left"></i> Previous</button>
-            <div id="pageNumbers" class="pagination-buttons">
-                <!-- Dynamic Page Numbers -->
-            </div>
-            <button id="nextPage" class="btn-pagination">Next <i class="fas fa-chevron-right"></i></button>
-        </div>
-    </div>
-
-    {% else %}
-    <div class="empty-state" style="text-align: center; padding: 5rem 2rem;">
-        <div
-            style="width: 80px; height: 80px; background: #f8fafc; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; color: #cbd5e1; font-size: 2rem;">
-            <i class="fas fa-calendar-times"></i>
-        </div>
-        <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--secondary-color); margin-bottom: 0.5rem;">No
-            bookings yet</h2>
-        <p style="color: var(--text-muted); max-width: 400px; margin: 0 auto 2rem;">
-            Your upcoming events will appear here once you start booking. Explore our caterers to get started!
-        </p>
-        <a href="/customer/marketplace" class="btn-primary" style="text-decoration: none;">Browse Caterers</a>
-    </div>
-    {% endif %}
 </div>
 
 {% block extra_js %}
 <script>
-    const ROWS_PER_PAGE = 5;
+    const ROWS_PER_PAGE = 8;
     let currentPage = 1;
     let filteredRows = [];
 
@@ -500,40 +314,24 @@
         const startIdx = (currentPage - 1) * ROWS_PER_PAGE;
         const endIdx = startIdx + ROWS_PER_PAGE;
 
-        // Hide all original rows first
         document.querySelectorAll('.booking-row-item').forEach(r => r.style.display = 'none');
+        filteredRows.slice(startIdx, endIdx).forEach(r => r.style.display = 'table-row');
 
-        // Show scoped rows from filtered list
-        filteredRows.slice(startIdx, endIdx).forEach(r => {
-            r.style.display = 'table-row';
-        });
-
-        // Update Info
         document.getElementById('startRange').innerText = filteredRows.length === 0 ? 0 : startIdx + 1;
         document.getElementById('endRange').innerText = Math.min(endIdx, filteredRows.length);
         document.getElementById('totalEntries').innerText = filteredRows.length;
 
-        // Render Buttons
         renderPaginationButtons(totalPages);
     }
 
     function renderPaginationButtons(totalPages) {
         const container = document.getElementById('pageNumbers');
-        const prevBtn = document.getElementById('prevPage');
-        const nextBtn = document.getElementById('nextPage');
-
         container.innerHTML = '';
-        prevBtn.disabled = currentPage === 1;
-        nextBtn.disabled = currentPage === totalPages || filteredRows.length === 0;
-
-        prevBtn.onclick = () => { currentPage--; updatePagination(); };
-        nextBtn.onclick = () => { currentPage++; updatePagination(); };
-
         if (filteredRows.length === 0) return;
 
         for (let i = 1; i <= totalPages; i++) {
             const btn = document.createElement('button');
-            btn.className = `page-num-btn ${i === currentPage ? 'active' : ''}`;
+            btn.style = `border: 1px solid var(--dm-slate-100); padding: 6px 12px; border-radius: 8px; font-size: 0.7rem; font-weight: 800; cursor: pointer; transition: all 0.2s; ${i === currentPage ? 'background: var(--up-slate-900); color: white;' : 'background: #fff; color: var(--dm-slate-400);'}`;
             btn.innerText = i;
             btn.onclick = () => { currentPage = i; updatePagination(); };
             container.appendChild(btn);
@@ -543,12 +341,7 @@
     function filterBookings() {
         const searchTerm = document.getElementById('bookingSearchInput').value.toLowerCase();
         const allRows = Array.from(document.querySelectorAll('.booking-row-item'));
-
-        filteredRows = allRows.filter(row => {
-            const data = row.getAttribute('data-search');
-            return data.includes(searchTerm);
-        });
-
+        filteredRows = allRows.filter(row => row.getAttribute('data-search').includes(searchTerm));
         currentPage = 1;
         updatePagination();
     }

@@ -1,120 +1,421 @@
-document.addEventListener('DOMContentLoaded', function () {
-    console.log('Dashboard Layout JS Loaded');
-    
-    const sidebar = document.getElementById('sidebar');
-    const sidebarToggle = document.getElementById('sidebarToggle');
-    const sidebarOverlay = document.getElementById('sidebarOverlay');
+/**
+ * OccaServe Customer Portal — Layout JS v3.0
+ * Clean, functional, real-time. No jargon.
+ */
 
-    function toggleSidebar() {
-        console.log('Toggling Sidebar');
-        if (sidebar && sidebarOverlay) {
-            sidebar.classList.toggle('active');
-            sidebarOverlay.classList.toggle('active');
+document.addEventListener('DOMContentLoaded', () => {
+    initSidebar();
+    initSearch();
+    initInactivityTimer();
+    initHeartbeat();
+    initWebSocket();
+    initDropdownClose();
 
-            // Prevent scrolling on body when sidebar is open (mainly for mobile)
-            if (sidebar.classList.contains('active')) {
-                document.body.style.overflow = 'hidden';
-            } else {
-                document.body.style.overflow = '';
-            }
-        }
-    }
-
-    if (sidebarToggle) {
-        sidebarToggle.addEventListener('click', function(e) {
+    // Ctrl+K shortcut
+    document.addEventListener('keydown', e => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
             e.preventDefault();
-            toggleSidebar();
+            document.getElementById('globalSearchInput')?.focus();
+        }
+        if (e.key === 'Escape') {
+            closeAllDropdowns();
+            closeSearch();
+        }
+    });
+});
+
+/* ============================================================
+   SIDEBAR
+   ============================================================ */
+function initSidebar() {
+    const toggleBtn = document.getElementById('desktopToggleBtn');
+    const html      = document.documentElement;
+
+    // Restore collapsed state
+    if (localStorage.getItem('customerSidebarCollapsed') === 'true') {
+        html.classList.add('sidebar-icons-only');
+    }
+
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+            const collapsed = html.classList.toggle('sidebar-icons-only');
+            localStorage.setItem('customerSidebarCollapsed', collapsed);
         });
     }
+}
 
-    if (sidebarOverlay) {
-        sidebarOverlay.addEventListener('click', toggleSidebar);
-    }
+window.toggleSidebar = function () {
+    const sidebar  = document.getElementById('mainSidebar');
+    const overlay  = document.getElementById('sidebarOverlay');
+    if (!sidebar) return;
+    sidebar.classList.toggle('active');
+    if (overlay) overlay.style.display = sidebar.classList.contains('active') ? 'block' : 'none';
+};
 
-    // ─── Real-Time Notifications (WebSockets) ────────────────────────────────
-    // Simplified WebSocket logic for global layout
-    if (window.location.protocol === 'https:') {
-        var ws_scheme = "wss://";
-    } else {
-        var ws_scheme = "ws://";
-    }
-    
-    // Only connect if user is authenticated (can check data attribute on body)
-    const clientId = document.body.dataset.clientId;
-    if (clientId) {
-        const ws = new WebSocket(ws_scheme + window.location.host + "/ws/" + clientId);
-        
+window.closeSidebar = function () {
+    const sidebar = document.getElementById('mainSidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    if (sidebar) sidebar.classList.remove('active');
+    if (overlay) overlay.style.display = 'none';
+};
 
-    function updateChatBadge() {
-        fetch('/api/chat/unread-count')
-            .then(r => r.json())
-            .then(data => {
-                const badge = document.getElementById('nav-chat-badge');
-                if (badge) {
-                    badge.innerText = data.count;
-                    badge.style.display = data.count > 0 ? 'flex' : 'none';
-                }
-            });
-    }
+/* ============================================================
+   GLOBAL SEARCH — Real-time, accurate, debounced
+   ============================================================ */
+function initSearch() {
+    const input      = document.getElementById('globalSearchInput');
+    const panel      = document.getElementById('omniSearchResults');
+    const scroller   = document.getElementById('searchResultsScroller');
+    if (!input || !panel || !scroller) return;
 
-    // Initial check
-    updateChatBadge();
+    let timer       = null;
+    let lastQuery   = '';
+    let highlighted = -1;
 
-    function showChatNotification(data) {
-        if (window.Swal) {
-             Swal.fire({
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-                timer: 4000,
-                timerProgressBar: true,
-                icon: 'info',
-                title: `Message from ${data.sender_name}`,
-                text: data.content.substring(0, 50) + (data.content.length > 50 ? '...' : ''),
-                didClick: () => {
-                    window.location.href = `/customer/messages?caterer=${data.sender_id}`;
-                }
-            });
+    input.addEventListener('input', () => {
+        const q = input.value.trim();
+        clearTimeout(timer);
+
+        if (q.length < 2) { closeSearch(); return; }
+        if (q === lastQuery) return;
+
+        // Show loading state immediately
+        scroller.innerHTML = renderLoading();
+        openPanel();
+
+        timer = setTimeout(() => runSearch(q), 200);
+    });
+
+    input.addEventListener('keydown', e => {
+        if (!panel.classList.contains('open')) return;
+        const items = panel.querySelectorAll('.search-result-item');
+        if (!items.length) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            highlighted = Math.min(highlighted + 1, items.length - 1);
+            updateHighlight(items);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            highlighted = Math.max(highlighted - 1, 0);
+            updateHighlight(items);
+        } else if (e.key === 'Enter' && highlighted >= 0) {
+            e.preventDefault();
+            items[highlighted].click();
+        }
+    });
+
+    // Close on outside click
+    document.addEventListener('click', e => {
+        if (!input.contains(e.target) && !panel.contains(e.target)) closeSearch();
+    });
+
+    async function runSearch(q) {
+        lastQuery   = q;
+        highlighted = -1;
+        try {
+            const res  = await fetch(`/customer/api/omni-search?q=${encodeURIComponent(q)}`);
+            const data = await res.json();
+            renderResults(data, q);
+        } catch {
+            scroller.innerHTML = `<div class="search-no-results">
+                <i class="fas fa-triangle-exclamation"></i>
+                <p>Could not reach server. Please try again.</p>
+            </div>`;
         }
     }
 
-    function showToast(data) {
-        const container = document.getElementById('toast-container');
-        if (!container) return;
-        
-        const toast = document.createElement('div');
-        toast.className = 'toast-notification';
-        toast.innerHTML = `
-            <div class="toast-icon">
-                <i class="fas fa-utensils"></i>
-            </div>
-            <div style="flex: 1;">
-                <div style="font-weight: 700; margin-bottom: 0.25rem;">New Package Added!</div>
-                <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.5rem;">
-                    <strong>${data.caterer_name}</strong> just added <em>"${data.package_name}"</em>
-                </div>
-                <a href="/caterers/${data.caterer_id}" style="color: var(--primary-color); font-weight: 600; font-size: 0.8rem; text-decoration: none;">
-                    View Package <i class="fas fa-arrow-right" style="font-size: 0.7rem; margin-left: 0.25rem;"></i>
-                </a>
-            </div>
-            <button onclick="this.parentElement.remove()" style="background: none; border: none; color: #cbd5e1; cursor: pointer;">
-                <i class="fas fa-times"></i>
-            </button>
-        `;
-        container.appendChild(toast);
+    function renderResults(results, q) {
+        if (!results || results.length === 0) {
+            scroller.innerHTML = `<div class="search-no-results">
+                <i class="fas fa-magnifying-glass"></i>
+                <p>No results for "<strong>${escHtml(q)}</strong>"</p>
+            </div>`;
+            return;
+        }
 
-        // Auto-dismiss after 8 seconds
-        setTimeout(() => {
-            toast.classList.add('fade-out');
-            setTimeout(() => toast.remove(), 500);
-        }, 8000);
-    }
+        // Group by type
+        const caterers = results.filter(r => r.type === 'caterer');
+        const bookings = results.filter(r => r.type === 'booking');
+        let html = '';
 
-    // Handle logout link specifically if needed
-    const logoutBtn = document.querySelector('.logout-link');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', function (e) {
-            // Let it proceed to /auth/logout
+        if (caterers.length) {
+            html += `<div class="search-section-label">Caterers</div>`;
+            html += caterers.map(r => resultItem(r, 'sri-caterer', 'fas fa-utensils')).join('');
+        }
+        if (bookings.length) {
+            html += `<div class="search-section-label">My Bookings</div>`;
+            html += bookings.map(r => resultItem(r, 'sri-booking', 'fas fa-calendar-check')).join('');
+        }
+
+        scroller.innerHTML = html;
+
+        // Attach click
+        panel.querySelectorAll('.search-result-item').forEach(el => {
+            el.addEventListener('click', () => {
+                closeSearch();
+                window.location.href = el.dataset.href;
+            });
         });
     }
-});
+
+    function resultItem(r, iconClass, defaultIcon) {
+        return `
+        <div class="search-result-item" data-href="${escHtml(r.link)}">
+            <div class="sri-icon ${iconClass}"><i class="${r.icon || defaultIcon}"></i></div>
+            <div class="sri-info">
+                <h4>${escHtml(r.title)}</h4>
+                <p>${escHtml(r.subtitle)}</p>
+            </div>
+            <i class="fas fa-arrow-right sri-arrow"></i>
+        </div>`;
+    }
+
+    function renderLoading() {
+        return `<div class="search-no-results">
+            <i class="fas fa-circle-notch fa-spin" style="color:var(--primary-color);font-size:1.5rem;"></i>
+            <p style="margin-top:0.5rem;">Searching…</p>
+        </div>`;
+    }
+
+    function updateHighlight(items) {
+        items.forEach((el, i) => el.classList.toggle('highlighted', i === highlighted));
+        if (highlighted >= 0) items[highlighted].scrollIntoView({ block: 'nearest' });
+    }
+
+    function openPanel() { panel.classList.add('open'); }
+    window.closeSearch = function () { panel.classList.remove('open'); highlighted = -1; };
+}
+
+function closeSearch() { document.getElementById('omniSearchResults')?.classList.remove('open'); }
+
+/* ============================================================
+   DROPDOWN TOGGLE (Messages / Notifications / Profile)
+   ============================================================ */
+window.toggleHeaderDropdown = function (id, triggerEl) {
+    const dropdown = document.getElementById(id);
+    if (!dropdown) return;
+
+    const wasOpen = dropdown.classList.contains('active');
+    closeAllDropdowns();
+
+    if (!wasOpen) {
+        dropdown.classList.add('active');
+        if (triggerEl) triggerEl.classList.add('active');
+    }
+};
+
+function closeAllDropdowns() {
+    document.querySelectorAll('.hdr-dropdown, .premium-dropdown').forEach(d => d.classList.remove('active'));
+    document.querySelectorAll('.hdr-btn, .hdr-profile-chip, .header-icon-btn, .header-profile-chip')
+        .forEach(b => b.classList.remove('active'));
+}
+
+function initDropdownClose() {
+    document.addEventListener('click', e => {
+        if (!e.target.closest('.header-dropdown-wrapper') && !e.target.closest('.header-profile-section')) {
+            closeAllDropdowns();
+        }
+    });
+}
+
+/* ============================================================
+   HEARTBEAT — Fetch notifications & messages every 30s
+   ============================================================ */
+function initHeartbeat() {
+    fetchIntelligence();
+    setInterval(fetchIntelligence, 30000);
+}
+
+async function fetchIntelligence() {
+    try {
+        const [notifRes, msgRes] = await Promise.all([
+            fetch('/customer/api/notifications/recent'),
+            fetch('/customer/api/messages/recent')
+        ]);
+        const notifs = await notifRes.json();
+        const msgs   = await msgRes.json();
+        renderNotifications(notifs);
+        renderMessages(msgs);
+    } catch (e) {
+        console.warn('[Heartbeat] Could not sync:', e.message);
+    }
+}
+
+function renderNotifications(data) {
+    const body  = document.getElementById('headerNotifBody');
+    const badge = document.getElementById('headerNotifBadge');
+    const label = document.getElementById('notifUnreadLabel');
+    if (!body) return;
+
+    const unread = data.filter(n => !n.is_read).length;
+
+    // Badge
+    if (badge) {
+        if (unread > 0) {
+            badge.textContent = unread < 10 ? unread : '9+';
+            badge.style.display = 'flex';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+    if (label) label.textContent = unread > 0 ? `${unread} unread` : '';
+
+    if (!data.length) {
+        body.innerHTML = `<div class="hdr-empty"><i class="fas fa-bell-slash"></i><p>You're all caught up!</p></div>`;
+        return;
+    }
+
+    body.innerHTML = data.slice(0, 8).map(n => `
+        <a href="${n.link || '#'}" class="hdr-notif-item ${n.is_read ? '' : 'unread'}">
+            <div class="hni-icon" style="background:${getNotifBg(n.type)};color:${getNotifColor(n.type)};">
+                <i class="${getNotifIcon(n.type)}"></i>
+            </div>
+            <div style="flex:1;min-width:0;">
+                <p class="hni-title">${escHtml(n.title)}</p>
+                <p class="hni-msg">${escHtml(n.message)}</p>
+                <span class="hni-time">${n.time_ago}</span>
+            </div>
+            ${!n.is_read ? '<div class="hni-dot"></div>' : ''}
+        </a>
+    `).join('');
+}
+
+function renderMessages(data) {
+    const body  = document.getElementById('headerMsgBody');
+    const badge = document.getElementById('headerMsgBadge');
+    const label = document.getElementById('msgUnreadLabel');
+    if (!body) return;
+
+    const unread = data.filter(m => !m.is_read).length;
+
+    if (badge) {
+        if (unread > 0) {
+            badge.textContent = unread < 10 ? unread : '9+';
+            badge.style.display = 'flex';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+    if (label) label.textContent = unread > 0 ? `${unread} new` : '';
+
+    if (!data.length) {
+        body.innerHTML = `<div class="hdr-empty"><i class="fas fa-comment-slash"></i><p>No messages yet</p></div>`;
+        return;
+    }
+
+    body.innerHTML = data.slice(0, 6).map(m => `
+        <a href="/customer/messages" class="hdr-msg-item">
+            <div class="hmi-avatar">${escHtml(m.sender_name[0] || '?')}</div>
+            <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span class="hmi-name">${escHtml(m.sender_name)}</span>
+                    <span class="hmi-time">${m.time_ago}</span>
+                </div>
+                <div class="hmi-text">${escHtml(m.message)}</div>
+            </div>
+            ${!m.is_read ? '<div class="hmi-unread-dot"></div>' : ''}
+        </a>
+    `).join('');
+}
+
+window.markAllNotificationsRead = async function () {
+    try {
+        await fetch('/customer/api/notifications/mark-all-read', { method: 'POST' });
+        const badge = document.getElementById('headerNotifBadge');
+        const label = document.getElementById('notifUnreadLabel');
+        if (badge) badge.style.display = 'none';
+        if (label) label.textContent = '';
+        // Refresh body
+        document.querySelectorAll('.hdr-notif-item').forEach(el => {
+            el.classList.remove('unread');
+            el.querySelector('.hni-dot')?.remove();
+        });
+    } catch (e) { console.warn('[Notif] Mark-read failed:', e); }
+};
+
+/* ============================================================
+   INACTIVITY TIMER
+   ============================================================ */
+function initInactivityTimer() {
+    const LIMIT   = 30 * 60 * 1000;
+    const WARN    = 60 * 1000;
+    let idle, countdown;
+
+    const reset = () => {
+        clearTimeout(idle); clearInterval(countdown);
+        const m = document.getElementById('inactivityModal');
+        if (m) m.style.display = 'none';
+        idle = setTimeout(warn, LIMIT - WARN);
+    };
+
+    const warn = () => {
+        const m = document.getElementById('inactivityModal');
+        if (m) m.style.display = 'flex';
+        let s = 60;
+        countdown = setInterval(() => { if (--s <= 0) { clearInterval(countdown); window.location.href = '/auth/logout?reason=inactivity'; } }, 1000);
+    };
+
+    ['mousedown','keydown','scroll','touchstart'].forEach(ev => document.addEventListener(ev, reset, true));
+    document.getElementById('stayLoggedInBtn')?.addEventListener('click', reset);
+    reset();
+}
+
+/* ============================================================
+   WEBSOCKET — Live push
+   ============================================================ */
+function initWebSocket() {
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws    = new WebSocket(`${proto}//${location.host}/ws`);
+
+    ws.onmessage = ({ data }) => {
+        try {
+            const d = JSON.parse(data);
+            if (d.type === 'notification' || d.type === 'message') fetchIntelligence();
+        } catch {}
+    };
+    ws.onclose = () => setTimeout(initWebSocket, 5000);
+}
+
+/* ============================================================
+   CONFIRM LOGOUT
+   ============================================================ */
+window.confirmLogout = function (e) {
+    e.preventDefault();
+    const url = '/auth/logout';
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Sign out?',
+            text: 'You will be signed out of your account.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: 'var(--primary-color)',
+            cancelButtonColor: '#94a3b8',
+            confirmButtonText: 'Yes, sign out',
+            cancelButtonText: 'Stay'
+        }).then(r => { if (r.isConfirmed) window.location.href = url; });
+    } else {
+        if (confirm('Sign out?')) window.location.href = url;
+    }
+};
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function escHtml(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function getNotifIcon(type) {
+    const map = { booking:'fas fa-calendar-check', payment:'fas fa-wallet', security:'fas fa-shield-check', system:'fas fa-bell', message:'fas fa-comment-dots' };
+    return map[type] || 'fas fa-bell';
+}
+function getNotifBg(type) {
+    const map = { booking:'rgba(16,185,129,0.1)', payment:'rgba(249,115,22,0.1)', security:'rgba(59,130,246,0.1)', message:'rgba(255,123,84,0.1)' };
+    return map[type] || 'var(--dm-slate-50)';
+}
+function getNotifColor(type) {
+    const map = { booking:'#10b981', payment:'#f97316', security:'#3b82f6', message:'var(--primary-color)' };
+    return map[type] || 'var(--dm-slate-400)';
+}

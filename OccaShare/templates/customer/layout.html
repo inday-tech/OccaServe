@@ -9,21 +9,13 @@
     <title>{% block title %}Dashboard - OccaServe{% endblock %}</title>
 
     <!-- Core Assets -->
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/layout.css') }}?v=3.7">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/shared/dashboard_premium.css') }}?v=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/alert_modal.css') }}?v=1.4">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v=1.1">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/layout.css') }}?v=5.2">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v=1.4">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/mobile_app.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/customer_mobile.css') }}?v=2.1">
-    <!-- Google Maps API -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDP5J8gIy1VMGZpjAwfW57jDb6omNlL-c0&libraries=places"></script>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/alert_modal.css') }}?v=1.5">
 
     {% if wconfig and wconfig.favicon_url %}
     <link rel="icon" href="{{ wconfig.favicon_url }}">
@@ -31,564 +23,359 @@
 
     {% block extra_css %}{% endblock %}
 
-    <!-- Early Sidebar State Handler (Prevents Flash) -->
-    <script>
-        (function () {
-            const isMini = localStorage.getItem('sidebar-mini') === 'true';
-            if (isMini && window.innerWidth > 1024) {
-                document.documentElement.classList.add('sidebar-is-mini');
-            }
-        })();
-    </script>
+    <style>
+        .no-transition,
+        .no-transition * {
+            transition: none !important;
+        }
+    </style>
 </head>
 
+<body class="no-transition">
+    <script>
+        (function () {
+            const isCollapsed = localStorage.getItem('customerSidebarCollapsed') === 'true';
+            if (isCollapsed) document.documentElement.classList.toggle('sidebar-icons-only', isCollapsed);
+            requestAnimationFrame(() => setTimeout(() => document.body.classList.remove('no-transition'), 100));
+        })();
+    </script>
 
-<!-- Unified Dashboard Top Bar -->
-<!-- Floating Mobile Toggle -->
-<button class="floating-burger" onclick="toggleSidebar()" aria-label="Toggle Menu">
-    <i class="fas fa-bars"></i>
-</button>
+    <!-- Sidebar Overlay (Mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
+    <!-- Floating Mobile Toggle (Arrow) -->
+    <button class="floating-burger" onclick="toggleSidebar()" aria-label="Toggle Menu">
+        <i class="fas fa-chevron-right"></i>
+    </button>
 
-<!-- Sidebar Toggle Logic -->
-<script>
-    function toggleSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('sidebarOverlay');
-        const burgerBtn = document.querySelector('.floating-burger');
-        const isMobile = window.innerWidth <= 1024;
+    <!-- ===================== SIDEBAR ===================== -->
+    <aside class="customer-sidebar" id="mainSidebar">
 
-        window.openSidebar = function () {
-            if (!sidebar) return;
-            sidebar.classList.add('sidebar-open');
-            if (overlay) overlay.classList.add('active');
-            if (burgerBtn) burgerBtn.classList.add('burger-open');
-            document.body.style.overflow = 'hidden';
-        };
+        <!-- Brand (Centered) -->
+        <div class="sidebar-brand">
+            <div class="brand-center brand-text-label">
+                <span class="brand-name">Occa<span>Serve</span></span>
+                <span class="brand-tagline">Customer Hub</span>
+            </div>
+            <button class="sidebar-collapse-btn" id="desktopToggleBtn" aria-label="Toggle Sidebar">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+        </div>
 
-        if (sidebar) {
-            if (isMobile) {
-                sidebar.classList.toggle('active');
-                if (overlay) overlay.classList.toggle('active');
-                if (burgerBtn) burgerBtn.classList.toggle('burger-open');
-                document.body.style.overflow = sidebar.classList.contains('active') ? '' : 'hidden';
-            } else {
-                const isMiniNow = document.documentElement.classList.toggle('sidebar-is-mini');
-                localStorage.setItem('sidebar-mini', isMiniNow);
-                // Also toggle 'active' for any logic still relying on it
-                sidebar.classList.toggle('active');
-            }
-        }
-    }
+        <!-- User Card -->
+        <div class="sidebar-user-card brand-text-label">
+            <div class="user-avatar">
+                {% if user and user.profile_image_url %}
+                <img src="{{ user.profile_image_url }}" alt="Profile">
+                {% else %}
+                <span>{{ user.first_name[0] }}{{ user.last_name[0] }}</span>
+                {% endif %}
+                <div class="user-status-dot"></div>
+            </div>
+            <div class="user-identity">
+                <span class="user-name">{{ user.first_name }} {{ user.last_name }}</span>
+                <span class="user-rank"><i class="fas fa-circle-check"></i> Active Customer</span>
+            </div>
+        </div>
 
-    // Initialize mobile state on load
-    document.addEventListener('DOMContentLoaded', function () {
-        if (window.innerWidth <= 1024) {
-            const sidebar = document.getElementById('sidebar');
-            // On mobile, 'active' means visible. So we start without 'active'.
-            // The CSS 'left: -285px' is the default.
-        } else if (document.documentElement.classList.contains('sidebar-is-mini')) {
-            const sidebar = document.getElementById('sidebar');
-            if (sidebar) sidebar.classList.add('active');
-        }
+        <!-- Navigation -->
+        <nav class="sidebar-nav">
 
-        const overlay = document.getElementById('sidebarOverlay');
-        if (overlay) overlay.addEventListener('click', toggleSidebar);
-    });
-</script>
+            <!-- DISCOVER -->
+            <span class="nav-section-label brand-text-label">Discover</span>
+            <ul class="nav-list">
+                <li>
+                    <a href="/customer/dashboard" class="nav-item {{ 'active' if active_page == 'overview' }}" onclick="closeSidebar()">
+                        <div class="nav-icon"><i class="fas fa-house"></i></div>
+                        <span class="nav-label">Dashboard</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/customer/marketplace" class="nav-item {{ 'active' if active_page == 'marketplace' }}" onclick="closeSidebar()">
+                        <div class="nav-icon"><i class="fas fa-store"></i></div>
+                        <span class="nav-label">Find Caterers</span>
+                    </a>
+                </li>
+            </ul>
 
-<!-- Sidebar Overlay -->
-<div class="sidebar-overlay" id="sidebarOverlay"></div>
+            <!-- MY ACTIVITY -->
+            <span class="nav-section-label brand-text-label">My Activity</span>
+            <ul class="nav-list">
+                <li>
+                    <a href="/customer/bookings" class="nav-item {{ 'active' if active_page == 'bookings' }}" onclick="closeSidebar()">
+                        <div class="nav-icon"><i class="fas fa-calendar-check"></i></div>
+                        <span class="nav-label">My Bookings</span>
+                        {% if user and user.bookings|selectattr('status', 'equalto', 'confirmed')|list|count > 0 %}
+                        <span class="nav-badge">LIVE</span>
+                        {% endif %}
+                    </a>
+                </li>
+                <li>
+                    <a href="/customer/messages" class="nav-item {{ 'active' if active_page == 'messages' }}" onclick="closeSidebar()">
+                        <div class="nav-icon"><i class="fas fa-comment-dots"></i></div>
+                        <span class="nav-label">Messages</span>
+                    </a>
+                </li>
+            </ul>
 
-<div class="dashboard-wrapper">
-    <!-- Dashboard Sidebar -->
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <div class="sidebar-toggle-row">
-                <button id="sidebarToggle" class="desktop-toggle-btn" onclick="toggleSidebar()"
-                    aria-label="Toggle Sidebar">
-                    <i class="fas fa-bars"></i>
-                </button>
+            <!-- FINANCES -->
+            <span class="nav-section-label brand-text-label">Finances</span>
+            <ul class="nav-list">
+                <li>
+                    <a href="/customer/payments" class="nav-item {{ 'active' if active_page == 'payments' }}" onclick="closeSidebar()">
+                        <div class="nav-icon"><i class="fas fa-wallet"></i></div>
+                        <span class="nav-label">Payments</span>
+                    </a>
+                </li>
+            </ul>
+
+            <!-- ACCOUNT -->
+            <span class="nav-section-label brand-text-label">Account</span>
+            <ul class="nav-list">
+                <li>
+                    <a href="/customer/reviews" class="nav-item {{ 'active' if active_page == 'reviews' }}" onclick="closeSidebar()">
+                        <div class="nav-icon"><i class="fas fa-star"></i></div>
+                        <span class="nav-label">My Reviews</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/customer/profile" class="nav-item {{ 'active' if active_page == 'profile' }}" onclick="closeSidebar()">
+                        <div class="nav-icon"><i class="fas fa-user-circle"></i></div>
+                        <span class="nav-label">My Profile</span>
+                    </a>
+                </li>
+            </ul>
+
+            <!-- SIGN OUT -->
+            <div class="nav-signout">
+                <a href="/auth/logout" class="nav-item nav-logout" onclick="confirmLogout(event)">
+                    <div class="nav-icon"><i class="fas fa-right-from-bracket"></i></div>
+                    <span class="nav-label brand-text-label">Sign Out</span>
+                </a>
             </div>
 
-            <a href="/customer/profile" class="sidebar-user-card" style="text-decoration: none;">
-                <div class="user-avatar">
-                    {% if user and user.profile_image_url %}
-                    <img src="{{ user.profile_image_url }}" alt="Profile"
-                        style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
-                    {% else %}
-                    {{ user.first_name[0] if user and user.first_name else '?' }}{{ user.last_name[0] if user and
-                    user.last_name else '' }}
-                    {% endif %}
-                </div>
-                <div class="user-info">
-                    <div class="user-name">
-                        {{ user.first_name if user else 'Guest' }} {{ user.last_name if user else '' }}</div>
-                    <div class="user-role">
-                        Customer</div>
-                </div>
-            </a>
-        </div>
-        <ul class="sidebar-menu">
-            <li>
-                <a href="/customer/dashboard" class="{{ 'active' if active_page == 'overview' }}">
-                    <i class="fas fa-th-large"></i> <span>Overview</span>
-                </a>
-            </li>
-            <li>
-                <a href="/customer/marketplace" class="{{ 'active' if active_page == 'marketplace' }}">
-                    <i class="fas fa-shop"></i> <span>Browse Caterers</span>
-                </a>
-            </li>
-            <li>
-                <a href="/customer/bookings" class="{{ 'active' if active_page == 'bookings' }}">
-                    <i class="fas fa-calendar-check"></i>
-                    <span>My Bookings</span>
-                    {% if active_page == 'bookings' and current_step %}
-                    <span class="nav-badge-booking">BOOKING</span>
-                    {% endif %}
-                </a>
-            </li>
-            <li>
-                <a href="/customer/payments" class="{{ 'active' if active_page == 'payments' }}">
-                    <i class="fas fa-credit-card"></i> <span>Payments</span>
-                </a>
-            </li>
-            <li>
-                <a href="/customer/reviews" class="{{ 'active' if active_page == 'reviews' }}">
-                    <i class="fas fa-star"></i> <span>Reviews</span>
-                </a>
-            </li>
-            <li style="position: relative;">
-                <a href="/customer/notifications" class="{{ 'active' if active_page == 'notifications' }}">
-                    <i class="fas fa-bell"></i> <span>Notifications</span>
-                    {% set unread_count = user.notifications|selectattr('is_read', 'equalto', false)|list|count if user
-                    and user.notifications else 0 %}
-                    <span id="nav-notif-badge"
-                        style="background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.65rem; display: {{ 'flex' if unread_count > 0 else 'none' }}; align-items: center; justify-content: center; margin-left: auto;">{{
-                        unread_count }}</span>
-                </a>
-            </li>
-            <li>
-                <a href="/customer/profile" class="{{ 'active' if active_page == 'profile' }}">
-                    <i class="fas fa-user-circle"></i> <span>Profile</span>
-                </a>
-            </li>
-            <li class="menu-divider"></li>
-            {% if user and user.role == 'customer' and not user.platform_feedback %}
-            <li>
-                <a href="#"
-                    onclick="document.getElementById('platformFeedbackModal').style.display='flex'; event.preventDefault();"
-                    style="color: var(--primary-color, #FF7B54); font-weight: 600;">
-                    <i class="fas fa-comment-dots"></i> <span>Leave Feedback</span>
-                </a>
-            </li>
-            {% endif %}
-            <li>
-                <a href="#" class="logout-link" onclick="confirmLogout(event)">
-                    <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
-                </a>
-            </li>
-        </ul>
+        </nav>
     </aside>
 
-    <!-- Main Dashboard Content -->
-    <main class="main-content">
-        {% block content %}{% endblock %}
-    </main>
-</div>
+    <!-- ===================== MAIN AREA ===================== -->
+    <div class="customer-main-wrapper" id="mainWrapper">
 
-<!-- Toast Container -->
-<div id="toast-container"></div>
+        <!-- ===================== HEADER ===================== -->
+        <header class="customer-header" id="mainHeader">
 
-<!-- Scripts -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="{{ url_for('static', path='js/main.js') }}?v=2.0"></script>
-<script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v=1.4"></script>
-<script>
-    function confirmLogout(e) {
-        e.preventDefault();
-        if (typeof window.showConfirm === 'function') {
-            window.showConfirm('Are you sure you want to log out?', function () {
-                window.location.href = '/auth/logout';
-            }, 'Logout', 'Yes, Logout');
-        } else {
-            if (confirm('Are you sure you want to log out?')) {
-                window.location.href = '/auth/logout';
-            }
-        }
-    }
-</script>
-
-<!-- Notification system assets -->
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/notifications.css') }}?v=2.0">
-<script src="{{ url_for('static', path='/js/caterer/notifications.js') }}?v=1.4"></script>
-
-<!-- Inactivity Auto-Logout -->
-<div id="inactivityModal" class="premium-modal-overlay">
-    <div class="premium-modal-container">
-        <div class="modal-icon-wrapper" style="background: #fffbeb; color: #f59e0b;">
-            <i class="fas fa-exclamation-triangle"></i>
-        </div>
-        <h2 class="modal-title">Session Expiring Soon</h2>
-        <p class="modal-message">You've been inactive for a while. Your session will expire in 1 minute. Would you like to stay logged in?</p>
-        <div class="modal-actions">
-            <button id="stayLoggedInBtn" class="modal-btn btn-confirm-main">Yes, keep me logged in</button>
-        </div>
-    </div>
-</div>
-
-{% if user %}
-{% include "shared/floating_chat.html" %}
-{% endif %}
-
-<!-- Platform Feedback Modal -->
-<style>
-    /* Platform Feedback Modal Styles */
-    .feedback-modal-overlay {
-        display: none;
-        position: fixed;
-        inset: 0;
-        z-index: 9999;
-        background: rgba(15, 23, 42, 0.55);
-        backdrop-filter: blur(8px);
-        align-items: center;
-        justify-content: center;
-        padding: 1rem;
-    }
-
-    .feedback-card {
-        background: white;
-        border-radius: 1rem;
-        padding: 2rem;
-        width: 100%;
-        max-width: 480px;
-        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.15);
-        position: relative;
-        animation: feedbackSlideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-
-    @keyframes feedbackSlideIn {
-        from {
-            opacity: 0;
-            transform: scale(0.9) translateY(20px);
-        }
-
-        to {
-            opacity: 1;
-            transform: scale(1) translateY(0);
-        }
-    }
-
-    .feedback-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 2rem;
-    }
-
-    .feedback-header-title {
-        margin: 0;
-        font-size: 1.15rem;
-        font-weight: 800;
-        color: #0f172a;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .feedback-header-title i {
-        color: var(--primary-color, #FF7B54);
-    }
-
-    .feedback-close {
-        width: 44px;
-        height: 44px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: none;
-        border: none;
-        cursor: pointer;
-        font-size: 1.5rem;
-        color: #94a3b8;
-        border-radius: 12px;
-        transition: background 0.2s;
-        margin-right: -0.75rem;
-    }
-
-    .feedback-close:hover {
-        background: #f1f5f9;
-        color: #0f172a;
-    }
-
-    .feedback-label {
-        font-size: 0.82rem;
-        font-weight: 800;
-        color: #475569;
-        display: block;
-        margin-bottom: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.025em;
-    }
-
-    .star-rating-row {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-        margin-bottom: 0.5rem;
-    }
-
-    .cust-fb-star {
-        font-size: 2.25rem;
-        cursor: pointer;
-        color: #e2e8f0;
-        transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-
-    .cust-fb-star.active {
-        color: #f59e0b;
-        transform: scale(1.15);
-    }
-
-    .feedback-textarea {
-        width: 100%;
-        box-sizing: border-box;
-        padding: 1rem;
-        border: 2px solid #f1f5f9;
-        border-radius: 1rem;
-        font-family: inherit;
-        font-size: 0.95rem;
-        color: #334155;
-        resize: none;
-        outline: none;
-        transition: all 0.2s;
-        background: #f8fafc;
-        margin-bottom: 0.5rem;
-    }
-
-    .feedback-textarea:focus {
-        border-color: var(--primary-color, #FF7B54);
-        background: white;
-        box-shadow: 0 4px 12px rgba(255, 123, 84, 0.05);
-    }
-
-    .feedback-footer {
-        display: flex;
-        gap: 12px;
-        margin-top: 2rem;
-    }
-
-    .btn-feedback-snooze {
-        flex: 1;
-        padding: 0.85rem;
-        background: #f1f5f9;
-        color: #475569;
-        border: none;
-        border-radius: 12px;
-        font-weight: 700;
-        font-size: 0.95rem;
-        cursor: pointer;
-        transition: background 0.2s;
-    }
-
-    .btn-feedback-submit {
-        flex: 2;
-        padding: 0.85rem;
-        background: linear-gradient(135deg, #FF7B54, #e85d3a);
-        color: white;
-        border: none;
-        border-radius: 12px;
-        font-weight: 700;
-        font-size: 1rem;
-        cursor: pointer;
-        transition: transform 0.2s, opacity 0.2s;
-        box-shadow: 0 4px 12px rgba(255, 123, 84, 0.25);
-    }
-
-    .btn-feedback-submit:active {
-        transform: scale(0.98);
-    }
-
-    @media (max-width: 480px) {
-        .feedback-card {
-            padding: 1.5rem;
-            max-width: calc(100% - 16px);
-        }
-
-        .feedback-header {
-            margin-bottom: 1.5rem;
-        }
-
-        .feedback-footer {
-            flex-direction: column-reverse;
-            gap: 8px;
-        }
-
-        .btn-feedback-submit,
-        .btn-feedback-snooze {
-            width: 100%;
-        }
-    }
-</style>
-
-<!-- Platform Feedback Modal -->
-<div id="platformFeedbackModal" class="feedback-modal-overlay">
-    <div class="feedback-card">
-        <div class="feedback-header">
-            <div>
-                <h3 class="feedback-header-title">
-                    <i class="fas fa-comment-dots"></i>Share Your Experience
-                </h3>
-                <p style="margin:4px 0 0; font-size:0.85rem; color:#64748b; font-weight: 500;">Help us improve OccaServe
-                </p>
-            </div>
-            <button type="button" class="feedback-close" onclick="closeCustomerFeedbackModal()">&times;</button>
-        </div>
-
-        <form method="POST" action="/customer/platform-feedback" id="customerFeedbackForm">
-            <input type="hidden" name="rating" id="customerRatingInput" value="5">
-
-            <div style="margin-bottom:1.5rem;">
-                <label class="feedback-label">Your Rating</label>
-                <div class="star-rating-row" id="customerStarRow">
-                    <i class="fas fa-star cust-fb-star active" data-val="1"></i>
-                    <i class="fas fa-star cust-fb-star active" data-val="2"></i>
-                    <i class="fas fa-star cust-fb-star active" data-val="3"></i>
-                    <i class="fas fa-star cust-fb-star active" data-val="4"></i>
-                    <i class="fas fa-star cust-fb-star active" data-val="5"></i>
+            <!-- LEFT: Search -->
+            <div class="header-left">
+                <div class="command-search-wrap" id="searchWrap">
+                    <div class="header-search" id="headerSearchBox">
+                        <i class="fas fa-magnifying-glass search-icon"></i>
+                        <input
+                            type="text"
+                            id="globalSearchInput"
+                            placeholder="Search caterers, bookings, events…"
+                            autocomplete="off"
+                            spellcheck="false"
+                        >
+                        <kbd class="search-kbd">Ctrl K</kbd>
+                    </div>
+                    <!-- Live Results Panel -->
+                    <div class="search-results-panel" id="omniSearchResults">
+                        <div id="searchResultsScroller"></div>
+                    </div>
                 </div>
-                <p id="customerRatingLabel" style="margin:4px 0 0; font-size:0.8rem; color:#f59e0b; font-weight:700;">5
-                    stars — Excellent</p>
             </div>
 
-            <div style="margin-bottom:1rem;">
-                <label class="feedback-label">Your Feedback <span style="color:#ef4444;">*</span></label>
-                <textarea name="comment" rows="4" required minlength="10" class="feedback-textarea"
-                    placeholder="Tell us what you like or how we can improve..."></textarea>
-                <p style="margin:0; font-size:0.75rem; color:#94a3b8; font-weight: 500;">Minimum 10 characters</p>
-            </div>
+            <!-- RIGHT: Actions -->
+            <div class="header-right">
 
-            <div class="feedback-footer">
-                <button type="button" class="btn-feedback-snooze" onclick="snoozePlatformFeedback()">
-                    Maybe Later
-                </button>
-                <button type="submit" class="btn-feedback-submit">
-                    <i class="fas fa-paper-plane" style="margin-right:6px;"></i>Submit Feedback
-                </button>
+                <!-- Messages -->
+                <div class="header-dropdown-wrapper" id="msgWrapper">
+                    <button class="hdr-btn" id="msgBtn" title="Messages"
+                        onclick="toggleHeaderDropdown('msgDropdown', this)">
+                        <i class="fas fa-comment-dots"></i>
+                        <span class="hdr-badge" id="headerMsgBadge" style="display:none;"></span>
+                    </button>
+                    <div class="hdr-dropdown" id="msgDropdown">
+                        <div class="hdr-dropdown-head">
+                            <div>
+                                <span class="hdr-dropdown-title">Messages</span>
+                                <span class="hdr-dropdown-sub" id="msgUnreadLabel"></span>
+                            </div>
+                        </div>
+                        <div class="hdr-dropdown-body" id="headerMsgBody">
+                            <div class="hdr-empty">
+                                <i class="fas fa-comment-slash"></i>
+                                <p>No messages yet</p>
+                            </div>
+                        </div>
+                        <a href="/customer/messages" class="hdr-dropdown-footer">
+                            View all messages <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="hdr-sep"></div>
+
+                <!-- Notifications -->
+                <div class="header-dropdown-wrapper" id="notifWrapper">
+                    <button class="hdr-btn" id="notifBtn" title="Notifications"
+                        onclick="toggleHeaderDropdown('notifDropdown', this)">
+                        <i class="fas fa-bell"></i>
+                        {% set unread_count = user.notifications|selectattr('is_read', 'equalto', false)|list|count if user and user.notifications else 0 %}
+                        {% if unread_count > 0 %}
+                        <span class="hdr-badge" id="headerNotifBadge">{{ unread_count if unread_count < 10 else '9+' }}</span>
+                        {% else %}
+                        <span class="hdr-badge" id="headerNotifBadge" style="display:none;"></span>
+                        {% endif %}
+                    </button>
+                    <div class="hdr-dropdown" id="notifDropdown">
+                        <div class="hdr-dropdown-head">
+                            <div>
+                                <span class="hdr-dropdown-title">Notifications</span>
+                                <span class="hdr-dropdown-sub" id="notifUnreadLabel">{% if unread_count > 0 %}{{ unread_count }} unread{% endif %}</span>
+                            </div>
+                            <button class="hdr-mark-read" onclick="markAllNotificationsRead()" title="Mark all as read">
+                                <i class="fas fa-check-double"></i> Mark all read
+                            </button>
+                        </div>
+                        <div class="hdr-dropdown-body" id="headerNotifBody">
+                            <div class="hdr-empty">
+                                <i class="fas fa-bell-slash"></i>
+                                <p>You're all caught up!</p>
+                            </div>
+                        </div>
+                        <a href="/customer/notifications" class="hdr-dropdown-footer">
+                            View all notifications <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="hdr-sep"></div>
+
+                <!-- Profile -->
+                <div class="header-dropdown-wrapper" id="profileWrapper">
+                    <button class="hdr-profile-chip" onclick="toggleHeaderDropdown('profileDropdown', this)">
+                        <div class="hdr-chip-avatar">
+                            {% if user and user.profile_image_url %}
+                            <img src="{{ user.profile_image_url }}" alt="">
+                            {% else %}
+                            {{ user.first_name[0] if user else '?' }}
+                            {% endif %}
+                        </div>
+                        <div class="hdr-chip-info">
+                            <span class="hdr-chip-name">{{ user.first_name }}</span>
+                            <span class="hdr-chip-role">Customer</span>
+                        </div>
+                        <i class="fas fa-chevron-down hdr-chip-arrow"></i>
+                    </button>
+
+                    <div class="hdr-dropdown hdr-dropdown-right" id="profileDropdown" style="width: 220px;">
+                        <!-- Profile Header -->
+                        <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--dm-slate-50);">
+                            <div style="font-weight: 800; font-size: 0.9rem; color: var(--text-dark);">{{ user.first_name }} {{ user.last_name }}</div>
+                            <div style="font-size: 0.72rem; color: var(--dm-slate-400); margin-top: 2px;">{{ user.email }}</div>
+                        </div>
+                        <ul class="hdr-profile-links">
+                            <li><a href="/customer/profile"><i class="fas fa-user"></i> My Profile</a></li>
+                            <li><a href="/customer/payments"><i class="fas fa-wallet"></i> Payments</a></li>
+                            <li><a href="/customer/bookings"><i class="fas fa-calendar-check"></i> My Bookings</a></li>
+                        </ul>
+                        <div style="height: 1px; background: var(--dm-slate-50); margin: 0.25rem 0;"></div>
+                        <ul class="hdr-profile-links">
+                            <li><a href="/auth/logout" class="link-danger" onclick="confirmLogout(event)"><i class="fas fa-right-from-bracket"></i> Sign Out</a></li>
+                        </ul>
+                    </div>
+                </div>
+
             </div>
-        </form>
+        </header>
+
+        <!-- PAGE CONTENT -->
+        <main class="customer-page-content">
+            {% block content %}{% endblock %}
+        </main>
     </div>
-</div>
 
-<script>
-    const custRatingLabels = ['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent'];
-    const custStars = document.querySelectorAll('.cust-fb-star');
-    const custRatingInput = document.getElementById('customerRatingInput');
-    const custRatingLabel = document.getElementById('customerRatingLabel');
+    <!-- ===================== GLOBAL MODALS ===================== -->
+    <div id="inactivityModal" class="admin-modal-overlay" style="display:none; z-index: 9999;">
+        <div class="admin-modal-card" style="max-width: 400px; text-align: center;">
+            <div class="modal-body-clean" style="padding: 3rem 2rem;">
+                <div
+                    style="width: 80px; height: 80px; background: #fffbeb; color: #f59e0b; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin: 0 auto 1.5rem;">
+                    <i class="fas fa-hourglass-half"></i>
+                </div>
+                <h3 style="font-weight: 900; color: var(--text-dark); margin-bottom: 0.5rem; letter-spacing: -0.02em;">
+                    Session Security</h3>
+                <p style="font-size: 0.9rem; color: var(--dm-slate-600); margin-bottom: 2rem;">You've been inactive for
+                    a while. You'll be logged out in 60 seconds.</p>
+                <button id="stayLoggedInBtn" class="btn-action-primary"
+                    style="width: 100%; background: var(--primary-color);">Keep Me Logged In</button>
+            </div>
+        </div>
+    </div>
 
-    function setCustStars(val) {
-        custStars.forEach(s => {
-            const sv = parseInt(s.dataset.val);
-            if (sv <= val) {
-                s.classList.add('active');
-            } else {
-                s.classList.remove('active');
-            }
-        });
-        custRatingInput.value = val;
-        custRatingLabel.textContent = val + ' star' + (val > 1 ? 's' : '') + ' — ' + custRatingLabels[val];
-    }
-
-    custStars.forEach(s => {
-        s.addEventListener('click', () => setCustStars(parseInt(s.dataset.val)));
-        s.addEventListener('mouseenter', () => {
-            const hoverVal = parseInt(s.dataset.val);
-            custStars.forEach(st => {
-                const sv = parseInt(st.dataset.val);
-                if (sv <= hoverVal) {
-                    st.style.color = '#fbbf24';
-                    st.style.transform = 'scale(1.15)';
-                } else {
-                    st.style.color = '#e2e8f0';
-                    st.style.transform = 'scale(1)';
-                }
-            });
-        });
-        s.addEventListener('mouseleave', () => {
-            custStars.forEach(st => {
-                st.style.color = ''; // Reset to class color
-                st.style.transform = '';
-            });
-            setCustStars(parseInt(custRatingInput.value));
-        });
-    });
-
-    function closeCustomerFeedbackModal() {
-        document.getElementById('platformFeedbackModal').style.display = 'none';
-        document.body.style.overflow = '';
-    }
-
-    function snoozePlatformFeedback() {
-        const nextShow = Date.now() + (24 * 60 * 60 * 1000); // 24 hours
-        localStorage.setItem('feedbackNudgeSnooze', nextShow);
-        closeCustomerFeedbackModal();
-    }
-
-    document.getElementById('platformFeedbackModal').addEventListener('click', function (e) {
-        if (e.target === this) closeCustomerFeedbackModal();
-    });
-
-    // Proactive Nudge Logic
     {% if user and user.role == 'customer' and not user.platform_feedback %}
-    window.addEventListener('load', function () {
-        const snoozeUntil = localStorage.getItem('feedbackNudgeSnooze');
-        const now = Date.now();
-
-        if (!snoozeUntil || now > parseInt(snoozeUntil)) {
-            setTimeout(() => {
-                const modal = document.getElementById('platformFeedbackModal');
-                if (modal && modal.style.display === 'none') {
-                    modal.style.display = 'flex';
-                    document.body.style.overflow = 'hidden';
-                }
-            }, 20000); // 20 seconds delay
-        }
-    });
+        {% set completed_bookings = user.bookings|selectattr('status', 'equalto', 'completed')|list|count %}
+        {% set total_bookings_count = user.bookings|list|count %}
+        
+        {# Intelligence Guard: Only show if they have at least 1 completed booking OR used the platform at least twice #}
+        {% if completed_bookings >= 1 or total_bookings_count >= 2 %}
+            {% include "customer/partials/feedback_modal.html" %}
+            <script>
+                document.addEventListener('DOMContentLoaded', () => {
+                    const snooze = localStorage.getItem('feedbackNudgeSnooze');
+                    if (!snooze || Date.now() > parseInt(snooze)) {
+                        setTimeout(() => {
+                            const modal = document.getElementById('platformFeedbackModal');
+                            if (modal) {
+                                modal.style.display = 'flex';
+                                document.body.style.overflow = 'hidden';
+                            }
+                        }, 5000); // Elite delay: show after 5s of interaction
+                    }
+                });
+            </script>
+        {% endif %}
     {% endif %}
 
-    setCustStars(5);
 
-    // Verification Success Toast
-    window.addEventListener('load', function () {
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('verified') === 'success') {
-            const Toast = Swal.mixin({
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-                timer: 4000,
-                timerProgressBar: true,
-                didOpen: (toast) => {
-                    toast.addEventListener('mouseenter', Swal.stopTimer)
-                    toast.addEventListener('mouseleave', Swal.resumeTimer)
-                }
+
+    {% block modals %}{% endblock %}
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="{{ url_for('static', path='/js/main.js') }}?v=4.1"></script>
+    <script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v=1.4"></script>
+    <script src="{{ url_for('static', path='/js/customer/layout.js') }}?v=3.0"></script>
+
+
+    <script>
+        function confirmLogout(e) {
+            e.preventDefault();
+            const url = "/auth/logout";
+            Swal.fire({
+                title: 'Sign Out?',
+                text: 'Are you sure you want to end your current session?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: 'var(--primary-color)',
+                cancelButtonColor: 'var(--dm-slate-400)',
+                confirmButtonText: 'Yes, Sign Out'
+            }).then((result) => {
+                if (result.isConfirmed) window.location.href = url;
             });
-
-            Toast.fire({
-                icon: 'success',
-                title: 'Account Verified Successfully!',
-                text: 'Welcome to OccaServe!'
-            });
-
-            // Clean up URL
-            const newUrl = window.location.pathname + (urlParams.toString().replace(/verified=success&?/, '').length > 0 ? '?' + urlParams.toString().replace(/verified=success&?/, '') : '');
-            window.history.replaceState({}, document.title, newUrl);
         }
-    });
-</script>
+    </script>
 
-{% block extra_js %}{% endblock %}
+    {% block extra_js %}{% endblock %}
+    <!-- Mobile Overlay -->
+    <div id="sidebarOverlay"
+        style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1050; display: none; backdrop-filter: blur(4px);"
+        onclick="closeSidebar()"></div>
+
+    <!-- Mobile FAB -->
+    <div class="mobile-fab-elite" onclick="window.location.href='/customer/marketplace'">
+        <i class="fas fa-plus"></i>
+    </div>
 </body>
 
 </html>

@@ -1,402 +1,245 @@
 {% extends "customer/layout.html" %}
 
-{% block title %}Manage Food Order #{{ booking.id }} - OccaServe{% endblock %}
+{% block title %}Manage Order #{{ booking.id }} - OccaServe Elite{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_manage.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_manage.css') }}?v=11.0">
 <style>
-    @keyframes truckMove {
-        0% { transform: translateX(-15px); }
-        50% { transform: translateX(15px); }
-        100% { transform: translateX(-15px); }
+    :root {
+        --up-slate-900: #0f172a;
+        --up-orange: #FF7B54;
+        --up-emerald: #10b981;
+        --up-amber: #f59e0b;
+        --dm-slate-50: #f8fafc;
+        --dm-slate-100: #f1f5f9;
+        --dm-slate-400: #94a3b8;
     }
-    @keyframes pulse {
-        0% { transform: scale(1); }
-        50% { transform: scale(1.1); }
-        100% { transform: scale(1); }
-    }
-    .status-badge.status-preparing { background: #5b5a9c !important; color: white !important; }
-    .status-badge.status-on_the_way { background: #0ea5e9 !important; color: white !important; }
-    .status-badge.status-in_progress { background: #f59e0b !important; color: white !important; }
-    .status-badge.status-ready_for_delivery { background: #10b981 !important; color: white !important; }
-    .status-badge.status-arrived { background: #6366f1 !important; color: white !important; }
-    .status-badge.status-setup_ongoing { background: #f97316 !important; color: white !important; }
 
-    /* Density fix for 8 steps */
-    .status-timeline.eight-steps .timeline-step .step-label {
-        font-size: 0.65rem;
-        max-width: 60px;
-        white-space: normal;
-        line-height: 1.1;
+    /* ── FOCUS MODE: Hiding Sidebar/Header while maintaining BLUR ── */
+    body.contract-modal-open .customer-sidebar,
+    body.contract-modal-open .customer-header,
+    body.contract-modal-open .floating-burger,
+    body.contract-modal-open .mobile-fab-elite {
+        display: none !important;
     }
-    .status-timeline.eight-steps .timeline-step {
-        flex: 1;
+
+    body.contract-modal-open .customer-main-wrapper {
+        margin-left: 0 !important;
+        padding: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        overflow: hidden !important;
     }
-    @media (max-width: 768px) {
-        .status-timeline.eight-steps {
-            overflow-x: auto;
-            padding-bottom: 1rem;
-            justify-content: flex-start;
-        }
-        .status-timeline.eight-steps .timeline-step {
-            min-width: 80px;
-        }
+
+    /* ── PAGE HEADER ── */
+    .dash-header { margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: flex-end; }
+    .dash-header h1 {
+        font-size: 1.6rem; font-weight: 800;
+        color: var(--up-slate-900); letter-spacing: -0.03em; margin: 0;
     }
+    .dash-header p {
+        font-size: 0.88rem; color: var(--dm-slate-400);
+        font-weight: 500; margin: 4px 0 0;
+    }
+
+    /* ── REFINED STEPPER (8 STEPS FOR ALACARTE) ── */
+    .stepper-panel {
+        background: white; border-radius: 1.25rem; border: 1px solid var(--dm-slate-100);
+        padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.04);
+    }
+    .steps-row { display: flex; justify-content: space-between; position: relative; padding: 0 1rem; }
+    .steps-row::before {
+        content: ''; position: absolute; top: 22px; left: 40px; right: 40px;
+        height: 2px; background: var(--dm-slate-100); z-index: 0;
+    }
+    .step { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; }
+    .step-dot {
+        width: 44px; height: 44px; border-radius: 12px;
+        background: #fff; border: 2px solid var(--dm-slate-100);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem; color: var(--dm-slate-300); transition: all 0.3s;
+    }
+    .step.done .step-dot { background: var(--up-emerald); border-color: var(--up-emerald); color: #fff; }
+    .step.active .step-dot { border-color: var(--up-orange); color: var(--up-orange); box-shadow: 0 0 0 4px rgba(255,123,84,0.1); }
+    .step-label { font-size: 0.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; color: var(--dm-slate-400); text-align: center; max-width: 60px; line-height: 1.1; }
+    .step.done .step-label, .step.active .step-label { color: var(--up-slate-900); }
+
+    /* ── INTELLIGENCE PANELS ── */
+    .panel { background: #fff; border-radius: 1.25rem; border: 1px solid var(--dm-slate-100); overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.04); margin-bottom: 1.25rem; }
+    .panel-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--dm-slate-50); display: flex; justify-content: space-between; align-items: center; }
+    .panel-header h3 { font-size: 0.95rem; font-weight: 850; color: var(--up-slate-900); margin: 0; text-transform: uppercase; letter-spacing: 0.05em; }
+    .panel-body { padding: 1.5rem; }
+
+    /* ── DETAIL ROWS ── */
+    .detail-item { display: flex; justify-content: space-between; padding: 0.85rem 0; border-bottom: 1px solid #f8fafc; align-items: center; }
+    .detail-item:last-child { border-bottom: none; }
+    .detail-label { font-size: 0.8rem; font-weight: 700; color: var(--dm-slate-400); text-transform: uppercase; letter-spacing: 0.04em; }
+    .detail-value { font-size: 0.95rem; font-weight: 750; color: var(--up-slate-900); text-align: right; }
+
+    /* ── FINANCIAL TERMINAL ── */
+    .financial-card { background: var(--up-slate-900); color: white; border-radius: 1.5rem; padding: 1.75rem; margin-bottom: 1.25rem; position: relative; overflow: hidden; }
+    .fin-label { font-size: 0.7rem; font-weight: 800; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.25rem; display: block; }
+    .fin-value { font-size: 1.75rem; font-weight: 900; letter-spacing: -0.02em; }
+    .fin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); }
+
+    /* ── ACTION BUTTONS ── */
+    .btn-action-elite { width: 100%; padding: 1rem; border-radius: 16px; font-weight: 850; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.85rem; border: none; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.75rem; text-decoration: none; }
+    .btn-primary-orange { background: var(--up-orange); color: white; }
+    .btn-outline-slate { background: transparent; border: 2px solid var(--dm-slate-100); color: var(--up-slate-900); }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="back-navigation">
-    <a href="/customer/bookings">
-        <i class="fas fa-arrow-left"></i> Back to Bookings
-    </a>
-</div>
-
-<div class="c-card-premium header-card">
-    <div class="manage-header-flex">
-        <div class="booking-title-section">
-            <h1 class="booking-id-text">Food Order</h1>
-            <p class="event-meta-text">Booking #{{ booking.id }} &bull; {{ booking.event_date.strftime('%B %d, %Y') }}</p>
-        </div>
-        <div class="status-badge status-{{ (booking.status or 'pending').lower().replace(' ', '_') }}">
-            {{ (booking.status or 'pending').replace('_', ' ').upper() }}
-        </div>
+<div class="dash-header">
+    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+        <a href="/customer/bookings" style="text-decoration: none; color: var(--dm-slate-400); font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fas fa-arrow-left"></i> Back to Registry
+        </a>
+        <h1>Ala Carte Food Order</h1>
+        <p>Reference: <span style="background: var(--dm-slate-100); padding: 2px 8px; border-radius: 6px; color: var(--up-slate-900); font-weight: 800;">ORD-{{ "%03d" | format(booking.id) }}</span> &bull; Verified</p>
     </div>
+    <span style="background: #ecfdf5; color: #10b981; padding: 8px 20px; border-radius: 30px; font-size: 0.75rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em;">
+        {{ booking.status|replace('_', ' ')|upper }}
+    </span>
 </div>
 
-<!-- Status Timeline (8 Steps for Food Order) -->
-<div class="c-card-premium stepper-card">
-    <div class="status-timeline eight-steps">
-        <div class="timeline-track"></div>
-        <div class="timeline-progress" style="width: {{ (((current_step_idx - 1) / 7) * 100)|int if current_step_idx else 0 }}%"></div>
-
-        <div class="timeline-step {% if current_step_idx > 1 %}completed{% elif current_step_idx == 1 %}active{% endif %}">
-            <div class="step-circle"><i class="far fa-clock"></i></div>
+<!-- ── REFINED STEPPER (8 STEPS FOR ALACARTE) ── -->
+<div class="stepper-panel">
+    <div class="steps-row">
+        <div class="step {{ 'done' if current_step_idx > 1 else 'active' }}">
+            <div class="step-dot"><i class="far fa-clock"></i></div>
             <span class="step-label">Pending</span>
         </div>
-        <div class="timeline-step {% if current_step_idx > 2 %}completed{% elif current_step_idx == 2 %}active{% endif %}">
-            <div class="step-circle"><i class="fas fa-check-circle"></i></div>
+        <div class="step {{ 'done' if current_step_idx > 2 else ('active' if current_step_idx == 2 else '') }}">
+            <div class="step-dot"><i class="fas fa-check-circle"></i></div>
             <span class="step-label">Confirmed</span>
         </div>
-        <div class="timeline-step {% if current_step_idx > 3 %}completed{% elif current_step_idx == 3 %}active{% endif %}">
-            <div class="step-circle"><i class="fas fa-utensils"></i></div>
-            <span class="step-label">Preparing Food</span>
+        <div class="step {{ 'done' if current_step_idx > 3 else ('active' if current_step_idx == 3 else '') }}">
+            <div class="step-dot"><i class="fas fa-utensils"></i></div>
+            <span class="step-label">Cooking</span>
         </div>
-        <div class="timeline-step {% if current_step_idx > 4 %}completed{% elif current_step_idx == 4 %}active{% endif %}">
-            <div class="step-circle"><i class="fas fa-box-open"></i></div>
-            <span class="step-label">Ready for Delivery</span>
+        <div class="step {{ 'done' if current_step_idx > 4 else ('active' if current_step_idx == 4 else '') }}">
+            <div class="step-dot"><i class="fas fa-box-open"></i></div>
+            <span class="step-label">Ready</span>
         </div>
-        <div class="timeline-step {% if current_step_idx > 5 %}completed{% elif current_step_idx == 5 %}active{% endif %}">
-            <div class="step-circle"><i class="fas fa-motorcycle"></i></div>
-            <span class="step-label">Out for Delivery</span>
+        <div class="step {{ 'done' if current_step_idx > 5 else ('active' if current_step_idx == 5 else '') }}">
+            <div class="step-dot"><i class="fas fa-motorcycle"></i></div>
+            <span class="step-label">Transit</span>
         </div>
-        <div class="timeline-step {% if current_step_idx > 6 %}completed{% elif current_step_idx == 6 %}active{% endif %}">
-            <div class="step-circle"><i class="fas fa-map-marker-alt"></i></div>
+        <div class="step {{ 'done' if current_step_idx > 6 else ('active' if current_step_idx == 6 else '') }}">
+            <div class="step-dot"><i class="fas fa-map-marker-alt"></i></div>
             <span class="step-label">Arrived</span>
         </div>
-        <div class="timeline-step {% if current_step_idx > 7 %}completed{% elif current_step_idx == 7 %}active{% endif %}">
-            <div class="step-circle"><i class="fas fa-hard-hat"></i></div>
-            <span class="step-label">Setup Ongoing</span>
-        </div>
-        <div class="timeline-step {% if current_step_idx > 8 %}completed{% elif current_step_idx == 8 %}active{% endif %}">
-            <div class="step-circle"><i class="fas fa-star"></i></div>
-            <span class="step-label">Completed</span>
+        <div class="step {{ 'active' if current_step_idx == 8 else '' }}">
+            <div class="step-dot"><i class="fas fa-star"></i></div>
+            <span class="step-label">Done</span>
         </div>
     </div>
 </div>
 
-<div class="manage-grid">
+<div class="manage-grid" style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 1.25rem;">
     <div class="left-col">
-        <!-- Event Details -->
-        <div class="c-card-premium">
-            <h2 class="section-title"><i class="far fa-calendar-alt"></i> Order Details</h2>
-            <div class="detail-row">
-                <span class="detail-label"><i class="far fa-calendar-alt" style="margin-right: 0.5rem; color: #94a3b8;"></i> Type</span>
-                <span class="detail-value">Ala Carte Order</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label"><i class="far fa-clock" style="margin-right: 0.5rem; color: #94a3b8;"></i> Delivery Time</span>
-                <span class="detail-value">
-                    {{ booking.event_date.strftime('%B %d, %Y') }} at
-                    {{ booking.event_time.strftime('%I:%M %p') if booking.event_time else 'TBD' }}
-                </span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label"><i class="far fa-map-marker-alt" style="margin-right: 0.5rem; color: #94a3b8;"></i> Fulfillment</span>
-                <span class="detail-value">{{ booking.venue_address or 'STORE PICKUP' }}</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label"><i class="far fa-users" style="margin-right: 0.5rem; color: #94a3b8;"></i> Quantity</span>
-                <span class="detail-value">{{ booking.guest_count }} items</span>
+        <div class="panel">
+            <div class="panel-header"><h3>Fulfillment Details</h3></div>
+            <div class="panel-body">
+                <div class="detail-item">
+                    <span class="detail-label">Expected Arrival</span>
+                    <span class="detail-value">{{ booking.event_date.strftime('%B %d, %Y') }} at {{ booking.event_time.strftime('%I:%M %p') if booking.event_time else 'TBD' }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Fulfillment Venue</span>
+                    <span class="detail-value">{{ booking.venue_address or 'STORE PICKUP' }}</span>
+                </div>
             </div>
         </div>
 
-        <!-- Menu Details -->
-        <div class="c-card-premium menu-sidebar-card">
-            <h2 class="section-title"><i class="far fa-file-alt"></i> Ordered Items</h2>
-            <div class="menu-items-grid">
+        <div class="panel">
+            <div class="panel-header"><h3>Ordered Items</h3></div>
+            <div class="panel-body">
                 {% for b_item in booking.selected_items %}
-                <div class="menu-item-tag" style="background: #f8fafc; border-radius: 0.75rem; padding: 0.75rem 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
-                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                         <i class="fas fa-check-circle" style="color: #10b981;"></i>
-                        <span class="item-name-text" style="font-size: 0.95rem; font-weight: 500; color: #1e293b;">
-                            {{ b_item.menu_item.name }}
-                        </span>
-                    </div>
+                <div style="background: #fff; border: 1px solid var(--dm-slate-100); padding: 0.75rem; border-radius: 12px; display: flex; align-items: center; gap: 10px; margin-bottom: 0.5rem;">
+                    <i class="fas fa-check-circle" style="color: var(--up-emerald);"></i>
+                    <span style="font-size: 0.85rem; font-weight: 700; color: var(--up-slate-900);">{{ b_item.menu_item.name }}</span>
                 </div>
                 {% endfor %}
             </div>
         </div>
     </div>
 
-    <div class="right-col sticky-right">
-        <!-- Action Center -->
-        <div class="c-card-premium action-center-premium brand-action-card">
-            <h2 class="section-title"><i class="fas fa-bolt"></i> Order Status & Payment</h2>
-            
-            <div class="action-landscape-grid">
-                <div class="action-financials-col">
-                    <div class="payment-summary-block">
-                        <div class="detail-row">
-                            <span class="detail-label">Total Amount</span>
-                            <span class="detail-value" style="color: var(--primary-color);">
-                                ₱{{ "{:,.2f}".format(booking.total_amount) }}
-                            </span>
-                        </div>
-                        
-                        <div class="detail-row">
-                            <span class="detail-label">Payment Method</span>
-                            <span class="detail-value">{{ booking.payment_method or 'TBD' }}</span>
-                        </div>
-                        
-                        <div class="detail-row balance-highlight-row-pro">
-                            <span class="detail-label" style="font-weight: 700; color: #1e293b;">Payment Status</span>
-                            <span class="detail-value" style="color: #10b981; font-size: 1.1rem; font-weight: 800;">
-                                {{ booking.payment_status|upper }}
-                            </span>
-                        </div>
-                    </div>
-
-                    {% if booking.quotation and booking.quotation.status in ['sent', 'signed'] %}
-                    <div class="contract-button-container-p" style="margin-top: 1rem;">
-                        <button onclick="openContractModal('{{ booking.id }}')" class="btn-contract-premium">
-                            <i class="fas fa-file-contract"></i> View My Contract
-                        </button>
-                    </div>
-                    {% endif %}
-                </div>
-
-                <div class="action-main-content-col" style="margin-top: 2rem; border-top: 1px solid #f1f5f9; padding-top: 2rem;">
-                    {% if booking.status == 'pending' %}
-                    <div style="text-align: center; padding: 1rem;">
-                        <div style="font-size: 2.5rem; color: #3b82f6; margin-bottom: 1rem;">
-                            <i class="fas fa-clock"></i>
-                        </div>
-                        <h4 style="font-size: 1.1rem; font-weight: 700; color: #1e293b; margin-bottom: 0.5rem;">Awaiting Order Approval</h4>
-                        <p style="color: #64748b; font-size: 0.9rem;">Your order has been sent. The caterer will review and confirm your order details shortly.</p>
-                    </div>
-
-                    {% elif booking.status == 'preparing' %}
-                    <div class="fulfillment-card" style="text-align: center; padding: 2rem; background: #f8fafc; border-radius: 1.25rem; border: 1px solid #e2e8f0;">
-                         <div class="prep-animation" style="margin-bottom: 1.5rem;">
-                            <i class="fas fa-utensils fa-3x" style="color: #f97316; animation: pulse 2s infinite;"></i>
-                         </div>
-                         <h4 style="font-weight: 800; color: #1e293b; margin-bottom: 0.5rem;">Preparing Your Food</h4>
-                         <p style="color: #64748b; font-size: 0.9rem;">The kitchen has started cooking your food. Stay tuned!</p>
-                    </div>
-
-                    {% elif booking.status == 'ready_for_delivery' %}
-                    <div class="fulfillment-card" style="text-align: center; padding: 2rem; background: #ecfdf5; border-radius: 1.25rem; border: 1px solid #10b981;">
-                         <div class="ready-animation" style="margin-bottom: 1.5rem;">
-                            <i class="fas fa-box-open fa-3x" style="color: #10b981; animation: pulse 2s infinite;"></i>
-                         </div>
-                         <h4 style="font-weight: 800; color: #065f46; margin-bottom: 0.5rem;">Ready for Fulfillment!</h4>
-                         <p style="color: #065f46; font-size: 0.9rem;">Your order is packed and awaiting pickup or delivery.</p>
-                    </div>
-
-                    {% elif booking.status == 'on_the_way' %}
-                    <div class="fulfillment-card" style="text-align: center; padding: 2rem; background: #eff6ff; border-radius: 1.25rem; border: 2px solid #3b82f6; position: relative; overflow: hidden;">
-                         <div class="transit-animation" style="margin-bottom: 1.5rem;">
-                            <i class="fas fa-shipping-fast fa-3x" style="color: #3b82f6; transform: translateX(-10px); animation: truckMove 1.5s infinite linear;"></i>
-                         </div>
-                         <h4 style="font-weight: 800; color: #1e40af; margin-bottom: 0.5rem;">Your Order is Out!</h4>
-                         <p style="color: #1e40af; font-size: 0.95rem; font-weight: 600;">The delivery team is on the way to your location.</p>
-                    </div>
-
-                    {% elif booking.status == 'arrived' %}
-                    <div class="fulfillment-card" style="text-align: center; padding: 2rem; background: #f5f3ff; border-radius: 1.25rem; border: 2px solid #6366f1;">
-                         <div class="arrived-animation" style="margin-bottom: 1.5rem;">
-                            <i class="fas fa-map-marker-check fa-3x" style="color: #6366f1;"></i>
-                         </div>
-                         <h4 style="font-weight: 800; color: #4338ca; margin-bottom: 0.5rem;">Caterer has Arrived! 📍</h4>
-                         <p style="color: #4338ca; font-size: 0.9rem;">The courier is at your location.</p>
-                    </div>
-
-                    {% elif booking.status == 'setup_ongoing' %}
-                    <div class="fulfillment-card" style="text-align: center; padding: 2rem; background: #fff7ed; border-radius: 1.25rem; border: 2px solid #f97316;">
-                         <div class="setup-animation" style="margin-bottom: 1.5rem;">
-                            <i class="fas fa-hat-chef fa-3x" style="color: #f97316; animation: pulse 2s infinite;"></i>
-                         </div>
-                         <h4 style="font-weight: 800; color: #9a3412; margin-bottom: 0.5rem;">Order Unpacking / Setup</h4>
-                         <p style="color: #9a3412; font-size: 0.9rem;">Final checks and turnover in progress.</p>
-                    </div>
-
-                    {% elif booking.status == 'completed' %}
-                    <div style="text-align: center; padding: 1rem; background: #f0fdf4; border-radius: 0.75rem; border: 1px solid #bbf7d0; color: #15803d;">
-                        <i class="fas fa-check-circle" style="margin-right: 0.5rem;"></i> Order Completed!
-                    </div>
-                     {% if not booking.review %}
-                        <a href="/customer/feedback/{{ booking.id }}" class="btn-primary-premium" style="width: 100%; margin-top: 1rem; text-decoration: none; display: flex; align-items: center; justify-content: center;">Leave a Review</a>
-                     {% endif %}
-
-                    {% elif booking.status == 'cancelled' %}
-                    <div style="text-align: center; padding: 1rem; background: #fef2f2; border-radius: 0.75rem; border: 1px solid #fecaca; color: #991b1b;">
-                        <i class="fas fa-times-circle" style="margin-right: 0.5rem;"></i> This order was cancelled.
-                    </div>
-                    {% endif %}
-
-                    {# NEW: Paymongo Integration #}
-                    {% if booking.status != 'cancelled' and booking.status != 'draft' and booking.payment_status != 'paid' %}
-                    <div class="paymongo-action-box" style="margin-top: 1.5rem; padding: 1.5rem; background: #fff; border-radius: 1rem; border: 2px dashed #e2e8f0; text-align: center;">
-                        <img src="https://static.paymongo.com/images/paymongo-logo.png" alt="Paymongo" style="height: 24px; margin-bottom: 1rem; opacity: 0.8;">
-                        
-                        {% if booking.payment_status == 'pending' %}
-                            <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 1rem;">Securely pay the reservation fee to confirm your order.</p>
-                            <button onclick="initiatePaymongo('dp')" class="btn-primary-premium" id="payBtn" style="width: 100%; justify-content: center; background: #4f46e5;">
-                                <i class="fas fa-shield-check" style="margin-right: 0.5rem;"></i> Pay Downpayment (₱{{ "{:,.2f}".format(booking.reservation_fee or 0) }})
-                            </button>
-                        {% elif booking.payment_status == 'deposit_paid' %}
-                            <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 1rem;">Pay the remaining balance for your order.</p>
-                            <button onclick="initiatePaymongo('balance')" class="btn-primary-premium" id="payBtn" style="width: 100%; justify-content: center; background: #4f46e5;">
-                                <i class="fas fa-wallet" style="margin-right: 0.5rem;"></i> Pay Balance (₱{{ "{:,.2f}".format(booking.total_amount - (booking.reservation_fee or 0)) }})
-                            </button>
-                        {% endif %}
-                        
-                        <div id="payLoading" style="display: none; margin-top: 1rem; color: #6366f1;">
-                            <i class="fas fa-spinner fa-spin"></i> Generating secure link...
-                        </div>
-                    </div>
-                    {% endif %}
-                </div>
+    <div class="right-col">
+        <div class="financial-card">
+            <span class="fin-label">Order Total</span>
+            <div class="fin-value">₱{{ "{:,.2f}".format(booking.total_amount) }}</div>
+            <div class="fin-grid">
+                <div><span class="fin-label">Method</span><b style="font-size: 0.9rem;">{{ booking.payment_method|upper }}</b></div>
+                <div style="text-align: right;"><span class="fin-label">Status</span><b style="font-size: 0.9rem; color: var(--up-emerald);">{{ booking.payment_status|upper }}</b></div>
             </div>
         </div>
 
-        <!-- Contract View Modal -->
-        <div id="contractModal" class="modal-overlay-p" style="display: none;">
-            <div class="modal-content-p">
-                <div class="modal-header-p">
-                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                        <div class="secure-badge-pro"><i class="fas fa-shield-check"></i> Certified Secure</div>
-                        <h2 style="font-size: 1.25rem; font-weight: 800; color: #1e293b; margin: 0; letter-spacing: -0.5px;">Digital Service Agreement</h2>
-                    </div>
-                    <div style="display: flex; gap: 1rem;">
-                        <button onclick="printContract('{{ booking.id }}')" class="btn-outline-premium" style="padding: 0.6rem 1.25rem; border-radius: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                            <i class="fas fa-print"></i> Print / Save PDF
-                        </button>
-                        <button onclick="closeContractModal()" style="background: none; border: none; font-size: 1.5rem; color: #94a3b8; cursor: pointer; padding: 0.5rem; transition: color 0.2s;">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="modal-body-p" id="contractModalBody">
-                    <div style="text-align: center; padding: 4rem;">
-                        <i class="fas fa-circle-notch fa-spin fa-3x" style="color: var(--primary-color);"></i>
-                        <p style="margin-top: 1.25rem; color: #64748b; font-weight: 500;">Loading secure document...</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Caterer Card -->
-        <div class="c-card-premium caterer-card-premium">
-            <h2 class="section-title"><i class="far fa-user"></i> Your Caterer</h2>
-            <div class="caterer-mini-profile">
-                <div class="caterer-logo-wrapper">
-                    <img src="{{ booking.caterer.logo_url or url_for('static', path='/img/default_caterer.png') }}"
-                        class="caterer-logo" alt="Logo">
-                    <div class="verified-badge-mini"><i class="fas fa-check"></i></div>
-                </div>
-                <div class="caterer-id-info">
-                    <h3 class="caterer-name-h3">{{ booking.caterer.business_name }}</h3>
-                    <div class="caterer-status-pro">Official Partner</div>
-                </div>
-            </div>
-            <div class="caterer-actions-grid">
-                <a href="/caterers/{{ booking.caterer.id }}" class="btn-outline-premium">View Profile</a>
-                <a href="mailto:{{ booking.caterer.user.email }}" class="btn-secondary-premium">Contact</a>
+        <div class="panel">
+            <div class="panel-header"><h3>Intelligence Actions</h3></div>
+            <div class="panel-body" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                {% if booking.payment_status != 'paid' %}
+                <button onclick="initiatePaymongo('dp')" class="btn-action-elite btn-primary-orange" style="background: #4f46e5;">Pay Now <i class="fas fa-shield-check"></i></button>
+                {% endif %}
+                <a href="javascript:void(0)" onclick="openContractModal('{{ booking.id }}')" class="btn-action-elite btn-outline-slate">View Contract <i class="fas fa-file-contract"></i></a>
+                <a href="/customer/messages?caterer_id={{ booking.caterer_id }}" class="btn-action-elite btn-outline-slate">Message <i class="fas fa-comments"></i></a>
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
+
+<!-- Contract View Modal -->
+<div id="contractModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.8); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(15px);">
+    <div style="background: #fff; width: 95%; max-width: 850px; height: 90vh; border-radius: 24px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+        <div style="padding: 1.25rem 2rem; border-bottom: 1px solid var(--dm-slate-100); display: flex; justify-content: space-between; align-items: center; background: #fff;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="background: rgba(16,185,129,0.1); color: var(--up-emerald); padding: 4px 12px; border-radius: 8px; font-size: 0.7rem; font-weight: 850; text-transform: uppercase; letter-spacing: 0.05em;">
+                    <i class="fas fa-shield-check"></i> Focus Mode Active
+                </div>
+                <h2 style="font-family: 'Poppins', sans-serif; font-size: 1.1rem; font-weight: 900; color: var(--up-slate-900); margin: 0;">Digital Service Agreement</h2>
+            </div>
+            <button onclick="closeContractModal()" style="background: var(--dm-slate-50); border: none; width: 36px; height: 36px; border-radius: 10px; color: var(--dm-slate-400); cursor: pointer; transition: all 0.2s;"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="contractModalBody" style="flex: 1; overflow-y: auto; padding: 0; background: #f1f5f9;">
+            <div style="text-align: center; padding: 5rem;">
+                <i class="fas fa-circle-notch fa-spin fa-2x" style="color: var(--up-orange);"></i>
+                <p style="margin-top: 1rem; color: var(--dm-slate-400); font-weight: 600;">Opening secure document archive...</p>
+            </div>
+        </div>
+    </div>
+</div>
 
 {% block extra_js %}
 <script>
-async function initiatePaymongo(type) {
-    const btn = document.getElementById('payBtn');
-    const loading = document.getElementById('payLoading');
-    
-    btn.disabled = true;
-    loading.style.display = 'block';
-    
-    const formData = new FormData();
-    formData.append('payment_type', type);
-    
-    try {
-        const response = await fetch(`/api/bookings/{{ booking.id }}/pay`, {
-            method: 'POST',
-            body: formData
-        });
-        
-        const data = await response.json();
-        if (data.success && data.checkout_url) {
-            window.location.href = data.checkout_url;
-        } else {
-            alert(data.message || data.detail || 'Failed to generate payment link. Please try again.');
-            btn.disabled = false;
-            loading.style.display = 'none';
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('An unexpected error occurred. Please refresh and try again.');
-        btn.disabled = false;
-        loading.style.display = 'none';
+    async function initiatePaymongo(type) {
+        const formData = new FormData();
+        formData.append('payment_type', type);
+        try {
+            const response = await fetch(`/api/bookings/{{ booking.id }}/pay`, { method: 'POST', body: formData });
+            const data = await response.json();
+            if (data.success && data.checkout_url) window.location.href = data.checkout_url;
+            else alert(data.message || 'Error.');
+        } catch (e) { alert('Conn Error.'); }
     }
-}
 
-function openContractModal(bookingId) {
-    const modal = document.getElementById('contractModal');
-    const body = document.getElementById('contractModalBody');
-    modal.style.display = 'flex';
-    
-    fetch(`/api/bookings/${bookingId}/contract/content`)
-        .then(response => response.text())
-        .then(html => {
-            body.innerHTML = html;
-        })
-        .catch(err => {
-            body.innerHTML = '<p style="color: #ef4444; text-align: center;">Failed to load contract content.</p>';
-            console.error(err);
-        });
-}
+    function openContractModal(bookingId) {
+        document.body.classList.add('contract-modal-open'); // HIDE Sidebar/Header
+        const modal = document.getElementById('contractModal');
+        const body = document.getElementById('contractModalBody');
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        fetch(`/api/bookings/${bookingId}/contract/content`)
+            .then(response => response.text())
+            .then(html => { body.innerHTML = html; })
+            .catch(err => { body.innerHTML = `<p style="color:#ef4444;text-align:center;padding:3rem;">Retrieval Failed.</p>`; });
+    }
 
-function closeContractModal() {
-    document.getElementById('contractModal').style.display = 'none';
-}
-
-function printContract(bookingId) {
-    const url = `/customer/bookings/${bookingId}/contract`;
-    const printWindow = window.open(url, '_blank');
-    printWindow.onload = function() {
-        printWindow.print();
-    };
-}
-
-// Close on outside click
-window.onclick = function(event) {
-    const modal = document.getElementById('contractModal');
-    if (event.target == modal) closeContractModal();
-}
+    function closeContractModal() {
+        document.body.classList.remove('contract-modal-open');
+        document.getElementById('contractModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
 </script>
+{% endblock %}
 {% endblock %}

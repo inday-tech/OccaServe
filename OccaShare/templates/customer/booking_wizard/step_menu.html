@@ -1,16 +1,208 @@
 {% extends "customer/booking_wizard/wizard_base.html" %}
 
-{% block wizard_title %}Select Package{% endblock %}
+{% block wizard_title %}Select Your Experience{% endblock %}
 
 {% block step_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_menu.css') }}">
+<style>
+    :root {
+        --wiz-primary: {{ caterer.primary_color if caterer.primary_color else '#FF7B54' }};
+        --wiz-slate-50: #f8fafc;
+        --wiz-slate-100: #f1f5f9;
+        --wiz-slate-200: #e2e8f0;
+        --wiz-slate-400: #94a3b8;
+        --wiz-slate-600: #475569;
+        --wiz-text-dark: #0f172a;
+    }
+
+    .wizard-header-content {
+        text-align: center;
+        margin-bottom: 3rem;
+        animation: fadeInDown 0.6s ease-out;
+    }
+
+    .wizard-title {
+        font-family: 'Poppins', sans-serif;
+        font-size: 2.25rem;
+        font-weight: 900;
+        color: var(--wiz-text-dark);
+        margin-bottom: 0.75rem;
+        letter-spacing: -0.02em;
+    }
+
+    .wizard-subtitle {
+        font-family: 'Poppins', sans-serif;
+        font-size: 1rem;
+        color: var(--wiz-slate-600);
+        max-width: 600px;
+        margin: 0 auto;
+        line-height: 1.6;
+    }
+
+    .packages-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 3rem;
+    }
+
+    .package-wizard-card {
+        background: #fff;
+        border: 1px solid var(--wiz-slate-200);
+        border-radius: 20px;
+        overflow: hidden;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    .package-wizard-card:hover {
+        transform: translateY(-8px);
+        border-color: var(--wiz-primary);
+        box-shadow: 0 20px 40px rgba(255, 123, 84, 0.1);
+    }
+
+    .package-card-image {
+        height: 200px;
+        background-size: cover;
+        background-position: center;
+        position: relative;
+    }
+
+    .package-card-price-badge {
+        position: absolute;
+        bottom: 1.25rem;
+        right: 1.25rem;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(8px);
+        padding: 0.6rem 1rem;
+        border-radius: 12px;
+        font-family: 'Poppins', sans-serif;
+        font-weight: 900;
+        color: var(--wiz-primary);
+        font-size: 1.15rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+
+    .price-unit {
+        font-size: 0.7rem;
+        color: var(--wiz-slate-400);
+        text-transform: uppercase;
+        margin-left: 2px;
+    }
+
+    .package-card-content {
+        padding: 1.75rem;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        background: linear-gradient(180deg, #fff 0%, var(--wiz-slate-50) 100%);
+    }
+
+    .package-card-title {
+        font-family: 'Poppins', sans-serif;
+        font-size: 1.25rem;
+        font-weight: 850;
+        color: var(--wiz-text-dark);
+        margin-bottom: 0.75rem;
+        line-height: 1.3;
+    }
+
+    .package-card-description {
+        font-family: 'Poppins', sans-serif;
+        font-size: 0.85rem;
+        color: var(--wiz-slate-600);
+        line-height: 1.6;
+        margin-bottom: 1.5rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .btn-experience {
+        width: 100%;
+        background: var(--wiz-text-dark);
+        color: #fff;
+        border: none;
+        padding: 1rem;
+        border-radius: 14px;
+        font-family: 'Poppins', sans-serif;
+        font-weight: 800;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        transition: all 0.3s;
+    }
+
+    .btn-experience:hover {
+        background: var(--wiz-primary);
+        transform: scale(1.02);
+        box-shadow: 0 8px 20px rgba(255, 123, 84, 0.3);
+    }
+
+    .custom-journey-footer {
+        margin-top: 4rem;
+        border-top: 1px dashed var(--wiz-slate-200);
+        padding-top: 3rem;
+        text-align: center;
+    }
+
+    .custom-journey-card {
+        background: #fff;
+        padding: 2rem;
+        border-radius: 20px;
+        border: 1px solid var(--wiz-slate-200);
+        display: inline-block;
+        max-width: 500px;
+        width: 100%;
+        text-align: center;
+    }
+
+    .custom-journey-text {
+        font-family: 'Poppins', sans-serif;
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: var(--wiz-text-dark);
+        margin-bottom: 1rem;
+        text-align: center;
+    }
+
+    .contact-chef-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--wiz-primary);
+        text-decoration: none;
+        font-weight: 900;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        transition: gap 0.2s;
+    }
+
+    .contact-chef-link:hover {
+        gap: 12px;
+    }
+
+    @keyframes fadeInDown {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
 {% endblock %}
 
 {% block wizard_content %}
 <div class="wizard-header-content">
-    <h2 class="wizard-title font-playfair">Select Your Catering Package</h2>
-    <p class="wizard-subtitle">Choose the perfect curated experience from {{ caterer.business_name }} to begin your
-        journey.</p>
+    <h2 class="wizard-title">Select Your Catering Package</h2>
+    <p class="wizard-subtitle">Choose the perfect curated experience from <strong>{{ caterer.business_name }}</strong> to begin your culinary journey.</p>
 </div>
 
 <div class="packages-grid">
@@ -25,11 +217,11 @@
         </div>
         <div class="package-card-content">
             <h4 class="package-card-title">{{ pkg.name }}</h4>
-            <p class="package-card-description">{{ pkg.description }}</p>
+            <p class="package-card-description">{{ pkg.description or 'A premium curated experience tailored for your special event.' }}</p>
 
             <form action="/bookings/step/menu" method="POST" style="margin-top: auto;">
                 <input type="hidden" name="package_id" value="{{ pkg.id }}">
-                <button type="submit" class="btn-primary package-card-btn">
+                <button type="submit" class="btn-experience">
                     Select Experience <i class="fas fa-arrow-right"></i>
                 </button>
             </form>
@@ -43,8 +235,8 @@
         <p class="custom-journey-text">
             Seeking a customized culinary journey?
         </p>
-        <a href="/caterers/{{ caterer.id }}" class="contact-chef-link">
-            Contact Master Chef <i class="fas fa-comment-alt-edit"></i>
+        <a href="/customer/marketplace/{{ caterer.id }}" class="contact-chef-link">
+            Return to Profile <i class="fas fa-arrow-left-long"></i>
         </a>
     </div>
 </div>

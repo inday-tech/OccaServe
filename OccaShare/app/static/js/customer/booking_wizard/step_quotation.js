@@ -69,9 +69,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
 window.toggleApplyButton = function () {
     const agree = document.getElementById('agree_terms');
+    const checkPayment = document.getElementById('check_payment');
+    const checkCancel = document.getElementById('check_cancel');
     const btn = document.getElementById('btn-apply-sig');
-    if (agree && btn) {
-        btn.disabled = !(agree.checked && sigPad && !sigPad.isEmpty());
+    
+    if (agree && checkPayment && checkCancel && btn) {
+        const allChecked = agree.checked && checkPayment.checked && checkCancel.checked;
+        btn.disabled = !(allChecked && sigPad && !sigPad.isEmpty());
     }
 };
 
@@ -112,6 +116,10 @@ window.applySignatureLocal = function () {
     const agreeCheck = document.getElementById('agree_terms');
     if (btnApply) btnApply.disabled = true;
     if (agreeCheck) agreeCheck.disabled = true;
+    const checkPayment = document.getElementById('check_payment');
+    const checkCancel = document.getElementById('check_cancel');
+    if (checkPayment) checkPayment.disabled = true;
+    if (checkCancel) checkCancel.disabled = true;
 
     if (window.showToast) {
         window.showToast("Review your signature on the contract below, then click Finalize.", "success");
@@ -139,6 +147,10 @@ window.clearSignature = function () {
             agreeCheck.checked = false;
             agreeCheck.disabled = false;
         }
+        const checkPayment = document.getElementById('check_payment');
+        const checkCancel = document.getElementById('check_cancel');
+        if (checkPayment) { checkPayment.checked = false; checkPayment.disabled = false; }
+        if (checkCancel) { checkCancel.checked = false; checkCancel.disabled = false; }
         if (btnApply) btnApply.disabled = true;
         if (finalizeBtn) finalizeBtn.style.display = 'none';
         if (applyPrompt) applyPrompt.style.display = 'flex';
@@ -198,7 +210,17 @@ let sigPad; // Declare globally
 
 window.submitSignature = async function () {
     if (!sigPad || sigPad.isEmpty()) {
-        if (window.showError) window.showError('Please sign before finalizing.', 'Error'); else Swal.fire('Error', 'Please sign before finalizing.', 'error');
+        Swal.fire({
+            icon: 'error',
+            title: 'Action Required',
+            text: 'Please sign before finalizing.',
+            customClass: {
+                popup: 'up-swal-popup',
+                title: 'up-swal-title',
+                html: 'up-swal-html',
+                confirmButton: 'up-swal-confirm'
+            }
+        });
         return;
     }
 
@@ -208,6 +230,11 @@ window.submitSignature = async function () {
         title: 'Finalizing Agreement...',
         text: 'Securing your booking and contract',
         allowOutsideClick: false,
+        customClass: {
+            popup: 'up-swal-popup',
+            title: 'up-swal-title',
+            html: 'up-swal-html'
+        },
         didOpen: () => { Swal.showLoading(); }
     });
 
@@ -231,7 +258,12 @@ window.submitSignature = async function () {
                         title: 'Contract Successfully Signed!',
                         text: 'Redirecting to payment step...',
                         timer: 2000,
-                        showConfirmButton: false
+                        showConfirmButton: false,
+                        customClass: {
+                            popup: 'up-swal-popup',
+                            title: 'up-swal-title',
+                            html: 'up-swal-html'
+                        }
                     }).then(() => window.location.href = `/bookings/step/payment/${window.bookingId}`);
                 }
             } else {
@@ -244,7 +276,13 @@ window.submitSignature = async function () {
                         icon: 'success',
                         title: 'Your Signature Applied!',
                         text: 'The contract is now awaiting the caterer\'s signature. We will notify you once they sign.',
-                        confirmButtonText: 'View Status'
+                        confirmButtonText: 'View Status',
+                        customClass: {
+                            popup: 'up-swal-popup',
+                            title: 'up-swal-title',
+                            html: 'up-swal-html',
+                            confirmButton: 'up-swal-confirm'
+                        }
                     }).then(() => window.location.reload());
                 }
             }

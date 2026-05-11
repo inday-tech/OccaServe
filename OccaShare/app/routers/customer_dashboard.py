@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request, Form, Up
 from typing import Optional
 from fastapi.responses import HTMLResponse, RedirectResponse
 from ..core.templates import templates
+from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session
 from datetime import date
 import os
@@ -127,16 +128,30 @@ async def customer_dashboard(
     conversations_list = list(conversations_dict.values())[:4]
 
 
+    # Elite Tier Data Additions
+    reviews_count = db.query(models.Review).filter(models.Review.user_id == user.id).count()
+    
+    total_spent = sum(float(b.total_amount or 0) for b in bookings if b.status != 'cancelled')
+    
+    # Get the single most recent active booking for the Journey Tracker
+    latest_booking = db.query(models.Booking).filter(
+        models.Booking.user_id == user.id,
+        models.Booking.status.in_(['confirmed', 'preparing', 'processing', 'out_for_delivery'])
+    ).order_by(models.Booking.created_at.desc()).first()
+
     return templates.TemplateResponse("customer/dashboard.html", {
         "request": request,
         "user": user,
-        "bookings": display_bookings,
-        "total_count": total_bookings,
+        "recent_bookings": bookings[:5], # Use the raw objects for the elite table if possible, or display_bookings
+        "total_bookings": total_bookings,
         "upcoming_count": upcoming_count,
+        "reviews_count": reviews_count,
+        "total_spent": total_spent,
+        "latest_booking": latest_booking,
         "current_page": page,
         "total_pages": total_pages,
         "active_page": "overview",
-        "conversations": conversations_list,
+        "recent_messages": conversations_list, # Map to the template's expected name
         "client_id": f"dashboard_{user.id}"
     })
 
@@ -212,10 +227,27 @@ async def customer_bookings(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
+    # Calculate Intelligence Stats
+    total_reservations = len(user.bookings)
+    total_spent = sum([b.total_amount for b in user.bookings if b.status in ['confirmed', 'completed'] and b.total_amount])
+    
+    # Calculate Pending Obligations (remaining balance of active bookings)
+    pending_obligations = 0
+    for b in user.bookings:
+        if b.status in ['pending', 'pending_payment', 'awaiting_payment']:
+            # Total minus whatever was already paid (reservation fee)
+            balance = float(b.total_amount or 0) - float(b.reservation_fee or 0)
+            pending_obligations += max(0, balance)
+
     return templates.TemplateResponse("customer/bookings.html", {
         "request": request,
         "user": user,
-        "bookings": user.bookings,
+        "bookings": sorted(user.bookings, key=lambda x: x.id, reverse=True),
+        "stats": {
+            "total_reservations": total_reservations,
+            "total_spent": total_spent,
+            "pending_obligations": pending_obligations
+        },
         "active_page": "bookings"
     })
 
@@ -667,13 +699,35 @@ async def caterer_detail(
         caterer.profile_views = (caterer.profile_views or 0) + 1
         db.commit()
 
+    # Filter active data only
+    active_packages = [p for p in caterer.packages if p.is_active]
+    active_menu = [m for m in caterer.menu_items if not m.is_archived]
+
+    # Check for previous relationship
+    has_previous_bookings = db.query(models.Booking).filter(
+        models.Booking.user_id == user.id,
+        models.Booking.caterer_id == caterer.id,
+        models.Booking.status != 'cancelled'
+    ).first() is not None
+
+    # Check for previous communication
+    has_previous_communication = db.query(models.ChatMessage).filter(
+        or_(
+            and_(models.ChatMessage.sender_id == user.id, models.ChatMessage.receiver_id == caterer.user_id),
+            and_(models.ChatMessage.sender_id == caterer.user_id, models.ChatMessage.receiver_id == user.id)
+        )
+    ).first() is not None
+
     return templates.TemplateResponse("customer/caterer_profile_view.html", {
         "request": request, 
         "caterer": caterer,
-        "packages": caterer.packages,
+        "packages": active_packages,
+        "active_menu": active_menu,
         "gallery_items": caterer.gallery_items,
         "reviews": caterer.reviews,
         "user": user,
+        "has_previous_bookings": has_previous_bookings,
+        "has_previous_communication": has_previous_communication,
         "active_page": "marketplace",
         "nav_page": "caterers"
     })
@@ -835,6 +889,122 @@ async def run_customer_verification_bg(user_id: int, client_id: str, id_path: st
         })
     finally:
         db.close()
+
+@router.get("/api/notifications/recent")
+async def get_recent_notifications(
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(customer_only)
+):
+    notifs = db.query(models.Notification).filter(
+        models.Notification.user_id == user.id
+    ).order_by(models.Notification.created_at.desc()).limit(5).all()
+    
+    results = []
+    for n in notifs:
+        # Safe Timezone Handling
+        from datetime import datetime, timezone
+        now = datetime.now(n.created_at.tzinfo) if n.created_at.tzinfo else datetime.now()
+        diff = now - n.created_at
+        if diff.days > 0:
+            time_ago = f"{diff.days}d ago"
+        elif diff.seconds > 3600:
+            time_ago = f"{diff.seconds // 3600}h ago"
+        else:
+            time_ago = f"{max(1, diff.seconds // 60)}m ago"
+            
+        results.append({
+            "id": n.id,
+            "title": n.title,
+            "message": n.message,
+            "is_read": n.is_read,
+            "link": n.link,
+            "time_ago": time_ago
+        })
+    return results
+
+@router.get("/api/messages/recent")
+async def get_recent_messages(
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(customer_only)
+):
+    from sqlalchemy import or_
+    # Get last 5 distinct conversations
+    all_msgs = db.query(models.ChatMessage).filter(
+        or_(models.ChatMessage.sender_id == user.id, models.ChatMessage.receiver_id == user.id)
+    ).order_by(models.ChatMessage.created_at.desc()).all()
+
+    results = []
+    seen_peers = set()
+    for msg in all_msgs:
+        peer_id = msg.receiver_id if msg.sender_id == user.id else msg.sender_id
+        if peer_id not in seen_peers:
+            seen_peers.add(peer_id)
+            peer = db.query(models.User).get(peer_id)
+            if peer:
+                # Time ago calculation
+                from datetime import datetime, timezone
+                now = datetime.now(msg.created_at.tzinfo) if msg.created_at.tzinfo else datetime.now()
+                diff = now - msg.created_at
+                if diff.days > 0: time_ago = f"{diff.days}d"
+                elif diff.seconds > 3600: time_ago = f"{diff.seconds // 3600}h"
+                else: time_ago = f"{max(1, diff.seconds // 60)}m"
+
+                content = msg.content or ""
+                if msg.message_type == 'image': content = "📷 Photo"
+                elif msg.message_type == 'file': content = "📄 File"
+
+                results.append({
+                    "sender_name": peer.caterer_profile.business_name if peer.role == 'caterer' and peer.caterer_profile else f"{peer.first_name} {peer.last_name}",
+                    "message": content,
+                    "time_ago": time_ago,
+                    "is_read": msg.is_read if msg.receiver_id == user.id else True
+                })
+        if len(results) >= 5: break
+    return results
+
+@router.get("/api/omni-search")
+async def customer_omni_search(
+    q: str,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(customer_only)
+):
+    if not q or len(q) < 2:
+        return []
+
+    search_filter = f"%{q}%"
+    results = []
+
+    # 1. Search Caterers
+    caterers = db.query(models.CatererProfile).filter(
+        models.CatererProfile.verification_status == "Verified",
+        models.CatererProfile.business_name.ilike(search_filter)
+    ).limit(5).all()
+
+    for c in caterers:
+        results.append({
+            "title": c.business_name,
+            "subtitle": f"{c.city or 'Various Locations'} • {c.rating or 5.0} ⭐",
+            "icon": "fas fa-utensils",
+            "link": f"/customer/marketplace/{c.id}",
+            "type": "caterer"
+        })
+
+    # 2. Search My Bookings
+    bookings = db.query(models.Booking).filter(
+        models.Booking.user_id == user.id,
+        models.Booking.event_name.ilike(search_filter)
+    ).limit(5).all()
+
+    for b in bookings:
+        results.append({
+            "title": b.event_name or "Event Booking",
+            "subtitle": f"ID: {b.id} • {b.status.replace('_', ' ').title()}",
+            "icon": "fas fa-calendar-check",
+            "link": f"/customer/bookings/manage/{b.id}",
+            "type": "booking"
+        })
+
+    return results
 
 @router.websocket("/verification/ws/{client_id}")
 async def verification_ws(

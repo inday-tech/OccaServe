@@ -1,11 +1,10 @@
 :root {
-    --primary-color: #1e293b;
-    --primary-rgb: 30, 41, 59;
-    --secondary-color: #171717;
-    --white: #ffffff;
-    --bg-premium: #ffffff;
-    --card-shadow: 0 4px 20px -5px rgba(0, 0, 0, 0.05);
-    --border-light: #f1f1f1;
+    --wiz-base-primary: #1e293b;
+    --wiz-base-secondary: #171717;
+    --wiz-base-white: #ffffff;
+    --wiz-base-bg: #ffffff;
+    --wiz-base-shadow: 0 4px 20px -5px rgba(0, 0, 0, 0.05);
+    --wiz-base-border: #f1f1f1;
 }
 
 .wizard-container {
@@ -22,7 +21,7 @@
     display: flex;
     justify-content: center;
     gap: 3.5rem;
-    margin-bottom: 3.5rem;
+    margin-bottom: 2rem;
     position: relative;
     padding: 0 1rem;
 }
@@ -80,7 +79,7 @@
 }
 
 .step-item-p.active .step-label-p {
-    color: var(--secondary-color);
+    color: var(--wiz-base-secondary);
 }
 
 .step-item-p.completed .step-icon-p {
@@ -97,6 +96,58 @@
 /* Wizard Content Wrap */
 .wizard-content-wrap {
     animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ── DIAMOND STANDARD SWEETALERT2 OVERRIDES ── */
+.up-swal-popup {
+    border-radius: 24px !important;
+    padding: 2.5rem !important;
+    font-family: 'Poppins', sans-serif !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(15px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.15) !important;
+}
+
+.up-swal-title {
+    font-weight: 900 !important;
+    font-size: 1.5rem !important;
+    color: #0f172a !important;
+    letter-spacing: -0.02em !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.up-swal-html {
+    font-weight: 500 !important;
+    font-size: 0.95rem !important;
+    color: #64748b !important;
+    line-height: 1.6 !important;
+}
+
+/* Custom Emerald Spinner for Premium Loading */
+.swal2-loader {
+    border-color: #10b981 transparent #10b981 transparent !important;
+    border-width: 3px !important;
+    width: 3.5rem !important;
+    height: 3.5rem !important;
+    margin: 2rem auto !important;
+}
+
+.up-swal-confirm {
+    background: #0f172a !important;
+    border-radius: 12px !important;
+    padding: 0.8rem 2.5rem !important;
+    font-weight: 800 !important;
+    font-size: 0.9rem !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.2) !important;
+    transition: all 0.3s ease !important;
+}
+
+.up-swal-confirm:hover {
+    transform: translateY(-3px) !important;
+    box-shadow: 0 15px 30px rgba(15, 23, 42, 0.3) !important;
 }
 
 @keyframes fadeInUp {
@@ -154,7 +205,7 @@
 }
 
 .btn-wizard-back:hover {
-    color: var(--secondary-color);
+    color: var(--wiz-base-secondary);
 }
 
 .btn-wizard-next {
@@ -163,8 +214,8 @@
     gap: 0.75rem;
     padding: 1rem 2rem;
     border-radius: 0.75rem;
-    background: var(--primary-color);
-    color: var(--white);
+    background: var(--wiz-base-primary);
+    color: var(--wiz-base-white);
     font-weight: 700;
     border: none;
     cursor: pointer;
@@ -189,7 +240,7 @@
     display: block;
     font-weight: 700;
     margin-bottom: 0.75rem;
-    color: var(--secondary-color);
+    color: var(--wiz-base-secondary);
     font-size: 0.9rem;
     text-transform: uppercase;
     letter-spacing: 0.02em;
@@ -204,14 +255,14 @@
     font-size: 1rem;
     transition: all 0.2s ease;
     background: #f8fafc;
-    color: var(--secondary-color);
+    color: var(--wiz-base-secondary);
 }
 
 .form-input:focus,
 .minimal-input:focus {
     outline: none;
-    border-color: var(--primary-color);
-    background: var(--white);
+    border-color: var(--wiz-base-primary);
+    background: var(--wiz-base-white);
     box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.03);
 }
 

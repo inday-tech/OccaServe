@@ -216,6 +216,28 @@ class OccaChat {
         const date = new Date(dateStr);
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
+
+    async uploadFile(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch('/api/chat/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.detail || "Upload failed");
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error("Upload Error:", error);
+            return null;
+        }
+    }
 }
 
 // Global helper to load chat history

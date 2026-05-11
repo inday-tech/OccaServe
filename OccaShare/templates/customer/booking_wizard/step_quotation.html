@@ -58,100 +58,101 @@
             <div class="section-divider">
                 <span class="divider-text">Official Quotation</span>
             </div>
-            <!-- CARD 1: LANDSCAPE QUOTATION (COMPACT) -->
-            <section class="up-card quotation-landscape animate-up">
-                <div class="landscape-layout-grid-compact">
-                    <!-- Column 1: Package & Inclusions -->
-                    <div class="land-col-info">
-                        <div class="land-header-compact">
-                            <h4 class="package-title-sakto">{{ quotation.package_details.name }}</h4>
-                            <span class="land-qty-badge">{{ quotation.package_details.guest_count }} Pax</span>
-                        </div>
+            <div class="q-top-grid">
+                <!-- CARD 1: LANDSCAPE QUOTATION (COMPACT) -->
+                <section class="up-card quotation-landscape animate-up" style="margin: 0;">
+                    <div class="landscape-layout-grid-compact">
+                        <!-- Column 1: Package & Inclusions -->
+                        <div class="land-col-info">
+                            <div class="land-header-compact">
+                                <h4 class="package-title-sakto">{{ quotation.package_details.name }}</h4>
+                                <span class="land-qty-badge">{{ quotation.package_details.guest_count }} Pax</span>
+                            </div>
 
-                        <div class="inclusions-row-sakto">
-                            {% if package and package.inclusions %}
-                            {% if package.inclusions is mapping %}
-                            {% for k, v in package.inclusions.items() if v %}
-                            {% if loop.index <= 4 %} <span class="inc-pill-sakto"><i class="fas fa-check"></i> {{ k
-                                }}</span>
-                                {% endif %}
-                                {% endfor %}
-                                {% else %}
-                                {% for inc in package.inclusions[:4] %}
-                                <span class="inc-pill-sakto"><i class="fas fa-check"></i> {{ inc }}</span>
-                                {% endfor %}
-                                {% endif %}
-                                {% endif %}
-                        </div>
-                    </div>
-
-                    <!-- Column 2: Pricing Summary -->
-                    <div class="land-col-pricing-compact">
-                        <div class="compact-price-rows">
-                            <div class="price-row-item-small">
-                                <span class="label">Base Amount</span>
-                                <span class="value">₱{{ "{:,.2f}".format(quotation.package_details.base_amount or
-                                    (quotation.package_details.unit_price * quotation.package_details.guest_count))
+                            <div class="inclusions-row-sakto">
+                                {% if package and package.inclusions %}
+                                {% if package.inclusions is mapping %}
+                                {% for k, v in package.inclusions.items() if v %}
+                                {% if loop.index <= 4 %} <span class="inc-pill-sakto"><i class="fas fa-check"></i> {{ k
                                     }}</span>
+                                    {% endif %}
+                                    {% endfor %}
+                                    {% else %}
+                                    {% for inc in package.inclusions[:4] %}
+                                    <span class="inc-pill-sakto"><i class="fas fa-check"></i> {{ inc }}</span>
+                                    {% endfor %}
+                                    {% endif %}
+                                    {% endif %}
                             </div>
-                            {% if quotation.addons %}
-                            {% for addon in quotation.addons %}
-                            <div class="price-row-item-small">
-                                <span class="label">{{ addon.name }}</span>
-                                <span class="value">+₱{{ "{:,.2f}".format(addon.price) }}</span>
+                        </div>
+
+                        <!-- Column 2: Pricing Summary -->
+                        <div class="land-col-pricing-compact">
+                            <div class="compact-price-rows">
+                                <div class="price-row-item-small">
+                                    <span class="label">Base Amount</span>
+                                    <span class="value">₱{{ "{:,.2f}".format(quotation.package_details.base_amount or
+                                        (quotation.package_details.unit_price * quotation.package_details.guest_count))
+                                        }}</span>
+                                </div>
+                                {% if quotation.addons %}
+                                {% for addon in quotation.addons %}
+                                <div class="price-row-item-small">
+                                    <span class="label">{{ addon.name }}</span>
+                                    <span class="value">+₱{{ "{:,.2f}".format(addon.price) }}</span>
+                                </div>
+                                {% endfor %}
+                                {% endif %}
                             </div>
-                            {% endfor %}
-                            {% endif %}
                         </div>
                     </div>
-                </div>
-            </section>
+                </section>
 
-            <!-- CARD 2: LANDSCAPE DEPOSIT SELECTION (NEW) -->
-            <section class="up-card landscape-deposit-card animate-up" style="animation-delay: 0.1s;">
-                <div class="land-dep-grid">
-                    <div class="land-dep-info">
-                        <h4 class="dep-title-sakto">Reservation Deposit</h4>
-                        <p class="dep-desc-sakto">Select your preferred downpayment percentage to secure this booking.
-                        </p>
-                    </div>
+                <!-- CARD 2: LANDSCAPE DEPOSIT SELECTION (UPGRADED) -->
+                <section class="up-card landscape-deposit-card animate-up" style="animation-delay: 0.1s; margin: 0;">
+                    <div class="land-dep-grid" style="grid-template-columns: 1fr;">
+                        <div class="land-dep-info">
+                            <h4 class="dep-title-sakto" style="font-family: 'Poppins', sans-serif; font-weight: 850; font-size: 0.9rem;">Payment Terms</h4>
+                        </div>
 
-                    <div class="land-dep-options">
-                        <div class="dp-option-landscape {% if quotation.customer_signature and quotation.downpayment_percent == 30 %}active{% endif %}"
-                            {% if not quotation.customer_signature %}onclick="setDPTier(30)" {% endif %}>
-                            <span class="dp-pct">30%</span>
-                            <span class="dp-label">Starter</span>
+                        <div class="land-dep-options" style="gap: 0.5rem; margin: 0.5rem 0;">
+                            <div class="dp-option-landscape {% if quotation.customer_signature and quotation.downpayment_percent == 30 %}active{% endif %}"
+                                {% if not quotation.customer_signature %}onclick="setDPTier(30)" {% endif %} style="padding: 0.4rem;">
+                                <span class="dp-pct" style="font-size: 0.85rem;">30%</span>
+                                <span class="dp-label" style="font-size: 0.55rem;">Deposit</span>
+                            </div>
+                            <div class="dp-option-landscape {% if quotation.customer_signature and quotation.downpayment_percent == 50 %}active{% endif %}"
+                                {% if not quotation.customer_signature %}onclick="setDPTier(50)" {% endif %} style="padding: 0.4rem;">
+                                <span class="dp-pct" style="font-size: 0.85rem;">50%</span>
+                                <span class="dp-label" style="font-size: 0.55rem;">Standard</span>
+                            </div>
+                            <div class="dp-option-landscape {% if quotation.customer_signature and quotation.downpayment_percent == 100 %}active{% endif %}"
+                                {% if not quotation.customer_signature %}onclick="setDPTier(100)" {% endif %} style="padding: 0.4rem;">
+                                <span class="dp-pct" style="font-size: 0.85rem;">100%</span>
+                                <span class="dp-label" style="font-size: 0.55rem;">Full Pay</span>
+                            </div>
                         </div>
-                        <div class="dp-option-landscape {% if quotation.customer_signature and quotation.downpayment_percent == 40 %}active{% endif %}"
-                            {% if not quotation.customer_signature %}onclick="setDPTier(40)" {% endif %}>
-                            <span class="dp-pct">40%</span>
-                            <span class="dp-label">Standard</span>
-                        </div>
-                        <div class="dp-option-landscape {% if quotation.customer_signature and quotation.downpayment_percent == 50 %}active{% endif %}"
-                            {% if not quotation.customer_signature %}onclick="setDPTier(50)" {% endif %}>
-                            <span class="dp-pct">50%</span>
-                            <span class="dp-label">Priority</span>
-                        </div>
-                    </div>
 
-                    <div class="land-dep-total">
-                        <div class="dep-total-label">Payable Today</div>
-                        <div class="dep-total-value" id="deposit-val">₱{{ "{:,.2f}".format(quotation.total_amount *
-                            quotation.downpayment_percent / 100) if quotation.customer_signature else '---' }}</div>
+                        <div class="land-dep-total" style="flex-direction: row; justify-content: space-between; align-items: center; border-left: none; padding-left: 0; padding-top: 0.5rem; border-top: 1px dashed var(--up-border);">
+                            <div class="dep-total-label" style="font-family: 'Poppins', sans-serif; font-weight: 800; font-size: 0.65rem;">Payable Today</div>
+                            <div class="dep-total-value" id="deposit-val" style="font-family: 'Poppins', sans-serif; font-weight: 900; color: var(--up-emerald-500); font-size: 1rem;">₱{{ "{:,.2f}".format(quotation.total_amount *
+                                quotation.downpayment_percent / 100) if quotation.customer_signature else '---' }}</div>
+                        </div>
+                        
                         {% if not quotation.customer_signature %}
-                        <button type="button" class="btn-proceed-contract" onclick="scrollToContract()">
-                            Review Contract <i class="fas fa-arrow-down"></i>
+                        <button type="button" class="btn-proceed-contract" onclick="scrollToContract()" style="font-family: 'Poppins', sans-serif; font-weight: 800; padding: 0.6rem; font-size: 0.75rem; margin-top: 0.5rem; width: 100%;">
+                            Sign Agreement <i class="fas fa-arrow-down"></i>
                         </button>
                         {% endif %}
                     </div>
-                </div>
 
-                <!-- Hidden inputs for JS -->
-                <input type="hidden" id="dp-percent-input"
-                    value="{{ quotation.downpayment_percent if quotation.customer_signature else '' }}">
-                <input type="hidden" id="signed-input"
-                    value="{{ 'true' if quotation.customer_signature else 'false' }}">
-            </section>
+                    <!-- Hidden inputs for JS -->
+                    <input type="hidden" id="dp-percent-input"
+                        value="{{ quotation.downpayment_percent if quotation.customer_signature else '' }}">
+                    <input type="hidden" id="signed-input"
+                        value="{{ 'true' if quotation.customer_signature else 'false' }}">
+                </section>
+            </div>
 
             <!-- SECTION 2: DIGITAL SERVICE AGREEMENT -->
             <div id="contract-section" class="section-divider">
@@ -163,16 +164,7 @@
                 authorize this agreement.
             </p>
 
-            <section class="up-card contract-portrait animate-up" style="animation-delay: 0.4s;">
-                <div class="contract-doc-header">
-                    <div class="doc-badge">Official Document</div>
-                    <h3 class="doc-title">Catering Service Agreement</h3>
-                    <p class="doc-subtitle">Official Agreement between <strong>{{ booking.caterer.business_name
-                            }}</strong> (Service Provider) and <strong>{{ booking.user.first_name }} {{
-                            booking.user.last_name }}</strong> (Client).
-                    </p>
-                </div>
-
+            <section class="up-card contract-portrait animate-up" style="animation-delay: 0.4s; padding: 1rem;">
                 <div class="contract-doc-content">
                     {% include "shared/contract_content_partial.html" %}
                 </div>
@@ -198,6 +190,25 @@
                         </div>
                         {% else %}
                         <div class="signature-input-box">
+                            <!-- Policy Checkpoints -->
+                            <div class="policy-checkpoints-pro">
+                                <h4 class="policy-title" style="font-family: 'Poppins', sans-serif; font-weight: 850; font-size: 0.85rem; margin-bottom: 1rem; color: var(--up-slate-900);">Agreement Acknowledgements</h4>
+                                <div class="check-list-pro">
+                                    <label class="check-box-pro">
+                                        <input type="checkbox" class="policy-check" id="check_payment" onchange="toggleApplyButton()">
+                                        <span>I understand the payment policy & deadlines</span>
+                                    </label>
+                                    <label class="check-box-pro">
+                                        <input type="checkbox" class="policy-check" id="check_cancel" onchange="toggleApplyButton()">
+                                        <span>I acknowledge the cancellation & refund terms</span>
+                                    </label>
+                                    <label class="check-box-pro">
+                                        <input type="checkbox" class="policy-check" id="agree_terms" onchange="toggleApplyButton()">
+                                        <span style="font-weight: 800; color: var(--up-slate-900);">I hereby agree to the Service Contract</span>
+                                    </label>
+                                </div>
+                            </div>
+
                             <div class="signature-pad-premium">
                                 <canvas id="signature-pad"></canvas>
                                 <div id="sig-placeholder">Sign above the name</div>
@@ -209,17 +220,13 @@
                             </div>
 
                             <div class="sig-footer-actions">
-                                <button type="button" class="btn-clear" onclick="clearSignature()">
+                                <button type="button" class="btn-clear" onclick="clearSignature()" style="font-family: 'Poppins', sans-serif; font-weight: 700;">
                                     <i class="fas fa-eraser"></i> Clear Pad
                                 </button>
                                 <button type="button" id="btn-apply-sig" class="btn-primary-sm" disabled
-                                    onclick="applySignatureLocal()">
-                                    <i class="fas fa-check"></i> Apply to Contract
+                                    onclick="applySignatureLocal()" style="font-family: 'Poppins', sans-serif; font-weight: 800;">
+                                    <i class="fas fa-check"></i> Apply Signature
                                 </button>
-                                <label class="check-box-pro">
-                                    <input type="checkbox" id="agree_terms" onchange="toggleApplyButton()">
-                                    <span>I hereby agree to the terms</span>
-                                </label>
                             </div>
                         </div>
                         {% endif %}
@@ -229,29 +236,30 @@
 
             <!-- SECTION 3: FINAL ACTIONS -->
             <div class="q-page-footer-actions animate-up" style="animation-delay: 0.5s;">
-                {% if not quotation.customer_signature %}
-                <button type="button" id="btn-sign" class="btn-confirm-up-main js-loading" style="display: none;"
-                    onclick="submitSignature()">
-                    <i class="fas fa-file-signature"></i> Finalize &amp; Confirm Contract
-                </button>
-                <div id="apply-prompt" class="status-waiting-pill"
-                    style="background: #f8fafc; color: #64748b; border: 1px dashed #cbd5e1;">
-                    <i class="fas fa-info-circle"></i> Please apply your signature above to finalize
-                </div>
-                {% elif not quotation.caterer_signature %}
-                <div class="status-waiting-pill">
-                    <i class="fas fa-clock fa-spin"></i> Pending Caterer Counter-Signature
-                </div>
-                {% else %}
-                <a href="/bookings/step/payment/{{ quotation.booking_id }}" class="btn-confirm-up-main">
-                    Proceed to Secure Payment <i class="fas fa-arrow-right"></i>
-                </a>
-                {% endif %}
-
                 <div class="footer-nav-links">
                     <a href="/bookings/step/kyc/{{ quotation.booking_id }}" class="btn-back-soft">
                         <i class="fas fa-chevron-left"></i> Modify Booking Details
                     </a>
+                </div>
+
+                <div class="q-footer-main-cta">
+                    {% if not quotation.customer_signature %}
+                    <button type="button" id="btn-sign" class="btn-confirm-up-main js-loading" style="display: none;"
+                        onclick="submitSignature()">
+                        <i class="fas fa-file-signature"></i> Finalize &amp; Confirm Contract
+                    </button>
+                    <div id="apply-prompt" class="status-waiting-pill">
+                        <i class="fas fa-info-circle"></i> Please apply your signature above to finalize
+                    </div>
+                    {% elif not quotation.caterer_signature %}
+                    <div class="status-waiting-pill">
+                        <i class="fas fa-clock fa-spin"></i> Pending Caterer Counter-Signature
+                    </div>
+                    {% else %}
+                    <a href="/bookings/step/payment/{{ quotation.booking_id }}" class="btn-confirm-up-main">
+                        Proceed to Secure Payment <i class="fas fa-arrow-right"></i>
+                    </a>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -260,9 +268,9 @@
 {% endblock %}
 
 {% block step_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}?v=1.1">
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_quotation.css') }}?v=1.4">
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/wizard_navigation.css') }}?v=1.1">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}?v=9.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_quotation.css') }}?v=9.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/wizard_navigation.css') }}?v=9.0">
 {% endblock %}
 
 {% block step_js %}

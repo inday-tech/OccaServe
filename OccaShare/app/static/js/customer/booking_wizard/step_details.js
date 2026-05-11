@@ -344,6 +344,78 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // --- 7. Menu Swapping Logic ---
+    let activeSlotIndex = null;
+
+    window.openSwapModal = function(category, slotIndex) {
+        activeSlotIndex = slotIndex;
+        const modal = document.getElementById('swapModal');
+        const container = document.getElementById('swapOptionsContainer');
+        const title = document.getElementById('modalCategoryTitle');
+
+        title.innerText = `Swap ${category}`;
+        container.innerHTML = '<p class="form-subtitle">Loading items...</p>';
+        modal.style.display = 'flex';
+
+        // Filter items by category
+        const options = window.allMenuItems.filter(i => i.category === category && !i.is_addon);
+
+        if (options.length === 0) {
+            container.innerHTML = `<p class="form-subtitle">No other ${category} options available from this caterer.</p>`;
+            return;
+        }
+
+        container.innerHTML = '';
+        options.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'swap-option-card';
+            card.innerHTML = `
+                <div class="soc-info">
+                    <span class="soc-name">${item.name}</span>
+                    <span class="soc-cat">${item.category}</span>
+                </div>
+                <button type="button" class="btn-select-swap" onclick="selectSwapItem(${item.id}, '${item.name.replace(/'/g, "\\'")}')">Select</button>
+            `;
+            card.onclick = () => selectSwapItem(item.id, item.name);
+            container.appendChild(card);
+        });
+    };
+
+    window.closeSwapModal = function() {
+        document.getElementById('swapModal').style.display = 'none';
+        activeSlotIndex = null;
+    };
+
+    window.selectSwapItem = function(itemId, itemName) {
+        if (!activeSlotIndex) return;
+
+        const slot = document.getElementById(`slot-${activeSlotIndex}`);
+        const input = slot.querySelector('.slot-input');
+        const nameSpan = document.getElementById(`name-${activeSlotIndex}`);
+
+        if (input && nameSpan) {
+            input.value = itemId;
+            nameSpan.innerText = itemName;
+            
+            // Visual feedback
+            slot.style.borderColor = 'var(--wiz-primary)';
+            slot.style.background = 'rgba(255, 123, 84, 0.05)';
+            setTimeout(() => {
+                slot.style.background = 'var(--wiz-slate-50)';
+            }, 500);
+        }
+
+        closeSwapModal();
+    };
+
+    // Close modal on click outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('swapModal');
+        if (event.target == modal) {
+            closeSwapModal();
+        }
+    };
+
     // Initial run
     updateCalculator();
     loadExistingLocation();

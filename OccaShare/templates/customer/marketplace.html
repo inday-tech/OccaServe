@@ -4,7 +4,7 @@
 {% block title %}Discover Catering Partners - OccaServe{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/marketplace.css') }}?v=2.1">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/marketplace.css') }}?v=2.2">
 <style>
     /* ============================================
        MARKETPLACE — MOBILE-FIRST REDESIGN
@@ -222,9 +222,7 @@
         object-fit: cover;
         border-radius: 8px;
     }
-</style>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     /* ── Phone: ≤ 480px refinements ── */
     @media (max-width: 480px) {
         .main-content {
@@ -263,31 +261,25 @@
         }
     }
 </style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 {% endblock %}
 
 {% block content %}
-<!-- Premium Compact Hero (Redesigned matching Packages) -->
-<div class="page-header"
-    style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 2.25rem;">
-    <div>
-        <h1>Discover Elite Caterers</h1>
-        <p>Hand-picked professionals for your unforgettable events.</p>
+<!-- Premium Marketplace Header (Diamond Standard v5) -->
+<div class="page-header-elite" style="margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: flex-end;">
+    <div class="page-title-group">
+        <h1 style="font-size: 1.6rem; font-weight: 800; color: var(--text-dark); letter-spacing: -0.03em; margin: 0;">Discover Elite Caterers</h1>
+        <p style="font-size: 0.88rem; font-weight: 500; color: var(--dm-slate-400); margin: 4px 0 0;">Hand-picked professionals for your unforgettable events.</p>
     </div>
-    <div class="header-actions" style="display: flex; gap: 1rem; align-items: center;">
-        <div class="flex items-center gap-2 mr-4">
-            <button id="gridViewBtn" onclick="toggleView('grid')" class="view-toggle-btn active">
-                <i class="fas fa-th-large"></i> Grid
+    <div class="header-actions" style="display: flex; gap: 0.75rem; align-items: center;">
+        <div style="display: flex; background: #fff; border: 1px solid var(--dm-slate-200); border-radius: 12px; padding: 4px; gap: 4px;">
+            <button id="gridViewBtn" onclick="toggleView('grid')" class="view-toggle-btn active" style="border: none; padding: 6px 14px; border-radius: 8px; font-size: 0.8rem;">
+                <i class="fas fa-grid-2"></i> Grid
             </button>
-            <button id="mapViewBtn" onclick="toggleView('map')" class="view-toggle-btn">
-                <i class="fas fa-map-marked-alt"></i> Map
+            <button id="mapViewBtn" onclick="toggleView('map')" class="view-toggle-btn" style="border: none; padding: 6px 14px; border-radius: 8px; font-size: 0.8rem;">
+                <i class="fas fa-map-location-dot"></i> Map
             </button>
-        </div>
-        <div class="search-box-pro"
-            style="display: flex; align-items: center; gap: 0.75rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0 1.25rem; height: 48px; box-sizing: border-box; width: 340px; transition: all 0.2s ease;">
-            <i class="fas fa-search" style="color: #94a3b8; font-size: 1.1rem; flex-shrink: 0;"></i>
-            <input type="text" id="searchInput" placeholder="Search by name, cuisine, or city..."
-                style="border: none; outline: none; background: transparent; height: 100%; width: 100%; font-size: 0.95rem; color: #1e293b; font-weight: 400;"
-                value="{{ filters.q }}" oninput="debounceRunFilters()">
         </div>
     </div>
 </div>
@@ -394,6 +386,8 @@
             }
         }
     }
+
+    /* ============================================
        VIEW TOGGLING & MAP LOGIC
        ============================================ */
     let currentView = 'grid';

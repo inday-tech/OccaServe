@@ -86,10 +86,12 @@ window.OccaEvents = {
 window.showToast = function(message, icon = 'info') {
     const Toast = Swal.mixin({
         toast: true,
-        position: 'bottom-end', // User requested right bottom
+        position: 'bottom-end',
         showConfirmButton: false,
         timer: 3500,
         timerProgressBar: true,
+        background: '#ffffff',
+        color: '#1e293b',
         didOpen: (toast) => {
             toast.addEventListener('mouseenter', Swal.stopTimer)
             toast.addEventListener('mouseleave', Swal.resumeTimer)
@@ -153,40 +155,44 @@ window.showConfirm = function(message, onConfirm, title = 'Are you sure?', confi
 
 // --- 4. Global URL Parameter Listener for Toasts ---
 document.addEventListener('DOMContentLoaded', function() {
-    // Check both search params and hash (in case params are after the #)
-    const getParam = (name) => {
-        const searchParams = new URLSearchParams(window.location.search);
-        if (searchParams.has(name)) return searchParams.get(name);
-        
-        const hashParams = new URLSearchParams(window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '');
-        return hashParams.get(name);
-    };
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '');
+    
+    const getParam = (name) => urlParams.get(name) || hashParams.get(name);
 
-    let shouldClean = false;
     const loginStatus = getParam('login');
+    const verifiedStatus = getParam('verified');
     const logoutStatus = getParam('logout');
     const successMsg = getParam('success_msg');
     const errorMsg = getParam('error_msg');
     const alertMsg = getParam('alert_msg');
 
-    if (loginStatus === 'success') {
+    let shouldClean = false;
+
+    // A. Login & Verification Success
+    if (loginStatus === 'success' || verifiedStatus === 'success') {
         window.showToast('Login Successful! Welcome back.', 'success');
         shouldClean = true;
-    } else if (logoutStatus === 'success') {
+    } 
+    // B. Logout Success
+    else if (logoutStatus === 'success') {
         window.showToast('Logout Successful! See you soon.', 'success');
         shouldClean = true;
     }
 
+    // C. Generic Success Messages
     if (successMsg) {
         window.showToast(decodeURIComponent(successMsg), 'success');
         shouldClean = true;
     }
     
+    // D. Generic Error Messages
     if (errorMsg) {
         window.showToast(decodeURIComponent(errorMsg), 'error');
         shouldClean = true;
     }
 
+    // E. Generic Info Alerts (Modal)
     if (alertMsg && window.showAlert) {
         window.showAlert({
             title: 'Message',
@@ -196,14 +202,20 @@ document.addEventListener('DOMContentLoaded', function() {
         shouldClean = true;
     }
 
+    // F. Platform Feedback Success
+    if (getParam('feedback') === 'success') {
+        window.showToast('Thank you for your feedback!', 'success');
+        shouldClean = true;
+    }
+
     // Cleanup URL parameters to prevent toast from showing again on refresh
     if (shouldClean) {
         const url = new URL(window.location.href);
-        url.searchParams.delete('login');
-        url.searchParams.delete('logout');
-        url.searchParams.delete('success_msg');
-        url.searchParams.delete('error_msg');
-        url.searchParams.delete('alert_msg');
+        const paramsToRemove = ['login', 'logout', 'success_msg', 'error_msg', 'alert_msg', 'verified', 'feedback'];
+        paramsToRemove.forEach(p => {
+            url.searchParams.delete(p);
+            // Also handle hash if needed (less common for cleaning)
+        });
         window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);
     }
 });

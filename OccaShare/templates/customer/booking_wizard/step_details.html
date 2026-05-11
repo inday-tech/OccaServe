@@ -46,54 +46,44 @@
     <input type="hidden" name="caterer_id" value="{{ caterer.id }}">
     <input type="hidden" name="package_id" value="{{ package.id if package else '' }}">
     <input type="hidden" name="booking_id" value="{{ booking.id if booking else '' }}">
-    <input type="hidden" name="total_price" id="total_price_input">
-    <input type="hidden" name="reservation_fee" id="reservation_fee_input">
+    <input type="hidden" name="total_price" id="total_price_input" value="{{ booking.total_amount if booking else 0 }}">
+    <input type="hidden" name="reservation_fee" id="reservation_fee_input" value="{{ booking.reservation_fee if booking else 0 }}">
 
     <div class="details-grid">
         <div class="form-area">
             <!-- Essential Information -->
             <div class="c-card-premium">
                 <div class="section-header-wrap">
-                    <div class="section-icon-wrap"><i class="fas fa-file-alt"></i></div>
+                    <div class="section-icon-wrap"><i class="fas fa-info-circle"></i></div>
                     <h3 class="form-section-title">Essential Information</h3>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Event Name</label>
-                    <input type="text" name="event_name" class="form-input" placeholder="e.g., Rodriguez Wedding"
-                        value="{{ booking.event_name if booking else '' }}" required>
+                    <div class="input-with-icon">
+                        <i class="fas fa-signature"></i>
+                        <input type="text" name="event_name" class="form-input" placeholder="e.g., Rodriguez Wedding"
+                            value="{{ booking.event_name if booking else '' }}" required>
+                    </div>
                     <span class="field-error" id="err-name">Please enter a descriptive event name.</span>
                 </div>
 
                 <div class="grid-2-col">
                     <div class="form-group">
                         <label class="form-label">Event Type</label>
-                        <select name="event_type" id="event_type_select" class="filter-select-pro" required>
-                            <option value="">-- Select Event Type --</option>
-                            <option value="Wedding" {% if booking and booking.event_type=='Wedding' %}selected{% endif
-                                %}>Wedding</option>
-                            <option value="Birthday" {% if booking and booking.event_type=='Birthday' %}selected{% endif
-                                %}>Birthday</option>
-                            <option value="Corporate Event" {% if booking and booking.event_type=='Corporate Event'
-                                %}selected{% endif %}>Corporate Event</option>
-                            <option value="Debut / Milestone" {% if booking and booking.event_type=='Debut / Milestone'
-                                %}selected{% endif %}>Debut / Milestone</option>
-                            <option value="Baptism / Family Event" {% if booking and
-                                booking.event_type=='Baptism / Family Event' %}selected{% endif %}>Baptism / Family
-                                Event</option>
-                            <option value="Private Party" {% if booking and booking.event_type=='Private Party'
-                                %}selected{% endif %}>Private Party</option>
-                            <option value="Fiesta / Large Event" {% if booking and
-                                booking.event_type=='Fiesta / Large Event' %}selected{% endif %}>Fiesta / Large Event
-                            </option>
-                            <option value="Holiday Celebration" {% if booking and
-                                booking.event_type=='Holiday Celebration' %}selected{% endif %}>Holiday Celebration
-                            </option>
-                            <option value="Other" {% if booking and (booking.event_type not in
-                                ['Wedding','Birthday','Corporate Event','Debut / Milestone','Baptism / Family
-                                Event','Private Party','Fiesta / Large Event','Holiday Celebration']) and
-                                booking.event_type %}selected{% endif %}>Other (specify below)</option>
-                        </select>
+                        <div class="input-with-icon">
+                            <i class="fas fa-star"></i>
+                            <select name="event_type" id="event_type_select" class="filter-select-pro" required>
+                                <option value="">-- Select Type --</option>
+                                <option value="Wedding" {% if booking and booking.event_type=='Wedding' %}selected{% endif %}>Wedding</option>
+                                <option value="Birthday" {% if booking and booking.event_type=='Birthday' %}selected{% endif %}>Birthday</option>
+                                <option value="Corporate Event" {% if booking and booking.event_type=='Corporate Event' %}selected{% endif %}>Corporate Event</option>
+                                <option value="Debut / Milestone" {% if booking and booking.event_type=='Debut / Milestone' %}selected{% endif %}>Debut / Milestone</option>
+                                <option value="Baptism / Family Event" {% if booking and booking.event_type=='Baptism / Family Event' %}selected{% endif %}>Baptism / Family Event</option>
+                                <option value="Private Party" {% if booking and booking.event_type=='Private Party' %}selected{% endif %}>Private Party</option>
+                                <option value="Other" {% if booking and (booking.event_type not in ['Wedding','Birthday','Corporate Event','Debut / Milestone','Baptism / Family Event','Private Party','Fiesta / Large Event','Holiday Celebration']) and booking.event_type %}selected{% endif %}>Other (specify below)</option>
+                            </select>
+                        </div>
                         <span class="field-error" id="err-type">Selection required.</span>
                     </div>
 
@@ -102,19 +92,16 @@
                         <div class="input-with-icon">
                             <i class="fas fa-users"></i>
                             <input type="text" inputmode="numeric" id="guest_count_display" class="form-input"
-                                value="{{ " {:,}".format(booking.guest_count if booking else (caterer.min_pax or
-                                package.min_guests or 50)) }}" oninput="formatGuestCount(this); updateCalculator()"
+                                value="{{ '{:,}'.format(booking.guest_count if booking else (caterer.min_pax or package.min_guests or 50)) }}" oninput="formatGuestCount(this); updateCalculator()"
                                 required>
                             <input type="hidden" name="guest_count" id="guest_count"
                                 value="{{ booking.guest_count if booking else (caterer.min_pax or package.min_guests or 50) }}">
                         </div>
-                        <span class="field-error" id="err-guests">Allowed guests: {{ caterer.min_pax or
-                            package.min_guests or 1 }} to 1000.</span>
+                        <span class="field-error" id="err-guests">Min: {{ caterer.min_pax or package.min_guests or 1 }} pax.</span>
                     </div>
                 </div>
 
-                <div id="other-event-wrap"
-                    class="{% if booking and (booking.event_type not in ['Wedding','Birthday','Corporate Event','Debut / Milestone','Baptism / Family Event','Private Party','Fiesta / Large Event','Holiday Celebration']) and booking.event_type %}visible{% endif %}">
+                <div id="other-event-wrap" class="{% if booking and (booking.event_type not in ['Wedding','Birthday','Corporate Event','Debut / Milestone','Baptism / Family Event','Private Party','Fiesta / Large Event','Holiday Celebration']) and booking.event_type %}visible{% endif %}">
                     <div class="form-group">
                         <label class="form-label">Specify Event Type</label>
                         <input type="text" name="other_event_type" id="other_event_type" class="form-input"
@@ -128,75 +115,120 @@
                     <div class="form-group">
                         <label class="form-label">Event Date</label>
                         <div class="input-with-icon">
-                            <i class="fas fa-calendar"></i>
+                            <i class="fas fa-calendar-day"></i>
                             <input type="date" name="event_date" id="event_date" class="form-input"
                                 value="{{ booking.event_date.isoformat() if booking and booking.event_date else '' }}"
                                 required onchange="checkAvailability()">
                         </div>
-                        <span class="field-error" id="err-date">Please select a future date.</span>
                         <div id="availability-chip" class="availability-chip"></div>
+                        <span class="field-error" id="err-date">Please select a future date.</span>
                     </div>
                     <div class="form-group">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="grid-2-col">
                             <div>
-                                <label class="form-label">Start Time <span style="color:red">*</span></label>
+                                <label class="form-label">Start Time</label>
                                 <div class="input-with-icon">
                                     <i class="fas fa-clock"></i>
                                     <input type="time" name="event_time" id="event_time" class="form-input"
                                         value="{{ booking.event_time.strftime('%H:%M') if booking and booking.event_time else '' }}"
                                         required>
                                 </div>
-                                <span class="field-error" id="err-time">Please select valid times.</span>
                             </div>
                             <div>
                                 <label class="form-label">End Time</label>
                                 <div class="input-with-icon">
-                                    <i class="fas fa-clock"></i>
+                                    <i class="fas fa-hourglass-end"></i>
                                     <input type="time" name="event_end_time" id="event_end_time" class="form-input"
                                         value="{{ booking.event_end_time.strftime('%H:%M') if booking and booking.event_end_time else '' }}">
                                 </div>
                             </div>
                         </div>
+                        <span class="field-error" id="err-time">Please select valid times.</span>
                     </div>
                 </div>
             </div>
+
+            <!-- Package Inclusions & Services -->
+            {% if package and package.inclusions %}
+            <div class="c-card-premium">
+                <div class="section-header-wrap">
+                    <div class="section-icon-wrap"><i class="fas fa-concierge-bell"></i></div>
+                    <h3 class="form-section-title">Standard Service Inclusions</h3>
+                </div>
+                <p class="form-subtitle">Premium services included in your package fee</p>
+                
+                <div class="inclusions-grid-pro">
+                    {% if package.inclusions is iterable and package.inclusions is not string %}
+                        {% for inc in package.inclusions %}
+                        <div class="inclusion-pill">
+                            <i class="fas fa-check-circle"></i>
+                            <span>{{ inc }}</span>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="inclusion-pill">
+                            <i class="fas fa-check-circle"></i>
+                            <span>{{ package.inclusions }}</span>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
 
             <!-- Menu Personalization -->
             <div class="c-card-premium">
                 <div class="section-header-wrap">
                     <div class="section-icon-wrap"><i class="fas fa-utensils"></i></div>
-                    <h3 class="form-section-title">Menu Personalization</h3>
+                    <h3 class="form-section-title">Course Selection & Personalization</h3>
                 </div>
-                <p class="form-subtitle">Enhance your experience with premium add-ons</p>
+                <p class="form-subtitle">Customize your included dishes or add premium extras</p>
 
-                <div class="menu-item-cards">
-                    <!-- Included Items -->
-                    {% for item in package.menu_items %}
-                    <div class="menu-item-card included selected">
-                        <div class="indicator-circle"></div>
-                        <div class="mic-info">
-                            <span class="mic-name">{{ item.name }}</span>
-                            <span class="mic-cat">{{ item.category }}</span>
+                <div class="menu-sections-pro">
+                    <!-- Included Items (Swappable) -->
+                    <div class="menu-sub-section">
+                        <label class="form-label">Included in Package</label>
+                        <div class="menu-item-cards">
+                            {% for item in package.menu_items %}
+                            <div class="menu-item-card included" id="slot-{{ loop.index }}">
+                                <input type="hidden" name="selected_items" value="{{ item.id }}" class="slot-input">
+                                <div class="indicator-circle active"><i class="fas fa-check"></i></div>
+                                <div class="mic-info">
+                                    <span class="mic-name" id="name-{{ loop.index }}">{{ item.name }}</span>
+                                    <span class="mic-cat">{{ item.category }}</span>
+                                </div>
+                                <div class="mic-actions">
+                                    <span class="mic-status">Included</span>
+                                    <button type="button" class="btn-swap-pro" 
+                                        onclick="openSwapModal('{{ item.category }}', '{{ loop.index }}')">
+                                        <i class="fas fa-rotate"></i> Swap
+                                    </button>
+                                </div>
+                            </div>
+                            {% endfor %}
                         </div>
-                        <span class="mic-status">Package</span>
                     </div>
-                    {% endfor %}
 
-                    <!-- Addons -->
+                    <!-- Add-ons Section -->
                     {% if addon_items %}
-                    {% for item in addon_items %}
-                    <label class="menu-item-card {% if item.id in selected_addon_ids %}selected{% endif %}">
-                        <input type="checkbox" name="selected_addons" value="{{ item.id }}" {% if item.id in
-                            selected_addon_ids %}checked{% endif %} data-price="{{ item.addon_price or 0 }}"
-                            onchange="handleMenuCardToggle(this)">
-                        <div class="indicator-circle"></div>
-                        <div class="mic-info">
-                            <span class="mic-name">{{ item.name }}</span>
-                            <span class="mic-cat">{{ item.category }}</span>
+                    <div class="menu-sub-section" style="margin-top: 2rem;">
+                        <label class="form-label">Optional Add-ons</label>
+                        <div class="menu-item-cards">
+                            {% for item in addon_items %}
+                            <label class="menu-item-card addon {% if item.id in selected_addon_ids %}selected{% endif %}">
+                                <input type="checkbox" name="selected_addons" value="{{ item.id }}" 
+                                    {% if item.id in selected_addon_ids %}checked{% endif %} 
+                                    data-price="{{ item.addon_price or 0 }}"
+                                    onchange="handleMenuCardToggle(this)" style="display: none;">
+                                <div class="indicator-circle"></div>
+                                <div class="mic-info">
+                                    <span class="mic-name">{{ item.name }}</span>
+                                    <span class="mic-cat">{{ item.category }}</span>
+                                </div>
+                                <span class="mic-price">+₱{{ "{:,.2f}".format(item.addon_price or 0) }}</span>
+                            </label>
+                            {% endfor %}
                         </div>
-                        <span class="mic-price">+₱{{ "{:,.2f}".format(item.addon_price or 0) }}</span>
-                    </label>
-                    {% endfor %}
+                    </div>
                     {% endif %}
                 </div>
             </div>
@@ -204,48 +236,48 @@
             <!-- Venue Location -->
             <div class="c-card-premium">
                 <div class="section-header-wrap">
-                    <div class="section-icon-wrap"><i class="fas fa-map-marker-alt"></i></div>
+                    <div class="section-icon-wrap"><i class="fas fa-map-location-dot"></i></div>
                     <h3 class="form-section-title">Venue Location</h3>
                 </div>
 
-                <div class="location-cascade-grid">
+                <div class="grid-2-col">
                     <div class="form-group">
                         <label class="form-label">Province</label>
-                        <select name="province" id="province_select" class="filter-select-pro" required>
-                            <option value="">-- Province --</option>
-                            <option value="Batangas">Batangas</option>
-                            <option value="Cavite">Cavite</option>
-                            <option value="Laguna" selected>Laguna</option>
-                            <option value="Quezon">Quezon</option>
-                            <option value="Rizal">Rizal</option>
-                        </select>
-                        <span class="field-error" id="err-province">Required.</span>
+                        <div class="input-with-icon">
+                            <i class="fas fa-map-pin"></i>
+                            <select name="province" id="province_select" class="filter-select-pro" required>
+                                <option value="">-- Province --</option>
+                                <option value="Batangas">Batangas</option>
+                                <option value="Cavite">Cavite</option>
+                                <option value="Laguna" selected>Laguna</option>
+                                <option value="Quezon">Quezon</option>
+                                <option value="Rizal">Rizal</option>
+                            </select>
+                        </div>
+                        <span class="field-error" id="err-province">Province required.</span>
                     </div>
-
                     <div class="form-group">
                         <label class="form-label">City / Municipality</label>
                         <select name="city" id="city_select" class="filter-select-pro" required>
                             <option value="">-- City --</option>
                         </select>
-                        <span class="field-error" id="err-city">Required.</span>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Barangay</label>
-                        <select name="barangay" id="barangay_select" class="filter-select-pro" required>
-                            <option value="">-- Barangay --</option>
-                        </select>
-                        <span class="field-error" id="err-barangay">Required.</span>
+                        <span class="field-error" id="err-city">City required.</span>
                     </div>
                 </div>
 
-                <input type="hidden" name="venue_address" id="venue_address_hidden"
-                    value="{{ booking.venue_address if booking else '' }}">
+                <div class="form-group">
+                    <label class="form-label">Barangay</label>
+                    <select name="barangay" id="barangay_select" class="filter-select-pro" required>
+                        <option value="">-- Barangay --</option>
+                    </select>
+                    <span class="field-error" id="err-barangay">Barangay required.</span>
+                </div>
+
+                <input type="hidden" name="venue_address" id="venue_address_hidden" value="{{ booking.venue_address if booking else '' }}">
 
                 <div class="form-group">
                     <label class="form-label">Special Requests <small>(Optional)</small></label>
-                    <textarea name="special_requests" class="form-input" rows="3"
-                        placeholder="e.g., Dietary restrictions, specific theme colors...">{{ booking.special_requests if booking else '' }}</textarea>
+                    <textarea name="special_requests" class="form-input" rows="3" placeholder="e.g., Dietary restrictions, specific theme colors...">{{ booking.special_requests if booking else '' }}</textarea>
                 </div>
             </div>
         </div>
@@ -253,18 +285,17 @@
         <!-- Sidebar: Cost Projection -->
         <aside class="calculator-sidebar">
             <div class="calc-card">
-                <h3 class="calc-title">Cost Projection</h3>
+                <h3 class="calc-title"><i class="fas fa-calculator" style="color: var(--wiz-primary); font-size: 1rem;"></i> Cost Projection</h3>
 
                 <div class="calc-row">
                     <span class="calc-label">Package Price</span>
-                    <span class="calc-val">₱{{ "{:,.2f}".format(package.price_per_head or package.price or 0)
-                        }}/pax</span>
+                    <span class="calc-val">₱{{ "{:,.2f}".format(package.price_per_head or package.price or 0) }}/pax</span>
                 </div>
                 <div class="calc-row">
                     <span class="calc-label">Estimated Guests</span>
                     <span class="calc-val" id="calc-guests">0</span>
                 </div>
-                <div class="calc-row addons">
+                <div class="calc-row">
                     <span class="calc-label">Add-ons (<span id="calc-addons-count">0</span>)</span>
                     <span class="calc-val" id="calc-addons-total">+₱0.00</span>
                 </div>
@@ -272,28 +303,60 @@
                 <div class="calc-divider"></div>
 
                 <div class="calc-total">
-                    <span class="total-label">Total</span>
+                    <span class="total-label">Total Estimate</span>
                     <span class="total-price" id="calc-grand-total">₱0.00</span>
                 </div>
 
                 <div class="calc-info-box">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <span>This is an initial estimate. Final pricing may be adjusted based on menu selections and
-                        add-ons in the next steps.</span>
+                    <i class="fas fa-circle-info"></i>
+                    <span>This is an initial estimate. Final pricing may be adjusted based on menu selections and add-ons in the next steps.</span>
                 </div>
             </div>
         </aside>
     </div>
 
     <div class="wizard-actions">
-        <a href="/caterers/{{ caterer.id }}" class="btn-wizard-back">
-            Cancel Booking
+        <a href="/customer/marketplace/{{ caterer.id }}" class="btn-wizard-back">
+            <i class="fas fa-arrow-left"></i> Cancel Booking
         </a>
         <button type="submit" id="submitBtn" class="btn-wizard-next">
-            Next: Verify Identity <i class="fas fa-chevron-right" style="font-size: 0.8rem;"></i>
+            Next: Verify Identity <i class="fas fa-id-card"></i>
         </button>
     </div>
+    </div>
 </form>
+{% endblock %}
+
+{% block wizard_modals %}
+<!-- Swap Dish Modal -->
+<div class="swap-modal-overlay" id="swapModal">
+    <div class="swap-modal-content">
+        <div class="modal-header-pro">
+            <div>
+                <h3 id="modalCategoryTitle">Swap Dish</h3>
+                <p class="form-subtitle" style="margin: 0; font-size: 0.75rem;">Select an alternative from the same category</p>
+            </div>
+            <button type="button" class="btn-close-modal" onclick="closeSwapModal()">&times;</button>
+        </div>
+        
+        <div class="swap-options-list" id="swapOptionsContainer">
+            <!-- Options will be injected here via JS -->
+        </div>
+    </div>
+</div>
+
+<script>
+    window.allMenuItems = [
+        {% for item in all_menu_items %}
+        {
+            id: {{ item.id }},
+            name: "{{ item.name }}",
+            category: "{{ item.category }}",
+            is_addon: {{ 'true' if item.is_addon else 'false' }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+</script>
 {% endblock %}
 
 {% block step_js %}

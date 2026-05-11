@@ -1,0 +1,180 @@
+<!-- Platform Feedback Modal -->
+<style>
+    /* Platform Feedback Modal Styles */
+    .feedback-modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: rgba(15, 23, 42, 0.55);
+        backdrop-filter: blur(8px);
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+
+    .feedback-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        width: 100%;
+        max-width: 480px;
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.15);
+        position: relative;
+        animation: feedbackSlideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes feedbackSlideIn {
+        from { opacity: 0; transform: scale(0.9) translateY(20px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .feedback-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+    }
+
+    .feedback-header-title {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .feedback-header-title i { color: var(--primary-color); }
+
+    .feedback-close {
+        width: 44px; height: 44px;
+        display: flex; align-items: center; justify-content: center;
+        background: none; border: none; cursor: pointer;
+        font-size: 1.5rem; color: #94a3b8; border-radius: 12px;
+        transition: background 0.2s; margin-right: -0.75rem;
+    }
+
+    .feedback-close:hover { background: #f1f5f9; color: #0f172a; }
+
+    .feedback-label {
+        font-size: 0.82rem; font-weight: 800; color: #475569;
+        display: block; margin-bottom: 0.75rem;
+        text-transform: uppercase; letter-spacing: 0.025em;
+    }
+
+    .star-rating-row {
+        display: flex; gap: 8px; align-items: center; margin-bottom: 0.5rem;
+    }
+
+    .cust-fb-star {
+        font-size: 2.25rem; cursor: pointer; color: #e2e8f0;
+        transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .cust-fb-star.active { color: #f59e0b; transform: scale(1.15); }
+
+    .feedback-textarea {
+        width: 100%; box-sizing: border-box; padding: 1rem;
+        border: 2px solid #f1f5f9; border-radius: 1rem;
+        font-family: inherit; font-size: 0.95rem; color: #334155;
+        resize: none; outline: none; transition: all 0.2s;
+        background: #f8fafc; margin-bottom: 0.5rem;
+    }
+
+    .feedback-textarea:focus {
+        border-color: var(--primary-color);
+        background: white;
+        box-shadow: 0 4px 12px rgba(255, 123, 84, 0.05);
+    }
+
+    .feedback-footer { display: flex; gap: 12px; margin-top: 2rem; }
+
+    .btn-feedback-snooze {
+        flex: 1; padding: 0.85rem; background: #f1f5f9; color: #475569;
+        border: none; border-radius: 12px; font-weight: 700; font-size: 0.95rem;
+        cursor: pointer; transition: background 0.2s;
+    }
+
+    .btn-feedback-submit {
+        flex: 2; padding: 0.85rem;
+        background: linear-gradient(135deg, var(--primary-color), #e85d3a);
+        color: white; border: none; border-radius: 12px;
+        font-weight: 700; font-size: 1rem; cursor: pointer;
+        transition: transform 0.2s, opacity 0.2s;
+        box-shadow: 0 4px 12px rgba(255, 123, 84, 0.25);
+    }
+</style>
+
+<div id="platformFeedbackModal" class="feedback-modal-overlay">
+    <div class="feedback-card">
+        <div class="feedback-header">
+            <div>
+                <h3 class="feedback-header-title">
+                    <i class="fas fa-comment-dots"></i>Share Your Experience
+                </h3>
+                <p style="margin:4px 0 0; font-size:0.85rem; color:#64748b; font-weight: 500;">Help us improve OccaServe</p>
+            </div>
+            <button type="button" class="feedback-close" onclick="closeCustomerFeedbackModal()">&times;</button>
+        </div>
+
+        <form method="POST" action="/customer/platform-feedback" id="customerFeedbackForm">
+            <input type="hidden" name="rating" id="customerRatingInput" value="5">
+
+            <div style="margin-bottom:1.5rem;">
+                <label class="feedback-label">Your Rating</label>
+                <div class="star-rating-row" id="customerStarRow">
+                    <i class="fas fa-star cust-fb-star active" data-val="1"></i>
+                    <i class="fas fa-star cust-fb-star active" data-val="2"></i>
+                    <i class="fas fa-star cust-fb-star active" data-val="3"></i>
+                    <i class="fas fa-star cust-fb-star active" data-val="4"></i>
+                    <i class="fas fa-star cust-fb-star active" data-val="5"></i>
+                </div>
+                <p id="customerRatingLabel" style="margin:4px 0 0; font-size:0.8rem; color:#f59e0b; font-weight:700;">5 stars — Excellent</p>
+            </div>
+
+            <div style="margin-bottom:1rem;">
+                <label class="feedback-label">Your Feedback <span style="color:#ef4444;">*</span></label>
+                <textarea name="comment" rows="4" required minlength="10" class="feedback-textarea"
+                    placeholder="Tell us what you like or how we can improve..."></textarea>
+            </div>
+
+            <div class="feedback-footer">
+                <button type="button" class="btn-feedback-snooze" onclick="snoozePlatformFeedback()">Maybe Later</button>
+                <button type="submit" class="btn-feedback-submit">Submit Feedback</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const custRatingLabels = ['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent'];
+    const custStars = document.querySelectorAll('.cust-fb-star');
+    const custRatingInput = document.getElementById('customerRatingInput');
+    const custRatingLabel = document.getElementById('customerRatingLabel');
+
+    function setCustStars(val) {
+        custStars.forEach(s => {
+            const sv = parseInt(s.dataset.val);
+            s.classList.toggle('active', sv <= val);
+        });
+        custRatingInput.value = val;
+        custRatingLabel.textContent = val + ' star' + (val > 1 ? 's' : '') + ' — ' + custRatingLabels[val];
+    }
+
+    custStars.forEach(s => {
+        s.addEventListener('click', () => setCustStars(parseInt(s.dataset.val)));
+    });
+
+    function closeCustomerFeedbackModal() {
+        document.getElementById('platformFeedbackModal').style.display = 'none';
+        document.body.style.overflow = '';
+    }
+
+    function snoozePlatformFeedback() {
+        const nextShow = Date.now() + (24 * 60 * 60 * 1000);
+        localStorage.setItem('feedbackNudgeSnooze', nextShow);
+        closeCustomerFeedbackModal();
+    }
+</script>

@@ -1,756 +1,1047 @@
 {% set active_page = 'marketplace' %}
 {% extends "customer/layout.html" %}
 
-{% block title %}{{ caterer.business_name }} - OccaServe{% endblock %}
+{% block title %}{{ caterer.business_name }} - Caterer Hub{% endblock %}
 
 {% block extra_css %}
 <style>
-    .profile-container {
+    /* =====================================================
+       DIAMOND STANDARD v6.1 - CATERER HUB (ELITE)
+       ===================================================== */
+
+    :root {
+        --hub-primary: #FF7B54;
+        --hub-slate-50: #f8fafc;
+        --hub-slate-100: #f1f5f9;
+        --hub-slate-200: #e2e8f0;
+        --hub-slate-400: #94a3b8;
+        --hub-slate-600: #475569;
+        --hub-text-dark: #0f172a;
+        --hub-radius: 14px;
+    }
+
+    .hub-container {
         font-family: 'Poppins', sans-serif;
-        max-width: 1200px;
+        max-width: 1300px;
         margin: 0 auto;
-        padding: 2rem 1.5rem;
+        padding: 0.75rem;
     }
 
-    .profile-header {
-        text-align: center;
-        margin-bottom: 2.5rem;
-        background: white;
-        padding: 2.5rem 1.5rem;
-        border-radius: 1.25rem;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
-        border: 1px solid #f1f5f9;
+    /* ---- PREMIUM HERO BANNER ---- */
+    .hub-hero {
         position: relative;
+        height: 280px;
+        border-radius: var(--hub-radius);
+        overflow: hidden;
+        margin-bottom: 2rem;
+        background: var(--hub-slate-200);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.04);
     }
 
-    .profile-title-row {
+    .hero-bg {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        filter: brightness(0.8);
+    }
+
+    .hero-overlay {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to top, rgba(15, 23, 42, 0.85) 0%, rgba(15, 23, 42, 0.2) 70%, transparent 100%);
+        display: flex;
+        align-items: flex-end;
+        padding: 2.5rem;
+    }
+
+    .hero-title-wrap {
         display: flex;
         align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        margin-bottom: 1rem;
-    }
-
-    .profile-title {
-        font-size: 2.25rem;
-        font-weight: 800;
-        color: #0f172a;
-        margin: 0;
-        letter-spacing: -0.03em;
-    }
-
-    .verified-badge {
-        color: #f97316;
-        font-size: 1.5rem;
-        display: inline-flex;
-        align-items: center;
-    }
-
-    .profile-meta-row {
-        display: flex;
+        gap: 12px;
         flex-wrap: wrap;
-        align-items: center;
-        justify-content: center;
-        gap: 1rem 2rem;
-        color: #64748b;
-        font-size: 0.92rem;
-        font-weight: 600;
-        margin-bottom: 1.5rem;
     }
 
-    .profile-meta-item {
+    .hero-title {
+        font-size: 2.8rem;
+        font-weight: 900;
+        color: #fff;
+        letter-spacing: -0.04em;
+        margin: 0;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .v-badge-blue {
+        color: #fff;
+        background: #3b82f6;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        justify-content: center;
+        font-size: 0.9rem;
+        flex-shrink: 0;
     }
 
-    .profile-meta-item i {
-        color: #f97316;
+    .hero-meta {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1rem;
     }
 
-    .profile-desc {
-        color: #475569;
-        font-size: 1.05rem;
-        line-height: 1.7;
-        max-width: 720px;
-        margin: 0 auto 2rem;
+    .meta-pill {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 0.85rem;
+        font-weight: 700;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 0.4rem 0.9rem;
+        border-radius: 100px;
+        backdrop-filter: blur(5px);
     }
 
-    .profile-grid {
-        display: grid;
-        grid-template-columns: 1fr 340px;
+    .meta-pill i {
+        color: var(--hub-primary);
+    }
+
+    /* ---- TABS NAVIGATION ---- */
+    .hub-tabs {
+        display: flex;
         gap: 2rem;
+        border-bottom: 2px solid var(--hub-slate-100);
+        margin-bottom: 2rem;
+        padding-bottom: 0.5rem;
+        position: relative;
+        z-index: 50;
+    }
+
+    .tab-btn {
+        background: none;
+        border: none;
+        font-family: 'Poppins', sans-serif;
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--hub-slate-400);
+        cursor: pointer;
+        padding: 0.5rem 0;
+        position: relative;
+        transition: all 0.3s;
+    }
+
+    .tab-btn:hover {
+        color: var(--hub-text-dark) !important;
+        background: var(--hub-slate-50) !important;
+        border-radius: 10px;
+    }
+
+    .tab-btn.active {
+        color: var(--hub-primary) !important;
+    }
+
+    .tab-btn.active::after {
+        content: '';
+        position: absolute;
+        bottom: -0.65rem;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: var(--hub-primary);
+        border-radius: 10px;
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block !important;
+        animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* ---- MAIN CONTENT LAYOUT ---- */
+    .hub-main-grid {
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        gap: 0.75rem;
         align-items: start;
     }
 
     @media (max-width: 1024px) {
-        .profile-grid {
+        .hub-main-grid {
             grid-template-columns: 1fr;
         }
     }
 
-    .profile-stats-grid {
+    .intel-card {
+        background: #fff;
+        border: 1px solid var(--hub-slate-100);
+        border-radius: var(--hub-radius);
+        padding: 1.75rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .section-title {
+        font-size: 1.15rem;
+        font-weight: 850;
+        color: var(--hub-text-dark);
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .section-title i {
+        color: var(--hub-primary);
+    }
+
+    /* ---- STATS ROW ---- */
+    .intel-stats-row {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
         gap: 1rem;
     }
 
-    .profile-stat-box {
-        text-align: center;
-        padding: 1.5rem 1rem;
-        background: #f8fafc;
+    .stat-mini-box {
+        background: var(--hub-slate-50);
+        padding: 1.25rem 0.75rem;
         border-radius: 1rem;
-        border: 1px solid #f1f5f9;
-        transition: all 0.2s ease;
+        text-align: center;
     }
 
-    .profile-stat-box:hover {
-        border-color: #f97316;
-        background: #fff;
-    }
-
-    .stat-icon {
-        color: #f97316;
-        font-size: 1.5rem;
+    .smb-icon {
+        font-size: 1.4rem;
+        color: var(--hub-primary);
         margin-bottom: 0.5rem;
     }
 
-    .stat-value {
+    .smb-val {
         font-size: 1.25rem;
-        font-weight: 800;
-        color: #1e293b;
+        font-weight: 850;
+        color: var(--hub-text-dark);
+        display: block;
     }
 
-    .stat-label {
-        font-size: 0.7rem;
+    .smb-lab {
+        font-size: 0.65rem;
         font-weight: 700;
-        color: #94a3b8;
+        color: var(--hub-slate-400);
         text-transform: uppercase;
     }
 
-    /* Compact Grids for Menu */
-    .menu-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        gap: 1rem;
-    }
-
-    .compact-item-card {
-        background: #fff;
-        border: 1px solid #f1f5f9;
-        border-radius: 0.75rem;
-        padding: 0.75rem;
+    /* ---- CATEGORY HUB ---- */
+    .category-hub {
         display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        transition: all 0.2s ease;
+        gap: 0.75rem;
+        overflow-x: auto;
+        padding-bottom: 1.25rem;
+        margin-bottom: 1.5rem;
+        scrollbar-width: none;
     }
 
-    .compact-item-card:hover {
-        border-color: #f97316;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    .category-chip {
+        padding: 0.65rem 1.35rem;
+        border-radius: 100px;
+        background: #fff;
+        border: 1px solid var(--hub-slate-200);
+        color: var(--hub-slate-600);
+        font-size: 0.85rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
     }
 
-    .compact-img {
-        width: 100%;
-        height: 120px;
-        object-fit: cover;
-        border-radius: 0.5rem;
+    .category-chip.active {
+        background: var(--hub-primary);
+        border-color: var(--hub-primary);
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(255, 123, 84, 0.2);
     }
 
-    /* Package Cards */
-    .pkg-grid {
+    /* ---- MENU GRID (COMPACT) ---- */
+    .elite-menu-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
         gap: 1.5rem;
     }
 
-    .pkg-card {
+    .elite-item-card {
         background: #fff;
-        border: 1px solid #f1f5f9;
-        border-radius: 1rem;
+        border: 1px solid var(--hub-slate-100);
+        border-radius: var(--hub-radius);
         overflow: hidden;
+        transition: all 0.3s;
         display: flex;
         flex-direction: column;
-        transition: all 0.3s ease;
+        height: 100%;
     }
 
-    .pkg-card:hover {
+    .elite-item-card:hover {
+        border-color: var(--hub-primary);
         transform: translateY(-4px);
-        box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-        border-color: #f97316;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
     }
 
-    .pkg-img {
-        width: 100%;
-        height: 160px;
-        object-fit: cover;
-    }
-
-    .pkg-body {
-        padding: 1.25rem;
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .pkg-title {
-        font-size: 1.1rem;
-        font-weight: 800;
-        color: #1e293b;
-        margin-bottom: 0.5rem;
-    }
-
-    .pkg-price {
-        font-size: 1.25rem;
-        font-weight: 800;
-        color: #f97316;
-        margin-bottom: 0.75rem;
-    }
-
-    /* Gallery */
-    .gallery-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-        gap: 1rem;
-    }
-
-    .gallery-item {
-        height: 160px;
-        border-radius: 0.75rem;
+    .ei-img-box {
+        height: 155px;
+        position: relative;
         overflow: hidden;
-        border: 1px solid #f1f5f9;
-        cursor: pointer;
-        transition: transform 0.2s ease;
+        background: var(--hub-slate-50);
     }
 
-    .gallery-item:hover {
-        transform: scale(1.03);
-    }
-
-    .gallery-img {
+    .ei-img {
         width: 100%;
         height: 100%;
         object-fit: cover;
     }
 
-    /* Sidebar Widget */
-    .sidebar-widget {
-        position: sticky;
-        top: 2rem;
+    .ei-body {
+        padding: 1.25rem;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        gap: 4px;
     }
 
-    .sidebar-inner-card {
-        background: white;
-        border: 1px solid #f1f5f9;
-        border-radius: 1.25rem;
-        padding: 1.5rem;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
+    .ei-cat {
+        font-size: 0.68rem;
+        font-weight: 800;
+        color: var(--hub-slate-400);
+        text-transform: uppercase;
     }
 
-    .btn-orange-full {
-        width: 100%;
-        background: #f97316;
-        color: white;
-        border: none;
-        padding: 0.85rem;
-        border-radius: 0.75rem;
-        font-weight: 700;
+    .ei-name {
         font-size: 0.95rem;
-        cursor: pointer;
-        transition: all 0.2s;
-        box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
-        margin-bottom: 0.75rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
+        font-weight: 850;
+        color: var(--hub-text-dark);
+        line-height: 1.3;
+        min-height: 2.6rem;
     }
 
-    .btn-orange-full:hover {
-        background: #ea580c;
-        transform: translateY(-2px);
+    .ei-price {
+        font-size: 1.15rem;
+        font-weight: 900;
+        color: var(--hub-primary);
+        margin-top: 0.5rem;
     }
 
-    .btn-outline-full {
+    .btn-add-order,
+    .btn-elite-sm {
         width: 100%;
-        background: white;
-        color: #64748b;
-        border: 1px solid #e2e8f0;
-        padding: 0.85rem;
-        border-radius: 0.75rem;
-        font-weight: 600;
-        font-size: 0.9rem;
+        margin-top: 0.75rem;
+        background: var(--hub-slate-50);
+        color: var(--hub-slate-600);
+        border: 1px solid var(--hub-slate-200);
+        padding: 0.75rem;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.8rem;
         cursor: pointer;
         transition: all 0.2s;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 0.5rem;
+        gap: 8px;
     }
 
-    .btn-outline-full:hover {
-        background: #f97316;
-        border-color: #f97316;
-        color: white;
+    .btn-add-order:hover,
+    .btn-elite-sm:hover {
+        background: var(--hub-primary);
+        color: #fff;
+        border-color: var(--hub-primary);
     }
 
-    /* Modals */
-    .modal-overlay {
+    .btn-add-order.selected {
+        background: #10b981;
+        color: #fff;
+        border-color: #10b981;
+    }
+
+    /* ---- SIDEBAR & DRAWER ---- */
+    .profile-sidebar {
+        position: sticky;
+        top: 1.5rem;
+        align-self: flex-start;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+    .order-drawer {
+        background: #fff;
+        border: 1px solid var(--hub-slate-200);
+        border-radius: var(--hub-radius);
+        padding: 1.75rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
         display: none;
+        animation: slideIn 0.3s ease;
+    }
+
+    .elite-sidebar {
+        background: #fff;
+        border: 1px solid var(--hub-slate-200);
+        border-radius: var(--hub-radius);
+        padding: 1.5rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .drawer-title {
+        font-size: 1rem;
+        font-weight: 850;
+        color: var(--hub-text-dark);
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .drawer-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.88rem;
+        padding: 0.85rem 0;
+        border-bottom: 1px solid var(--hub-slate-50);
+    }
+
+    .di-name {
+        font-weight: 700;
+        color: var(--hub-text-dark);
+    }
+
+    .di-remove {
+        color: #ef4444;
+        cursor: pointer;
+        font-size: 0.85rem;
+        margin-left: 10px;
+    }
+
+    .drawer-footer {
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 2px dashed var(--hub-slate-100);
+    }
+
+    .total-val {
+        font-size: 1.5rem;
+        font-weight: 900;
+        color: var(--hub-primary);
+    }
+
+    .btn-checkout,
+    .btn-hub-main {
+        width: 100%;
+        background: var(--hub-primary);
+        color: #fff;
+        border: none;
+        padding: 1rem;
+        border-radius: 12px;
+        font-weight: 850;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .btn-checkout:hover:not(:disabled),
+    .btn-hub-main:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(255, 123, 84, 0.3);
+    }
+
+    .btn-checkout:disabled {
+        opacity: 0.5;
+        filter: grayscale(1);
+    }
+
+    .policy-chip {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--hub-slate-600);
+        background: var(--hub-slate-50);
+        padding: 0.85rem;
+        border-radius: 12px;
+        margin-bottom: 0.75rem;
+    }
+
+    .policy-chip i {
+        color: var(--hub-primary);
+    }
+
+    /* ---- MODALS ---- */
+    .oc-modal-layer {
+        visibility: hidden;
+        pointer-events: none;
+        opacity: 0;
         position: fixed;
         inset: 0;
-        background: rgba(15, 23, 42, 0.6);
-        backdrop-filter: blur(4px);
-        z-index: 1000;
+        background: rgba(15, 23, 42, 0.8);
+        backdrop-filter: blur(10px);
+        z-index: 9000;
+        display: flex;
         align-items: center;
         justify-content: center;
+        padding: 1.5rem;
+        transition: all 0.3s ease;
     }
 
-    .modal-box {
-        background: white;
-        width: 90%;
-        max-width: 600px;
-        border-radius: 1.25rem;
-        padding: 2rem;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-        position: relative;
-        max-height: 90vh;
-        overflow-y: auto;
+    .oc-modal-layer.active {
+        visibility: visible !important;
+        pointer-events: auto !important;
+        opacity: 1 !important;
     }
 
-    .modal-close {
-        position: absolute;
-        top: 1rem;
-        right: 1rem;
-        background: none;
-        border: none;
-        font-size: 1.25rem;
-        color: #94a3b8;
-        cursor: pointer;
-    }
-    #map {
-        height: 320px;
+    .m-box-elite {
+        background: #fff;
         width: 100%;
-        border-radius: 1rem;
-        z-index: 10;
-        margin-top: 1rem;
-        border: 1px solid #f1f5f9;
+        max-width: 500px;
+        border-radius: 24px;
+        padding: 2.5rem;
+        position: relative;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="profile-container">
-    <!-- Header -->
-    <div class="profile-header">
-        <div class="profile-title-row">
-            <h1 class="profile-title">{{ caterer.business_name }}</h1>
-            {% if caterer.is_verified %}
-            <span class="verified-badge" title="Verified Caterer"><i class="fas fa-check-circle"></i></span>
-            {% endif %}
-        </div>
+<div class="hub-container">
+    <!-- PREMIUM HERO BANNER -->
+    <div class="hub-hero">
+        {% if caterer.banner_url %}
+        <img src="{{ caterer.banner_url }}" class="hero-bg" alt="{{ caterer.business_name }}">
+        {% else %}
+        <img src="https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=1200" class="hero-bg" alt="Cover">
+        {% endif %}
 
-        <div class="profile-meta-row">
-            <div class="profile-meta-item">
-                <i class="fas fa-map-marker-alt"></i>
-                <span>{{ caterer.contact_address if caterer.contact_address else (caterer.city or 'Location not specified') }}</span>
-            </div>
-            <div class="profile-meta-item">
-                <i class="fas fa-star"></i>
-                <span>{{ "%.1f"|format(caterer.rating) if caterer.rating else 'New Partner' }} ({{ caterer.review_count or 0 }} reviews)</span>
-            </div>
-            <div class="profile-meta-item">
-                <i class="fas fa-eye"></i>
-                <span>{{ caterer.profile_views or 0 }} Views</span>
+        <div class="hero-overlay">
+            <div class="hero-content">
+                <div class="hero-title-wrap">
+                    <h1 class="hero-title">{{ caterer.business_name }}</h1>
+                    {% if caterer.is_verified %}
+                    <div class="v-badge-blue" title="OccaServe Verified"><i class="fas fa-circle-check"></i></div>
+                    {% endif %}
+                </div>
+
+                <div class="hero-meta">
+                    <div class="meta-pill"><i class="fas fa-map-marker-alt"></i> <span>{{ caterer.city or 'Laguna, PH' }}</span></div>
+                    <div class="meta-pill"><i class="fas fa-star"></i> <span>{{ "%.1f"|format(caterer.rating) if caterer.rating else 'New Partner' }} ({{ caterer.review_count or 0 }} Reviews)</span></div>
+                    <div class="meta-pill"><i class="fas fa-eye"></i> <span>{{ caterer.profile_views or 0 }} Views</span></div>
+                </div>
             </div>
         </div>
-
-        <p class="profile-desc">
-            {{ caterer.description or 'Exquisite culinary experiences tailored for your special occasions.' }}
-        </p>
     </div>
 
-    <div class="profile-grid">
-        <!-- Main Content -->
-        <div style="display: flex; flex-direction: column; gap: 2rem;">
+    <!-- TABS NAVIGATION -->
+    <div class="hub-tabs">
+        <button type="button" class="tab-btn active" onclick="hubSwitchTab('hub-tab-overview', this)">Overview</button>
+        <button type="button" class="tab-btn" onclick="hubSwitchTab('hub-tab-menu', this)">Menu & Packages</button>
+        <button type="button" class="tab-btn" onclick="hubSwitchTab('hub-tab-policies', this)">Policies & Reviews</button>
+    </div>
+
+    <script>
+        // GLOBAL HUB ENGINE (Priority Execution)
+        window.hubSwitchTab = function(tabId, btn) {
+            console.log('Hub: Switching to', tabId);
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            const target = document.getElementById(tabId);
+            if (target) target.classList.add('active');
+            if (btn) btn.classList.add('active');
+        };
+
+        window.openPkgDetails = function(id) {
+            console.log('Hub: Opening Package', id);
+            const pkg = window.hubPkgs ? window.hubPkgs[id] : null;
+            if (!pkg) { console.error('Pkg not found', id); return; }
             
-            <!-- Overview Stats -->
-            <div class="c-card-premium" style="padding: 1.5rem;">
-                <h2 style="font-size: 1.1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; text-transform: uppercase;">Overview</h2>
-                <div class="profile-stats-grid">
-                    <div class="profile-stat-box">
-                        <div class="stat-icon"><i class="far fa-clock"></i></div>
-                        <div class="stat-value">{{ caterer.years_of_operation or 1 }}+</div>
-                        <div class="stat-label">Years</div>
-                    </div>
-                    <div class="profile-stat-box">
-                        <div class="stat-icon"><i class="fas fa-utensils"></i></div>
-                        <div class="stat-value">{{ caterer.menu_items|length }}</div>
-                        <div class="stat-label">Dishes</div>
-                    </div>
-                    <div class="profile-stat-box">
-                        <div class="stat-icon"><i class="fas fa-gift"></i></div>
-                        <div class="stat-value">{{ packages|length }}</div>
-                        <div class="stat-label">Packages</div>
-                    </div>
-                    <div class="profile-stat-box">
-                        <div class="stat-icon"><i class="fas fa-clipboard-check"></i></div>
-                        <div class="stat-value">100%</div>
-                        <div class="stat-label">Legit</div>
+            let incList = [];
+            try {
+                if (pkg.inclusions) {
+                    if (Array.isArray(pkg.inclusions)) incList = pkg.inclusions;
+                    else if (typeof pkg.inclusions === 'string') {
+                        try { const parsed = JSON.parse(pkg.inclusions); incList = Array.isArray(parsed) ? parsed : [parsed]; }
+                        catch (e) { incList = pkg.inclusions.split(',').map(s => s.trim()).filter(s => s); }
+                    }
+                }
+            } catch (e) {}
+
+            let inclusionsHtml = incList.length > 0 ? `
+                <div style="margin-top: 1.5rem;">
+                    <h4 style="font-size: 0.8rem; font-weight: 850; color: var(--hub-text-dark); margin-bottom: 0.75rem; text-transform: uppercase;">Inclusions:</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        ${incList.map(inc => `<div style="font-size: 0.75rem; color: var(--hub-slate-600); background: var(--hub-slate-50); padding: 8px; border-radius: 8px; border: 1px solid var(--hub-slate-100); display: flex; align-items: center; gap: 6px;"><i class="fas fa-check-circle" style="color: #10b981;"></i> ${inc}</div>`).join('')}
                     </div>
                 </div>
-            </div>
+            ` : '';
 
-            <!-- Menu Items (Compact) -->
-            {% if caterer.menu_items %}
-            <div class="c-card-premium" style="padding: 1.5rem;">
-                <h2 style="font-size: 1.1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; text-transform: uppercase;">Culinary Menu</h2>
-                <div class="menu-grid">
-                    {% for item in caterer.menu_items if not item.is_archived %}
-                    <div class="compact-item-card">
-                        {% if item.image_url %}
-                        <img src="{{ item.image_url }}" class="compact-img" alt="{{ item.name }}">
-                        {% else %}
-                        <div style="height: 120px; background: #f8fafc; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; color: #cbd5e1;">
-                            <i class="fas fa-utensils fa-2x"></i>
+            let dishesHtml = (pkg.dishes && pkg.dishes.length > 0) ? `
+                <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px dashed var(--hub-slate-200);">
+                    <h4 style="font-size: 0.8rem; font-weight: 850; color: var(--hub-text-dark); margin-bottom: 0.75rem; text-transform: uppercase;">Included Dishes:</h4>
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                        ${pkg.dishes.map(dish => `<span style="background: #fff; color: var(--hub-slate-600); padding: 5px 12px; border-radius: 100px; font-size: 0.75rem; font-weight: 700; border: 1px solid var(--hub-slate-100);">${dish}</span>`).join('')}
+                    </div>
+                </div>
+            ` : '';
+
+            const contentHtml = `
+                <div style="margin-bottom: 1.5rem;">
+                    <h2 style="font-size: 1.35rem; font-weight: 900; color: var(--hub-text-dark); margin-bottom: 0.25rem;">${pkg.name}</h2>
+                    <div style="font-size: 1.6rem; font-weight: 900; color: var(--hub-primary);">${pkg.price}</div>
+                </div>
+                <p style="font-size: 0.85rem; color: var(--hub-slate-600); line-height: 1.6; margin-bottom: 1.5rem;">${pkg.desc}</p>
+                <div style="background: var(--hub-slate-50); padding: 1rem; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--hub-slate-100); font-size: 0.8rem;">
+                    <span style="font-weight: 700; color: var(--hub-slate-400);">DURATION</span>
+                    <span style="font-weight: 900; color: var(--hub-text-dark);">${pkg.duration}</span>
+                </div>
+                ${inclusionsHtml}
+                ${dishesHtml}
+                <a href="/bookings/start/{{ caterer.id }}?package_id=${id}" class="btn-hub-main" style="margin-top: 2rem; display: block; text-align: center; text-decoration: none;">
+                    <i class="fas fa-calendar-check"></i> Select this Package
+                </a>
+            `;
+            document.getElementById('pkg-content').innerHTML = contentHtml;
+            document.getElementById('pkg-modal').classList.add('active');
+        };
+
+        window.closePkgModal = function() { document.getElementById('pkg-modal').classList.remove('active'); };
+        
+        window.openMessageModal = function() { 
+            console.log('Hub: Opening Message Modal');
+            document.getElementById('message-modal').classList.add('active'); 
+        };
+        window.closeMessageModal = function() { document.getElementById('message-modal').classList.remove('active'); };
+
+        window.sendHubMessage = async function(e, recipientId) {
+            e.preventDefault();
+            console.log('Hub: Sending message');
+            const body = document.getElementById('hub-msg-body').value;
+            const btn = document.getElementById('hub-send-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+            try {
+                const resp = await fetch('/messages/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ recipient_id: recipientId, content: body })
+                });
+                if (resp.ok) {
+                    alert('Message sent successfully!');
+                    window.closeMessageModal();
+                    document.getElementById('hub-msg-body').value = '';
+                } else { alert('Failed to send message.'); }
+            } catch (err) { alert('An error occurred.'); } 
+            finally { btn.disabled = false; btn.innerHTML = 'Send Direct Message'; }
+        };
+
+        window.toggleMenuItem = function(id, name, price) {
+            console.log('Hub: Toggling item', id);
+            const index = window.selectedItems.findIndex(i => i.id === id);
+            const btn = document.getElementById(`btn-add-${id}`);
+            const qtyInput = document.getElementById(`qty-${id}`);
+            const qty = qtyInput ? parseInt(qtyInput.value) || 1 : 1;
+
+            if (index === -1) {
+                window.selectedItems.push({ id, name, price, qty });
+                if (btn) { btn.classList.add('selected'); btn.innerHTML = '<i class="fas fa-check"></i> Added'; }
+                if (qtyInput) qtyInput.disabled = true;
+            } else {
+                window.selectedItems.splice(index, 1);
+                if (btn) { btn.classList.remove('selected'); btn.innerHTML = '<i class="fas fa-plus"></i> Add to Order'; }
+                if (qtyInput) qtyInput.disabled = false;
+            }
+            window.updateCartUI();
+        };
+
+        window.updateCartUI = function() {
+            const drawer = document.querySelector('.order-drawer');
+            const list = document.getElementById('order-items-list');
+            const totalEl = document.getElementById('order-total-price');
+            const checkoutBtn = document.getElementById('btn-checkout-master');
+            
+            if (window.selectedItems.length > 0) drawer.style.setProperty('display', 'block', 'important');
+            else drawer.style.setProperty('display', 'none', 'important');
+
+            let html = '';
+            let total = 0;
+            window.selectedItems.forEach(item => {
+                const subtotal = item.price * item.qty;
+                total += subtotal;
+                html += `
+                    <div class="drawer-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--hub-slate-100);">
+                        <div style="flex: 1;">
+                            <div style="font-size: 0.8rem; font-weight: 700; color: var(--hub-text-dark);">${item.name} <span style="color: var(--hub-primary);">x${item.qty}</span></div>
+                            <div style="font-size: 0.7rem; color: var(--hub-slate-400);">₱${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                         </div>
-                        {% endif %}
-                        <div style="font-weight: 700; font-size: 0.9rem; color: #1e293b;">{{ item.name }}</div>
-                        <div style="font-size: 0.75rem; color: #64748b; flex: 1;">{{ item.description|truncate(60) if item.description else 'Freshly prepared dish.' }}</div>
-                        {% if item.serving_size %}
-                        <div style="font-size: 0.7rem; font-weight: 600; color: #94a3b8; margin-bottom: 0.25rem;"><i class="fas fa-users"></i> {{ item.serving_size }}</div>
-                        {% endif %}
-                        <div style="font-weight: 800; color: #f97316; font-size: 0.95rem;">₱{{ "{:,.2f}".format(item.price if item.price else 0) }}</div>
+                        <i class="fas fa-trash-can" onclick="window.removeItem('${item.id}')" style="cursor: pointer; color: var(--hub-slate-400); font-size: 0.8rem;"></i>
                     </div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
+                `;
+            });
+            list.innerHTML = html;
+            totalEl.innerText = `₱${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+            if (checkoutBtn) checkoutBtn.disabled = window.selectedItems.length === 0;
+        };
 
-            <!-- Packages -->
-            {% if packages %}
-            <div class="c-card-premium" style="padding: 1.5rem;">
-                <h2 style="font-size: 1.1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; text-transform: uppercase;">Catering Packages</h2>
-                <div class="pkg-grid">
-                    {% for pkg in packages %}
-                    <div class="pkg-card">
-                        {% if pkg.image_url %}
-                        <img src="{{ pkg.image_url }}" class="pkg-img" alt="{{ pkg.name }}">
-                        {% else %}
-                        <img src="https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=500" class="pkg-img" alt="{{ pkg.name }}">
-                        {% endif %}
-                        <div class="pkg-body">
-                            <div class="pkg-title">{{ pkg.name }}</div>
-                            <div class="pkg-price">₱{{ "{:,.2f}".format(pkg.price if pkg.price else 0) }}</div>
-                            <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem; flex: 1;">{{ pkg.description|truncate(80) }}</div>
-                            <button onclick="openPkgDetails({{ pkg.id }})" class="btn-outline-full">View Inclusions</button>
+        window.removeItem = function(id) {
+            const index = window.selectedItems.findIndex(i => i.id === id);
+            if (index !== -1) {
+                window.selectedItems.splice(index, 1);
+                const btn = document.getElementById(`btn-add-${id}`);
+                const qtyInput = document.getElementById(`qty-${id}`);
+                if (btn) { btn.classList.remove('selected'); btn.innerHTML = '<i class="fas fa-plus"></i> Add to Order'; }
+                if (qtyInput) qtyInput.disabled = false;
+                window.updateCartUI();
+            }
+        };
+
+        window.checkoutOrder = function() {
+            if (window.selectedItems.length === 0) return;
+            const menuIds = window.selectedItems.map(i => i.id).join(',');
+            window.location.href = `/bookings/alacarte/checkout/{{ caterer.id }}?menu_id=${menuIds}`;
+        };
+
+        // Initialize Data
+        window.selectedItems = [];
+        window.hubPkgs = {
+            {% for pkg in packages %}
+            "{{ pkg.id }}": {
+                name: {{ pkg.name|tojson }},
+                price: '₱{{ "{:,.2f}".format(pkg.price if pkg.price else 0) }}',
+                desc: {{ (pkg.description or 'Premium package.')|tojson }},
+                duration: "{{ pkg.service_duration or 4 }} Hours",
+                inclusions: {{ (pkg.inclusions or [])|tojson }},
+                dishes: {{ pkg.menu_items|map(attribute='name')|list|tojson }}
+            },
+            {% endfor %}
+        };
+    </script>
+
+    <div class="hub-main-grid">
+        <!-- LEFT: DYNAMIC TABS -->
+        <div class="tab-panel">
+
+            <!-- OVERVIEW TAB -->
+            <div id="hub-tab-overview" class="tab-content active">
+                <div class="intel-card">
+                    <h2 class="section-title"><i class="fas fa-id-card-clip"></i> Business Story</h2>
+                    <p style="color: var(--hub-slate-600); font-size: 1rem; line-height: 1.8; margin-bottom: 2rem;">
+                        {{ caterer.description or 'A premier catering partner dedicated to delivering exceptional
+                        culinary experiences for weddings, corporate events, and private celebrations.' }}
+                    </p>
+
+                    <div class="intel-stats-row">
+                        <div class="stat-mini-box">
+                            <i class="far fa-clock smb-icon"></i>
+                            <span class="smb-val">{{ caterer.years_of_operation or 1 }}+</span>
+                            <span class="smb-lab">Exp. Years</span>
+                        </div>
+                        <div class="stat-mini-box">
+                            <i class="fas fa-utensils smb-icon"></i>
+                            <span class="smb-val">{{ active_menu|length }}</span>
+                            <span class="smb-lab">Active Dishes</span>
+                        </div>
+                        <div class="stat-mini-box">
+                            <i class="fas fa-award smb-icon"></i>
+                            <span class="smb-val">100%</span>
+                            <span class="smb-lab">Trust Score</span>
+                        </div>
+                        <div class="stat-mini-box">
+                            <i class="fas fa-users smb-icon"></i>
+                            <span class="smb-val">{{ caterer.max_guests or 500 }}</span>
+                            <span class="smb-lab">Max Guests</span>
                         </div>
                     </div>
-                    {% endfor %}
                 </div>
-            </div>
-            {% endif %}
 
-            <!-- Gallery -->
-            {% if gallery_items %}
-            <div class="c-card-premium" style="padding: 1.5rem;">
-                <h2 style="font-size: 1.1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; text-transform: uppercase;">Gallery</h2>
-                <div class="gallery-grid">
-                    {% for item in gallery_items %}
-                    <div class="gallery-item" onclick="viewImage('{{ item.media_url }}')">
-                        <img src="{{ item.media_url }}" class="gallery-img" alt="Caterer photo">
+                <!-- EVENT HIGHLIGHTS (GALLERY STREAMLINED) -->
+                {% if gallery_items %}
+                <div class="intel-card">
+                    <h2 class="section-title"><i class="fas fa-images"></i> Event Highlights</h2>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;">
+                        {% for item in gallery_items[:3] %}
+                        <div style="height: 140px; border-radius: 12px; overflow: hidden;">
+                            <img src="{{ item.media_url }}" style="width: 100%; height: 100%; object-fit: cover;">
+                        </div>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- MENU & PACKAGES TAB -->
+            <div id="hub-tab-menu" class="tab-content">
+
+
+
+                <!-- PACKAGES -->
+                {% if packages %}
+                <div class="intel-card" style="padding: 1.75rem;">
+                    <h2 class="section-title"><i class="fas fa-crown"></i> Elite Packages</h2>
+                    <div class="elite-menu-grid">
+                        {% for pkg in packages %}
+                        <div class="elite-item-card pkg-item">
+                            <div class="ei-img-box">
+                                <img src="{{ pkg.image_url if pkg.image_url else 'https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=400' }}"
+                                    class="ei-img">
+                            </div>
+                            <div class="ei-body">
+                                <span class="ei-name">{{ pkg.name }}</span>
+                                <span class="ei-price">₱{{ "{:,.2f}".format(pkg.price if pkg.price else 0) }}</span>
+                                <button type="button" onclick='window.openPkgDetails("{{ pkg.id }}")' class="btn-elite-sm"
+                                    style="margin-top: 1rem;"><i class="fas fa-info-circle"></i> Inclusions</button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- A LA CARTE MENU -->
+                <div class="intel-card" style="padding: 1.75rem;">
+                    <div
+                        style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+                        <h2 class="section-title" style="margin-bottom: 0;"><i class="fas fa-bowl-food"></i> A-la-carte
+                            Dishes</h2>
+
+                        <!-- CATEGORY HUB INTEGRATED -->
+                        <div class="category-hub" style="margin-bottom: 0; padding-bottom: 0;">
+                            <div class="category-chip active" onclick="filterMenu('all', this)">All</div>
+                            {% set categories = active_menu|map(attribute='category')|unique|list %}
+                            {% for cat in categories %}
+                            {% if cat %}
+                            <div class="category-chip" onclick="filterMenu('{{ cat|lower|replace(' ', '-') }}', this)">{{ cat }}</div>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="elite-menu-grid" id="menu-grid-main">
+                        {% for item in active_menu %}
+                        <div class="elite-item-card menu-item-node"
+                            data-category="{{ (item.category or 'other')|lower|replace(' ', '-') }}">
+                            <div class="ei-img-box">
+                                <img src="{{ item.image_url if item.image_url else 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=400' }}"
+                                    class="ei-img">
+                            </div>
+                            <div class="ei-body">
+                                <span class="ei-cat">{{ item.category }}</span>
+                                <span class="ei-name">{{ item.name }}</span>
+                                <span class="ei-price">₱{{ "{:,.2f}".format(item.price if item.price else 0) }}</span>
+                                <div style="display: flex; align-items: stretch; gap: 0; margin-top: 1rem; border: 1.5px solid var(--hub-slate-200); border-radius: 12px; overflow: hidden; height: 40px; transition: all 0.2s;" onmouseover="this.style.borderColor='var(--hub-primary)'" onmouseout="this.style.borderColor='var(--hub-slate-200)'">
+                                    <div style="background: var(--hub-slate-50); border-right: 1.5px solid var(--hub-slate-200); display: flex; align-items: center; justify-content: center; width: 45px;">
+                                        <input type="number" id="qty-{{ item.id }}" value="1" min="1" 
+                                            style="width: 100%; border: none; background: transparent; font-size: 0.85rem; font-weight: 900; color: var(--hub-text-dark); text-align: center; outline: none; padding: 0;"
+                                            title="Quantity">
+                                    </div>
+                                    <button type="button" class="btn-add-order" id="btn-add-{{ item.id }}"
+                                        style="flex: 1; border: none; border-radius: 0; margin-top: 0; background: #fff; font-size: 0.72rem; font-weight: 850; color: var(--hub-text-dark); height: 100%; text-transform: uppercase; letter-spacing: 0.02em;"
+                                        onclick='window.toggleMenuItem("{{ item.id }}", {{ item.name|tojson }}, {{ (item.price or 0)|tojson }})'>
+                                        <i class="fas fa-plus" style="color: var(--hub-primary);"></i> Add to Order
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
-            {% endif %}
 
-            <!-- Legitimacy / Business Permits -->
-            <div class="c-card-premium" style="padding: 1.5rem;">
-                <h2 style="font-size: 1.1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; text-transform: uppercase;">Verification & Legal Documents</h2>
-                <p style="color: #64748b; font-size: 0.88rem; margin-bottom: 1.5rem;">To ensure customer safety, OccaServe verifies all registered caterers. Below are the official credentials provided by this caterer.</p>
-                
-                <div style="display: flex; flex-wrap: wrap; gap: 1.5rem;">
-                    {% if caterer.permit_url %}
-                    <div style="flex: 1; min-width: 250px; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 1rem; text-align: center; background: #f8fafc;">
-                        <i class="fas fa-file-invoice fa-3x" style="color: #f97316; margin-bottom: 0.75rem;"></i>
-                        <div style="font-weight: 700; color: #1e293b; margin-bottom: 0.5rem;">Business Permit / DTI</div>
-                        <a href="{{ caterer.permit_url }}" target="_blank" class="btn-outline-full" style="padding: 0.5rem;">View Document</a>
+            <!-- POLICIES & REVIEWS TAB -->
+            <div id="hub-tab-policies" class="tab-content">
+                <!-- OPERATIONAL POLICIES (Real-Time) -->
+                <div class="intel-card" style="padding: 1.75rem; margin-top: 2rem;">
+                    <h2 class="section-title"><i class="fas fa-clipboard-check"></i> Operational Policies</h2>
+                    <div class="policy-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem;">
+                        {% set lead_time = (packages|map(attribute='booking_lead_time')|list|first) if packages else 7 %}
+                        {% set res_fee = (packages|map(attribute='reservation_fee')|list|first) if packages else 30 %}
+                        <div class="meta-pill" style="background: var(--hub-slate-50); color: var(--hub-slate-600); justify-content: flex-start; padding: 1rem; border: 1px solid var(--hub-slate-100); height: auto;">
+                            <i class="fas fa-calendar-clock"></i>
+                            <div>
+                                <div style="font-size: 0.65rem; text-transform: uppercase; opacity: 0.7;">Advance Booking</div>
+                                <div style="font-weight: 850;">{{ lead_time }} Days Minimum</div>
+                            </div>
+                        </div>
+                        <div class="meta-pill" style="background: var(--hub-slate-50); color: var(--hub-slate-600); justify-content: flex-start; padding: 1rem; border: 1px solid var(--hub-slate-100); height: auto;">
+                            <i class="fas fa-ban"></i>
+                            <div>
+                                <div style="font-size: 0.65rem; text-transform: uppercase; opacity: 0.7;">Cancellation</div>
+                                <div style="font-weight: 850;">{{ caterer.cancellation_policy or "48h Full Refund" }}</div>
+                            </div>
+                        </div>
+                        <div class="meta-pill" style="background: var(--hub-slate-50); color: var(--hub-slate-600); justify-content: flex-start; padding: 1rem; border: 1px solid var(--hub-slate-100); height: auto;">
+                            <i class="fas fa-credit-card"></i>
+                            <div>
+                                <div style="font-size: 0.65rem; text-transform: uppercase; opacity: 0.7;">Reservation Fee</div>
+                                <div style="font-weight: 850;">{{ res_fee }}% Secure Date</div>
+                            </div>
+                        </div>
+                        <div class="meta-pill" style="background: var(--hub-slate-50); color: var(--hub-slate-600); justify-content: flex-start; padding: 1rem; border: 1px solid var(--hub-slate-100); height: auto;">
+                            <i class="fas fa-truck-fast"></i>
+                            <div>
+                                <div style="font-size: 0.65rem; text-transform: uppercase; opacity: 0.7;">Service Area</div>
+                                <div style="font-weight: 850;">{{ caterer.address_details or "NCR & Laguna" }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="intel-card">
+                    <h2 class="section-title"><i class="fas fa-star-half-stroke"></i> Client Reviews</h2>
+                    {% if reviews %}
+                    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                        {% for review in reviews %}
+                        <div
+                            style="background: var(--hub-slate-50); padding: 1.25rem; border-radius: 1.25rem; border: 1px solid var(--hub-slate-100);">
+                            <div
+                                style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem;">
+                                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                    <div
+                                        style="width: 38px; height: 38px; border-radius: 10px; background: var(--hub-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 900;">
+                                        {{ review.user.first_name[0] }}</div>
+                                    <div style="font-size: 0.9rem; font-weight: 800; color: var(--hub-text-dark);">{{ review.user.first_name }} {{ review.user.last_name }}</div>
+                                </div>
+                                <div style="color: #f59e0b; font-size: 0.8rem;">
+                                    {% for i in range(review.rating) %}<i class="fas fa-star"></i>{% endfor %}
+                                </div>
+                            </div>
+                            <p style="font-size: 0.85rem; color: var(--hub-slate-600); font-style: italic; margin: 0;">
+                                "{{ review.comment }}"</p>
+                        </div>
+                        {% endfor %}
                     </div>
                     {% else %}
-                    <div style="width: 100%; text-align: center; color: #94a3b8; padding: 2rem 0;">
-                        <i class="fas fa-shield-alt fa-3x" style="margin-bottom: 0.75rem;"></i>
-                        <div>Caterer is internally verified via physical address checking.</div>
-                    </div>
+                    <p style="color: var(--hub-slate-400); font-size: 0.9rem; text-align: center; padding: 1rem;">No
+                        reviews yet.</p>
                     {% endif %}
                 </div>
             </div>
 
-            <!-- Accurate Location Map -->
-            <div class="c-card-premium" style="padding: 1.5rem;">
-                <h2 style="font-size: 1.1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; text-transform: uppercase;">Accurate Business Location</h2>
-                <p style="color: #64748b; font-size: 0.88rem; margin-bottom: 1rem;">Pinpoint the exact location of the caterer for easy navigation and event logistics.</p>
-                <div id="map"></div>
-                <div style="margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem; color: #64748b; font-size: 0.85rem; font-weight: 600;">
-                    <i class="fas fa-map-marker-alt" style="color: #f97316;"></i>
-                    <span>{{ caterer.contact_address or caterer.city or 'Location available upon inquiry' }}</span>
+        </div>
+
+        <aside class="profile-sidebar">
+            <!-- RELATIONSHIP INTELLIGENCE -->
+            {% if has_previous_bookings %}
+            <div class="elite-sidebar" style="background: linear-gradient(135deg, #fff 0%, #fffbeb 100%); border-color: #fcd34d;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 0.75rem;">
+                    <div style="background: #f59e0b; color: #fff; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem;">
+                        <i class="fas fa-crown"></i>
+                    </div>
+                    <span style="font-size: 0.85rem; font-weight: 850; color: #92400e;">Preferred Customer</span>
+                </div>
+                <p style="font-size: 0.75rem; color: #b45309; line-height: 1.5; margin-bottom: 1rem;">
+                    Welcome back! You have a booking history with <strong>{{ caterer.business_name }}</strong>.
+                </p>
+                <a href="/customer/dashboard" class="btn-elite-sm" style="background: #fff; border: 1px solid #fde68a; color: #92400e; padding: 0.6rem; font-size: 0.75rem; width: 100%; text-align: center; text-decoration: none; display: block;">
+                    <i class="fas fa-clock-rotate-left"></i> View My History
+                </a>
+            </div>
+            {% endif %}
+
+            <!-- PROFESSIONAL STATUS -->
+            <div class="elite-sidebar">
+                <h4
+                    style="font-size: 0.75rem; font-weight: 800; color: var(--hub-slate-400); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem;">
+                    Professional Status</h4>
+
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <a href="/bookings/start/{{ caterer.id }}" class="btn-hub-main">
+                        <i class="fas fa-calendar-plus"></i> Standard Booking
+                    </a>
+                    {% if has_previous_communication %}
+                    <a href="/customer/messages?recipient_id={{ caterer.user_id }}" class="btn-elite-sm"
+                        style="background: #fff; border: 1px solid var(--hub-slate-200); color: var(--hub-text-dark); padding: 1rem; width: 100%; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <i class="fas fa-comments"></i> Resume Conversation
+                    </a>
+                    {% else %}
+                    <button type="button" class="btn-elite-sm" onclick='window.openMessageModal()'
+                        style="background: #fff; border: 1px solid var(--hub-slate-200); color: var(--hub-text-dark); padding: 1rem; width: 100%;">
+                        <i class="fas fa-paper-plane"></i> Message Professional
+                    </button>
+                    {% endif %}
                 </div>
             </div>
 
-            <!-- Reviews Section -->
-            <div class="c-card-premium" style="padding: 1.5rem;">
-                <h2 style="font-size: 1.1rem; font-weight: 800; color: #1e293b; margin-bottom: 1.5rem; text-transform: uppercase;">Customer Reviews</h2>
-                {% if reviews %}
-                    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
-                        {% for review in reviews %}
-                        <div style="border-bottom: 1px solid #f1f5f9; padding-bottom: 1.5rem; last-child: border-bottom: none;">
-                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
-                                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                                    <div style="width: 40px; height: 40px; border-radius: 50%; background: #fff7ed; border: 1px solid #ffedd5; display: flex; align-items: center; justify-content: center; color: #f97316; font-weight: 800; font-size: 0.9rem;">
-                                        {{ review.user.first_name[0] if review.user.first_name else 'U' }}
-                                    </div>
-                                    <div>
-                                        <div style="font-size: 0.95rem; font-weight: 700; color: #1e293b;">{{ review.user.first_name }} {{ review.user.last_name }}</div>
-                                        <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 500;">{{ review.created_at.strftime('%B %d, %Y') if review.created_at else '' }}</div>
-                                    </div>
-                                </div>
-                                <div style="display: flex; gap: 0.15rem; color: #f59e0b; font-size: 0.85rem;">
-                                    {% for i in range(review.rating) %}
-                                    <i class="fas fa-star"></i>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            <p style="font-size: 0.9rem; color: #475569; line-height: 1.6; font-style: italic; margin: 0;">"{{ review.comment }}"</p>
-                            {% if review.caterer_reply %}
-                            <div style="margin-top: 1rem; margin-left: 2rem; padding: 1rem; background: #f8fafc; border-radius: 0.75rem; border-left: 4px solid #f97316;">
-                                <div style="font-size: 0.8rem; font-weight: 700; color: #1e293b; margin-bottom: 0.4rem;">Caterer's Response:</div>
-                                <p style="font-size: 0.8rem; color: #64748b; font-style: italic; margin: 0;">{{ review.caterer_reply }}</p>
-                            </div>
-                            {% endif %}
-                        </div>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <div style="text-align: center; padding: 3rem 1rem;">
-                        <i class="far fa-star fa-3x" style="color: #f1f5f9; margin-bottom: 1rem;"></i>
-                        <p style="color: #94a3b8; font-size: 0.9rem; font-weight: 500;">No reviews yet. Be the first to book and share your experience!</p>
-                    </div>
-                {% endif %}
-            </div>
-
-        </div>
-
-        <!-- Sidebar -->
-        <div class="sidebar-widget">
-            <div class="sidebar-inner-card">
-                <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;">
-                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                        <i class="fas fa-calendar-alt" style="color: #f97316;"></i>
-                        <span style="font-size: 0.88rem; font-weight: 600; color: #475569;">Availability Checked</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                        <i class="fas fa-truck" style="color: #f97316;"></i>
-                        <span style="font-size: 0.88rem; font-weight: 600; color: #475569;">Full Event Setup Available</span>
-                    </div>
+            <!-- LIVE ORDER DRAWER -->
+            <div class="order-drawer">
+                <div class="drawer-title">
+                    <i class="fas fa-shopping-basket" style="color: var(--hub-primary);"></i>
+                    Live Order Drawer
+                </div>
+                <div id="order-items-list"
+                    style="max-height: 350px; overflow-y: auto; margin-bottom: 1rem; padding-right: 5px;">
+                    <!-- Items will appear here -->
                 </div>
 
-                <!-- Book Now button triggers checkout if customer, else handled in route -->
-                <button onclick="handleBooking({{ caterer.id }})" class="btn-orange-full" style="margin-bottom: 0.75rem;">
-                    <i class="fas fa-calendar-check"></i> Book Now
-                </button>
-                
-                <button onclick="openInquiryModal()" class="btn-outline-full">
-                    <i class="far fa-comment-dots"></i> Send Inquiry
-                </button>
+                <div class="drawer-footer">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <span style="font-size: 0.95rem; font-weight: 700; color: var(--hub-slate-500);">Subtotal</span>
+                        <span class="total-val" id="order-total-price">₱0.00</span>
+                    </div>
+                    <button class="btn-checkout" id="btn-checkout-master" onclick="window.checkoutOrder()" disabled>
+                        Book Selected Items <i class="fas fa-arrow-right"></i>
+                    </button>
+                    <div
+                        style="text-align: center; margin-top: 1rem; font-size: 0.65rem; color: var(--hub-slate-400); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">
+                        <i class="fas fa-shield-halved" style="margin-right: 4px;"></i> Secure Selection
+                    </div>
+                </div>
             </div>
-        </div>
+        </aside>
     </div>
 </div>
-
-<!-- Inquiry Modal -->
-<div id="inquiry-modal" class="modal-overlay">
-    <div class="modal-box">
-        <button class="modal-close" onclick="closeInquiryModal()"><i class="fas fa-times"></i></button>
-        <h2 style="font-size: 1.25rem; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem;">Send Direct Message</h2>
-        <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 1.5rem;">Ask about schedules, menus, or custom packages.</p>
-        
-        <form id="inquiry-form" onsubmit="submitInquiry(event, {{ caterer.user_id }})">
-            <div style="margin-bottom: 1rem;">
-                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.25rem;">Message</label>
-                <textarea id="inquiry-msg" required placeholder="Hi! I would like to inquire about your services for an upcoming event..." style="width: 100%; height: 120px; border: 1px solid #cbd5e1; border-radius: 0.5rem; padding: 0.75rem; font-family: 'Poppins', sans-serif; resize: none;"></textarea>
-            </div>
-            <button type="submit" id="inquiry-btn" class="btn-orange-full">Send Message</button>
-        </form>
-    </div>
-</div>
-
-<!-- Package Details Modal -->
-<div id="pkg-details-modal" class="modal-overlay">
-    <div class="modal-box" style="max-width: 500px;">
-        <button class="modal-close" onclick="closePkgDetails()"><i class="fas fa-times"></i></button>
-        <div id="pkg-details-content">
-            <!-- Populated by JS -->
-        </div>
-    </div>
-</div>
-
-<!-- Image Preview Modal -->
-<div id="image-modal" class="modal-overlay" onclick="closeImageModal()">
-    <div style="max-width: 80%; max-height: 80%;">
-        <img id="image-preview" src="" style="width: 100%; height: 100%; object-fit: contain; border-radius: 0.75rem;">
-    </div>
-</div>
-
-<script>
-    // Manage Package details mapping
-    const packages = {
-        {% for pkg in packages %}
-        "{{ pkg.id }}": {
-            name: "{{ pkg.name }}",
-            price: '₱{{ "{:,.2f}".format(pkg.price if pkg.price else 0) }}',
-            description: `{{ pkg.description or 'Premium package.' }}`,
-            inclusions: [
-                {% if pkg.menu_items %}
-                    {% for m in pkg.menu_items %}
-                        "Dish: {{ m.name }} ({{ m.category }})",
-                    {% endfor %}
-                {% endif %}
-                {% if pkg.inclusions and pkg.inclusions is iterable %}
-                    {% for inc in pkg.inclusions %}
-                        "{{ inc }}",
-                    {% endfor %}
-                {% endif %}
-            ],
-            service_duration: "{{ pkg.service_duration or 4 }} Hours",
-            service_type: "{{ pkg.service_type or 'General' }}"
-        },
-        {% endfor %}
-    };
-
-    function openPkgDetails(id) {
-        const pkg = packages[id];
-        if(!pkg) return;
-        
-        let incHtml = "";
-        const defaultInclusions = ["Full Event Setup & Cleanup", "Premium Buffet Table Design", "Professional Uniformed Servers", "Standard Sound System", "Complete Dining Utensils"];
-        const displayInclusions = (pkg.inclusions && pkg.inclusions.length > 0) ? pkg.inclusions : defaultInclusions;
-
-        incHtml = `<ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem;">
-            ${displayInclusions.map(i => `<li style="font-size: 0.88rem; color: #475569; display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-check-circle" style="color: #f97316;"></i> ${i}</li>`).join('')}
-        </ul>`;
-
-        const content = `
-            <h2 style="font-size: 1.25rem; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem;">${pkg.name}</h2>
-            <div style="font-size: 1.5rem; font-weight: 800; color: #f97316; margin-bottom: 1rem;">${pkg.price}</div>
-            <div style="font-size: 0.88rem; color: #475569; line-height: 1.6; margin-bottom: 1.5rem;">${pkg.description}</div>
-            
-            <div style="margin-bottom: 1.5rem; border-top: 1px solid #f1f5f9; padding-top: 1rem;">
-                <div style="font-weight: 700; color: #1e293b; margin-bottom: 0.75rem; font-size: 0.9rem; text-transform: uppercase;">What's Included:</div>
-                ${incHtml}
-            </div>
-            
-            <div style="font-size: 0.8rem; color: #64748b; display: flex; flex-direction: column; gap: 0.25rem; border-top: 1px solid #f1f5f9; padding-top: 1rem;">
-                <div><strong>Service Type:</strong> ${pkg.service_type}</div>
-                <div><strong>Duration:</strong> ${pkg.service_duration}</div>
-            </div>
-        `;
-        document.getElementById('pkg-details-content').innerHTML = content;
-        document.getElementById('pkg-details-modal').style.display = 'flex';
-    }
-
-    function closePkgDetails() {
-        document.getElementById('pkg-details-modal').style.display = 'none';
-    }
-
-    // Booking
-    function handleBooking(catererId) {
-        window.location.href = `/customer/marketplace/${catererId}/checkout`;
-    }
-
-    // Inquiry
-    function openInquiryModal() {
-        document.getElementById('inquiry-modal').style.display = 'flex';
-    }
-
-    function closeInquiryModal() {
-        document.getElementById('inquiry-modal').style.display = 'none';
-    }
-
-    async function submitInquiry(event, catererUserId) {
-        event.preventDefault();
-        const btn = document.getElementById('inquiry-btn');
-        const msg = document.getElementById('inquiry-msg').value;
-        
-        btn.disabled = true;
-        btn.innerText = 'Sending...';
-
-        try {
-            const response = await fetch('/api/chat/send', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    receiver_id: catererUserId,
-                    content: msg,
-                    message_type: 'text'
-                })
-            });
-            
-            if (response.ok) {
-                alert('Message sent successfully! You can track responses in your Chat dashboard.');
-                closeInquiryModal();
-                document.getElementById('inquiry-msg').value = '';
-            } else {
-                alert('Failed to send message. Please try again.');
-            }
-        } catch (error) {
-            alert('An error occurred. Please check your internet connection.');
-        } finally {
-            btn.disabled = false;
-            btn.innerText = 'Send Message';
-        }
-    }
-
-    // Image View
-    function viewImage(url) {
-        document.getElementById('image-preview').src = url;
-        document.getElementById('image-modal').style.display = 'flex';
-    }
-
-    function closeImageModal() {
-        document.getElementById('image-modal').style.display = 'none';
-     // Initialize Real-time Map (Google Maps)
-    document.addEventListener('DOMContentLoaded', function() {
-        const lat = {{ caterer.latitude if caterer.latitude else 14.2811 }};
-        const lng = {{ caterer.longitude if caterer.longitude else 121.4150 }};
-        const businessName = "{{ caterer.business_name }}";
-        
-        const mapPosition = { lat: lat, lng: lng };
-        const map = new google.maps.Map(document.getElementById('profileMap'), {
-            zoom: 15,
-            center: mapPosition,
-            mapId: "DEMO_MAP_ID",
-            disableDefaultUI: false,
-            fullscreenControl: true,
-            mapTypeControl: false,
-            streetViewControl: true
-        });
-
-        const marker = new google.maps.Marker({
-            position: mapPosition,
-            map: map,
-            title: businessName,
-            animation: google.maps.Animation.DROP
-        });
-
-        const infoWindow = new google.maps.InfoWindow({
-            content: `<div style="font-weight: 700; color: #1e293b; padding: 4px;">${businessName}</div><div style="font-size: 0.8rem; color: #64748b;">Verified Location</div>`
-        });
-
-        marker.addListener("click", () => {
-            infoWindow.open(map, marker);
-        });
-    });
-</script>
 {% endblock %}
-ock %}
+
+{% block modals %}
+    <div id="pkg-modal" class="oc-modal-layer">
+        <div class="m-box-elite">
+            <button type="button" onclick="window.closePkgModal()"
+                style="position: absolute; top: 1.25rem; right: 1.25rem; border: none; background: var(--hub-slate-50); width: 32px; height: 32px; border-radius: 50%; cursor: pointer;"><i
+                    class="fas fa-times"></i></button>
+            <div id="pkg-content"></div>
+        </div>
+    </div>
+
+    <div id="message-modal" class="oc-modal-layer">
+        <div class="m-box-elite">
+            <button type="button" onclick="window.closeMessageModal()"
+                style="position: absolute; top: 1.25rem; right: 1.25rem; border: none; background: var(--hub-slate-50); width: 32px; height: 32px; border-radius: 50%; cursor: pointer;"><i
+                    class="fas fa-times"></i></button>
+            <h2 style="font-size: 1.25rem; font-weight: 850; color: var(--hub-text-dark); margin-bottom: 0.5rem;">Message Professional</h2>
+            <p style="color: var(--hub-slate-400); font-size: 0.85rem; margin-bottom: 1.5rem;">Ask about availability, custom menus, or other details.</p>
+            <form onsubmit="window.sendHubMessage(event, '{{ caterer.user_id }}')">
+                <textarea id="hub-msg-body" required placeholder="Hi! I have a question about..."
+                    style="width: 100%; height: 120px; border: 1.5px solid var(--hub-slate-200); border-radius: 14px; padding: 1rem; font-family: 'Poppins'; margin-bottom: 1.5rem;"></textarea>
+                <button type="submit" id="hub-send-btn" class="btn-hub-main">Send Direct Message</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}

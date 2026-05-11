@@ -10,7 +10,7 @@
         <div class="card-name-row">
             <h3 class="card-title">{{ caterer.business_name }}</h3>
             {% if caterer.is_verified %}
-            <span class="card-verified-badge" title="Verified Caterer"><i class="fas fa-check-circle"></i></span>
+            <i class="fas fa-circle-check" style="color: #3b82f6; font-size: 0.9rem;" title="Verified Professional"></i>
             {% endif %}
         </div>
 
@@ -20,23 +20,23 @@
         </div>
 
         <p class="card-description">
-            {{ (caterer.description or "Exquisite culinary experiences tailored for your special occasions.")|truncate(100) }}
+            {{ (caterer.description or "Exquisite culinary experiences tailored for your special occasions.")|truncate(90) }}
         </p>
 
         <div class="package-specs-minimal">
             <div class="spec-item-min">
-                <i class="fas fa-map-marker-alt"></i>
-                <span>{{ caterer.city or "Manila" }}</span>
+                <i class="fas fa-location-dot" style="color: var(--primary-color);"></i>
+                <span>{{ caterer.city or "Laguna" }}</span>
             </div>
             <div class="spec-item-min">
-                <i class="fas fa-eye"></i>
+                <i class="fas fa-fire-flame-curved" style="color: #f97316;"></i>
                 <span>{{ "{:,}".format(caterer.unique_views or caterer.profile_views or 0) }} views</span>
             </div>
         </div>
 
-        <div class="package-footer-pro-new" style="margin-top: 0.85rem;">
-            <a href="/customer/marketplace/{{ caterer.id }}" class="btn-edit-full" style="text-decoration: none;">
-                <i class="fas fa-arrow-right"></i> Visit Profile
+        <div class="package-footer-pro-new">
+            <a href="/customer/marketplace/{{ caterer.id }}" class="btn-premium-explore">
+                Explore Professional <i class="fas fa-chevron-right"></i>
             </a>
         </div>
     </div>

@@ -279,3 +279,38 @@ async def upload_chat_file(
         "file_name": file.filename,
         "message_type": "image" if ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp'] else "file"
     }
+
+@router.get("/context/{peer_id}")
+async def get_chat_context(
+    peer_id: int,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """Retrieve the most recent active booking context for this peer."""
+    # Find the peer user to check role
+    peer = db.query(models.User).get(peer_id)
+    if not peer:
+        return {"has_context": False}
+
+    # If chatting with a caterer, look for active bookings
+    if peer.role == 'caterer':
+        caterer_profile = peer.caterer_profile
+        if not caterer_profile:
+            return {"has_context": False}
+            
+        booking = db.query(models.Booking).filter(
+            models.Booking.user_id == current_user.id,
+            models.Booking.caterer_id == caterer_profile.id,
+            models.Booking.status != 'cancelled'
+        ).order_by(models.Booking.created_at.desc()).first()
+
+        if booking:
+            return {
+                "has_context": True,
+                "booking_id": booking.id,
+                "status": booking.status,
+                "event_name": booking.event_name or "Event",
+                "type": "package" if booking.package_id else "alacarte"
+            }
+
+    return {"has_context": False}
