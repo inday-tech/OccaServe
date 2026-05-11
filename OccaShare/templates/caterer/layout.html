@@ -683,6 +683,23 @@
         .sidebar-is-mini .sidebar-brand { padding: 1.25rem 0; min-height: auto; }
         .sidebar-is-mini .sidebar-collapse-btn { position: relative; right: auto; top: auto; transform: rotate(180deg); margin: 0 auto; }
         /* MOBILE OVERRIDES */
+        .mobile-menu-btn {
+            display: none;
+            background: transparent;
+            border: none;
+            font-size: 1.25rem;
+            color: var(--secondary-color);
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 8px;
+            transition: background 0.2s, color 0.2s;
+            margin-right: 12px;
+        }
+        .mobile-menu-btn:hover {
+            background: #f1f5f9;
+            color: var(--primary-color);
+        }
+
         @media (max-width: 1024px) {
             .sidebar {
                 transform: translateX(-100%);
@@ -703,21 +720,29 @@
             }
             .sidebar-overlay.active { opacity: 1; visibility: visible; }
 
-            .floating-burger {
-                position: fixed; bottom: 25px; right: 25px;
-                width: 55px; height: 55px;
-                background: var(--primary-color);
-                color: #fff; border-radius: 50%;
-                display: flex; align-items: center; justify-content: center;
-                box-shadow: 0 10px 25px rgba(var(--primary-color-rgb), 0.4);
-                z-index: 2000; border: none; cursor: pointer;
-                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            .mobile-menu-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }
-            .floating-burger:active { transform: scale(0.9); }
+            
+            .dashboard-header {
+                left: 0;
+                width: 100%;
+                padding: 0.75rem 1rem !important;
+            }
         }
 
-        @media (min-width: 1025px) {
-            .floating-burger { display: none !important; }
+        @media (max-width: 768px) {
+            .header-search-container {
+                display: none;
+            }
+            .header-actions {
+                gap: 0.5rem;
+            }
+            .profile-meta {
+                display: none;
+            }
         }
 
         /* SIDEBAR FOOTER & LOGOUT */
@@ -754,11 +779,6 @@
 </head>
 
 <body>
-    <!-- Floating Mobile Toggle -->
-    <button class="floating-burger" id="burgerBtn" onclick="toggleSidebar()" aria-label="Toggle Menu">
-        <i class="fas fa-bars"></i>
-    </button>
-
     <!-- Sidebar Overlay -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -951,6 +971,10 @@
                     </div>
                 {% endif %}
                 <div class="header-left">
+                    <!-- Mobile Burger Menu -->
+                    <button class="mobile-menu-btn" id="burgerBtn" aria-label="Toggle Sidebar" onclick="toggleSidebar()">
+                        <i class="fas fa-bars"></i>
+                    </button>
                     <!-- Space reserved for future left-side utilities -->
                 </div>
                 <div class="header-right">
