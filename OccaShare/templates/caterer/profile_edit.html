@@ -1085,7 +1085,27 @@ currentPassInput.addEventListener('input', validateRequirements);
         setTimeout(() => {
             google.maps.event.trigger(map, 'resize');
             map.setCenter(marker.getPosition());
-        }, 100);
+
+            // If coordinates are missing/default, geocode the saved address
+            const hasValidCoords = initialLat !== 14.2811 && initialLng !== 121.4150 && initialLat !== 0 && initialLng !== 0;
+            if (!hasValidCoords) {
+                const savedAddress = document.getElementById('businessAddress')?.value?.trim();
+                const savedCity = document.getElementById('locationCity')?.value?.trim();
+                if (savedAddress || savedCity) {
+                    const fullAddress = [savedAddress, savedCity, 'Philippines'].filter(Boolean).join(', ');
+                    geocoder.geocode({ address: fullAddress }, (results, status) => {
+                        if (status === 'OK' && results[0]) {
+                            const loc = results[0].geometry.location;
+                            map.setCenter(loc);
+                            map.setZoom(17);
+                            marker.setPosition(loc);
+                            marker.setAnimation(google.maps.Animation.DROP);
+                            updateCoords(loc.lat(), loc.lng());
+                        }
+                    });
+                }
+            }
+        }, 200);
     }
 
     document.addEventListener('DOMContentLoaded', function() {

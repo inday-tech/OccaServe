@@ -545,10 +545,12 @@
         const lat = {{ caterer.latitude if caterer.latitude else 14.1989 }};
         const lon = {{ caterer.longitude if caterer.longitude else 121.4286 }};
         const businessName = "{{ caterer.business_name }}";
+        const savedAddress = "{{ caterer.contact_address or '' }}";
+        const savedCity = "{{ caterer.city or '' }}";
         
         const map = new google.maps.Map(document.getElementById('map'), {
             center: { lat, lng: lon },
-            zoom: 14,
+            zoom: 16,
             mapTypeId: 'hybrid',
             mapTypeControl: true,
             mapTypeControlOptions: {
@@ -574,6 +576,23 @@
         marker.addListener('click', () => {
             infoWindow.open(map, marker);
         });
+
+        // If coordinates are default/missing, geocode the saved address for accuracy
+        const isDefault = (lat === 14.1989 && lon === 121.4286) || (lat === 0 && lon === 0);
+        if (isDefault && (savedAddress || savedCity)) {
+            const fullAddress = [savedAddress, savedCity, 'Philippines'].filter(Boolean).join(', ');
+            const geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ address: fullAddress }, (results, status) => {
+                if (status === 'OK' && results[0]) {
+                    const loc = results[0].geometry.location;
+                    map.setCenter(loc);
+                    map.setZoom(17);
+                    marker.setPosition(loc);
+                    marker.setAnimation(google.maps.Animation.DROP);
+                    infoWindow.open(map, marker);
+                }
+            });
+        }
     });
 </script>
 {% endblock %}
