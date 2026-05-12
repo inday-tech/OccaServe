@@ -261,8 +261,7 @@
         }
     }
 </style>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDB1SLholKPKD5ewgc6c6P56RqFRMcpkEI&libraries=places"></script>
 {% endblock %}
 
 {% block content %}
@@ -393,6 +392,7 @@
     let currentView = 'grid';
     let marketplaceMap;
     let mapMarkers = [];
+    let mapInfoWindow;
 
     function toggleView(view) {
         currentView = view;
@@ -415,20 +415,29 @@
             if (!marketplaceMap) {
                 initMarketplaceMap();
             } else {
-                setTimeout(() => marketplaceMap.invalidateSize(), 100);
+                google.maps.event.trigger(marketplaceMap, 'resize');
             }
         }
     }
 
     function initMarketplaceMap() {
-        const lagunaCenter = [14.2811, 121.4150];
-        marketplaceMap = L.map('marketplaceMap').setView(lagunaCenter, 11);
-        
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(marketplaceMap);
-        
+        const lagunaCenter = { lat: 14.2811, lng: 121.4150 };
+        marketplaceMap = new google.maps.Map(document.getElementById('marketplaceMap'), {
+            center: lagunaCenter,
+            zoom: 11,
+            mapTypeControl: true,
+            mapTypeControlOptions: {
+                style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
+                position: google.maps.ControlPosition.TOP_RIGHT,
+                mapTypeIds: ['roadmap', 'satellite', 'hybrid']
+            },
+            streetViewControl: false,
+            fullscreenControl: true,
+            styles: [
+                { featureType: 'poi.business', stylers: [{ visibility: 'off' }] }
+            ]
+        });
+        mapInfoWindow = new google.maps.InfoWindow();
         updateMapMarkers();
     }
 
@@ -436,47 +445,56 @@
         if (!marketplaceMap) return;
 
         // Clear existing markers
-        mapMarkers.forEach(m => marketplaceMap.removeLayer(m));
+        mapMarkers.forEach(m => m.setMap(null));
         mapMarkers = [];
 
         const catererCards = document.querySelectorAll('.caterer-elite-card');
-        const bounds = L.latLngBounds();
+        const bounds = new google.maps.LatLngBounds();
         let hasCoords = false;
 
         catererCards.forEach(card => {
             const lat = parseFloat(card.dataset.lat);
             const lng = parseFloat(card.dataset.lon);
-            const businessName = card.querySelector('h3').innerText;
-            const cardLink = card.querySelector('.elite-view-btn').getAttribute('href');
-            const imgUrl = card.querySelector('img').src;
+            if (isNaN(lat) || isNaN(lng)) return;
 
-            if (!isNaN(lat) && !isNaN(lng)) {
-                hasCoords = true;
-                const position = [lat, lng];
-                
-                const marker = L.marker(position).addTo(marketplaceMap);
-                
-                marker.bindPopup(`
-                    <div style="padding: 5px; width: 180px;">
-                        <img src="${imgUrl}" style="width: 100%; height: 80px; object-fit: cover; border-radius: 8px; margin-bottom: 8px;">
-                        <h4 style="margin: 0 0 5px 0; font-size: 14px; color: #1e293b;">${businessName}</h4>
-                        <a href="${cardLink}" style="display: block; background: #FF7B54; color: white; text-align: center; padding: 6px; border-radius: 6px; font-size: 11px; text-decoration: none; font-weight: 700;">View Profile</a>
+            const businessName = card.querySelector('h3')?.innerText || '';
+            const cardLink = card.querySelector('.elite-view-btn')?.getAttribute('href') || '#';
+            const imgEl = card.querySelector('img');
+            const imgUrl = imgEl ? imgEl.src : '';
+
+            hasCoords = true;
+            const position = { lat, lng };
+
+            const marker = new google.maps.Marker({
+                position: position,
+                map: marketplaceMap,
+                animation: google.maps.Animation.DROP,
+                title: businessName
+            });
+
+            marker.addListener('click', () => {
+                mapInfoWindow.setContent(`
+                    <div style="padding:5px;width:190px;">
+                        ${imgUrl ? `<img src="${imgUrl}" style="width:100%;height:85px;object-fit:cover;border-radius:8px;margin-bottom:8px;">` : ''}
+                        <h4 style="margin:0 0 5px;font-size:14px;font-weight:700;color:#1e293b;">${businessName}</h4>
+                        <a href="${cardLink}" style="display:block;background:#FF7B54;color:white;text-align:center;padding:7px;border-radius:8px;font-size:11px;text-decoration:none;font-weight:700;">View Profile</a>
                     </div>
                 `);
+                mapInfoWindow.open(marketplaceMap, marker);
+            });
 
-                mapMarkers.push(marker);
-                bounds.extend(position);
-            }
+            mapMarkers.push(marker);
+            bounds.extend(position);
         });
 
         if (hasCoords) {
-            marketplaceMap.fitBounds(bounds, { padding: [50, 50] });
+            marketplaceMap.fitBounds(bounds, { padding: { top: 50, bottom: 50, left: 50, right: 50 } });
         }
     }
 
     // Proximity Detection
     function detectUserLocation() {
-        if ("geolocation" in navigator) {
+        if ('geolocation' in navigator) {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     const userPos = { lat: position.coords.latitude, lng: position.coords.longitude };
@@ -484,10 +502,11 @@
                     sessionStorage.setItem('user_lon', userPos.lng);
                     
                     if (marketplaceMap) {
-                        marketplaceMap.setView([userPos.lat, userPos.lng], 12);
+                        marketplaceMap.setCenter(userPos);
+                        marketplaceMap.setZoom(12);
                     }
                 },
-                (error) => console.log("Location access denied."),
+                (error) => console.log('Location access denied.'),
                 { enableHighAccuracy: true, timeout: 5000 }
             );
         }

@@ -62,8 +62,8 @@
         z-index: 10;
     }
 </style>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Google Maps API -->
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDB1SLholKPKD5ewgc6c6P56RqFRMcpkEI&libraries=places"></script>
 {% endblock %}
 
 {% block content %}
@@ -540,24 +540,42 @@
         document.getElementById('public-img-modal').classList.remove('flex');
     }
 
-    // Initialize Real-time Map
+    // Initialize Google Maps for Verified Location
     document.addEventListener('DOMContentLoaded', function() {
         const lat = {{ caterer.latitude if caterer.latitude else 14.1989 }};
         const lon = {{ caterer.longitude if caterer.longitude else 121.4286 }};
         const businessName = "{{ caterer.business_name }}";
         
-        const map = L.map('map').setView([lat, lon], 13);
-        
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors'
-        }).addTo(map);
+        const map = new google.maps.Map(document.getElementById('map'), {
+            center: { lat, lng: lon },
+            zoom: 14,
+            mapTypeControl: true,
+            mapTypeControlOptions: {
+                style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
+                mapTypeIds: ['roadmap', 'satellite', 'hybrid']
+            },
+            streetViewControl: false,
+            fullscreenControl: true,
+            styles: [
+                { featureType: 'poi.business', stylers: [{ visibility: 'off' }] }
+            ]
+        });
 
-        L.marker([lat, lon]).addTo(map)
-            .bindPopup(`<b>${businessName}</b><br>Accurate Location`)
-            .openPopup();
-            
-        // Force resize fix for Leaflet
-        setTimeout(() => map.invalidateSize(), 500);
+        const marker = new google.maps.Marker({
+            position: { lat, lng: lon },
+            map: map,
+            animation: google.maps.Animation.DROP,
+            title: businessName
+        });
+
+        const infoWindow = new google.maps.InfoWindow({
+            content: `<b>${businessName}</b><br>Verified Location`
+        });
+        infoWindow.open(map, marker);
+
+        marker.addListener('click', () => {
+            infoWindow.open(map, marker);
+        });
     });
 </script>
 {% endblock %}
