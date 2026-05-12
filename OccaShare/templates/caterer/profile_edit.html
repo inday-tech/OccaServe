@@ -126,11 +126,16 @@
                         <p class="field-hint">Pin your exact kitchen location. This ensures accurate distance calculation for customers.</p>
                         
                         <div class="location-picker-wrapper">
-                            <div class="map-search-group">
-                                <i class="fas fa-search" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none;z-index:2;"></i>
-                                <input type="text" id="mapSearchInput" placeholder="Search barangay, street, or landmark..." autocomplete="off" style="padding-left:38px;flex:1;">
+                            <div class="map-search-group" style="display:flex;gap:0.5rem;align-items:center;">
+                                <div style="position:relative;flex:1;">
+                                    <i class="fas fa-search" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none;z-index:2;"></i>
+                                    <input type="text" id="mapSearchInput" placeholder="Search barangay, street, or landmark..." autocomplete="off" style="padding-left:38px;width:100%;">
+                                </div>
+                                <button type="button" id="gpsLocateBtn" style="background:var(--primary-color,#800000);color:#fff;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;font-size:0.85rem;white-space:nowrap;display:flex;align-items:center;gap:6px;" title="Use GPS to pin your exact location">
+                                    <i class="fas fa-crosshairs"></i> Use My Location
+                                </button>
                             </div>
-                            <div id="pickerMap" style="height: 380px; border-radius: var(--border-radius); border: 1px solid #e2e8f0; margin-top: 0.5rem; z-index: 1;"></div>
+                            <div id="pickerMap" style="height: 420px; border-radius: var(--border-radius); border: 1px solid #e2e8f0; margin-top: 0.5rem; z-index: 1;"></div>
                             <div class="coords-display">
                                 <span><i class="fas fa-map-pin" style="color:var(--primary-color);margin-right:4px;"></i> Lat: <strong id="latDisplay">{{ profile.latitude or '0.00' }}</strong></span>
                                 <span><i class="fas fa-map-pin" style="color:var(--primary-color);margin-right:4px;"></i> Lon: <strong id="lonDisplay">{{ profile.longitude or '0.00' }}</strong></span>
@@ -889,6 +894,7 @@ function validateRequirements() {
 newPassInput.addEventListener('input', validateRequirements);
 confPassInput.addEventListener('input', validateRequirements);
 currentPassInput.addEventListener('input', validateRequirements);
+</script>
 
 <!-- Google Maps Location Picker (replaced Leaflet) -->
 <script>
@@ -1026,6 +1032,54 @@ currentPassInput.addEventListener('input', validateRequirements);
                 addressInput.value = parts.slice(0, Math.min(3, parts.length - 1)).join(',').trim();
             }
         });
+
+        // ─── GPS "Use My Location" Button ───
+        const gpsBtn = document.getElementById('gpsLocateBtn');
+        if (gpsBtn) {
+            gpsBtn.addEventListener('click', () => {
+                if (!navigator.geolocation) {
+                    if (window.showError) window.showError('Geolocation is not supported by your browser.');
+                    return;
+                }
+
+                const origHtml = gpsBtn.innerHTML;
+                gpsBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Locating...';
+                gpsBtn.disabled = true;
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        const pos = { lat, lng };
+
+                        map.setCenter(pos);
+                        map.setZoom(18);
+                        marker.setPosition(pos);
+                        marker.setAnimation(google.maps.Animation.DROP);
+                        updateCoords(lat, lng);
+                        reverseGeocode(lat, lng);
+
+                        gpsBtn.innerHTML = '<i class="fas fa-check"></i> Located!';
+                        gpsBtn.style.background = '#10b981';
+                        setTimeout(() => {
+                            gpsBtn.innerHTML = origHtml;
+                            gpsBtn.style.background = '';
+                            gpsBtn.disabled = false;
+                        }, 2000);
+                    },
+                    (error) => {
+                        let msg = 'Could not get your location.';
+                        if (error.code === 1) msg = 'Location access denied. Please allow location access in your browser.';
+                        if (error.code === 2) msg = 'Location unavailable. Please try again.';
+                        if (error.code === 3) msg = 'Location request timed out. Please try again.';
+                        if (window.showError) window.showError(msg);
+                        gpsBtn.innerHTML = origHtml;
+                        gpsBtn.disabled = false;
+                    },
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                );
+            });
+        }
 
         // Force proper rendering after init
         setTimeout(() => {
