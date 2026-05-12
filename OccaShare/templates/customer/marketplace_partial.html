@@ -1,6 +1,11 @@
 {% if caterers %}
 {% for caterer in caterers %}
-<article class="caterer-card-premium animate-up">
+<article class="caterer-card-premium animate-up" 
+    data-lat="{{ caterer.latitude or '' }}" 
+    data-lon="{{ caterer.longitude or '' }}"
+    data-address="{{ caterer.contact_address or '' }}"
+    data-city="{{ caterer.city or '' }}"
+    data-caterer-id="{{ caterer.id }}">
     <div class="card-image-wrapper">
         <img src="{{ caterer.cover_image_url if caterer.cover_image_url else 'https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=800&auto=format&fit=crop' }}"
             class="card-img" alt="{{ caterer.business_name }}" loading="lazy">

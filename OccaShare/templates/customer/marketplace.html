@@ -393,6 +393,10 @@
     let marketplaceMap;
     let mapMarkers = [];
     let mapInfoWindow;
+    let customerMarker;
+    let geocoder;
+    let geocodeQueue = [];
+    let isGeocoding = false;
 
     function toggleView(view) {
         currentView = view;
@@ -416,6 +420,7 @@
                 initMarketplaceMap();
             } else {
                 google.maps.event.trigger(marketplaceMap, 'resize');
+                updateMapMarkers();
             }
         }
     }
@@ -424,7 +429,7 @@
         const lagunaCenter = { lat: 14.2811, lng: 121.4150 };
         marketplaceMap = new google.maps.Map(document.getElementById('marketplaceMap'), {
             center: lagunaCenter,
-            zoom: 11,
+            zoom: 12,
             mapTypeId: 'hybrid',
             mapTypeControl: true,
             mapTypeControlOptions: {
@@ -436,61 +441,214 @@
             fullscreenControl: true
         });
         mapInfoWindow = new google.maps.InfoWindow();
+        geocoder = new google.maps.Geocoder();
+        
+        // Add customer location pin if available
+        addCustomerPin();
+        
+        // Load caterer pins
         updateMapMarkers();
+    }
+
+    function addCustomerPin() {
+        const lat = parseFloat(sessionStorage.getItem('user_lat'));
+        const lng = parseFloat(sessionStorage.getItem('user_lon'));
+        if (isNaN(lat) || isNaN(lng)) return;
+
+        if (customerMarker) customerMarker.setMap(null);
+
+        customerMarker = new google.maps.Marker({
+            position: { lat, lng },
+            map: marketplaceMap,
+            icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 10,
+                fillColor: '#3b82f6',
+                fillOpacity: 1,
+                strokeColor: '#ffffff',
+                strokeWeight: 3
+            },
+            title: 'Your Location',
+            zIndex: 999
+        });
+
+        const pulseCircle = new google.maps.Circle({
+            map: marketplaceMap,
+            center: { lat, lng },
+            radius: 200,
+            fillColor: '#3b82f6',
+            fillOpacity: 0.15,
+            strokeColor: '#3b82f6',
+            strokeOpacity: 0.3,
+            strokeWeight: 1
+        });
+
+        customerMarker.addListener('click', () => {
+            mapInfoWindow.setContent(`
+                <div style="padding:8px;text-align:center;">
+                    <i class="fas fa-user-circle" style="font-size:24px;color:#3b82f6;"></i>
+                    <p style="margin:5px 0 0;font-weight:700;color:#1e293b;">📍 Your Location</p>
+                </div>
+            `);
+            mapInfoWindow.open(marketplaceMap, customerMarker);
+        });
+    }
+
+    // Geocode an address and return the result via callback
+    function geocodeAddress(address, callback) {
+        geocodeQueue.push({ address, callback });
+        processGeocodeQueue();
+    }
+
+    function processGeocodeQueue() {
+        if (isGeocoding || geocodeQueue.length === 0) return;
+        isGeocoding = true;
+
+        const { address, callback } = geocodeQueue.shift();
+        geocoder.geocode({ address: address }, (results, status) => {
+            if (status === 'OK' && results[0]) {
+                const loc = results[0].geometry.location;
+                callback({ lat: loc.lat(), lng: loc.lng() });
+            } else {
+                console.log('Geocode failed for:', address, status);
+                callback(null);
+            }
+            isGeocoding = false;
+            // Add delay to avoid OVER_QUERY_LIMIT
+            setTimeout(processGeocodeQueue, 300);
+        });
     }
 
     function updateMapMarkers() {
         if (!marketplaceMap) return;
 
-        // Clear existing markers
+        // Clear existing caterer markers
         mapMarkers.forEach(m => m.setMap(null));
         mapMarkers = [];
 
-        const catererCards = document.querySelectorAll('.caterer-elite-card');
+        const catererCards = document.querySelectorAll('.caterer-card-premium');
         const bounds = new google.maps.LatLngBounds();
         let hasCoords = false;
+
+        // Include customer location in bounds
+        const custLat = parseFloat(sessionStorage.getItem('user_lat'));
+        const custLng = parseFloat(sessionStorage.getItem('user_lon'));
+        if (!isNaN(custLat) && !isNaN(custLng)) {
+            bounds.extend({ lat: custLat, lng: custLng });
+            hasCoords = true;
+        }
 
         catererCards.forEach(card => {
             const lat = parseFloat(card.dataset.lat);
             const lng = parseFloat(card.dataset.lon);
-            if (isNaN(lat) || isNaN(lng)) return;
-
-            const businessName = card.querySelector('h3')?.innerText || '';
-            const cardLink = card.querySelector('.elite-view-btn')?.getAttribute('href') || '#';
-            const imgEl = card.querySelector('img');
+            const address = card.dataset.address || '';
+            const city = card.dataset.city || '';
+            const businessName = card.querySelector('.card-title')?.innerText || card.querySelector('h3')?.innerText || 'Caterer';
+            const cardLink = card.querySelector('.btn-premium-explore')?.getAttribute('href') || card.querySelector('a')?.getAttribute('href') || '#';
+            const imgEl = card.querySelector('.card-img') || card.querySelector('img');
             const imgUrl = imgEl ? imgEl.src : '';
+            const ratingEl = card.querySelector('.rating-pro');
+            const ratingText = ratingEl ? ratingEl.innerText.trim() : '';
 
-            hasCoords = true;
-            const position = { lat, lng };
-
-            const marker = new google.maps.Marker({
-                position: position,
-                map: marketplaceMap,
-                animation: google.maps.Animation.DROP,
-                title: businessName
-            });
-
-            marker.addListener('click', () => {
-                mapInfoWindow.setContent(`
-                    <div style="padding:5px;width:190px;">
-                        ${imgUrl ? `<img src="${imgUrl}" style="width:100%;height:85px;object-fit:cover;border-radius:8px;margin-bottom:8px;">` : ''}
-                        <h4 style="margin:0 0 5px;font-size:14px;font-weight:700;color:#1e293b;">${businessName}</h4>
-                        <a href="${cardLink}" style="display:block;background:#FF7B54;color:white;text-align:center;padding:7px;border-radius:8px;font-size:11px;text-decoration:none;font-weight:700;">View Profile</a>
-                    </div>
-                `);
-                mapInfoWindow.open(marketplaceMap, marker);
-            });
-
-            mapMarkers.push(marker);
-            bounds.extend(position);
+            // If valid coordinates, place marker directly
+            if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+                placeMarker({ lat, lng }, businessName, city, ratingText, cardLink, imgUrl, bounds);
+                hasCoords = true;
+            } 
+            // If no coordinates but has address, geocode it
+            else if (address || city) {
+                const fullAddress = [address, city, 'Philippines'].filter(Boolean).join(', ');
+                geocodeAddress(fullAddress, (pos) => {
+                    if (pos) {
+                        placeMarker(pos, businessName, city, ratingText, cardLink, imgUrl, bounds);
+                        // Re-fit bounds after geocoding
+                        if (mapMarkers.length > 0) {
+                            const newBounds = new google.maps.LatLngBounds();
+                            mapMarkers.forEach(m => newBounds.extend(m.getPosition()));
+                            if (!isNaN(custLat) && !isNaN(custLng)) {
+                                newBounds.extend({ lat: custLat, lng: custLng });
+                            }
+                            marketplaceMap.fitBounds(newBounds, { padding: { top: 60, bottom: 60, left: 60, right: 60 } });
+                        }
+                    }
+                });
+            }
         });
 
         if (hasCoords) {
-            marketplaceMap.fitBounds(bounds, { padding: { top: 50, bottom: 50, left: 50, right: 50 } });
+            marketplaceMap.fitBounds(bounds, { padding: { top: 60, bottom: 60, left: 60, right: 60 } });
         }
     }
 
-    // Proximity Detection
+    function placeMarker(position, businessName, city, ratingText, cardLink, imgUrl, bounds) {
+        // Determine distance color if customer location available
+        const custLat = parseFloat(sessionStorage.getItem('user_lat'));
+        const custLng = parseFloat(sessionStorage.getItem('user_lon'));
+        let distanceKm = null;
+        let pinColor = '#10b981'; // Green default
+
+        if (!isNaN(custLat) && !isNaN(custLng)) {
+            distanceKm = haversineDistance(custLat, custLng, position.lat, position.lng);
+            if (distanceKm <= 5) {
+                pinColor = '#10b981'; // Green — nearby
+            } else if (distanceKm <= 15) {
+                pinColor = '#f59e0b'; // Yellow/Orange — mid-range
+            } else {
+                pinColor = '#ef4444'; // Red — far
+            }
+        }
+
+        const marker = new google.maps.Marker({
+            position: position,
+            map: marketplaceMap,
+            animation: google.maps.Animation.DROP,
+            title: businessName,
+            icon: {
+                path: 'M12 0C7.03 0 3 4.03 3 9c0 6.75 9 15 9 15s9-8.25 9-15c0-4.97-4.03-9-9-9zm0 12.75c-2.07 0-3.75-1.68-3.75-3.75S9.93 5.25 12 5.25s3.75 1.68 3.75 3.75-1.68 3.75-3.75 3.75z',
+                fillColor: pinColor,
+                fillOpacity: 1,
+                strokeColor: '#ffffff',
+                strokeWeight: 2,
+                scale: 1.6,
+                anchor: new google.maps.Point(12, 24)
+            }
+        });
+
+        const distanceHtml = distanceKm !== null 
+            ? `<p style="margin:3px 0;font-size:12px;color:#64748b;"><i class="fas fa-route" style="color:${pinColor};"></i> ${distanceKm.toFixed(1)} km away</p>` 
+            : '';
+
+        marker.addListener('click', () => {
+            mapInfoWindow.setContent(`
+                <div style="padding:6px;width:200px;">
+                    ${imgUrl ? `<img src="${imgUrl}" style="width:100%;height:90px;object-fit:cover;border-radius:8px;margin-bottom:8px;" onerror="this.style.display='none'">` : ''}
+                    <h4 style="margin:0 0 3px;font-size:14px;font-weight:700;color:#1e293b;">${businessName}</h4>
+                    <p style="margin:0 0 2px;font-size:12px;color:#64748b;"><i class="fas fa-location-dot" style="color:#f97316;"></i> ${city || 'Philippines'}</p>
+                    ${ratingText ? `<p style="margin:0 0 2px;font-size:12px;color:#f59e0b;"><i class="fas fa-star"></i> ${ratingText}</p>` : ''}
+                    ${distanceHtml}
+                    <a href="${cardLink}" style="display:block;background:#f97316;color:white;text-align:center;padding:8px;border-radius:8px;font-size:12px;text-decoration:none;font-weight:700;margin-top:6px;">View Profile →</a>
+                </div>
+            `);
+            mapInfoWindow.open(marketplaceMap, marker);
+        });
+
+        mapMarkers.push(marker);
+        if (bounds) bounds.extend(position);
+    }
+
+    // Haversine formula — compute distance between 2 GPS points in km
+    function haversineDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371; // Earth's radius in km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    }
+
+    // Proximity Detection — auto-detect customer location
     function detectUserLocation() {
         if ('geolocation' in navigator) {
             navigator.geolocation.getCurrentPosition(
@@ -500,12 +658,12 @@
                     sessionStorage.setItem('user_lon', userPos.lng);
                     
                     if (marketplaceMap) {
-                        marketplaceMap.setCenter(userPos);
-                        marketplaceMap.setZoom(12);
+                        addCustomerPin();
+                        updateMapMarkers();
                     }
                 },
                 (error) => console.log('Location access denied.'),
-                { enableHighAccuracy: true, timeout: 5000 }
+                { enableHighAccuracy: true, timeout: 10000 }
             );
         }
     }
