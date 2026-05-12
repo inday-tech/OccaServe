@@ -902,6 +902,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const map = new google.maps.Map(document.getElementById('pickerMap'), {
         center: initialPos,
         zoom: 16,
+        mapTypeId: 'hybrid',
         mapTypeControl: true,
         mapTypeControlOptions: {
             style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
@@ -910,11 +911,7 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         streetViewControl: false,
         fullscreenControl: true,
-        zoomControl: true,
-        styles: [
-            { featureType: 'poi.business', stylers: [{ visibility: 'off' }] },
-            { featureType: 'transit', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] }
-        ]
+        zoomControl: true
     });
 
     // Draggable Marker

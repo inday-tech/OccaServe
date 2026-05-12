@@ -425,6 +425,7 @@
         marketplaceMap = new google.maps.Map(document.getElementById('marketplaceMap'), {
             center: lagunaCenter,
             zoom: 11,
+            mapTypeId: 'hybrid',
             mapTypeControl: true,
             mapTypeControlOptions: {
                 style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
@@ -432,10 +433,7 @@
                 mapTypeIds: ['roadmap', 'satellite', 'hybrid']
             },
             streetViewControl: false,
-            fullscreenControl: true,
-            styles: [
-                { featureType: 'poi.business', stylers: [{ visibility: 'off' }] }
-            ]
+            fullscreenControl: true
         });
         mapInfoWindow = new google.maps.InfoWindow();
         updateMapMarkers();
