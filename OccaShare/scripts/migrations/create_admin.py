@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 from app.db.database import SessionLocal, engine, Base
 from app.db import models
 from app.core.security import get_password_hash
+from sqlalchemy import func
 
 # Ensure all tables exist before attempting to insert
 Base.metadata.create_all(bind=engine)
@@ -22,8 +23,8 @@ def create_initial_caterer(db):
     email = "bonifaciojrandresito@gmail.com"
     password = "Bonifacio123"
     
-    # Check if user already exists
-    user = db.query(models.User).filter(models.User.email == email).first()
+    # Check if user already exists (case-insensitive)
+    user = db.query(models.User).filter(func.lower(models.User.email) == email.lower()).first()
     if user:
         print(f"✓ Caterer user {email} already exists. Updating record.")
         user.role = 'caterer'
@@ -31,6 +32,15 @@ def create_initial_caterer(db):
         user.is_email_verified = True
         user.status = 'active'
         user.password_hash = get_password_hash(password)
+        
+        # Ensure Profile is also updated if it exists
+        profile = db.query(models.CatererProfile).filter(models.CatererProfile.user_id == user.id).first()
+        if profile:
+            profile.business_name = "Thatalicious Catering Services"
+            profile.account_status = 'Active'
+            profile.verification_status = 'Verified'
+            profile.is_verified = True
+        
         db.commit()
     else:
         print(f"Creating caterer user: {email}...")
