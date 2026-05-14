@@ -690,6 +690,137 @@ class VerificationService:
         "REPUBLIKA NG PILIPINAS", "PAMBANSANG", "PAGKAKAKILANLAN"
     ]
 
+    # ── ID-Type-Specific OCR Prompt Engineering ──────────────────────────────
+    ID_TYPE_OCR_PROMPTS = {
+        "PhilID (National ID)": {
+            "fields": ["full_name", "pcn_number", "date_of_birth", "sex", "address", "blood_type", "nationality"],
+            "prompt": (
+                "This is a Philippine National ID (PhilSys/PhilID). Extract ALL of the following fields. "
+                "Return a JSON object with these exact keys: "
+                "'document_type_detected', 'full_name', 'pcn_number' (PhilSys Card Number, format: XXXX-XXXX-XXXX-XXXX), "
+                "'date_of_birth', 'sex', 'address', 'blood_type', 'nationality', "
+                "'face_visible' (boolean), 'confidence_score' (0-1). "
+                "If a field is not visible or unreadable, set its value to null."
+            )
+        },
+        "Driver's License": {
+            "fields": ["full_name", "license_number", "nationality", "date_of_birth", "address", "expiry_date", "agency_code", "dl_codes", "restrictions", "height", "weight"],
+            "prompt": (
+                "This is a Philippine Driver's License issued by LTO. Extract ALL of the following fields. "
+                "Return a JSON object with these exact keys: "
+                "'document_type_detected', 'full_name', 'license_number' (format: X00-00-000000), "
+                "'nationality', 'date_of_birth', 'address', 'expiry_date', "
+                "'agency_code', 'dl_codes' (DL codes/restrictions like A, A1, B, B1, B2, C, D, BE, CE), "
+                "'restrictions', 'height', 'weight', "
+                "'face_visible' (boolean), 'confidence_score' (0-1). "
+                "If a field is not visible or unreadable, set its value to null."
+            )
+        },
+        "Passport": {
+            "fields": ["surname", "given_name", "middle_name", "passport_number", "nationality", "date_of_birth", "sex", "place_of_birth", "date_issued", "expiry_date", "mrz_line_1", "mrz_line_2"],
+            "prompt": (
+                "This is a Philippine Passport. Extract ALL of the following fields. "
+                "Return a JSON object with these exact keys: "
+                "'document_type_detected', 'surname', 'given_name', 'middle_name', "
+                "'passport_number' (format: X0000000 or XX0000000), "
+                "'nationality', 'date_of_birth', 'sex', 'place_of_birth', "
+                "'date_issued', 'expiry_date', "
+                "'mrz_line_1' (first line of Machine Readable Zone at bottom), "
+                "'mrz_line_2' (second line of Machine Readable Zone at bottom), "
+                "'face_visible' (boolean), 'confidence_score' (0-1). "
+                "IMPORTANT: The MRZ lines are the two lines of text at the very bottom of the passport data page, "
+                "composed of capital letters, digits, and '<' characters. Extract them exactly as printed. "
+                "If a field is not visible or unreadable, set its value to null."
+            )
+        },
+        "UMID": {
+            "fields": ["full_name", "crn_number", "date_of_birth", "sex", "address"],
+            "prompt": (
+                "This is a Philippine Unified Multi-Purpose ID (UMID). Extract ALL of the following fields. "
+                "Return a JSON object with these exact keys: "
+                "'document_type_detected', 'full_name', 'crn_number' (Common Reference Number, format: XXXX-XXXXXXX-X), "
+                "'date_of_birth', 'sex', 'address', "
+                "'face_visible' (boolean), 'confidence_score' (0-1). "
+                "If a field is not visible or unreadable, set its value to null."
+            )
+        }
+    }
+
+    # Default prompt for any ID type not in the specific list
+    DEFAULT_OCR_PROMPT = (
+        "Extract data from this Philippine government ID image. "
+        "Return a JSON object with these keys: "
+        "'document_type_detected', 'full_name', 'id_number', 'date_of_birth', "
+        "'sex', 'address', 'expiry_date', 'nationality', "
+        "'face_visible' (boolean), 'confidence_score' (0-1). "
+        "If a field is not visible or unreadable, set its value to null."
+    )
+
+    def _get_id_type_ocr_prompt(self, id_type: str) -> str:
+        """Returns a tailored Gemini OCR prompt for the given ID type."""
+        config = self.ID_TYPE_OCR_PROMPTS.get(id_type)
+        if config:
+            return config["prompt"]
+        return f"Selected ID type: '{id_type}'. {self.DEFAULT_OCR_PROMPT}"
+
+    def _get_id_type_fields(self, id_type: str) -> list:
+        """Returns the expected field list for the given ID type."""
+        config = self.ID_TYPE_OCR_PROMPTS.get(id_type)
+        if config:
+            return config["fields"]
+        return ["full_name", "id_number", "date_of_birth", "sex", "address"]
+
+    def _build_structured_ocr_data(self, gemini_data: dict, id_type: str, method: str = "gemini") -> dict:
+        """Builds a structured ocr_data dict from Gemini/Tesseract results."""
+        expected_fields = self._get_id_type_fields(id_type)
+        fields = {}
+        for field in expected_fields:
+            fields[field] = gemini_data.get(field)
+        
+        # Also capture any extra fields Gemini found
+        skip_keys = {"face_visible", "confidence_score", "document_type_detected"}
+        for key, val in gemini_data.items():
+            if key not in skip_keys and key not in fields:
+                fields[key] = val
+        
+        # Build the full_name for passport (surname + given + middle)
+        if id_type == "Passport" and not fields.get("full_name"):
+            name_parts = []
+            for k in ["given_name", "middle_name", "surname"]:
+                if fields.get(k):
+                    name_parts.append(fields[k])
+            if name_parts:
+                fields["full_name"] = " ".join(name_parts)
+        
+        return {
+            "id_type": id_type,
+            "extraction_method": method,
+            "document_type_detected": gemini_data.get("document_type_detected", id_type),
+            "confidence_score": gemini_data.get("confidence_score", 0.0),
+            "face_visible": gemini_data.get("face_visible", False),
+            "fields": fields,
+            # Backward-compatible flat keys
+            "full_name": fields.get("full_name", ""),
+            "id_number": fields.get("id_number") or fields.get("pcn_number") or fields.get("license_number") or fields.get("passport_number") or fields.get("crn_number") or "",
+            "birth_date": fields.get("date_of_birth", ""),
+            "address": fields.get("address", "")
+        }
+
+    def _extract_mrz_from_text(self, text: str) -> dict:
+        """Extracts MRZ lines from OCR text (Passport fallback)."""
+        mrz_data = {"mrz_line_1": None, "mrz_line_2": None}
+        # MRZ lines: 44 chars each, only A-Z, 0-9, <
+        mrz_pattern = r'([A-Z0-9<]{30,44})'
+        matches = re.findall(mrz_pattern, text.upper().replace(' ', ''))
+        mrz_candidates = [m for m in matches if len(m) >= 30 and '<' in m]
+        if len(mrz_candidates) >= 2:
+            mrz_data["mrz_line_1"] = mrz_candidates[-2]
+            mrz_data["mrz_line_2"] = mrz_candidates[-1]
+        elif len(mrz_candidates) == 1:
+            mrz_data["mrz_line_1"] = mrz_candidates[0]
+        return mrz_data
+
+
     def verify_id_document(self, 
                            id_path: str, 
                            full_name: str, 
@@ -719,23 +850,32 @@ class VerificationService:
             
             # 4. Perform OCR via Gemini API (if key available) or fallback to Tesseract
             gemini_data = None
-            gemini_prompt = (
-                f"Extract data from this ID image. Selected ID type: '{id_type}'. "
-                "Return a JSON object with keys: 'document_type_detected', 'full_name', 'id_number', 'face_visible' (boolean), 'confidence_score' (0-1)."
-            )
+            gemini_prompt = self._get_id_type_ocr_prompt(id_type)
             gemini_data = self._call_gemini_ocr_sync(id_path, gemini_prompt)
             
-            if gemini_data and gemini_data.get("full_name"):
-                print(f"[KYC DEBUG] Gemini OCR Succeeded for ID.")
-                ocr_text = gemini_data.get("full_name") + " " + (gemini_data.get("id_number") or "")
+            structured_ocr = None  # Will hold the new structured format
+            
+            if gemini_data and (gemini_data.get("full_name") or gemini_data.get("surname") or gemini_data.get("given_name")):
+                print(f"[KYC DEBUG] Gemini OCR Succeeded for ID type: {id_type}")
+                print(f"[KYC DEBUG] Gemini extracted fields: {list(gemini_data.keys())}")
+                
+                # Build structured OCR data
+                structured_ocr = self._build_structured_ocr_data(gemini_data, id_type, "gemini")
+                
+                # Build text for matching logic
+                text_parts = []
+                for v in gemini_data.values():
+                    if isinstance(v, str) and v:
+                        text_parts.append(v)
+                ocr_text = " ".join(text_parts)
                 clean_ocr_upper = ocr_text.upper()
                 is_likely_id = True
                 rich_data = {
-                    "full_name": gemini_data.get("full_name"),
-                    "id_number": gemini_data.get("id_number") or id_number,
-                    "extracted_dob": "",
-                    "extracted_expiry": "",
-                    "extracted_address": ""
+                    "full_name": structured_ocr.get("full_name", ""),
+                    "id_number": structured_ocr.get("id_number", "") or id_number,
+                    "extracted_dob": gemini_data.get("date_of_birth", ""),
+                    "extracted_expiry": gemini_data.get("expiry_date", ""),
+                    "extracted_address": gemini_data.get("address", "")
                 }
                 id_faces = self._detect_faces_detailed(id_img)
                 has_face = gemini_data.get("face_visible", True)
@@ -773,6 +913,31 @@ class VerificationService:
                 is_likely_id = (fuzzy_contains_id_keywords(clean_ocr_upper) or has_face) and len(clean_ocr_upper.strip()) > 15
                 
                 rich_data = self._extract_rich_ocr_data(ocr_text)
+                
+                # Build structured OCR for Tesseract fallback
+                tesseract_fields = {
+                    "full_name": rich_data.get("full_name", ""),
+                    "id_number": rich_data.get("id_number", ""),
+                    "date_of_birth": rich_data.get("extracted_dob", ""),
+                    "address": rich_data.get("extracted_address", "")
+                }
+                # For passport: attempt MRZ extraction
+                if id_type == "Passport":
+                    mrz = self._extract_mrz_from_text(ocr_text)
+                    tesseract_fields.update(mrz)
+                
+                structured_ocr = {
+                    "id_type": id_type,
+                    "extraction_method": "tesseract",
+                    "document_type_detected": id_type,
+                    "confidence_score": 0.5,
+                    "face_visible": has_face,
+                    "fields": tesseract_fields,
+                    "full_name": tesseract_fields.get("full_name", ""),
+                    "id_number": tesseract_fields.get("id_number", ""),
+                    "birth_date": tesseract_fields.get("date_of_birth", ""),
+                    "address": tesseract_fields.get("address", "")
+                }
 
             
             # 6. Specific ID Type Keyword Check (NEW & STRICT)
@@ -853,6 +1018,21 @@ class VerificationService:
             status = "matched" if not reasons else "rejected"
 
 
+            # Merge structured OCR into return data
+            final_ocr_data = structured_ocr if structured_ocr else {
+                "id_type": id_type,
+                "extraction_method": "unknown",
+                "fields": {},
+                "full_name": rich_data.get("full_name", ""),
+                "id_number": rich_data.get("id_number", ""),
+                "birth_date": rich_data.get("extracted_dob", ""),
+                "address": rich_data.get("extracted_address", "")
+            }
+            final_ocr_data["raw_text"] = ocr_text
+            final_ocr_data["full_name_extracted"] = rich_data.get("full_name")
+            final_ocr_data["dob_extracted"] = rich_data.get("extracted_dob")
+            final_ocr_data["address_extracted"] = rich_data.get("extracted_address")
+
             return {
                 "status": status,
                 "ocr_match": status == "matched",
@@ -860,13 +1040,7 @@ class VerificationService:
                 "pattern_valid": pattern_valid,
                 "failure_reason": " ".join(reasons) if reasons else None,
                 "extracted_text_preview": ocr_text[:200],
-                "ocr_data": {
-                    "raw_text": ocr_text,
-                    "full_name_extracted": rich_data.get("full_name"),
-                    "dob_extracted": rich_data.get("extracted_dob"),
-                    "address_extracted": rich_data.get("extracted_address"),
-                    **rich_data
-                }
+                "ocr_data": final_ocr_data
             }
         except Exception as e:
             traceback.print_exc()

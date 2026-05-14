@@ -74,27 +74,120 @@
                         <h3>Data Extraction (OCR)</h3>
                         <p>Information extracted directly from the ID document.</p>
                     </div>
+                    {% if verification.ocr_data %}
+                    <div style="margin-left: auto; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                        <!-- ID Type Badge -->
+                        {% set id_type = verification.ocr_data.id_type or verification.verification_type or 'Unknown' %}
+                        <span style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase;">
+                            📋 {{ id_type }}
+                        </span>
+                        <!-- Extraction Method Badge -->
+                        {% set method = verification.ocr_data.extraction_method or 'unknown' %}
+                        <span style="background: {{ '#10b981' if method == 'gemini' else '#f59e0b' if method == 'tesseract' else '#94a3b8' }}; color: #fff; padding: 4px 10px; border-radius: 20px; font-size: 0.65rem; font-weight: 800;">
+                            {{ '🤖 Gemini AI' if method == 'gemini' else '📝 Tesseract' if method == 'tesseract' else '❓ Unknown' }}
+                        </span>
+                        <!-- Confidence Score -->
+                        {% set conf = verification.ocr_data.confidence_score or 0 %}
+                        {% if conf %}
+                        <span style="background: {{ '#10b981' if conf >= 0.8 else '#f59e0b' if conf >= 0.5 else '#ef4444' }}; color: #fff; padding: 4px 10px; border-radius: 20px; font-size: 0.65rem; font-weight: 800;">
+                            {{ '%.0f' | format(conf * 100) }}% confidence
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
                 </div>
 
                 <div class="data-comparison-grid">
                     <div class="data-column id-data">
                         <div class="column-title">Extracted from ID</div>
-                        <div class="data-row-item">
-                            <span class="d-label">Full Name</span>
-                            <span class="d-value">{{ verification.ocr_data.full_name if verification.ocr_data else 'NOT DETECTED' }}</span>
-                        </div>
-                        <div class="data-row-item">
-                            <span class="d-label">ID Number</span>
-                            <span class="d-value mono">{{ verification.ocr_data.id_number if verification.ocr_data else 'NOT DETECTED' }}</span>
-                        </div>
-                        <div class="data-row-item">
-                            <span class="d-label">Birth Date</span>
-                            <span class="d-value">{{ verification.ocr_data.birth_date if verification.ocr_data else 'NOT DETECTED' }}</span>
-                        </div>
-                        <div class="data-row-item">
-                            <span class="d-label">Address</span>
-                            <span class="d-value">{{ verification.ocr_data.address if verification.ocr_data else 'NOT DETECTED' }}</span>
-                        </div>
+
+                        {% if verification.ocr_data and verification.ocr_data.fields %}
+                            {# NEW FORMAT: Dynamic field rendering from structured data #}
+                            {% set fields = verification.ocr_data.fields %}
+                            {% set field_labels = {
+                                'full_name': 'Full Name',
+                                'pcn_number': 'PhilSys Card Number (PCN)',
+                                'license_number': 'License Number',
+                                'passport_number': 'Passport Number',
+                                'crn_number': 'CRN Number',
+                                'id_number': 'ID Number',
+                                'surname': 'Surname',
+                                'given_name': 'Given Name',
+                                'middle_name': 'Middle Name',
+                                'date_of_birth': 'Date of Birth',
+                                'sex': 'Sex',
+                                'address': 'Address',
+                                'blood_type': 'Blood Type',
+                                'nationality': 'Nationality',
+                                'expiry_date': 'Expiry Date',
+                                'date_issued': 'Date Issued',
+                                'agency_code': 'Agency Code',
+                                'dl_codes': 'DL Codes / Restrictions',
+                                'restrictions': 'Restrictions',
+                                'height': 'Height',
+                                'weight': 'Weight',
+                                'place_of_birth': 'Place of Birth',
+                                'mrz_line_1': 'MRZ Line 1',
+                                'mrz_line_2': 'MRZ Line 2'
+                            } %}
+
+                            {% for key, value in fields.items() %}
+                                {% if key not in ['mrz_line_1', 'mrz_line_2'] %}
+                                <div class="data-row-item">
+                                    <span class="d-label">{{ field_labels.get(key, key | replace('_', ' ') | title) }}</span>
+                                    <span class="d-value {{ 'mono' if key in ['pcn_number', 'license_number', 'passport_number', 'crn_number', 'id_number'] else '' }}">
+                                        {% if value %}
+                                            {{ value }}
+                                        {% else %}
+                                            <span style="color: #94a3b8; font-style: italic;">NOT DETECTED</span>
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+
+                            {# MRZ Display (Passport Only) — special monospace box #}
+                            {% if fields.get('mrz_line_1') or fields.get('mrz_line_2') %}
+                            <div style="margin-top: 1rem; padding: 1rem; background: #0f172a; border-radius: 12px; border: 1px solid #1e293b;">
+                                <div style="font-size: 0.65rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem;">
+                                    <i class="fas fa-barcode" style="margin-right: 4px;"></i> Machine Readable Zone (MRZ)
+                                </div>
+                                {% if fields.get('mrz_line_1') %}
+                                <div style="font-family: 'Courier New', monospace; font-size: 0.78rem; color: #4ade80; letter-spacing: 0.08em; word-break: break-all; line-height: 1.6;">
+                                    {{ fields['mrz_line_1'] }}
+                                </div>
+                                {% endif %}
+                                {% if fields.get('mrz_line_2') %}
+                                <div style="font-family: 'Courier New', monospace; font-size: 0.78rem; color: #4ade80; letter-spacing: 0.08em; word-break: break-all; line-height: 1.6;">
+                                    {{ fields['mrz_line_2'] }}
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+
+                        {% elif verification.ocr_data %}
+                            {# OLD FORMAT: Backward compatible flat keys #}
+                            <div class="data-row-item">
+                                <span class="d-label">Full Name</span>
+                                <span class="d-value">{{ verification.ocr_data.full_name or verification.ocr_data.full_name_extracted or 'NOT DETECTED' }}</span>
+                            </div>
+                            <div class="data-row-item">
+                                <span class="d-label">ID Number</span>
+                                <span class="d-value mono">{{ verification.ocr_data.id_number or 'NOT DETECTED' }}</span>
+                            </div>
+                            <div class="data-row-item">
+                                <span class="d-label">Birth Date</span>
+                                <span class="d-value">{{ verification.ocr_data.birth_date or verification.ocr_data.extracted_dob or verification.ocr_data.dob_extracted or 'NOT DETECTED' }}</span>
+                            </div>
+                            <div class="data-row-item">
+                                <span class="d-label">Address</span>
+                                <span class="d-value">{{ verification.ocr_data.address or verification.ocr_data.extracted_address or verification.ocr_data.address_extracted or 'NOT DETECTED' }}</span>
+                            </div>
+                        {% else %}
+                            <div class="data-row-item">
+                                <span class="d-label" style="color: #94a3b8;">No OCR data available</span>
+                            </div>
+                        {% endif %}
                     </div>
 
                     <div class="data-column system-data">
