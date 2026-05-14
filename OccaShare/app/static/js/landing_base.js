@@ -101,13 +101,15 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
-        /* ---- NAVBAR SCROLL SHRINK ---- */
+        /* ---- NAVBAR SCROLL STATE ---- */
         const navbar = document.getElementById('mainNavbar');
         if (navbar) {
             window.addEventListener('scroll', () => {
-                navbar.style.boxShadow = window.scrollY > 40
-                    ? '0 2px 20px rgba(0,0,0,0.12)'
-                    : '';
+                if (window.scrollY > 40) {
+                    navbar.classList.add('scrolled');
+                } else {
+                    navbar.classList.remove('scrolled');
+                }
             }, { passive: true });
         }
     })();
