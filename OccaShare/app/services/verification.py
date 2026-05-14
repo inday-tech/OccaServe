@@ -691,7 +691,7 @@ class VerificationService:
             
             import json
             async with httpx.AsyncClient() as client:
-                response = await client.post(url, json=payload, headers=headers, timeout=15.0)
+                response = await client.post(url, json=payload, headers=headers, timeout=8.0)
                 if response.status_code == 200:
                     data = response.json()
                     text = data['candidates'][0]['content']['parts'][0]['text']

@@ -353,16 +353,26 @@ document.addEventListener('DOMContentLoaded', function () {
                     el.querySelector('i').style.color = 'var(--kyc-accent)';
                 }
                 indicatorIdx++;
-                if (indicatorIdx === 1) statusEl.innerText = "Analyzing image quality...";
-                if (indicatorIdx === 2) statusEl.innerText = "Processing secure biometric data...";
+                if (indicatorIdx === 1) statusEl.innerText = "Optimizing image for fast upload...";
+                if (indicatorIdx === 2) statusEl.innerText = "Securely transmitting biometric data...";
                 if (indicatorIdx === 3) statusEl.innerText = "Finalizing extraction...";
             }
-        }, 1200);
+        }, 800);
+
+        // --- CLIENT SIDE COMPRESSION (Major Speed Boost) ---
+        let finalFile = idFile;
+        try {
+            const compressedBlob = await compressImage(idFile, 1280, 0.8);
+            finalFile = new File([compressedBlob], idFile.name, { type: 'image/jpeg' });
+            console.log(`[KYC] Client-side compression: ${(idFile.size / 1024).toFixed(1)}KB -> ${(finalFile.size / 1024).toFixed(1)}KB`);
+        } catch (e) {
+            console.warn("[KYC] Compression failed, using original file", e);
+        }
 
         const formData = new FormData();
         formData.append('id_type', document.getElementById('id_type').value);
         formData.append('id_number', document.getElementById('id_number').value.trim());
-        formData.append('id_document', idFile);
+        formData.append('id_document', finalFile);
         formData.append('first_name', document.getElementById('first_name').value.trim());
         formData.append('middle_name', document.getElementById('middle_name').value.trim());
         formData.append('last_name', document.getElementById('last_name').value.trim());
@@ -377,6 +387,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 document.getElementById('ocr-loading').style.display = 'none';
                 document.getElementById('scanner-container').style.display = 'block';
                 updateStatusTracker(3);
+                
+                // Automatically start the liveness camera scanner for a truly frictionless flow
+                if (window.startRealtimeScanner) {
+                    window.startRealtimeScanner();
+                }
             } else {
                 clearInterval(progressTimer);
                 const data = await res.json();
@@ -391,6 +406,43 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('step-id-form').style.display = 'block';
         }
     };
+
+    // Helper: Client-side Image Compression
+    async function compressImage(file, maxDim, quality) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    if (width > height) {
+                        if (width > maxDim) {
+                            height *= maxDim / width;
+                            width = maxDim;
+                        }
+                    } else {
+                        if (height > maxDim) {
+                            width *= maxDim / height;
+                            height = maxDim;
+                        }
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    canvas.toBlob((blob) => resolve(blob), 'image/jpeg', quality);
+                };
+                img.onerror = (e) => reject(e);
+            };
+            reader.onerror = (e) => reject(e);
+        });
+    }
 
     window.startRealtimeScanner = async function () {
         const video = document.getElementById('webcam');
