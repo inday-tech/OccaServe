@@ -236,7 +236,7 @@
     async function removeBooking(bookingId) {
         if (!confirm("Remove this booking from your activity?")) return;
         try {
-            const res = await fetch(`/api/bookings/${bookingId}`, { method: 'DELETE' });
+            const res = await fetch(`/bookings/${bookingId}`, { method: 'DELETE' });
             const data = await res.json();
             if (res.ok) {
                 location.reload();

@@ -255,6 +255,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ─── Full-form Validation ────────────────────────────────────────────────────
     window.validateKycForm = function () {
+        const fields = [
             // Only id_type and id_number are visible and required before upload now
             { id: 'id_type',          errId: 'err-id_type',    required: true },
             { id: 'id_number',        errId: 'err-id_number',  required: true },
@@ -682,20 +683,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const idType = document.getElementById('id_type').value;
         const idNumber = document.getElementById('id_number').value.trim();
-        const firstName = document.getElementById('first_name').value.trim();
-        const lastName  = document.getElementById('last_name').value.trim();
-        const dob       = document.getElementById('dob').value;
-        const province  = document.getElementById('address_province').value;
-        const city      = document.getElementById('address_city').value;
-        const street    = document.getElementById('address_street').value.trim();
-
-        if (!firstName || !lastName || !dob || !province || !city || !street) {
-            validateKycForm();
-            const msg = '❌ Please complete all required fields before scanning.';
-            if (window.showError) window.showError(msg, 'Missing Fields'); else alert(msg);
-            return;
-        }
-
         if (!idType) {
             if (window.showError) window.showError('❌ Please select an ID type.', 'Missing Fields'); else alert('❌ Please select an ID type.');
             return;

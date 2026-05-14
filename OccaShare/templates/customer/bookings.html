@@ -352,7 +352,7 @@
         if (!confirm("Are you sure you want to remove this booking from your list?")) return;
         
         try {
-            const res = await fetch(`/api/bookings/${bookingId}`, { method: 'DELETE' });
+            const res = await fetch(`/bookings/${bookingId}`, { method: 'DELETE' });
             const data = await res.json();
             if (res.ok) {
                 if (window.showToast) window.showToast(data.message, 'success'); else alert(data.message);
