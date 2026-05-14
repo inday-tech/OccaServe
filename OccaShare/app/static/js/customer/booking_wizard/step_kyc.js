@@ -255,13 +255,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ─── Full-form Validation ────────────────────────────────────────────────────
     window.validateKycForm = function () {
-        const fields = [
-            { id: 'first_name',       errId: 'err-first_name', required: true },
-            { id: 'last_name',        errId: 'err-last_name',  required: true },
-            { id: 'dob',              errId: 'err-dob',        required: true },
-            { id: 'address_province', errId: 'err-province',   required: true },
-            { id: 'address_city',     errId: 'err-city',       required: true },
-            { id: 'address_street',   errId: 'err-street',     required: true },
+            // Only id_type and id_number are visible and required before upload now
             { id: 'id_type',          errId: 'err-id_type',    required: true },
             { id: 'id_number',        errId: 'err-id_number',  required: true },
         ];
@@ -301,23 +295,6 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     window.handleUploadClick = function () {
-        assembleAddress();
-        const idType   = document.getElementById('id_type').value;
-        const idNumber = document.getElementById('id_number').value.trim();
-        const firstName = document.getElementById('first_name').value.trim();
-        const lastName  = document.getElementById('last_name').value.trim();
-        const dob       = document.getElementById('dob').value;
-        const province  = document.getElementById('address_province').value;
-        const city      = document.getElementById('address_city').value;
-        const street    = document.getElementById('address_street').value.trim();
-
-        if (!firstName || !lastName || !dob || !province || !city || !street) {
-            validateKycForm(); // Show inline errors
-            const msg = '❌ Please complete all required fields before proceeding.';
-            if (window.showError) window.showError(msg, 'Incomplete Data'); else alert(msg);
-            return;
-        }
-
         if (!idType) {
             if (window.showError) window.showError('❌ Please select an ID type.', 'Incomplete Data'); else alert('❌ Please select an ID type.');
             return;
@@ -393,25 +370,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 
                 if (extracted.address) {
                     document.getElementById('id_address').value = extracted.address;
-                    document.getElementById('address_street').value = extracted.address;
-                    document.getElementById('address-confirmation-banner').style.display = 'block';
+                    document.getElementById('address').value = extracted.address;
                 }
 
-                // Show form again for confirmation
-                document.getElementById('ocr-loading').style.display = 'none';
-                document.getElementById('step-id-form').style.display = 'block';
-                
-                // Change action cards to "Confirm & Proceed"
-                const actionContainer = document.querySelector('.kyc-action-cards');
-                actionContainer.innerHTML = `
-                    <div style="grid-column: 1 / -1; text-align: center;">
-                        <button type="button" class="btn-primary-kyc" onclick="finalizeIdAndProceed()" style="max-width: 100%;">
-                            Confirm & Proceed to Biometrics <i class="fas fa-chevron-right"></i>
-                        </button>
-                    </div>
-                `;
-                
-                validateKycForm();
+                // Proceed directly to uploading the document with the extracted data
+                finalizeIdAndProceed();
             } else {
                 throw new Error(data.detail || "Extraction failed");
             }

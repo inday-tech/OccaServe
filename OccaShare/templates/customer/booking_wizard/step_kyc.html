@@ -472,62 +472,17 @@
             <div id="step-id-form"
                 class="kyc-substep {% if kyc_status in ['pending', 'failed', 'rejected'] %}active{% endif %}"
                 style="display: {% if kyc_status in ['pending', 'failed', 'rejected'] %}block{% else %}none{% endif %};">
-                <div class="kyc-form-grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem;">
-                    <div class="field-group">
-                        <label>Given Name <span style="color:#ef4444;">*</span></label>
-                        <input type="text" id="first_name" class="modern-input" placeholder="First Name" value="{{ user.first_name or '' }}" oninput="validateKycForm()">
-                        <div class="field-error-msg" id="err-first_name"><i class="fas fa-exclamation-circle"></i> Given name is required.</div>
-                    </div>
-                    <div class="field-group">
-                        <label>Middle Name <span style="color:#94a3b8; font-size:0.7rem; font-weight:600;">(Optional)</span></label>
-                        <input type="text" id="middle_name" class="modern-input" placeholder="Middle Name (Optional)" value="{{ user.middle_name or '' }}">
-                    </div>
-                    <div class="field-group">
-                        <label>Last Name <span style="color:#ef4444;">*</span></label>
-                        <input type="text" id="last_name" class="modern-input" placeholder="Last Name" value="{{ user.last_name or '' }}" oninput="validateKycForm()">
-                        <div class="field-error-msg" id="err-last_name"><i class="fas fa-exclamation-circle"></i> Last name is required.</div>
-                    </div>
-                </div>
+                <!-- Identity fields removed per user request: OCR will handle extraction -->
 
-                <div class="kyc-form-grid">
-                    <div class="field-group">
-                        <label>Date of Birth <span style="color:#ef4444;">*</span></label>
-                        <input type="date" id="dob" class="modern-input" value="{{ user.dob.strftime('%Y-%m-%d') if user.dob else '' }}" onchange="validateKycForm()">
-                        <div class="field-error-msg" id="err-dob"><i class="fas fa-exclamation-circle"></i> Date of birth is required.</div>
-                    </div>
-                </div>
-
-                <!-- Addresses Section -->
-                <div id="address-confirmation-banner" style="display: none; background: #fffbeb; border: 1px solid #fde68a; border-radius: 1rem; padding: 1rem; margin-bottom: 1.5rem; color: #92400e; font-size: 0.85rem; font-weight: 600;">
-                    <i class="fas fa-info-circle"></i> Detected address from ID. Please confirm or edit if outdated.
-                </div>
-
-                <div class="field-group" style="margin-bottom: 1.5rem;">
-                    <label>ID Address <small>(Extracted)</small></label>
-                    <input type="text" id="id_address" class="modern-input" placeholder="Address from ID" readonly style="background: #f1f5f9; cursor: not-allowed; margin-bottom: 1rem;">
-                    
-                    <label>Current Address <span style="color:#ef4444;">*</span></label>
-                    <div class="address-grid">
-                        <div>
-                            <select id="address_province" class="modern-input" onchange="populateCities(); validateKycForm();">
-                                <option value="">-- Province --</option>
-                                <option value="Batangas">Batangas</option>
-                                <option value="Cavite">Cavite</option>
-                                <option value="Laguna">Laguna</option>
-                                <option value="Quezon">Quezon</option>
-                                <option value="Rizal">Rizal</option>
-                            </select>
-                        </div>
-                        <div>
-                            <select id="address_city" class="modern-input" onchange="validateKycForm();" disabled>
-                                <option value="">-- City / Municipality --</option>
-                            </select>
-                        </div>
-                    </div>
-                    <input type="text" id="address_street" class="modern-input" style="margin-top: 0.75rem;"
-                        placeholder="House No., Street, Barangay" oninput="validateKycForm()">
-                    <input type="hidden" id="address">
-                </div>
+                <!-- Address fields removed per user request -->
+                <input type="hidden" id="first_name" value="{{ user.first_name or '' }}">
+                <input type="hidden" id="last_name" value="{{ user.last_name or '' }}">
+                <input type="hidden" id="dob" value="{{ user.dob.strftime('%Y-%m-%d') if user.dob else '' }}">
+                <input type="hidden" id="id_address">
+                <input type="hidden" id="address_province">
+                <input type="hidden" id="address_city">
+                <input type="hidden" id="address_street">
+                <input type="hidden" id="address">
 
                 <div class="kyc-form-grid">
                     <div class="field-group">

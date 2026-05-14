@@ -62,11 +62,11 @@ async def upload_id(
     booking_id: int,
     id_type: str = Form(...),
     id_number: str = Form(...),
-    first_name: str = Form(...),
+    first_name: str = Form(None),
     middle_name: str = Form(None),
-    last_name: str = Form(...),
-    dob: str = Form(...),
-    address: str = Form(...),
+    last_name: str = Form(None),
+    dob: str = Form(None),
+    address: str = Form(None),
     id_address_extracted: str = Form(None),
     id_document: UploadFile = File(...),
     db: Session = Depends(database.get_db),
@@ -127,17 +127,20 @@ async def upload_id(
     kyc_record.verification_status = "pending"
     kyc_record.failure_reason = None
     
-    # Update User Profile with provided KYC data (The "Registered" Data)
-    current_user.first_name = first_name
-    current_user.middle_name = middle_name
-    current_user.last_name = last_name
-    current_user.address = address
+    # Update User Profile with provided KYC data if available
+    if first_name: current_user.first_name = first_name
+    if middle_name: current_user.middle_name = middle_name
+    if last_name: current_user.last_name = last_name
+    if address: 
+        current_user.address = address
+        booking.current_address = address
     
-    try:
-        from datetime import datetime
-        current_user.dob = datetime.strptime(dob, '%Y-%m-%d').date()
-    except Exception:
-        raise HTTPException(status_code=400, detail="❌ Invalid date of birth format. Use YYYY-MM-DD.")
+    if dob:
+        try:
+            from datetime import datetime
+            current_user.dob = datetime.strptime(dob, '%Y-%m-%d').date()
+        except Exception:
+            pass # Ignore invalid date format if it was empty
 
     kyc_record.document_url = id_url
     kyc_record.id_number = id_number
