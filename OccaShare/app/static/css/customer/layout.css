@@ -513,4 +513,48 @@ html, body {
     .hdr-sep {
         display: none;
     }
+
+    /* Customer header adjustments */
+    .customer-header {
+        padding: 0 0.75rem !important;
+        height: 60px;
+    }
+
+    /* Customer page content */
+    .customer-page-content {
+        padding: 0.75rem !important;
+    }
+
+    /* Dropdown positioning: full-width on mobile */
+    .hdr-dropdown {
+        position: fixed !important;
+        left: 3% !important;
+        right: 3% !important;
+        width: 94% !important;
+        top: 65px !important;
+        max-height: 70vh !important;
+        overflow-y: auto !important;
+    }
+
+    /* Terminal/table card headers stack */
+    .terminal-header-elite {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.5rem !important;
+    }
 }
+
+@media (max-width: 480px) {
+    .customer-header {
+        padding: 0 0.5rem !important;
+        height: 56px;
+    }
+    .customer-page-content {
+        padding: 0.5rem !important;
+    }
+    .hdr-dropdown {
+        left: 2% !important;
+        right: 2% !important;
+        width: 96% !important;
+    }
+}
