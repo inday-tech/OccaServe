@@ -290,7 +290,14 @@ async def continue_draft_booking(booking_id: int, request: Request, db: Session 
     
     # Step logic routing
     # 1. Does user need KYC?
-    if not user.is_verified and not user.is_kyc_complete:
+    # NEW: Skip KYC if user has booking history
+    has_history = db.query(models.Booking).filter(
+        models.Booking.user_id == user.id,
+        models.Booking.id != booking.id,
+        models.Booking.status.notin_(['draft', 'cancelled', 'pending_quotation'])
+    ).first() is not None
+
+    if not user.is_verified and not user.is_kyc_complete and not has_history:
         return RedirectResponse(url=f"/bookings/step/kyc/{booking.id}", status_code=303)
         
     # 2. Is there a Quotation yet?
@@ -509,8 +516,18 @@ async def step_details_submit(
         "package_id": package_id
     }
 
-    # Check if we should skip KYC for verified users
-    if user.is_verified or user.is_kyc_complete:
+    # Check if we should skip KYC for verified users OR those with booking history
+    has_history = db.query(models.Booking).filter(
+        models.Booking.user_id == user.id,
+        models.Booking.id != booking.id,
+        models.Booking.status.notin_(['draft', 'cancelled', 'pending_quotation'])
+    ).first() is not None
+
+    if user.is_verified or user.is_kyc_complete or has_history:
+        # Mark as verified immediately if they have history or are already verified
+        booking.ocr_verified = True
+        booking.liveness_verified = True
+        db.commit()
         return RedirectResponse(url=f"/bookings/step/quotation/{booking.id}", status_code=303)
         
     return RedirectResponse(url=f"/bookings/step/kyc/{booking.id}", status_code=303)
@@ -543,7 +560,14 @@ async def step_quotation_page(booking_id: int, request: Request, db: Session = D
     if not booking: raise HTTPException(status_code=404)
     
     # STRICT GATE: Ensure user is verified before seeing quotation/contract
-    if not user.is_verified:
+    # NEW: Also allow if user has booking history
+    has_history = db.query(models.Booking).filter(
+        models.Booking.user_id == user.id,
+        models.Booking.id != booking.id,
+        models.Booking.status.notin_(['draft', 'cancelled', 'pending_quotation'])
+    ).first() is not None
+
+    if not user.is_verified and not has_history:
         return RedirectResponse(url=f"/bookings/step/kyc/{booking.id}?auth_needed=1", status_code=303)
 
     # NEW: Transition status from draft to pending_quotation so it's visible to caterer
@@ -575,7 +599,14 @@ async def step_payment_v2_page(booking_id: int, request: Request, db: Session = 
         return RedirectResponse(url=f"/auth/login?next=/bookings/step/payment/{booking_id}")
         
     # STRICT GATE: Ensure user is verified before payment
-    if not user.is_verified:
+    # NEW: Also allow if user has booking history
+    has_history = db.query(models.Booking).filter(
+        models.Booking.user_id == user.id,
+        models.Booking.id != booking_id,
+        models.Booking.status.notin_(['draft', 'cancelled', 'pending_quotation'])
+    ).first() is not None
+
+    if not user.is_verified and not has_history:
         return RedirectResponse(url=f"/bookings/step/kyc/{booking_id}?auth_needed=1", status_code=303)
 
     booking = db.query(models.Booking).get(booking_id)
