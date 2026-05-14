@@ -339,6 +339,25 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('step-id-form').style.display = 'none';
         document.getElementById('ocr-loading').style.display = 'block';
         document.getElementById('extraction-title').innerText = "Uploading Identity Document";
+        
+        // Simulated progress for better UX
+        const statusEl = document.getElementById('extraction-status');
+        const indicators = ['qc-resolution', 'qc-focus', 'qc-ocr'];
+        let indicatorIdx = 0;
+        
+        const progressTimer = setInterval(() => {
+            if (indicatorIdx < indicators.length) {
+                const el = document.getElementById(indicators[indicatorIdx]);
+                if (el) {
+                    el.style.color = 'var(--kyc-accent)';
+                    el.querySelector('i').style.color = 'var(--kyc-accent)';
+                }
+                indicatorIdx++;
+                if (indicatorIdx === 1) statusEl.innerText = "Analyzing image quality...";
+                if (indicatorIdx === 2) statusEl.innerText = "Processing secure biometric data...";
+                if (indicatorIdx === 3) statusEl.innerText = "Finalizing extraction...";
+            }
+        }, 1200);
 
         const formData = new FormData();
         formData.append('id_type', document.getElementById('id_type').value);
@@ -354,16 +373,19 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             const res = await fetch(`/api/bookings/${bookingId}/upload-id`, { method: 'POST', body: formData });
             if (res.ok) {
+                clearInterval(progressTimer);
                 document.getElementById('ocr-loading').style.display = 'none';
                 document.getElementById('scanner-container').style.display = 'block';
                 updateStatusTracker(3);
             } else {
+                clearInterval(progressTimer);
                 const data = await res.json();
                 if (window.showError) window.showError(data.detail || "Upload failed", "Upload Error");
                 document.getElementById('ocr-loading').style.display = 'none';
                 document.getElementById('step-id-form').style.display = 'block';
             }
         } catch (err) {
+            clearInterval(progressTimer);
             if (window.showError) window.showError("Connection lost.", "Network Error");
             document.getElementById('ocr-loading').style.display = 'none';
             document.getElementById('step-id-form').style.display = 'block';
