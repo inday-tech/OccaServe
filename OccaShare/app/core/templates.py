@@ -46,7 +46,32 @@ def website_config():
         db.close()
 
 
-# Register website_config as a Jinja2 global function so every template
-# can call {{ website_config() }} or {% set wconfig = website_config() %}
-# without needing it to be explicitly passed in the route context.
+def hex_to_rgb(hex_color: str) -> str:
+    """
+    Converts a CSS hex color string to a comma-separated RGB string.
+    Used in caterer/layout.html for CSS custom properties:
+        --primary-color-rgb: {{ color | hex_to_rgb }}
+    So it can be used as: rgba(var(--primary-color-rgb), 0.2)
+
+    Accepts: '#800000', '800000', '#fff', 'fff'
+    Returns: '128, 0, 0'  (on error falls back to '128, 0, 0')
+    """
+    try:
+        hex_color = hex_color.strip().lstrip("#")
+        # Expand shorthand: 'fff' -> 'ffffff'
+        if len(hex_color) == 3:
+            hex_color = "".join(c * 2 for c in hex_color)
+        r = int(hex_color[0:2], 16)
+        g = int(hex_color[2:4], 16)
+        b = int(hex_color[4:6], 16)
+        return f"{r}, {g}, {b}"
+    except Exception:
+        return "128, 0, 0"  # safe fallback (maroon)
+
+
+# ── Register Jinja2 globals & filters ──────────────────────────────────────
+# website_config() callable in every template without explicit route passing
 templates.env.globals["website_config"] = website_config
+
+# hex_to_rgb filter: {{ '#800000' | hex_to_rgb }} → '128, 0, 0'
+templates.env.filters["hex_to_rgb"] = hex_to_rgb
