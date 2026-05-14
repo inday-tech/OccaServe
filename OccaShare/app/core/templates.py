@@ -2,22 +2,27 @@ from fastapi.templating import Jinja2Templates
 from ..db.database import SessionLocal
 from ..db import models
 
+# Initialize Jinja2 templates pointing to the top-level "templates" directory
 templates = Jinja2Templates(directory="templates")
 
-def get_website_config():
-    """Returns a plain dict snapshot of website config to avoid SQLAlchemy DetachedInstanceError."""
+
+def website_config():
+    """
+    Fetches and returns website configuration (logo, favicon, branding, etc.)
+    as a plain dict to avoid SQLAlchemy DetachedInstanceError.
+    This is registered as a Jinja2 global so templates can call it directly:
+        {% set wconfig = website_config() %}
+    """
     db = SessionLocal()
     try:
         config = db.query(models.WebsiteConfig).first()
         if not config:
+            # Auto-create a default config row if none exists
             config = models.WebsiteConfig()
             db.add(config)
             db.commit()
             db.refresh(config)
-        
-        # Convert to a plain dict while session is still open
-        # This prevents DetachedInstanceError when templates access attributes
-        # after the session is closed (which is the #1 cause of disappearing images)
+
         return {
             "id": config.id,
             "site_name": config.site_name,
@@ -29,28 +34,19 @@ def get_website_config():
             "instagram_link": config.instagram_link,
             "twitter_link": config.twitter_link,
             "commission_rate": config.commission_rate,
-            "commission_fixed_amount": getattr(config, 'commission_fixed_amount', 20.0),
+            "commission_fixed_amount": config.commission_fixed_amount,
             "max_file_size_mb": config.max_file_size_mb,
             "maintenance_mode": config.maintenance_mode,
-            "maintenance_message": config.maintenance_message
+            "maintenance_message": config.maintenance_message,
         }
     except Exception as e:
-        print(f"[CONFIG ERROR] get_website_config failed: {e}")
+        print(f"[TEMPLATES] website_config() error: {e}")
         return None
     finally:
         db.close()
 
-# Inject the function into the Jinja2 environment globals
-# So templates can call it like: {% set config = website_config() %}
-templates.env.globals['website_config'] = get_website_config
 
-def hex_to_rgb_filter(hex_val):
-    if not hex_val:
-        return "15, 23, 42"
-    hex_val = hex_val.lstrip('#')
-    if len(hex_val) == 6:
-        r, g, b = tuple(int(hex_val[i:i+2], 16) for i in (0, 2, 4))
-        return f"{r}, {g}, {b}"
-    return "15, 23, 42"
-
-templates.env.filters['hex_to_rgb'] = hex_to_rgb_filter
+# Register website_config as a Jinja2 global function so every template
+# can call {{ website_config() }} or {% set wconfig = website_config() %}
+# without needing it to be explicitly passed in the route context.
+templates.env.globals["website_config"] = website_config
