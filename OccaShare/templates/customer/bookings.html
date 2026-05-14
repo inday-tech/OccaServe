@@ -149,6 +149,8 @@
     .btn-settle:hover { background: #000; transform: translateY(-2px); }
     .btn-view { background: var(--dm-slate-50); color: var(--up-slate-900) !important; border: 1px solid var(--dm-slate-100); }
     .btn-view:hover { background: var(--dm-slate-100); }
+    .btn-remove { background: transparent; color: #ef4444 !important; border: 1px solid #fee2e2; margin-left: 5px; }
+    .btn-remove:hover { background: #fef2f2; border-color: #fecaca; }
 
     /* Empty State */
     .empty-panel { padding: 4rem 2rem; text-align: center; }
@@ -265,10 +267,10 @@
                             Resume <i class="fas fa-play"></i>
                         </a>
                         {% else %}
-                        <a href="/customer/bookings/manage/{{ b.id }}" class="btn-action-soft btn-view">
-                            View <i class="fas fa-fingerprint"></i>
-                        </a>
                         {% endif %}
+                        <button onclick="removeBooking({{ b.id }})" class="btn-action-soft btn-remove" title="Remove from list">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -344,6 +346,24 @@
         filteredRows = allRows.filter(row => row.getAttribute('data-search').includes(searchTerm));
         currentPage = 1;
         updatePagination();
+    }
+
+    async function removeBooking(bookingId) {
+        if (!confirm("Are you sure you want to remove this booking from your list?")) return;
+        
+        try {
+            const res = await fetch(`/api/bookings/${bookingId}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (res.ok) {
+                if (window.showToast) window.showToast(data.message, 'success'); else alert(data.message);
+                location.reload();
+            } else {
+                if (window.showError) window.showError(data.detail || 'Failed to remove booking.', 'Error'); else alert(data.detail || 'Error');
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Connection error.");
+        }
     }
 </script>
 {% endblock %}

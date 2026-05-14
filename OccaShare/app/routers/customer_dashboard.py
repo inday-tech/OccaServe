@@ -27,7 +27,8 @@ async def customer_dashboard(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
-    bookings = user.bookings
+    # Filter out archived bookings
+    bookings = [b for b in user.bookings if not b.is_archived]
     today = date.today()
     upcoming_count = 0
     
@@ -228,12 +229,13 @@ async def customer_bookings(
     user: models.User = Depends(customer_only)
 ):
     # Calculate Intelligence Stats
-    total_reservations = len(user.bookings)
-    total_spent = sum([b.total_amount for b in user.bookings if b.status in ['confirmed', 'completed'] and b.total_amount])
+    active_bookings = [b for b in user.bookings if not b.is_archived]
+    total_reservations = len(active_bookings)
+    total_spent = sum([b.total_amount for b in active_bookings if b.status in ['confirmed', 'completed'] and b.total_amount])
     
     # Calculate Pending Obligations (remaining balance of active bookings)
     pending_obligations = 0
-    for b in user.bookings:
+    for b in active_bookings:
         if b.status in ['pending', 'pending_payment', 'awaiting_payment']:
             # Total minus whatever was already paid (reservation fee)
             balance = float(b.total_amount or 0) - float(b.reservation_fee or 0)
@@ -242,7 +244,7 @@ async def customer_bookings(
     return templates.TemplateResponse("customer/bookings.html", {
         "request": request,
         "user": user,
-        "bookings": sorted(user.bookings, key=lambda x: x.id, reverse=True),
+        "bookings": sorted(active_bookings, key=lambda x: x.id, reverse=True),
         "stats": {
             "total_reservations": total_reservations,
             "total_spent": total_spent,

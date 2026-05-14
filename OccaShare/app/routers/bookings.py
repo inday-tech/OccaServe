@@ -876,3 +876,25 @@ async def submit_review(
     
     db.commit()
     return RedirectResponse(url="/customer/dashboard?success_msg=Your+review+has+been+submitted!+Thank+you!.", status_code=303)
+
+@router.delete("/{booking_id}")
+async def delete_or_archive_booking(
+    booking_id: int, 
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking or (booking.user_id != current_user.id and current_user.role != 'admin'):
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    # Business Logic:
+    # 1. Hard Delete if Draft or Cancelled AND No Payment made
+    if booking.status in ['draft', 'cancelled'] and booking.payment_status == 'pending':
+        db.delete(booking)
+        db.commit()
+        return {"success": True, "message": "Booking deleted permanently.", "action": "deleted"}
+    
+    # 2. Otherwise, Archive (Soft Delete)
+    booking.is_archived = True
+    db.commit()
+    return {"success": True, "message": "Booking moved to archive.", "action": "archived"}
