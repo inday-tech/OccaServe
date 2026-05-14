@@ -326,67 +326,8 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     window.proceedToCamera = async function () {
-        const idType = document.getElementById('id_type').value;
-        const idNumber = document.getElementById('id_number').value.trim();
-
-        // Show Extraction State
-        document.getElementById('id-preview').style.display = 'none';
-        document.getElementById('ocr-loading').style.display = 'block';
-        document.getElementById('extraction-title').innerText = "Extracting Identity Details";
-        updateStatusTracker(2);
-
-        const formData = new FormData();
-        formData.append('id_type', idType);
-        formData.append('id_document', idFile);
-
-        try {
-            const res = await fetch(`/api/bookings/extract-id`, { method: 'POST', body: formData });
-            const data = await res.json();
-
-            if (res.ok && data.success) {
-                const extracted = data.extracted_data;
-
-                // Pre-fill fields
-                if (extracted.full_name) {
-                    const names = extracted.full_name.split(' ');
-                    if (names.length >= 2) {
-                        document.getElementById('first_name').value = names.slice(0, -1).join(' ');
-                        document.getElementById('last_name').value = names[names.length - 1];
-                    } else {
-                        document.getElementById('first_name').value = extracted.full_name;
-                    }
-                }
-
-                if (extracted.birth_date) {
-                    // Try to format date for input[type=date]
-                    try {
-                        const dob = new Date(extracted.birth_date);
-                        if (!isNaN(dob)) {
-                            document.getElementById('dob').value = dob.toISOString().split('T')[0];
-                        }
-                    } catch (e) { }
-                }
-
-                if (extracted.id_number) {
-                    document.getElementById('id_number').value = extracted.id_number;
-                }
-
-                if (extracted.address) {
-                    document.getElementById('id_address').value = extracted.address;
-                    document.getElementById('address').value = extracted.address;
-                }
-
-                // Proceed directly to uploading the document with the extracted data
-                finalizeIdAndProceed();
-            } else {
-                throw new Error(data.detail || "Extraction failed");
-            }
-        } catch (err) {
-            console.error("Extraction error:", err);
-            if (window.showError) window.showError('Failed to extract data. Please fill manually.', 'OCR Error');
-            document.getElementById('ocr-loading').style.display = 'none';
-            document.getElementById('step-id-form').style.display = 'block';
-        }
+        // frictionless optimization: Skip redundant extract-id call as data is already provided or will be extracted during upload
+        finalizeIdAndProceed();
     };
 
     window.finalizeIdAndProceed = async function () {

@@ -632,7 +632,7 @@ class VerificationService:
             
         return best_text
 
-    def _call_gemini_ocr_sync(self, image_path: str, prompt: str) -> Dict[str, Any]:
+    async def _call_gemini_ocr(self, image_path: str, prompt: str) -> Dict[str, Any]:
         gemini_key = os.getenv("GEMINI_API_KEY")
         if not gemini_key:
             return None
@@ -648,7 +648,8 @@ class VerificationService:
             except Exception:
                 decrypted_data = raw_data
                 
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gemini_key}"
+            # Fixed model name to 1.5-flash for stability and speed
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
             headers = {"Content-Type": "application/json"}
             base64_image = base64.b64encode(decrypted_data).decode('utf-8')
             payload = {
@@ -668,8 +669,8 @@ class VerificationService:
                 }
             }
             import json
-            with httpx.Client() as client:
-                response = client.post(url, json=payload, headers=headers, timeout=30.0)
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, json=payload, headers=headers, timeout=30.0)
                 if response.status_code == 200:
                     data = response.json()
                     text = data['candidates'][0]['content']['parts'][0]['text']
@@ -821,7 +822,7 @@ class VerificationService:
         return mrz_data
 
 
-    def verify_id_document(self, 
+    async def verify_id_document(self, 
                            id_path: str, 
                            full_name: str, 
                            id_number: str, 
@@ -851,7 +852,7 @@ class VerificationService:
             # 4. Perform OCR via Gemini API (if key available) or fallback to Tesseract
             gemini_data = None
             gemini_prompt = self._get_id_type_ocr_prompt(id_type)
-            gemini_data = self._call_gemini_ocr_sync(id_path, gemini_prompt)
+            gemini_data = await self._call_gemini_ocr(id_path, gemini_prompt)
             
             structured_ocr = None  # Will hold the new structured format
             
@@ -1046,14 +1047,14 @@ class VerificationService:
             traceback.print_exc()
             return {"status": "error", "failure_reason": f"System Error during ID scan: {str(e)}"}
 
-    def extract_id_data(self, id_path: str, id_type: str) -> Dict[str, Any]:
+    async def extract_id_data(self, id_path: str, id_type: str) -> Dict[str, Any]:
         """Extracts text from ID without performing validation against user input."""
         try:
             id_img = self._prepare_image(id_path)
             quality_check = self.check_image_quality(id_img)
             
             gemini_prompt = self._get_id_type_ocr_prompt(id_type)
-            gemini_data = self._call_gemini_ocr_sync(id_path, gemini_prompt)
+            gemini_data = await self._call_gemini_ocr(id_path, gemini_prompt)
             
             if gemini_data and (gemini_data.get("full_name") or gemini_data.get("surname")):
                 structured_ocr = self._build_structured_ocr_data(gemini_data, id_type, "gemini")
@@ -1085,7 +1086,7 @@ class VerificationService:
             traceback.print_exc()
             return {"success": False, "error": str(e)}
 
-    def verify_identity_v2(self, 
+    async def verify_identity_v2(self, 
                            id_path: str, 
                            selfie_paths: List[str], 
                            full_name: str, 
@@ -1098,7 +1099,7 @@ class VerificationService:
         """Refactored full verification logic using verify_id_document."""
         try:
             # 1. Document Verification (Now just re-using the method)
-            id_result = self.verify_id_document(id_path, full_name, id_number, id_type, db, user_id, dob, address)
+            id_result = await self.verify_id_document(id_path, full_name, id_number, id_type, db, user_id, dob, address)
             if id_result["status"] == "error":
                 return id_result # Bubble up error
 
@@ -1207,7 +1208,7 @@ class VerificationService:
             
         return None
 
-    def verify_business_permit(self, permit_path: str, business_name: str, owner_name: str = None, db: Session = None) -> Dict[str, Any]:
+    async def verify_business_permit(self, permit_path: str, business_name: str, owner_name: str = None, db: Session = None) -> Dict[str, Any]:
         """OCR Verification for Business Permits with Owner, Format, and Expiry Matching."""
         try:
             # 1. Image Loading & Quality Check
@@ -1222,7 +1223,7 @@ class VerificationService:
                 "Return a JSON object with keys: 'document_type_detected', 'business_name', 'permit_number', 'expiration_date', 'owner_name', 'confidence_score' (0-1). "
                 "The expiration_date should be in YYYY-MM-DD format if possible."
             )
-            gemini_data = self._call_gemini_ocr_sync(permit_path, gemini_prompt)
+            gemini_data = await self._call_gemini_ocr(permit_path, gemini_prompt)
             
             permit_number = ""
             expiration_date_str = ""
