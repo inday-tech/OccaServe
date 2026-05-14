@@ -105,8 +105,14 @@ async def db_session_middleware(request: Request, call_next):
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
-    # Prevent browser from caching dashboard pages to handle Back/Forward button security
     path = request.url.path
+    
+    # Allow browser to cache static assets (images, CSS, JS, fonts)
+    if path.startswith("/static"):
+        response.headers["Cache-Control"] = "public, max-age=3600, stale-while-revalidate=86400"
+        return response
+    
+    # Prevent browser from caching dashboard HTML pages (Back/Forward button security)
     dashboard_routes = ["/caterer", "/admin", "/customer", "/kyc", "/verification", "/payments"]
     if any(path.startswith(route) for route in dashboard_routes):
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
@@ -115,6 +121,7 @@ async def add_security_headers(request: Request, call_next):
     return response
 
 def get_website_config():
+    """Returns a plain dict snapshot of website config to avoid SQLAlchemy DetachedInstanceError."""
     db = SessionLocal()
     try:
         config = db.query(models.WebsiteConfig).first()
@@ -123,7 +130,26 @@ def get_website_config():
             db.add(config)
             db.commit()
             db.refresh(config)
-        return config
+        
+        # Convert to a plain dict while session is still open
+        # This prevents DetachedInstanceError when templates access attributes
+        # after the session is closed
+        return {
+            "id": config.id,
+            "site_name": config.site_name,
+            "support_email": config.support_email,
+            "seo_description": config.seo_description,
+            "logo_url": config.logo_url,
+            "favicon_url": config.favicon_url,
+            "facebook_link": config.facebook_link,
+            "instagram_link": config.instagram_link,
+            "twitter_link": config.twitter_link,
+            "commission_rate": config.commission_rate,
+            "commission_fixed_amount": config.commission_fixed_amount,
+            "max_file_size_mb": config.max_file_size_mb,
+            "maintenance_mode": config.maintenance_mode,
+            "maintenance_message": config.maintenance_message
+        }
     except Exception as e:
         print(f"[STARTUP ERROR] Website config fail: {e}")
         return None

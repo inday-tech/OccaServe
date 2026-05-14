@@ -38,7 +38,8 @@
             <a href="/" class="logo" style="display: flex; align-items: center;">
                 {% if wconfig and wconfig.logo_url %}
                 <img src="{{ wconfig.logo_url }}" alt="Logo"
-                    style="height: 32px; margin-right: 8px; border-radius: 4px; object-fit: contain;">
+                    style="height: 32px; margin-right: 8px; border-radius: 4px; object-fit: contain;"
+                    onerror="this.style.display='none'">
                 {% endif %}
                 <span>OccaServe</span>
             </a>
@@ -107,7 +108,8 @@
                     <a href="/" class="logo" style="margin-bottom:1.5rem; display:flex; align-items: center;">
                         {% if wconfig and wconfig.logo_url %}
                         <img src="{{ wconfig.logo_url }}" alt="Logo"
-                            style="height: 32px; margin-right: 8px; border-radius: 4px; object-fit: contain;">
+                            style="height: 32px; margin-right: 8px; border-radius: 4px; object-fit: contain;"
+                            onerror="this.style.display='none'">
                         {% endif %}
                         <span>OccaServe</span>
                     </a>
