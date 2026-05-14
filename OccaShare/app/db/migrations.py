@@ -7,7 +7,7 @@ def ensure_columns():
         users_columns = [
             # Name fields (added for KYC support)
             ("first_name", "VARCHAR"),
-            ("middle_name", "VARCHAR"),
+            ("middle_name", "VARCHAR(255)"),
             ("last_name", "VARCHAR"),
             # Social login fields
             ("facebook_id", "VARCHAR UNIQUE"),

@@ -446,8 +446,8 @@
                                     required>
                             </div>
                             <div class="dm-input-group">
-                                <input type="text" name="middle_initial" id="onboard_mi" placeholder="M.I."
-                                    maxlength="2">
+                                <i class="fas fa-user-tag"></i>
+                                <input type="text" name="middle_name" id="onboard_mname" placeholder="Middle Name">
                             </div>
                             <div class="dm-input-group">
                                 <input type="text" name="last_name" id="onboard_lname" placeholder="Last Name" required>
@@ -901,13 +901,13 @@
             const phoneInp = document.getElementById('onboard_phone');
             const fnameInp = document.getElementById('onboard_fname');
             const lnameInp = document.getElementById('onboard_lname');
-            const miInp = document.getElementById('onboard_mi');
+            const mnInp = document.getElementById('onboard_mname');
 
             const email = emailInp.value.trim().toLowerCase();
             const phone = phoneInp.value.replace(/\D/g, '');
             const fname = fnameInp.value.trim().toLowerCase();
             const lname = lnameInp.value.trim().toLowerCase();
-            const mi = miInp.value.replace(/\./g, '').trim().toLowerCase();
+            const mn = mnInp.value.trim().toLowerCase();
 
             // 1. Logical Validation: Identical Name Check
             const nameStat = document.getElementById('name_audit_status');
@@ -949,7 +949,7 @@
             if (fname && lname && fname !== lname) {
                 params.append('first_name', fname);
                 params.append('last_name', lname);
-                if (mi) params.append('middle_initial', mi);
+                if (mn) params.append('middle_name', mn);
             }
 
             if (params.toString() === "") return;
@@ -1032,8 +1032,8 @@
         // Standardize full name
         const fname = fd.get('first_name');
         const lname = fd.get('last_name');
-        const mi = fd.get('middle_initial');
-        const full_name = mi ? `${fname} ${mi} ${lname}` : `${fname} ${lname}`;
+        const mn = fd.get('middle_name');
+        const full_name = mn ? `${fname} ${mn} ${lname}` : `${fname} ${lname}`;
         fd.append('full_name', full_name);
 
         // Jurisdictional Precision (Names + Codes)

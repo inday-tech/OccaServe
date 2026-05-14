@@ -1229,7 +1229,7 @@ async def audit_identity(
     phone: Optional[str] = None,
     first_name: Optional[str] = None,
     last_name: Optional[str] = None,
-    middle_initial: Optional[str] = None,
+    middle_name: Optional[str] = None,
     business_name: Optional[str] = None,
     db: Session = Depends(database.get_db),
     admin: models.User = Depends(admin_only)
@@ -1262,16 +1262,16 @@ async def audit_identity(
         # Strips extra spaces and ignores case
         fname_clean = first_name.strip().lower()
         lname_clean = last_name.strip().lower()
-        mi_clean = middle_initial.replace('.', '').strip().lower() if middle_initial else ""
+        mn_clean = middle_name.strip().lower() if middle_name else ""
         
         q = db.query(models.User).filter(
             func.lower(func.trim(models.User.first_name)) == fname_clean,
             func.lower(func.trim(models.User.last_name)) == lname_clean,
             models.User.is_archived == False
         )
-        if mi_clean:
-            # Check middle_initial specifically if provided
-            q = q.filter(func.lower(func.trim(models.User.middle_initial)).contains(mi_clean))
+        if mn_clean:
+            # Check middle_name specifically if provided
+            q = q.filter(func.lower(func.trim(models.User.middle_name)).contains(mn_clean))
         
         results["name_collision"] = q.first() is not None
 

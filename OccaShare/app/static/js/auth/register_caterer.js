@@ -89,7 +89,17 @@
 
         const fnValid = validateSingleName(fnInput, 'firstNameCat', true);
         const lnValid = validateSingleName(lnInput, 'lastNameCat', true);
-        validateSingleName(mnInput, 'middleNameCat', false);
+        
+        // Use initial validator for M.I.
+        if (mnInput) {
+            const mnVal = mnInput.value.trim();
+            if (mnVal) {
+                const res = diamondValidators.middleName(mnVal);
+                setError('middleNameCat', res.message, !res.valid);
+            } else {
+                setError('middleNameCat', "", false);
+            }
+        }
 
         if (fnVal && lnVal) {
             if (fnVal.toLowerCase() === lnVal.toLowerCase()) {
@@ -225,6 +235,38 @@
         }
 
         // Security Verification Validation Rule
+        if (currentStepCat === 2) {
+            const yearsInput = document.getElementById('years_of_operation');
+            if (yearsInput) {
+                const years = parseInt(yearsInput.value.replace(/,/g, ''));
+                if (isNaN(years) || years < 0 || years > 100) {
+                    valid = false;
+                    setError('years', "Must be between 0 and 100");
+                }
+            }
+        }
+
+        if (currentStepCat === 3) {
+            const minPaxInput = document.getElementById('min_pax');
+            const priceInput = document.getElementById('starting_price');
+            
+            if (minPaxInput) {
+                const pax = parseInt(minPaxInput.value.replace(/,/g, ''));
+                if (isNaN(pax) || pax < 1 || pax > 5000) {
+                    valid = false;
+                    setError('minPax', "Must be between 1 and 5,000");
+                }
+            }
+            
+            if (priceInput) {
+                const price = parseFloat(priceInput.value.replace(/,/g, ''));
+                if (isNaN(price) || price < 300 || price > 1000000) {
+                    valid = false;
+                    setError('price', "Must be between ₱300 and ₱1,000,000");
+                }
+            }
+        }
+
         if (currentStepCat === 4) {
             const permitBox = document.getElementById('permitBoxCat');
             const govIdBox = document.getElementById('govIdBoxCat');
@@ -263,8 +305,27 @@
             updateAddressCat();
             
             const fn = document.getElementById('first_name_cat')?.value.trim() || '';
+            const mn = document.getElementById('middle_name_cat')?.value.trim() || '';
             const ln = document.getElementById('last_name_cat')?.value.trim() || '';
-            formData.set('full_name', `${fn} ${ln}`);
+            formData.set('full_name', `${fn} ${mn ? mn + ' ' : ''}${ln}`.trim());
+            formData.set('middle_name', mn);
+
+            // Handle Event Types Normalization
+            const eventChoices = [];
+            document.querySelectorAll('input[name="event_type_choice"]:checked').forEach(cb => {
+                if (cb.value !== 'Other') {
+                    eventChoices.push(cb.value);
+                }
+            });
+            const otherVal = document.getElementById('event_type_other')?.value.trim();
+            if (document.getElementById('eventOtherCheck')?.checked && otherVal) {
+                // Split by comma if multiple other events provided
+                const others = otherVal.split(',').map(s => s.trim()).filter(s => s.length > 0);
+                others.forEach(o => {
+                    if (!eventChoices.includes(o)) eventChoices.push(o);
+                });
+            }
+            formData.set('event_types', eventChoices.join(','));
 
             const response = await fetch('/auth/register', {
                 method: 'POST',
@@ -349,5 +410,16 @@
     // Relying on inline location_data.js script logic in template forms
 
     // Make functions available globally for modal buttons
+    window.toggleEventOther = function(checkbox) {
+        const container = document.getElementById('eventOtherContainer');
+        if (container) {
+            container.style.display = checkbox.checked ? 'block' : 'none';
+            if (checkbox.checked) {
+                document.getElementById('event_type_other').focus();
+            }
+        }
+        checkbox.parentElement.classList.toggle('checked', checkbox.checked);
+    };
+
     window.changeStepCat = changeStepCat;
 })();

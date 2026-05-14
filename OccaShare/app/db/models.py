@@ -65,7 +65,7 @@ class CatererProfile(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), unique=True)
-    business_name = Column(String)
+    business_name = Column(String, unique=True)
     slug = Column(String, unique=True, nullable=True)
     business_type = Column(String, nullable=True)
     years_of_operation = Column(Integer, default=0)

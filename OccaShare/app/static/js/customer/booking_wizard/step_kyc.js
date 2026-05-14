@@ -381,7 +381,7 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('id_number', idNumber);
         formData.append('id_document', idFile);
         formData.append('first_name', document.getElementById('first_name').value.trim());
-        formData.append('middle_name', document.getElementById('middle_name').value.trim());
+        formData.append('middle_name', document.getElementById('middle_name')?.value.trim() || '');
         formData.append('last_name', document.getElementById('last_name').value.trim());
         formData.append('dob', document.getElementById('dob').value);
         formData.append('address', document.getElementById('address').value.trim());

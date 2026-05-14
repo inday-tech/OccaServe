@@ -130,6 +130,10 @@ def is_dummy_phone(phone: str) -> Optional[str]:
         return "Mobile number must contain only digits"
     if re.search(r"(.)\1\1", phone):
         return "Mobile number contains too many repetitive digits (e.g., 111)"
+    
+    # Check for repetitive patterns like 121212 or 123123
+    if re.search(r"(.{2,3})\1\1", phone):
+        return "Mobile number contains repetitive patterns (e.g., 121212)"
         
     dummy_nums = ['09123456789', '09111111111', '09000000000', '09999999999']
     if phone in dummy_nums:

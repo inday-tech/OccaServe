@@ -1908,6 +1908,7 @@ async def update_profile(
     contact_phone: str = Form(...),
     first_name: str = Form(...),
     last_name: str = Form(...),
+    middle_name: Optional[str] = Form(None),
     personal_address: Optional[str] = Form(None),
     logo: Optional[UploadFile] = File(None),
     cover_image: Optional[UploadFile] = File(None),
@@ -1953,6 +1954,7 @@ async def update_profile(
     # Update User Info
     user.first_name = first_name
     user.last_name = last_name
+    user.middle_name = middle_name
     user.address = personal_address
     
     # Update Profile Info
@@ -3655,7 +3657,7 @@ async def register_manual_customer(
         new_user = models.User(
             email=email,
             first_name=f_name,
-            middle_name=m_name,
+            middle_name=m_name if m_name else None,
             last_name=l_name,
             phone_number=phone,
             role="customer",

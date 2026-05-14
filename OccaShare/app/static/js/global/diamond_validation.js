@@ -106,23 +106,47 @@
             if (!nameRegex.test(name)) return { valid: false, message: "Letters/spaces only" };
             if (dummyNames.includes(lowerName)) return { valid: false, message: "Use your real name" };
             
-            // Smart similarity and repetition check
+            // Smart gibberish check (3+ consecutive identical characters)
+            if (/(.)\1\1/.test(lowerName)) {
+                return { valid: false, message: "Avoid repetitive characters" };
+            }
+
+            // Repetitive part check (e.g. John John)
             const parts = lowerName.split(/\s+/).filter(p => p.length > 0);
             if (parts.length >= 2) {
                 for (let i = 0; i < parts.length; i++) {
                     for (let j = i + 1; j < parts.length; j++) {
-                        const p1 = parts[i];
-                        const p2 = parts[j];
-                        if (p1 === p2) {
-                            return { valid: false, message: "Avoid repetitive names (e.g. Pepito Pepito)" };
-                        }
-                        if (p1.length > 3 && p2.length > 3 && getStringSimilarity(p1, p2) > 0.8) {
-                            return { valid: false, message: "Names appear repetitive or contain typos" };
+                        if (parts[i] === parts[j]) {
+                            return { valid: false, message: "Repeated name part detected" };
                         }
                     }
                 }
             }
             
+            return { valid: true };
+        },
+        middleName: (val) => {
+            if (!val) return { valid: true }; // Optional
+            return window.diamondValidators.name(val);
+        },
+        businessName: async (name) => {
+            if (!name) return { valid: false, message: "Business Name required" };
+            if (name.length < 3) return { valid: false, message: "Too short (min 3)" };
+            
+            // Basic gibberish/numeric check
+            if (/^\d+$/.test(name)) return { valid: false, message: "Cannot be only numbers" };
+            if (/(.)\1\1\1/.test(name.toLowerCase())) return { valid: false, message: "Excessive repetitive characters" };
+
+            // Real-time AJAX Uniqueness Check
+            try {
+                const response = await fetch(`/auth/check-business-name?name=${encodeURIComponent(name)}`);
+                const data = await response.json();
+                if (!data.available) {
+                    return { valid: false, message: "Business name already registered" };
+                }
+            } catch (e) {
+                console.warn("Uniqueness check failed", e);
+            }
             return { valid: true };
         },
         email: (email) => {
@@ -186,6 +210,7 @@
         const paxInputs = rootElement.querySelectorAll('input[name="min_pax"]');
         const priceInputs = rootElement.querySelectorAll('input[name="starting_price"]');
         const commaInputs = rootElement.querySelectorAll('.js-format-comma');
+        const middleNameInputs = rootElement.querySelectorAll('input[name="middle_name"]');
 
         // Apply formatting listeners
         commaInputs.forEach(input => {
@@ -226,6 +251,35 @@
                 window.setDiamondError(prefix, message, !valid);
             });
         });
+
+        // Smart Cross-Field Name Validation (First != Last)
+        const firstNameElements = rootElement.querySelectorAll('input[name="first_name"]');
+        const lastNameElements = rootElement.querySelectorAll('input[name="last_name"]');
+
+        const crossCheckNames = (el) => {
+            const isCat = el.id.includes('cat');
+            const suffix = isCat ? '_cat' : '';
+            const fName = document.getElementById('first_name' + suffix)?.value || '';
+            const lName = document.getElementById('last_name' + suffix)?.value || '';
+            
+            const fPrefix = isCat ? 'firstNameCat' : 'firstName';
+            const lPrefix = isCat ? 'lastNameCat' : 'lastName';
+
+            if (fName && lName && fName.trim().toLowerCase() === lName.trim().toLowerCase()) {
+                window.setDiamondError(fPrefix, "First & Last name cannot be identical");
+                window.setDiamondError(lPrefix, "First & Last name cannot be identical");
+            } else {
+                // Clear the cross-field error if it was previously set, 
+                // but only if the basic name validation passes
+                const fRes = window.diamondValidators.name(fName);
+                const lRes = window.diamondValidators.name(lName);
+                window.setDiamondError(fPrefix, fRes.message, !fRes.valid);
+                window.setDiamondError(lPrefix, lRes.message, !lRes.valid);
+            }
+        };
+
+        firstNameElements.forEach(el => el.addEventListener('input', () => crossCheckNames(el)));
+        lastNameElements.forEach(el => el.addEventListener('input', () => crossCheckNames(el)));
 
         mobileInputs.forEach(input => {
             input.addEventListener('input', function() {
@@ -287,6 +341,15 @@
             input.addEventListener('input', function() {
                 const { valid, message } = window.diamondValidators.price(this.value);
                 window.setDiamondError('price', message, !valid);
+            });
+        });
+
+        middleNameInputs.forEach(input => {
+            input.addEventListener('input', function() {
+                const isCat = this.id.includes('cat');
+                const prefix = isCat ? 'middleNameCat' : 'middleName';
+                const { valid, message } = window.diamondValidators.middleName(this.value);
+                window.setDiamondError(prefix, message, !valid);
             });
         });
     };

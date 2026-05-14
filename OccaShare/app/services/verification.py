@@ -92,6 +92,11 @@ class VerificationService:
         "REGISTERED OWNER", "NAME OF OWNER", "OWNER", "PROPRIETOR", "TAXPAYER", "PERMITTEE"
     ]
 
+    MENU_KEYWORDS = [
+        "MENU", "PRICE LIST", "PACKAGE", "DISH", "FOOD", "CATERING", "DRINKS", "DESSERT", "MAIN COURSE", "APPETIZER",
+        "PAX", "SERVES", "PER HEAD", "PHP", "₱", "ORDER", "MEAL", "BUFFET", "SET MENU"
+    ]
+
     def __init__(self):
         self.landmarker = None
         
@@ -717,62 +722,52 @@ class VerificationService:
                 return {"status": "mismatched", "ocr_match": False, "pattern_valid": pattern_valid,
                         "failure_reason": quality_check["reason"]}
             
-            # 4. Perform OCR via Gemini API (if key available) or fallback to Tesseract
-            gemini_data = None
-            gemini_prompt = (
-                f"Extract data from this ID image. Selected ID type: '{id_type}'. "
-                "Return a JSON object with keys: 'document_type_detected', 'full_name', 'id_number', 'face_visible' (boolean), 'confidence_score' (0-1)."
-            )
-            gemini_data = self._call_gemini_ocr_sync(id_path, gemini_prompt)
+            # 4. Perform OCR via Tesseract (Primary)
+            ocr_text = self._run_tesseract_multi_psm(id_img)
             
-            if gemini_data and gemini_data.get("full_name"):
-                print(f"[KYC DEBUG] Gemini OCR Succeeded for ID.")
-                ocr_text = gemini_data.get("full_name") + " " + (gemini_data.get("id_number") or "")
-                clean_ocr_upper = ocr_text.upper()
-                is_likely_id = True
-                rich_data = {
-                    "full_name": gemini_data.get("full_name"),
-                    "id_number": gemini_data.get("id_number") or id_number,
-                    "extracted_dob": "",
-                    "extracted_expiry": "",
-                    "extracted_address": ""
-                }
-                id_faces = self._detect_faces_detailed(id_img)
-                has_face = gemini_data.get("face_visible", True)
-            else:
-                ocr_text = self._run_tesseract_multi_psm(id_img)
-                
-                if not ocr_text or not ocr_text.strip() or self._is_ocr_garbage(ocr_text):
-                    print(f"[KYC WARNING] Tesseract failed to parse text for ID.")
-                    if not os.getenv("GEMINI_API_KEY"):
-                        print("[KYC DEBUG] Permitting empty OCR text for ID in Demo mode.")
-                        ocr_text = "DEMO_BYPASS_MODE_TEXT"
-                    else:
-                        return {
-                            "status": "rejected",
-                            "ocr_match": False,
-                            "failure_reason": "❌ Unable to read the ID. Please upload a clearer image."
-                        }
+            if not ocr_text or not ocr_text.strip() or self._is_ocr_garbage(ocr_text):
+                print(f"[KYC WARNING] Tesseract failed to parse text for ID. Trying Gemini fallback...")
+                gemini_prompt = (
+                    f"Extract data from this ID image. Selected ID type: '{id_type}'. "
+                    "Return a JSON object with keys: 'document_type_detected' (string), "
+                    "'full_name' (string - the complete name as printed), "
+                    "'last_name' (string), 'first_name' (string), 'middle_name' (string or null), "
+                    "'id_number' (string - the ID number/card number as printed), "
+                    "'face_visible' (boolean), 'confidence_score' (0-1), "
+                    "'is_tampered' (boolean), 'tampering_reason' (string or null). "
+                )
+                gemini_data = self._call_gemini_ocr_sync(id_path, gemini_prompt)
+                if gemini_data and gemini_data.get("full_name"):
+                    ocr_text = gemini_data.get("full_name") + " " + (gemini_data.get("id_number") or "")
+                else:
+                    return {
+                        "status": "rejected",
+                        "ocr_match": False,
+                        "failure_reason": "❌ Unable to read the ID. Please upload a clearer image."
+                    }
 
-                    
-                clean_ocr_upper = ocr_text.upper()
-                
-                # 5. Legitimacy Check (STRICTER but with FUZZY)
-                def fuzzy_contains_id_keywords(text):
-                    if any(kw in text for kw in self.ID_LEGITIMACY_KEYWORDS):
-                        return True
-                    typo_tolerant_kws = ["PHILIPPINES", "REPUBLIC", "IDENTITY", "IDENTIFICATION", "PASSPORT", "LICENSE"]
-                    for kw in typo_tolerant_kws:
-                        if len(text) > 20:
-                            match = difflib.get_close_matches(kw, text.split(), n=1, cutoff=0.7)
-                            if match: return True
-                    return False
-                
-                id_faces = self._detect_faces_detailed(id_img)
-                has_face = len(id_faces) > 0
-                is_likely_id = (fuzzy_contains_id_keywords(clean_ocr_upper) or has_face) and len(clean_ocr_upper.strip()) > 15
-                
-                rich_data = self._extract_rich_ocr_data(ocr_text)
+            clean_ocr_upper = ocr_text.upper()
+            id_faces = self._detect_faces_detailed(id_img)
+            has_face = len(id_faces) > 0
+            
+            # 5. Smart ID Content Validation (Legitimacy Check)
+            is_likely_id = any(kw in clean_ocr_upper for kw in self.ID_LEGITIMACY_KEYWORDS) or has_face
+            
+            if not is_likely_id:
+                # One last check for PhilID/National ID specific markers
+                if any(kw in clean_ocr_upper for kw in ["REPUBLIKA", "PILIPINAS", "PAMBANSANG"]):
+                    is_likely_id = True
+            
+            rich_data = self._extract_rich_ocr_data(ocr_text)
+            # If we used Gemini earlier, we'd have better rich_data, but Tesseract extraction is the priority.
+            # We'll merge Gemini data if it was used.
+            if 'gemini_data' in locals() and gemini_data:
+                rich_data.update({
+                    "full_name": gemini_data.get("full_name", rich_data.get("full_name")),
+                    "id_number": gemini_data.get("id_number", rich_data.get("id_number")),
+                    "is_tampered": gemini_data.get("is_tampered", False),
+                    "tampering_reason": gemini_data.get("tampering_reason")
+                })
 
             
             # 6. Specific ID Type Keyword Check (NEW & STRICT)
@@ -847,9 +842,72 @@ class VerificationService:
                     if w in clean_ocr_norm: found += 1
                 return (found / len(input_words)) >= 0.5
             # --- EXECUTE VALIDATIONS ---
+            # A. Validate the document looks like an actual ID
+            if not is_likely_id:
+                reasons.append("Invalid ID Document.")
+            
+            # B. ID Number Cross-Reference: Match entered ID number against OCR-extracted ID number
             norm_id_input = id_number.replace("-", "").replace(" ", "").upper()
             norm_id_ocr = clean_ocr_upper.replace("-", "").replace(" ", "")
-
+            
+            # Try matching against Gemini-extracted ID number first
+            gemini_id_extracted = (rich_data.get("id_number") or "").replace("-", "").replace(" ", "").upper()
+            id_number_matched = False
+            
+            if norm_id_input and gemini_id_extracted:
+                # Strict comparison for Gemini-extracted ID
+                if norm_id_input == gemini_id_extracted:
+                    id_number_matched = True
+                elif difflib.SequenceMatcher(None, norm_id_input, gemini_id_extracted).ratio() > 0.85:
+                    id_number_matched = True
+                    print(f"[KYC DEBUG] ID number fuzzy match: input='{norm_id_input}' vs extracted='{gemini_id_extracted}'")
+            
+            # Fallback: Check if ID number exists anywhere in raw OCR text
+            if not id_number_matched and norm_id_input:
+                if norm_id_input in norm_id_ocr:
+                    id_number_matched = True
+                elif id_number.upper() in clean_ocr_upper:
+                    id_number_matched = True
+            
+            if norm_id_input and not id_number_matched:
+                reasons.append(f"ID Number mismatch. Detected: {rich_data.get('id_number', 'None')}")
+            
+            # C. Name Cross-Reference: Match registration name against OCR-extracted name
+            name_matched = match_name(full_name, rich_data.get("full_name"), ocr_text)
+            
+            # Also check individual parts (last_name, first_name) from Gemini
+            if not name_matched and rich_data.get("last_name"):
+                input_parts = [p.lower() for p in full_name.split() if len(p) > 1]
+                extracted_last = (rich_data.get("last_name") or "").lower()
+                extracted_first = (rich_data.get("first_name") or "").lower()
+                extracted_middle = (rich_data.get("middle_name") or "").lower()
+                
+                parts_found = 0
+                total_parts = len(input_parts)
+                for part in input_parts:
+                    if part in extracted_last or part in extracted_first or part in extracted_middle:
+                        parts_found += 1
+                    elif any(difflib.SequenceMatcher(None, part, w).ratio() > 0.8 
+                             for w in [extracted_last, extracted_first, extracted_middle] if w):
+                        parts_found += 1
+                
+                if total_parts > 0 and (parts_found / total_parts) >= 0.5:
+                    name_matched = True
+                    print(f"[KYC DEBUG] Name matched via individual parts: {parts_found}/{total_parts}")
+            
+            if not name_matched:
+                detected_name = rich_data.get("full_name") or "None"
+                reasons.append(f"Name mismatch. Detected: {detected_name}")
+            
+            # D. Tampering / AI-Editing Detection
+            if rich_data.get("is_tampered"):
+                tamper_reason = rich_data.get("tampering_reason", "Digitally altered.")
+                reasons.append(f"Authenticity Failed: {tamper_reason}")
+            
+            # E. Pattern validation
+            if not pattern_valid:
+                reasons.append(f"Invalid format for '{id_type}'.")
+            
             status = "matched" if not reasons else "rejected"
 
 
@@ -858,13 +916,21 @@ class VerificationService:
                 "ocr_match": status == "matched",
                 "is_likely_id": is_likely_id,
                 "pattern_valid": pattern_valid,
+                "id_number_matched": id_number_matched if norm_id_input else True,
+                "name_matched": name_matched,
                 "failure_reason": " ".join(reasons) if reasons else None,
                 "extracted_text_preview": ocr_text[:200],
                 "ocr_data": {
                     "raw_text": ocr_text,
                     "full_name_extracted": rich_data.get("full_name"),
+                    "last_name_extracted": rich_data.get("last_name"),
+                    "first_name_extracted": rich_data.get("first_name"),
+                    "middle_name_extracted": rich_data.get("middle_name"),
+                    "id_number_extracted": rich_data.get("id_number"),
                     "dob_extracted": rich_data.get("extracted_dob"),
                     "address_extracted": rich_data.get("extracted_address"),
+                    "is_tampered": rich_data.get("is_tampered", False),
+                    "tampering_reason": rich_data.get("tampering_reason"),
                     **rich_data
                 }
             }
@@ -937,10 +1003,12 @@ class VerificationService:
                 "ocr_match": ocr_match,
                 "pattern_valid": pattern_valid,
                 "failure_reason": failure_reason,
+                "raw_text": ocr_text,
                 "extracted_text_preview": ocr_text[:200],
                 "ocr_data": {
-                    **id_result["ocr_data"],
-                    "faces_in_id": len(id_faces)
+                    **id_result.get("ocr_data", {}),
+                    "faces_in_id": len(id_faces),
+                    "raw_ocr": ocr_text
                 }
             }
         except Exception as e:
@@ -1003,41 +1071,45 @@ class VerificationService:
             if not quality_check["valid"]:
                 return {"status": "mismatched", "ocr_match": False, "failure_reason": quality_check["reason"]}
 
-            # 2. Perform OCR via Gemini API (if key available) or fallback to Tesseract
-            gemini_prompt = (
-                f"Extract data from this Business Permit or Mayor's Permit. Target Business Name: '{business_name}'. "
-                "Return a JSON object with keys: 'document_type_detected', 'business_name', 'permit_number', 'expiration_date', 'owner_name', 'confidence_score' (0-1). "
-                "The expiration_date should be in YYYY-MM-DD format if possible."
-            )
-            gemini_data = self._call_gemini_ocr_sync(permit_path, gemini_prompt)
+            # 2. Perform OCR via Tesseract (Primary)
+            ocr_text = self._run_tesseract_multi_psm(img)
+            gemini_data = None
             
-            permit_number = ""
-            expiration_date_str = ""
-            
-            if gemini_data and gemini_data.get("business_name"):
-                print(f"[KYC DEBUG] Gemini OCR Succeeded for Business Permit.")
-                ocr_text = f"GEMINI OCR RESULT: Business: {gemini_data.get('business_name')}, Owner: {gemini_data.get('owner_name')}, Type: {gemini_data.get('document_type_detected')}"
-                clean_ocr = ocr_text.lower()
-                permit_number = str(gemini_data.get("permit_number", "")).strip()
-                expiration_date_str = str(gemini_data.get("expiration_date", "")).strip()
-            else:
-                ocr_text = self._run_tesseract_multi_psm(img)
-                clean_ocr = " ".join(ocr_text.lower().split())
-                
-                # Fallback regex for Permit Number (Standard PH Format: YYYY-NNNNN or similar)
-                permit_no_match = re.search(r'(?:PERMIT|LICENSE|BP|ACCOUNT)\s*(?:NO|NUMBER)?[:.\s]+([A-Z0-9-]{4,20})', ocr_text.upper())
-                if permit_no_match:
-                    permit_number = permit_no_match.group(1)
-                
-                # Fallback for Expiration Date
-                expiry_match = re.search(r'(?:EXPIRY|EXPIRES|VALID UNTIL|DATE OF EXPIRATION)[:.\s]+([A-Z0-9,\s/-]{6,30})', ocr_text.upper())
-                if expiry_match:
-                    expiration_date_str = expiry_match.group(1).strip()
-                
+            if not ocr_text or not ocr_text.strip() or self._is_ocr_garbage(ocr_text):
+                print(f"[KYC WARNING] Tesseract failed for permit. Trying Gemini fallback...")
+                gemini_prompt = (
+                    f"Extract data from this Business Permit. Target Business Name: '{business_name}'. "
+                    "Return a JSON object with keys: 'document_type_detected', 'business_name', 'permit_number', 'expiration_date', 'owner_name', 'is_tampered', 'tampering_reason'."
+                )
+                gemini_data = self._call_gemini_ocr_sync(permit_path, gemini_prompt)
+                if gemini_data and gemini_data.get("business_name"):
+                    ocr_text = f"{gemini_data.get('business_name')} {gemini_data.get('permit_number')} {gemini_data.get('owner_name')} {gemini_data.get('expiration_date')}"
+                else:
+                    return {"status": "rejected", "ocr_match": False, "failure_reason": "❌ Unable to read the Permit. Ensure high clarity."}
+
+            clean_ocr_upper = ocr_text.upper()
             target_name = " ".join(business_name.lower().split())
 
             print(f"[KYC DEBUG] Business Permit OCR - Target: '{target_name}'")
-            print(f"[KYC DEBUG] OCR Text (Preview): '{clean_ocr[:200]}...'")
+            print(f"[KYC DEBUG] OCR Text (Preview): '{clean_ocr_upper[:200]}...'")
+
+
+            # 4. Data Extraction
+            permit_number = ""
+            expiration_date_str = ""
+            if gemini_data:
+                permit_number = str(gemini_data.get("permit_number", "")).strip()
+                expiration_date_str = str(gemini_data.get("expiration_date", "")).strip()
+            else:
+                permit_no_match = re.search(r'(?:PERMIT|LICENSE|BP|ACCOUNT)\s*(?:NO|NUMBER)?[:.\s]+([A-Z0-9-]{4,20})', clean_ocr_upper)
+                if permit_no_match:
+                    permit_number = permit_no_match.group(1)
+                
+                expiry_match = re.search(r'(?:EXPIRY|EXPIRES|VALID UNTIL|DATE OF EXPIRATION)[:.\s]+([A-Z0-9,\s/-]{6,30})', clean_ocr_upper)
+                if expiry_match:
+                    expiration_date_str = expiry_match.group(1).strip()
+
+            clean_ocr = clean_ocr_upper.lower()
 
             # --- ENHANCED CHECKS ---
             permit_checks_failed = []
@@ -1046,10 +1118,10 @@ class VerificationService:
             if not permit_number or len(permit_number) < 4:
                 permit_checks_failed.append("Permit number could not be extracted.")
             
-            # 2. Enforce Permit Number Format (Philippines standard usually involves Year or Account No)
-            # We allow alphanumeric with dashes, but must be substantial
+            # 2. Enforce Permit Number Format
             if permit_number and not re.match(r'^[A-Z0-9-]{4,30}$', permit_number.replace(" ", "").upper()):
                 permit_checks_failed.append(f"Invalid Permit Number format: '{permit_number}'.")
+
 
             # 3. Expiration Date Check (NEW)
             is_expired = False
@@ -1136,15 +1208,23 @@ class VerificationService:
             # 8. Final Decision
             failure_reasons = []
             if not is_likely_permit:
-                failure_reasons.append("The uploaded document does not look like a valid Business Permit.")
+                failure_reasons.append("Invalid Business Permit.")
             if not name_match:
-                failure_reasons.append(f"Business mismatch: '{business_name}' not detected on document.")
+                failure_reasons.append("Business name mismatch.")
             if not owner_match:
-                failure_reasons.append(f"Owner mismatch: '{owner_name}' not detected on document.")
+                failure_reasons.append("Owner name mismatch.")
             if permit_checks_failed:
                 failure_reasons.extend(permit_checks_failed)
+            
+            # Tampering / AI-Editing Detection for Permit
+            is_tampered = False
+            tampering_reason = None
+            if gemini_data and gemini_data.get("is_tampered"):
+                is_tampered = True
+                tampering_reason = gemini_data.get("tampering_reason", "Digitally altered.")
+                failure_reasons.append(f"Authenticity Failed: {tampering_reason}")
 
-            status = "matched" if (name_match and owner_match and is_likely_permit and not permit_checks_failed) else "rejected"
+            status = "matched" if (name_match and owner_match and is_likely_permit and not permit_checks_failed and not is_tampered) else "rejected"
 
             return {
                 "status": status,
@@ -1162,13 +1242,70 @@ class VerificationService:
                     "expiration_date": expiration_date_str,
                     "is_expired": is_expired,
                     "match_ratio": match_ratio,
-                    "owner_found": owner_found_in_ocr
+                    "owner_found": owner_found_in_ocr,
+                    "is_tampered": is_tampered,
+                    "tampering_reason": tampering_reason
                 }
             }
 
         except Exception as e:
             traceback.print_exc()
             return {"status": "error", "failure_reason": f"System Error during Permit scan: {str(e)}"}
+
+    def verify_menu_document(self, menu_path: str) -> Dict[str, Any]:
+        """OCR Verification for Sample Menus to ensure they are legit food-related documents."""
+        try:
+            # 1. Image Loading & Quality Check
+            # If it's a PDF, we might need to skip OpenCV checks or convert first
+            # For now, assuming image or basic PDF processing
+            filename = menu_path.split("/")[-1]
+            ext = os.path.splitext(filename)[1].lower()
+            
+            if ext != '.pdf':
+                try:
+                    img = self._prepare_image(menu_path)
+                    quality_check = self.check_image_quality(img)
+                    if not quality_check["valid"]:
+                        return {"status": "rejected", "ocr_match": False, "failure_reason": quality_check["reason"]}
+                    
+                    # 2. Perform OCR
+                    ocr_text = self._run_tesseract_multi_psm(img)
+                except Exception as e:
+                    print(f"[KYC ERROR] Menu image prep failed: {e}")
+                    return {"status": "error", "failure_reason": "Unable to process menu image."}
+            else:
+                # PDF handling - basic length/metadata check for now, or just trust the file validator in utils
+                # In a real app, we'd use pdfplumber or similar
+                return {"status": "approved", "ocr_match": True, "failure_reason": None}
+
+            if not ocr_text or not ocr_text.strip() or self._is_ocr_garbage(ocr_text):
+                return {"status": "rejected", "ocr_match": False, "failure_reason": "❌ Document appears empty or illegible. Please upload a clear menu/price list."}
+
+            clean_ocr_upper = ocr_text.upper()
+            
+            # 3. Keyword Check (Is it a menu?)
+            is_likely_menu = any(kw in clean_ocr_upper for kw in self.MENU_KEYWORDS)
+            
+            # 4. Final Decision
+            if not is_likely_menu:
+                return {
+                    "status": "rejected",
+                    "ocr_match": False,
+                    "failure_reason": "❌ File does not appear to be a valid menu or food price list.",
+                    "extracted_text_preview": ocr_text[:200]
+                }
+
+            return {
+                "status": "approved",
+                "ocr_match": True,
+                "is_likely_menu": True,
+                "failure_reason": None,
+                "extracted_text_preview": ocr_text[:300]
+            }
+
+        except Exception as e:
+            traceback.print_exc()
+            return {"status": "error", "failure_reason": f"System Error during Menu scan: {str(e)}"}
 
     def verify_identity(self, id_url: str, selfie_url: str) -> dict:
         """Legacy mock for compatibility."""

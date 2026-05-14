@@ -1042,15 +1042,37 @@
                 <!-- Step 1: Basic Account Information -->
                 <div class="form-step active" id="step-1">
                     <div class="form-grid">
-                        <div class="form-group full-width">
-                            <label for="full_name">Full Name</label>
-                            <div class="input-wrapper" id="fullNameWrapper">
-                                <input type="text" id="full_name" name="full_name" class="minimal-input" required
-                                    placeholder="Juan Dela Cruz"
-                                    value="{{ user.first_name ~ ' ' ~ user.last_name if user else '' }}">
-                                <i class="fas fa-check-circle validation-icon success-icon"></i>
-                                <i class="fas fa-exclamation-circle validation-icon error-icon"></i>
-                                <div id="fullNameError" class="error-drawer">Required</div>
+                        <input type="hidden" id="full_name" name="full_name" value="{{ user.first_name ~ ' ' ~ user.last_name if user else '' }}">
+                        <div class="form-group full-width" style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.75rem;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="last_name">Last Name</label>
+                                <div class="input-wrapper" id="lastNameWrapper">
+                                    <input type="text" id="last_name" name="last_name" class="minimal-input" required
+                                        placeholder="e.g. Dela Cruz"
+                                        value="{{ user.last_name if user else '' }}">
+                                    <i class="fas fa-check-circle validation-icon success-icon"></i>
+                                    <i class="fas fa-exclamation-circle validation-icon error-icon"></i>
+                                    <div id="lastNameError" class="error-drawer">Required</div>
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="first_name">First Name</label>
+                                <div class="input-wrapper" id="firstNameWrapper">
+                                    <input type="text" id="first_name" name="first_name" class="minimal-input" required
+                                        placeholder="e.g. Juan"
+                                        value="{{ user.first_name if user else '' }}">
+                                    <i class="fas fa-check-circle validation-icon success-icon"></i>
+                                    <i class="fas fa-exclamation-circle validation-icon error-icon"></i>
+                                    <div id="firstNameError" class="error-drawer">Required</div>
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="middle_name">Middle Name</label>
+                                <div class="input-wrapper" id="middleNameWrapper">
+                                    <input type="text" id="middle_name" name="middle_name" class="minimal-input"
+                                        placeholder="Middle Name">
+                                    <div id="middleNameError" class="error-drawer"></div>
+                                </div>
                             </div>
                         </div>
                         <div class="form-group">
@@ -1262,18 +1284,6 @@
                 <div class="form-step" id="step-4">
                     <div class="form-grid">
                         <div class="form-group">
-                            <label for="permit">Business Permit</label>
-                            <div class="file-upload-box" id="permitBox">
-                                <i class="fas fa-file-invoice" id="permitIcon"></i>
-                                <p id="permitName">BusinessPermit.pdf / jpg</p>
-                                <span class="scan-status-badge" id="permitStatus">Verified</span>
-                                <div id="permitOcrError" class="ocr-error-text"></div>
-                                <input type="file" id="permit" name="permit" accept=".pdf,image/*" required
-                                    onchange="handleFileUpload(this, 'permit')">
-                            </div>
-                        </div>
-
-                        <div class="form-group">
                             <label for="id_type">Valid ID Type</label>
                             <div class="input-wrapper">
                                 <select id="id_type" name="id_type" class="minimal-input" required>
@@ -1310,6 +1320,18 @@
                                 <div id="govIdOcrError" class="ocr-error-text"></div>
                                 <input type="file" id="gov_id" name="gov_id" accept=".pdf,image/*" required
                                     onchange="handleFileUpload(this, 'id')" onclick="event.stopPropagation()">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="permit">Business Permit</label>
+                            <div class="file-upload-box" id="permitBox" onclick="startUniversalScanCat('permit')">
+                                <i class="fas fa-file-invoice" id="permitIcon"></i>
+                                <p id="permitName">BusinessPermit.pdf / jpg</p>
+                                <span class="scan-status-badge" id="permitStatus">Verified</span>
+                                <div id="permitOcrError" class="ocr-error-text"></div>
+                                <input type="file" id="permit" name="permit" accept=".pdf,image/*" required
+                                    onchange="handleFileUpload(this, 'permit')" onclick="event.stopPropagation()">
                             </div>
                         </div>
 
@@ -1707,6 +1729,9 @@
     };
 
     const fieldMap = {
+        'last_name': 'lastName',
+        'first_name': 'firstName',
+        'middle_name': 'middleName',
         'full_name': 'fullName',
         'business_name': 'businessName',
         'years_of_operation': 'years',
@@ -1735,10 +1760,20 @@
         if (currentStep === 1) {
             if (!validatePassword()) valid = false;
 
-            const fn = document.getElementById('full_name');
-            const fnRes = validateName(fn.value);
+            const lnEl = document.getElementById('last_name');
+            const fnEl = document.getElementById('first_name');
 
-            if (!fnRes.valid) { setError('fullName', fnRes.message); valid = false; }
+            if (lnEl) {
+                const lnRes = validateName(lnEl.value);
+                if (!lnRes.valid) { setError('lastName', lnRes.message); valid = false; }
+            }
+            if (fnEl) {
+                const fnRes = validateName(fnEl.value);
+                if (!fnRes.valid) { setError('firstName', fnRes.message); valid = false; }
+            }
+            
+            // Compose full_name before proceeding
+            if (typeof composeFullName === 'function') composeFullName();
         }
 
         if (currentStep === 2) {
@@ -1867,10 +1902,42 @@
         validatePassword();
     });
 
-    document.getElementById('full_name').addEventListener('input', function () {
+    // Auto-compose hidden full_name from separate fields
+    function composeFullName() {
+        const fn = (document.getElementById('first_name')?.value || '').trim();
+        const ln = (document.getElementById('last_name')?.value || '').trim();
+        const mn = (document.getElementById('middle_name')?.value || '').trim();
+        const hidden = document.getElementById('full_name');
+        if (hidden) {
+            hidden.value = `${fn} ${mn ? mn + ' ' : ''}${ln}`.trim();
+        }
+    }
+
+    // Real-time validation for Last Name
+    document.getElementById('last_name')?.addEventListener('input', function () {
         const res = validateName(this.value);
-        if (!res.valid) setError('fullName', res.message);
-        else setError('fullName', "", false);
+        if (!res.valid) setError('lastName', res.message);
+        else setError('lastName', "", false);
+        composeFullName();
+    });
+
+    // Real-time validation for First Name
+    document.getElementById('first_name')?.addEventListener('input', function () {
+        const res = validateName(this.value);
+        if (!res.valid) setError('firstName', res.message);
+        else setError('firstName', "", false);
+        composeFullName();
+    });
+
+    // Real-time validation for Middle Name
+    document.getElementById('middle_name')?.addEventListener('input', function () {
+        const res = validateName(this.value);
+        if (this.value && !res.valid) {
+            setError('middleName', res.message);
+        } else {
+            setError('middleName', "", false);
+        }
+        composeFullName();
     });
     // Add logic to populate select on load
     document.addEventListener('DOMContentLoaded', () => {
@@ -1970,6 +2037,8 @@
             return false;
         }
 
+        // Ensure full_name is composed before submission
+        if (typeof composeFullName === 'function') composeFullName();
         document.getElementById('catererForm').submit();
     }
 
@@ -2007,37 +2076,53 @@
         const icon = document.getElementById(iconId);
         const errorDiv = errorId ? document.getElementById(errorId) : null;
 
+        // Validate ID number is entered before scanning ID
+        if (type === 'id') {
+            const idNumberEl = document.getElementById('id_number');
+            const idTypeEl = document.getElementById('id_type');
+            if (!idTypeEl || !idTypeEl.value) {
+                if (window.Swal) Swal.fire('Requirement', 'Please select an ID Type first.', 'warning');
+                input.value = '';
+                return;
+            }
+            if (!idNumberEl || !idNumberEl.value.trim()) {
+                if (window.Swal) Swal.fire('Requirement', 'Please enter your ID Number first before scanning.', 'warning');
+                idNumberEl?.focus();
+                input.value = '';
+                return;
+            }
+        }
+
         updateFileName(input, labelId);
 
         if (!input.files || !input.files[0]) return;
 
-        // Only scan images for now (Tesseract/OpenCV needs pixels)
         const file = input.files[0];
         if (!file.type.startsWith('image/')) {
             box.classList.remove('scanning', 'scanned-success', 'scanned-error');
             return;
         }
 
-        // Prepare data for OCR
         const formData = new FormData();
         formData.append('document', file);
         formData.append('doc_type', type);
 
-        // Get name to match
-        const fullNameInput = document.getElementById('full_name');
+        const fnVal = (document.getElementById('first_name')?.value || '').trim();
+        const lnVal = (document.getElementById('last_name')?.value || '').trim();
+        const mnVal = (document.getElementById('middle_name')?.value || '').trim();
+        const composedFullName = `${fnVal} ${mnVal ? mnVal + ' ' : ''}${lnVal}`.trim();
         const businessNameInput = document.getElementById('business_name');
-        const userName = type === 'permit' ? businessNameInput.value : fullNameInput.value;
+        const userName = type === 'permit' ? (businessNameInput?.value || '') : composedFullName;
 
         formData.append('user_name', userName || "Unknown");
         if (type === 'permit') {
-            formData.append('owner_name', fullNameInput.value || "Unknown");
+            formData.append('owner_name', composedFullName || "Unknown");
         }
         if (type === 'id') {
             formData.append('id_type', document.getElementById('id_type').value || "Passport");
             formData.append('id_number', document.getElementById('id_number').value || "");
         }
 
-        // Start animation
         box.classList.add('scanning');
         box.classList.remove('scanned-success', 'scanned-error');
         statusBadge.innerText = "Scanning...";
@@ -2064,10 +2149,24 @@
                 icon.className = "fas fa-exclamation-triangle";
                 icon.style.color = "#ef4444";
 
+                let errorMsg = result.failure_reason || "Verification failed. Please check the image quality.";
+                
+                // Show detailed OCR mismatch info
+                if (result.ocr_data) {
+                    const detectedName = result.ocr_data.full_name_extracted || result.ocr_data.full_name;
+                    const detectedId = result.ocr_data.id_number_extracted || result.ocr_data.id_number;
+                    if (type === 'id' && detectedName) {
+                        errorMsg = result.failure_reason || `Name/ID mismatch detected. Found: "${detectedName}", ID: "${detectedId || 'N/A'}"`;
+                    }
+                }
+
                 if (errorDiv) {
-                    errorDiv.innerText = result.failure_reason || "Verification failed. Please check the image quality.";
+                    errorDiv.innerText = errorMsg;
                     errorDiv.style.display = 'block';
                 }
+                
+                // Reset file input so they must try again
+                input.value = '';
             } else {
                 box.classList.remove('scanned-success', 'scanned-error');
             }
@@ -2084,6 +2183,9 @@
     }};
     const idMap = {
         'full_name': 'fullName',
+        'last_name': 'lastName',
+        'first_name': 'firstName',
+        'middle_name': 'middleName',
         'email': 'email',
         'mobile_number': 'mobile',
         'address': 'address',

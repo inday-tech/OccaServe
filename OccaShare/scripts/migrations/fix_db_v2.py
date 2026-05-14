@@ -1,4 +1,5 @@
 from sqlalchemy import create_engine, text
+# pyrefly: ignore [missing-import]
 from app.database import SQLALCHEMY_DATABASE_URL
 
 def migrate():

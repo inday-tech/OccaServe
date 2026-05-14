@@ -72,23 +72,49 @@
         if (role) window.updateUI(role);
     };
 
-    const mobileInput = document.getElementById('mobile_number');
+    const mobileInput = document.getElementById('mobile_number') || document.getElementById('mobile_number_cat');
     if (mobileInput) {
-        mobileInput.oninput = function () {
-            const val = this.value.replace(/\s/g, '');
+        const fieldId = mobileInput.id === 'mobile_number' ? 'mobile' : 'mobileCat';
+        
+        const checkPhoneAvailability = async (phone) => {
+            const val = phone.replace(/\s/g, '');
             const mobileRegex = /^(09|\+639)\d{9}$/;
             const repetitiveRegex = /(.)\1\1/;
+            const patternRegex = /(.{2,3})\1\1/;
             const dummyNums = ['09123456789', '09111111111', '09000000000', '09999999999'];
             
-            if (val.length > 0 && !mobileRegex.test(val)) {
-                setError('mobile', "Format: 09XXXXXXXXX (11 digits)");
-            } else if (repetitiveRegex.test(val)) {
-                setError('mobile', "Too many repetitive digits (e.g., 111)");
-            } else if (dummyNums.includes(val)) {
-                setError('mobile', "Please use a real, active mobile number");
-            } else {
-                setError('mobile', "", false);
+            if (val.length === 0) {
+                setError(fieldId, "", false);
+                return;
             }
+
+            if (!mobileRegex.test(val)) {
+                setError(fieldId, "Format: 09XXXXXXXXX (11 digits)");
+            } else if (repetitiveRegex.test(val)) {
+                setError(fieldId, "Too many repetitive digits (e.g., 111)");
+            } else if (patternRegex.test(val)) {
+                setError(fieldId, "Repetitive patterns not allowed (e.g., 121212)");
+            } else if (dummyNums.includes(val)) {
+                setError(fieldId, "Please use a real, active mobile number");
+            } else {
+                // Check uniqueness
+                try {
+                    const response = await fetch(`/auth/check-phone?phone=${encodeURIComponent(val)}`);
+                    const data = await response.json();
+                    if (!data.available) {
+                        setError(fieldId, data.message || "This number is already registered.");
+                    } else {
+                        setError(fieldId, "", false);
+                    }
+                } catch (err) {
+                    console.error("Phone check failed", err);
+                }
+            }
+        };
+
+        const debouncedPhoneCheck = debounce(checkPhoneAvailability, 500);
+        mobileInput.oninput = function () {
+            debouncedPhoneCheck(this.value);
         };
     }
 
@@ -353,36 +379,49 @@
     };
 
     const performNameValidation = (e) => {
-        const fnInput = document.getElementById('first_name');
-        const mnInput = document.getElementById('middle_name');
-        const lnInput = document.getElementById('last_name');
+        const fnInput = document.getElementById('first_name') || document.getElementById('first_name_cat');
+        const mnInput = document.getElementById('middle_name') || document.getElementById('middle_name_cat');
+        const lnInput = document.getElementById('last_name') || document.getElementById('last_name_cat');
 
         if (e && e.target) {
             e.target.classList.add('touched');
         }
 
+        const fnFieldId = fnInput && fnInput.id.includes('cat') ? 'firstNameCat' : 'firstName';
+        const mnFieldId = mnInput && mnInput.id.includes('cat') ? 'middleNameCat' : 'middleName';
+        const lnFieldId = lnInput && lnInput.id.includes('cat') ? 'lastNameCat' : 'lastName';
+
         const fnVal = fnInput ? fnInput.value.trim() : '';
         const lnVal = lnInput ? lnInput.value.trim() : '';
 
-        const fnValid = validateSingleName(fnInput, 'firstName', true);
-        const lnValid = validateSingleName(lnInput, 'lastName', true);
-        validateSingleName(mnInput, 'middleName', false);
+        const fnValid = validateSingleName(fnInput, fnFieldId, true);
+        const lnValid = validateSingleName(lnInput, lnFieldId, true);
+        
+        if (mnInput) {
+            const mnVal = mnInput.value.trim();
+            if (mnVal) {
+                const res = validateName(mnVal);
+                setError(mnFieldId, res.message, !res.valid);
+            } else {
+                setError(mnFieldId, "", false);
+            }
+        }
 
         if (fnVal && lnVal) {
             if (fnVal.toLowerCase() === lnVal.toLowerCase()) {
-                setError('firstName', "First Name and Last Name cannot be identical");
-                setError('lastName', "First Name and Last Name cannot be identical");
+                setError(fnFieldId, "First Name and Last Name cannot be identical");
+                setError(lnFieldId, "First Name and Last Name cannot be identical");
             } else {
-                if (fnValid.valid) setError('firstName', "", false);
-                if (lnValid.valid) setError('lastName', "", false);
+                if (fnValid.valid) setError(fnFieldId, "", false);
+                if (lnValid.valid) setError(lnFieldId, "", false);
             }
         }
     };
 
     const attachNameListeners = () => {
-        const fnInput = document.getElementById('first_name');
-        const mnInput = document.getElementById('middle_name');
-        const lnInput = document.getElementById('last_name');
+        const fnInput = document.getElementById('first_name') || document.getElementById('first_name_cat');
+        const mnInput = document.getElementById('middle_name') || document.getElementById('middle_name_cat');
+        const lnInput = document.getElementById('last_name') || document.getElementById('last_name_cat');
 
         if (fnInput) {
             fnInput.addEventListener('input', performNameValidation);
@@ -487,23 +526,17 @@
                 return false;
             }
 
-            let firstName = "";
-            let lastName = "";
-
-            if (firstNameEl && lastNameEl) {
-                firstName = firstNameEl.value.trim();
-                lastName = lastNameEl.value.trim();
-            } else {
-                const fullName = (typeof fullNameEl !== 'undefined' && fullNameEl) ? fullNameEl.value : "";
-                const nameParts = fullName.trim().split(/\s+/);
-                firstName = nameParts[0] || "";
-                lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : ".";
-            }
+            const firstName = firstNameEl ? firstNameEl.value.trim() : "";
+            const middleName = regForm.querySelector('input[name="middle_name"]')?.value.trim() || "";
+            const lastName = lastNameEl ? lastNameEl.value.trim() : "";
+            
+            const fullName = `${firstName} ${middleName ? middleName + ' ' : ''}${lastName}`.trim();
 
             const formData = new FormData(regForm);
             formData.set('first_name', firstName);
+            formData.set('middle_name', middleName);
             formData.set('last_name', lastName);
-            formData.set('full_name', `${firstName} ${lastName}`);
+            formData.set('full_name', fullName);
 
             const submitBtn = regForm.querySelector('button[type="submit"]');
             const originalBtnText = submitBtn.innerHTML;

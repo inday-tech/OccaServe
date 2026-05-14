@@ -743,12 +743,14 @@ async def update_profile(
     request: Request,
     first_name: str = Form(...),
     last_name: str = Form(...),
+    middle_name: Optional[str] = Form(None),
     phone_number: Optional[str] = Form(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
     user.first_name = first_name
     user.last_name = last_name
+    user.middle_name = middle_name
     user.phone_number = phone_number
     db.commit()
     return RedirectResponse(url="/customer/profile?success_msg=Profile+updated+successfully", status_code=303)

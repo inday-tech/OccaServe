@@ -233,18 +233,40 @@
                                 <span class="status-pill status-match"><i class="fas fa-check"></i> DTI_ALIGNED</span>
                             </td>
                         </tr>
+                        {% endif %}
+                        
+                        <!-- Liveness & Biometric Data -->
                         <tr>
-                            <td style="font-weight: 700;">Permit Validity</td>
-                            <td>N/A (REGISTRY)</td>
-                            <td>{{ permit.expiration_date if permit else 'EXPIRES 2026' }}</td>
+                            <td style="font-weight: 700;">Biometric Liveness Score</td>
+                            <td>N/A</td>
+                            <td style="font-weight: 800; color: var(--adm-primary);">{{ (verification.ocr_data.face_verification.liveness_score * 100)|round|int if (verification.ocr_data and 'face_verification' in verification.ocr_data) else '0' }}% Confidence</td>
                             <td>
-                                <span class="status-pill status-match" style="background: #fff7ed; color: #9a3412;">VALID_PERIOD</span>
+                                {% if verification.ocr_data and 'face_verification' in verification.ocr_data and verification.ocr_data.face_verification.liveness_score >= 0.4 %}
+                                    <span class="status-pill status-match"><i class="fas fa-user-check"></i> LIVENESS_PASSED</span>
+                                {% else %}
+                                    <span class="status-pill status-risk"><i class="fas fa-user-slash"></i> LOW_CONFIDENCE</span>
+                                {% endif %}
                             </td>
                         </tr>
-                        {% endif %}
                     </tbody>
                 </table>
             </div>
+
+            <div class="audit-card-premium">
+                <div class="section-title-clean"><i class="fas fa-terminal"></i> Raw Intelligence Trace (Tesseract OCR)</div>
+                <div style="background: #0f172a; color: #38bdf8; padding: 1.5rem; border-radius: 12px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; line-height: 1.6; max-height: 300px; overflow-y: auto;">
+                    <div style="color: #94a3b8; margin-bottom: 0.5rem;">// BEGIN_OCR_DUMP</div>
+                    {% if verification.ocr_data and 'id_verification' in verification.ocr_data %}
+                        {{ verification.ocr_data.id_verification.raw_text or "NO_DATA_EXTRACTED" }}
+                    {% elif verification.ocr_data and 'raw_ocr' in verification.ocr_data %}
+                        {{ verification.ocr_data.raw_ocr }}
+                    {% else %}
+                        SYSTEM_IDLE: No raw text trace available for this session.
+                    {% endif %}
+                    <div style="color: #94a3b8; margin-top: 0.5rem;">// END_OCR_DUMP</div>
+                </div>
+            </div>
+
         {% else %}
             <div class="audit-card-premium" style="text-align: center; padding: 5rem;">
                 <i class="fas fa-user-shield fa-4x" style="color: #e2e8f0; margin-bottom: 2rem;"></i>

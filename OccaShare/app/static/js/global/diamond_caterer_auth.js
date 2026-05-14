@@ -277,32 +277,128 @@
     };
 
     async function openScannerModalCat(type) {
-        const idTypeSelect = document.getElementById('id_type');
+        const idTypeSelect = document.getElementById('id_type') || document.getElementById('id_type_cat');
         const idType = idTypeSelect ? idTypeSelect.value : '';
+        const idNumberInput = document.getElementById('id_number') || document.getElementById('id_number_cat');
+        const idNumber = idNumberInput ? idNumberInput.value.trim() : '';
         
         if (type === 'id' && !idType) {
             Swal.fire('Requirement', 'Please select an ID Type first!', 'warning');
             return;
         }
 
-        const title = type === 'permit' ? 'Scan Business Permit' : (type === 'id' ? `Scan ${idType}` : 'Identity Verification');
-        const icon = type === 'permit' ? 'fa-file-invoice' : (type === 'id' ? 'fa-id-card' : 'fa-user-astronaut');
+        if (type === 'id' && !idNumber) {
+            Swal.fire('Requirement', 'Please enter your ID Number first before scanning.', 'warning');
+            if (idNumberInput) idNumberInput.focus();
+            return;
+        }
 
         if (!window.Swal) return;
+
+        // === SELFIE: Show Liveness Warning Screen First ===
+        if (type === 'selfie') {
+            const warningResult = await Swal.fire({
+                title: '',
+                html: `
+                    <div style="text-align:left; font-family:'Poppins',sans-serif; position:relative; padding: 0.5rem;">
+                        <button type="button" class="swal2-close" onclick="Swal.close()" style="position:absolute; top:-10px; right:0; display:block !important; font-size:1.5rem; color:#1e293b;">&times;</button>
+                        
+                        <h2 style="font-size:1.5rem; font-weight:800; color:#1e293b; margin-bottom:0.5rem;">Take Live Selfie</h2>
+                        <p style="font-size:0.85rem; color:#475569; margin-bottom:1.25rem; line-height:1.5;">
+                            You will go through a face verification process to prove that you are a real person.
+                        </p>
+                        
+                        <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:0.75rem; padding:1rem; margin-bottom:1.5rem; display:flex; align-items:flex-start; gap:1rem;">
+                            <div style="background:#fef3c7; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                <i class="fas fa-exclamation-triangle" style="color:#d97706; font-size:0.8rem;"></i>
+                            </div>
+                            <div>
+                                <div style="font-weight:700; color:#92400e; font-size:0.85rem;">Photosensitivity warning</div>
+                                <div style="font-size:0.75rem; color:#b45309; line-height:1.4; margin-top:2px;">This check displays colored lights. Use caution if you are photosensitive.</div>
+                            </div>
+                        </div>
+                        
+                        <p style="font-size:0.95rem; font-weight:700; color:#1e293b; text-align:center; margin-bottom:1.5rem; letter-spacing:-0.01em;">
+                            Align your face and press Start Liveness to proceed
+                        </p>
+
+                        <div style="margin-bottom:1.5rem; text-align:center;">
+                            <img src="/static/img/liveness_guide.png" style="width:100%; max-width:300px; border-radius:12px;" alt="Liveness Guide">
+                            <div style="display:grid; grid-template-columns:1fr 1fr; margin-top:0.5rem; font-size:0.75rem; font-weight:600;">
+                                <div style="color:#10b981;">Good Fit</div>
+                                <div style="color:#ef4444;">Too Far</div>
+                            </div>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:2rem;">
+                            <div style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; text-align:center;">
+                                <div style="width:32px; height:32px; background:#ecfdf5; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+                                    <i class="fas fa-check" style="color:#10b981; font-size:0.8rem;"></i>
+                                </div>
+                                <span style="font-size:0.65rem; color:#475569; font-weight:600; line-height:1.2;">Hijab-friendly verification</span>
+                            </div>
+                            <div style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; text-align:center;">
+                                <div style="width:32px; height:32px; background:#fef2f2; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+                                    <i class="fas fa-times" style="color:#ef4444; font-size:0.8rem;"></i>
+                                </div>
+                                <span style="font-size:0.65rem; color:#475569; font-weight:600; line-height:1.2;">Avoid wearing cap</span>
+                            </div>
+                            <div style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; text-align:center;">
+                                <div style="width:32px; height:32px; background:#ecfdf5; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+                                    <i class="fas fa-check" style="color:#10b981; font-size:0.8rem;"></i>
+                                </div>
+                                <span style="font-size:0.65rem; color:#475569; font-weight:600; line-height:1.2;">Use enough lighting</span>
+                            </div>
+                            <div style="display:flex; flex-direction:column; align-items:center; gap:0.5rem; text-align:center;">
+                                <div style="width:32px; height:32px; background:#fef2f2; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+                                    <i class="fas fa-times" style="color:#ef4444; font-size:0.8rem;"></i>
+                                </div>
+                                <span style="font-size:0.65rem; color:#475569; font-weight:600; line-height:1.2;">Avoid wearing glasses</span>
+                            </div>
+                        </div>
+
+                        <p style="font-size:0.7rem; color:#64748b; line-height:1.4; text-align:center; margin-bottom:1.5rem;">
+                            By proceeding, you allow the collection, use, and disclosure of your personal data for identity verification and safety purposes.
+                        </p>
+                    </div>
+                `,
+                confirmButtonText: '<i class="fas fa-play"></i> Start Liveness',
+                confirmButtonColor: '#2563eb',
+                showCancelButton: true,
+                cancelButtonText: 'Cancel',
+                reverseButtons: true,
+                allowOutsideClick: false,
+                customClass: {
+                    popup: 'premium-auth-swal',
+                    confirmButton: 'swal2-confirm-liveness'
+                },
+                showCloseButton: true
+            });
+
+            if (!warningResult.isConfirmed) return;
+        }
+
+        // === Proceed to Camera Modal ===
+        const title = type === 'permit' ? 'Scan Business Permit' : (type === 'id' ? `Scan ${idType}` : 'Live Face Verification');
 
         Swal.fire({
             title: title,
             html: `
                 <div class="scanner-modal-wrap" style="display: flex; flex-direction: column; align-items: center; padding: 1rem;">
                     <div id="scannerInstructions" class="scanner-instruction-banner" style="background: #f0fdf4; color: #15803d; font-size: 0.85rem; font-weight: 600; padding: 0.5rem 1rem; border-radius: 999px; margin-bottom: 1.25rem; border: 1px solid rgba(21, 128, 61, 0.2);">Preparing Camera...</div>
-                    <div class="scanner-preview-container" style="position: relative; width: 100%; max-width: 360px; aspect-ratio: 4/3; border-radius: 1.5rem; overflow: hidden; border: 4px solid var(--auth-slate-200); box-shadow: var(--auth-shadow);">
+                    <div class="scanner-preview-container" style="position: relative; width: 100%; max-width: 360px; aspect-ratio: ${type === 'selfie' ? '1' : '4/3'}; border-radius: ${type === 'selfie' ? '50%' : '1.5rem'}; overflow: hidden; border: 4px solid ${type === 'selfie' ? '#2563eb' : '#e2e8f0'}; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
                         <video id="modalWebcamVideo" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
                         <canvas id="modalWebcamCanvas" style="display:none;"></canvas>
-                        <div class="scanner-laser" style="position: absolute; width: 100%; height: 3px; background: #f97316; box-shadow: 0 0 12px #f97316; opacity: 0.8; left: 0; top: 0; animation: scan-laser-move 2s infinite ease-in-out;"></div>
+                        ${type !== 'selfie' ? '<div class="scanner-laser" style="position: absolute; width: 100%; height: 3px; background: #f97316; box-shadow: 0 0 12px #f97316; opacity: 0.8; left: 0; top: 0; animation: scan-laser-move 2s infinite ease-in-out;"></div>' : ''}
                         <div class="scanner-guide-frame ${type}" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 2px dashed rgba(255, 255, 255, 0.7); pointer-events: none; z-index: 10;
                             ${type === 'selfie' ? 'width: 180px; height: 180px; border-radius: 50%;' : 'width: 80%; height: 60%; border-radius: 0.5rem;'}"></div>
                     </div>
-                    <p class="scanner-hint" id="scannerHint" style="font-size: 0.8rem; color: #64748b; font-weight: 500; margin-top: 1.25rem;">Align your ${type === 'selfie' ? 'face' : 'document'} comfortably inside the bounds.</p>
+                    <div id="livenessStepIndicator" style="margin-top:1rem; display:${type === 'selfie' ? 'flex' : 'none'}; gap:0.5rem; align-items:center;">
+                        <div id="stepDot1" style="width:10px; height:10px; border-radius:50%; background:#2563eb; transition:all 0.3s;"></div>
+                        <div id="stepDot2" style="width:10px; height:10px; border-radius:50%; background:#cbd5e1; transition:all 0.3s;"></div>
+                        <div id="stepDot3" style="width:10px; height:10px; border-radius:50%; background:#cbd5e1; transition:all 0.3s;"></div>
+                    </div>
+                    <p class="scanner-hint" id="scannerHint" style="font-size: 0.8rem; color: #64748b; font-weight: 500; margin-top: 1rem;">Align your ${type === 'selfie' ? 'face' : 'document'} comfortably inside the bounds.</p>
                     
                     <style>
                         @keyframes scan-laser-move {
@@ -314,11 +410,12 @@
                 </div>
             `,
             showCancelButton: true,
-            confirmButtonText: '📸 Capture',
-            confirmButtonColor: '#f97316',
+            confirmButtonText: type === 'selfie' ? '🔍 Verifying...' : '📸 Capture',
+            confirmButtonColor: type === 'selfie' ? '#2563eb' : '#f97316',
             cancelButtonText: 'Cancel',
             reverseButtons: true,
             allowOutsideClick: false,
+            showConfirmButton: type !== 'selfie',
             didOpen: async () => {
                 const video = document.getElementById('modalWebcamVideo');
                 const instr = document.getElementById('scannerInstructions');
@@ -340,6 +437,14 @@
                         };
                     }
                     if (instr) instr.innerText = type === 'selfie' ? "Center your face in the frame" : "Align document";
+
+                    // Auto-start liveness sequence for selfie
+                    if (type === 'selfie') {
+                        setTimeout(async () => {
+                            const result = await captureSequenceCat();
+                            if (result) Swal.close();
+                        }, 800);
+                    }
                 } catch (err) {
                     Swal.showValidationMessage(`Camera Error: ${err.message}`);
                     setTimeout(() => Swal.close(), 2000);
@@ -348,7 +453,7 @@
 
             preConfirm: async () => {
                 if (type === 'selfie') {
-                    return await captureSequenceCat();
+                    return true;
                 } else {
                     return captureFromModalCat(type);
                 }
@@ -450,10 +555,11 @@
                     
                     if (currentStep === 1) {
                         if (instr) {
-                            instr.innerText = "👀 Step 1: Harap o tingin sa camera";
+                            instr.innerText = "👀 Step 1: Look directly at the camera";
                             instr.style.background = "#dbeafe";
                             instr.style.color = "#1e40af";
                         }
+                        updateStepDots(1);
                         
                         if (yawRatio >= 0.7 && yawRatio <= 1.4) {
                             if (lookStraightStartTime === 0) lookStraightStartTime = Date.now();
@@ -467,15 +573,23 @@
                         }
                     } else if (currentStep === 2) {
                         if (instr) {
-                            instr.innerText = "😉 Step 2: Ngayon, i-BLINK ang iyong mga mata";
+                            instr.innerText = "😉 Step 2: Now BLINK your eyes slowly";
                             instr.style.background = "#fef3c7";
                             instr.style.color = "#92400e";
                         }
+                        updateStepDots(2);
                         
                         if (avgEAR < 0.18) {
                             captureFrame();
                             currentStep = 3;
+                            updateStepDots(3);
                             captureFrame();
+                            
+                            if (instr) {
+                                instr.innerText = "✅ Liveness Verified!";
+                                instr.style.background = "#f0fdf4";
+                                instr.style.color = "#15803d";
+                            }
                             
                             faceMesh.close();
                             finishSequence();
@@ -483,6 +597,27 @@
                     }
                 });
                 
+                function updateStepDots(step) {
+                    for (let i = 1; i <= 3; i++) {
+                        const dot = document.getElementById('stepDot' + i);
+                        if (dot) {
+                            if (i < step) {
+                                dot.style.background = '#10b981';
+                                dot.style.width = '10px';
+                                dot.style.height = '10px';
+                            } else if (i === step) {
+                                dot.style.background = '#2563eb';
+                                dot.style.width = '14px';
+                                dot.style.height = '14px';
+                            } else {
+                                dot.style.background = '#cbd5e1';
+                                dot.style.width = '10px';
+                                dot.style.height = '10px';
+                            }
+                        }
+                    }
+                }
+
                 function captureFrame() {
                     const context = canvas.getContext('2d');
                     canvas.width = video.videoWidth;
@@ -663,7 +798,14 @@
         }
 
         const businessName = document.getElementById('business_name')?.value.trim() || "";
-        const fullName = document.getElementById('full_name_cat')?.value.trim() || "";
+        // Compose full name from separate fields (checking both _cat and regular IDs)
+        const fnCat = (document.getElementById('first_name_cat')?.value || document.getElementById('first_name')?.value || '').trim();
+        const lnCat = (document.getElementById('last_name_cat')?.value || document.getElementById('last_name')?.value || '').trim();
+        const mnCat = (document.getElementById('middle_name_cat')?.value || document.getElementById('middle_name')?.value || '').trim();
+        const fullName = `${fnCat} ${mnCat ? mnCat + ' ' : ''}${lnCat}`.trim();
+        // Update hidden full_name_cat field
+        const hiddenFn = document.getElementById('full_name_cat') || document.getElementById('full_name');
+        if (hiddenFn) hiddenFn.value = fullName;
         
         formData.append('user_name', type === 'permit' ? businessName : fullName);
         if (type === 'permit') formData.append('owner_name', fullName);
@@ -713,11 +855,14 @@
                 statusLabel.innerText = "Validation Failed";
                 
                 let errorMsg = result.failure_reason || "Verification failed.";
-                if (result.ocr_data) {
-                    const detectedName = result.ocr_data.full_name || result.ocr_data.business_name;
+                
+                // Enrich with OCR detection data if available 
+                if (!result.failure_reason && result.ocr_data) {
+                    const detectedName = result.ocr_data.full_name_extracted || result.ocr_data.full_name || result.ocr_data.business_name;
                     if (detectedName && detectedName !== "Not detected") {
                         const targetName = type === 'permit' ? businessName : fullName;
-                        errorMsg = `Mismatch: Detected "${detectedName}" on document. Expected "${targetName}". Please ensure they match.`;
+                        const detectedId = result.ocr_data.id_number_extracted || result.ocr_data.id_number || '';
+                        errorMsg = `Mismatch: Detected "${detectedName}"${detectedId ? `, ID: "${detectedId}"` : ''} on document. Expected "${targetName}".`;
                     }
                 }
 

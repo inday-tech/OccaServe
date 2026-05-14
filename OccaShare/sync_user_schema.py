@@ -23,14 +23,14 @@ def sync_schema():
         columns = [row[0] for row in result]
         print(f"Columns: {columns}")
         
-        needed = ['middle_name', 'dob', 'facebook_id', 'google_id', 'instagram_id', 'is_email_verified']
+        needed = ['middle_initial', 'dob', 'facebook_id', 'google_id', 'instagram_id', 'is_email_verified']
         for col in needed:
             if col not in columns:
                 print(f"Missing {col}, adding...")
                 if col == 'dob':
                     conn.execute(text("ALTER TABLE users ADD COLUMN dob DATE NULL"))
-                elif col == 'middle_name':
-                    conn.execute(text("ALTER TABLE users ADD COLUMN middle_name VARCHAR(255) NULL"))
+                elif col == 'middle_initial':
+                    conn.execute(text("ALTER TABLE users ADD COLUMN middle_initial VARCHAR(1) NULL"))
                 elif col.endswith('_id'):
                     conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} VARCHAR(255) NULL"))
                 elif col.startswith('is_'):

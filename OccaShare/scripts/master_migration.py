@@ -58,6 +58,7 @@ def master_migration():
         
         # Users Table
         user_cols = [
+            ("middle_name", "VARCHAR(255)"),
             ("is_kyc_complete", "BOOLEAN DEFAULT FALSE"),
             ("kyc_attempts", "INTEGER DEFAULT 0"),
             ("must_change_password", "BOOLEAN DEFAULT FALSE"),
@@ -280,6 +281,20 @@ def master_migration():
         add_cols("quotations", quotation_cols)
         add_cols("caterer_gallery", gallery_cols)
         add_cols("platform_feedback", feedback_cols)
+
+        # Legacy Data Migration: Sync middle_initial to middle_name
+        print("  Synchronizing middle_initial data to middle_name...")
+        try:
+            conn.execute(text("""
+                UPDATE users 
+                SET middle_name = middle_initial 
+                WHERE middle_name IS NULL 
+                AND middle_initial IS NOT NULL 
+                AND middle_initial != '';
+            """))
+            print("  Middle initial synchronization complete.")
+        except Exception as e:
+            print(f"    Warning: Could not sync middle_initial data: {e}")
         
         # Create Social Posts table if missing
         try:

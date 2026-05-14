@@ -28,6 +28,21 @@ from ..core.utils import (
     validate_file_type_and_size
 )
 
+@router.get("/check-phone")
+async def check_phone(phone: str, db: Session = Depends(database.get_db)):
+    """Check if phone number is already registered."""
+    phone = phone.strip().replace(" ", "")
+    existing = db.query(models.User).filter(models.User.phone_number == phone).first()
+    if existing:
+        return {"available": False, "message": "This mobile number is already registered to another account."}
+    return {"available": True}
+
+@router.get("/check-business-name")
+async def check_business_name(name: str, db: Session = Depends(database.get_db)):
+    """Check if business name is already taken."""
+    existing = db.query(models.CatererProfile).filter(models.CatererProfile.business_name == name.strip()).first()
+    return {"available": existing is None}
+
 @router.post("/scan-document")
 async def scan_document(
     document: List[UploadFile] = File(...),
@@ -68,6 +83,8 @@ async def scan_document(
             result = verification_service.verify_business_permit(
                 doc_url, user_name, owner_name=owner_name or user_name, db=db
             )
+        elif doc_type == "menu":
+            result = verification_service.verify_menu_document(doc_url)
         elif doc_type == "selfie":
             imgs = [verification_service._prepare_image(u) for u in doc_urls]
             liveness = verification_service._check_liveness_mediapipe(imgs)
@@ -112,8 +129,11 @@ async def scan_document(
                 }
         else:
             result = verification_service.verify_id_document(doc_url, user_name, id_number or "", id_type or "Passport")
-            # Return path to be used as reference
+            # Return path to be used as reference for selfie comparison
             result["doc_path"] = doc_url
+            # Ensure ocr_data is always in the response for frontend display
+            if "ocr_data" not in result:
+                result["ocr_data"] = {}
             
         return result
     except Exception as e:
@@ -152,12 +172,16 @@ def register_caterer_page(request: Request, next: Optional[str] = None, db: Sess
 async def register(
     request: Request,
     role: str = Form("customer"),
-    full_name: str = Form(...),
+    full_name: str = Form(""),
     email: str = Form(...),
     mobile_number: str = Form(...),
     address: Optional[str] = Form(""),
     password: str = Form(...),
     confirm_password: str = Form(...),
+    # Separate name fields (caterer form)
+    first_name: Optional[str] = Form(None),
+    last_name: Optional[str] = Form(None),
+    middle_name: Optional[str] = Form(None),
     # Caterer fields
     business_name: str = Form(None),
     business_type: str = Form(None),
@@ -187,12 +211,24 @@ async def register(
     is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest" or \
               "application/json" in request.headers.get("Accept", "")
     
-    # Split full_name into first and last
-    parts = full_name.strip().split(None, 1)
-    if len(parts) > 1:
-        first_name, last_name = parts[0], parts[1]
+    # Compose full_name from separate fields if provided, otherwise split existing full_name
+    if first_name and last_name:
+        # Separate fields provided (caterer form)
+        first_name = first_name.strip()
+        last_name = last_name.strip()
+        mn = (middle_name or "").strip()
+        full_name = f"{first_name} {mn + ' ' if mn else ''}{last_name}".strip()
+    elif full_name and full_name.strip():
+        # Legacy: single full_name field — split into first and last
+        parts = full_name.strip().split(None, 1)
+        if len(parts) > 1:
+            first_name, last_name = parts[0], parts[1]
+        else:
+            first_name, last_name = parts[0], ""
     else:
-        first_name, last_name = parts[0], ""
+        first_name = first_name or ""
+        last_name = last_name or ""
+        full_name = f"{first_name} {last_name}".strip()
         
     otp = None # Initialize OTP to prevent NameError later
 
@@ -224,7 +260,13 @@ async def register(
         errors["mobile_number"] = "Mobile number must contain only digits"
     else:
         phone_error = is_dummy_phone(mobile_number)
-        if phone_error: errors["mobile_number"] = phone_error
+        if phone_error: 
+            errors["mobile_number"] = phone_error
+        else:
+            # Uniqueness Check
+            existing_phone = db.query(models.User).filter(models.User.phone_number == mobile_number).first()
+            if existing_phone:
+                errors["mobile_number"] = "This mobile number is already registered."
 
     password_msgs = []
     if len(password) < 8:
@@ -260,16 +302,22 @@ async def register(
             errors["business_name"] = "Business name is required for caterers"
         else:
             bn_error = is_dummy_name(business_name)
-            if bn_error: errors["business_name"] = bn_error
+            if bn_error: 
+                errors["business_name"] = bn_error
+            
+            # Uniqueness Check
+            existing_biz = db.query(models.CatererProfile).filter(models.CatererProfile.business_name == business_name).first()
+            if existing_biz:
+                errors["business_name"] = "This business name is already registered."
             
         if years_of_operation < 0 or years_of_operation > 100:
             errors["years_of_operation"] = "Years of operation must be between 0 and 100"
             
-        if min_pax is None or min_pax < 1 or min_pax > 10000:
-            errors["min_pax"] = "Minimum Pax must be between 1 and 10000"
+        if min_pax is None or min_pax < 1 or min_pax > 5000:
+            errors["min_pax"] = "Minimum Pax must be between 1 and 5,000"
             
-        if starting_price is None or starting_price < 0 or starting_price > 10000000:
-            errors["starting_price"] = "Starting Price must be between 0 and 10000000"
+        if starting_price is None or starting_price < 300 or starting_price > 1000000:
+            errors["starting_price"] = "Starting Price must be between ₱300 and ₱1,000,000"
         # Removed coverage_area requirement per user request
 
         if is_ajax:
@@ -315,6 +363,7 @@ async def register(
     if is_upgrade:
         # Update existing social user
         user.first_name = first_name
+        user.middle_name = mn
         user.last_name = last_name
         user.phone_number = mobile_number
         user.address = address
@@ -411,6 +460,7 @@ async def register(
             password_hash=hashed_password,
             role=role, 
             first_name=first_name,
+            middle_name=mn,
             last_name=last_name,
             phone_number=mobile_number,
             address=address,
@@ -791,6 +841,27 @@ def login(
             "error": "Invalid credentials",
             "next_url": next_url
         })
+    
+    # --- STRICT LOGIN GATE FOR CATERERS ---
+    if user.role == "caterer":
+        if user.status in ["pending_approval", "pending_verification"]:
+            error_msg = "Your account is currently under review by our administrators. Please wait for the approval notification before logging in."
+            if is_ajax:
+                return JSONResponse(status_code=403, content={"success": False, "error": error_msg, "status": user.status})
+            return templates.TemplateResponse("auth/login.html", {
+                "request": request,
+                "error": error_msg,
+                "next_url": next_url
+            })
+        elif user.status == "rejected":
+            error_msg = "Your application has been declined due to compliance issues. Please contact support for more information."
+            if is_ajax:
+                return JSONResponse(status_code=403, content={"success": False, "error": error_msg, "status": "rejected"})
+            return templates.TemplateResponse("auth/login.html", {
+                "request": request,
+                "error": error_msg,
+                "next_url": next_url
+            })
     
     if user.status != "active":
          if user.role == "caterer" and user.status == "pending_approval":

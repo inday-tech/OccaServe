@@ -40,26 +40,28 @@
         <!-- Step 1: Basic Account Information -->
         <div class="form-step active" id="step-1">
             <div class="form-grid">
-                <div class="form-group" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; width: 100%; grid-column: 1 / -1; margin-top: 1.5rem;">
-                    <div class="form-group">
+                <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; width: 100%; grid-column: 1 / -1; margin-top: 1.5rem;">
+                    <input type="hidden" id="full_name_cat" name="full_name" value="">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="last_name_cat">Last Name</label>
+                        <div class="input-wrapper" id="lastNameCatWrapper">
+                            <input type="text" id="last_name_cat" name="last_name" class="minimal-input" required placeholder="e.g. Dela Cruz">
+                            <div id="lastNameCatError" class="error-drawer"></div>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
                         <label for="first_name_cat">First Name</label>
                         <div class="input-wrapper" id="firstNameCatWrapper">
                             <input type="text" id="first_name_cat" name="first_name" class="minimal-input" required placeholder="e.g. Juan">
                             <div id="firstNameCatError" class="error-drawer"></div>
                         </div>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" style="margin-bottom: 0;">
                         <label for="middle_name_cat">Middle Name</label>
                         <div class="input-wrapper" id="middleNameCatWrapper">
-                            <input type="text" id="middle_name_cat" name="middle_name" class="minimal-input" placeholder="e.g. Mercado">
+                            <input type="text" id="middle_name_cat" name="middle_name" class="minimal-input" 
+                                placeholder="e.g. Santos">
                             <div id="middleNameCatError" class="error-drawer"></div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="last_name_cat">Last Name</label>
-                        <div class="input-wrapper" id="lastNameCatWrapper">
-                            <input type="text" id="last_name_cat" name="last_name" class="minimal-input" required placeholder="e.g. Dela Cruz">
-                            <div id="lastNameCatError" class="error-drawer"></div>
                         </div>
                     </div>
                 </div>
@@ -172,9 +174,10 @@
                     <div class="input-wrapper" id="businessTypeWrapper">
                         <select id="business_type" name="business_type" class="minimal-input" required>
                             <option value="">Select Type</option>
-                            <option value="Sole Proprietorship">Sole Proprietorship</option>
+                            <option value="Single Proprietorship">Single Proprietorship</option>
                             <option value="Partnership">Partnership</option>
                             <option value="Corporation">Corporation</option>
+                            <option value="Cooperative">Cooperative</option>
                         </select>
                         <div id="businessTypeError" class="error-drawer">Required</div>
                     </div>
@@ -204,22 +207,45 @@
                 <div class="form-group full-width" style="margin-top: 1.5rem;">
                     <label>Type of Events Supported</label>
                     <div class="checkbox-group">
-                        <label class="checkbox-item {{ 'checked' if 'Wedding' in event_types else '' }}">
+                        <label class="checkbox-item">
                             <input type="checkbox" name="event_type_choice" value="Wedding" onchange="this.parentElement.classList.toggle('checked', this.checked)"> 
                             Wedding
                         </label>
-                        <label class="checkbox-item {{ 'checked' if 'Birthday' in event_types else '' }}">
+                        <label class="checkbox-item">
                             <input type="checkbox" name="event_type_choice" value="Birthday" onchange="this.parentElement.classList.toggle('checked', this.checked)"> 
                             Birthday
                         </label>
-                        <label class="checkbox-item {{ 'checked' if 'Corporate' in event_types else '' }}">
+                        <label class="checkbox-item">
                             <input type="checkbox" name="event_type_choice" value="Corporate" onchange="this.parentElement.classList.toggle('checked', this.checked)"> 
                             Corporate
                         </label>
-                        <label class="checkbox-item {{ 'checked' if 'Private Occasion' in event_types else '' }}">
-                            <input type="checkbox" name="event_type_choice" value="Private Occasion" onchange="this.parentElement.classList.toggle('checked', this.checked)"> 
-                            Private Occasion
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="event_type_choice" value="Christening" onchange="this.parentElement.classList.toggle('checked', this.checked)"> 
+                            Christening
                         </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="event_type_choice" value="Anniversary" onchange="this.parentElement.classList.toggle('checked', this.checked)"> 
+                            Anniversary
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="event_type_choice" value="Seminar" onchange="this.parentElement.classList.toggle('checked', this.checked)"> 
+                            Seminar
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="event_type_choice" value="Gala" onchange="this.parentElement.classList.toggle('checked', this.checked)"> 
+                            Gala
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="event_type_choice" value="Wake" onchange="this.parentElement.classList.toggle('checked', this.checked)"> 
+                            Wake
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="event_type_choice" value="Other" id="eventOtherCheck" onchange="toggleEventOther(this)"> 
+                            Other
+                        </label>
+                    </div>
+                    <div id="eventOtherContainer" style="display: none; margin-top: 0.75rem;">
+                        <input type="text" id="event_type_other" class="minimal-input" placeholder="Please specify event type(s)...">
                     </div>
                 </div>
                 <div class="form-group">
@@ -299,21 +325,6 @@
                 </div>
 
                 <div class="form-group full-width">
-                    <label for="permit_cat">Business Permit / DTI</label>
-                    <div class="file-upload-box" id="permitBoxCat" onclick="document.getElementById('permit_cat').click()">
-                        <div id="permitInitialViewCat" style="text-align: center; width: 100%;">
-                            <i class="fas fa-file-invoice" style="font-size: 1.5rem; color: var(--primary); margin-bottom: 0.5rem;"></i>
-                            <p id="permitNameCat" style="font-size: 0.8rem; font-weight: 600; margin-bottom: 0.5rem;">Business Permit / DTI</p>
-                            <span style="font-size: 0.7rem; color: var(--auth-slate-400);">Click to Upload (JPEG/PNG)</span>
-                        </div>
-                        <span id="permitStatusCat" class="scan-status-badge"></span>
-                        <input type="file" id="permit_cat" name="permit" accept="image/*" style="display:none;"
-                            onchange="updateFileNameCat(this, 'permitNameCat'); handleFileUploadCat(this, 'permit');">
-                    </div>
-                    <div id="permitOcrErrorCat" class="ocr-error-text"></div>
-                </div>
-
-                <div class="form-group full-width">
                     <label for="gov_id_cat">Valid Government ID</label>
                     <div class="file-upload-box" id="govIdBoxCat" onclick="document.getElementById('gov_id_cat').click()">
                         <div id="govIdInitialViewCat" style="text-align: center; width: 100%;">
@@ -326,6 +337,21 @@
                             onchange="updateFileNameCat(this, 'govIdNameCat'); handleFileUploadCat(this, 'id');">
                     </div>
                     <div id="govIdOcrErrorCat" class="ocr-error-text"></div>
+                </div>
+
+                <div class="form-group full-width">
+                    <label for="permit_cat">Business Permit / DTI</label>
+                    <div class="file-upload-box" id="permitBoxCat" onclick="document.getElementById('permit_cat').click()">
+                        <div id="permitInitialViewCat" style="text-align: center; width: 100%;">
+                            <i class="fas fa-file-invoice" style="font-size: 1.5rem; color: var(--primary); margin-bottom: 0.5rem;"></i>
+                            <p id="permitNameCat" style="font-size: 0.8rem; font-weight: 600; margin-bottom: 0.5rem;">Business Permit / DTI</p>
+                            <span style="font-size: 0.7rem; color: var(--auth-slate-400);">Click to Upload (JPEG/PNG)</span>
+                        </div>
+                        <span id="permitStatusCat" class="scan-status-badge"></span>
+                        <input type="file" id="permit_cat" name="permit" accept="image/*" style="display:none;"
+                            onchange="updateFileNameCat(this, 'permitNameCat'); handleFileUploadCat(this, 'permit');">
+                    </div>
+                    <div id="permitOcrErrorCat" class="ocr-error-text"></div>
                 </div>
 
                 <div class="form-group full-width">
@@ -422,6 +448,8 @@
                     input.classList.add('touched');
                     input.dispatchEvent(new Event('input', { bubbles: true }));
                 });
+                // Compose full_name_cat before moving forward
+                composeFullNameCat();
             }
 
             // Check for real-time validation errors
@@ -432,6 +460,73 @@
 
             return isValid;
         }
+
+        // Auto-compose hidden full_name_cat
+        function composeFullNameCat() {
+            const fn = (document.getElementById('first_name_cat')?.value || '').trim();
+            const ln = (document.getElementById('last_name_cat')?.value || '').trim();
+            const mn = (document.getElementById('middle_name_cat')?.value || '').trim();
+            const hidden = document.getElementById('full_name_cat');
+            if (hidden) {
+                hidden.value = `${fn} ${mn ? mn + ' ' : ''}${ln}`.trim();
+            }
+        }
+
+        // Name validation helper
+        function validateNameField(value) {
+            const nameRegex = /^[a-zA-Z\s.\-']{2,50}$/;
+            if (!value.trim()) return { valid: false, message: "Required" };
+            if (value.trim().length < 2) return { valid: false, message: "Too short" };
+            if (!nameRegex.test(value)) return { valid: false, message: "Letters only" };
+            if (/(.)\\1\\1/.test(value)) return { valid: false, message: "No repeating chars" };
+            return { valid: true };
+        }
+
+        function setFieldError(wrapper, errorDiv, message) {
+            if (!wrapper) return;
+            if (message) {
+                wrapper.classList.add('error');
+                wrapper.classList.remove('success');
+                if (errorDiv) errorDiv.innerText = message;
+            } else {
+                wrapper.classList.remove('error');
+                wrapper.classList.add('success');
+            }
+        }
+
+        // Real-time validation for name fields
+        document.getElementById('last_name_cat')?.addEventListener('input', function() {
+            const res = validateNameField(this.value);
+            const wrapper = document.getElementById('lastNameCatWrapper');
+            const errDiv = document.getElementById('lastNameCatError');
+            setFieldError(wrapper, errDiv, res.valid ? null : res.message);
+            composeFullNameCat();
+        });
+
+        document.getElementById('first_name_cat')?.addEventListener('input', function() {
+            const res = validateNameField(this.value);
+            const wrapper = document.getElementById('firstNameCatWrapper');
+            const errDiv = document.getElementById('firstNameCatError');
+            setFieldError(wrapper, errDiv, res.valid ? null : res.message);
+            composeFullNameCat();
+        });
+
+        document.getElementById('middle_name_cat')?.addEventListener('input', function() {
+            const res = validateNameField(this.value);
+            const wrapper = document.getElementById('middleNameCatWrapper');
+            const errDiv = document.getElementById('middleNameCatError');
+            if (this.value && !res.valid) {
+                setFieldError(wrapper, errDiv, res.message);
+            } else {
+                setFieldError(wrapper, errDiv, null);
+            }
+            composeFullNameCat();
+        });
+            } else {
+                setFieldError(wrapper, errDiv, null);
+            }
+            composeFullNameCat();
+        });
 
         document.addEventListener('DOMContentLoaded', () => {
             const provSelect = document.getElementById('province_cat');

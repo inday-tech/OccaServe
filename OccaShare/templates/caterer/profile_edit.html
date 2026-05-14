@@ -171,14 +171,18 @@
                         <p>This information is used for legal contracts and is pulled from your account.</p>
                     </div>
 
-                    <div class="form-row-two-col">
+                    <div class="form-row-three-col" style="display: grid; grid-template-columns: 1fr 1fr 80px; gap: 1rem;">
+                        <div class="form-group">
+                            <label><i class="fas fa-user"></i> Last Name</label>
+                            <input type="text" name="last_name" value="{{ user.last_name or '' }}" required>
+                        </div>
                         <div class="form-group">
                             <label><i class="fas fa-user"></i> First Name</label>
                             <input type="text" name="first_name" value="{{ user.first_name or '' }}" required>
                         </div>
                         <div class="form-group">
-                            <label><i class="fas fa-user"></i> Last Name</label>
-                            <input type="text" name="last_name" value="{{ user.last_name or '' }}" required>
+                            <label><i class="fas fa-user"></i> Middle Name</label>
+                            <input type="text" name="middle_name" value="{{ user.middle_name or '' }}" placeholder="Middle Name">
                         </div>
                     </div>
 
