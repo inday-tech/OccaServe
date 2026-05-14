@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const switchGroup = document.getElementById('camera-switch-group');
             const liveSwitchGroup = document.getElementById('liveness-camera-switch-group');
-            
+
             // ID Scanner Group
             if (switchGroup) {
                 switchGroup.style.display = 'flex'; // Force show for testing
@@ -170,11 +170,11 @@ document.addEventListener('DOMContentLoaded', function () {
         if (idType) {
             scanBox.classList.remove('disabled');
             uploadBox.classList.remove('disabled');
-            
+
             // Auto-focus the best method if not already selected
             if (isMobile() && !scanBox.classList.contains('active-option')) {
-                 scanBox.style.borderColor = 'var(--kyc-accent)';
-                 scanBox.style.backgroundColor = 'var(--kyc-accent-soft)';
+                scanBox.style.borderColor = 'var(--kyc-accent)';
+                scanBox.style.backgroundColor = 'var(--kyc-accent-soft)';
             }
         } else {
             scanBox.classList.add('disabled');
@@ -187,41 +187,41 @@ document.addEventListener('DOMContentLoaded', function () {
     // ─── CALABARZON City Data ───────────────────────────────────────────────────
     const calabarzonCities = {
         'Batangas': [
-            'Agoncillo','Alitagtag','Balayan','Balete','Batangas City','Bauan',
-            'Calaca','Calatagan','Cuenca','Ibaan','Laurel','Lemery','Lian',
-            'Lipa City','Lobo','Mabini','Malvar','Mataas na Kahoy','Nasugbu',
-            'Padre Garcia','Rosario','San Jose','San Juan','San Luis','San Nicolas',
-            'San Pascual','Santa Teresita','Santo Tomas','Taal','Talisay',
-            'Taysan','Tingloy','Tuy'
+            'Agoncillo', 'Alitagtag', 'Balayan', 'Balete', 'Batangas City', 'Bauan',
+            'Calaca', 'Calatagan', 'Cuenca', 'Ibaan', 'Laurel', 'Lemery', 'Lian',
+            'Lipa City', 'Lobo', 'Mabini', 'Malvar', 'Mataas na Kahoy', 'Nasugbu',
+            'Padre Garcia', 'Rosario', 'San Jose', 'San Juan', 'San Luis', 'San Nicolas',
+            'San Pascual', 'Santa Teresita', 'Santo Tomas', 'Taal', 'Talisay',
+            'Taysan', 'Tingloy', 'Tuy'
         ],
         'Cavite': [
-            'Alfonso','Amadeo','Bacoor','Carmona','Cavite City','Dasmariñas',
-            'General Emilio Aguinaldo','General Mariano Alvarez','General Trias',
-            'Imus','Indang','Kawit','Magallanes','Maragondon','Mendez',
-            'Naic','Noveleta','Rosario','Silang','Tagaytay City','Tanza',
-            'Ternate','Trece Martires City'
+            'Alfonso', 'Amadeo', 'Bacoor', 'Carmona', 'Cavite City', 'Dasmariñas',
+            'General Emilio Aguinaldo', 'General Mariano Alvarez', 'General Trias',
+            'Imus', 'Indang', 'Kawit', 'Magallanes', 'Maragondon', 'Mendez',
+            'Naic', 'Noveleta', 'Rosario', 'Silang', 'Tagaytay City', 'Tanza',
+            'Ternate', 'Trece Martires City'
         ],
         'Laguna': [
-            'Alaminos','Bay','Biñan','Cabuyao','Calamba City','Cavinti',
-            'Famy','Kalayaan','Liliw','Los Baños','Luisiana','Lumban',
-            'Mabitac','Magdalena','Majayjay','Nagcarlan','Paete','Pagsanjan',
-            'Pakil','Pangil','Pila','Rizal','San Pablo City','San Pedro',
-            'Santa Cruz','Santa Maria','Santa Rosa City','Siniloan','Victoria'
+            'Alaminos', 'Bay', 'Biñan', 'Cabuyao', 'Calamba City', 'Cavinti',
+            'Famy', 'Kalayaan', 'Liliw', 'Los Baños', 'Luisiana', 'Lumban',
+            'Mabitac', 'Magdalena', 'Majayjay', 'Nagcarlan', 'Paete', 'Pagsanjan',
+            'Pakil', 'Pangil', 'Pila', 'Rizal', 'San Pablo City', 'San Pedro',
+            'Santa Cruz', 'Santa Maria', 'Santa Rosa City', 'Siniloan', 'Victoria'
         ],
         'Quezon': [
-            'Agdangan','Alabat','Atimonan','Buenavista','Burdeos','Calauag',
-            'Candelaria','Catanauan','Dolores','General Luna','General Nakar',
-            'Guinayangan','Gumaca','Infanta','Jomalig','Lopez','Lucban',
-            'Lucena City','Macalelon','Mauban','Mulanay','Padre Burgos',
-            'Pagbilao','Panukulan','Patnanungan','Perez','Pitogo','Plaridel',
-            'Polillo','Quezon','Real','Sampaloc','San Andres','San Antonio',
-            'San Francisco','San Narciso','Sariaya','Tagkawayan','Tayabas City',
-            'Tiaong','Unisan'
+            'Agdangan', 'Alabat', 'Atimonan', 'Buenavista', 'Burdeos', 'Calauag',
+            'Candelaria', 'Catanauan', 'Dolores', 'General Luna', 'General Nakar',
+            'Guinayangan', 'Gumaca', 'Infanta', 'Jomalig', 'Lopez', 'Lucban',
+            'Lucena City', 'Macalelon', 'Mauban', 'Mulanay', 'Padre Burgos',
+            'Pagbilao', 'Panukulan', 'Patnanungan', 'Perez', 'Pitogo', 'Plaridel',
+            'Polillo', 'Quezon', 'Real', 'Sampaloc', 'San Andres', 'San Antonio',
+            'San Francisco', 'San Narciso', 'Sariaya', 'Tagkawayan', 'Tayabas City',
+            'Tiaong', 'Unisan'
         ],
         'Rizal': [
-            'Angono','Antipolo City','Baras','Binangonan','Cainta','Cardona',
-            'Jala-Jala','Morong','Pililla','Rodriguez','San Mateo','Tanay',
-            'Taytay','Teresa'
+            'Angono', 'Antipolo City', 'Baras', 'Binangonan', 'Cainta', 'Cardona',
+            'Jala-Jala', 'Morong', 'Pililla', 'Rodriguez', 'San Mateo', 'Tanay',
+            'Taytay', 'Teresa'
         ]
     };
 
@@ -245,8 +245,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // Helper: assemble and set the hidden #address field
     function assembleAddress() {
         const province = (document.getElementById('address_province')?.value || '').trim();
-        const city     = (document.getElementById('address_city')?.value || '').trim();
-        const street   = (document.getElementById('address_street')?.value || '').trim();
+        const city = (document.getElementById('address_city')?.value || '').trim();
+        const street = (document.getElementById('address_street')?.value || '').trim();
         const combined = [street, city, province].filter(Boolean).join(', ');
         const hiddenAddr = document.getElementById('address');
         if (hiddenAddr) hiddenAddr.value = combined;
@@ -256,14 +256,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // ─── Full-form Validation ────────────────────────────────────────────────────
     window.validateKycForm = function () {
         const fields = [
-            // Only id_type and id_number are visible and required before upload now
-            { id: 'id_type',          errId: 'err-id_type',    required: true },
-            { id: 'id_number',        errId: 'err-id_number',  required: true },
+            { id: 'id_type',   errId: 'err-id_type',    required: true },
+            { id: 'id_number', errId: 'err-id_number',  required: true },
         ];
 
         let allValid = true;
         fields.forEach(f => {
-            const el  = document.getElementById(f.id);
+            const el = document.getElementById(f.id);
             const err = document.getElementById(f.errId);
             if (!el) return;
             const isEmpty = !el.value.trim();
@@ -277,16 +276,18 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        // Also update the hidden combined address
+        // Update hidden address
         assembleAddress();
 
-        const scanBox   = document.getElementById('option-scan');
+        // Manage card enablement
+        const scanBox = document.getElementById('option-scan');
         const uploadBox = document.getElementById('option-upload');
-        // Cards enabled only when ALL required fields are valid AND ID format passes
-        const idFormatOk = !document.getElementById('option-scan').classList.contains('disabled') ||
-                           (document.getElementById('id_type').value && document.getElementById('id_number').value.trim());
-        if (allValid && document.getElementById('id_type').value && document.getElementById('id_number').value.trim()) {
-            // Leave enablement to validateIdSelection which handles format check
+        const idType = document.getElementById('id_type').value;
+        const idNumber = document.getElementById('id_number').value.trim();
+
+        if (allValid && idType && idNumber) {
+            scanBox.classList.remove('disabled');
+            uploadBox.classList.remove('disabled');
         } else {
             scanBox.classList.add('disabled');
             uploadBox.classList.add('disabled');
@@ -296,6 +297,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     window.handleUploadClick = function () {
+        const idType = document.getElementById('id_type').value;
         if (!idType) {
             if (window.showError) window.showError('❌ Please select an ID type.', 'Incomplete Data'); else alert('❌ Please select an ID type.');
             return;
@@ -343,7 +345,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (res.ok && data.success) {
                 const extracted = data.extracted_data;
-                
+
                 // Pre-fill fields
                 if (extracted.full_name) {
                     const names = extracted.full_name.split(' ');
@@ -354,7 +356,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         document.getElementById('first_name').value = extracted.full_name;
                     }
                 }
-                
+
                 if (extracted.birth_date) {
                     // Try to format date for input[type=date]
                     try {
@@ -362,13 +364,13 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (!isNaN(dob)) {
                             document.getElementById('dob').value = dob.toISOString().split('T')[0];
                         }
-                    } catch(e) {}
+                    } catch (e) { }
                 }
-                
+
                 if (extracted.id_number) {
                     document.getElementById('id_number').value = extracted.id_number;
                 }
-                
+
                 if (extracted.address) {
                     document.getElementById('id_address').value = extracted.address;
                     document.getElementById('address').value = extracted.address;
@@ -387,7 +389,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    window.finalizeIdAndProceed = async function() {
+    window.finalizeIdAndProceed = async function () {
         if (!validateKycForm()) {
             if (window.showError) window.showError('Please complete all required fields.', 'Validation Error');
             return;
@@ -396,7 +398,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('step-id-form').style.display = 'none';
         document.getElementById('ocr-loading').style.display = 'block';
         document.getElementById('extraction-title').innerText = "Uploading Identity Document";
-        
+
         const formData = new FormData();
         formData.append('id_type', document.getElementById('id_type').value);
         formData.append('id_number', document.getElementById('id_number').value.trim());
@@ -453,15 +455,15 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-            if (success) {
-                video.srcObject = stream;
-                document.getElementById('scan-line').style.display = 'block';
-                document.getElementById('camera-placeholder').style.opacity = '0';
-                startBtn.style.display = 'none';
-                beginBtn.style.display = 'inline-block';
-                document.getElementById('scan-feedback').innerText = "Look into the center of the circle and click 'I'm Ready'";
-                await getCameraDevices();
-            } else {
+        if (success) {
+            video.srcObject = stream;
+            document.getElementById('scan-line').style.display = 'block';
+            document.getElementById('camera-placeholder').style.opacity = '0';
+            startBtn.style.display = 'none';
+            beginBtn.style.display = 'inline-block';
+            document.getElementById('scan-feedback').innerText = "Look into the center of the circle and click 'I'm Ready'";
+            await getCameraDevices();
+        } else {
             if (window.showError) window.showError("Unable to access camera.", "Camera Error"); else alert("Unable to access camera.");
         }
     };
@@ -553,10 +555,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Success: Switch to Waiting Screen
                 document.getElementById('step-processing').style.display = 'none';
                 document.getElementById('kyc-waiting-approval').style.display = 'block';
-                
+
                 // Start Real-time listener
                 initKycWebSocket();
-                
+
                 // Fallback polling
                 startPolling();
             } else {
@@ -570,11 +572,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function initKycWebSocket() {
         if (ws) return;
-        
+
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const clientId = `kyc_pkg_${bookingId}_${Date.now()}`;
         ws = new WebSocket(`${protocol}//${window.location.host}/verification/ws/${clientId}`);
-        
+
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
             console.log("[KYC WS] Received update:", data);
@@ -590,12 +592,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
         };
-        
+
         ws.onclose = () => {
             console.log("[KYC WS] Connection closed. Falling back to primary polling.");
             ws = null;
         };
-        
+
         ws.onerror = (err) => {
             console.error("[KYC WS] Error:", err);
             ws = null;
@@ -617,7 +619,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     document.getElementById('status-text').innerText = "Pending Review";
                     document.getElementById('status-text').style.color = "#f59e0b";
                     document.getElementById('status-subtext').innerText = "The caterer needs to perform a quick manual check of your identity documents.";
-                    
+
                     // Initialize WebSocket if not already connected
                     if (!ws) {
                         initWebSocket(data.user_id);
@@ -643,7 +645,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function handleApproval(data) {
         document.getElementById('kyc-waiting-approval').style.display = 'none';
         document.getElementById('step-processing').style.display = 'block';
-        
+
         document.getElementById('status-text').innerText = "Identity Verified!";
         document.getElementById('status-text').style.color = "var(--kyc-accent)";
         document.getElementById('status-subtext').innerText = "Success! Continuing...";
@@ -683,19 +685,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const idType = document.getElementById('id_type').value;
         const idNumber = document.getElementById('id_number').value.trim();
-        if (!idType) {
-            if (window.showError) window.showError('❌ Please select an ID type.', 'Missing Fields'); else alert('❌ Please select an ID type.');
-            return;
-        }
-        if (!idNumber) {
-            if (window.showError) window.showError('❌ ID number is required.', 'Missing Fields'); else alert('❌ ID number is required.');
-            return;
-        }
-
-        // Re-check format state before relying on disabled class
-        validateIdSelection();
-        if (document.getElementById('option-scan').classList.contains('disabled')) {
-            if (window.showError) window.showError('❌ Invalid ID number format for selected ID type.', 'Format Error'); else alert('❌ Invalid ID number format for selected ID type.');
+        if (!idType || !idNumber) {
+            if (window.showError) window.showError('❌ Please complete the required fields.', 'Incomplete Data');
             return;
         }
 
@@ -758,7 +749,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Toggle facing mode if no mode specified
             currentFacingMode = (currentFacingMode === "environment") ? "user" : "environment";
         }
-        
+
         console.log("[KYC] ID Camera Switching to:", currentFacingMode);
         window.startIdScanner();
     };
@@ -769,7 +760,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             livenessFacingMode = (livenessFacingMode === "user") ? "environment" : "user";
         }
-        
+
         console.log("[KYC] Liveness Camera Switching to:", livenessFacingMode);
         window.startRealtimeScanner();
     };

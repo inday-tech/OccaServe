@@ -66,7 +66,10 @@
         scrollbar-width: none;
         -ms-overflow-style: none;
     }
-    .kyc-stepper-minimal::-webkit-scrollbar { display: none; }
+
+    .kyc-stepper-minimal::-webkit-scrollbar {
+        display: none;
+    }
 
     .step-node {
         display: flex !important;
@@ -78,7 +81,7 @@
         transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         min-width: 65px;
     }
-    
+
     .step-node::after {
         content: '';
         position: absolute;
@@ -90,7 +93,9 @@
         z-index: 1;
     }
 
-    .step-node:last-child::after { display: none; }
+    .step-node:last-child::after {
+        display: none;
+    }
 
     .step-node.active,
     .step-node.completed {
@@ -340,6 +345,7 @@
         color: var(--kyc-accent) !important;
         box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08) !important;
     }
+
     #liveness-camera-switch-group .btn-toggle.active {
         background: white !important;
         color: var(--kyc-accent) !important;
@@ -410,9 +416,11 @@
             <i class="fas fa-times-circle"></i>
             <div>
                 <div style="font-size: 1.1rem; margin-bottom: 0.25rem;">Verification Rejected</div>
-                <p class="mb-0 small" style="opacity: 0.8;">Reason: {{ kyc.failure_reason or "Suspicious activity detected." }}</p>
+                <p class="mb-0 small" style="opacity: 0.8;">Reason: {{ kyc.failure_reason or "Suspicious activity
+                    detected." }}</p>
                 <button class="btn btn-sm btn-danger mt-3" onclick="location.reload()"
-                    style="font-size: 0.8rem; border-radius: 0.75rem; padding: 0.5rem 1.5rem; background: #b91c1c; border: none; color: white;">Retry Verification</button>
+                    style="font-size: 0.8rem; border-radius: 0.75rem; padding: 0.5rem 1.5rem; background: #b91c1c; border: none; color: white;">Retry
+                    Verification</button>
             </div>
         </div>
         {% endif %}
@@ -420,26 +428,31 @@
 
     <div id="kyc-form-container">
         <!-- Enhanced Step Indicator with Icons -->
-        {% set kyc_status = user.identity_verification.verification_status if user.identity_verification else 'pending' %}
+        {% set kyc_status = user.identity_verification.verification_status if user.identity_verification else 'pending'
+        %}
         <div class="kyc-stepper-minimal">
-            <div class="step-node {% if kyc_status == 'pending' or kyc_status == 'rejected' or kyc_status == 'failed' %}active{% elif user.identity_verification and user.identity_verification.document_url %}completed{% endif %}" id="node-1">
+            <div class="step-node {% if kyc_status == 'pending' or kyc_status == 'rejected' or kyc_status == 'failed' %}active{% elif user.identity_verification and user.identity_verification.document_url %}completed{% endif %}"
+                id="node-1">
                 <div class="node-icon"><i class="fas fa-id-card"></i></div>
                 <span class="node-label">ID Details</span>
             </div>
-            <div class="step-node {% if user.identity_verification and user.identity_verification.document_url and not user.identity_verification.selfie_url %}active{% elif user.identity_verification and user.identity_verification.selfie_url %}completed{% endif %}" id="node-2">
+            <div class="step-node {% if user.identity_verification and user.identity_verification.document_url and not user.identity_verification.selfie_url %}active{% elif user.identity_verification and user.identity_verification.selfie_url %}completed{% endif %}"
+                id="node-2">
                 <div class="node-icon"><i class="fas fa-magic"></i></div>
                 <span class="node-label">Extraction</span>
             </div>
-            <div class="step-node {% if user.identity_verification and user.identity_verification.selfie_url and kyc_status == 'pending' %}active{% elif kyc_status in ['processing', 'manual_review', 'approved'] %}completed{% endif %}" id="node-3">
+            <div class="step-node {% if user.identity_verification and user.identity_verification.selfie_url and kyc_status == 'pending' %}active{% elif kyc_status in ['processing', 'manual_review', 'approved'] %}completed{% endif %}"
+                id="node-3">
                 <div class="node-icon"><i class="fas fa-face-smile"></i></div>
                 <span class="node-label">Biometrics</span>
             </div>
-            <div class="step-node {% if kyc_status in ['processing', 'manual_review'] %}active{% elif kyc_status == 'approved' %}completed{% endif %}" id="node-4">
+            <div class="step-node {% if kyc_status in ['processing', 'manual_review'] %}active{% elif kyc_status == 'approved' %}completed{% endif %}"
+                id="node-4">
                 <div class="node-icon"><i class="fas fa-clipboard-check"></i></div>
                 <span class="node-label">Review</span>
             </div>
         </div>
-        
+
         <!-- Processing State if status is 'processing' -->
         {% if kyc_status == 'processing' %}
         <div id="kyc-loading-init" class="text-center py-5">
@@ -447,7 +460,8 @@
             <h2 style="font-weight: 800; color: var(--kyc-slate-700);">Processing Your Data</h2>
             <p class="text-muted">Aming sinusuri ang iyong mga dokumento at biometrics. Sandali lamang ito.</p>
             <div class="mt-4">
-                <button onclick="resetKycStatus()" class="btn btn-outline-secondary btn-sm" style="border-radius: 0.75rem;">
+                <button onclick="resetKycStatus()" class="btn btn-outline-secondary btn-sm"
+                    style="border-radius: 0.75rem;">
                     <i class="fas fa-sync-alt mr-1"></i> Cancel and Try Again
                 </button>
             </div>
@@ -494,14 +508,17 @@
                             <option value="Passport">Philippine Passport</option>
                             <option value="UMID">UMID</option>
                         </select>
-                        <div class="field-error-msg" id="err-id_type"><i class="fas fa-exclamation-circle"></i> Please select an ID type.</div>
+                        <div class="field-error-msg" id="err-id_type"><i class="fas fa-exclamation-circle"></i> Please
+                            select an ID type.</div>
                     </div>
                     <div class="field-group">
                         <label>ID Number <span style="color:#ef4444;">*</span></label>
                         <input type="text" id="id_number" class="modern-input" placeholder="Enter ID number"
                             oninput="validateIdSelection(); validateKycForm();">
-                        <div id="id-validation-msg" style="font-size: 0.75rem; margin-top: 0.25rem; height: 1rem;"></div>
-                        <div class="field-error-msg" id="err-id_number"><i class="fas fa-exclamation-circle"></i> ID number is required.</div>
+                        <div id="id-validation-msg" style="font-size: 0.75rem; margin-top: 0.25rem; height: 1rem;">
+                        </div>
+                        <div class="field-error-msg" id="err-id_number"><i class="fas fa-exclamation-circle"></i> ID
+                            number is required.</div>
                     </div>
                 </div>
 
@@ -531,21 +548,26 @@
                         <div id="id-scan-feedback" class="scan-feedback">Align ID within frame</div>
                     </div>
                 </div>
-                <div class="mt-4" style="display: flex; flex-direction: column; align-items: center; gap: 1.5rem; width: 100%;">
-                    <div id="camera-switch-group" class="camera-toggle-pill" style="display: flex; background: #f1f5f9; border-radius: 2rem; padding: 0.25rem; gap: 0.25rem; border: 1px solid #e2e8f0; width: fit-content;">
+                <div class="mt-4"
+                    style="display: flex; flex-direction: column; align-items: center; gap: 1.5rem; width: 100%;">
+                    <div id="camera-switch-group" class="camera-toggle-pill"
+                        style="display: flex; background: #f1f5f9; border-radius: 2rem; padding: 0.25rem; gap: 0.25rem; border: 1px solid #e2e8f0; width: fit-content;">
                         <button type="button" id="btn-cam-front" class="btn-toggle" onclick="switchCamera('user')"
                             style="border: none; background: transparent; border-radius: 1.75rem; padding: 0.5rem 1.25rem; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; transition: all 0.3s ease; color: #64748b;">
                             <i class="fas fa-portrait"></i> <span>Front</span>
                         </button>
-                        <button type="button" id="btn-cam-back" class="btn-toggle active" onclick="switchCamera('environment')"
+                        <button type="button" id="btn-cam-back" class="btn-toggle active"
+                            onclick="switchCamera('environment')"
                             style="border: none; background: transparent; border-radius: 1.75rem; padding: 0.5rem 1.25rem; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; transition: all 0.3s ease; color: #64748b;">
                             <i class="fas fa-camera"></i> <span>Back</span>
                         </button>
                     </div>
 
-                    <button type="button" class="btn-primary-kyc" onclick="captureIdFromCamera()">Capture ID Document</button>
-                    
-                    <button type="button" class="btn-outline-kyc" onclick="stopIdScanner()" style="width: 100%; max-width: 300px;">
+                    <button type="button" class="btn-primary-kyc" onclick="captureIdFromCamera()">Capture ID
+                        Document</button>
+
+                    <button type="button" class="btn-outline-kyc" onclick="stopIdScanner()"
+                        style="width: 100%; max-width: 300px;">
                         <i class="fas fa-arrow-left mr-2"></i> Go Back
                     </button>
                 </div>
@@ -591,16 +613,20 @@
                 </div>
                 <div id="scan-feedback" class="scan-feedback" style="margin-bottom: 2rem;">Tap 'Start Camera' to begin
                 </div>
-                <div id="liveness-controls" class="mt-4" style="text-align: center; display: flex; flex-direction: column; gap: 1.25rem; align-items: center;">
+                <div id="liveness-controls" class="mt-4"
+                    style="text-align: center; display: flex; flex-direction: column; gap: 1.25rem; align-items: center;">
                     <button type="button" id="btn-start-camera" class="btn-primary-kyc"
                         onclick="startRealtimeScanner()">Start Camera</button>
-                    
-                    <div id="liveness-camera-switch-group" style="display: none; background: #f1f5f9; border-radius: 2rem; padding: 0.25rem; gap: 0.25rem; border: 1px solid #e2e8f0;">
-                        <button type="button" id="btn-live-cam-front" class="btn-toggle active" onclick="switchLivenessCamera('user')"
+
+                    <div id="liveness-camera-switch-group"
+                        style="display: none; background: #f1f5f9; border-radius: 2rem; padding: 0.25rem; gap: 0.25rem; border: 1px solid #e2e8f0;">
+                        <button type="button" id="btn-live-cam-front" class="btn-toggle active"
+                            onclick="switchLivenessCamera('user')"
                             style="border: none; background: transparent; border-radius: 1.75rem; padding: 0.5rem 1.25rem; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.4rem; transition: all 0.3s ease; color: #64748b;">
                             <i class="fas fa-portrait"></i> <span>Front</span>
                         </button>
-                        <button type="button" id="btn-live-cam-back" class="btn-toggle" onclick="switchLivenessCamera('environment')"
+                        <button type="button" id="btn-live-cam-back" class="btn-toggle"
+                            onclick="switchLivenessCamera('environment')"
                             style="border: none; background: transparent; border-radius: 1.75rem; padding: 0.5rem 1.25rem; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.4rem; transition: all 0.3s ease; color: #64748b;">
                             <i class="fas fa-camera"></i> <span>Back</span>
                         </button>
@@ -660,37 +686,47 @@
     </div>
 
     <!-- Professional Guide Section -->
-    <div class="kyc-guide-section mt-4" style="background: white; border: 1px solid var(--kyc-slate-200); border-radius: 1.25rem; padding: 2rem; max-width: 850px; margin: 1.5rem auto 0;">
-        <h4 style="font-weight: 800; font-size: 0.9rem; color: var(--kyc-slate-700); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem;">
+    <div class="kyc-guide-section mt-4"
+        style="background: white; border: 1px solid var(--kyc-slate-200); border-radius: 1.25rem; padding: 2rem; max-width: 850px; margin: 1.5rem auto 0;">
+        <h4
+            style="font-weight: 800; font-size: 0.9rem; color: var(--kyc-slate-700); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem;">
             <i class="fas fa-lightbulb" style="color: var(--kyc-accent);"></i> Quick Guide for Successful Verification
         </h4>
         <div class="guide-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
             <div class="guide-item" style="display: flex; gap: 1rem;">
                 <div style="color: #10b981;"><i class="fas fa-check-circle"></i></div>
                 <div>
-                    <strong style="display: block; font-size: 0.85rem; color: var(--kyc-slate-700);">Make sure the ID is clear</strong>
-                    <span style="font-size: 0.75rem; color: var(--kyc-slate-400);">Ensure all text is readable and not blurry.</span>
+                    <strong style="display: block; font-size: 0.85rem; color: var(--kyc-slate-700);">Make sure the ID is
+                        clear</strong>
+                    <span style="font-size: 0.75rem; color: var(--kyc-slate-400);">Ensure all text is readable and not
+                        blurry.</span>
                 </div>
             </div>
             <div class="guide-item" style="display: flex; gap: 1rem;">
                 <div style="color: #10b981;"><i class="fas fa-check-circle"></i></div>
                 <div>
-                    <strong style="display: block; font-size: 0.85rem; color: var(--kyc-slate-700);">Avoid glare and shadows</strong>
-                    <span style="font-size: 0.75rem; color: var(--kyc-slate-400);">Upload a photo with even lighting across the document.</span>
+                    <strong style="display: block; font-size: 0.85rem; color: var(--kyc-slate-700);">Avoid glare and
+                        shadows</strong>
+                    <span style="font-size: 0.75rem; color: var(--kyc-slate-400);">Upload a photo with even lighting
+                        across the document.</span>
                 </div>
             </div>
             <div class="guide-item" style="display: flex; gap: 1rem;">
                 <div style="color: #10b981;"><i class="fas fa-check-circle"></i></div>
                 <div>
-                    <strong style="display: block; font-size: 0.85rem; color: var(--kyc-slate-700);">Capture complete ID</strong>
-                    <span style="font-size: 0.75rem; color: var(--kyc-slate-400);">Make sure all four corners of the ID are visible.</span>
+                    <strong style="display: block; font-size: 0.85rem; color: var(--kyc-slate-700);">Capture complete
+                        ID</strong>
+                    <span style="font-size: 0.75rem; color: var(--kyc-slate-400);">Make sure all four corners of the ID
+                        are visible.</span>
                 </div>
             </div>
             <div class="guide-item" style="display: flex; gap: 1rem;">
                 <div style="color: #10b981;"><i class="fas fa-check-circle"></i></div>
                 <div>
-                    <strong style="display: block; font-size: 0.85rem; color: var(--kyc-slate-700);">Original Document</strong>
-                    <span style="font-size: 0.75rem; color: var(--kyc-slate-400);">Use your original physical ID, not a photocopy or screen photo.</span>
+                    <strong style="display: block; font-size: 0.85rem; color: var(--kyc-slate-700);">Original
+                        Document</strong>
+                    <span style="font-size: 0.75rem; color: var(--kyc-slate-400);">Use your original physical ID, not a
+                        photocopy or screen photo.</span>
                 </div>
             </div>
         </div>
@@ -707,5 +743,5 @@
 
 {% block step_js %}
 <script>window.bookingId = "{{ booking_id }}";</script>
-<script src="{{ url_for('static', path='/js/customer/booking_wizard/step_kyc.js') }}?v=1.3"></script>
+<script src="{{ url_for('static', path='/js/customer/booking_wizard/step_kyc.js') }}?v=1.5"></script>
 {% endblock %}
