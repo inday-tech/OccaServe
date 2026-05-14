@@ -394,8 +394,8 @@
     </div>
 
     <div class="wizard-header-content">
-        <h1 class="wizard-title">Identity Verification</h1>
-        <p class="wizard-subtitle">Redefining trust through secure, real-time identity checks</p>
+        <h1 class="wizard-title">SECTION B: User Verification</h1>
+        <p class="wizard-subtitle">Automatically verify your identity for a secure booking experience</p>
 
         {% if request.query_params.get('auth_needed') %}
         <div class="alert alert-warning">
@@ -427,7 +427,7 @@
                 <span class="node-label">ID Details</span>
             </div>
             <div class="step-node {% if user.identity_verification and user.identity_verification.document_url and not user.identity_verification.selfie_url %}active{% elif user.identity_verification and user.identity_verification.selfie_url %}completed{% endif %}" id="node-2">
-                <div class="node-icon"><i class="fas fa-file-import"></i></div>
+                <div class="node-icon"><i class="fas fa-magic"></i></div>
                 <span class="node-label">Extraction</span>
             </div>
             <div class="step-node {% if user.identity_verification and user.identity_verification.selfie_url and kyc_status == 'pending' %}active{% elif kyc_status in ['processing', 'manual_review', 'approved'] %}completed{% endif %}" id="node-3">
@@ -497,8 +497,15 @@
                     </div>
                 </div>
 
-                <!-- CALABARZON Address -->
+                <!-- Addresses Section -->
+                <div id="address-confirmation-banner" style="display: none; background: #fffbeb; border: 1px solid #fde68a; border-radius: 1rem; padding: 1rem; margin-bottom: 1.5rem; color: #92400e; font-size: 0.85rem; font-weight: 600;">
+                    <i class="fas fa-info-circle"></i> Detected address from ID. Please confirm or edit if outdated.
+                </div>
+
                 <div class="field-group" style="margin-bottom: 1.5rem;">
+                    <label>ID Address <small>(Extracted)</small></label>
+                    <input type="text" id="id_address" class="modern-input" placeholder="Address from ID" readonly style="background: #f1f5f9; cursor: not-allowed; margin-bottom: 1rem;">
+                    
                     <label>Current Address <span style="color:#ef4444;">*</span></label>
                     <div class="address-grid">
                         <div>
@@ -510,19 +517,15 @@
                                 <option value="Quezon">Quezon</option>
                                 <option value="Rizal">Rizal</option>
                             </select>
-                            <div class="field-error-msg" id="err-province"><i class="fas fa-exclamation-circle"></i> Select a province.</div>
                         </div>
                         <div>
                             <select id="address_city" class="modern-input" onchange="validateKycForm();" disabled>
                                 <option value="">-- City / Municipality --</option>
                             </select>
-                            <div class="field-error-msg" id="err-city"><i class="fas fa-exclamation-circle"></i> Select a city.</div>
                         </div>
                     </div>
                     <input type="text" id="address_street" class="modern-input" style="margin-top: 0.75rem;"
                         placeholder="House No., Street, Barangay" oninput="validateKycForm()">
-                    <div class="field-error-msg" id="err-street"><i class="fas fa-exclamation-circle"></i> Street / Barangay is required.</div>
-                    <!-- Hidden combined address field -->
                     <input type="hidden" id="address">
                 </div>
 

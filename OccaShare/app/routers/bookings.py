@@ -463,6 +463,7 @@ async def step_details_submit(
         booking.event_time = event_time
         booking.event_end_time = event_end_time
         booking.venue_address = venue_address
+        booking.event_address = venue_address
         booking.guest_count = guest_count
         booking.total_price = total_price
         booking.total_amount = total_price
@@ -482,6 +483,7 @@ async def step_details_submit(
             event_time=event_time,
             event_end_time=event_end_time,
             venue_address=venue_address,
+            event_address=venue_address,
             guest_count=guest_count,
             total_price=total_price,
             total_amount=total_price,

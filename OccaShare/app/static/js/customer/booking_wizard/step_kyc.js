@@ -167,7 +167,7 @@ document.addEventListener('DOMContentLoaded', function () {
             validationMsg.innerText = '';
         }
 
-        if (idType && isValid) {
+        if (idType) {
             scanBox.classList.remove('disabled');
             uploadBox.classList.remove('disabled');
             
@@ -322,18 +322,6 @@ document.addEventListener('DOMContentLoaded', function () {
             if (window.showError) window.showError('❌ Please select an ID type.', 'Incomplete Data'); else alert('❌ Please select an ID type.');
             return;
         }
-        if (!idNumber) {
-            if (window.showError) window.showError('❌ ID number is required.', 'Incomplete Data'); else alert('❌ ID number is required.');
-            return;
-        }
-
-        // Re-check format state before relying on disabled class
-        validateIdSelection();
-        const scanBox = document.getElementById('option-upload');
-        if (scanBox.classList.contains('disabled')) {
-            if (window.showError) window.showError('❌ Invalid ID number format for selected ID type.', 'Format Error'); else alert('❌ Invalid ID number format for selected ID type.');
-            return;
-        }
         document.getElementById('id_document').click();
     };
 
@@ -358,80 +346,120 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     window.proceedToCamera = async function () {
-        // Assemble combined address into hidden field before submitting
-        assembleAddress();
         const idType = document.getElementById('id_type').value;
         const idNumber = document.getElementById('id_number').value.trim();
 
-        // Show Processing State
+        // Show Extraction State
         document.getElementById('id-preview').style.display = 'none';
         document.getElementById('ocr-loading').style.display = 'block';
+        document.getElementById('extraction-title').innerText = "Extracting Identity Details";
         updateStatusTracker(2);
-
-        // Reset Quality Indicators
-        const indicators = ['qc-resolution', 'qc-focus', 'qc-ocr'];
-        indicators.forEach(id => {
-            const el = document.getElementById(id);
-            el.style.color = 'var(--kyc-slate-400)';
-            el.querySelector('i').className = 'fas fa-circle-notch fa-spin';
-        });
 
         const formData = new FormData();
         formData.append('id_type', idType);
-        formData.append('id_number', idNumber);
+        formData.append('id_document', idFile);
+
+        try {
+            const res = await fetch(`/api/bookings/extract-id`, { method: 'POST', body: formData });
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                const extracted = data.extracted_data;
+                
+                // Pre-fill fields
+                if (extracted.full_name) {
+                    const names = extracted.full_name.split(' ');
+                    if (names.length >= 2) {
+                        document.getElementById('first_name').value = names.slice(0, -1).join(' ');
+                        document.getElementById('last_name').value = names[names.length - 1];
+                    } else {
+                        document.getElementById('first_name').value = extracted.full_name;
+                    }
+                }
+                
+                if (extracted.birth_date) {
+                    // Try to format date for input[type=date]
+                    try {
+                        const dob = new Date(extracted.birth_date);
+                        if (!isNaN(dob)) {
+                            document.getElementById('dob').value = dob.toISOString().split('T')[0];
+                        }
+                    } catch(e) {}
+                }
+                
+                if (extracted.id_number) {
+                    document.getElementById('id_number').value = extracted.id_number;
+                }
+                
+                if (extracted.address) {
+                    document.getElementById('id_address').value = extracted.address;
+                    document.getElementById('address_street').value = extracted.address;
+                    document.getElementById('address-confirmation-banner').style.display = 'block';
+                }
+
+                // Show form again for confirmation
+                document.getElementById('ocr-loading').style.display = 'none';
+                document.getElementById('step-id-form').style.display = 'block';
+                
+                // Change action cards to "Confirm & Proceed"
+                const actionContainer = document.querySelector('.kyc-action-cards');
+                actionContainer.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center;">
+                        <button type="button" class="btn-primary-kyc" onclick="finalizeIdAndProceed()" style="max-width: 100%;">
+                            Confirm & Proceed to Biometrics <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                `;
+                
+                validateKycForm();
+            } else {
+                throw new Error(data.detail || "Extraction failed");
+            }
+        } catch (err) {
+            console.error("Extraction error:", err);
+            if (window.showError) window.showError('Failed to extract data. Please fill manually.', 'OCR Error');
+            document.getElementById('ocr-loading').style.display = 'none';
+            document.getElementById('step-id-form').style.display = 'block';
+        }
+    };
+
+    window.finalizeIdAndProceed = async function() {
+        if (!validateKycForm()) {
+            if (window.showError) window.showError('Please complete all required fields.', 'Validation Error');
+            return;
+        }
+
+        document.getElementById('step-id-form').style.display = 'none';
+        document.getElementById('ocr-loading').style.display = 'block';
+        document.getElementById('extraction-title').innerText = "Uploading Identity Document";
+        
+        const formData = new FormData();
+        formData.append('id_type', document.getElementById('id_type').value);
+        formData.append('id_number', document.getElementById('id_number').value.trim());
         formData.append('id_document', idFile);
         formData.append('first_name', document.getElementById('first_name').value.trim());
         formData.append('middle_name', document.getElementById('middle_name').value.trim());
         formData.append('last_name', document.getElementById('last_name').value.trim());
         formData.append('dob', document.getElementById('dob').value);
         formData.append('address', document.getElementById('address').value.trim());
+        formData.append('id_address_extracted', document.getElementById('id_address').value);
 
         try {
-            // Simulated sequence for better UX
-            setTimeout(() => {
-                document.getElementById('qc-resolution').style.color = 'var(--kyc-accent)';
-                document.getElementById('qc-resolution').querySelector('i').className = 'fas fa-check-circle';
-            }, 600);
-            
-            setTimeout(() => {
-                document.getElementById('qc-focus').style.color = 'var(--kyc-accent)';
-                document.getElementById('qc-focus').querySelector('i').className = 'fas fa-check-circle';
-            }, 1200);
-
             const res = await fetch(`/api/bookings/${bookingId}/upload-id`, { method: 'POST', body: formData });
-            const data = await res.json();
-
             if (res.ok) {
-                document.getElementById('qc-ocr').style.color = 'var(--kyc-accent)';
-                document.getElementById('qc-ocr').querySelector('i').className = 'fas fa-check-circle';
-                
-                setTimeout(() => {
-                    document.getElementById('ocr-loading').style.display = 'none';
-                    document.getElementById('scanner-container').style.display = 'block';
-                    updateStatusTracker(3);
-                }, 800);
-            } else {
-                console.error("[KYC] ID Processing Failed:", data);
-                // Extract error message - prioritize 'detail', then 'message', then fallback
-                const errorMsg = data.detail || data.message || 'Failed to process ID. Please ensure the image is clear.';
-                
-                if (window.showError) {
-                    window.showError(errorMsg, 'Verification Error');
-                } else if (window.showToast) {
-                    window.showToast(errorMsg, 'error');
-                } else {
-                    alert('Verification Error: ' + errorMsg);
-                }
-                
                 document.getElementById('ocr-loading').style.display = 'none';
-                document.getElementById('id-preview').style.display = 'block';
-                updateStatusTracker(1);
+                document.getElementById('scanner-container').style.display = 'block';
+                updateStatusTracker(3);
+            } else {
+                const data = await res.json();
+                if (window.showError) window.showError(data.detail || "Upload failed", "Upload Error");
+                document.getElementById('ocr-loading').style.display = 'none';
+                document.getElementById('step-id-form').style.display = 'block';
             }
         } catch (err) {
-            if (window.showError) window.showError('Connection timeout. Please try again.', 'Timeout'); else alert('Connection timeout. Please try again.');
+            if (window.showError) window.showError("Connection lost.", "Network Error");
             document.getElementById('ocr-loading').style.display = 'none';
-            document.getElementById('id-preview').style.display = 'block';
-            updateStatusTracker(1);
+            document.getElementById('step-id-form').style.display = 'block';
         }
     };
 

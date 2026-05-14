@@ -1046,6 +1046,45 @@ class VerificationService:
             traceback.print_exc()
             return {"status": "error", "failure_reason": f"System Error during ID scan: {str(e)}"}
 
+    def extract_id_data(self, id_path: str, id_type: str) -> Dict[str, Any]:
+        """Extracts text from ID without performing validation against user input."""
+        try:
+            id_img = self._prepare_image(id_path)
+            quality_check = self.check_image_quality(id_img)
+            
+            gemini_prompt = self._get_id_type_ocr_prompt(id_type)
+            gemini_data = self._call_gemini_ocr_sync(id_path, gemini_prompt)
+            
+            if gemini_data and (gemini_data.get("full_name") or gemini_data.get("surname")):
+                structured_ocr = self._build_structured_ocr_data(gemini_data, id_type, "gemini")
+            else:
+                ocr_text = self._run_tesseract_multi_psm(id_img)
+                rich_data = self._extract_rich_ocr_data(ocr_text)
+                tesseract_fields = {
+                    "full_name": rich_data.get("full_name", ""),
+                    "id_number": rich_data.get("id_number", ""),
+                    "date_of_birth": rich_data.get("extracted_dob", ""),
+                    "address": rich_data.get("extracted_address", "")
+                }
+                structured_ocr = {
+                    "id_type": id_type,
+                    "extraction_method": "tesseract",
+                    "fields": tesseract_fields,
+                    "full_name": tesseract_fields.get("full_name", ""),
+                    "id_number": tesseract_fields.get("id_number", ""),
+                    "birth_date": tesseract_fields.get("date_of_birth", ""),
+                    "address": tesseract_fields.get("address", "")
+                }
+            
+            return {
+                "success": True,
+                "data": structured_ocr,
+                "quality": quality_check
+            }
+        except Exception as e:
+            traceback.print_exc()
+            return {"success": False, "error": str(e)}
+
     def verify_identity_v2(self, 
                            id_path: str, 
                            selfie_paths: List[str], 
