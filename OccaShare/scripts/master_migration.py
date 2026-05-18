@@ -18,7 +18,7 @@ def master_migration():
     # Manual migrations for missing columns
     print("Checking for missing columns...")
     
-    with engine.begin() as conn:
+    if True:
         # Bookings Table
         booking_cols = [
             ("event_end_time", "TIME"),
@@ -274,7 +274,8 @@ def master_migration():
             print(f"  Migrating {table_name}...")
             for col_name, col_type in columns:
                 try:
-                    conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS {col_name} {col_type}"))
+                    with engine.begin() as conn:
+                        conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS {col_name} {col_type}"))
                 except Exception as e:
                     print(f"    Warning: Could not add '{col_name}' to '{table_name}': {e}")
 
@@ -296,51 +297,55 @@ def master_migration():
         # Legacy Data Migration: Sync middle_initial to middle_name
         print("  Synchronizing middle_initial data to middle_name...")
         try:
-            conn.execute(text("""
-                UPDATE users 
-                SET middle_name = middle_initial 
-                WHERE middle_name IS NULL 
-                AND middle_initial IS NOT NULL 
-                AND middle_initial != '';
-            """))
+            with engine.begin() as conn:
+                conn.execute(text("""
+                    UPDATE users 
+                    SET middle_name = middle_initial 
+                    WHERE middle_name IS NULL 
+                    AND middle_initial IS NOT NULL 
+                    AND middle_initial != '';
+                """))
             print("  Middle initial synchronization complete.")
         except Exception as e:
             print(f"    Warning: Could not sync middle_initial data: {e}")
         
         # Create Social Posts table if missing
         try:
-            conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS social_posts (
-                    id SERIAL PRIMARY KEY,
-                    caterer_id INTEGER REFERENCES caterer_profiles(id) ON DELETE CASCADE,
-                    content TEXT NOT NULL,
-                    image_url VARCHAR(255),
-                    post_type VARCHAR(50) DEFAULT 'general',
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                );
-            """))
+            with engine.begin() as conn:
+                conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS social_posts (
+                        id SERIAL PRIMARY KEY,
+                        caterer_id INTEGER REFERENCES caterer_profiles(id) ON DELETE CASCADE,
+                        content TEXT NOT NULL,
+                        image_url VARCHAR(255),
+                        post_type VARCHAR(50) DEFAULT 'general',
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    );
+                """))
             print("  Table social_posts checked/created.")
         except Exception as e:
             print(f"    Warning: social_posts creation failed: {e}")
 
         # Create Profile Views table for unique view tracking
         try:
-            conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS profile_views (
-                    id SERIAL PRIMARY KEY,
-                    caterer_id INTEGER NOT NULL REFERENCES caterer_profiles(id) ON DELETE CASCADE,
-                    viewer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            with engine.begin() as conn:
+                conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS profile_views (
+                        id SERIAL PRIMARY KEY,
+                        caterer_id INTEGER NOT NULL REFERENCES caterer_profiles(id) ON DELETE CASCADE,
+                        viewer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                 );
-            """))
+                """))
             print("  Table profile_views checked/created.")
             # Add unique constraint to ensure one view per user per caterer
             try:
-                conn.execute(text("""
-                    CREATE UNIQUE INDEX IF NOT EXISTS uix_profile_views_caterer_viewer
-                    ON profile_views (caterer_id, viewer_id);
-                """))
+                with engine.begin() as conn:
+                    conn.execute(text("""
+                        CREATE UNIQUE INDEX IF NOT EXISTS uix_profile_views_caterer_viewer
+                        ON profile_views (caterer_id, viewer_id);
+                    """))
                 print("  Unique index on profile_views created.")
             except Exception as e:
                 print(f"    Warning: profile_views unique index: {e}")
