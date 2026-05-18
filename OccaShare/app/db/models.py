@@ -295,7 +295,16 @@ class Booking(Base):
     event_date = Column(Date)
     event_time = Column(Time, nullable=True)
     event_end_time = Column(Time, nullable=True)
-    venue_address = Column(Text, nullable=True)
+    venue_address = Column(Text, nullable=True) # Legacy, keeping for backwards compatibility
+    
+    # --- SECTION A: Event Details ---
+    event_address = Column(Text, nullable=True) # The actual venue/location of the event
+    
+    # --- SECTION B: User Verification Details ---
+    id_address = Column(Text, nullable=True) # Residential address from uploaded ID
+    current_address = Column(Text, nullable=True) # Editable current address
+    verification_status = Column(String, default="pending") # pending, verified, rejected
+
     guest_count = Column(Integer)
     total_amount = Column(Float)
     actual_cost = Column(Float, default=0.0)
@@ -373,6 +382,12 @@ class OCRVerification(Base):
     selfie_url = Column(String)
     status = Column(String, default="pending") # pending, verified, failed
     ocr_data = Column(JSONB)
+    
+    # Extracted Fields
+    full_name = Column(String, nullable=True)
+    birthdate = Column(Date, nullable=True)
+    id_address_extracted = Column(Text, nullable=True)
+    
     match_score = Column(Float, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

@@ -109,7 +109,7 @@ def is_valid_person_name(name: str) -> Optional[str]:
     if is_keyboard_walk(name.replace(" ", "").replace("-", "")) or is_gibberish(name.replace(" ", "").replace("-", "")):
         return "Please provide a real name"
         
-    if re.search(r"(.)\1\2", name): # Triple repetitive check
+    if re.search(r"(.)\1\1", name): # Triple repetitive check
         return "Names cannot contain repetitive characters (e.g., aaa)"
         
     return None

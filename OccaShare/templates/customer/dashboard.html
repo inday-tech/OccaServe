@@ -231,6 +231,25 @@
 </style>
 {% endblock %}
 
+{% block extra_js %}
+<script>
+    async function removeBooking(bookingId) {
+        if (!confirm("Remove this booking from your activity?")) return;
+        try {
+            const res = await fetch(`/bookings/${bookingId}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (res.ok) {
+                location.reload();
+            } else {
+                alert(data.detail || 'Error');
+            }
+        } catch (err) {
+            alert("Connection error.");
+        }
+    }
+</script>
+{% endblock %}
+
 {% block content %}
 <div>
     <!-- Page Header -->
@@ -325,6 +344,7 @@
                         <th>Caterer</th>
                         <th>Date</th>
                         <th>Status</th>
+                        <th style="width: 40px;"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -343,6 +363,11 @@
                             <span class="status-tag {{ 'tag-confirmed' if sc == 'confirmed' else ('tag-completed' if sc == 'completed' else 'tag-pending') }}">
                                 {{ b.status.replace('_',' ') }}
                             </span>
+                        </td>
+                        <td style="text-align: right;">
+                            <button onclick="event.stopPropagation(); removeBooking({{ b.id }})" style="background:none; border:none; color:#ef4444; cursor:pointer; padding: 5px;" title="Remove">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
                         </td>
                     </tr>
                     {% endfor %}

@@ -400,8 +400,8 @@
     </div>
 
     <div class="wizard-header-content">
-        <h1 class="wizard-title">Identity Verification</h1>
-        <p class="wizard-subtitle">Redefining trust through secure, real-time identity checks</p>
+        <h1 class="wizard-title">SECTION B: User Verification</h1>
+        <p class="wizard-subtitle">Automatically verify your identity for a secure booking experience</p>
 
         {% if request.query_params.get('auth_needed') %}
         <div class="alert alert-warning">
@@ -439,6 +439,7 @@
             <div class="step-node {% if user.identity_verification and user.identity_verification.document_url and not user.identity_verification.selfie_url %}active{% elif user.identity_verification and user.identity_verification.selfie_url %}completed{% endif %}"
                 id="node-2">
                 <div class="node-icon"><i class="fas fa-file-import"></i></div>
+                <div class="node-icon"><i class="fas fa-magic"></i></div>
                 <span class="node-label">Extraction</span>
             </div>
             <div class="step-node {% if user.identity_verification and user.identity_verification.selfie_url and kyc_status == 'pending' %}active{% elif kyc_status in ['processing', 'manual_review', 'approved'] %}completed{% endif %}"
@@ -486,72 +487,18 @@
             <div id="step-id-form"
                 class="kyc-substep {% if kyc_status in ['pending', 'failed', 'rejected'] %}active{% endif %}"
                 style="display: {% if kyc_status in ['pending', 'failed', 'rejected'] %}block{% else %}none{% endif %};">
-                <div class="kyc-form-grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem;">
-                    <div class="field-group">
-                        <label>Given Name <span style="color:#ef4444;">*</span></label>
-                        <input type="text" id="first_name" class="modern-input" placeholder="First Name"
-                            value="{{ user.first_name or '' }}" oninput="validateKycForm()">
-                        <div class="field-error-msg" id="err-first_name"><i class="fas fa-exclamation-circle"></i> Given
-                            name is required.</div>
-                    </div>
-                    <div class="field-group">
-                        <label>Middle Name <span
-                                style="color:#94a3b8; font-size:0.7rem; font-weight:600;">(Optional)</span></label>
-                        <input type="text" id="middle_name" class="modern-input" placeholder="Middle Name (Optional)"
-                            value="{{ user.middle_name or '' }}">
-                    </div>
-                    <div class="field-group">
-                        <label>Last Name <span style="color:#ef4444;">*</span></label>
-                        <input type="text" id="last_name" class="modern-input" placeholder="Last Name"
-                            value="{{ user.last_name or '' }}" oninput="validateKycForm()">
-                        <div class="field-error-msg" id="err-last_name"><i class="fas fa-exclamation-circle"></i> Last
-                            name is required.</div>
-                    </div>
-                </div>
 
-                <div class="kyc-form-grid">
-                    <div class="field-group">
-                        <label>Date of Birth <span style="color:#ef4444;">*</span></label>
-                        <input type="date" id="dob" class="modern-input"
-                            value="{{ user.dob.strftime('%Y-%m-%d') if user.dob else '' }}"
-                            onchange="validateKycForm()">
-                        <div class="field-error-msg" id="err-dob"><i class="fas fa-exclamation-circle"></i> Date of
-                            birth is required.</div>
-                    </div>
-                </div>
+                <!-- Identity fields removed per user request: OCR will handle extraction -->
 
-                <!-- CALABARZON Address -->
-                <div class="field-group" style="margin-bottom: 1.5rem;">
-                    <label>Current Address <span style="color:#ef4444;">*</span></label>
-                    <div class="address-grid">
-                        <div>
-                            <select id="address_province" class="modern-input"
-                                onchange="populateCities(); validateKycForm();">
-                                <option value="">-- Province --</option>
-                                <option value="Batangas">Batangas</option>
-                                <option value="Cavite">Cavite</option>
-                                <option value="Laguna">Laguna</option>
-                                <option value="Quezon">Quezon</option>
-                                <option value="Rizal">Rizal</option>
-                            </select>
-                            <div class="field-error-msg" id="err-province"><i class="fas fa-exclamation-circle"></i>
-                                Select a province.</div>
-                        </div>
-                        <div>
-                            <select id="address_city" class="modern-input" onchange="validateKycForm();" disabled>
-                                <option value="">-- City / Municipality --</option>
-                            </select>
-                            <div class="field-error-msg" id="err-city"><i class="fas fa-exclamation-circle"></i> Select
-                                a city.</div>
-                        </div>
-                    </div>
-                    <input type="text" id="address_street" class="modern-input" style="margin-top: 0.75rem;"
-                        placeholder="House No., Street, Barangay" oninput="validateKycForm()">
-                    <div class="field-error-msg" id="err-street"><i class="fas fa-exclamation-circle"></i> Street /
-                        Barangay is required.</div>
-                    <!-- Hidden combined address field -->
-                    <input type="hidden" id="address">
-                </div>
+                <!-- Address fields removed per user request -->
+                <input type="hidden" id="first_name" value="{{ user.first_name or '' }}">
+                <input type="hidden" id="last_name" value="{{ user.last_name or '' }}">
+                <input type="hidden" id="dob" value="{{ user.dob.strftime('%Y-%m-%d') if user.dob else '' }}">
+                <input type="hidden" id="id_address">
+                <input type="hidden" id="address_province">
+                <input type="hidden" id="address_city">
+                <input type="hidden" id="address_street">
+                <input type="hidden" id="address">
 
                 <div class="kyc-form-grid">
                     <div class="field-group">
@@ -798,5 +745,5 @@
 
 {% block step_js %}
 <script>window.bookingId = "{{ booking_id }}";</script>
-<script src="{{ url_for('static', path='/js/customer/booking_wizard/step_kyc.js') }}?v=1.3"></script>
+<script src="{{ url_for('static', path='/js/customer/booking_wizard/step_kyc.js') }}?v=1.5"></script>
 {% endblock %}

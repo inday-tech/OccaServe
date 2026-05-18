@@ -26,7 +26,7 @@
     {% block extra_css %}{% endblock %}
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v=12.1">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}?v=10.0">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/diamond_auth_modals.css') }}?v=11.2">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/diamond_auth_modals.css') }}?v=11.3">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/mobile_app.css') }}?v=1.0">
 </head>
 
@@ -38,7 +38,8 @@
             <a href="/" class="logo" style="display: flex; align-items: center;">
                 {% if wconfig and wconfig.logo_url %}
                 <img src="{{ wconfig.logo_url }}" alt="Logo"
-                    style="height: 32px; margin-right: 8px; border-radius: 4px; object-fit: contain;">
+                    style="height: 32px; margin-right: 8px; border-radius: 4px; object-fit: contain;"
+                    onerror="this.style.display='none'">
                 {% endif %}
                 <span>OccaServe</span>
             </a>
@@ -107,7 +108,8 @@
                     <a href="/" class="logo" style="margin-bottom:1.5rem; display:flex; align-items: center;">
                         {% if wconfig and wconfig.logo_url %}
                         <img src="{{ wconfig.logo_url }}" alt="Logo"
-                            style="height: 32px; margin-right: 8px; border-radius: 4px; object-fit: contain;">
+                            style="height: 32px; margin-right: 8px; border-radius: 4px; object-fit: contain;"
+                            onerror="this.style.display='none'">
                         {% endif %}
                         <span>OccaServe</span>
                     </a>

@@ -22,17 +22,52 @@ router = APIRouter(prefix="/api/bookings", tags=["kyc"])
 
 UPLOAD_DIR = "app/static/uploads/verification"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+@router.post("/extract-id")
+async def extract_id(
+    id_type: str = Form(...),
+    id_document: UploadFile = File(...),
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """Endpoint for Section B: Extracts data from ID for the booking form."""
+    content = await id_document.read()
+    file_error = validate_file_type_and_size(content, id_document.filename)
+    if file_error:
+        raise HTTPException(status_code=400, detail=f"❌ {file_error}")
+    
+    # Save file temporarily or permanently
+    filename = f"temp_ocr_{current_user.id}_{uuid.uuid4()}.enc"
+    path = os.path.join(UPLOAD_DIR, filename)
+    encrypted_content = encrypt_data(content)
+    with open(path, "wb") as f:
+        f.write(encrypted_content)
+    
+    id_url = f"/api/bookings/kyc/view/{filename}"
+    
+    result = verification_service.extract_id_data(id_url, id_type)
+    
+    if not result["success"]:
+        raise HTTPException(status_code=500, detail=f"OCR extraction failed: {result.get('error')}")
+    
+    return {
+        "success": True,
+        "extracted_data": result["data"],
+        "quality": result["quality"],
+        "temp_id_url": id_url
+    }
+
 
 @router.post("/{booking_id}/upload-id")
 async def upload_id(
     booking_id: int,
     id_type: str = Form(...),
     id_number: str = Form(...),
-    first_name: str = Form(...),
+    first_name: str = Form(None),
     middle_name: str = Form(None),
-    last_name: str = Form(...),
-    dob: str = Form(...),
-    address: str = Form(...),
+    last_name: str = Form(None),
+    dob: str = Form(None),
+    address: str = Form(None),
+    id_address_extracted: str = Form(None),
     id_document: UploadFile = File(...),
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
@@ -92,21 +127,42 @@ async def upload_id(
     kyc_record.verification_status = "pending"
     kyc_record.failure_reason = None
     
-    # Update User Profile with provided KYC data (The "Registered" Data)
-    current_user.first_name = first_name
-    current_user.middle_name = middle_name
-    current_user.last_name = last_name
-    current_user.address = address
+    # Update User Profile with provided KYC data if available
+    if first_name: current_user.first_name = first_name
+    if middle_name: current_user.middle_name = middle_name
+    if last_name: current_user.last_name = last_name
+    if address: 
+        current_user.address = address
+        booking.current_address = address
     
-    try:
-        from datetime import datetime
-        current_user.dob = datetime.strptime(dob, '%Y-%m-%d').date()
-    except Exception:
-        raise HTTPException(status_code=400, detail="❌ Invalid date of birth format. Use YYYY-MM-DD.")
+    if dob:
+        try:
+            from datetime import datetime
+            current_user.dob = datetime.strptime(dob, '%Y-%m-%d').date()
+        except Exception:
+            pass # Ignore invalid date format if it was empty
 
     kyc_record.document_url = id_url
     kyc_record.id_number = id_number
     kyc_record.verification_type = id_type
+    
+    # Update Booking specific address fields
+    booking.id_address = id_address_extracted
+    booking.current_address = address
+    
+    # Update OCR record if it exists
+    ocr_record = db.query(models.OCRVerification).filter(models.OCRVerification.user_id == current_user.id).first()
+    if not ocr_record:
+        ocr_record = models.OCRVerification(user_id=current_user.id)
+        db.add(ocr_record)
+    
+    ocr_record.full_name = f"{first_name} {middle_name + ' ' if middle_name else ''}{last_name}".strip()
+    ocr_record.id_address_extracted = id_address_extracted
+    try:
+        ocr_record.birthdate = datetime.strptime(dob, '%Y-%m-%d').date()
+    except:
+        pass
+    
     db.commit() 
 
     # --- STRICT SYNCHRONOUS VALIDATION ---

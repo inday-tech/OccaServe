@@ -843,4 +843,52 @@ html, body {
     .admin-page-content {
         padding: 1rem;
     }
+
+    /* Dropdown positioning: full-width on mobile */
+    .premium-dropdown {
+        position: fixed !important;
+        left: 3% !important;
+        right: 3% !important;
+        width: 94% !important;
+        top: 70px !important;
+        max-height: 70vh !important;
+        overflow-y: auto !important;
+    }
+
+    /* Page header actions stack */
+    .page-header,
+    .terminal-header-elite {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.5rem !important;
+    }
 }
+
+@media (max-width: 480px) {
+    .admin-header {
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .admin-page-content {
+        padding: 0.75rem;
+    }
+
+    .premium-dropdown {
+        left: 2% !important;
+        right: 2% !important;
+        width: 96% !important;
+    }
+
+    /* Reason modal: tighter padding */
+    .admin-modal-card {
+        width: 98% !important;
+        max-width: 98% !important;
+    }
+    .modal-body-clean {
+        padding: 1rem !important;
+    }
+    .modal-footer-clean {
+        padding: 0.75rem !important;
+    }
+}
+

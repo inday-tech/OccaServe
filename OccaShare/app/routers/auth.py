@@ -316,14 +316,21 @@ async def register(
         if min_pax is None or min_pax < 1 or min_pax > 5000:
             errors["min_pax"] = "Minimum Pax must be between 1 and 5,000"
             
-        if starting_price is None or starting_price < 300 or starting_price > 1000000:
-            errors["starting_price"] = "Starting Price must be between ₱300 and ₱1,000,000"
-        # Removed coverage_area requirement per user request
+        if starting_price is None or starting_price < 0 or starting_price > 10000000:
+            errors["starting_price"] = "Starting Price must be between 0 and 10000000"
 
+    # Only return error if there ARE validation errors
+    if errors:
         if is_ajax:
             return JSONResponse(status_code=400, content={"success": False, "message": "Please correct the highlighted fields.", "field_errors": errors})
         template = "auth/register_caterer.html" if role == "caterer" else "auth/register.html"
-        return templates.TemplateResponse(template, context)
+        return templates.TemplateResponse(template, {
+            "request": request,
+            "error": "Please correct the highlighted fields.",
+            "field_errors": errors,
+            "next_url": next_url,
+            "role": role
+        })
 
     user = db.query(models.User).filter(models.User.email == email).first()
     

@@ -1760,3 +1760,236 @@ body.modal-open {
     text-align: center;
 }
 
+/* =====================================================
+   MOBILE & TABLET RESPONSIVE FIXES — AUTH MODALS
+   Applies to: Customer Signup, Caterer Signup, Login
+   ===================================================== */
+
+/* --- TABLET (601px – 900px) --- */
+@media (max-width: 900px) {
+    .auth-modal-overlay {
+        padding: 1rem !important;
+        align-items: center !important;
+    }
+
+    .auth-modal-container {
+        max-width: 96vw !important;
+        width: 100% !important;
+        max-height: 94vh !important;
+        margin: 0 auto !important;
+    }
+
+    .auth-modal-container.wide {
+        max-width: 96vw !important;
+    }
+
+    .auth-modal-content {
+        max-height: 92vh !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Caterer card padding tightened for tablet */
+    .auth-modal-content .professional-card {
+        padding: 2.25rem 1.75rem !important;
+    }
+
+    .form-header h2 {
+        font-size: 1.75rem !important;
+    }
+
+    /* Collapse 2-col grids to 1-col on tablet */
+    .form-grid {
+        grid-template-columns: 1fr !important;
+        gap: 0.85rem !important;
+    }
+
+    .form-group.full-width {
+        grid-column: span 1 !important;
+    }
+}
+
+/* --- MOBILE (max 600px) --- */
+@media (max-width: 600px) {
+    /* Overlay becomes full-screen */
+    .auth-modal-overlay {
+        padding: 0 !important;
+        align-items: flex-end !important;
+    }
+
+    /* Modal slides up from bottom like a native sheet */
+    .auth-modal-container {
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: 96dvh !important;   /* dynamic viewport for mobile chrome */
+        max-height: 96vh !important;    /* fallback */
+        margin: 0 !important;
+        border-radius: 1.5rem 1.5rem 0 0 !important;
+        transform: none !important;
+        box-shadow: 0 -8px 40px rgba(0,0,0,0.18) !important;
+    }
+
+    .auth-modal-container.wide {
+        max-width: 100% !important;
+    }
+
+    /* Slide-up entrance on mobile */
+    .auth-modal-overlay.active .auth-modal-container {
+        transform: none !important;
+    }
+
+    .auth-modal-content {
+        max-height: 96dvh !important;
+        max-height: 96vh !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 1.5rem 1.5rem 0 0 !important;
+        scroll-padding-bottom: env(safe-area-inset-bottom, 16px);
+    }
+
+    /* Inner card — generous scrollable padding */
+    .auth-modal-content .professional-card {
+        padding: 4.5rem 1.25rem 2.5rem !important;
+        border-radius: 0 !important;
+        overflow-y: auto !important;
+    }
+
+    /* Close button always on top */
+    .auth-modal-close {
+        top: 1rem !important;
+        right: 1rem !important;
+        z-index: 10010 !important;
+        background: rgba(255,255,255,0.95) !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.12) !important;
+    }
+
+    /* Progress steps — hide text labels, shrink circles */
+    .progress-step .step-label {
+        display: none !important;
+    }
+
+    .progress-container {
+        margin-bottom: 1.5rem !important;
+        padding: 0 0.25rem !important;
+    }
+
+    .progress-step {
+        width: 2rem !important;
+        height: 2rem !important;
+        font-size: 0.78rem !important;
+    }
+
+    /* Form header tighter */
+    .form-header {
+        margin-bottom: 1.5rem !important;
+    }
+
+    .form-header h2,
+    .auth-modal-content h2.auth-title {
+        font-size: 1.35rem !important;
+        margin-bottom: 0.2rem !important;
+    }
+
+    .form-header p,
+    .auth-modal-content .auth-subtitle {
+        font-size: 0.82rem !important;
+        margin-bottom: 1rem !important;
+    }
+
+    /* Collapse all grids to single column */
+    .form-grid,
+    #catererForm .form-grid {
+        grid-template-columns: 1fr !important;
+        gap: 0.75rem !important;
+    }
+
+    .form-group.full-width {
+        grid-column: span 1 !important;
+    }
+
+    /* Input fields — touch-friendly height */
+    .auth-modal-content .minimal-input,
+    .minimal-input {
+        padding: 0.8rem 1rem !important;
+        font-size: 1rem !important;  /* prevents iOS zoom on focus */
+        border-radius: 0.65rem !important;
+    }
+
+    /* Button row stacked on mobile */
+    .btn-container {
+        flex-direction: column-reverse !important;
+        gap: 0.65rem !important;
+        margin-top: 1.25rem !important;
+        padding-top: 1rem !important;
+    }
+
+    .btn-container .btn-primary,
+    .btn-container .btn-secondary,
+    .btn-nav {
+        width: 100% !important;
+        min-width: unset !important;
+        padding: 0.9rem 1rem !important;
+        font-size: 0.95rem !important;
+    }
+
+    /* Primary action button always full-width */
+    .btn-primary-action,
+    .btn-luxury-submit {
+        font-size: 0.95rem !important;
+        min-height: 3rem !important;
+    }
+
+    /* Checkbox chips wrap nicely */
+    .checkbox-group {
+        gap: 0.5rem !important;
+    }
+
+    .checkbox-item {
+        padding: 0.5rem 0.85rem !important;
+        font-size: 0.8rem !important;
+    }
+
+    /* File upload boxes shorter on mobile */
+    .file-upload-box {
+        min-height: 90px !important;
+        padding: 1rem 0.75rem !important;
+    }
+
+    /* KYC grid single column */
+    .kyc-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .kyc-card {
+        min-height: 160px !important;
+        padding: 1.25rem !important;
+    }
+
+    /* Auth footer text smaller */
+    .auth-modal-content .auth-footer {
+        font-size: 0.82rem !important;
+        padding-top: 1rem !important;
+    }
+
+    /* Safe area padding at bottom for iPhone home indicator */
+    .auth-modal-content .professional-card:last-child {
+        padding-bottom: calc(2.5rem + env(safe-area-inset-bottom, 0px)) !important;
+    }
+}
+
+/* --- VERY SMALL PHONES (max 360px) --- */
+@media (max-width: 360px) {
+    .auth-modal-content .professional-card {
+        padding: 4rem 1rem 2rem !important;
+    }
+
+    .form-header h2,
+    .auth-modal-content h2.auth-title {
+        font-size: 1.2rem !important;
+    }
+
+    .minimal-input {
+        font-size: 0.9rem !important;
+    }
+}
+
