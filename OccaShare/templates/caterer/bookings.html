@@ -810,9 +810,9 @@
             </div>
         </div>
 
-        <div class="occ-modal-footer" style="padding: 1.5rem 2rem; background: #f8fafc; border-top: 1px solid #e2e8f0; gap: 1rem;">
+        <div class="occ-modal-footer modal-footer-centered" style="padding: 1.5rem 2rem; background: #f8fafc; border-top: 1px solid #e2e8f0; gap: 1rem;">
             <button onclick="bk_closeBookingDetailModal()" class="btn-sm-outline" style="min-width:120px; height:48px; border-radius: 12px; font-weight: 700;">Close View</button>
-            <div id="bookingModalActions" class="modal-actions-container-p" style="display: flex; gap: 0.75rem; align-items: center;"></div>
+            <div id="bookingModalActions" class="modal-actions-container-p" style="display: flex; gap: 0.75rem; align-items: center; justify-content: center;"></div>
         </div>
     </div>
 </div>
@@ -948,14 +948,37 @@
                         <input type="date" name="event_date" id="walkin_event_date" required class="occ-form-input">
                         <div class="invalid-feedback"></div>
                     </div>
+                    <div class="occ-form-group full-width">
+                        <label class="occ-form-label">Province *</label>
+                        <select id="bookProvince" name="province" required class="filter-select-pro">
+                            <option value="">Select Province...</option>
+                            <option value="Laguna">Laguna</option>
+                            <option value="Batangas">Batangas</option>
+                            <option value="Cavite">Cavite</option>
+                            <option value="Rizal">Rizal</option>
+                        </select>
+                        <div class="invalid-feedback"></div>
+                    </div>
+
                     <div class="occ-form-group">
-                        <label class="occ-form-label">Event Time</label>
-                        <input type="time" name="event_time" class="occ-form-input">
+                        <label class="occ-form-label">City / Municipality *</label>
+                        <select id="bookCity" name="city" required class="filter-select-pro">
+                            <option value="">Select City...</option>
+                        </select>
+                        <div class="invalid-feedback"></div>
+                    </div>
+
+                    <div class="occ-form-group">
+                        <label class="occ-form-label">Barangay *</label>
+                        <select id="bookBarangay" name="barangay" required class="filter-select-pro">
+                            <option value="">Select Barangay...</option>
+                        </select>
+                        <div class="invalid-feedback"></div>
                     </div>
 
                     <div class="occ-form-group full-width">
-                        <label class="occ-form-label">Venue Address</label>
-                        <textarea name="venue_address" rows="1" class="occ-form-input" style="height:auto; min-height:46px;" placeholder="Full location details"></textarea>
+                        <label class="occ-form-label">Street Address / Landmark *</label>
+                        <textarea name="venue_address" rows="1" required class="occ-form-input" style="height:auto; min-height:46px;" placeholder="Unit #, Street, Phase, Landmark"></textarea>
                     </div>
 
                     <!-- Menu Group -->
@@ -1113,5 +1136,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', path='/js/caterer/bookings.js') }}?v=2.2"></script>
+<script src="{{ url_for('static', path='/js/auth/location_data.js') }}"></script>
+<script src="{{ url_for('static', path='/js/caterer/bookings.js') }}?v=2.3"></script>
 {% endblock %}

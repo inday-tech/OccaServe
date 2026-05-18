@@ -522,65 +522,67 @@
             }
             composeFullNameCat();
         });
-            } else {
-                setFieldError(wrapper, errDiv, null);
-            }
-            composeFullNameCat();
-        });
 
-        document.addEventListener('DOMContentLoaded', () => {
+        function initLocationOnLoad() {
             const provSelect = document.getElementById('province_cat');
             const citySelect = document.getElementById('city_cat');
             const brgySelect = document.getElementById('barangay_cat');
 
-            if (provSelect && citySelect) {
-                provSelect.addEventListener('change', () => {
-                    citySelect.innerHTML = '<option value="">-- City --</option>';
-                    if (brgySelect) brgySelect.innerHTML = '<option value="">-- Barangay --</option>';
-                    
-                    const prov = provSelect.value;
-                    if (prov && typeof LOCATION_DATA !== 'undefined' && LOCATION_DATA[prov]) {
-                        const cities = Object.keys(LOCATION_DATA[prov]).sort();
-                        cities.forEach(city => {
-                            const opt = document.createElement('option');
-                            opt.value = opt.textContent = city;
-                            citySelect.appendChild(opt);
-                        });
+            if (!provSelect || !citySelect) return;
 
-                        // Automatically populate barangays for the default first city
-                        if (cities.length > 0 && brgySelect) {
-                            const firstCity = cities[0];
-                            citySelect.value = firstCity; // Force value update
-                            
-                            if (LOCATION_DATA[prov][firstCity]) {
-                                LOCATION_DATA[prov][firstCity].sort().forEach(b => {
-                                    const opt = document.createElement('option');
-                                    opt.value = opt.textContent = b;
-                                    brgySelect.appendChild(opt);
-                                });
-                            }
+            if (typeof LOCATION_DATA === 'undefined') {
+                setTimeout(initLocationOnLoad, 200);
+                return;
+            }
+
+            provSelect.addEventListener('change', () => {
+                citySelect.innerHTML = '<option value="">-- City --</option>';
+                if (brgySelect) brgySelect.innerHTML = '<option value="">-- Barangay --</option>';
+                
+                const prov = provSelect.value;
+                if (prov && LOCATION_DATA[prov]) {
+                    const cities = Object.keys(LOCATION_DATA[prov]).sort();
+                    cities.forEach(city => {
+                        const opt = document.createElement('option');
+                        opt.value = opt.textContent = city;
+                        citySelect.appendChild(opt);
+                    });
+
+                    if (cities.length > 0 && brgySelect) {
+                        const firstCity = cities[0];
+                        citySelect.value = firstCity;
+                        
+                        if (LOCATION_DATA[prov][firstCity]) {
+                            LOCATION_DATA[prov][firstCity].sort().forEach(b => {
+                                const opt = document.createElement('option');
+                                opt.value = opt.textContent = b;
+                                brgySelect.appendChild(opt);
+                            });
                         }
                     }
-                });
-                
-                citySelect.addEventListener('change', () => {
-                    if (brgySelect) brgySelect.innerHTML = '<option value="">-- Barangay --</option>';
-                    const prov = provSelect.value;
-                    const city = citySelect.value;
-                    
-                    if (prov && city && typeof LOCATION_DATA !== 'undefined' && LOCATION_DATA[prov] && LOCATION_DATA[prov][city]) {
-                        LOCATION_DATA[prov][city].sort().forEach(b => {
-                            const opt = document.createElement('option');
-                            opt.value = opt.textContent = b;
-                            brgySelect.appendChild(opt);
-                        });
-                    }
-                });
-
-                if (provSelect.value) {
-                    provSelect.dispatchEvent(new Event('change'));
                 }
+            });
+            
+            citySelect.addEventListener('change', () => {
+                if (brgySelect) brgySelect.innerHTML = '<option value="">-- Barangay --</option>';
+                const prov = provSelect.value;
+                const city = citySelect.value;
+                
+                if (prov && city && LOCATION_DATA[prov] && LOCATION_DATA[prov][city]) {
+                    LOCATION_DATA[prov][city].sort().forEach(b => {
+                        const opt = document.createElement('option');
+                        opt.value = opt.textContent = b;
+                        brgySelect.appendChild(opt);
+                    });
+                }
+            });
+
+            if (provSelect.value) {
+                provSelect.dispatchEvent(new Event('change'));
             }
-        });
+        }
+
+        document.addEventListener('DOMContentLoaded', initLocationOnLoad);
     })();
 </script>
+<script src="{{ url_for('static', path='/js/auth/location_data.js') }}"></script>

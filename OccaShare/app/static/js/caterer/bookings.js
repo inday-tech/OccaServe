@@ -179,6 +179,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         initWalkinDetection();
         attachBookingPackageListeners();
+        initWalkinLocation();
 
         // 4. Pagination
         const allRows = Array.from(document.querySelectorAll('.bookings-list-table tbody tr.booking-row-item'));
@@ -450,10 +451,19 @@ async function submitWalkinBooking(e) {
     for (let [key, value] of formData.entries()) {
         if (key === 'total_amount') {
             data[key] = parseFloat(value.replace(/[₱,]/g, '')) || 0;
+        } else if (['province', 'city', 'barangay', 'venue_address'].includes(key)) {
+            // We combine them or keep separate? Usually backend expects venue_address as a string.
+            // Let's keep separate fields if the backend supports them, or concatenate.
+            // Based on User Request 3, they want these fields 'meron laman'.
+            data[key] = value;
         } else {
             data[key] = value;
         }
     }
+
+    // Standardize venue_address to include specific fields for the backend if it only expects one string
+    const fullAddress = `${data.venue_address}, ${data.barangay}, ${data.city}, ${data.province}`;
+    data.venue_address = fullAddress;
 
     // 4. Guest Capacity Check (Double Check)
     const pkgSelect = document.getElementById('bookPackage');
@@ -1612,4 +1622,44 @@ async function deleteTask(taskId) {
     } catch (err) {
         window.showError('Error deleting task');
     }
+}
+function initWalkinLocation() {
+    const provSelect = document.getElementById('bookProvince');
+    const citySelect = document.getElementById('bookCity');
+    const brgySelect = document.getElementById('bookBarangay');
+    if (!provSelect || !citySelect || !brgySelect) return;
+
+    if (typeof LOCATION_DATA === 'undefined') {
+        console.warn('[BookingsJS] LOCATION_DATA not found. Retrying...');
+        setTimeout(initWalkinLocation, 500);
+        return;
+    }
+
+    provSelect.addEventListener('change', () => {
+        citySelect.innerHTML = '<option value="">Select City...</option>';
+        brgySelect.innerHTML = '<option value="">Select Barangay...</option>';
+        
+        const prov = provSelect.value;
+        if (prov && LOCATION_DATA[prov]) {
+            const cities = Object.keys(LOCATION_DATA[prov]).sort();
+            cities.forEach(city => {
+                const opt = document.createElement('option');
+                opt.value = opt.textContent = city;
+                citySelect.appendChild(opt);
+            });
+        }
+    });
+
+    citySelect.addEventListener('change', () => {
+        brgySelect.innerHTML = '<option value="">Select Barangay...</option>';
+        const prov = provSelect.value;
+        const city = citySelect.value;
+        if (prov && city && LOCATION_DATA[prov] && LOCATION_DATA[prov][city]) {
+            LOCATION_DATA[prov][city].sort().forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = opt.textContent = b;
+                brgySelect.appendChild(opt);
+            });
+        }
+    });
 }

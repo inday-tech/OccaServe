@@ -4,11 +4,20 @@ from ..db import database, models
 from ..core import security as auth
 from datetime import datetime, timezone
 import json
+from fastapi.responses import RedirectResponse
 
 router = APIRouter(prefix="/api", tags=["payments"])
 
+@router.get("/payment/success")
+async def payment_success(request: Request):
+    return RedirectResponse(
+        url="/customer/bookings?success_msg=Payment+Received!+Your+booking+has+been+updated+in+our+system.", 
+        status_code=303
+    )
+
 @router.post("/bookings/{booking_id}/pay")
 async def process_payment(
+    request: Request,
     booking_id: int,
     payment_type: str = Form("dp"), # "dp" or "balance"
     db: Session = Depends(database.get_db),
@@ -33,8 +42,13 @@ async def process_payment(
     description = f"Payment for {booking.event_name or 'Event'} ({payment_type.upper()})"
     remarks = f"booking_id:{booking.id}:type:{payment_type}"
     
+    # Generate Success URL dynamically
+    base_url = str(request.base_url).rstrip('/')
+    success_url = f"{base_url}/api/payment/success"
+    
     try:
-        link_data = paymongo_service.create_payment_link(amount, description, remarks)
+        # Use Modern Checkout Session instead of legacy link
+        link_data = paymongo_service.create_checkout_session(amount, description, remarks, success_url)
         
         booking.paymongo_link_id = link_data["id"]
         booking.paymongo_link_url = link_data["url"]
@@ -43,7 +57,7 @@ async def process_payment(
         return {
             "success": True, 
             "checkout_url": link_data["url"],
-            "message": "Payment link generated"
+            "message": "Checkout session generated"
         }
     except Exception as e:
         print(f"FAILED TO GENERATE PAYMONGO LINK: {str(e)}")

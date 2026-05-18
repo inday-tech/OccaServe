@@ -266,11 +266,19 @@
                         <a href="/bookings/continue/{{ b.id }}" class="btn-action-soft btn-settle">
                             Resume <i class="fas fa-play"></i>
                         </a>
-                        {% else %}
-                        {% endif %}
-                        <button onclick="removeBooking({{ b.id }})" class="btn-action-soft btn-remove" title="Remove from list">
+                        <button onclick="removeBooking({{ b.id }})" class="btn-action-soft btn-remove" title="Delete Draft">
                             <i class="fas fa-trash-alt"></i>
                         </button>
+                        {% else %}
+                        <a href="/customer/bookings/manage/{{ b.id }}" class="btn-action-soft btn-view" title="Manage Booking">
+                            <i class="fas fa-clipboard-list"></i> Manage
+                        </a>
+                        {% endif %}
+                        {% if b.status in ['pending_payment', 'awaiting_payment'] %}
+                        <a href="/customer/bookings/manage/{{ b.id }}" class="btn-action-soft btn-view" style="margin-left: 5px;" title="Manage Booking">
+                            <i class="fas fa-clipboard-list"></i> Manage
+                        </a>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}

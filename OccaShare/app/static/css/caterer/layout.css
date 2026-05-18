@@ -1447,23 +1447,21 @@
         display: none;
         justify-content: center;
         align-items: center;
-        padding: 1.5rem;
+        z-index: 2000; /* High priority */
+        background: rgba(15, 23, 42, 0.45); /* Deep slate with glass alpha */
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 2.5rem;
+        backdrop-filter: blur(12px) saturate(180%);
+        -webkit-backdrop-filter: blur(12px) saturate(180%);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         opacity: 0;
-        transition: opacity 0.35s ease, backdrop-filter 0.4s ease;
-        pointer-events: none;
-        box-sizing: border-box;
-        -webkit-backface-visibility: hidden;
-        backface-visibility: hidden;
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
     }
 
     .occ-modal-overlay.active {
         display: flex;
         opacity: 1;
-        pointer-events: auto;
-        backdrop-filter: blur(10px) saturate(180%);
-        -webkit-backdrop-filter: blur(10px) saturate(180%);
     }
 
     .occ-modal-box {
@@ -1611,13 +1609,23 @@
     }
 
     .occ-modal-footer {
-        padding: 1.25rem 2.5rem;
+        padding: 1.5rem 2.5rem;
         background: #ffffff;
         border-top: 1px solid #f1f5f9;
         display: flex;
         justify-content: flex-end;
-        gap: 1rem;
-        flex-shrink: 0;
+        align-items: center;
+        gap: 1.25rem;
+        border-radius: 0 0 1.5rem 1.5rem;
+    }
+
+    /* Professional Utility: Center buttons for specific modals */
+    .occ-modal-footer.modal-footer-centered {
+        justify-content: center;
+    }
+
+    .occ-modal-footer.modal-footer-balanced {
+        justify-content: space-between;
     }
 
     /* Modal Form Grid */

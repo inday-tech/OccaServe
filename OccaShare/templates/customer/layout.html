@@ -34,6 +34,9 @@
 
 <body class="no-transition">
     <script>
+        window.customerConfig = {
+            userId: {{ user.id if user else 'null' }}
+        };
         (function () {
             const isCollapsed = localStorage.getItem('customerSidebarCollapsed') === 'true';
             if (isCollapsed) document.documentElement.classList.toggle('sidebar-icons-only', isCollapsed);

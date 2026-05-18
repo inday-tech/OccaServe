@@ -180,7 +180,32 @@ class NotificationService:
             await NotificationService._send_sms(phone, sms_msg)
 
         # 4. Real-time
-        await manager.broadcast_to_user(user.id, {"type": "dashboard_update", "message": "New payment received"})
+        status_class_map = {
+            'confirmed': 'ps-badge-confirmed',
+            'preparing': 'ps-badge-preparing',
+            'completed': 'ps-badge-completed',
+            'pending': 'ps-badge-pending',
+        }
+        status_label_map = {
+            'confirmed': 'Confirmed',
+            'preparing': 'Preparing',
+            'completed': 'Completed',
+        }
+        await manager.broadcast_to_user(user.id, {
+            "type": "booking_update", 
+            "booking_id": booking.id,
+            "new_status": booking.status,
+            "status_label": status_label_map.get(booking.status, booking.status.replace('_', ' ').capitalize()),
+            "status_class": status_class_map.get(booking.status, 'ps-badge-draft'),
+            "message": f"New payment received: ₱{amount:,.2f}"
+        })
+        
+        # 5. Real-time to Customer
+        await manager.broadcast_to_user(booking.user_id, {
+            "type": "payment_update",
+            "booking_id": booking.id,
+            "message": f"Payment of ₱{amount:,.2f} successful!"
+        })
 
     @staticmethod
     async def notify_proof_rejected(db: Session, booking: models.Booking, reason: str):

@@ -420,8 +420,8 @@
                 onclick="closeAddCatererModal()">&times;</button>
         </div>
 
-        <form id="addCatererForm" style="display: contents;">
-            <div class="modal-body-clean" style="overflow-y: auto; padding: 1.5rem 2rem; flex-grow: 1;">
+        <form id="addCatererForm" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+            <div class="modal-body-clean" style="overflow-y: auto; padding: 1.5rem 2rem; flex: 1;">
                 <div class="onboard-grid" style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 2.5rem;">
 
                     <!-- Primary Identity Column -->
@@ -604,9 +604,9 @@
             <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);" onclick="closeEditModal()">&times;</button>
         </div>
 
-        <form id="editCatererForm" style="display: contents;">
+        <form id="editCatererForm" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
             <input type="hidden" name="caterer_id" id="edit_caterer_id">
-            <div class="modal-body-clean" style="overflow-y: auto; padding: 1.5rem 2rem; flex-grow: 1;">
+            <div class="modal-body-clean" style="overflow-y: auto; padding: 1.5rem 2rem; flex: 1;">
                 
                 <div id="identity_lock_banner" style="display: none; background: #fff7ed; border: 1px solid #ffedd5; padding: 12px; border-radius: 10px; margin-bottom: 1.5rem;">
                     <p style="margin: 0; color: #9a3412; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
@@ -830,7 +830,43 @@
             const res = await fetch(`/admin/api/caterers/${cid}/edit`, { method: 'POST', body: fd });
             const data = await res.json();
             if (data.success) {
-                Swal.fire('Updated', data.message, 'success').then(() => location.reload());
+                Swal.fire({ title: 'Updated', text: data.message, icon: 'success', timer: 2000, showConfirmButton: false });
+                
+                // Real-time update of the row
+                const editBtn = document.querySelector(`.dm-dropdown-item[data-id="${cid}"]`);
+                if (editBtn) {
+                    const row = editBtn.closest('tr');
+                    if (row) {
+                        const bizName = fd.get('business_name');
+                        const fullName = document.getElementById('edit_full_name').value || '';
+                        const email = fd.get('email');
+                        const avatar = row.querySelector('.partner-identity-cell .partner-avatar');
+                        if (avatar) avatar.innerText = bizName.charAt(0).toUpperCase();
+                        const nameEl = row.querySelector('.partner-identity-cell div div:first-child');
+                        if (nameEl) nameEl.innerText = bizName;
+                        const execEl = row.querySelector('td:nth-child(2) div:first-child');
+                        if (execEl) execEl.innerText = fullName;
+                        const emailEl = row.querySelector('td:nth-child(2) div:nth-child(2)');
+                        if (emailEl) emailEl.innerText = email;
+                        
+                        const citySel = document.getElementById('edit_city');
+                        if (citySel && citySel.selectedIndex > 0) {
+                            const regionEl = row.querySelector('td:nth-child(3) span');
+                            if (regionEl) regionEl.innerText = citySel.options[citySel.selectedIndex].text;
+                        }
+                        
+                        // Update button data attributes
+                        editBtn.setAttribute('data-business', bizName);
+                        editBtn.setAttribute('data-full-name', fullName);
+                        editBtn.setAttribute('data-email', email);
+                        editBtn.setAttribute('data-phone', fd.get('phone'));
+                        editBtn.setAttribute('data-address-details', fd.get('address_details') || '');
+                        editBtn.setAttribute('data-province-code', document.getElementById('edit_province').value || '');
+                        editBtn.setAttribute('data-city-code', document.getElementById('edit_city').value || '');
+                        editBtn.setAttribute('data-brgy-code', document.getElementById('edit_barangay').value || '');
+                    }
+                }
+                closeEditModal();
             } else { Swal.fire('Error', data.message, 'error'); }
         } catch (e) { Swal.fire('Error', 'Communication failure.', 'error'); }
     });

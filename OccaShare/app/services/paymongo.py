@@ -35,7 +35,7 @@ class PaymongoService:
 
     def create_payment_link(self, amount: float, description: str, remarks: str):
         """
-        Creates a payment link. Amount should be in Pesos (converted to cents internally).
+        Creates a payment link (Legacy method).
         """
         url = f"{self.base_url}/links"
         payload = {
@@ -49,6 +49,43 @@ class PaymongoService:
         }
         response = requests.post(url, json=payload, headers=self.headers)
         if response.status_code == 200:
+            data = response.json()
+            return {
+                "id": data["data"]["id"],
+                "url": data["data"]["attributes"]["checkout_url"]
+            }
+        else:
+             raise Exception(f"Paymongo Error: {response.status_code} - {response.text}")
+
+    def create_checkout_session(self, amount: float, description: str, remarks: str, success_url: str):
+        """
+        Creates a Checkout Session (Modern method). Supports redirection.
+        """
+        url = f"{self.base_url}/checkout_sessions"
+        payload = {
+            "data": {
+                "attributes": {
+                    "send_email_receipt": True,
+                    "show_description": True,
+                    "show_line_items": True,
+                    "line_items": [
+                        {
+                            "amount": int(round(amount * 100)),
+                            "currency": "PHP",
+                            "name": description,
+                            "quantity": 1
+                        }
+                    ],
+                    "payment_method_types": ["card", "gcash", "grab_pay", "paymaya"],
+                    "success_url": success_url,
+                    "cancel_url": success_url.replace("success", "bookings"), # Fallback
+                    "description": description,
+                    "remarks": remarks
+                }
+            }
+        }
+        response = requests.post(url, json=payload, headers=self.headers)
+        if response.status_code == 201 or response.status_code == 200:
             data = response.json()
             return {
                 "id": data["data"]["id"],

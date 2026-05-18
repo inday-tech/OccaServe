@@ -249,32 +249,7 @@
                 }
 
                 if (window.location.pathname.includes('/caterer/bookings')) {
-                    const row = document.getElementById(`booking-row-${data.booking_id}`);
-                    if (row) {
-                        // Update status badge in table
-                        const badge = row.querySelector('.premium-status-badge');
-                        if (badge && data.new_status) {
-                            badge.innerText = data.status_label || (data.new_status.charAt(0).toUpperCase() + data.new_status.slice(1));
-                            // Remove old status classes and add new one
-                            badge.className = 'premium-status-badge ' + (data.status_class || '');
-                        }
-                    }
-                }
-                
-                // Update Modal if open
-                const modal = document.getElementById('bookingDetailModal');
-                const modalIdEl = document.getElementById('modalBookingId');
-                if (modal && modal.style.display === 'flex' && modalIdEl && modalIdEl.innerText.includes(data.booking_id)) {
-                    const modalBadge = document.getElementById('modalStatus');
-                    if (modalBadge && data.new_status) {
-                        modalBadge.innerText = data.status_label || data.new_status;
-                        modalBadge.className = 'premium-status-badge ' + (data.status_class || '');
-                        
-                        // If the status changed, we might need to refresh action buttons
-                        if (typeof window.showBookingDetails === 'function') {
-                            window.showBookingDetails(data.booking_id);
-                        }
-                    }
+                    setTimeout(() => window.location.reload(), 1000);
                 }
 
                 if (window.showToast) {

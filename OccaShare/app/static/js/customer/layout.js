@@ -368,13 +368,20 @@ function initInactivityTimer() {
    WEBSOCKET — Live push
    ============================================================ */
 function initWebSocket() {
+    if (!window.customerConfig || !window.customerConfig.userId) return;
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws    = new WebSocket(`${proto}//${location.host}/ws`);
+    const clientId = `user_${window.customerConfig.userId}_${Math.random().toString(36).substr(2, 9)}`;
+    const ws    = new WebSocket(`${proto}//${location.host}/ws/${clientId}`);
 
     ws.onmessage = ({ data }) => {
         try {
             const d = JSON.parse(data);
-            if (d.type === 'notification' || d.type === 'message') fetchIntelligence();
+            if (d.type === 'notification' || d.type === 'message' || d.type === 'new_notification') fetchIntelligence();
+            
+            if (d.type === 'booking_update' || d.type === 'payment_update' || d.type === 'status_update') {
+                if (window.showToast) window.showToast("Real-time Update: " + (d.message || "Status changed"), "info");
+                setTimeout(() => window.location.reload(), 1500);
+            }
         } catch {}
     };
     ws.onclose = () => setTimeout(initWebSocket, 5000);
