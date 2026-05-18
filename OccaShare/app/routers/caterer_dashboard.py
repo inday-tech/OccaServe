@@ -295,9 +295,39 @@ async def update_booking_status(
     if new_status not in allowed_statuses:
         raise HTTPException(status_code=400, detail="Invalid status")
 
-    # Business Logic Checks: Allow completion if plan is FULL or status is PAID
-    if new_status == "completed" and booking.payment_status != "paid" and booking.payment_plan != "full":
-        raise HTTPException(status_code=400, detail="You can only mark this as Completed once the booking is Fully Paid.")
+    # --- STRICT STATE MACHINE ENFORCEMENT ---
+    # Define valid linear transitions to prevent status jumping
+    valid_transitions = {
+        "confirmed": ["preparing", "cancelled"],
+        "preparing": ["ready_for_delivery", "cancelled"],
+        "ready_for_delivery": ["on_the_way", "cancelled"],
+        "on_the_way": ["arrived", "cancelled"],
+        "arrived": ["setup_ongoing", "completed", "cancelled"],
+        "setup_ongoing": ["completed", "cancelled"],
+        "completed": [],
+        "cancelled": []
+    }
+    
+    current_status = booking.status
+    if new_status != "cancelled":
+        allowed_next = valid_transitions.get(current_status, allowed_statuses)
+        if new_status not in allowed_next:
+            raise HTTPException(status_code=400, detail=f"Cannot transition directly from '{current_status}' to '{new_status}'. Please follow proper status progression.")
+
+    # --- PAYMENT VERIFICATION & CASH HANDLING ---
+    if new_status == "completed":
+        if booking.payment_method == "Cash":
+            # For Cash payments, caterer completing it implies they collected the physical cash
+            booking.payment_status = "paid"
+            cash_log = models.AuditLog(
+                user_id=user.id,
+                action="CASH_RECEIVED_ACKNOWLEDGED",
+                notes=f"Caterer marked booking #{booking.id} completed, acknowledging receipt of Cash/COD."
+            )
+            db.add(cash_log)
+        elif booking.payment_status != "paid":
+            # Removed the `payment_plan != "full"` loophole that allowed bypassing verification
+            raise HTTPException(status_code=400, detail="You can only mark this as Completed once the booking is Fully Paid and verified by Admin.")
 
     old_status = booking.status
     booking.status = new_status
@@ -310,7 +340,7 @@ async def update_booking_status(
     )
     db.add(history)
 
-    # SECURE PAYOUT: Release Escrowed Funds to 'Ready' status
+    # SECURE PAYOUT: Release Escrowed Funds to 'Ready' status with Audit Trail
     if new_status == "completed":
         escrow_items = db.query(models.PayoutItem).filter(
             models.PayoutItem.booking_id == booking.id,
@@ -318,7 +348,13 @@ async def update_booking_status(
         ).all()
         for item in escrow_items:
             item.status = 'ready'
-            # Optional: Add history or notification for admin to check payouts
+            
+        payout_audit = models.AuditLog(
+            user_id=user.id,
+            action="ESCROW_FLAGGED_FOR_RELEASE",
+            notes=f"Escrow items for booking #{booking.id} marked as 'ready'. Subject to 24-hr platform dispute window."
+        )
+        db.add(payout_audit)
             
     db.commit()
 
@@ -1739,6 +1775,7 @@ async def add_package(
     internal_cost_per_pax: float = Form(0.0),
     reservation_fee: float = Form(0.0),
     booking_lead_time: int = Form(7),
+    selection_rules: Optional[str] = Form(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
@@ -1775,6 +1812,7 @@ async def add_package(
         internal_cost_per_pax=internal_cost_per_pax,
         reservation_fee=reservation_fee,
         booking_lead_time=booking_lead_time,
+        selection_rules=json.loads(selection_rules) if selection_rules else None,
         is_active=True,
         status='active'
     )
@@ -1833,6 +1871,9 @@ async def add_menu_item(
     dietary_tags: Optional[list[str]] = Form(None),
     allergen_info: Optional[list[str]] = Form(None),
     recipe_data: Optional[str] = Form(None),
+    is_combo: bool = Form(False),
+    max_choices: int = Form(0),
+    combo_options: Optional[str] = Form(None),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
@@ -1868,6 +1909,9 @@ async def add_menu_item(
         is_hidden=is_hidden,
         dietary_tags=dietary_tags,
         allergen_info=allergen_info,
+        is_combo=is_combo,
+        max_choices=max_choices,
+        combo_options=json.loads(combo_options) if combo_options else None,
         is_archived=False
     )
     db.add(new_item)
@@ -2093,6 +2137,7 @@ async def update_package(
     internal_cost_per_pax: float = Form(0.0),
     reservation_fee: float = Form(0.0),
     booking_lead_time: int = Form(7),
+    selection_rules: Optional[str] = Form(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
@@ -2124,6 +2169,8 @@ async def update_package(
     package.markup_value = markup_value
     package.reservation_fee = reservation_fee
     package.booking_lead_time = booking_lead_time
+    package.selection_rules = json.loads(selection_rules) if selection_rules else None
+    
     
     # Process inclusions into a dict for storage
     if inclusions:
@@ -2242,6 +2289,9 @@ async def add_menu_to_package(
     cost_breakdown: Optional[str] = Form(None),
     is_addon: bool = Form(False),
     addon_price: float = Form(0.0),
+    is_combo: bool = Form(False),
+    max_choices: int = Form(0),
+    combo_options: Optional[str] = Form(None),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
@@ -2272,6 +2322,9 @@ async def add_menu_to_package(
         cost_breakdown=json.loads(cost_breakdown) if cost_breakdown else None,
         is_addon=is_addon,
         addon_price=addon_price,
+        is_combo=is_combo,
+        max_choices=max_choices,
+        combo_options=json.loads(combo_options) if combo_options else None,
         image_url=image_url,
         is_archived=False
     )

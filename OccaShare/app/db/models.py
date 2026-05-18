@@ -224,6 +224,7 @@ class CateringPackage(Base):
     # Structured Data
     inclusions = Column(JSONB, nullable=True) # Checklist fields
     policies = Column(JSONB, nullable=True) # Cancellation, Payment terms, etc.
+    selection_rules = Column(JSONB, nullable=True) # e.g. {"Beef": 1, "Pork": 1}
     
     is_active = Column(Boolean, default=True)
     status = Column(String, default="active") # active, inactive, draft
@@ -262,6 +263,12 @@ class MenuItem(Base):
     image_url = Column(String, nullable=True)
     is_hidden = Column(Boolean, default=False)
     is_archived = Column(Boolean, default=False)
+    
+    # Combo / Platter Properties
+    is_combo = Column(Boolean, default=False)
+    max_choices = Column(Integer, default=0)
+    combo_options = Column(JSONB, nullable=True)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     caterer = relationship("CatererProfile", back_populates="menu_items")
@@ -357,6 +364,8 @@ class BookingMenuItem(Base):
     menu_item_id = Column(Integer, ForeignKey("menu_items.id"))
     is_add_on = Column(Boolean, default=False)
     price = Column(Float) # Price at the time of booking
+    quantity = Column(Integer, default=1)
+    choices = Column(JSONB, nullable=True) # Array of selected item names/IDs for combos
 
     booking = relationship("Booking", back_populates="selected_items")
     menu_item = relationship("MenuItem")

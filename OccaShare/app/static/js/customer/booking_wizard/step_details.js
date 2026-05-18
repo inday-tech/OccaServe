@@ -95,6 +95,53 @@ document.addEventListener('DOMContentLoaded', function () {
         updateCalculator();
     };
 
+    window.handleSelectionRuleLimit = function(checkbox) {
+        const group = checkbox.closest('.selection-group');
+        const limit = parseInt(group.dataset.limit) || 0;
+        const catId = group.dataset.category;
+        
+        const card = checkbox.closest('.menu-item-card');
+        if (checkbox.checked) {
+            card.classList.add('selected');
+        } else {
+            card.classList.remove('selected');
+        }
+
+        const checkedBoxes = group.querySelectorAll('input[type="checkbox"]:checked');
+        const count = checkedBoxes.length;
+
+        // Update counter UI
+        const counterEl = document.getElementById(`counter-${catId}`);
+        if (counterEl) {
+            counterEl.innerText = `${count} / ${limit} Selected`;
+            if (count === limit) {
+                counterEl.style.background = '#dcfce7';
+                counterEl.style.color = '#166534';
+            } else {
+                counterEl.style.background = '#ccfbf1';
+                counterEl.style.color = '#0f766e';
+            }
+        }
+
+        // Disable unselected checkboxes if limit is reached
+        const allBoxes = group.querySelectorAll('input[type="checkbox"]');
+        if (count >= limit) {
+            allBoxes.forEach(cb => {
+                if (!cb.checked) {
+                    cb.disabled = true;
+                    cb.closest('.menu-item-card').style.opacity = '0.5';
+                    cb.closest('.menu-item-card').style.cursor = 'not-allowed';
+                }
+            });
+        } else {
+            allBoxes.forEach(cb => {
+                cb.disabled = false;
+                cb.closest('.menu-item-card').style.opacity = '1';
+                cb.closest('.menu-item-card').style.cursor = 'pointer';
+            });
+        }
+    };
+
     // --- 3. Check Date Availability ---
     window.checkAvailability = async function () {
         const chip = document.getElementById('availability-chip');
@@ -332,6 +379,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 document.getElementById('err-barangay').classList.add('show');
                 barangaySelect.classList.add('error');
             }
+
+            // Selection Rules Validation
+            const selectionGroups = document.querySelectorAll('.selection-group');
+            selectionGroups.forEach(group => {
+                const limit = parseInt(group.dataset.limit) || 0;
+                const cat = group.dataset.category;
+                const count = group.querySelectorAll('input[type="checkbox"]:checked').length;
+                
+                if (count !== limit && limit > 0) {
+                    isValid = false;
+                    const counterEl = document.getElementById(`counter-${cat}`);
+                    if (counterEl) {
+                        counterEl.style.background = '#fee2e2';
+                        counterEl.style.color = '#b91c1c';
+                    }
+                }
+            });
 
             if (!isValid) {
                 e.preventDefault();

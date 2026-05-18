@@ -1584,7 +1584,7 @@ textarea.control-pro {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1.5rem 2rem 2rem;
+    padding: 1.5rem 2rem 1rem;
     position: relative;
     background: #ffffff;
     margin-bottom: 0.5rem;
@@ -1598,9 +1598,10 @@ textarea.control-pro {
     top: 38px;
     left: 15%;
     right: 15%;
-    height: 2px;
+    height: 3px;
     background: #f1f5f9;
     z-index: 1;
+    border-radius: 99px;
 }
 
 .pkg-step {
@@ -1611,47 +1612,48 @@ textarea.control-pro {
     position: relative;
     z-index: 2;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .pkg-step .step-icon {
-    width: 48px;
-    height: 48px;
+    width: 50px;
+    height: 50px;
     background: #ffffff;
     border: 2px solid #e2e8f0;
-    border-radius: 16px;
-    /* Modern squircle */
+    border-radius: 18px;
+    /* Premium squircle style */
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: var(--text-xl);
+    font-size: 1.2rem;
     color: #94a3b8;
     margin-bottom: 0.75rem;
-    transition: all 0.3s ease;
-    box-shadow: 0 0 0 4px #ffffff;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 0 0 4px #ffffff, 0 4px 6px rgba(0,0,0,0.02);
 }
 
 .pkg-step .step-label {
-    font-size: var(--text-xs);
+    font-size: 0.7rem;
     font-weight: 800;
     color: #94a3b8;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.08em;
     transition: all 0.3s ease;
 }
 
-/* Active State */
+/* Active State with Vibrant Primary Gradient */
 .pkg-step.active .step-icon {
-    background: #1e293b;
-    border-color: #1e293b;
+    background: linear-gradient(135deg, #FF7B54 0%, #ff5c2b 100%);
+    border-color: #FF7B54;
     color: #ffffff;
-    box-shadow: 0 0 0 4px #ffffff, 0 10px 20px rgba(30, 41, 59, 0.2);
-    transform: translateY(-4px);
+    box-shadow: 0 0 0 4px #ffffff, 0 10px 20px rgba(255, 123, 84, 0.35);
+    transform: translateY(-5px) scale(1.08);
 }
 
 .pkg-step.active .step-label {
-    color: #1e293b;
+    color: #FF7B54;
     font-weight: 900;
+    transform: translateY(-2px);
 }
 
 /* --- Mobile Responsiveness for Wizard --- */

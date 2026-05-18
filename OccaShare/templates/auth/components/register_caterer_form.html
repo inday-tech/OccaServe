@@ -45,22 +45,21 @@
                     <div class="form-group" style="margin-bottom: 0;">
                         <label for="last_name_cat">Last Name</label>
                         <div class="input-wrapper" id="lastNameCatWrapper">
-                            <input type="text" id="last_name_cat" name="last_name" class="minimal-input" required placeholder="e.g. Dela Cruz">
+                            <input type="text" id="last_name_cat" name="last_name" class="minimal-input" required>
                             <div id="lastNameCatError" class="error-drawer"></div>
                         </div>
                     </div>
                     <div class="form-group" style="margin-bottom: 0;">
                         <label for="first_name_cat">First Name</label>
                         <div class="input-wrapper" id="firstNameCatWrapper">
-                            <input type="text" id="first_name_cat" name="first_name" class="minimal-input" required placeholder="e.g. Juan">
+                            <input type="text" id="first_name_cat" name="first_name" class="minimal-input" required>
                             <div id="firstNameCatError" class="error-drawer"></div>
                         </div>
                     </div>
                     <div class="form-group" style="margin-bottom: 0;">
                         <label for="middle_name_cat">Middle Name</label>
                         <div class="input-wrapper" id="middleNameCatWrapper">
-                            <input type="text" id="middle_name_cat" name="middle_name" class="minimal-input" 
-                                placeholder="e.g. Santos">
+                            <input type="text" id="middle_name_cat" name="middle_name" class="minimal-input">
                             <div id="middleNameCatError" class="error-drawer"></div>
                         </div>
                     </div>
@@ -69,7 +68,7 @@
                     <label for="email_cat">Email Address</label>
                     <div class="input-wrapper" id="emailCatWrapper">
                         <input type="email" id="email_cat" name="email" class="minimal-input" required
-                            placeholder="juan@example.com" value="{{ user.email if user else '' }}" autocomplete="off"
+                            autocomplete="off"
                             {{ 'readonly' if user and user.auth_provider !='email' else '' }}>
                         <div id="emailCatError" class="error-drawer">Invalid email format</div>
                     </div>
@@ -78,7 +77,7 @@
                     <label for="mobile_number_cat">Contact Number</label>
                     <div class="input-wrapper" id="mobileCatWrapper">
                         <input type="tel" id="mobile_number_cat" name="mobile_number" class="minimal-input" required
-                            placeholder="0917 123 4567" maxlength="11"
+                            maxlength="11"
                             value="{{ user.phone_number if user else '' }}">
                         <div id="mobileCatError" class="error-drawer">Format: 09XXXXXXXXX</div>
                     </div>
@@ -89,7 +88,7 @@
                     <div class="input-wrapper" id="passwordCatWrapper">
                         <div class="password-field-wrapper">
                             <input type="password" id="password_cat" name="password" class="minimal-input has-toggle" required
-                                placeholder="••••••••" autocomplete="new-password">
+                                autocomplete="new-password">
                             <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility(this)" tabindex="-1">
                                 <i class="fas fa-eye"></i>
                             </button>
@@ -102,7 +101,7 @@
                     <div class="input-wrapper" id="confirmCatWrapper">
                         <div class="password-field-wrapper">
                             <input type="password" id="confirm_password_cat" name="confirm_password"
-                                class="minimal-input has-toggle" required placeholder="••••••••" autocomplete="new-password">
+                                class="minimal-input has-toggle" required autocomplete="new-password">
                             <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility(this)" tabindex="-1">
                                 <i class="fas fa-eye"></i>
                             </button>
@@ -124,7 +123,7 @@
                     <label for="business_name">Business Name</label>
                     <div class="input-wrapper" id="businessNameWrapper">
                         <input type="text" id="business_name" name="business_name" class="minimal-input"
-                            required placeholder="Gourmet Catering Services">
+                            required>
                         <div id="businessNameError" class="error-drawer">Required</div>
                     </div>
                 </div>
@@ -147,7 +146,7 @@
                         <select name="city" id="city_cat" class="minimal-input" required>
                             <option value="">-- City --</option>
                         </select>
-                        <input type="text" id="city_cat_text" class="minimal-input" placeholder="e.g. Makati City" style="display: none;">
+                        <input type="text" id="city_cat_text" class="minimal-input" style="display: none;">
                         <div id="cityCatError" class="error-drawer">Required</div>
                     </div>
                 </div>
@@ -157,14 +156,14 @@
                         <select id="barangay_cat" class="minimal-input" required>
                             <option value="">-- Barangay --</option>
                         </select>
-                        <input type="text" id="barangay_cat_text" class="minimal-input" placeholder="e.g. Brgy. San Lorenzo" style="display: none;">
+                        <input type="text" id="barangay_cat_text" class="minimal-input" style="display: none;">
                         <div id="barangayCatError" class="error-drawer">Required</div>
                     </div>
                 </div>
                 <div class="form-group full-width">
                     <label for="street_cat">Street Address / Landmark</label>
                     <div class="input-wrapper" id="streetCatWrapper">
-                        <input type="text" id="street_cat" class="minimal-input" placeholder="e.g. Unit 2A, Residencia Bldg">
+                        <input type="text" id="street_cat" class="minimal-input">
                         <div id="streetCatError" class="error-drawer">Required for accurate location</div>
                     </div>
                 </div>
@@ -186,7 +185,7 @@
                     <label for="years_of_operation">Years in Business</label>
                     <div class="input-wrapper" id="yearsWrapper">
                         <input type="text" id="years_of_operation" name="years_of_operation" class="minimal-input js-format-comma" required
-                            placeholder="e.g. 5" inputmode="numeric">
+                            inputmode="numeric">
                         <div id="yearsError" class="error-drawer">Required</div>
                     </div>
                 </div>
@@ -194,7 +193,7 @@
                     <label for="business_description">Short Description</label>
                     <div class="input-wrapper" id="descriptionWrapper">
                         <textarea id="business_description" name="business_description" class="minimal-input"
-                            rows="2" placeholder="Tell us about your specialties..."></textarea>
+                            rows="2"></textarea>
                         <div id="descriptionError" class="error-drawer">Please tell us a bit about your business</div>
                     </div>
                 </div>
@@ -245,20 +244,20 @@
                         </label>
                     </div>
                     <div id="eventOtherContainer" style="display: none; margin-top: 0.75rem;">
-                        <input type="text" id="event_type_other" class="minimal-input" placeholder="Please specify event type(s)...">
+                        <input type="text" id="event_type_other" class="minimal-input">
                     </div>
                 </div>
                 <div class="form-group">
                     <label for="min_pax">Minimum Pax</label>
                     <div class="input-wrapper" id="minPaxWrapper">
-                        <input type="text" id="min_pax" name="min_pax" class="minimal-input js-format-comma" required placeholder="e.g. 50" inputmode="numeric">
+                        <input type="text" id="min_pax" name="min_pax" class="minimal-input js-format-comma" required inputmode="numeric">
                         <div id="minPaxError" class="error-drawer">Required</div>
                     </div>
                 </div>
                 <div class="form-group">
                     <label for="starting_price">Starting Price (₱)</label>
                     <div class="input-wrapper" id="priceWrapper">
-                        <input type="text" id="starting_price" name="starting_price" class="minimal-input js-format-comma" required placeholder="e.g. 15,000" inputmode="numeric">
+                        <input type="text" id="starting_price" name="starting_price" class="minimal-input js-format-comma" required inputmode="numeric">
                         <div id="priceError" class="error-drawer">Required</div>
                     </div>
                 </div>
@@ -321,7 +320,7 @@
                 </div>
                 <div class="form-group full-width">
                     <label for="id_number_cat">ID Number <span style="color:#ef4444;">*</span></label>
-                    <input type="text" id="id_number_cat" name="id_number" class="minimal-input" placeholder="Enter ID number">
+                    <input type="text" id="id_number_cat" name="id_number" class="minimal-input">
                 </div>
 
                 <div class="form-group full-width">
@@ -395,194 +394,4 @@
         <p><a href="#" onclick="openAuthModal('signup'); return false;" id="catCustomerLink" style="color: var(--auth-slate-700); font-weight: 500; font-size: 0.9rem; text-decoration: underline;">Wait, I'm a regular customer</a></p>
     </div>
 </div>
-
-<script>
-    (function() {
-        let currentStepCat = 1;
-        const totalStepsCat = 4;
-
-        window.changeStepCat = function(n) {
-            const form = document.getElementById('catererForm');
-            if (!form) return;
-            const steps = form.querySelectorAll('.form-step');
-            const pSteps = document.querySelectorAll('.progress-step');
-            
-            if (n === 1 && !validateStepCat(currentStepCat)) return;
-            
-            steps[currentStepCat - 1].classList.remove('active');
-            if (pSteps[currentStepCat - 1]) pSteps[currentStepCat - 1].classList.remove('active');
-            
-            currentStepCat += n;
-            
-            if (currentStepCat > totalStepsCat) {
-                form.submit();
-                return;
-            }
-            
-            steps[currentStepCat - 1].classList.add('active');
-            if (pSteps[currentStepCat - 1]) pSteps[currentStepCat - 1].classList.add('active');
-            
-            document.getElementById('prevBtnCat').style.display = currentStepCat === 1 ? 'none' : 'block';
-            document.getElementById('nextBtnCat').textContent = currentStepCat === totalStepsCat ? 'Submit Application' : 'Next';
-        };
-
-        function validateStepCat(step) {
-            let isValid = true;
-            const currentStepEl = document.getElementById(`step-${step}`);
-            if (!currentStepEl) return true;
-            
-            const requiredInputs = currentStepEl.querySelectorAll('[required]');
-            requiredInputs.forEach(input => {
-                if (!input.value || input.value.trim() === '') {
-                    isValid = false;
-                    input.classList.add('input-error');
-                } else {
-                    input.classList.remove('input-error');
-                }
-            });
-
-            // Mark name fields as touched and trigger validation
-            if (step === 1) {
-                const nameInputs = currentStepEl.querySelectorAll('#first_name_cat, #middle_name_cat, #last_name_cat');
-                nameInputs.forEach(input => {
-                    input.classList.add('touched');
-                    input.dispatchEvent(new Event('input', { bubbles: true }));
-                });
-                // Compose full_name_cat before moving forward
-                composeFullNameCat();
-            }
-
-            // Check for real-time validation errors
-            const errorWrappers = currentStepEl.querySelectorAll('.input-wrapper.error');
-            if (errorWrappers.length > 0) {
-                isValid = false;
-            }
-
-            return isValid;
-        }
-
-        // Auto-compose hidden full_name_cat
-        function composeFullNameCat() {
-            const fn = (document.getElementById('first_name_cat')?.value || '').trim();
-            const ln = (document.getElementById('last_name_cat')?.value || '').trim();
-            const mn = (document.getElementById('middle_name_cat')?.value || '').trim();
-            const hidden = document.getElementById('full_name_cat');
-            if (hidden) {
-                hidden.value = `${fn} ${mn ? mn + ' ' : ''}${ln}`.trim();
-            }
-        }
-
-        // Name validation helper
-        function validateNameField(value) {
-            const nameRegex = /^[a-zA-Z\s.\-']{2,50}$/;
-            if (!value.trim()) return { valid: false, message: "Required" };
-            if (value.trim().length < 2) return { valid: false, message: "Too short" };
-            if (!nameRegex.test(value)) return { valid: false, message: "Letters only" };
-            if (/(.)\\1\\1/.test(value)) return { valid: false, message: "No repeating chars" };
-            return { valid: true };
-        }
-
-        function setFieldError(wrapper, errorDiv, message) {
-            if (!wrapper) return;
-            if (message) {
-                wrapper.classList.add('error');
-                wrapper.classList.remove('success');
-                if (errorDiv) errorDiv.innerText = message;
-            } else {
-                wrapper.classList.remove('error');
-                wrapper.classList.add('success');
-            }
-        }
-
-        // Real-time validation for name fields
-        document.getElementById('last_name_cat')?.addEventListener('input', function() {
-            const res = validateNameField(this.value);
-            const wrapper = document.getElementById('lastNameCatWrapper');
-            const errDiv = document.getElementById('lastNameCatError');
-            setFieldError(wrapper, errDiv, res.valid ? null : res.message);
-            composeFullNameCat();
-        });
-
-        document.getElementById('first_name_cat')?.addEventListener('input', function() {
-            const res = validateNameField(this.value);
-            const wrapper = document.getElementById('firstNameCatWrapper');
-            const errDiv = document.getElementById('firstNameCatError');
-            setFieldError(wrapper, errDiv, res.valid ? null : res.message);
-            composeFullNameCat();
-        });
-
-        document.getElementById('middle_name_cat')?.addEventListener('input', function() {
-            const res = validateNameField(this.value);
-            const wrapper = document.getElementById('middleNameCatWrapper');
-            const errDiv = document.getElementById('middleNameCatError');
-            if (this.value && !res.valid) {
-                setFieldError(wrapper, errDiv, res.message);
-            } else {
-                setFieldError(wrapper, errDiv, null);
-            }
-            composeFullNameCat();
-        });
-
-        function initLocationOnLoad() {
-            const provSelect = document.getElementById('province_cat');
-            const citySelect = document.getElementById('city_cat');
-            const brgySelect = document.getElementById('barangay_cat');
-
-            if (!provSelect || !citySelect) return;
-
-            if (typeof LOCATION_DATA === 'undefined') {
-                setTimeout(initLocationOnLoad, 200);
-                return;
-            }
-
-            provSelect.addEventListener('change', () => {
-                citySelect.innerHTML = '<option value="">-- City --</option>';
-                if (brgySelect) brgySelect.innerHTML = '<option value="">-- Barangay --</option>';
-                
-                const prov = provSelect.value;
-                if (prov && LOCATION_DATA[prov]) {
-                    const cities = Object.keys(LOCATION_DATA[prov]).sort();
-                    cities.forEach(city => {
-                        const opt = document.createElement('option');
-                        opt.value = opt.textContent = city;
-                        citySelect.appendChild(opt);
-                    });
-
-                    if (cities.length > 0 && brgySelect) {
-                        const firstCity = cities[0];
-                        citySelect.value = firstCity;
-                        
-                        if (LOCATION_DATA[prov][firstCity]) {
-                            LOCATION_DATA[prov][firstCity].sort().forEach(b => {
-                                const opt = document.createElement('option');
-                                opt.value = opt.textContent = b;
-                                brgySelect.appendChild(opt);
-                            });
-                        }
-                    }
-                }
-            });
-            
-            citySelect.addEventListener('change', () => {
-                if (brgySelect) brgySelect.innerHTML = '<option value="">-- Barangay --</option>';
-                const prov = provSelect.value;
-                const city = citySelect.value;
-                
-                if (prov && city && LOCATION_DATA[prov] && LOCATION_DATA[prov][city]) {
-                    LOCATION_DATA[prov][city].sort().forEach(b => {
-                        const opt = document.createElement('option');
-                        opt.value = opt.textContent = b;
-                        brgySelect.appendChild(opt);
-                    });
-                }
-            });
-
-            if (provSelect.value) {
-                provSelect.dispatchEvent(new Event('change'));
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', initLocationOnLoad);
-    })();
-</script>
-<script src="{{ url_for('static', path='/js/auth/location_data.js') }}"></script>
+<script src="{{ url_for('static', path='/js/auth/location_data.js') }}"></script>

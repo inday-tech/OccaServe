@@ -24,22 +24,21 @@
             <div class="form-group">
                 <label for="last_name">Last Name</label>
                 <div class="input-wrapper" id="lastNameWrapper">
-                    <input type="text" id="last_name" name="last_name" class="minimal-input" required placeholder="e.g. Dela Cruz">
+                    <input type="text" id="last_name" name="last_name" class="minimal-input" required>
                     <div id="lastNameError" class="error-drawer"></div>
                 </div>
             </div>
             <div class="form-group">
                 <label for="first_name">First Name</label>
                 <div class="input-wrapper" id="firstNameWrapper">
-                    <input type="text" id="first_name" name="first_name" class="minimal-input" required placeholder="e.g. Juan">
+                    <input type="text" id="first_name" name="first_name" class="minimal-input" required>
                     <div id="firstNameError" class="error-drawer"></div>
                 </div>
             </div>
             <div class="form-group">
                 <label for="middle_name">Middle Name</label>
                 <div class="input-wrapper" id="middleNameWrapper">
-                    <input type="text" id="middle_name" name="middle_name" class="minimal-input" 
-                        placeholder="e.g. Santos">
+                    <input type="text" id="middle_name" name="middle_name" class="minimal-input">
                     <div id="middleNameError" class="error-drawer"></div>
                 </div>
             </div>
@@ -49,7 +48,7 @@
             <label for="email">Email Address</label>
             <div class="input-wrapper" id="emailWrapper">
                 <input type="email" id="email" name="email" class="minimal-input" required
-                    placeholder="name@example.com" autocomplete="off"
+                    autocomplete="off"
                     value="{{ user.email if user else (submitted_data.email if submitted_data else '') }}">
                 <div id="emailError" class="error-drawer">Required</div>
             </div>
@@ -59,7 +58,7 @@
             <label for="mobile_number">Mobile Number</label>
             <div class="input-wrapper" id="mobileWrapper">
                 <input type="tel" id="mobile_number" name="mobile_number" class="minimal-input" required
-                    placeholder="0917 000 0000" maxlength="11"
+                    maxlength="11"
                     value="{{ user.phone_number if user else (submitted_data.mobile_number if submitted_data else '') }}">
                 <div id="mobileError" class="error-drawer">Required</div>
             </div>
@@ -69,7 +68,7 @@
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem; position: relative; z-index: 1;">
             <div class="form-group">
                 <label for="province_cust">Province</label>
-                <div class="input-wrapper">
+                <div class="input-wrapper" id="provinceCustWrapper">
                     <select id="province_cust" class="minimal-input" required>
                         <option value="">-- Province --</option>
                         <option value="Laguna">Laguna</option>
@@ -77,30 +76,34 @@
                         <option value="Cavite">Cavite</option>
                         <option value="Rizal">Rizal</option>
                     </select>
+                    <div id="provinceCustError" class="error-drawer">Required</div>
                 </div>
             </div>
             <div class="form-group">
                 <label for="city_cust">City / Municipality</label>
-                <div class="input-wrapper">
+                <div class="input-wrapper" id="cityCustWrapper">
                     <select id="city_cust" class="minimal-input" required disabled>
                         <option value="">-- City --</option>
                     </select>
+                    <div id="cityCustError" class="error-drawer">Required</div>
                 </div>
             </div>
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem; position: relative; z-index: 1;">
             <div class="form-group">
                 <label for="barangay_cust">Barangay</label>
-                <div class="input-wrapper">
+                <div class="input-wrapper" id="barangayCustWrapper">
                     <select id="barangay_cust" class="minimal-input" required disabled>
                         <option value="">-- Barangay --</option>
                     </select>
+                    <div id="barangayCustError" class="error-drawer">Required</div>
                 </div>
             </div>
             <div class="form-group">
                 <label for="street_cust">Street / Landmark</label>
-                <div class="input-wrapper">
-                    <input type="text" id="street_cust" class="minimal-input" placeholder="e.g. Unit 12A, Diamond Bldg" required>
+                <div class="input-wrapper" id="streetCustWrapper">
+                    <input type="text" id="street_cust" class="minimal-input" required>
+                    <div id="streetCustError" class="error-drawer">Required</div>
                 </div>
             </div>
         </div>
@@ -112,7 +115,7 @@
                 <div class="input-wrapper" id="passwordWrapper">
                     <div class="password-field-wrapper">
                         <input type="password" id="password" name="password" class="minimal-input has-toggle" required
-                            placeholder="••••••••" autocomplete="new-password">
+                            autocomplete="new-password">
                         <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility(this)" tabindex="-1">
                             <i class="fas fa-eye"></i>
                         </button>
@@ -126,7 +129,7 @@
                 <div class="input-wrapper" id="confirmWrapper">
                     <div class="password-field-wrapper">
                         <input type="password" id="confirm_password" name="confirm_password" class="minimal-input has-toggle" required
-                            placeholder="••••••••" autocomplete="new-password">
+                            autocomplete="new-password">
                         <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility(this)" tabindex="-1">
                             <i class="fas fa-eye"></i>
                         </button>
@@ -180,8 +183,25 @@
             
             const errorWrappers = form.querySelectorAll('.input-wrapper.error');
             if (errorWrappers.length > 0) {
+                // Focus the first invalid field for better usability
+                errorWrappers[0].querySelector('input, select')?.focus();
                 return false;
             }
+
+            // --- DOUBLE SUBMISSION SECURITY LOCK & LOADER ---
+            const submitBtn = form.querySelector('.btn-luxury-submit');
+            if (submitBtn) {
+                if (submitBtn.disabled) return false;
+                submitBtn.disabled = true;
+                submitBtn.style.opacity = '0.7';
+                submitBtn.style.cursor = 'wait';
+                submitBtn.innerHTML = `<i class="fas fa-circle-notch fa-spin"></i> <span>Creating Secure Account...</span>`;
+            }
+
+            setTimeout(() => {
+                form.submit();
+            }, 50);
+            return false;
         }
         return true;
     };

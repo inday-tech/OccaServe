@@ -67,11 +67,7 @@ async function openAddPackageModal() {
         if (form.reservation_fee) form.reservation_fee.value = 5000;
         if (form.min_contract_amount) form.min_contract_amount.value = '';
         
-        // Reset Contract Term fields
-        if (form.downpayment_type) form.downpayment_type.value = 'fixed';
-        if (form.payment_terms) form.payment_terms.value = '';
-        if (form.cancellation_policy) form.cancellation_policy.value = '';
-        if (form.area_coverage) form.area_coverage.value = '';
+
 
         // Reset Image Preview
         const preview = document.getElementById('pkgImagePreview');
@@ -90,6 +86,10 @@ async function openAddPackageModal() {
 
         // Initialize Menu Library Tab
         loadPkgMenuLibrary();
+        
+        if (typeof window.reactivelyValidateForm === 'function') {
+            window.reactivelyValidateForm();
+        }
         
         safeOpenModal('packageModal');
     } catch (e) {
@@ -133,11 +133,10 @@ async function editPackage(pkgId) {
         if (form.utility_cost) form.utility_cost.value = pkg.utility_cost || 0;
         if (form.equipment_cost) form.equipment_cost.value = pkg.equipment_cost || 0;
 
-        // Populate Contract Terms
-        if (form.downpayment_type) form.downpayment_type.value = pkg.downpayment_type || 'fixed';
-        if (form.payment_terms) form.payment_terms.value = pkg.payment_terms || '';
-        if (form.cancellation_policy) form.cancellation_policy.value = pkg.cancellation_policy || '';
-        if (form.area_coverage) form.area_coverage.value = pkg.area_coverage || '';
+
+        if (form.selection_rules) {
+            form.selection_rules.value = pkg.selection_rules ? JSON.stringify(pkg.selection_rules) : '';
+        }
         
         const ingDisplay = document.getElementById('pkgIngredientCostDisplay');
         if (ingDisplay) {
@@ -165,6 +164,10 @@ async function editPackage(pkgId) {
         // Reset wizard to Step 1
         const firstStep = document.getElementById('step-btn-basic');
         if (firstStep) switchPackageTab(firstStep, 'basic');
+
+        if (typeof window.reactivelyValidateForm === 'function') {
+            window.reactivelyValidateForm();
+        }
 
         safeOpenModal('packageModal');
     } catch (e) {
@@ -263,8 +266,216 @@ function editCustomInclusion(btn, event) {
     }
 }
 
+// Dynamic Wizard Navigation & Step validations
+function validateTab(tabName, silent = false) {
+    const form = document.getElementById('packageForm');
+    if (!form) return true;
+    
+    let isValid = true;
+    
+    // Clear previous inline errors
+    if (!silent) {
+        document.querySelectorAll('.inline-error-badge').forEach(b => b.remove());
+        document.querySelectorAll('.control-pro').forEach(c => {
+            c.style.borderColor = '';
+            c.classList.remove('error-pulse');
+        });
+    }
+
+    const addError = (input, msg) => {
+        isValid = false;
+        if (silent || !input) return;
+        input.style.borderColor = '#ef4444';
+        const badge = document.createElement('small');
+        badge.className = 'inline-error-badge';
+        badge.style = 'color: #ef4444; font-size: 11px; font-weight: 700; margin-top: 4px; display: block;';
+        badge.innerText = msg;
+        input.closest('.form-group-pro').appendChild(badge);
+        
+        // Add a premium pulse warning class
+        input.classList.add('error-pulse');
+        setTimeout(() => input.classList.remove('error-pulse'), 1000);
+    };
+
+    if (tabName === 'basic') {
+        const nameVal = form.name.value.trim();
+        if (!nameVal) {
+            addError(form.name, "Package Name is required.");
+        }
+        
+        const leadTimeVal = parseInt(form.booking_lead_time.value);
+        if (isNaN(leadTimeVal) || leadTimeVal < 3) {
+            addError(form.booking_lead_time, "Lead time must be at least 3 days.");
+        }
+    }
+    
+    if (tabName === 'menu') {
+        const selectedDishes = document.querySelectorAll('.menu-select-card.selected').length;
+        if (selectedDishes === 0) {
+            isValid = false;
+            if (!silent) {
+                const container = document.getElementById('pkgMenuLibraryContainer');
+                if (container) {
+                    container.style.border = '2px dashed #ef4444';
+                    setTimeout(() => container.style.border = '', 3000);
+                    
+                    const badge = document.createElement('div');
+                    badge.className = 'inline-error-badge text-center py-2';
+                    badge.style = 'color: #ef4444; font-size: 11px; font-weight: 800;';
+                    badge.innerText = "Please select at least 1 menu item from your library.";
+                    container.parentNode.appendChild(badge);
+                }
+            }
+        }
+    }
+    
+    if (tabName === 'pricing') {
+        const rawPrice = form.price_per_head.value.replace(/,/g, '');
+        const price = parseFloat(rawPrice);
+        if (isNaN(price) || price <= 0) {
+            addError(form.price_per_head, "Price per head must be greater than 0.");
+        }
+        
+        const minGuests = parseInt(form.min_guests.value);
+        if (isNaN(minGuests) || minGuests < 10) {
+            addError(form.min_guests, "Minimum guests must be at least 10.");
+        }
+        
+        const rawResFee = form.reservation_fee.value.replace(/,/g, '');
+        const resFee = parseFloat(rawResFee);
+        if (isNaN(resFee) || resFee <= 0) {
+            addError(form.reservation_fee, "Reservation fee must be greater than 0.");
+        } else if (price > 0 && minGuests > 0) {
+            const maxAllowedFee = (price * minGuests) * 0.5; // 50% limit
+            if (resFee > maxAllowedFee) {
+                addError(form.reservation_fee, `Reservation fee cannot exceed 50% of the total base package cost (₱${maxAllowedFee.toLocaleString()}).`);
+            }
+        }
+    }
+    
+    return isValid;
+}
+
+window.reactivelyValidateForm = function() {
+    const isBasicValid = validateTab('basic', true);
+    const isPerksValid = validateTab('perks', true);
+    const isMenuValid = validateTab('menu', true);
+    const isPricingValid = validateTab('pricing', true);
+    
+    const isAllValid = isBasicValid && isPerksValid && isMenuValid && isPricingValid;
+    
+    // Enable or disable Save Package button reactively
+    const saveBtn = document.getElementById('pkgSaveBtn');
+    if (saveBtn) {
+        if (isAllValid) {
+            saveBtn.disabled = false;
+            saveBtn.style.opacity = '1';
+            saveBtn.style.cursor = 'pointer';
+            saveBtn.style.pointerEvents = 'auto';
+            saveBtn.style.background = 'linear-gradient(135deg, #FF7B54 0%, #ff5c2b 100%)';
+            saveBtn.innerHTML = '<i class="fas fa-check-circle"></i> Save Package';
+        } else {
+            saveBtn.disabled = true;
+            saveBtn.style.opacity = '0.4';
+            saveBtn.style.cursor = 'not-allowed';
+            saveBtn.style.pointerEvents = 'none';
+            saveBtn.style.background = '#94a3b8';
+            saveBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Form Incomplete';
+        }
+    }
+    
+    // Dynamically toggle locks on step buttons themselves!
+    const basicStep = document.getElementById('step-btn-basic');
+    const perksStep = document.getElementById('step-btn-perks');
+    const menuStep = document.getElementById('step-btn-menu');
+    const pricingStep = document.getElementById('step-btn-pricing');
+    
+    if (perksStep) {
+        if (isBasicValid) {
+            perksStep.style.opacity = '1';
+            perksStep.style.pointerEvents = 'auto';
+        } else {
+            perksStep.style.opacity = '0.4';
+            perksStep.style.pointerEvents = 'none';
+        }
+    }
+    if (menuStep) {
+        if (isBasicValid && isPerksValid) {
+            menuStep.style.opacity = '1';
+            menuStep.style.pointerEvents = 'auto';
+        } else {
+            menuStep.style.opacity = '0.4';
+            menuStep.style.pointerEvents = 'none';
+        }
+    }
+    if (pricingStep) {
+        if (isBasicValid && isPerksValid && isMenuValid) {
+            pricingStep.style.opacity = '1';
+            pricingStep.style.pointerEvents = 'auto';
+        } else {
+            pricingStep.style.opacity = '0.4';
+            pricingStep.style.pointerEvents = 'none';
+        }
+    }
+};
+
+window.goToWizardNextStep = function(nextTab) {
+    const nextBtn = document.getElementById('step-btn-' + nextTab);
+    if (nextBtn) {
+        switchPackageTab(nextBtn, nextTab);
+    }
+};
+
+window.goToWizardBackStep = function(prevTab) {
+    const prevBtn = document.getElementById('step-btn-' + prevTab);
+    if (prevBtn) {
+        // Validation bypass on back navigation
+        document.querySelectorAll('.pkg-step').forEach(s => s.classList.remove('active'));
+        prevBtn.classList.add('active');
+
+        document.querySelectorAll('#packageModal .tab-pane-pro').forEach(p => p.classList.remove('active'));
+        const target = document.getElementById('tab-' + prevTab);
+        if (target) {
+            target.classList.add('active');
+        }
+        
+        // Update Progress Bar
+        const stepsOrder = ['basic', 'perks', 'menu', 'pricing'];
+        const targetIdx = stepsOrder.indexOf(prevTab);
+        const progressEl = document.getElementById('pkgWizardProgress');
+        if (progressEl) {
+            const pct = ((targetIdx + 1) / stepsOrder.length) * 100;
+            progressEl.style.width = pct + '%';
+        }
+
+        // Update Footer Buttons dynamically
+        switchPackageTab(prevBtn, prevTab);
+    }
+};
+
 function switchPackageTab(el, tabName) {
     if (!el) return;
+    
+    // Validate previous tabs on forward click
+    const stepsOrder = ['basic', 'perks', 'menu', 'pricing'];
+    const targetIdx = stepsOrder.indexOf(tabName);
+    const activeStepEl = document.querySelector('.pkg-step.active');
+    const currentTabName = activeStepEl ? activeStepEl.id.replace('step-btn-', '') : 'basic';
+    const currentIdx = stepsOrder.indexOf(currentTabName);
+    
+    if (targetIdx > currentIdx) {
+        for (let i = currentIdx; i < targetIdx; i++) {
+            if (!validateTab(stepsOrder[i])) {
+                const failEl = document.getElementById('step-btn-' + stepsOrder[i]);
+                if (failEl) {
+                    document.querySelectorAll('.pkg-step').forEach(s => s.classList.remove('active'));
+                    failEl.classList.add('active');
+                }
+                return;
+            }
+        }
+    }
+
     document.querySelectorAll('.pkg-step').forEach(s => s.classList.remove('active'));
     el.classList.add('active');
 
@@ -276,7 +487,60 @@ function switchPackageTab(el, tabName) {
         if (body) body.scrollTop = 0;
     }
 
+    // Update Progress Bar
+    const progressEl = document.getElementById('pkgWizardProgress');
+    if (progressEl) {
+        const pct = ((targetIdx + 1) / stepsOrder.length) * 100;
+        progressEl.style.width = pct + '%';
+    }
+
+    // Update Footer Buttons dynamically!
+    const footer = document.getElementById('pkgWizardFooter');
+    if (footer) {
+        let buttonsHtml = '';
+        if (tabName === 'basic') {
+            buttonsHtml = `
+                <button type="button" class="btn-secondary-pro" onclick="window.closeModal('packageModal')">Cancel</button>
+                <button type="button" class="btn-primary-pro" onclick="window.goToWizardNextStep('perks')">
+                    Next: Inclusions <i class="fas fa-chevron-right" style="margin-left: 6px;"></i>
+                </button>
+            `;
+        } else if (tabName === 'perks') {
+            buttonsHtml = `
+                <button type="button" class="btn-secondary-pro" onclick="window.goToWizardBackStep('basic')">
+                    <i class="fas fa-chevron-left" style="margin-right: 6px;"></i> Back
+                </button>
+                <button type="button" class="btn-primary-pro" onclick="window.goToWizardNextStep('menu')">
+                    Next: Menu Setup <i class="fas fa-chevron-right" style="margin-left: 6px;"></i>
+                </button>
+            `;
+        } else if (tabName === 'menu') {
+            buttonsHtml = `
+                <button type="button" class="btn-secondary-pro" onclick="window.goToWizardBackStep('perks')">
+                    <i class="fas fa-chevron-left" style="margin-right: 6px;"></i> Back
+                </button>
+                <button type="button" class="btn-primary-pro" onclick="window.goToWizardNextStep('pricing')">
+                    Next: Pricing <i class="fas fa-chevron-right" style="margin-left: 6px;"></i>
+                </button>
+            `;
+        } else if (tabName === 'pricing') {
+            buttonsHtml = `
+                <button type="button" class="btn-secondary-pro" onclick="window.goToWizardBackStep('menu')">
+                    <i class="fas fa-chevron-left" style="margin-right: 6px;"></i> Back
+                </button>
+                <button type="submit" id="pkgSaveBtn" class="btn-primary-pro">
+                    <i class="fas fa-check-circle" style="margin-right: 6px;"></i> Save Package
+                </button>
+            `;
+        }
+        footer.innerHTML = buttonsHtml;
+    }
+
     if (tabName === 'menu') loadPkgMenuLibrary();
+    
+    if (typeof window.reactivelyValidateForm === 'function') {
+        window.reactivelyValidateForm();
+    }
 }
 
 async function loadPkgMenuLibrary() {
@@ -307,6 +571,7 @@ async function loadPkgMenuLibrary() {
                 <div class="menu-select-card ${isSelected ? 'selected' : ''}" 
                      data-id="${item.id}"
                      data-cost="${item.cost_price || 0}"
+                     data-category="${item.category}"
                      onclick="window.toggleLibItemSelectCard(this, ${item.id})"
                      style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; cursor: pointer; transition: all 0.2s; margin-bottom: 0.5rem; background: ${isSelected ? '#f0fdf4' : 'white'}; border-color: ${isSelected ? '#22c55e' : '#e2e8f0'};">
                     <img src="${item.image_url || DISH_PLACEHOLDER}" alt="${item.name}" onerror="this.src='${DISH_PLACEHOLDER}'" style="width: 40px; height: 40px; border-radius: 0.5rem; object-fit: cover;">
@@ -320,6 +585,7 @@ async function loadPkgMenuLibrary() {
             `;
         }).join('');
         calculateCosts(); // Initial calc
+        updateSelectionRulesBuilder();
     } catch (e) {
         console.error('[Packages] Menu library fetch error:', e);
         container.innerHTML = '<div class="text-center py-5 text-red-400 text-xs">Error loading library.</div>';
@@ -342,6 +608,89 @@ function toggleLibItemSelectCard(card, id) {
         card.querySelector('i').className = 'far fa-circle text-slate-200';
     }
     calculateCosts();
+    updateSelectionRulesBuilder();
+    
+    if (typeof window.reactivelyValidateForm === 'function') {
+        window.reactivelyValidateForm();
+    }
+}
+
+window.clampSelectionRule = function(input, max) {
+    let val = parseInt(input.value);
+    const parent = input.closest('.form-group-pro');
+    const err = parent.querySelector('.error-msg');
+    
+    if (val > max) {
+        input.value = max;
+        input.style.borderColor = '#ef4444';
+        if (err) {
+            err.innerText = `Limit cannot exceed the ${max} selected dishes.`;
+            err.style.display = 'block';
+        }
+    } else {
+        input.style.borderColor = '';
+        if (err) err.style.display = 'none';
+    }
+    compileSelectionRules();
+};
+
+function updateSelectionRulesBuilder() {
+    const container = document.getElementById('selectionRulesContainer');
+    if (!container) return;
+
+    // Get selected dish count per category
+    const catCounts = {};
+    const selectedCats = new Set();
+    document.querySelectorAll('.menu-select-card.selected').forEach(card => {
+        const cat = card.dataset.category;
+        if (cat) {
+            selectedCats.add(cat);
+            catCounts[cat] = (catCounts[cat] || 0) + 1;
+        }
+    });
+
+    if (selectedCats.size === 0) {
+        container.innerHTML = '<div style="grid-column: 1 / -1; color: #94a3b8; font-size: 0.8rem;">Select menu items first to configure rules.</div>';
+        return;
+    }
+
+    // Try to load existing rules
+    let existingRules = {};
+    const hiddenInput = document.getElementById('selectionRulesHidden');
+    if (hiddenInput && hiddenInput.value) {
+        try {
+            existingRules = JSON.parse(hiddenInput.value);
+        } catch (e) {
+            existingRules = {};
+        }
+    }
+
+    container.innerHTML = '';
+    selectedCats.forEach(cat => {
+        const currentLimit = existingRules[cat] || '';
+        const maxLimit = catCounts[cat] || 1;
+        container.innerHTML += `
+            <div class="form-group-pro" style="margin-bottom: 0;">
+                <label style="font-size: 0.75rem; font-weight:700;">Choice Limit for ${cat} (Max: ${maxLimit})</label>
+                <input type="number" class="control-pro selection-rule-input" data-category="${cat}" value="${currentLimit}" placeholder="Unlimited" min="1" max="${maxLimit}" oninput="window.clampSelectionRule(this, ${maxLimit})">
+                <small class="error-msg text-red-500" style="font-size: 10px; display: none; margin-top: 4px; font-weight:600;"></small>
+            </div>
+        `;
+    });
+}
+
+function compileSelectionRules() {
+    const rules = {};
+    document.querySelectorAll('.selection-rule-input').forEach(input => {
+        const val = parseInt(input.value);
+        if (val > 0) {
+            rules[input.dataset.category] = val;
+        }
+    });
+    const hiddenInput = document.getElementById('selectionRulesHidden');
+    if (hiddenInput) {
+        hiddenInput.value = Object.keys(rules).length > 0 ? JSON.stringify(rules) : '';
+    }
 }
 
 function filterPkgMenuLibrary() {
@@ -609,16 +958,39 @@ function previewPackageImage(input) {
 document.addEventListener('DOMContentLoaded', () => {
     const pkgForm = document.getElementById('packageForm');
     if (pkgForm) {
-        pkgForm.addEventListener('input', calculateCosts);
+        pkgForm.addEventListener('input', () => {
+            calculateCosts();
+            if (typeof window.reactivelyValidateForm === 'function') {
+                window.reactivelyValidateForm();
+            }
+        });
+        pkgForm.addEventListener('change', () => {
+            if (typeof window.reactivelyValidateForm === 'function') {
+                window.reactivelyValidateForm();
+            }
+        });
         
         pkgForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = pkgForm.querySelector('button[type="submit"]');
             
+            // Strict Validation Guard for ALL tabs on submit
+            const stepsOrder = ['basic', 'perks', 'menu', 'pricing'];
+            for (let tab of stepsOrder) {
+                if (!validateTab(tab)) {
+                    const stepBtn = document.getElementById('step-btn-' + tab);
+                    if (stepBtn) switchPackageTab(stepBtn, tab);
+                    return;
+                }
+            }
+            
             // Clean numeric inputs
-            pkgForm.querySelectorAll('.js-format-comma, input[type="number"], input[inputmode="numeric"]').forEach(input => {
+            pkgForm.querySelectorAll('.js-format-comma, input[type="number"]:not(.selection-rule-input), input[inputmode="numeric"]').forEach(input => {
                 input.value = input.value.replace(/[, \s]/g, '');
             });
+
+            // Ensure selection rules are compiled before submit
+            if (typeof compileSelectionRules === 'function') compileSelectionRules();
 
             const data = new FormData(pkgForm);
             

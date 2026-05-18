@@ -57,6 +57,59 @@ document.addEventListener('DOMContentLoaded', function () {
         dateInput.setAttribute('min', today);
     }
 
+    // --- COMBO BUILDER LOGIC ---
+    window.handleComboSelection = function(checkbox) {
+        const grid = checkbox.closest('.combo-options-grid');
+        const limit = parseInt(grid.dataset.limit) || 0;
+        const itemId = grid.dataset.id;
+        
+        const checked = grid.querySelectorAll('.combo-checkbox:checked');
+        const count = checked.length;
+        
+        const counterEl = document.getElementById(`counter-combo-${itemId}`);
+        if (counterEl) {
+            counterEl.innerText = `${count} / ${limit} Selected`;
+            if (count === limit) {
+                counterEl.style.background = '#dcfce7';
+                counterEl.style.color = '#166534';
+            } else {
+                counterEl.style.background = '#ccfbf1';
+                counterEl.style.color = '#0f766e';
+            }
+        }
+        
+        const allBoxes = grid.querySelectorAll('.combo-checkbox');
+        if (count >= limit) {
+            allBoxes.forEach(cb => {
+                if (!cb.checked) cb.disabled = true;
+            });
+        } else {
+            allBoxes.forEach(cb => cb.disabled = false);
+        }
+    };
+
+    function buildCartData() {
+        const cart = [];
+        const menuIds = String(menuId).split(',').map(id => parseInt(id.trim())).filter(id => id);
+        const globalQty = parseInt(document.getElementById('quantity_input').value) || 1;
+        
+        menuIds.forEach(id => {
+            const choices = [];
+            const grid = document.querySelector(`.combo-options-grid[data-id="${id}"]`);
+            if (grid) {
+                grid.querySelectorAll('.combo-checkbox:checked').forEach(cb => {
+                    choices.push(cb.value);
+                });
+            }
+            cart.push({
+                id: id,
+                quantity: globalQty,
+                choices: choices
+            });
+        });
+        return JSON.stringify(cart);
+    }
+
     // --- NAVIGATION LOGIC ---
     window.nextScreen = async function (n, force = false) {
         if (!force && n > currentScreen) {
@@ -141,12 +194,34 @@ document.addEventListener('DOMContentLoaded', function () {
         if (err) err.classList.add('show');
     }
 
+    function validateCombos() {
+        let valid = true;
+        document.querySelectorAll('.combo-options-grid').forEach(grid => {
+            const limit = parseInt(grid.dataset.limit) || 0;
+            const itemId = grid.dataset.id;
+            const count = grid.querySelectorAll('.combo-checkbox:checked').length;
+            if (count !== limit && limit > 0) {
+                valid = false;
+                const counterEl = document.getElementById(`counter-combo-${itemId}`);
+                if (counterEl) {
+                    counterEl.style.background = '#fee2e2';
+                    counterEl.style.color = '#b91c1c';
+                }
+            }
+        });
+        if (!valid) alert("Please complete your platter selections.");
+        return valid;
+    }
+
     // --- DRAFT CREATION ---
     async function createDraftBooking() {
+        if (!validateCombos()) return false;
+
         const form = document.getElementById('checkoutForm');
         const formData = new FormData(form);
         formData.append('caterer_id', catererId);
         formData.append('menu_id', menuId);
+        formData.append('cart_data', buildCartData());
         formData.append('is_draft', 'true');
         formData.append('total_amount', calculateTotal());
 
@@ -284,6 +359,7 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('booking_id', currentId);
         formData.append('caterer_id', catererId);
         formData.append('menu_id', menuId);
+        formData.append('cart_data', buildCartData());
         formData.append('total_amount', calculateTotal());
         
         try {

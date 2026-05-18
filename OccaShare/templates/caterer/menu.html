@@ -73,6 +73,9 @@
                         data-allergen-info='{{ item.allergen_info|tojson if item.allergen_info else "[]" }}'
                         data-is-hidden="{{ 'true' if item.is_hidden else 'false' }}"
                         data-image-url="{{ item.image_url or '' }}"
+                        data-is-combo="{{ 'true' if item.is_combo else 'false' }}"
+                        data-max-choices="{{ item.max_choices or 0 }}"
+                        data-combo-options='{{ item.combo_options|tojson if item.combo_options else "[]" }}'
                         onclick="editMenuItem(this)">
                         <i class="fas fa-edit"></i> Edit
                     </button>
@@ -254,6 +257,32 @@
                 <!-- TAB 3: PREFERENCES -->
                 <div id="tab-labels" class="dish-tab-content">
                     <div class="form-group-pro">
+                        <label>Combo / Platter Mode</label>
+                        <div class="visibility-toggle-pro" style="background: #e0e7ff; color: #3730a3;">
+                            <span>Enable Combo/Bilao Settings</span>
+                            <label class="switch-pro">
+                                <input type="checkbox" name="is_combo" id="isComboCheckbox" onchange="toggleComboSettings()">
+                                <span class="slider-pro"></span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div id="comboSettingsContainer" style="display: none; background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                        <div class="form-row-pro">
+                            <div class="form-group-pro">
+                                <label>Max Choices Allowed</label>
+                                <input type="number" name="max_choices" id="maxChoicesInput" class="control-pro" placeholder="e.g. 3" min="1">
+                            </div>
+                        </div>
+                        <div class="form-group-pro">
+                            <label>Available Combo Options</label>
+                            <input type="text" id="comboOptionsInput" class="control-pro" placeholder="e.g. Pancit, Beef Caldereta, Pork BBQ (Comma separated)">
+                            <small style="color: #64748b;">Separate each option with a comma.</small>
+                            <input type="hidden" name="combo_options" id="hiddenComboOptions">
+                        </div>
+                    </div>
+
+                    <div class="form-group-pro">
                         <label>Visibility</label>
                         <div class="visibility-toggle-pro">
                             <span>Show in Customer Menu</span>
@@ -382,7 +411,10 @@
                 dietary_tags: el.dataset.dietaryTags,
                 allergen_info: el.dataset.allergenInfo,
                 is_hidden: el.dataset.isHidden === 'true',
-                image_url: el.dataset.imageUrl
+                image_url: el.dataset.imageUrl,
+                is_combo: el.dataset.isCombo === 'true',
+                max_choices: el.dataset.maxChoices || 0,
+                combo_options: el.dataset.comboOptions || '[]'
             };
 
             modalTitle.innerText = 'Edit Dish Library';
@@ -404,6 +436,17 @@
                 window.applyCommaFormatting(form.addon_price);
             }
             toggleAddonPrice();
+            
+            const comboCb = document.getElementById('isComboCheckbox');
+            if (comboCb) comboCb.checked = item.is_combo;
+            form.max_choices.value = item.max_choices;
+            try {
+                const parsedOptions = JSON.parse(item.combo_options);
+                document.getElementById('comboOptionsInput').value = parsedOptions ? parsedOptions.join(', ') : '';
+            } catch(e) {
+                document.getElementById('comboOptionsInput').value = '';
+            }
+            toggleComboSettings();
 
             let tags = [];
             try { tags = JSON.parse(item.dietary_tags); } catch(e) { tags = []; }
@@ -560,6 +603,12 @@
         const cb = document.getElementById('isAddonCheckbox');
         if (cb && addonPriceContainer) addonPriceContainer.style.display = cb.checked ? 'block' : 'none';
     }
+    
+    function toggleComboSettings() {
+        const cb = document.getElementById('isComboCheckbox');
+        const container = document.getElementById('comboSettingsContainer');
+        if (cb && container) container.style.display = cb.checked ? 'block' : 'none';
+    }
 
     function toggleDropdown(btn, e) {
         if (e) e.stopPropagation();
@@ -642,6 +691,16 @@
         
         // Map is_visible checkbox to is_hidden for backend
         data.set('is_hidden', !this.querySelector('#isVisibleCheckbox').checked);
+        
+        // Map combo options
+        if (this.querySelector('#isComboCheckbox').checked) {
+            const rawOptions = document.getElementById('comboOptionsInput').value;
+            const optionsArray = rawOptions.split(',').map(s => s.trim()).filter(s => s !== '');
+            data.set('combo_options', JSON.stringify(optionsArray));
+        } else {
+            data.set('combo_options', JSON.stringify([]));
+            data.set('max_choices', 0);
+        }
         
         // Include Recipe Data
         data.set('recipe_data', JSON.stringify(currentRecipe));

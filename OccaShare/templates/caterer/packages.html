@@ -133,10 +133,11 @@
                         <div class="step-icon"><i class="fas fa-calculator"></i></div>
                         <span class="step-label">Pricing</span>
                     </div>
-                    <div id="step-btn-terms" class="pkg-step" onclick="window.switchPackageTab(this, 'terms')">
-                        <div class="step-icon"><i class="fas fa-file-contract"></i></div>
-                        <span class="step-label">Contracts</span>
-                    </div>
+                 
+                 <!-- Wizard Progress Bar -->
+                 <div class="pkg-progress-bar-container" style="width: 100%; height: 6px; background: #e2e8f0; border-radius: 4px; margin-top: 1rem; margin-bottom: 1.5rem; overflow: hidden; border: 1px solid #cbd5e1;">
+                     <div id="pkgWizardProgress" style="width: 25%; height: 100%; background: linear-gradient(90deg, #3b82f6 0%, #10b981 100%); transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);"></div>
+                 </div>
                 </div>
 
                 <!-- Tab 1: Basic Info -->
@@ -219,6 +220,16 @@
                         <div id="pkgMenuLibraryContainer" class="menu-items-scroll">
                         </div>
                     </div>
+
+                    <div style="margin-top: 1rem; background:#f0fdfa; border:1px solid #14b8a6; border-radius:var(--border-radius); padding:var(--space-md);">
+                        <label style="color: #0f766e; margin-bottom: 0.5rem; display: block;"><i class="fas fa-list-ol"></i> Customer Selection Limits</label>
+                        <p style="font-size: 0.8rem; color: #0d9488; margin-bottom: 1rem;">Set how many items a customer can choose per category. (e.g. 1 Beef, 2 Desserts). If left empty, they can choose unlimited.</p>
+                        
+                        <div id="selectionRulesContainer" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                            <!-- Rules will be built dynamically here via JS -->
+                        </div>
+                        <input type="hidden" name="selection_rules" id="selectionRulesHidden">
+                    </div>
                 </div>
                 <!-- Tab 4: Pricing -->
                 <div id="tab-pricing" class="tab-pane-pro">
@@ -292,35 +303,9 @@
                     </div>
                 </div>
 
-                <!-- Tab 5: Contract Terms -->
-                <div id="tab-terms" class="tab-pane-pro">
-                    <div class="alert-info-pro" style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: flex; gap: 12px; align-items: flex-start;">
-                        <i class="fas fa-info-circle" style="color: #3b82f6; margin-top: 2px;"></i>
-                        <p style="font-size: 0.8rem; color: #1e3a8a; margin: 0; line-height: 1.5;">These terms will be automatically injected into your <b>Generated Contracts</b>. Setting clear policies here protects your business during the booking process.</p>
-                    </div>
-
-                    <div class="form-group-pro">
-                        <label>Downpayment / Reservation Policy</label>
-                        <select name="downpayment_type" class="control-pro" style="margin-bottom: 0.75rem;">
-                            <option value="fixed">Fixed Amount (Standard)</option>
-                            <option value="percentage">Percentage (%) of Total</option>
-                        </select>
-                        <textarea name="payment_terms" class="control-pro" rows="2" placeholder="e.g. 50% reservation fee required to block the date. Non-refundable."></textarea>
-                    </div>
-
-                    <div class="form-group-pro">
-                        <label>Cancellation & Refund Policy</label>
-                        <textarea name="cancellation_policy" class="control-pro" rows="3" placeholder="Define your refund tiers (e.g. 100% refund if cancelled 30 days before event)..."></textarea>
-                    </div>
-
-                    <div class="form-group-pro">
-                        <label>Service Coverage (Area Limit)</label>
-                        <input type="text" name="area_coverage" class="control-pro" placeholder="e.g. Within Metro Manila only. Outside areas subject to transpo fee.">
-                    </div>
-                </div>
             </div>
 
-            <div class="occ-modal-footer" style="padding: 1.25rem 2rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
+            <div class="occ-modal-footer" id="pkgWizardFooter" style="padding: 1.25rem 2rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
                 <button type="button" class="btn-secondary-pro" onclick="window.closeModal('packageModal')">Cancel</button>
                 <button type="submit" class="btn-primary-pro">
                     <i class="fas fa-check-circle"></i> Save Package

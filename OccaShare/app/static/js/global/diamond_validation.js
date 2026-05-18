@@ -1,6 +1,6 @@
 /**
  * DIAMOND STANDARD VALIDATION ENGINE
- * Ported from standalone auth pages to global scope for modal support.
+ * Centralized globally for OccaServe modal and standalone signup support.
  */
 
 (function() {
@@ -37,11 +37,8 @@
         let formattedInteger = integerPart ? new Intl.NumberFormat('en-US').format(parseInt(integerPart)) : '0';
         let formattedValue = decimalPart !== null ? `${formattedInteger}.${decimalPart}` : formattedInteger;
         
-        // Only update if changed to avoid cursor jumps
         if (input.value !== formattedValue) {
             input.value = formattedValue;
-            // Note: Cursor position logic for decimals can be complex; 
-            // for auto-computed fields it matters less, for manual it might drift.
         }
     };
 
@@ -91,6 +88,7 @@
             drawer.innerText = message;
         } else {
             wrapper.classList.remove('error');
+            drawer.innerText = ''; // Clear text completely when valid
         }
     };
 
@@ -103,24 +101,12 @@
 
             if (!name.trim()) return { valid: false, message: "Required" };
             if (name.length < 2) return { valid: false, message: "Too short" };
-            if (!nameRegex.test(name)) return { valid: false, message: "Letters/spaces only" };
+            if (!nameRegex.test(name)) return { valid: false, message: "Letters only" };
             if (dummyNames.includes(lowerName)) return { valid: false, message: "Use your real name" };
             
             // Smart gibberish check (3+ consecutive identical characters)
             if (/(.)\1\1/.test(lowerName)) {
-                return { valid: false, message: "Avoid repetitive characters" };
-            }
-
-            // Repetitive part check (e.g. John John)
-            const parts = lowerName.split(/\s+/).filter(p => p.length > 0);
-            if (parts.length >= 2) {
-                for (let i = 0; i < parts.length; i++) {
-                    for (let j = i + 1; j < parts.length; j++) {
-                        if (parts[i] === parts[j]) {
-                            return { valid: false, message: "Repeated name part detected" };
-                        }
-                    }
-                }
+                return { valid: false, message: "No repeating chars" };
             }
             
             return { valid: true };
@@ -129,24 +115,11 @@
             if (!val) return { valid: true }; // Optional
             return window.diamondValidators.name(val);
         },
-        businessName: async (name) => {
+        businessNameFormat: (name) => {
             if (!name) return { valid: false, message: "Business Name required" };
             if (name.length < 3) return { valid: false, message: "Too short (min 3)" };
-            
-            // Basic gibberish/numeric check
             if (/^\d+$/.test(name)) return { valid: false, message: "Cannot be only numbers" };
             if (/(.)\1\1\1/.test(name.toLowerCase())) return { valid: false, message: "Excessive repetitive characters" };
-
-            // Real-time AJAX Uniqueness Check
-            try {
-                const response = await fetch(`/auth/check-business-name?name=${encodeURIComponent(name)}`);
-                const data = await response.json();
-                if (!data.available) {
-                    return { valid: false, message: "Business name already registered" };
-                }
-            } catch (e) {
-                console.warn("Uniqueness check failed", e);
-            }
             return { valid: true };
         },
         email: (email) => {
@@ -161,21 +134,20 @@
             const valClean = val.replace(/\s/g, '');
 
             if (!valClean) return { valid: false, message: "Required" };
-            if (!mobileRegex.test(valClean)) return { valid: false, message: "11 digits (09XXXXXXXXX)" };
-            if (repetitiveRegex.test(valClean)) return { valid: false, message: "Invalid repetitive digits" };
+            if (!mobileRegex.test(valClean)) return { valid: false, message: "Format: 09XXXXXXXXX (11 digits)" };
+            if (repetitiveRegex.test(valClean)) return { valid: false, message: "Too many repetitive digits (e.g., 111)" };
             return { valid: true };
         },
         password: (p) => {
             if (!p) return { valid: false, message: "Required" };
-            if (p.length < 8) return { valid: false, message: "At least 8 characters" };
-            if (!/[A-Z]/.test(p)) return { valid: false, message: "Needs an uppercase letter" };
-            if (!/[0-9]/.test(p)) return { valid: false, message: "Needs a number" };
-            if (!/[!@#$%^&*(),.?":{}|<>]/.test(p)) return { valid: false, message: "Needs a special character" };
+            if (p.length < 8 || !/[A-Z]/.test(p) || !/[0-9]/.test(p) || !/[!@#$%^&*(),.?":{}|<>]/.test(p)) {
+                return { valid: false, message: "Min 8 chars, Uppercase, Number & Symbol" };
+            }
             return { valid: true };
         },
         years: (v) => {
             const cleanV = String(v).replace(/,/g, '');
-            if (cleanV === "" || cleanV === "null" || cleanV === "undefined") return { valid: false, message: "Years in Business is required." };
+            if (cleanV === "" || cleanV === "null" || cleanV === "undefined") return { valid: false, message: "Required" };
             if (!/^[0-9]+$/.test(cleanV)) return { valid: false, message: "Numbers only." };
             const n = parseInt(cleanV);
             if (n < 0 || n > 100) return { valid: false, message: "Enter a valid number (0-100)." };
@@ -183,7 +155,7 @@
         },
         minPax: (v) => {
             const cleanV = String(v).replace(/,/g, '');
-            if (cleanV === "" || cleanV === "null" || cleanV === "undefined") return { valid: false, message: "Minimum Pax is required." };
+            if (cleanV === "" || cleanV === "null" || cleanV === "undefined") return { valid: false, message: "Required" };
             if (!/^[0-9]+$/.test(cleanV)) return { valid: false, message: "Whole numbers only." };
             const n = parseInt(cleanV);
             if (n < 1 || n > 5000) return { valid: false, message: "Enter a valid number (1-5000)." };
@@ -191,7 +163,7 @@
         },
         price: (v) => {
             const cleanV = String(v).replace(/,/g, '');
-            if (cleanV === "" || cleanV === "null" || cleanV === "undefined") return { valid: false, message: "Starting Price is required." };
+            if (cleanV === "" || cleanV === "null" || cleanV === "undefined") return { valid: false, message: "Required" };
             const n = parseFloat(cleanV);
             if (isNaN(n) || n < 300 || n > 1000000) return { valid: false, message: "Price must be between 300 and 1,000,000." };
             return { valid: true };
@@ -202,15 +174,14 @@
     window.initDiamondValidation = function(rootElement = document) {
         console.log("Diamond Validation Initializing...");
         
-        const emailInputs = rootElement.querySelectorAll('input[type="email"]');
-        const nameInputs = rootElement.querySelectorAll('input[name="full_name"]');
-        const mobileInputs = rootElement.querySelectorAll('input[type="tel"]');
-        const passInputs = rootElement.querySelectorAll('input[type="password"]');
-        const yearInputs = rootElement.querySelectorAll('input[name="years_of_operation"]');
-        const paxInputs = rootElement.querySelectorAll('input[name="min_pax"]');
-        const priceInputs = rootElement.querySelectorAll('input[name="starting_price"]');
-        const commaInputs = rootElement.querySelectorAll('.js-format-comma');
-        const middleNameInputs = rootElement.querySelectorAll('input[name="middle_name"]');
+        const emailInputs = Array.from(rootElement.querySelectorAll('input[type="email"]')).filter(el => !el.id.includes('login'));
+        const mobileInputs = Array.from(rootElement.querySelectorAll('input[type="tel"], input[name="mobile_number"]')).filter(el => !el.id.includes('login'));
+        const passInputs = Array.from(rootElement.querySelectorAll('input[type="password"]')).filter(el => !el.id.includes('login'));
+        const yearInputs = Array.from(rootElement.querySelectorAll('input[name="years_of_operation"]')).filter(el => !el.id.includes('login'));
+        const paxInputs = Array.from(rootElement.querySelectorAll('input[name="min_pax"]')).filter(el => !el.id.includes('login'));
+        const priceInputs = Array.from(rootElement.querySelectorAll('input[name="starting_price"]')).filter(el => !el.id.includes('login'));
+        const commaInputs = Array.from(rootElement.querySelectorAll('.js-format-comma')).filter(el => !el.id.includes('login'));
+        const businessInputs = Array.from(rootElement.querySelectorAll('input[name="business_name"]')).filter(el => !el.id.includes('login'));
 
         // Apply formatting listeners
         commaInputs.forEach(input => {
@@ -219,16 +190,8 @@
             });
         });
 
-        const debouncedEmailCheck = debounce(async (input) => {
-            const { valid, message } = window.diamondValidators.email(input.value);
-            const isCat = input.id.includes('cat');
-            const prefix = isCat ? 'emailCat' : 'email';
-            
-            if (!valid) {
-                window.setDiamondError(prefix, message);
-                return;
-            }
-
+        // 1. Debounced Email Uniqueness Check (Fires instantly on error, debounces unique query)
+        const checkEmailUniqueness = async (input, prefix) => {
             try {
                 const response = await fetch(`/auth/check-email?email=${encodeURIComponent(input.value)}`);
                 const data = await response.json();
@@ -238,57 +201,134 @@
                     window.setDiamondError(prefix, "", false);
                 }
             } catch (err) { console.error("Email check failed", err); }
-        }, 500);
+        };
+        const debouncedEmailUnique = debounce(checkEmailUniqueness, 500);
 
         emailInputs.forEach(input => {
-            input.addEventListener('input', () => debouncedEmailCheck(input));
-        });
-
-        nameInputs.forEach(input => {
             input.addEventListener('input', function() {
-                const prefix = this.id.includes('cat') ? 'fullNameCat' : 'name';
-                const { valid, message } = window.diamondValidators.name(this.value);
-                window.setDiamondError(prefix, message, !valid);
+                const isCat = this.id.includes('cat');
+                const prefix = isCat ? 'emailCat' : 'email';
+                
+                const { valid, message } = window.diamondValidators.email(this.value);
+                if (!valid) {
+                    window.setDiamondError(prefix, message);
+                } else {
+                    window.setDiamondError(prefix, "", false);
+                    debouncedEmailUnique(this, prefix);
+                }
             });
         });
 
-        // Smart Cross-Field Name Validation (First != Last)
-        const firstNameElements = rootElement.querySelectorAll('input[name="first_name"]');
-        const lastNameElements = rootElement.querySelectorAll('input[name="last_name"]');
-
-        const crossCheckNames = (el) => {
-            const isCat = el.id.includes('cat');
-            const suffix = isCat ? '_cat' : '';
-            const fName = document.getElementById('first_name' + suffix)?.value || '';
-            const lName = document.getElementById('last_name' + suffix)?.value || '';
-            
-            const fPrefix = isCat ? 'firstNameCat' : 'firstName';
-            const lPrefix = isCat ? 'lastNameCat' : 'lastName';
-
-            if (fName && lName && fName.trim().toLowerCase() === lName.trim().toLowerCase()) {
-                window.setDiamondError(fPrefix, "First & Last name cannot be identical");
-                window.setDiamondError(lPrefix, "First & Last name cannot be identical");
-            } else {
-                // Clear the cross-field error if it was previously set, 
-                // but only if the basic name validation passes
-                const fRes = window.diamondValidators.name(fName);
-                const lRes = window.diamondValidators.name(lName);
-                window.setDiamondError(fPrefix, fRes.message, !fRes.valid);
-                window.setDiamondError(lPrefix, lRes.message, !lRes.valid);
-            }
+        // 2. Debounced Mobile Phone Uniqueness Check
+        const checkPhoneUniqueness = async (input, prefix) => {
+            const val = input.value.replace(/\s/g, '');
+            try {
+                const response = await fetch(`/auth/check-phone?phone=${encodeURIComponent(val)}`);
+                const data = await response.json();
+                if (!data.available) {
+                    window.setDiamondError(prefix, data.message || "This number is already registered.");
+                } else {
+                    window.setDiamondError(prefix, "", false);
+                }
+            } catch (err) { console.error("Phone check failed", err); }
         };
-
-        firstNameElements.forEach(el => el.addEventListener('input', () => crossCheckNames(el)));
-        lastNameElements.forEach(el => el.addEventListener('input', () => crossCheckNames(el)));
+        const debouncedPhoneUnique = debounce(checkPhoneUniqueness, 500);
 
         mobileInputs.forEach(input => {
             input.addEventListener('input', function() {
-                const prefix = this.id.includes('cat') ? 'mobileCat' : 'mobile';
+                const isCat = this.id.includes('cat');
+                const prefix = isCat ? 'mobileCat' : 'mobile';
+                
                 const { valid, message } = window.diamondValidators.mobile(this.value);
-                window.setDiamondError(prefix, message, !valid);
+                if (!valid) {
+                    window.setDiamondError(prefix, message);
+                } else {
+                    window.setDiamondError(prefix, "", false);
+                    debouncedPhoneUnique(this, prefix);
+                }
             });
         });
 
+        // 3. Smart Cross-Field Name Validation (First != Middle != Last)
+        const firstNameElements = rootElement.querySelectorAll('input[name="first_name"]');
+        const middleNameElements = rootElement.querySelectorAll('input[name="middle_name"]');
+        const lastNameElements = rootElement.querySelectorAll('input[name="last_name"]');
+
+        const crossCheckNames = (isCat) => {
+            const suffix = isCat ? '_cat' : '';
+            const fInput = document.getElementById('first_name' + suffix);
+            const mInput = document.getElementById('middle_name' + suffix);
+            const lInput = document.getElementById('last_name' + suffix);
+
+            const fVal = (fInput?.value || '').trim();
+            const mVal = (mInput?.value || '').trim();
+            const lVal = (lInput?.value || '').trim();
+            
+            const fPrefix = isCat ? 'firstNameCat' : 'firstName';
+            const mPrefix = isCat ? 'middleNameCat' : 'middleName';
+            const lPrefix = isCat ? 'lastNameCat' : 'lastName';
+
+            // Reset field validations
+            const fRes = window.diamondValidators.name(fVal);
+            const lRes = window.diamondValidators.name(lVal);
+            const mRes = mVal ? window.diamondValidators.name(mVal) : { valid: true };
+
+            if (fInput && (fInput.classList.contains('touched') || fVal)) {
+                window.setDiamondError(fPrefix, fRes.message, !fRes.valid);
+            } else {
+                window.setDiamondError(fPrefix, "", false);
+            }
+
+            if (lInput && (lInput.classList.contains('touched') || lVal)) {
+                window.setDiamondError(lPrefix, lRes.message, !lRes.valid);
+            } else {
+                window.setDiamondError(lPrefix, "", false);
+            }
+
+            if (mInput && (mInput.classList.contains('touched') || mVal)) {
+                window.setDiamondError(mPrefix, mRes.message, !mRes.valid);
+            } else {
+                window.setDiamondError(mPrefix, "", false);
+            }
+
+            // Identical checks First / Middle / Last
+            if (fVal && lVal && fVal.toLowerCase() === lVal.toLowerCase()) {
+                window.setDiamondError(fPrefix, "First & Last name cannot be identical");
+                window.setDiamondError(lPrefix, "First & Last name cannot be identical");
+            }
+            if (fVal && mVal && fVal.toLowerCase() === mVal.toLowerCase()) {
+                window.setDiamondError(fPrefix, "First & Middle name cannot be identical");
+                window.setDiamondError(mPrefix, "First & Middle name cannot be identical");
+            }
+            if (mVal && lVal && mVal.toLowerCase() === lVal.toLowerCase()) {
+                window.setDiamondError(mPrefix, "Middle & Last name cannot be identical");
+                window.setDiamondError(lPrefix, "Middle & Last name cannot be identical");
+            }
+
+            // Sync hidden fullname if on caterer form
+            if (isCat && typeof window.composeFullNameCat === 'function') {
+                window.composeFullNameCat();
+            }
+        };
+
+        const setupNameListeners = (inputs) => {
+            inputs.forEach(input => {
+                input.addEventListener('input', function() {
+                    this.classList.add('touched');
+                    crossCheckNames(this.id.includes('cat'));
+                });
+                input.addEventListener('blur', function() {
+                    this.classList.add('touched');
+                    crossCheckNames(this.id.includes('cat'));
+                });
+            });
+        };
+
+        setupNameListeners(firstNameElements);
+        setupNameListeners(middleNameElements);
+        setupNameListeners(lastNameElements);
+
+        // 4. Passwords validation
         passInputs.forEach(input => {
             input.addEventListener('input', function() {
                 const isCat = this.id.includes('cat');
@@ -304,11 +344,10 @@
                         window.setDiamondError(prefix, "", false);
                     }
                 } else {
-                    // Main password validation
                     const { valid, message } = window.diamondValidators.password(this.value);
                     window.setDiamondError(prefix, message, !valid);
 
-                    // Re-check confirm if it exists
+                    // Re-check confirm
                     const confirmId = isCat ? 'confirm_password_cat' : 'confirm_password';
                     const confirmInput = document.getElementById(confirmId);
                     if (confirmInput && confirmInput.value) {
@@ -323,6 +362,7 @@
             });
         });
 
+        // 5. Numerical Inputs (Caterer operation metrics)
         yearInputs.forEach(input => {
             input.addEventListener('input', function() {
                 const { valid, message } = window.diamondValidators.years(this.value);
@@ -344,12 +384,29 @@
             });
         });
 
-        middleNameInputs.forEach(input => {
+        // 6. Debounced Business Name Uniqueness Check
+        const checkBusinessUniqueness = async (input) => {
+            try {
+                const response = await fetch(`/auth/check-business-name?name=${encodeURIComponent(input.value)}`);
+                const data = await response.json();
+                if (!data.available) {
+                    window.setDiamondError('businessName', "Business name already registered");
+                } else {
+                    window.setDiamondError('businessName', "", false);
+                }
+            } catch (e) { console.warn("Uniqueness check failed", e); }
+        };
+        const debouncedBusinessUnique = debounce(checkBusinessUniqueness, 500);
+
+        businessInputs.forEach(input => {
             input.addEventListener('input', function() {
-                const isCat = this.id.includes('cat');
-                const prefix = isCat ? 'middleNameCat' : 'middleName';
-                const { valid, message } = window.diamondValidators.middleName(this.value);
-                window.setDiamondError(prefix, message, !valid);
+                const { valid, message } = window.diamondValidators.businessNameFormat(this.value);
+                if (!valid) {
+                    window.setDiamondError('businessName', message);
+                } else {
+                    window.setDiamondError('businessName', "", false);
+                    debouncedBusinessUnique(this);
+                }
             });
         });
     };

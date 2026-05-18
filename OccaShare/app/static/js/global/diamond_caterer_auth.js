@@ -19,14 +19,17 @@
         ]
     };
 
-    window.changeStepCat = function(n) {
+    window.changeStepCat = async function(n) {
         const form = document.getElementById('catererForm');
         if (!form) return;
         const steps = form.querySelectorAll('.form-step');
         const pSteps = document.querySelectorAll('.progress-step');
         
         // Progress to next step only if current is valid
-        if (n === 1 && !validateCurrentStepCat()) return;
+        if (n === 1) {
+            const stepValid = await validateCurrentStepCat();
+            if (!stepValid) return;
+        }
 
         steps[currentStepCat - 1].classList.remove('active');
         currentStepCat += n;
@@ -61,68 +64,202 @@
         }
     };
 
-    function validateCurrentStepCat() {
+    async function validateCurrentStepCat() {
         const step = document.getElementById(`step-${currentStepCat}`);
         if (!step) return true;
         
-        const inputs = step.querySelectorAll('input[required], select[required]');
         let valid = true;
         
-        // Accurate Mapping of Input IDs to validation prefixes/wrappers
-        const idMap = {
-            'full_name_cat': 'fullNameCat',
-            'email_cat': 'emailCat',
-            'mobile_number_cat': 'mobileCat',
-            'password_cat': 'passwordCat',
-            'confirm_password_cat': 'confirmCat',
-            'business_name': 'businessName',
-            'city_cat': 'cityCat',
-            'barangay_cat': 'barangayCat',
-            'business_type': 'businessType',
-            'years_of_operation': 'years',
-            'starting_price': 'price',
-            'street_cat': 'streetCat',
-            'business_description': 'description'
-        };
-
+        // 1. Force touched class and trigger input dispatch on all fields in this step
+        const inputs = step.querySelectorAll('input, select, textarea');
         inputs.forEach(input => {
-            const fieldId = input.id;
-            const prefix = idMap[fieldId] || fieldId.replace('_cat', '').replace('_cat', 'Cat');
-            
-            const wrapper = document.getElementById(fieldId + 'Wrapper') || 
-                            document.getElementById(prefix + 'Wrapper') ||
-                            input.closest('.input-wrapper');
-
-            // Add real-time listener to clear error
-            if (input && !input.dataset.hasRealTimeListener) {
-                input.addEventListener('input', () => {
-                    if (wrapper) {
-                        wrapper.classList.remove('error');
-                        // Do not set inline max-height here, allow CSS to handle it via the 'error' class addition/removal.
-                        const drawer = wrapper.querySelector('.error-drawer');
-                        if (drawer) drawer.style.maxHeight = ''; 
-                    }
-                });
-                input.dataset.hasRealTimeListener = "true";
-            }
-
-            if (!input.value.trim() || (input.tagName === 'SELECT' && !input.value)) {
-                valid = false;
-                if (wrapper) {
-                    wrapper.classList.add('error');
-                    wrapper.classList.remove('success');
-                }
-            } else {
-                if (wrapper && wrapper.classList.contains('error')) {
-                    valid = false;
-                } else if (wrapper) {
-                    wrapper.classList.add('success');
-                    wrapper.classList.remove('error');
-                }
-            }
+            input.classList.add('touched');
+            input.dispatchEvent(new Event('input', { bubbles: true }));
         });
-
-        // Step 4 Verification Check
+        
+        // 2. Perform formatting checks for Step 1
+        if (currentStepCat === 1) {
+            // First Name, Middle Name, Last Name
+            const fnEl = document.getElementById('first_name_cat');
+            const mnEl = document.getElementById('middle_name_cat');
+            const lnEl = document.getElementById('last_name_cat');
+            
+            const fnVal = (fnEl?.value || '').trim();
+            const mnVal = (mnEl?.value || '').trim();
+            const lnVal = (lnEl?.value || '').trim();
+            
+            // Check formats using central diamondValidators
+            if (fnEl) {
+                const res = window.diamondValidators.name(fnVal);
+                window.setDiamondError('firstNameCat', res.message, !res.valid);
+                if (!res.valid) valid = false;
+            }
+            if (lnEl) {
+                const res = window.diamondValidators.name(lnVal);
+                window.setDiamondError('lastNameCat', res.message, !res.valid);
+                if (!res.valid) valid = false;
+            }
+            if (mnEl && mnVal) {
+                const res = window.diamondValidators.name(mnVal);
+                window.setDiamondError('middleNameCat', res.message, !res.valid);
+                if (!res.valid) valid = false;
+            }
+            
+            // Cross check names identically
+            if (fnVal && lnVal && fnVal.toLowerCase() === lnVal.toLowerCase()) {
+                window.setDiamondError('firstNameCat', "First & Last name cannot be identical");
+                window.setDiamondError('lastNameCat', "First & Last name cannot be identical");
+                valid = false;
+            }
+            if (fnVal && mnVal && fnVal.toLowerCase() === mnVal.toLowerCase()) {
+                window.setDiamondError('firstNameCat', "First & Middle name cannot be identical");
+                window.setDiamondError('middleNameCat', "First & Middle name cannot be identical");
+                valid = false;
+            }
+            if (mnVal && lnVal && mnVal.toLowerCase() === lnVal.toLowerCase()) {
+                window.setDiamondError('middleNameCat', "Middle & Last name cannot be identical");
+                window.setDiamondError('lastNameCat', "Middle & Last name cannot be identical");
+                valid = false;
+            }
+            
+            // Email Format
+            const emailEl = document.getElementById('email_cat');
+            if (emailEl) {
+                const res = window.diamondValidators.email(emailEl.value);
+                window.setDiamondError('emailCat', res.message, !res.valid);
+                if (!res.valid) valid = false;
+            }
+            
+            // Mobile Format
+            const mobileEl = document.getElementById('mobile_number_cat');
+            if (mobileEl) {
+                const res = window.diamondValidators.mobile(mobileEl.value);
+                window.setDiamondError('mobileCat', res.message, !res.valid);
+                if (!res.valid) valid = false;
+            }
+            
+            // Passwords Format
+            const passEl = document.getElementById('password_cat');
+            const confirmEl = document.getElementById('confirm_password_cat');
+            if (passEl) {
+                const res = window.diamondValidators.password(passEl.value);
+                window.setDiamondError('passwordCat', res.message, !res.valid);
+                if (!res.valid) valid = false;
+            }
+            if (confirmEl) {
+                if (passEl && passEl.value !== confirmEl.value) {
+                    window.setDiamondError('confirmCat', "Passwords do not match");
+                    valid = false;
+                } else if (!confirmEl.value) {
+                    window.setDiamondError('confirmCat', "Required");
+                    valid = false;
+                }
+            }
+            
+            // If the formatting validation passed so far, perform awaited AJAX uniqueness checks
+            if (valid) {
+                if (emailEl && emailEl.value) {
+                    try {
+                        const response = await fetch(`/auth/check-email?email=${encodeURIComponent(emailEl.value)}`);
+                        const data = await response.json();
+                        if (!data.available) {
+                            window.setDiamondError('emailCat', data.message || "Email already taken");
+                            valid = false;
+                        }
+                    } catch (err) { console.error("Email uniqueness check failed", err); }
+                }
+                
+                if (mobileEl && mobileEl.value) {
+                    const cleanPhone = mobileEl.value.replace(/\s/g, '');
+                    try {
+                        const response = await fetch(`/auth/check-phone?phone=${encodeURIComponent(cleanPhone)}`);
+                        const data = await response.json();
+                        if (!data.available) {
+                            window.setDiamondError('mobileCat', data.message || "This number is already registered.");
+                            valid = false;
+                        }
+                    } catch (err) { console.error("Phone uniqueness check failed", err); }
+                }
+            }
+        }
+        
+        // 3. Perform formatting checks for Step 2
+        if (currentStepCat === 2) {
+            const bizNameEl = document.getElementById('business_name');
+            if (bizNameEl) {
+                const res = window.diamondValidators.businessNameFormat(bizNameEl.value);
+                window.setDiamondError('businessName', res.message, !res.valid);
+                if (!res.valid) valid = false;
+            }
+            
+            const cityEl = document.getElementById('city_cat');
+            if (cityEl && (!cityEl.value || cityEl.value.trim() === '')) {
+                window.setDiamondError('cityCat', "Required");
+                valid = false;
+            }
+            
+            const brgyEl = document.getElementById('barangay_cat');
+            if (brgyEl && (!brgyEl.value || brgyEl.value.trim() === '')) {
+                window.setDiamondError('barangayCat', "Required");
+                valid = false;
+            }
+            
+            const streetEl = document.getElementById('street_cat');
+            if (streetEl && (!streetEl.value || streetEl.value.trim() === '')) {
+                window.setDiamondError('streetCat', "Required");
+                valid = false;
+            }
+            
+            // If formatting passed, run awaited business name uniqueness check
+            if (valid && bizNameEl && bizNameEl.value) {
+                try {
+                    const response = await fetch(`/auth/check-business-name?name=${encodeURIComponent(bizNameEl.value)}`);
+                    const data = await response.json();
+                    if (!data.available) {
+                        window.setDiamondError('businessName', "Business name already registered");
+                        valid = false;
+                    }
+                } catch (err) { console.error("Business uniqueness check failed", err); }
+            }
+        }
+        
+        // 4. Perform formatting checks for Step 3
+        if (currentStepCat === 3) {
+            const bizTypeEl = document.getElementById('business_type');
+            if (bizTypeEl && (!bizTypeEl.value || bizTypeEl.value.trim() === '')) {
+                window.setDiamondError('businessType', "Required");
+                valid = false;
+            }
+            
+            const yearsEl = document.getElementById('years_of_operation');
+            if (yearsEl) {
+                const res = window.diamondValidators.years(yearsEl.value);
+                window.setDiamondError('years', res.message, !res.valid);
+                if (!res.valid) valid = false;
+            }
+            
+            const minPaxEl = document.getElementById('min_pax');
+            if (minPaxEl) {
+                const res = window.diamondValidators.minPax(minPaxEl.value);
+                window.setDiamondError('minPax', res.message, !res.valid);
+                if (!res.valid) valid = false;
+            }
+            
+            const priceEl = document.getElementById('starting_price');
+            if (priceEl) {
+                const res = window.diamondValidators.price(priceEl.value);
+                window.setDiamondError('price', res.message, !res.valid);
+                if (!res.valid) valid = false;
+            }
+            
+            const descEl = document.getElementById('business_description');
+            if (descEl && (!descEl.value || descEl.value.trim() === '')) {
+                window.setDiamondError('description', "Required");
+                valid = false;
+            }
+        }
+        
+        // 5. Step 4 Verification Check
         if (currentStepCat === 4) {
             const permitScanned = document.getElementById('permitBoxCat').classList.contains('scanned-success');
             const idScanned = document.getElementById('govIdBoxCat').classList.contains('scanned-success');
@@ -140,7 +277,20 @@
                 valid = false;
             }
         }
-
+        
+        // 6. Generic check for any element with .input-wrapper.error inside the current step
+        const errorWrappers = step.querySelectorAll('.input-wrapper.error');
+        if (errorWrappers.length > 0) {
+            valid = false;
+            // Focus on the first error field
+            errorWrappers[0].querySelector('input, select, textarea')?.focus();
+        }
+        
+        // Sync full name if on Step 1
+        if (currentStepCat === 1 && typeof window.composeFullNameCat === 'function') {
+            window.composeFullNameCat();
+        }
+        
         return valid;
     }
 
@@ -907,7 +1057,74 @@
         }
     };
 
-    window.initCatererGeoDropdowns = function() {
-        // Relying on inline location_data.js script logic in template forms
+    window.composeFullNameCat = function() {
+        const fn = (document.getElementById('first_name_cat')?.value || '').trim();
+        const ln = (document.getElementById('last_name_cat')?.value || '').trim();
+        const mn = (document.getElementById('middle_name_cat')?.value || '').trim();
+        const hidden = document.getElementById('full_name_cat');
+        if (hidden) {
+            hidden.value = `${fn} ${mn ? mn + ' ' : ''}${ln}`.trim();
+        }
     };
+
+    window.initCatererGeoDropdowns = function() {
+        const provSelect = document.getElementById('province_cat');
+        const citySelect = document.getElementById('city_cat');
+        const brgySelect = document.getElementById('barangay_cat');
+
+        if (!provSelect || !citySelect) return;
+
+        if (typeof window.LOCATION_DATA === 'undefined') {
+            setTimeout(window.initCatererGeoDropdowns, 200);
+            return;
+        }
+
+        provSelect.addEventListener('change', () => {
+            citySelect.innerHTML = '<option value="">-- City --</option>';
+            if (brgySelect) brgySelect.innerHTML = '<option value="">-- Barangay --</option>';
+            
+            const prov = provSelect.value;
+            if (prov && window.LOCATION_DATA[prov]) {
+                const cities = Object.keys(window.LOCATION_DATA[prov]).sort();
+                cities.forEach(city => {
+                    const opt = document.createElement('option');
+                    opt.value = opt.textContent = city;
+                    citySelect.appendChild(opt);
+                });
+
+                if (cities.length > 0 && brgySelect) {
+                    const firstCity = cities[0];
+                    citySelect.value = firstCity;
+                    
+                    if (window.LOCATION_DATA[prov][firstCity]) {
+                        window.LOCATION_DATA[prov][firstCity].sort().forEach(b => {
+                            const opt = document.createElement('option');
+                            opt.value = opt.textContent = b;
+                            brgySelect.appendChild(opt);
+                        });
+                    }
+                }
+            }
+        });
+        
+        citySelect.addEventListener('change', () => {
+            if (brgySelect) brgySelect.innerHTML = '<option value="">-- Barangay --</option>';
+            const prov = provSelect.value;
+            const city = citySelect.value;
+            
+            if (prov && city && window.LOCATION_DATA[prov] && window.LOCATION_DATA[prov][city]) {
+                window.LOCATION_DATA[prov][city].sort().forEach(b => {
+                    const opt = document.createElement('option');
+                    opt.value = opt.textContent = b;
+                    brgySelect.appendChild(opt);
+                });
+            }
+        });
+
+        if (provSelect.value) {
+            provSelect.dispatchEvent(new Event('change'));
+        }
+    };
+
+    document.addEventListener('DOMContentLoaded', window.initCatererGeoDropdowns);
 })();

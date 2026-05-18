@@ -72,464 +72,82 @@
         if (role) window.updateUI(role);
     };
 
-    const mobileInput = document.getElementById('mobile_number') || document.getElementById('mobile_number_cat');
-    if (mobileInput) {
-        const fieldId = mobileInput.id === 'mobile_number' ? 'mobile' : 'mobileCat';
-        
-        const checkPhoneAvailability = async (phone) => {
-            const val = phone.replace(/\s/g, '');
-            const mobileRegex = /^(09|\+639)\d{9}$/;
-            const repetitiveRegex = /(.)\1\1/;
-            const patternRegex = /(.{2,3})\1\1/;
-            const dummyNums = ['09123456789', '09111111111', '09000000000', '09999999999'];
-            
-            if (val.length === 0) {
-                setError(fieldId, "", false);
-                return;
-            }
-
-            if (!mobileRegex.test(val)) {
-                setError(fieldId, "Format: 09XXXXXXXXX (11 digits)");
-            } else if (repetitiveRegex.test(val)) {
-                setError(fieldId, "Too many repetitive digits (e.g., 111)");
-            } else if (patternRegex.test(val)) {
-                setError(fieldId, "Repetitive patterns not allowed (e.g., 121212)");
-            } else if (dummyNums.includes(val)) {
-                setError(fieldId, "Please use a real, active mobile number");
-            } else {
-                // Check uniqueness
-                try {
-                    const response = await fetch(`/auth/check-phone?phone=${encodeURIComponent(val)}`);
-                    const data = await response.json();
-                    if (!data.available) {
-                        setError(fieldId, data.message || "This number is already registered.");
-                    } else {
-                        setError(fieldId, "", false);
-                    }
-                } catch (err) {
-                    console.error("Phone check failed", err);
-                }
-            }
-        };
-
-        const debouncedPhoneCheck = debounce(checkPhoneAvailability, 500);
-        mobileInput.oninput = function () {
-            debouncedPhoneCheck(this.value);
-        };
-    }
-
-    const checkStrength = (p) => {
-        let strength = 0;
-        let hints = [];
-        if (p.length >= 8) strength++; else hints.push("8+ chars");
-        if (p.length >= 10) strength++;
-        if (/[A-Z]/.test(p)) strength++; else hints.push("uppercase");
-        if (/[a-z]/.test(p)) strength++;
-        if (/[0-9]/.test(p)) strength++; else hints.push("number");
-        if (/[^A-Za-z0-9]/.test(p)) strength++; else hints.push("special char");
-
-        return { strength, hints };
-    };
-
-    const validatePasswords = () => {
-        const pass = document.getElementById('password');
-        const confirm = document.getElementById('confirm_password');
-
-        if (pass && pass.value) {
-            const { strength, hints } = checkStrength(pass.value);
-            if (pass.value.length < 8) {
-                setError('password', "At least 8 characters");
-            } else if (!/[A-Z]/.test(pass.value)) {
-                setError('password', "Must have uppercase letter");
-            } else if (!/[a-z]/.test(pass.value)) {
-                setError('password', "Must have lowercase letter");
-            } else if (!/[0-9]/.test(pass.value)) {
-                setError('password', "Must have a number");
-            } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(pass.value)) {
-                setError('password', "Must have special character");
-            } else {
-                setError('password', "", false);
-            }
-        } else {
-            setError('password', "", false);
-        }
-
-        if (confirm && pass && confirm.value && pass.value !== confirm.value) {
-            setError('confirm', "Passwords do not match");
-        } else if (confirm) {
-            setError('confirm', "", false);
-        }
-    };
-
-    const passInput = document.getElementById('password');
-    const confirmInput = document.getElementById('confirm_password');
-    if (passInput) passInput.oninput = validatePasswords;
-    if (confirmInput) confirmInput.oninput = validatePasswords;
-
-    const getEntropy = (str) => {
-        const len = str.length;
-        if (len === 0) return 0;
-        const counts = {};
-        for (let char of str) counts[char] = (counts[char] || 0) + 1;
-        let entropy = 0;
-        for (let char in counts) {
-            const p = counts[char] / len;
-            entropy -= p * Math.log2(p);
-        }
-        return entropy;
-    };
-
-    const isGibberish = (str) => {
-        const s = str.toLowerCase().replace(/[^a-z]/g, '');
-        if (s.length === 0) return false;
-
-        // Vowel/Consonant Ratio
-        const vowels = s.match(/[aeiouy]/g) || [];
-        const consonants = s.match(/[bcdfghjklmnpqrstvwxz]/g) || [];
-        const ratio = consonants.length / (vowels.length || 1);
-
-        // Relaxed ratio from 3 to 10 to allow consonant-heavy handles/names
-        if (ratio > 10 || (vowels.length === 0 && s.length > 4)) return true;
-
-        // Entropy check for randomness - relaxed to 4.0
-        const entropy = getEntropy(s);
-        if (s.length > 6 && entropy > 4.0) return true;
-
-        return false;
-    };
-
-    const isKeyboardWalk = (str) => {
-        const walks = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm', '1234567890', 'poiuytrewq', 'lkjhgfdsa', 'mnbvcxz'];
-        const s = str.toLowerCase();
-        if (s.length < 3) return false;
-        for (let walk of walks) {
-            for (let i = 0; i <= walk.length - 3; i++) {
-                const sub = walk.substring(i, i + 3);
-                if (s.includes(sub)) return true;
-            }
-        }
-        return false;
-    };
-
-    const getStringSimilarity = (s1, s2) => {
-        let longer = s1;
-        let shorter = s2;
-        if (s1.length < s2.length) {
-            longer = s2;
-            shorter = s1;
-        }
-        const longerLength = longer.length;
-        if (longerLength === 0) return 1.0;
-        return (longerLength - editDistance(longer, shorter)) / parseFloat(longerLength);
-    };
-
-    const editDistance = (s1, s2) => {
-        s1 = s1.toLowerCase();
-        s2 = s2.toLowerCase();
-        const costs = [];
-        for (let i = 0; i <= s1.length; i++) {
-            let lastValue = i;
-            for (let j = 0; j <= s2.length; j++) {
-                if (i === 0) costs[j] = j;
-                else {
-                    if (j > 0) {
-                        let newValue = costs[j - 1];
-                        if (s1.charAt(i - 1) !== s2.charAt(j - 1))
-                            newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
-                        costs[j - 1] = lastValue;
-                        lastValue = newValue;
-                    }
-                }
-            }
-            if (i > 0) costs[s2.length] = lastValue;
-        }
-        return costs[s2.length];
-    };
-
-    const validateEmail = (email) => {
-        const emailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
-        if (!email) return { valid: false, message: "Required" };
-        if (!emailRegex.test(email)) return { valid: false, message: "Gmail only (example@gmail.com)" };
-        
-        const local = email.split('@')[0].toLowerCase();
-        const dummyPatterns = ['dummy', 'asdf', 'qwerty', '123456', 'demo'];
-        
-        if (local.length < 3 && /^\d+$/.test(local)) {
-            return { valid: false, message: "Please use a more descriptive email address" };
-        }
-        if (local.length < 2) {
-            return { valid: false, message: "Email prefix too short" };
-        }
-        if (dummyPatterns.includes(local) || ['123', 'abc', 'aaa', 'qwe'].includes(local)) {
-            return { valid: false, message: "Placeholder emails not allowed" };
-        }
-        return { valid: true };
-    };
-
-    const emailInput = document.getElementById('email');
-    if (emailInput) {
-        const checkEmail = async (email) => {
-            const { valid, message } = validateEmail(email);
-            if (!valid) {
-                setError('email', message);
-                return;
-            }
-
-            try {
-                const response = await fetch(`/auth/check-email?email=${encodeURIComponent(email)}`);
-                const data = await response.json();
-                if (!data.available) {
-                    setError('email', data.message || "Email already registered");
-                } else {
-                    setError('email', "", false);
-                }
-            } catch (err) {
-                console.error("Email check failed", err);
-            }
-        };
-
-        const debouncedEmailCheck = debounce(checkEmail, 500);
-        emailInput.oninput = function () {
-            debouncedEmailCheck(this.value);
-        };
-    }
-
-    const validateName = (name) => {
-        const nameRegex = /^[a-zA-Z\s\.\-']{2,60}$/; // Changed min from 3 to 2
-        const dummyNames = ['test', 'dummy', 'guest', 'demo'];
-        const lowerName = name.toLowerCase().trim();
-
-        if (!name.trim()) return { valid: false, message: "Required" };
-        if (name.length < 2) return { valid: false, message: "Too short" };
-        if (name.length > 60) return { valid: false, message: "Too long" };
-        if (!nameRegex.test(name)) return { valid: false, message: "Letters/spaces/dots only" };
-
-        if (dummyNames.includes(lowerName)) {
-            return { valid: false, message: "Please use your real name" };
-        }
-
-        const parts = lowerName.split(/\s+/).filter(p => p.length > 0);
-        if (parts.length >= 2) {
-            for (let i = 0; i < parts.length; i++) {
-                for (let j = i + 1; j < parts.length; j++) {
-                    const p1 = parts[i];
-                    const p2 = parts[j];
-                    if (p1 === p2) {
-                        return { valid: false, message: "Avoid repetitive names (e.g. Pepito Pepito)" };
-                    }
-                    if (p1.length > 3 && p2.length > 3 && getStringSimilarity(p1, p2) > 0.8) {
-                        return { valid: false, message: "Names appear repetitive or contain typos" };
-                    }
-                }
-            }
-        }
-
-        return { valid: true };
-    };
-
-    const validateAddressStr = (addr) => {
-        const addrRegex = /^[a-zA-Z0-9\s\.\,\#\-\(\)\/\@]{10,500}$/;
-        if (!addr.trim()) return { valid: false, message: "Required" };
-        if (addr.length < 10) return { valid: false, message: "Detailed address required (min 10 chars)" };
-
-        const cleanAddr = addr.replace(/[\s\.\,\#\-\(\)\/\@]/g, '');
-        
-        // Relaxed checks for addresses - removed keyboard walks and number requirements
-        if (!addr.trim().includes(' ')) return { valid: false, message: "Address must contain spaces" };
-        if (!addrRegex.test(addr)) return { valid: false, message: "Invalid characters in address" };
-        if (/(.)\1\1/.test(addr)) return { valid: false, message: "No repeating characters" };
-
-        return { valid: true };
-    };
-
-    const nameInput = document.getElementById('full_name');
-    if (nameInput) {
-        nameInput.oninput = function () {
-            const { valid, message } = validateName(this.value);
-            if (!valid) {
-                setError('name', message);
-            } else {
-                setError('name', "", false);
-            }
-        };
-    }
-
-    const validateSingleName = (input, fieldId, isRequired = true) => {
-        if (!input) return { valid: true };
-        const val = input.value.trim();
-        
-        if (!val) {
-            if (isRequired && input.classList.contains('touched')) {
-                setError(fieldId, "Required");
-                return { valid: false };
-            } else {
-                setError(fieldId, "", false);
-                return { valid: true };
-            }
-        }
-
-        const result = validateName(val);
-        if (!result.valid) {
-            setError(fieldId, result.message);
-            return { valid: false };
-        } else {
-            setError(fieldId, "", false);
-            return { valid: true };
-        }
-    };
-
-    const performNameValidation = (e) => {
-        const fnInput = document.getElementById('first_name') || document.getElementById('first_name_cat');
-        const mnInput = document.getElementById('middle_name') || document.getElementById('middle_name_cat');
-        const lnInput = document.getElementById('last_name') || document.getElementById('last_name_cat');
-
-        if (e && e.target) {
-            e.target.classList.add('touched');
-        }
-
-        const fnFieldId = fnInput && fnInput.id.includes('cat') ? 'firstNameCat' : 'firstName';
-        const mnFieldId = mnInput && mnInput.id.includes('cat') ? 'middleNameCat' : 'middleName';
-        const lnFieldId = lnInput && lnInput.id.includes('cat') ? 'lastNameCat' : 'lastName';
-
-        const fnVal = fnInput ? fnInput.value.trim() : '';
-        const lnVal = lnInput ? lnInput.value.trim() : '';
-
-        const fnValid = validateSingleName(fnInput, fnFieldId, true);
-        const lnValid = validateSingleName(lnInput, lnFieldId, true);
-        
-        if (mnInput) {
-            const mnVal = mnInput.value.trim();
-            if (mnVal) {
-                const res = validateName(mnVal);
-                setError(mnFieldId, res.message, !res.valid);
-            } else {
-                setError(mnFieldId, "", false);
-            }
-        }
-
-        if (fnVal && lnVal) {
-            if (fnVal.toLowerCase() === lnVal.toLowerCase()) {
-                setError(fnFieldId, "First Name and Last Name cannot be identical");
-                setError(lnFieldId, "First Name and Last Name cannot be identical");
-            } else {
-                if (fnValid.valid) setError(fnFieldId, "", false);
-                if (lnValid.valid) setError(lnFieldId, "", false);
-            }
-        }
-    };
-
-    const attachNameListeners = () => {
-        const fnInput = document.getElementById('first_name') || document.getElementById('first_name_cat');
-        const mnInput = document.getElementById('middle_name') || document.getElementById('middle_name_cat');
-        const lnInput = document.getElementById('last_name') || document.getElementById('last_name_cat');
-
-        if (fnInput) {
-            fnInput.addEventListener('input', performNameValidation);
-            fnInput.addEventListener('blur', performNameValidation);
-        }
-        if (mnInput) {
-            mnInput.addEventListener('input', performNameValidation);
-            mnInput.addEventListener('blur', performNameValidation);
-        }
-        if (lnInput) {
-            lnInput.addEventListener('input', performNameValidation);
-            lnInput.addEventListener('blur', performNameValidation);
-        }
-    };
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', attachNameListeners);
-    } else {
-        attachNameListeners();
-    }
-
-    const addressInput = document.getElementById('address');
-    if (addressInput) {
-        addressInput.oninput = function () {
-            const { valid, message } = validateAddressStr(this.value);
-            if (!valid) {
-                setError('address', message);
-            } else {
-                setError('address', "", false);
-            }
-        };
-    }
+    // Real-time validations are centralized globally in diamond_validation.js
 
     const regForm = document.getElementById('regForm') || document.querySelector('form[action="/auth/register"]');
     if (regForm) {
         regForm.onsubmit = async function (e) {
             e.preventDefault();
-            const firstNameEl = regForm.querySelector('input[name="first_name"]') || regForm.querySelector('input[name="full_name"]');
+            
+            const firstNameEl = regForm.querySelector('input[name="first_name"]');
+            const middleNameEl = regForm.querySelector('input[name="middle_name"]');
             const lastNameEl = regForm.querySelector('input[name="last_name"]');
             const emailEl = regForm.querySelector('input[name="email"]');
             const passEl = regForm.querySelector('input[name="password"]');
             const confirmEl = regForm.querySelector('input[name="confirm_password"]');
             const mobileEl = regForm.querySelector('input[name="mobile_number"]');
+            const provEl = regForm.querySelector('#province_cust');
+            const cityEl = regForm.querySelector('#city_cust');
+            const brgyEl = regForm.querySelector('#barangay_cust');
+            const streetEl = regForm.querySelector('#street_cust');
 
-            if (firstNameEl && lastNameEl) {
-                const fnVal = firstNameEl.value.trim().toLowerCase();
-                const lnVal = lastNameEl.value.trim().toLowerCase();
-                if (fnVal && lnVal && fnVal === lnVal) {
-                    firstNameEl.style.borderColor = '#ef4444';
-                    lastNameEl.style.borderColor = '#ef4444';
-                    alert("❌ Mismatch Detected: First Name and Last Name cannot be identical (e.g., Pepito Pepito).");
-                    return false;
+            // Force all fields to mark as touched and validate
+            [firstNameEl, middleNameEl, lastNameEl, emailEl, passEl, confirmEl, mobileEl, provEl, cityEl, brgyEl, streetEl].forEach(input => {
+                if (input) {
+                    input.classList.add('touched');
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+                    // If required select/input is empty, flag unified error drawer
+                    if (input.hasAttribute('required') && (!input.value || input.value.trim() === '')) {
+                        let prefix = input.id;
+                        if (input.id === 'first_name') prefix = 'firstName';
+                        else if (input.id === 'middle_name') prefix = 'middleName';
+                        else if (input.id === 'last_name') prefix = 'lastName';
+                        else if (input.id === 'province_cust') prefix = 'provinceCust';
+                        else if (input.id === 'city_cust') prefix = 'cityCust';
+                        else if (input.id === 'barangay_cust') prefix = 'barangayCust';
+                        else if (input.id === 'street_cust') prefix = 'streetCust';
+                        
+                        if (typeof window.setDiamondError === 'function') {
+                            window.setDiamondError(prefix, "Required");
+                        }
+                    }
                 }
+            });
+
+            // Perform synchronous uniqueness checks to prevent timing race conditions
+            if (emailEl && emailEl.value && !regForm.querySelector('#emailWrapper.error')) {
+                try {
+                    const res = await fetch(`/auth/check-email?email=${encodeURIComponent(emailEl.value)}`);
+                    const data = await res.json();
+                    if (!data.available) {
+                        window.setDiamondError('email', data.message || "Email already taken");
+                    }
+                } catch (err) { console.error(err); }
             }
 
-            const pass = passEl ? passEl.value : "social_login_auto";
-            const confirm = confirmEl ? confirmEl.value : "social_login_auto";
-            const mobile = mobileEl ? mobileEl.value.replace(/\s/g, '') : "";
-
-            const emailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
-            const mobileRegex = /^(09|\+639)\d{9}$/;
-            let hasError = false;
-
-            if (pass !== "social_login_auto") {
-                if (pass.length < 8) {
-                    setError('password', "At least 8 characters");
-                    hasError = true;
-                } else if (!/[A-Z]/.test(pass)) {
-                    setError('password', "Must have uppercase letter");
-                    hasError = true;
-                } else if (!/[a-z]/.test(pass)) {
-                    setError('password', "Must have lowercase letter");
-                    hasError = true;
-                } else if (!/[0-9]/.test(pass)) {
-                    setError('password', "Must have a number");
-                    hasError = true;
-                } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(pass)) {
-                    setError('password', "Must have special character");
-                    hasError = true;
-                }
-            }
-            
-            if (pass !== "social_login_auto" && pass !== confirm) {
-                setError('confirm', "Passwords do not match");
-                hasError = true;
-            } else if (mobile && (!mobileRegex.test(mobile) || /(.)\1\1/.test(mobile))) {
-                const repetitiveRegex = /(.)\1\1/;
-                if (repetitiveRegex.test(mobile)) {
-                    setError('mobile', "Repetitive digits not allowed (e.g. 111)");
-                } else {
-                    setError('mobile', "Invalid number format (11 digits required)");
-                }
-                hasError = true;
+            if (mobileEl && mobileEl.value && !regForm.querySelector('#mobileWrapper.error')) {
+                const val = mobileEl.value.replace(/\s/g, '');
+                try {
+                    const res = await fetch(`/auth/check-phone?phone=${encodeURIComponent(val)}`);
+                    const data = await res.json();
+                    if (!data.available) {
+                        window.setDiamondError('mobile', data.message || "This number is already registered.");
+                    }
+                } catch (err) { console.error(err); }
             }
 
-            const errorWrappers = document.querySelectorAll('.input-wrapper.error');
+            // Check if there are any error wrappers currently active
+            const errorWrappers = regForm.querySelectorAll('.input-wrapper.error');
             if (errorWrappers.length > 0) {
-                hasError = true;
-            }
-
-            if (hasError) {
+                // Focus on the first error field
+                errorWrappers[0].querySelector('input, select')?.focus();
                 return false;
             }
 
             const firstName = firstNameEl ? firstNameEl.value.trim() : "";
-            const middleName = regForm.querySelector('input[name="middle_name"]')?.value.trim() || "";
+            const middleName = middleNameEl ? middleNameEl.value.trim() : "";
             const lastName = lastNameEl ? lastNameEl.value.trim() : "";
-            
             const fullName = `${firstName} ${middleName ? middleName + ' ' : ''}${lastName}`.trim();
 
             const formData = new FormData(regForm);
@@ -541,7 +159,9 @@
             const submitBtn = regForm.querySelector('button[type="submit"]');
             const originalBtnText = submitBtn.innerHTML;
             submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            submitBtn.style.opacity = '0.7';
+            submitBtn.style.cursor = 'wait';
+            submitBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> <span>Creating Secure Account...</span>';
 
             try {
                 const response = await fetch('/auth/register', {
@@ -638,6 +258,26 @@
                     alert("An unexpected error occurred. Please try again later.");
                 }
             }
+        // Clear address errors on change/input
+        ['province_cust', 'city_cust', 'barangay_cust'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('change', function() {
+                    const prefix = id === 'province_cust' ? 'provinceCust' : (id === 'city_cust' ? 'cityCust' : 'barangayCust');
+                    if (this.value) {
+                        window.setDiamondError(prefix, "", false);
+                    }
+                });
+            }
+        });
+        const streetEl = document.getElementById('street_cust');
+        if (streetEl) {
+            streetEl.addEventListener('input', function() {
+                if (this.value.trim()) {
+                    window.setDiamondError('streetCust', "", false);
+                }
+            });
+        }
         };
     }
 })();

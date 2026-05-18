@@ -106,7 +106,8 @@ async def alacarte_checkout_page(request: Request, caterer_id: int, menu_id: str
 async def alacarte_checkout_draft(
     request: Request,
     caterer_id: int = Form(...),
-    menu_id: str = Form(...),
+    menu_id: str = Form(""),
+    cart_data: Optional[str] = Form(None),
     full_name: str = Form(...),
     contact_number: str = Form(...),
     delivery_date: str = Form(...),
@@ -142,16 +143,30 @@ async def alacarte_checkout_draft(
         db.flush()
 
         # Add Menu Items to Draft
-        id_list = [int(id_str.strip()) for id_str in menu_id.split(",") if id_str.strip()]
-        menu_items = db.query(models.MenuItem).filter(models.MenuItem.id.in_(id_list)).all()
-        
-        for m_item in menu_items:
-            booking_item = models.BookingMenuItem(
-                booking_id=new_booking.id,
-                menu_item_id=m_item.id,
-                price=m_item.price
-            )
-            db.add(booking_item)
+        if cart_data:
+            cart_items = json.loads(cart_data)
+            for item in cart_items:
+                m_item = db.query(models.MenuItem).get(int(item['id']))
+                if m_item:
+                    booking_item = models.BookingMenuItem(
+                        booking_id=new_booking.id,
+                        menu_item_id=m_item.id,
+                        price=m_item.price,
+                        quantity=int(item.get('quantity', 1)),
+                        choices=item.get('choices')
+                    )
+                    db.add(booking_item)
+        elif menu_id:
+            id_list = [int(id_str.strip()) for id_str in menu_id.split(",") if id_str.strip()]
+            menu_items = db.query(models.MenuItem).filter(models.MenuItem.id.in_(id_list)).all()
+            
+            for m_item in menu_items:
+                booking_item = models.BookingMenuItem(
+                    booking_id=new_booking.id,
+                    menu_item_id=m_item.id,
+                    price=m_item.price
+                )
+                db.add(booking_item)
             
         db.commit()
 
@@ -164,13 +179,14 @@ async def alacarte_checkout_draft(
 async def alacarte_checkout_submit(
     request: Request,
     caterer_id: int = Form(...),
-    menu_id: str = Form(...),
+    menu_id: str = Form(""), # Legacy
+    cart_data: Optional[str] = Form(None), # New JSON cart payload: [{"id": 1, "quantity": 2, "choices": [...]}]
     full_name: str = Form(...),
     contact_number: str = Form(...),
     delivery_date: str = Form(...),
     delivery_time: str = Form(...),
     address: Optional[str] = Form(""),
-    quantity: int = Form(1),
+    quantity: int = Form(1), # Legacy global guest count
     fulfillment: str = Form(...),
     payment_method: str = Form(...),
     total_amount: float = Form(...),
@@ -206,6 +222,8 @@ async def alacarte_checkout_submit(
                 booking.special_requests = landmark
                 booking.total_amount = total_amount
                 booking.reservation_fee = reservation_fee
+                # Clear old items to re-save
+                db.query(models.BookingMenuItem).filter(models.BookingMenuItem.booking_id == booking.id).delete()
         
         if not booking:
             booking = models.Booking(
@@ -227,14 +245,30 @@ async def alacarte_checkout_submit(
             db.add(booking)
             db.flush()
 
-            # Add Multiple Menu Items
+        # Add Menu Items
+        if cart_data:
+            cart_items = json.loads(cart_data)
+            for item in cart_items:
+                m_item = db.query(models.MenuItem).get(int(item['id']))
+                if m_item:
+                    booking_item = models.BookingMenuItem(
+                        booking_id=booking.id,
+                        menu_item_id=m_item.id,
+                        price=m_item.price,
+                        quantity=int(item.get('quantity', 1)),
+                        choices=item.get('choices')
+                    )
+                    db.add(booking_item)
+        elif menu_id:
+            # Legacy Fallback
             id_list = [int(id_str.strip()) for id_str in menu_id.split(",") if id_str.strip()]
             menu_items = db.query(models.MenuItem).filter(models.MenuItem.id.in_(id_list)).all()
             for m_item in menu_items:
                 booking_item = models.BookingMenuItem(
                     booking_id=booking.id,
                     menu_item_id=m_item.id,
-                    price=m_item.price
+                    price=m_item.price,
+                    quantity=1
                 )
                 db.add(booking_item)
 
@@ -496,7 +530,26 @@ async def step_details_submit(
     db.commit()
     db.refresh(booking)
 
-    # 3. Save Selected Items
+    # 3. Save Selected Items and Validate Rules
+    package = db.query(models.CateringPackage).get(package_id) if package_id else None
+    
+    # Selection Rule Validation
+    if package and package.selection_rules:
+        category_counts = {}
+        for item_id in selected_items:
+            mi = db.query(models.MenuItem).get(item_id)
+            if mi and not mi.is_addon:
+                cat = mi.category or "Others"
+                category_counts[cat] = category_counts.get(cat, 0) + 1
+                
+        for cat, count in category_counts.items():
+            allowed = package.selection_rules.get(cat)
+            if allowed is not None and count > int(allowed):
+                # Rollback draft if validation fails
+                db.delete(booking)
+                db.commit()
+                return RedirectResponse(url=f"/packages/{package_id}?error_msg=You+selected+too+many+items+in+{cat}", status_code=303)
+
     all_items = selected_items + selected_addons
     for item_id in all_items:
         menu_item = db.query(models.MenuItem).get(item_id)

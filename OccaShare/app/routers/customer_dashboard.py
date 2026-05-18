@@ -383,6 +383,10 @@ async def cancel_booking(
     
     # Only allow cancelling drafts or unpaid pending bookings
     if booking.status in ['draft', 'pending', 'pending_payment'] and booking.payment_status not in ['paid', 'deposit_paid']:
+        # Prevent race condition: Block cancellation if admin is currently reviewing a payment proof
+        if booking.payment_status == 'proof_submitted':
+            return RedirectResponse(url=f"/customer/bookings/manage/{booking_id}?error_msg=Cannot+cancel+while+payment+is+under+review", status_code=303)
+            
         if booking.status == 'draft':
             # Physical delete for drafts to prevent database bloat
             db.delete(booking)

@@ -516,14 +516,26 @@
                                                 <div class="menu-cat-label">{{ group.grouper or 'Main Dishes' }}</div>
                                                 <div class="menu-items-flex">
                                                     {% for item in group.list %}
-                                                        <div class="mi-pill-premium">
-                                                            <div style="display: flex; align-items: center; gap: 0.75rem;">
-                                                                <span class="mi-name-text">{{ item.menu_item.name }}</span>
-                                                                {% if item.is_add_on %}
-                                                                    <span class="mi-addon-badge">Add-on</span>
-                                                                {% endif %}
+                                                        <div class="mi-pill-premium" style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; padding: 1rem;">
+                                                            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                                                                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                                                    <span class="mi-name-text">{{ item.menu_item.name }}</span>
+                                                                    {% if item.is_add_on %}
+                                                                        <span class="mi-addon-badge">Add-on</span>
+                                                                    {% endif %}
+                                                                </div>
+                                                                <span class="mi-qty-text">x{{ item.quantity if item.quantity else (booking.guest_count if not item.is_add_on else 1) }}</span>
                                                             </div>
-                                                            <span class="mi-qty-text">x{{ booking.guest_count if not item.is_add_on else 1 }}</span>
+                                                            {% if item.choices %}
+                                                                <div style="margin-top: 0.25rem; font-size: 0.75rem; color: #64748b; background: #f1f5f9; padding: 0.5rem 0.75rem; border-radius: 0.5rem; border: 1px solid #e2e8f0; width: 100%;">
+                                                                    <span style="font-weight: 800; color: #0f766e;"><i class="fas fa-list-ul"></i> Platter Choices:</span>
+                                                                    <div style="display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.4rem;">
+                                                                        {% for choice in item.choices %}
+                                                                            <span style="background: white; border: 1px solid #cbd5e1; padding: 2px 6px; border-radius: 4px; font-weight: 600;">{{ choice }}</span>
+                                                                        {% endfor %}
+                                                                    </div>
+                                                                </div>
+                                                            {% endif %}
                                                         </div>
                                                     {% endfor %}
                                                 </div>

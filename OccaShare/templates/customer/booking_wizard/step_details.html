@@ -184,29 +184,56 @@
                 <p class="form-subtitle">Customize your included dishes or add premium extras</p>
 
                 <div class="menu-sections-pro">
-                    <!-- Included Items (Swappable) -->
-                    <div class="menu-sub-section">
-                        <label class="form-label">Included in Package</label>
-                        <div class="menu-item-cards">
-                            {% for item in package.menu_items %}
-                            <div class="menu-item-card included" id="slot-{{ loop.index }}">
-                                <input type="hidden" name="selected_items" value="{{ item.id }}" class="slot-input">
-                                <div class="indicator-circle active"><i class="fas fa-check"></i></div>
-                                <div class="mic-info">
-                                    <span class="mic-name" id="name-{{ loop.index }}">{{ item.name }}</span>
-                                    <span class="mic-cat">{{ item.category }}</span>
+                    <!-- Included Items (Swappable vs Selectable) -->
+                    {% if package.selection_rules and package.selection_rules.keys()|length > 0 %}
+                        {% set grouped_items = package.menu_items|groupby('category') %}
+                        {% for cat in grouped_items %}
+                            {% set rule_limit = package.selection_rules.get(cat.grouper, 0) %}
+                            {% if rule_limit > 0 %}
+                            <div class="menu-sub-section" style="margin-bottom: 1.5rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                    <label class="form-label" style="margin: 0;">{{ cat.grouper }}</label>
+                                    <span class="selection-counter" id="counter-{{ cat.grouper|replace(' ', '') }}" style="font-size: 0.75rem; font-weight: 800; color: #0f766e; background: #ccfbf1; padding: 2px 8px; border-radius: 99px;">0 / {{ rule_limit }} Selected</span>
                                 </div>
-                                <div class="mic-actions">
-                                    <span class="mic-status">Included</span>
-                                    <button type="button" class="btn-swap-pro" 
-                                        onclick="openSwapModal('{{ item.category }}', '{{ loop.index }}')">
-                                        <i class="fas fa-rotate"></i> Swap
-                                    </button>
+                                <div class="menu-item-cards selection-group" data-limit="{{ rule_limit }}" data-category="{{ cat.grouper|replace(' ', '') }}">
+                                    {% for item in cat.list %}
+                                    <label class="menu-item-card selectable">
+                                        <input type="checkbox" name="selected_items" value="{{ item.id }}" style="display: none;" onchange="handleSelectionRuleLimit(this)">
+                                        <div class="indicator-circle"></div>
+                                        <div class="mic-info">
+                                            <span class="mic-name">{{ item.name }}</span>
+                                            <span class="mic-cat">{{ item.description|truncate(40) if item.description else 'Included' }}</span>
+                                        </div>
+                                    </label>
+                                    {% endfor %}
                                 </div>
                             </div>
-                            {% endfor %}
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <div class="menu-sub-section">
+                            <label class="form-label">Included in Package</label>
+                            <div class="menu-item-cards">
+                                {% for item in package.menu_items %}
+                                <div class="menu-item-card included" id="slot-{{ loop.index }}">
+                                    <input type="hidden" name="selected_items" value="{{ item.id }}" class="slot-input">
+                                    <div class="indicator-circle active"><i class="fas fa-check"></i></div>
+                                    <div class="mic-info">
+                                        <span class="mic-name" id="name-{{ loop.index }}">{{ item.name }}</span>
+                                        <span class="mic-cat">{{ item.category }}</span>
+                                    </div>
+                                    <div class="mic-actions">
+                                        <span class="mic-status">Included</span>
+                                        <button type="button" class="btn-swap-pro" 
+                                            onclick="openSwapModal('{{ item.category }}', '{{ loop.index }}')">
+                                            <i class="fas fa-rotate"></i> Swap
+                                        </button>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
                         </div>
-                    </div>
+                    {% endif %}
 
                     <!-- Add-ons Section -->
                     {% if addon_items %}

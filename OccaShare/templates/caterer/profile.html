@@ -7,6 +7,9 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
     tailwind.config = {
+        corePlugins: {
+            preflight: false,
+        },
         theme: {
             extend: {
                 colors: {
@@ -23,7 +26,17 @@
     }
 </script>
 <link href="https://fonts.googleapis.com/css2?family={{ (caterer.font_family if caterer.font_family else 'Poppins')|replace(' ', '+') }}:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<style type="text/tailwindcss">
+<style>
+    /* Fix Tailwind's container collision with landing page base layout */
+    .container {
+        max-width: 1280px !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
+    }
+</style>
+<style>
     :root {
         --brand-primary: {{ caterer.primary_color if caterer.primary_color else "#f97316" }};
         --brand-secondary: {{ caterer.secondary_color if caterer.secondary_color else "#334155" }};
@@ -31,35 +44,76 @@
     }
     body { 
         font-family: '{{ caterer.font_family if caterer.font_family else "Poppins" }}', sans-serif; 
-        @apply bg-[#fdfdfd] text-slate-700; 
+        background-color: #f8fafc !important;
+        color: #334155 !important;
     }
     .btn-primary {
-        background-color: var(--brand-primary);
-        @apply text-white px-6 py-3 rounded-xl font-bold transition-all hover:opacity-90 hover:shadow-lg active:scale-95 flex items-center justify-center gap-2;
+        background-color: var(--brand-primary) !important;
+        color: #ffffff !important;
+        padding: 0.75rem 1.5rem !important;
+        border-radius: 0.75rem !important;
+        font-weight: 700 !important;
+        transition: all 0.2s ease-in-out !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 0.5rem !important;
+        border: none !important;
+        cursor: pointer !important;
+    }
+    .btn-primary:hover {
+        opacity: 0.9 !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+    }
+    .btn-primary:active {
+        transform: scale(0.95) !important;
     }
     .btn-outline {
-        border: 1px solid var(--brand-primary);
-        color: var(--brand-primary);
-        @apply px-6 py-3 rounded-xl font-bold transition-all hover:bg-slate-50 flex items-center justify-center gap-2;
+        border: 2px solid var(--brand-primary) !important;
+        color: var(--brand-primary) !important;
+        background-color: #ffffff !important;
+        padding: 0.75rem 1.5rem !important;
+        border-radius: 0.75rem !important;
+        font-weight: 700 !important;
+        transition: all 0.2s ease-in-out !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 0.5rem !important;
+        cursor: pointer !important;
+    }
+    .btn-outline:hover {
+        background-color: #f8fafc !important;
     }
     .card-premium {
-        @apply bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-md transition-all duration-300;
+        background-color: #ffffff !important;
+        border: 1px solid rgba(226, 232, 240, 0.8) !important;
+        border-radius: 1.5rem !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.02) !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+    .card-premium:hover {
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02) !important;
     }
     .glass-card {
-        background: rgba(255, 255, 255, 0.7);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        @apply rounded-xl shadow-sm transition-all duration-300;
+        background: rgba(255, 255, 255, 0.95) !important;
+        backdrop-filter: blur(16px) !important;
+        -webkit-backdrop-filter: blur(16px) !important;
+        border: 1px solid rgba(226, 232, 240, 0.8) !important;
+        border-radius: 1.5rem !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.02) !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
-    .text-brand { color: var(--brand-primary); }
-    .bg-brand { background-color: var(--brand-primary); }
-    .border-brand { border-color: var(--brand-primary); }
+    .text-brand { color: var(--brand-primary) !important; }
+    .bg-brand { background-color: var(--brand-primary) !important; }
+    .border-brand { border-color: var(--brand-primary) !important; }
 
     #map {
         height: 300px;
         width: 100%;
-        border-radius: 0.75rem;
+        border-radius: 1rem;
         z-index: 10;
+        border: 1px solid rgba(226, 232, 240, 0.8);
     }
 </style>
 <!-- Google Maps API -->
@@ -69,30 +123,93 @@
 {% block content %}
 <div class="max-w-6xl mx-auto px-4 py-8 mt-[80px]">
     
-    <!-- Branded Hero Section -->
-    <div class="relative overflow-hidden rounded-3xl mb-12 p-8 text-center animate-in fade-in slide-in-from-top-4 duration-700"
-         style="background: linear-gradient(135deg, {{ caterer.primary_color if caterer.primary_color else '#f97316' }}15 0%, {{ caterer.secondary_color if caterer.secondary_color else '#334155' }}10 100%);">
-        
-        <div class="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none" 
-             style="background-image: radial-gradient(var(--brand-primary) 1px, transparent 1px); background-size: 20px 20px;"></div>
+    {% macro get_category_icon(cat_name) %}
+        {% set c = cat_name|lower %}
+        {% if 'dessert' in c or 'sweet' in c or 'cake' in c or 'bake' in c or 'cookie' in c %}
+            fa-cookie-bite
+        {% elif 'main' in c or 'entree' in c or 'dish' in c or 'ulam' in c or 'chicken' in c or 'pork' in c or 'beef' in c or 'meat' in c %}
+            fa-drumstick-bite
+        {% elif 'salad' in c or 'appetizer' in c or 'start' in c or 'veg' in c or 'soup' in c %}
+            fa-seedling
+        {% elif 'drink' in c or 'beverage' in c or 'juice' in c or 'wine' in c or 'tea' in c or 'coffee' in c %}
+            fa-glass-cheers
+        {% elif 'pasta' in c or 'noodle' in c or 'spaghetti' in c or 'pancit' in c %}
+            fa-bowl-food
+        {% elif 'seafood' in c or 'fish' in c or 'shrimp' in c %}
+            fa-fish
+        {% elif 'rice' in c %}
+            fa-bowl-rice
+        {% else %}
+            fa-plate-wheat
+        {% endif %}
+    {% endmacro %}
 
-        <div class="relative z-10">
-            <div class="flex items-center justify-center gap-3 mb-4">
-                <h1 class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight">{{ caterer.business_name }}</h1>
-                {% if caterer.is_verified %}
-                <span class="text-brand text-2xl" title="Verified Caterer"><i class="fas fa-check-circle"></i></span>
+    {% macro get_category_default_image(cat_name) %}
+        {% set c = cat_name|lower %}
+        {% if 'dessert' in c or 'sweet' in c or 'cake' in c or 'bake' in c or 'cookie' in c %}
+            https://images.unsplash.com/photo-1551024601-bec78aea704b?q=80&w=400
+        {% elif 'main' in c or 'entree' in c or 'dish' in c or 'ulam' in c or 'chicken' in c or 'pork' in c or 'beef' in c or 'meat' in c %}
+            https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=400
+        {% elif 'salad' in c or 'appetizer' in c or 'start' in c or 'veg' in c or 'soup' in c %}
+            https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=400
+        {% elif 'drink' in c or 'beverage' in c or 'juice' in c or 'wine' in c or 'tea' in c or 'coffee' in c %}
+            https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?q=80&w=400
+        {% elif 'pasta' in c or 'noodle' in c or 'spaghetti' in c or 'pancit' in c %}
+            https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?q=80&w=400
+        {% elif 'seafood' in c or 'fish' in c or 'shrimp' in c %}
+            https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?q=80&w=400
+        {% elif 'rice' in c %}
+            https://images.unsplash.com/photo-1512058564366-18510be2db19?q=80&w=400
+        {% else %}
+            https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=400
+        {% endif %}
+    {% endmacro %}
+
+    <!-- Premium Cover Banner and Floating Identity Card -->
+    <div class="relative overflow-hidden rounded-3xl mb-12 shadow-md animate-in fade-in duration-1000 border border-slate-100/50 bg-white">
+        <!-- Cover Banner Image -->
+        <div class="h-56 md:h-72 w-full relative">
+            {% if caterer.banner_url %}
+            <img src="{{ caterer.banner_url }}" class="w-full h-full object-cover" alt="Cover Image">
+            {% else %}
+            <img src="https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=1200" class="w-full h-full object-cover" alt="Cover Image">
+            {% endif %}
+            <!-- Frost Dark Overlay -->
+            <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/30 to-transparent"></div>
+        </div>
+
+        <!-- Floating Profile Details Card -->
+        <div class="relative bg-white/80 backdrop-blur-md px-6 pb-8 pt-16 text-center border-t border-white/40">
+            <!-- Floating Logo Avatar -->
+            <div class="absolute -top-16 left-1/2 -translate-x-1/2 w-28 h-28 rounded-full border-4 border-white bg-white shadow-lg overflow-hidden transition-transform duration-500 hover:rotate-6 flex items-center justify-center">
+                {% if caterer.logo_url %}
+                <img src="{{ caterer.logo_url }}" class="w-full h-full object-cover" alt="{{ caterer.business_name }}">
+                {% else %}
+                <div class="w-full h-full bg-brand/10 text-brand text-3xl font-black flex items-center justify-center">
+                    {{ caterer.business_name[0] }}
+                </div>
                 {% endif %}
             </div>
 
-            <div class="flex flex-wrap items-center justify-center gap-6 text-sm text-slate-500 font-semibold mb-6">
-                <span class="flex items-center gap-1.5"><i class="fas fa-map-marker-alt text-brand"></i> {{ caterer.contact_address if caterer.contact_address else (caterer.city or 'Location') }}</span>
-                <span class="flex items-center gap-1.5"><i class="fas fa-star text-brand"></i> {{ "%.1f"|format(caterer.rating) if caterer.rating else 'New Partner' }}</span>
-                <span class="flex items-center gap-1.5"><i class="fas fa-eye text-brand"></i> {{ caterer.profile_views or 0 }} Views</span>
-            </div>
+            <!-- Profile Info Elements -->
+            <div class="relative z-10">
+                <div class="flex items-center justify-center gap-3 mb-3">
+                    <h1 class="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">{{ caterer.business_name }}</h1>
+                    {% if caterer.is_verified %}
+                    <span class="text-brand text-2xl animate-pulse" title="Verified Partner"><i class="fas fa-check-circle"></i></span>
+                    {% endif %}
+                </div>
 
-            <p class="text-slate-600 text-base max-w-3xl mx-auto leading-relaxed italic">
-                "{{ caterer.description or 'Exquisite culinary experiences tailored for your special occasions.' }}"
-            </p>
+                <div class="flex flex-wrap items-center justify-center gap-3 text-xs text-slate-500 font-semibold mb-5">
+                    <span class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100/80 rounded-full"><i class="fas fa-map-marker-alt text-brand"></i> {{ caterer.contact_address if caterer.contact_address else (caterer.city or 'Location') }}</span>
+                    <span class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100/80 rounded-full"><i class="fas fa-star text-amber-500"></i> {{ "%.1f"|format(caterer.rating) if caterer.rating else 'New Partner' }}</span>
+                    <span class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100/80 rounded-full"><i class="fas fa-eye text-brand"></i> {{ caterer.profile_views or 0 }} Views</span>
+                </div>
+
+                <p class="text-slate-600 text-sm max-w-2xl mx-auto leading-relaxed italic">
+                    "{{ caterer.description or 'Exquisite culinary experiences tailored for your special occasions.' }}"
+                </p>
+            </div>
         </div>
     </div>
 
@@ -106,24 +223,24 @@
                     <span class="w-8 h-[1px] bg-slate-200"></span> Operation Intel
                 </h2>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <div class="bg-slate-50 p-5 rounded-2xl text-center border border-slate-100 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
+                    <div class="bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
                         <div class="text-brand mb-2 text-xl"><i class="far fa-clock"></i></div>
                         <div class="text-2xl font-black text-slate-800">{{ caterer.years_of_operation or 1 }}+</div>
                         <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Years Exp</div>
                     </div>
-                    <div class="bg-slate-50 p-5 rounded-2xl text-center border border-slate-100 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
+                    <div class="bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
                         <div class="text-brand mb-2 text-xl"><i class="fas fa-utensils"></i></div>
                         <div class="text-2xl font-black text-slate-800">
                             {{ caterer.menu_items|selectattr('is_archived', 'equalto', false)|selectattr('is_hidden', 'equalto', false)|list|length }}
                         </div>
                         <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Dishes</div>
                     </div>
-                    <div class="bg-slate-50 p-5 rounded-2xl text-center border border-slate-100 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
+                    <div class="bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
                         <div class="text-brand mb-2 text-xl"><i class="fas fa-gift"></i></div>
                         <div class="text-2xl font-black text-slate-800">{{ packages|length }}</div>
                         <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Live Pkgs</div>
                     </div>
-                    <div class="bg-slate-50 p-5 rounded-2xl text-center border border-slate-100 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
+                    <div class="bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
                         <div class="text-brand mb-2 text-xl"><i class="fas fa-shield-check"></i></div>
                         <div class="text-2xl font-black text-slate-800">100%</div>
                         <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Audit Pass</div>
@@ -154,13 +271,18 @@
                 </div>
             </section>
 
-            <!-- Culinary Menu (Categorized) -->
+            <!-- Culinary Selection (Compact Space-Saving Category Grid) -->
             {% if caterer.menu_items %}
             <section class="card-premium p-6">
-                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-8 flex items-center gap-2">
-                    <span class="w-8 h-[1px] bg-slate-200"></span> Signature Selection
-                </h2>
-                
+                <div class="flex items-center justify-between mb-8">
+                    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                        <span class="w-8 h-[1px] bg-slate-200"></span> Culinary Library
+                    </h2>
+                    <span class="text-[10px] font-black text-brand uppercase bg-brand/5 px-2.5 py-1 rounded-full">
+                        {{ caterer.menu_items|selectattr('is_archived', 'equalto', false)|selectattr('is_hidden', 'equalto', false)|list|length }} Dishes Available
+                    </span>
+                </div>
+
                 {% set categories = [] %}
                 {% for item in caterer.menu_items if not item.is_archived and not item.is_hidden %}
                     {% if item.category not in categories %}
@@ -168,38 +290,65 @@
                     {% endif %}
                 {% endfor %}
 
-                <div class="space-y-10">
-                {% for cat in categories %}
-                    <div>
-                        <div class="flex items-center gap-3 mb-4">
-                            <div class="h-6 w-1 bg-brand rounded-full"></div>
-                            <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest">{{ cat }}</h3>
-                        </div>
-                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                            {% for item in caterer.menu_items if item.category == cat and not item.is_archived and not item.is_hidden %}
-                            <div class="group border border-slate-100 rounded-2xl p-3 flex flex-col gap-3 transition-all hover:border-brand/30 hover:shadow-lg bg-slate-50/30 overflow-hidden">
-                                <div class="relative overflow-hidden rounded-xl">
-                                    {% if item.image_url %}
-                                    <img src="{{ item.image_url }}" class="w-full h-32 object-cover transition-transform duration-500 group-hover:scale-110" alt="{{ item.name }}">
-                                    {% else %}
-                                    <div class="h-32 bg-slate-100 flex items-center justify-center text-slate-300">
-                                        <i class="fas fa-utensils text-2xl"></i>
-                                    </div>
-                                    {% endif %}
-                                    <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                    {% for cat in categories %}
+                        {% set cat_items = caterer.menu_items|selectattr('category', 'equalto', cat)|selectattr('is_archived', 'equalto', false)|selectattr('is_hidden', 'equalto', false)|list %}
+                        {% set icon_class = get_category_icon(cat)|trim %}
+                        
+                        {# Extract first active item with valid image in this category #}
+                        {% set active_photo_item = none %}
+                        {% for item in cat_items %}
+                            {% if item.image_url and not active_photo_item %}
+                                {% set active_photo_item = item %}
+                            {% endif %}
+                        {% endfor %}
+                        {% set cat_cover_image = active_photo_item.image_url if active_photo_item else get_category_default_image(cat)|trim %}
+                        
+                        <div onclick="openCategoryShowcase('{{ cat|e }}')" 
+                             class="group cursor-pointer border border-slate-200/80 rounded-3xl overflow-hidden transition-all duration-300 hover:border-brand/40 hover:-translate-y-2 bg-white hover:shadow-xl relative flex flex-col shadow-sm">
+                            
+                            <!-- Cover Header Image -->
+                            <div class="h-40 w-full overflow-hidden relative bg-slate-100 flex-shrink-0">
+                                <img src="{{ cat_cover_image }}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="{{ cat }}">
+                                <div class="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent"></div>
+                            </div>
+
+                            <!-- Floating Centered Icon Ring -->
+                            <div class="absolute top-[132px] left-1/2 -translate-x-1/2 w-14 h-14 rounded-2xl bg-white text-brand flex items-center justify-center text-2xl transition-all duration-300 group-hover:scale-110 shadow-md border border-slate-100 group-hover:bg-brand group-hover:text-white group-hover:border-brand">
+                                <i class="fas {{ icon_class }}"></i>
+                            </div>
+
+                            <!-- Card Body -->
+                            <div class="p-6 pt-10 text-center flex-1 flex flex-col">
+                                <div class="flex flex-col items-center mb-3">
+                                    <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest mb-1.5 truncate max-w-full px-2">{{ cat }}</h3>
+                                    <span class="text-[9px] font-bold text-slate-400 bg-slate-100 group-hover:bg-brand/10 group-hover:text-brand px-3 py-1 rounded-full transition-colors flex-shrink-0">
+                                        {{ cat_items|length }} Items
+                                    </span>
                                 </div>
-                                <div class="px-1">
-                                    <div class="text-xs font-bold text-slate-800 truncate">{{ item.name }}</div>
-                                    <div class="flex items-center justify-between mt-2">
-                                        <div class="text-[10px] font-semibold text-slate-400"><i class="fas fa-users"></i> {{ item.serving_size if item.serving_size else 'Single' }}</div>
-                                        <div class="text-brand font-black text-xs">₱{{ "{:,.0f}".format(item.price if item.price else 0) }}</div>
-                                    </div>
+
+                                <p class="text-[10px] text-slate-500 leading-relaxed font-semibold flex-1">
+                                    {% if 'dessert' in cat|lower or 'sweet' in cat|lower or 'cake' in cat|lower or 'bake' in cat|lower %}
+                                    Indulge in our exquisite assortment of artisan desserts and crafted sweets.
+                                    {% elif 'main' in cat|lower or 'entree' in cat|lower or 'dish' in cat|lower %}
+                                    Hearty, savory chef-crafted entrees perfect for family feasts and banquets.
+                                    {% elif 'appetizer' in cat|lower or 'salad' in cat|lower or 'start' in cat|lower %}
+                                    Refreshing, light and zesty starters designed to set a delightful dining mood.
+                                    {% elif 'drink' in cat|lower or 'beverage' in cat|lower %}
+                                    Curated ice-cold specialty drinks, custom cocktails, and fresh premium fruit juices.
+                                    {% elif 'pasta' in cat|lower or 'noodle' in cat|lower %}
+                                    Rich, savory noodles and handcrafted pasta dishes with authentic local spices.
+                                    {% else %}
+                                    Hand-selected, signature recipes prepared fresh daily by our premier culinary team.
+                                    {% endif %}
+                                </p>
+
+                                <div class="mt-4 flex items-center justify-center gap-1.5 text-[9px] font-black text-brand uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">
+                                    Explore Selection <i class="fas fa-arrow-right text-[8px] mt-0.5 animate-bounce"></i>
                                 </div>
                             </div>
-                            {% endfor %}
                         </div>
-                    </div>
-                {% endfor %}
+                    {% endfor %}
                 </div>
             </section>
             {% endif %}
@@ -250,11 +399,13 @@
                 </h2>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                     {% for item in gallery_items %}
-                    <div class="aspect-square rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 transition-transform hover:scale-105 cursor-pointer group relative" 
+                    <div class="aspect-square rounded-2xl overflow-hidden bg-white p-1.5 border border-slate-200 transition-all hover:scale-105 hover:shadow-lg cursor-pointer group relative" 
                          onclick="openPublicImage('{{ item.media_url }}')">
-                        <img src="{{ item.media_url }}" class="w-full h-full object-cover" alt="Gallery Photo">
-                        <div class="absolute inset-0 bg-brand/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <i class="fas fa-search-plus text-white text-xl"></i>
+                        <div class="w-full h-full rounded-xl overflow-hidden relative">
+                            <img src="{{ item.media_url }}" class="w-full h-full object-cover" alt="Gallery Photo">
+                            <div class="absolute inset-0 bg-brand/35 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
+                                <i class="fas fa-search-plus text-white text-2xl animate-pulse"></i>
+                            </div>
                         </div>
                     </div>
                     {% endfor %}
@@ -437,6 +588,31 @@
     </div>
 </div>
 
+<!-- Category Showcase Modal -->
+<div id="category-showcase-modal" class="fixed inset-0 z-[2000] hidden items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md transition-all duration-300">
+    <div class="absolute inset-0 bg-transparent" onclick="closeCategoryShowcase()"></div>
+    <div class="relative bg-white w-full max-w-4xl rounded-3xl shadow-2xl p-8 animate-in zoom-in-95 slide-in-from-bottom-12 duration-500 max-h-[85vh] overflow-y-auto border border-slate-100">
+        
+        <button class="absolute top-6 right-6 w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors shadow-sm" onclick="closeCategoryShowcase()">
+            <i class="fas fa-times text-sm"></i>
+        </button>
+
+        <div class="flex items-center gap-4 mb-6 pb-6 border-b border-slate-100">
+            <div id="showcase-icon-container" class="w-14 h-14 rounded-2xl bg-brand/10 text-brand flex items-center justify-center text-2xl">
+                <i class="fas fa-utensils"></i>
+            </div>
+            <div>
+                <h3 id="showcase-title" class="text-xl font-black text-slate-900 uppercase tracking-widest">Category Name</h3>
+                <p id="showcase-count" class="text-xs font-bold text-slate-400 uppercase tracking-wider">0 Items available</p>
+            </div>
+        </div>
+
+        <div id="showcase-items-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            <!-- Dynamically populated via JavaScript -->
+        </div>
+    </div>
+</div>
+
 <!-- Image Preview Modal -->
 <div id="public-img-modal" class="fixed inset-0 z-[2000] hidden items-center justify-center p-4 bg-slate-950/90" onclick="closePublicImage()">
     <img id="public-img-preview" src="" class="max-w-[85%] max-height-[85%] object-contain rounded-lg">
@@ -466,6 +642,117 @@
         },
         {% endfor %}
     };
+
+    const menuDishes = {
+        {% for cat in categories %}
+        "{{ cat }}": [
+            {% for item in caterer.menu_items if item.category == cat and not item.is_archived and not item.is_hidden %}
+            {
+                name: {{ item.name|tojson }},
+                image_url: "{{ item.image_url if item.image_url else '' }}",
+                serving_size: {{ (item.serving_size if item.serving_size else 'Single')|tojson }},
+                price: {{ (item.price if item.price else 0)|tojson }}
+            },
+            {% endfor %}
+        ],
+        {% endfor %}
+    };
+
+    function openCategoryShowcase(categoryName) {
+        const dishes = menuDishes[categoryName] || [];
+        
+        // Update Title & Count
+        document.getElementById('showcase-title').innerText = categoryName;
+        document.getElementById('showcase-count').innerText = `${dishes.length} items available`;
+
+        // Update Icon based on category
+        const iconContainer = document.getElementById('showcase-icon-container');
+        const iconMap = {
+            'dessert': 'fa-cookie-bite',
+            'sweet': 'fa-cookie-bite',
+            'cake': 'fa-birthday-cake',
+            'bake': 'fa-cookie-bite',
+            'cookie': 'fa-cookie-bite',
+            'main': 'fa-drumstick-bite',
+            'entree': 'fa-drumstick-bite',
+            'dish': 'fa-drumstick-bite',
+            'ulam': 'fa-drumstick-bite',
+            'chicken': 'fa-drumstick-bite',
+            'pork': 'fa-drumstick-bite',
+            'beef': 'fa-drumstick-bite',
+            'meat': 'fa-drumstick-bite',
+            'salad': 'fa-seedling',
+            'appetizer': 'fa-seedling',
+            'start': 'fa-seedling',
+            'veg': 'fa-seedling',
+            'soup': 'fa-seedling',
+            'drink': 'fa-glass-cheers',
+            'beverage': 'fa-glass-cheers',
+            'juice': 'fa-glass-cheers',
+            'wine': 'fa-glass-cheers',
+            'tea': 'fa-glass-cheers',
+            'coffee': 'fa-glass-cheers',
+            'pasta': 'fa-bowl-food',
+            'noodle': 'fa-bowl-food',
+            'seafood': 'fa-fish',
+            'fish': 'fa-fish',
+            'rice': 'fa-bowl-rice'
+        };
+
+        let activeIcon = 'fa-plate-wheat';
+        const lowerCat = categoryName.toLowerCase();
+        for (const key in iconMap) {
+            if (lowerCat.includes(key)) {
+                activeIcon = iconMap[key];
+                break;
+            }
+        }
+        iconContainer.innerHTML = `<i class="fas ${activeIcon}"></i>`;
+
+        // Populating the items grid
+        const grid = document.getElementById('showcase-items-grid');
+        if (dishes.length === 0) {
+            grid.innerHTML = `
+                <div class="col-span-full text-center py-12">
+                    <i class="fas fa-utensils text-slate-200 text-4xl mb-3"></i>
+                    <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">No dishes in this category.</p>
+                </div>
+            `;
+        } else {
+            grid.innerHTML = dishes.map(item => `
+                <div class="group border border-slate-100 rounded-2xl p-4 flex flex-col gap-3 transition-all hover:border-brand/30 hover:shadow-lg bg-slate-50/20 hover:bg-white overflow-hidden text-center">
+                    <div class="relative overflow-hidden rounded-xl h-44 bg-slate-100 shadow-sm border border-slate-100/50">
+                        ${item.image_url ? 
+                            `<img src="${item.image_url}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt="${item.name}">` : 
+                            `<div class="w-full h-full flex items-center justify-center text-slate-300"><i class="fas fa-utensils text-3xl"></i></div>`
+                        }
+                        <div class="absolute top-3 right-3">
+                            <span class="bg-white/90 backdrop-blur px-2.5 py-1 rounded-full text-[9px] font-black text-brand uppercase tracking-wider shadow-sm">
+                                <i class="fas fa-users"></i> ${item.serving_size}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="px-1 flex flex-col gap-1.5 items-center">
+                        <div class="text-xs font-black text-slate-800 uppercase tracking-wider line-clamp-1">${item.name}</div>
+                        <div class="text-brand font-black text-sm bg-brand/5 px-3 py-1 rounded-full border border-brand/10">₱${parseFloat(item.price).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Show Modal
+        const modal = document.getElementById('category-showcase-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden'; // Lock background scrolling
+    }
+
+    function closeCategoryShowcase() {
+        const modal = document.getElementById('category-showcase-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = ''; // Unlock background scrolling
+    }
 
     function promptBookingAuth() {
         document.getElementById('auth-choice-modal').classList.remove('hidden');
