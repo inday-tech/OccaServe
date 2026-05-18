@@ -137,7 +137,10 @@ def master_migration():
             ("dietary_tags", "VARCHAR[]"),
             ("allergen_info", "VARCHAR[]"),
             ("cost_price", "FLOAT DEFAULT 0.0"),
-            ("cost_breakdown", "JSONB")
+            ("cost_breakdown", "JSONB"),
+            ("is_combo", "BOOLEAN DEFAULT FALSE"),
+            ("max_choices", "INTEGER DEFAULT 0"),
+            ("combo_options", "JSONB NULL")
         ]
         
         # Catering Packages
@@ -164,7 +167,8 @@ def master_migration():
             ("reservation_fee", "FLOAT DEFAULT 0.0"),
             ("booking_lead_time", "INTEGER DEFAULT 7"),
             ("cost_price", "FLOAT DEFAULT 0.0"),
-            ("cost_breakdown", "JSONB")
+            ("cost_breakdown", "JSONB"),
+            ("selection_rules", "JSONB NULL")
         ]
         
         # Identity Verifications
@@ -259,6 +263,12 @@ def master_migration():
             ("status", "VARCHAR DEFAULT 'pending'")
         ]
 
+        # Booking Menu Items (Custom Selection Lists)
+        booking_menu_items_cols = [
+            ("quantity", "INTEGER DEFAULT 1"),
+            ("choices", "JSONB NULL")
+        ]
+
         # Apply helper
         def add_cols(table_name, columns):
             print(f"  Migrating {table_name}...")
@@ -281,6 +291,7 @@ def master_migration():
         add_cols("quotations", quotation_cols)
         add_cols("caterer_gallery", gallery_cols)
         add_cols("platform_feedback", feedback_cols)
+        add_cols("booking_menu_items", booking_menu_items_cols)
 
         # Legacy Data Migration: Sync middle_initial to middle_name
         print("  Synchronizing middle_initial data to middle_name...")
