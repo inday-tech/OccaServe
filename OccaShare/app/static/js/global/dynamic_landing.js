@@ -21,15 +21,6 @@ document.addEventListener('DOMContentLoaded', () => {
         window.observer.observe(el);
     });
 
-    // 2. SCROLL EFFECT (Glassmorphic Header)
-    window.addEventListener('scroll', () => {
-        if (!navbar) return;
-        if (window.scrollY > 50) {
-            navbar.classList.add('scrolled');
-        } else {
-            navbar.classList.remove('scrolled');
-        }
-    });
 
     // 3. AJAX CATEGORY FILTERING (injects into unified search)
     const unifiedInput = document.getElementById('unifiedSearchInput');

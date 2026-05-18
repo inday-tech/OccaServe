@@ -326,67 +326,8 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     window.proceedToCamera = async function () {
-        const idType = document.getElementById('id_type').value;
-        const idNumber = document.getElementById('id_number').value.trim();
-
-        // Show Extraction State
-        document.getElementById('id-preview').style.display = 'none';
-        document.getElementById('ocr-loading').style.display = 'block';
-        document.getElementById('extraction-title').innerText = "Extracting Identity Details";
-        updateStatusTracker(2);
-
-        const formData = new FormData();
-        formData.append('id_type', idType);
-        formData.append('id_document', idFile);
-
-        try {
-            const res = await fetch(`/api/bookings/extract-id`, { method: 'POST', body: formData });
-            const data = await res.json();
-
-            if (res.ok && data.success) {
-                const extracted = data.extracted_data;
-
-                // Pre-fill fields
-                if (extracted.full_name) {
-                    const names = extracted.full_name.split(' ');
-                    if (names.length >= 2) {
-                        document.getElementById('first_name').value = names.slice(0, -1).join(' ');
-                        document.getElementById('last_name').value = names[names.length - 1];
-                    } else {
-                        document.getElementById('first_name').value = extracted.full_name;
-                    }
-                }
-
-                if (extracted.birth_date) {
-                    // Try to format date for input[type=date]
-                    try {
-                        const dob = new Date(extracted.birth_date);
-                        if (!isNaN(dob)) {
-                            document.getElementById('dob').value = dob.toISOString().split('T')[0];
-                        }
-                    } catch (e) { }
-                }
-
-                if (extracted.id_number) {
-                    document.getElementById('id_number').value = extracted.id_number;
-                }
-
-                if (extracted.address) {
-                    document.getElementById('id_address').value = extracted.address;
-                    document.getElementById('address').value = extracted.address;
-                }
-
-                // Proceed directly to uploading the document with the extracted data
-                finalizeIdAndProceed();
-            } else {
-                throw new Error(data.detail || "Extraction failed");
-            }
-        } catch (err) {
-            console.error("Extraction error:", err);
-            if (window.showError) window.showError('Failed to extract data. Please fill manually.', 'OCR Error');
-            document.getElementById('ocr-loading').style.display = 'none';
-            document.getElementById('step-id-form').style.display = 'block';
-        }
+        // frictionless optimization: Skip redundant extract-id call as data is already provided or will be extracted during upload
+        finalizeIdAndProceed();
     };
 
     window.finalizeIdAndProceed = async function () {
@@ -398,11 +339,40 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('step-id-form').style.display = 'none';
         document.getElementById('ocr-loading').style.display = 'block';
         document.getElementById('extraction-title').innerText = "Uploading Identity Document";
+        
+        // Simulated progress for better UX
+        const statusEl = document.getElementById('extraction-status');
+        const indicators = ['qc-resolution', 'qc-focus', 'qc-ocr'];
+        let indicatorIdx = 0;
+        
+        const progressTimer = setInterval(() => {
+            if (indicatorIdx < indicators.length) {
+                const el = document.getElementById(indicators[indicatorIdx]);
+                if (el) {
+                    el.style.color = 'var(--kyc-accent)';
+                    el.querySelector('i').style.color = 'var(--kyc-accent)';
+                }
+                indicatorIdx++;
+                if (indicatorIdx === 1) statusEl.innerText = "Optimizing image for fast upload...";
+                if (indicatorIdx === 2) statusEl.innerText = "Securely transmitting biometric data...";
+                if (indicatorIdx === 3) statusEl.innerText = "Finalizing extraction...";
+            }
+        }, 800);
+
+        // --- CLIENT SIDE COMPRESSION (Major Speed Boost) ---
+        let finalFile = idFile;
+        try {
+            const compressedBlob = await compressImage(idFile, 1280, 0.8);
+            finalFile = new File([compressedBlob], idFile.name, { type: 'image/jpeg' });
+            console.log(`[KYC] Client-side compression: ${(idFile.size / 1024).toFixed(1)}KB -> ${(finalFile.size / 1024).toFixed(1)}KB`);
+        } catch (e) {
+            console.warn("[KYC] Compression failed, using original file", e);
+        }
 
         const formData = new FormData();
         formData.append('id_type', document.getElementById('id_type').value);
         formData.append('id_number', document.getElementById('id_number').value.trim());
-        formData.append('id_document', idFile);
+        formData.append('id_document', finalFile);
         formData.append('first_name', document.getElementById('first_name').value.trim());
         formData.append('middle_name', document.getElementById('middle_name')?.value.trim() || '');
         formData.append('last_name', document.getElementById('last_name').value.trim());
@@ -413,21 +383,66 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             const res = await fetch(`/api/bookings/${bookingId}/upload-id`, { method: 'POST', body: formData });
             if (res.ok) {
+                clearInterval(progressTimer);
                 document.getElementById('ocr-loading').style.display = 'none';
                 document.getElementById('scanner-container').style.display = 'block';
                 updateStatusTracker(3);
+                
+                // Automatically start the liveness camera scanner for a truly frictionless flow
+                if (window.startRealtimeScanner) {
+                    window.startRealtimeScanner();
+                }
             } else {
+                clearInterval(progressTimer);
                 const data = await res.json();
                 if (window.showError) window.showError(data.detail || "Upload failed", "Upload Error");
                 document.getElementById('ocr-loading').style.display = 'none';
                 document.getElementById('step-id-form').style.display = 'block';
             }
         } catch (err) {
+            clearInterval(progressTimer);
             if (window.showError) window.showError("Connection lost.", "Network Error");
             document.getElementById('ocr-loading').style.display = 'none';
             document.getElementById('step-id-form').style.display = 'block';
         }
     };
+
+    // Helper: Client-side Image Compression
+    async function compressImage(file, maxDim, quality) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    if (width > height) {
+                        if (width > maxDim) {
+                            height *= maxDim / width;
+                            width = maxDim;
+                        }
+                    } else {
+                        if (height > maxDim) {
+                            width *= maxDim / height;
+                            height = maxDim;
+                        }
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    canvas.toBlob((blob) => resolve(blob), 'image/jpeg', quality);
+                };
+                img.onerror = (e) => reject(e);
+            };
+            reader.onerror = (e) => reject(e);
+        });
+    }
 
     window.startRealtimeScanner = async function () {
         const video = document.getElementById('webcam');

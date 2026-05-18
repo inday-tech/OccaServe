@@ -285,12 +285,20 @@ h6 {
     border-bottom: 1px solid var(--border-color);
     position: fixed;
     top: 0;
-    width: 100%;
+    left: 0;
+    right: 0;
     z-index: 1000;
     height: 80px;
     display: flex;
     align-items: center;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+    transition: height 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease, backdrop-filter 0.3s ease;
+}
+
+.navbar.scrolled {
+    background-color: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    height: 72px;
 }
 
 .nav-container {

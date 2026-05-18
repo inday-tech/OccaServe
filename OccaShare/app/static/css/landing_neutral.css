@@ -49,7 +49,7 @@
     padding: 8rem 0 6rem;
     background: var(--lp-bg-white);
     color: var(--lp-text-main);
-    margin-top: 72px;
+    margin-top: 80px; /* Synchronized with navbar */
     overflow: hidden;
 }
 
@@ -816,7 +816,7 @@
     justify-content: center;
     text-align: center;
     padding: 8rem 2rem;
-    margin-top: 70px;
+    margin-top: 80px; /* Synchronized with navbar */
     overflow: hidden;
     background: #0f172a;
 }

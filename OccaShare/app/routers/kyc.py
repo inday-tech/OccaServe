@@ -44,7 +44,7 @@ async def extract_id(
     
     id_url = f"/api/bookings/kyc/view/{filename}"
     
-    result = verification_service.extract_id_data(id_url, id_type)
+    result = await verification_service.extract_id_data(id_url, id_type)
     
     if not result["success"]:
         raise HTTPException(status_code=500, detail=f"OCR extraction failed: {result.get('error')}")
@@ -174,7 +174,7 @@ async def upload_id(
     full_name_parts.append(last_name)
     full_name = " ".join(full_name_parts)
 
-    id_result = verification_service.verify_id_document(
+    id_result = await verification_service.verify_id_document(
         id_url, 
         full_name, 
         id_number, 
@@ -272,7 +272,7 @@ async def verify_full(
 
     return {"status": "processing", "message": "Verification started. Please wait."}
 
-def process_kyc_background(user_id, booking_id, id_path, selfie_paths, full_name, id_number, id_type, dob, address):
+async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, full_name, id_number, id_type, dob, address):
     # This simulates the Celery worker / Background task logic
     db = next(database.get_db())
     try:
@@ -284,7 +284,7 @@ def process_kyc_background(user_id, booking_id, id_path, selfie_paths, full_name
         # Simulate processing time
         time.sleep(0.5)
         
-        result = verification_service.verify_identity_v2(id_path, selfie_paths, full_name, id_number, id_type, db, user_id, dob, address)
+        result = await verification_service.verify_identity_v2(id_path, selfie_paths, full_name, id_number, id_type, db, user_id, dob, address)
         
         print(f"[KYC BACKGROUND] Verification Service result: {result.get('status')}")
         

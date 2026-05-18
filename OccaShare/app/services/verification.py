@@ -593,7 +593,8 @@ class VerificationService:
             # PSM 3: Automatic segmentation. 
             # PSM 6: Uniform block (often best for IDs).
             # PSM 11: Sparse text (good for small labels).
-            for psm in [6, 3, 11]: 
+            # PSM 6 is usually sufficient for IDs and is the fastest
+            for psm in [6]: 
                 config = f'--psm {psm} -l eng'
                 try:
                     if not pytesseract: return False
@@ -601,7 +602,7 @@ class VerificationService:
                     if len(current_text.strip()) > len(best_text.strip()):
                         best_text = current_text
                         # If we have a decent amount of text, stop early to save time
-                        if len(best_text.strip()) > 80: return True
+                        if len(best_text.strip()) > 50: return True
                 except: continue
             return False
 
@@ -637,25 +638,45 @@ class VerificationService:
             
         return best_text
 
-    def _call_gemini_ocr_sync(self, image_path: str, prompt: str) -> Dict[str, Any]:
+    async def _call_gemini_ocr(self, image_path: str, prompt: str) -> Dict[str, Any]:
         gemini_key = os.getenv("GEMINI_API_KEY")
         if not gemini_key:
+            print("[KYC DEBUG] No Gemini API key found. Skipping Gemini OCR.")
             return None
         try:
+            start_time = time.time()
             filename = image_path.split("/")[-1]
             real_path = os.path.join("app/static/uploads/verification", filename)
             if not os.path.exists(real_path):
+                print(f"[KYC ERROR] ID image not found at {real_path}")
                 return None
-            with open(real_path, "rb") as f:
-                raw_data = f.read()
-            try:
-                decrypted_data = decrypt_data(raw_data)
-            except Exception:
-                decrypted_data = raw_data
+
+            # Prepare image for OCR (Resizing to reduce payload size)
+            img = self._prepare_image(real_path)
+            h, w = img.shape[:2]
+            
+            # Optimization: Resize to a max dimension of 1024 while maintaining aspect ratio
+            max_dim = 1024
+            if max(h, w) > max_dim:
+                scale = max_dim / max(h, w)
+                img = cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+                print(f"[KYC DEBUG] Resized image for OCR: {w}x{h} -> {int(w*scale)}x{int(h*scale)}")
+            
+            # Encode as low-quality JPEG for speed
+            success, buffer = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            if not success:
+                print("[KYC ERROR] Failed to encode image for Gemini.")
+                return None
+            
+            raw_data = buffer.tobytes()
                 
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gemini_key}"
+            # Fixed model name to 1.5-flash for stability and speed
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
             headers = {"Content-Type": "application/json"}
-            base64_image = base64.b64encode(decrypted_data).decode('utf-8')
+            base64_image = base64.b64encode(raw_data).decode('utf-8')
+            
+            print(f"[KYC DEBUG] Sending Gemini OCR request (Payload size: {len(base64_image)/1024:.1f} KB)...")
+            
             payload = {
                 "contents": [{
                     "parts": [
@@ -672,18 +693,22 @@ class VerificationService:
                     "response_mime_type": "application/json"
                 }
             }
+            
             import json
-            with httpx.Client() as client:
-                response = client.post(url, json=payload, headers=headers, timeout=30.0)
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, json=payload, headers=headers, timeout=8.0)
                 if response.status_code == 200:
                     data = response.json()
                     text = data['candidates'][0]['content']['parts'][0]['text']
+                    elapsed = time.time() - start_time
+                    print(f"[KYC DEBUG] Gemini OCR Succeeded in {elapsed:.2f}s")
                     return json.loads(text)
                 else:
                     print(f"[GEMINI OCR ERROR] Status {response.status_code}: {response.text}")
                     return None
         except Exception as e:
             print(f"[GEMINI OCR ERROR] {e}")
+            traceback.print_exc()
             return None
 
 
@@ -826,7 +851,7 @@ class VerificationService:
         return mrz_data
 
 
-    def verify_id_document(self, 
+    async def verify_id_document(self, 
                            id_path: str, 
                            full_name: str, 
                            id_number: str, 
@@ -856,7 +881,7 @@ class VerificationService:
             # 4. Perform OCR via Gemini API (if key available) or fallback to Tesseract
             gemini_data = None
             gemini_prompt = self._get_id_type_ocr_prompt(id_type)
-            gemini_data = self._call_gemini_ocr_sync(id_path, gemini_prompt)
+            gemini_data = await self._call_gemini_ocr(id_path, gemini_prompt)
             
             structured_ocr = None  # Will hold the new structured format
             
@@ -864,7 +889,6 @@ class VerificationService:
                 print(f"[KYC DEBUG] Gemini OCR Succeeded for ID type: {id_type}")
                 print(f"[KYC DEBUG] Gemini extracted fields: {list(gemini_data.keys())}")
                 
-                # Build structured OCR data
                 structured_ocr = self._build_structured_ocr_data(gemini_data, id_type, "gemini")
                 
                 # Build text for matching logic
@@ -882,8 +906,9 @@ class VerificationService:
                     "extracted_expiry": gemini_data.get("expiry_date", ""),
                     "extracted_address": gemini_data.get("address", "")
                 }
-                id_faces = self._detect_faces_detailed(id_img)
+                # Optimization: Trust Gemini for face visibility to save OpenCV processing time
                 has_face = gemini_data.get("face_visible", True)
+                id_faces = [1] if has_face else [] 
             else:
                 ocr_text = self._run_tesseract_multi_psm(id_img)
                 
@@ -1116,14 +1141,14 @@ class VerificationService:
             traceback.print_exc()
             return {"status": "error", "failure_reason": f"System Error during ID scan: {str(e)}"}
 
-    def extract_id_data(self, id_path: str, id_type: str) -> Dict[str, Any]:
+    async def extract_id_data(self, id_path: str, id_type: str) -> Dict[str, Any]:
         """Extracts text from ID without performing validation against user input."""
         try:
             id_img = self._prepare_image(id_path)
             quality_check = self.check_image_quality(id_img)
             
             gemini_prompt = self._get_id_type_ocr_prompt(id_type)
-            gemini_data = self._call_gemini_ocr_sync(id_path, gemini_prompt)
+            gemini_data = await self._call_gemini_ocr(id_path, gemini_prompt)
             
             if gemini_data and (gemini_data.get("full_name") or gemini_data.get("surname")):
                 structured_ocr = self._build_structured_ocr_data(gemini_data, id_type, "gemini")
@@ -1155,7 +1180,7 @@ class VerificationService:
             traceback.print_exc()
             return {"success": False, "error": str(e)}
 
-    def verify_identity_v2(self, 
+    async def verify_identity_v2(self, 
                            id_path: str, 
                            selfie_paths: List[str], 
                            full_name: str, 
@@ -1168,7 +1193,7 @@ class VerificationService:
         """Refactored full verification logic using verify_id_document."""
         try:
             # 1. Document Verification (Now just re-using the method)
-            id_result = self.verify_id_document(id_path, full_name, id_number, id_type, db, user_id, dob, address)
+            id_result = await self.verify_id_document(id_path, full_name, id_number, id_type, db, user_id, dob, address)
             if id_result["status"] == "error":
                 return id_result # Bubble up error
 
@@ -1279,7 +1304,7 @@ class VerificationService:
             
         return None
 
-    def verify_business_permit(self, permit_path: str, business_name: str, owner_name: str = None, db: Session = None) -> Dict[str, Any]:
+    async def verify_business_permit(self, permit_path: str, business_name: str, owner_name: str = None, db: Session = None) -> Dict[str, Any]:
         """OCR Verification for Business Permits with Owner, Format, and Expiry Matching."""
         try:
             # 1. Image Loading & Quality Check
@@ -1298,7 +1323,7 @@ class VerificationService:
                     f"Extract data from this Business Permit. Target Business Name: '{business_name}'. "
                     "Return a JSON object with keys: 'document_type_detected', 'business_name', 'permit_number', 'expiration_date', 'owner_name', 'is_tampered', 'tampering_reason'."
                 )
-                gemini_data = self._call_gemini_ocr_sync(permit_path, gemini_prompt)
+                gemini_data = await self._call_gemini_ocr(permit_path, gemini_prompt)
                 if gemini_data and gemini_data.get("business_name"):
                     ocr_text = f"{gemini_data.get('business_name')} {gemini_data.get('permit_number')} {gemini_data.get('owner_name')} {gemini_data.get('expiration_date')}"
                 else:
