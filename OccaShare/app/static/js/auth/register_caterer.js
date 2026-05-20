@@ -54,7 +54,7 @@
     const validateSingleName = (input, fieldId, isRequired = true) => {
         if (!input) return { valid: true };
         const val = input.value.trim();
-        
+
         if (!val) {
             if (isRequired && input.classList.contains('touched')) {
                 setError(fieldId, "Required");
@@ -89,7 +89,7 @@
 
         const fnValid = validateSingleName(fnInput, 'firstNameCat', true);
         const lnValid = validateSingleName(lnInput, 'lastNameCat', true);
-        
+
         // Use initial validator for M.I.
         if (mnInput) {
             const mnVal = mnInput.value.trim();
@@ -168,25 +168,25 @@
         }
     };
 
-    window.changeStepCat = function(n) {
+    window.changeStepCat = function (n) {
         const form = document.getElementById('catererForm');
         if (!form) return;
         const steps = form.querySelectorAll('.form-step');
         const pSteps = document.querySelectorAll('.progress-step');
-        
+
         if (n === 1 && !validateCurrentStepCat()) return;
 
         steps[currentStepCat - 1].classList.remove('active');
         currentStepCat += n;
-        
+
         if (currentStepCat > totalStepsCat) {
             submitCatererForm();
-            currentStepCat = totalStepsCat; 
+            currentStepCat = totalStepsCat;
             return;
         }
 
         steps[currentStepCat - 1].classList.add('active');
-        
+
         // Update Progress Tracker
         pSteps.forEach((s, idx) => {
             if (idx + 1 < currentStepCat) s.className = 'progress-step completed';
@@ -198,7 +198,7 @@
         const prevBtn = document.getElementById('prevBtnCat');
         const nextBtn = document.getElementById('nextBtnCat');
         if (prevBtn) prevBtn.style.display = currentStepCat === 1 ? 'none' : 'block';
-        
+
         if (nextBtn) {
             const btnText = nextBtn.querySelector('span');
             const btnIcon = nextBtn.querySelector('i');
@@ -216,7 +216,7 @@
         if (!step) return true;
         const inputs = step.querySelectorAll('input[required], select[required]');
         let valid = true;
-        
+
         inputs.forEach(input => {
             if (!input.value.trim()) {
                 valid = false;
@@ -242,27 +242,87 @@
                 if (isNaN(years) || years < 0 || years > 100) {
                     valid = false;
                     setError('years', "Must be between 0 and 100");
+                } else {
+                    setError('years', "", false);
                 }
             }
         }
 
         if (currentStepCat === 3) {
+            // Event Types Validation
+            const eventCheckboxes = step.querySelectorAll('input[name="event_type_choice"]:checked');
+            const eventErrorDrawer = document.getElementById('eventTypeError');
+            if (eventCheckboxes.length === 0) {
+                valid = false;
+                if (eventErrorDrawer) {
+                    eventErrorDrawer.innerText = "Please select at least one event type";
+                    eventErrorDrawer.style.display = 'block';
+                }
+            } else {
+                let otherError = false;
+                const otherCheck = document.getElementById('eventOtherCheck');
+                if (otherCheck && otherCheck.checked) {
+                    const otherInput = document.getElementById('event_type_other');
+                    if (!otherInput || !otherInput.value.trim()) {
+                        valid = false;
+                        otherError = true;
+                        if (eventErrorDrawer) {
+                            eventErrorDrawer.innerText = "Please specify the other event type";
+                            eventErrorDrawer.style.display = 'block';
+                        }
+                        if (otherInput) otherInput.style.borderColor = '#ef4444';
+                    } else {
+                        if (otherInput) otherInput.style.borderColor = '';
+                    }
+                }
+
+                if (!otherError && eventErrorDrawer) {
+                    eventErrorDrawer.style.display = 'none';
+                }
+            }
+
+            // Sample Menu Validation
+            const menuInput = document.getElementById('sample_menu_cat');
+            const menuBox = document.getElementById('menuBoxCat');
+            const menuError = document.getElementById('menuErrorCat');
+            if (menuInput && menuBox) {
+                if (menuInput.files.length === 0 && !menuBox.classList.contains('scanned-success')) {
+                    valid = false;
+                    menuBox.style.borderColor = '#ef4444';
+                    if (menuError) {
+                        menuError.innerText = "Sample Menu is required";
+                        menuError.style.display = 'block';
+                        menuError.style.color = '#ef4444';
+                    }
+                } else {
+                    menuBox.style.borderColor = '';
+                    if (menuError && menuError.innerText === "Sample Menu is required") {
+                        menuError.innerText = "";
+                        menuError.style.display = 'none';
+                    }
+                }
+            }
+
             const minPaxInput = document.getElementById('min_pax');
             const priceInput = document.getElementById('starting_price');
-            
+
             if (minPaxInput) {
                 const pax = parseInt(minPaxInput.value.replace(/,/g, ''));
                 if (isNaN(pax) || pax < 1 || pax > 5000) {
                     valid = false;
                     setError('minPax', "Must be between 1 and 5,000");
+                } else {
+                    setError('minPax', "", false);
                 }
             }
-            
+
             if (priceInput) {
                 const price = parseFloat(priceInput.value.replace(/,/g, ''));
                 if (isNaN(price) || price < 300 || price > 1000000) {
                     valid = false;
                     setError('price', "Must be between ₱300 and ₱1,000,000");
+                } else {
+                    setError('price', "", false);
                 }
             }
         }
@@ -270,7 +330,7 @@
         if (currentStepCat === 4) {
             const permitBox = document.getElementById('permitBoxCat');
             const govIdBox = document.getElementById('govIdBoxCat');
-            
+
             const permitVerified = permitBox && permitBox.classList.contains('scanned-success');
             const idVerified = govIdBox && govIdBox.classList.contains('scanned-success');
 
@@ -289,7 +349,7 @@
         const submitBtn = document.getElementById('nextBtnCat');
         const btnText = submitBtn?.querySelector('span');
         const originalText = btnText ? btnText.innerText : 'Complete Registration';
-        
+
         if (submitBtn) submitBtn.disabled = true;
         if (btnText) btnText.innerText = 'Creating Account...';
 
@@ -303,7 +363,7 @@
 
         try {
             updateAddressCat();
-            
+
             const fn = document.getElementById('first_name_cat')?.value.trim() || '';
             const mn = document.getElementById('middle_name_cat')?.value.trim() || '';
             const ln = document.getElementById('last_name_cat')?.value.trim() || '';
@@ -335,15 +395,15 @@
             if (response.redirected) {
                 const url = new URL(response.url);
                 const email = url.searchParams.get('email');
-                
+
                 if (window.openAuthModal) {
                     const emailDisplay = document.getElementById('email-display');
                     const emailField = document.getElementById('emailField');
                     if (emailDisplay) emailDisplay.innerText = email;
                     if (emailField) emailField.value = email;
-                    
+
                     openAuthModal('verify');
-                    
+
                     if (window.Swal) {
                         Swal.fire({
                             icon: 'success',
@@ -384,18 +444,18 @@
         }
     }
 
-    window.updateFileNameCat = function(input, id) {
+    window.updateFileNameCat = function (input, id) {
         const p = document.getElementById(id);
         if (p && input.files.length > 0) p.innerText = input.files[0].name;
     };
 
-    window.previewLogoCat = function(input) {
+    window.previewLogoCat = function (input) {
         const preview = document.getElementById('logoPreviewCat');
         const icon = document.getElementById('uploadIconCat');
         const text = document.getElementById('uploadTextCat');
         if (input.files && input.files[0]) {
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = function (e) {
                 if (preview) {
                     preview.src = e.target.result;
                     preview.style.display = 'block';
@@ -410,16 +470,73 @@
     // Relying on inline location_data.js script logic in template forms
 
     // Make functions available globally for modal buttons
-    window.toggleEventOther = function(checkbox) {
+    window.toggleEventOther = function (checkbox) {
         const container = document.getElementById('eventOtherContainer');
         if (container) {
             container.style.display = checkbox.checked ? 'block' : 'none';
             if (checkbox.checked) {
-                document.getElementById('event_type_other').focus();
+                const input = document.getElementById('event_type_other');
+                if (input) input.focus();
+            } else {
+                // Clear the value and error if unchecked
+                const input = document.getElementById('event_type_other');
+                if (input) {
+                    input.value = '';
+                    input.style.borderColor = '';
+                }
+                const eventErrorDrawer = document.getElementById('eventTypeError');
+                if (eventErrorDrawer && eventErrorDrawer.innerText === "Please specify the other event type") {
+                    eventErrorDrawer.style.display = 'none';
+                }
             }
         }
-        checkbox.parentElement.classList.toggle('checked', checkbox.checked);
+        if (checkbox && checkbox.parentElement) {
+            checkbox.parentElement.classList.toggle('checked', checkbox.checked);
+        }
     };
 
     window.changeStepCat = changeStepCat;
+
+    // Set up real-time error clearing for Step 3
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('input[name="event_type_choice"]').forEach(cb => {
+            cb.addEventListener('change', () => {
+                const eventErrorDrawer = document.getElementById('eventTypeError');
+                const checked = document.querySelectorAll('input[name="event_type_choice"]:checked');
+                if (eventErrorDrawer && checked.length > 0) {
+                    // Only hide if the error is about selecting at least one
+                    if (eventErrorDrawer.innerText === "Please select at least one event type") {
+                        eventErrorDrawer.style.display = 'none';
+                    }
+                }
+            });
+        });
+
+        const eventOtherInput = document.getElementById('event_type_other');
+        if (eventOtherInput) {
+            eventOtherInput.addEventListener('input', () => {
+                const eventErrorDrawer = document.getElementById('eventTypeError');
+                if (eventOtherInput.value.trim()) {
+                    eventOtherInput.style.borderColor = '';
+                    if (eventErrorDrawer && eventErrorDrawer.innerText === "Please specify the other event type") {
+                        eventErrorDrawer.style.display = 'none';
+                    }
+                }
+            });
+        }
+
+        const menuInputCat = document.getElementById('sample_menu_cat');
+        if (menuInputCat) {
+            menuInputCat.addEventListener('change', () => {
+                if (menuInputCat.files.length > 0) {
+                    const menuBox = document.getElementById('menuBoxCat');
+                    const menuError = document.getElementById('menuErrorCat');
+                    if (menuBox) menuBox.style.borderColor = '';
+                    if (menuError && menuError.innerText === "Sample Menu is required") {
+                        menuError.style.display = 'none';
+                    }
+                }
+            });
+        }
+    });
 })();

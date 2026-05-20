@@ -9,22 +9,22 @@
 
     const LAGUNA_DATA = {
         "Santa Cruz": [
-            "Alipit", "Bagumbayan", "Bubukal", "Calios", "Duhat", 
-            "Gatid", "Jasaan", "Labuin", "Malinao", "Oogong", 
-            "Pagsawitan", "Palasan", "Patimbao", "Poblacion I", 
-            "Poblacion II", "Poblacion III", "Poblacion IV", 
-            "Poblacion V", "San Jose", "San Juan", "San Pablo Norte", 
-            "San Pablo Sur", "Santisima Cruz", "Santo Angel Central", 
+            "Alipit", "Bagumbayan", "Bubukal", "Calios", "Duhat",
+            "Gatid", "Jasaan", "Labuin", "Malinao", "Oogong",
+            "Pagsawitan", "Palasan", "Patimbao", "Poblacion I",
+            "Poblacion II", "Poblacion III", "Poblacion IV",
+            "Poblacion V", "San Jose", "San Juan", "San Pablo Norte",
+            "San Pablo Sur", "Santisima Cruz", "Santo Angel Central",
             "Santo Angel Norte", "Santo Angel Sur"
         ]
     };
 
-    window.changeStepCat = async function(n) {
+    window.changeStepCat = async function (n) {
         const form = document.getElementById('catererForm');
         if (!form) return;
         const steps = form.querySelectorAll('.form-step');
         const pSteps = document.querySelectorAll('.progress-step');
-        
+
         // Progress to next step only if current is valid
         if (n === 1) {
             const stepValid = await validateCurrentStepCat();
@@ -33,15 +33,15 @@
 
         steps[currentStepCat - 1].classList.remove('active');
         currentStepCat += n;
-        
+
         if (currentStepCat > totalStepsCat) {
             submitCatererForm();
-            currentStepCat = totalStepsCat; 
+            currentStepCat = totalStepsCat;
             return;
         }
 
         steps[currentStepCat - 1].classList.add('active');
-        
+
         // Update Progress Tracker
         pSteps.forEach((s, idx) => {
             if (idx + 1 < currentStepCat) s.className = 'progress-step completed';
@@ -53,13 +53,13 @@
         const prevBtn = document.getElementById('prevBtnCat');
         const nextBtn = document.getElementById('nextBtnCat');
         if (prevBtn) prevBtn.style.display = currentStepCat === 1 ? 'none' : 'block';
-        
+
         if (nextBtn) {
             const btnText = nextBtn.querySelector('span') || nextBtn;
             if (btnText === nextBtn) {
-                 nextBtn.innerText = currentStepCat === totalStepsCat ? 'Complete Registration' : 'Next Step';
+                nextBtn.innerText = currentStepCat === totalStepsCat ? 'Complete Registration' : 'Next Step';
             } else {
-                 btnText.innerText = currentStepCat === totalStepsCat ? 'Complete Registration' : 'Next Step';
+                btnText.innerText = currentStepCat === totalStepsCat ? 'Complete Registration' : 'Next Step';
             }
         }
     };
@@ -67,27 +67,27 @@
     async function validateCurrentStepCat() {
         const step = document.getElementById(`step-${currentStepCat}`);
         if (!step) return true;
-        
+
         let valid = true;
-        
+
         // 1. Force touched class and trigger input dispatch on all fields in this step
         const inputs = step.querySelectorAll('input, select, textarea');
         inputs.forEach(input => {
             input.classList.add('touched');
             input.dispatchEvent(new Event('input', { bubbles: true }));
         });
-        
+
         // 2. Perform formatting checks for Step 1
         if (currentStepCat === 1) {
             // First Name, Middle Name, Last Name
             const fnEl = document.getElementById('first_name_cat');
             const mnEl = document.getElementById('middle_name_cat');
             const lnEl = document.getElementById('last_name_cat');
-            
+
             const fnVal = (fnEl?.value || '').trim();
             const mnVal = (mnEl?.value || '').trim();
             const lnVal = (lnEl?.value || '').trim();
-            
+
             // Check formats using central diamondValidators
             if (fnEl) {
                 const res = window.diamondValidators.name(fnVal);
@@ -104,7 +104,7 @@
                 window.setDiamondError('middleNameCat', res.message, !res.valid);
                 if (!res.valid) valid = false;
             }
-            
+
             // Cross check names identically
             if (fnVal && lnVal && fnVal.toLowerCase() === lnVal.toLowerCase()) {
                 window.setDiamondError('firstNameCat', "First & Last name cannot be identical");
@@ -121,7 +121,7 @@
                 window.setDiamondError('lastNameCat', "Middle & Last name cannot be identical");
                 valid = false;
             }
-            
+
             // Email Format
             const emailEl = document.getElementById('email_cat');
             if (emailEl) {
@@ -129,7 +129,7 @@
                 window.setDiamondError('emailCat', res.message, !res.valid);
                 if (!res.valid) valid = false;
             }
-            
+
             // Mobile Format
             const mobileEl = document.getElementById('mobile_number_cat');
             if (mobileEl) {
@@ -137,7 +137,7 @@
                 window.setDiamondError('mobileCat', res.message, !res.valid);
                 if (!res.valid) valid = false;
             }
-            
+
             // Passwords Format
             const passEl = document.getElementById('password_cat');
             const confirmEl = document.getElementById('confirm_password_cat');
@@ -155,7 +155,7 @@
                     valid = false;
                 }
             }
-            
+
             // If the formatting validation passed so far, perform awaited AJAX uniqueness checks
             if (valid) {
                 if (emailEl && emailEl.value) {
@@ -168,7 +168,7 @@
                         }
                     } catch (err) { console.error("Email uniqueness check failed", err); }
                 }
-                
+
                 if (mobileEl && mobileEl.value) {
                     const cleanPhone = mobileEl.value.replace(/\s/g, '');
                     try {
@@ -182,7 +182,7 @@
                 }
             }
         }
-        
+
         // 3. Perform formatting checks for Step 2
         if (currentStepCat === 2) {
             const bizNameEl = document.getElementById('business_name');
@@ -191,25 +191,25 @@
                 window.setDiamondError('businessName', res.message, !res.valid);
                 if (!res.valid) valid = false;
             }
-            
+
             const cityEl = document.getElementById('city_cat');
             if (cityEl && (!cityEl.value || cityEl.value.trim() === '')) {
                 window.setDiamondError('cityCat', "Required");
                 valid = false;
             }
-            
+
             const brgyEl = document.getElementById('barangay_cat');
             if (brgyEl && (!brgyEl.value || brgyEl.value.trim() === '')) {
                 window.setDiamondError('barangayCat', "Required");
                 valid = false;
             }
-            
+
             const streetEl = document.getElementById('street_cat');
             if (streetEl && (!streetEl.value || streetEl.value.trim() === '')) {
                 window.setDiamondError('streetCat', "Required");
                 valid = false;
             }
-            
+
             // If formatting passed, run awaited business name uniqueness check
             if (valid && bizNameEl && bizNameEl.value) {
                 try {
@@ -222,7 +222,7 @@
                 } catch (err) { console.error("Business uniqueness check failed", err); }
             }
         }
-        
+
         // 4. Perform formatting checks for Step 3
         if (currentStepCat === 3) {
             const bizTypeEl = document.getElementById('business_type');
@@ -230,41 +230,95 @@
                 window.setDiamondError('businessType', "Required");
                 valid = false;
             }
-            
+
             const yearsEl = document.getElementById('years_of_operation');
             if (yearsEl) {
                 const res = window.diamondValidators.years(yearsEl.value);
                 window.setDiamondError('years', res.message, !res.valid);
                 if (!res.valid) valid = false;
             }
-            
+
             const minPaxEl = document.getElementById('min_pax');
             if (minPaxEl) {
                 const res = window.diamondValidators.minPax(minPaxEl.value);
                 window.setDiamondError('minPax', res.message, !res.valid);
                 if (!res.valid) valid = false;
             }
-            
+
             const priceEl = document.getElementById('starting_price');
             if (priceEl) {
                 const res = window.diamondValidators.price(priceEl.value);
                 window.setDiamondError('price', res.message, !res.valid);
                 if (!res.valid) valid = false;
             }
-            
+
             const descEl = document.getElementById('business_description');
             if (descEl && (!descEl.value || descEl.value.trim() === '')) {
                 window.setDiamondError('description', "Required");
                 valid = false;
             }
+
+            // Event Types Validation
+            const eventCheckboxes = step.querySelectorAll('input[name="event_type_choice"]:checked');
+            const eventErrorDrawer = document.getElementById('eventTypeError');
+            if (eventCheckboxes.length === 0) {
+                valid = false;
+                if (eventErrorDrawer) {
+                    eventErrorDrawer.innerText = "Please select at least one event type";
+                    eventErrorDrawer.style.display = 'block';
+                }
+            } else {
+                let otherError = false;
+                const otherCheck = document.getElementById('eventOtherCheck');
+                if (otherCheck && otherCheck.checked) {
+                    const otherInput = document.getElementById('event_type_other');
+                    if (!otherInput || !otherInput.value.trim()) {
+                        valid = false;
+                        otherError = true;
+                        if (eventErrorDrawer) {
+                            eventErrorDrawer.innerText = "Please specify the other event type";
+                            eventErrorDrawer.style.display = 'block';
+                        }
+                        if (otherInput) otherInput.style.borderColor = '#ef4444';
+                    } else {
+                        if (otherInput) otherInput.style.borderColor = '';
+                    }
+                }
+
+                if (!otherError && eventErrorDrawer) {
+                    eventErrorDrawer.style.display = 'none';
+                }
+            }
+
+            // Sample Menu Validation
+            const menuInput = document.getElementById('sample_menu_cat');
+            const menuBox = document.getElementById('menuBoxCat');
+            const menuError = document.getElementById('menuErrorCat');
+            if (menuInput && menuBox) {
+                if (menuInput.files.length === 0 && !menuBox.classList.contains('scanned-success')) {
+                    valid = false;
+                    menuBox.style.borderColor = '#ef4444';
+                    if (menuError) {
+                        menuError.innerText = "Sample Menu is required";
+                        menuError.style.display = 'block';
+                        menuError.style.color = '#ef4444';
+                    }
+                } else {
+                    menuBox.style.borderColor = '';
+                    if (menuError && menuError.innerText === "Sample Menu is required") {
+                        menuError.innerText = "";
+                        menuError.style.display = 'none';
+                    }
+                }
+            }
         }
-        
+
         // 5. Step 4 Verification Check
         if (currentStepCat === 4) {
             const permitScanned = document.getElementById('permitBoxCat').classList.contains('scanned-success');
             const idScanned = document.getElementById('govIdBoxCat').classList.contains('scanned-success');
             const selfieScanned = document.getElementById('selfieBoxCat').classList.contains('scanned-success');
-            
+
             if (!permitScanned || !idScanned || !selfieScanned) {
                 if (window.Swal) {
                     Swal.fire({
@@ -277,7 +331,7 @@
                 valid = false;
             }
         }
-        
+
         // 6. Generic check for any element with .input-wrapper.error inside the current step
         const errorWrappers = step.querySelectorAll('.input-wrapper.error');
         if (errorWrappers.length > 0) {
@@ -285,24 +339,24 @@
             // Focus on the first error field
             errorWrappers[0].querySelector('input, select, textarea')?.focus();
         }
-        
+
         // Sync full name if on Step 1
         if (currentStepCat === 1 && typeof window.composeFullNameCat === 'function') {
             window.composeFullNameCat();
         }
-        
+
         return valid;
     }
 
     async function submitCatererForm() {
         const form = document.getElementById('catererForm');
         if (!form) return;
-        
+
         // Final Verification Safeguard
         const permitScanned = document.getElementById('permitBoxCat').classList.contains('scanned-success');
         const idScanned = document.getElementById('govIdBoxCat').classList.contains('scanned-success');
         const selfieScanned = document.getElementById('selfieBoxCat').classList.contains('scanned-success');
-        
+
         if (!permitScanned || !idScanned || !selfieScanned) {
             if (window.Swal) {
                 Swal.fire({
@@ -317,14 +371,14 @@
 
         const formData = new FormData(form);
         const submitBtn = document.getElementById('nextBtnCat');
-        
+
         if (submitBtn) submitBtn.disabled = true;
         const originalText = submitBtn.innerHTML;
         submitBtn.innerText = 'Creating Account...';
 
         try {
             updateAddressCat();
-            
+
             // Consolidate checkboxes
             const checkboxes = form.querySelectorAll('input[name="event_type_choice"]:checked');
             const eventTypes = Array.from(checkboxes).map(cb => cb.value).join(',');
@@ -376,7 +430,7 @@
     let lastUploadedIdPath = null;
     let streamCat = null;
 
-    window.updateFileNameCat = function(input, targetId) {
+    window.updateFileNameCat = function (input, targetId) {
         const display = document.getElementById(targetId);
         if (display && input.files && input.files[0]) {
             display.innerText = input.files[0].name;
@@ -386,11 +440,11 @@
 
     let currentScanTypeCat = null;
 
-    window.isMobileDeviceCat = function() {
+    window.isMobileDeviceCat = function () {
         return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     };
 
-    window.isWebcamSupportedCat = function() {
+    window.isWebcamSupportedCat = function () {
         return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
     };
 
@@ -398,9 +452,9 @@
      * UNIVERSAL SCANNING HANDLER
      * Handles Permit, ID, and Selfie scans across all devices.
      */
-    window.startUniversalScanCat = async function(type) {
+    window.startUniversalScanCat = async function (type) {
         currentScanTypeCat = type;
-        
+
         // Log for debugging cross-device behavior
         console.log(`[KYC] Initiating ${type} scan. Device: ${window.isMobileDeviceCat() ? 'Mobile' : 'Desktop'}`);
 
@@ -420,7 +474,7 @@
         openScannerModalCat(type);
     };
 
-    window.triggerNativeCaptureCat = function(type) {
+    window.triggerNativeCaptureCat = function (type) {
         const inputId = type === 'permit' ? 'permit_cat' : (type === 'id' ? 'gov_id_cat' : 'selfie_cat');
         const input = document.getElementById(inputId);
         if (input) input.click();
@@ -431,7 +485,7 @@
         const idType = idTypeSelect ? idTypeSelect.value : '';
         const idNumberInput = document.getElementById('id_number') || document.getElementById('id_number_cat');
         const idNumber = idNumberInput ? idNumberInput.value.trim() : '';
-        
+
         if (type === 'id' && !idType) {
             Swal.fire('Requirement', 'Please select an ID Type first!', 'warning');
             return;
@@ -621,32 +675,32 @@
         const instr = document.getElementById('scannerInstructions');
         const video = document.getElementById('modalWebcamVideo');
         const canvas = document.getElementById('modalWebcamCanvas');
-        
+
         if (!video || !canvas) return false;
-        
+
         if (typeof FaceMesh !== 'undefined') {
             if (instr) {
                 instr.innerText = "Initializing AI Scanner...";
                 instr.style.background = "#f0fdf4";
                 instr.style.color = "#15803d";
             }
-            
+
             return new Promise((resolve) => {
                 const frames = [];
-                let currentStep = 1; 
+                let currentStep = 1;
                 let lookStraightStartTime = 0;
-                
+
                 const faceMesh = new FaceMesh({
                     locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
                 });
-                
+
                 faceMesh.setOptions({
                     maxNumFaces: 1,
                     refineLandmarks: true,
                     minDetectionConfidence: 0.6,
                     minTrackingConfidence: 0.6
                 });
-                
+
                 function getEAR(landmarks, eyeIndices) {
                     const p1 = landmarks[eyeIndices[0]];
                     const p2 = landmarks[eyeIndices[1]];
@@ -654,14 +708,14 @@
                     const p4 = landmarks[eyeIndices[3]];
                     const p5 = landmarks[eyeIndices[4]];
                     const p6 = landmarks[eyeIndices[5]];
-                    
+
                     const v1 = Math.hypot(p2.x - p6.x, p2.y - p6.y);
                     const v2 = Math.hypot(p3.x - p5.x, p3.y - p5.y);
                     const h = Math.hypot(p1.x - p4.x, p1.y - p4.y);
-                    
+
                     return h > 0 ? (v1 + v2) / (2.0 * h) : 0;
                 }
-                
+
                 faceMesh.onResults((results) => {
                     if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
                         if (instr) {
@@ -671,25 +725,25 @@
                         }
                         return;
                     }
-                    
+
                     const landmarks = results.multiFaceLandmarks[0];
-                    
+
                     // Occlusion & Obstruction Detection
                     const criticalPoints = [1, 33, 263, 61, 291];
                     const boundsCheck = criticalPoints.some(idx => !landmarks[idx] || landmarks[idx].x < 0 || landmarks[idx].x > 1 || landmarks[idx].y < 0 || landmarks[idx].y > 1);
-                    
+
                     // Calculate Nose Centering
                     const nose = landmarks[1];
                     const leftEye = landmarks[33];
                     const rightEye = landmarks[263];
-                    
+
                     let yawRatio = 1.0;
                     if (nose && leftEye && rightEye) {
                         const distL = Math.hypot(nose.x - leftEye.x, nose.y - leftEye.y);
                         const distR = Math.hypot(nose.x - rightEye.x, nose.y - rightEye.y);
                         yawRatio = distR > 0 ? distL / distR : 5;
                     }
-                    
+
                     if (boundsCheck || yawRatio > 2.5 || yawRatio < 0.4) {
                         if (instr) {
                             instr.innerText = "⚠️ Tanggalin yung mga nakaharang sa mukha";
@@ -698,11 +752,11 @@
                         }
                         return;
                     }
-                    
+
                     const leftEAR = getEAR(landmarks, [33, 160, 158, 133, 153, 144]);
                     const rightEAR = getEAR(landmarks, [362, 385, 387, 263, 373, 380]);
                     const avgEAR = (leftEAR + rightEAR) / 2.0;
-                    
+
                     if (currentStep === 1) {
                         if (instr) {
                             instr.innerText = "👀 Step 1: Look directly at the camera";
@@ -710,7 +764,7 @@
                             instr.style.color = "#1e40af";
                         }
                         updateStepDots(1);
-                        
+
                         if (yawRatio >= 0.7 && yawRatio <= 1.4) {
                             if (lookStraightStartTime === 0) lookStraightStartTime = Date.now();
                             if (Date.now() - lookStraightStartTime > 1200) {
@@ -728,25 +782,25 @@
                             instr.style.color = "#92400e";
                         }
                         updateStepDots(2);
-                        
+
                         if (avgEAR < 0.18) {
                             captureFrame();
                             currentStep = 3;
                             updateStepDots(3);
                             captureFrame();
-                            
+
                             if (instr) {
                                 instr.innerText = "✅ Liveness Verified!";
                                 instr.style.background = "#f0fdf4";
                                 instr.style.color = "#15803d";
                             }
-                            
+
                             faceMesh.close();
                             finishSequence();
                         }
                     }
                 });
-                
+
                 function updateStepDots(step) {
                     for (let i = 1; i <= 3; i++) {
                         const dot = document.getElementById('stepDot' + i);
@@ -777,31 +831,31 @@
                         frames.push(blob);
                     }, 'image/jpeg', 0.9);
                 }
-                
+
                 function finishSequence() {
                     setTimeout(() => {
                         const filename = `selfie_sequence_${Date.now()}.jpg`;
                         const files = frames.map((blob, i) => new File([blob], `frame_${i}_${filename}`, { type: "image/jpeg" }));
-                        
+
                         const nameEl = document.getElementById('selfieNameCat');
                         if (nameEl) nameEl.innerText = "Real-time Scan Completed";
-                        
+
                         window.handleFileUploadCat(files, 'selfie');
                         resolve(true);
                     }, 500);
                 }
-                
+
                 const analyzeFrame = async () => {
                     if (video.readyState >= 2 && currentStep <= 2) {
                         try {
                             await faceMesh.send({ image: video });
-                        } catch (e) {}
+                        } catch (e) { }
                     }
                     if (currentStep <= 2) {
                         requestAnimationFrame(analyzeFrame);
                     }
                 };
-                
+
                 analyzeFrame();
             });
         } else {
@@ -812,14 +866,14 @@
                 { text: "Now... BLINK your eyes", delay: 1000 },
                 { text: "Hold still...", delay: 800 }
             ];
-            
+
             for (const step of steps) {
                 if (instr) {
                     instr.innerText = step.text;
                     instr.classList.add('active');
                 }
                 await new Promise(r => setTimeout(r, step.delay));
-                
+
                 const blob = await new Promise(resolve => {
                     const context = canvas.getContext('2d');
                     canvas.width = video.videoWidth;
@@ -829,13 +883,13 @@
                 });
                 frames.push(blob);
             }
-            
+
             const filename = `selfie_sequence_${Date.now()}.jpg`;
             const files = frames.map((blob, i) => new File([blob], `frame_${i}_${filename}`, { type: "image/jpeg" }));
-            
+
             const nameEl = document.getElementById('selfieNameCat');
             if (nameEl) nameEl.innerText = "Sequence Captured";
-            
+
             window.handleFileUploadCat(files, 'selfie');
             return true;
         }
@@ -856,7 +910,7 @@
             canvas.toBlob((blob) => {
                 const filename = `${type}_capture_${Date.now()}.jpg`;
                 const file = new File([blob], filename, { type: "image/jpeg" });
-                
+
                 // Show in UI
                 const nameId = type === 'permit' ? 'permitNameCat' : (type === 'id' ? 'govIdNameCat' : 'selfieNameCat');
                 const nameEl = document.getElementById(nameId);
@@ -872,11 +926,11 @@
         });
     }
 
-    window.handleFileUploadCat = async function(inputOrFile, type) {
+    window.handleFileUploadCat = async function (inputOrFile, type) {
         const boxId = type === 'permit' ? 'permitBoxCat' : (type === 'id' ? 'govIdBoxCat' : 'selfieBoxCat');
         const statusId = type === 'permit' ? 'permitStatusCat' : (type === 'id' ? 'govIdStatusCat' : 'selfieStatusCat');
         const errorId = type === 'permit' ? 'permitOcrErrorCat' : (type === 'id' ? 'govIdOcrErrorCat' : 'selfieErrorCat');
-        
+
         let box = document.getElementById(boxId) || document.getElementById(type === 'id' ? 'govIdBox' : (type === 'selfie' ? 'selfieBox' : 'permitBox'));
         let statusLabel = document.getElementById(statusId) || document.getElementById(type === 'id' ? 'govIdStatus' : (type === 'selfie' ? 'selfieStatus' : 'permitStatus'));
         let errorDiv = document.getElementById(errorId) || document.getElementById(type === 'id' ? 'govIdOcrError' : (type === 'selfie' ? 'selfieError' : 'permitOcrError'));
@@ -891,7 +945,7 @@
         }
 
         if (files.length === 0) return;
-        
+
         // Populate the hidden input for form submission
         const inputId = type === 'permit' ? 'permit_cat' : (type === 'id' ? 'gov_id_cat' : 'selfie_cat');
         const altInputId = type === 'permit' ? 'permit' : (type === 'id' ? 'gov_id' : 'selfie');
@@ -901,12 +955,12 @@
             files.forEach(f => dt.items.add(f));
             realInput.files = dt.files;
         }
-        
+
         // Reset states to "Elite Scanning"
         box.classList.add('scanning');
         box.classList.remove('scanned-success', 'scanned-error');
         if (errorDiv) errorDiv.style.display = 'none';
-        
+
         statusLabel.innerText = "Analyzing Content...";
 
         // NEW: Full Screen Blocking Spinner
@@ -942,7 +996,7 @@
         const formData = new FormData();
         files.forEach(f => formData.append('document', f));
         formData.append('doc_type', type);
-        
+
         if (type === 'selfie' && lastUploadedIdPath) {
             formData.append('reference_doc', lastUploadedIdPath);
         }
@@ -956,7 +1010,7 @@
         // Update hidden full_name_cat field
         const hiddenFn = document.getElementById('full_name_cat') || document.getElementById('full_name');
         if (hiddenFn) hiddenFn.value = fullName;
-        
+
         formData.append('user_name', type === 'permit' ? businessName : fullName);
         if (type === 'permit') formData.append('owner_name', fullName);
         if (type === 'id') {
@@ -970,18 +1024,18 @@
                 body: formData
             });
             const result = await response.json();
-            
+
             box.classList.remove('scanning');
-            
+
             // Close the blocking spinner
             if (window.Swal) {
                 Swal.close();
             }
-            
+
             if (result.status === 'matched' || result.status === 'approved') {
                 box.classList.add('scanned-success');
                 statusLabel.innerText = type === 'selfie' ? "Identity Matched" : "Verification Passed";
-                
+
                 // Show Success Toast
                 if (window.Swal) {
                     const Toast = Swal.mixin({
@@ -1003,9 +1057,9 @@
             } else {
                 box.classList.add('scanned-error');
                 statusLabel.innerText = "Validation Failed";
-                
+
                 let errorMsg = result.failure_reason || "Verification failed.";
-                
+
                 // Enrich with OCR detection data if available 
                 if (!result.failure_reason && result.ocr_data) {
                     const detectedName = result.ocr_data.full_name_extracted || result.ocr_data.full_name || result.ocr_data.business_name;
@@ -1020,7 +1074,7 @@
                     errorDiv.innerText = errorMsg;
                     errorDiv.style.display = 'block';
                 }
-                
+
                 // Clear the input file so they must try again
                 if (inputOrFile instanceof HTMLInputElement) {
                     inputOrFile.value = '';
@@ -1038,14 +1092,14 @@
         }
     };
 
-    window.previewLogoCat = function(input) {
+    window.previewLogoCat = function (input) {
         const preview = document.getElementById('logoPreviewCat');
         const icon = document.getElementById('logoDefaultIcon');
         const text = document.getElementById('uploadTextCat');
-        
+
         if (input.files && input.files[0]) {
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = function (e) {
                 if (preview) {
                     preview.src = e.target.result;
                     preview.style.display = 'block';
@@ -1057,7 +1111,7 @@
         }
     };
 
-    window.composeFullNameCat = function() {
+    window.composeFullNameCat = function () {
         const fn = (document.getElementById('first_name_cat')?.value || '').trim();
         const ln = (document.getElementById('last_name_cat')?.value || '').trim();
         const mn = (document.getElementById('middle_name_cat')?.value || '').trim();
@@ -1067,7 +1121,7 @@
         }
     };
 
-    window.initCatererGeoDropdowns = function() {
+    window.initCatererGeoDropdowns = function () {
         const provSelect = document.getElementById('province_cat');
         const citySelect = document.getElementById('city_cat');
         const brgySelect = document.getElementById('barangay_cat');
@@ -1082,7 +1136,7 @@
         provSelect.addEventListener('change', () => {
             citySelect.innerHTML = '<option value="">-- City --</option>';
             if (brgySelect) brgySelect.innerHTML = '<option value="">-- Barangay --</option>';
-            
+
             const prov = provSelect.value;
             if (prov && window.LOCATION_DATA[prov]) {
                 const cities = Object.keys(window.LOCATION_DATA[prov]).sort();
@@ -1095,7 +1149,7 @@
                 if (cities.length > 0 && brgySelect) {
                     const firstCity = cities[0];
                     citySelect.value = firstCity;
-                    
+
                     if (window.LOCATION_DATA[prov][firstCity]) {
                         window.LOCATION_DATA[prov][firstCity].sort().forEach(b => {
                             const opt = document.createElement('option');
@@ -1106,12 +1160,12 @@
                 }
             }
         });
-        
+
         citySelect.addEventListener('change', () => {
             if (brgySelect) brgySelect.innerHTML = '<option value="">-- Barangay --</option>';
             const prov = provSelect.value;
             const city = citySelect.value;
-            
+
             if (prov && city && window.LOCATION_DATA[prov] && window.LOCATION_DATA[prov][city]) {
                 window.LOCATION_DATA[prov][city].sort().forEach(b => {
                     const opt = document.createElement('option');
@@ -1126,5 +1180,47 @@
         }
     };
 
-    document.addEventListener('DOMContentLoaded', window.initCatererGeoDropdowns);
+    document.addEventListener('DOMContentLoaded', () => {
+        window.initCatererGeoDropdowns();
+
+        // Set up real-time error clearing for Step 3
+        document.querySelectorAll('input[name="event_type_choice"]').forEach(cb => {
+            cb.addEventListener('change', () => {
+                const eventErrorDrawer = document.getElementById('eventTypeError');
+                const checked = document.querySelectorAll('input[name="event_type_choice"]:checked');
+                if (eventErrorDrawer && checked.length > 0) {
+                    if (eventErrorDrawer.innerText === "Please select at least one event type") {
+                        eventErrorDrawer.style.display = 'none';
+                    }
+                }
+            });
+        });
+
+        const eventOtherInput = document.getElementById('event_type_other');
+        if (eventOtherInput) {
+            eventOtherInput.addEventListener('input', () => {
+                const eventErrorDrawer = document.getElementById('eventTypeError');
+                if (eventOtherInput.value.trim()) {
+                    eventOtherInput.style.borderColor = '';
+                    if (eventErrorDrawer && eventErrorDrawer.innerText === "Please specify the other event type") {
+                        eventErrorDrawer.style.display = 'none';
+                    }
+                }
+            });
+        }
+
+        const menuInputCat = document.getElementById('sample_menu_cat');
+        if (menuInputCat) {
+            menuInputCat.addEventListener('change', () => {
+                if (menuInputCat.files.length > 0) {
+                    const menuBox = document.getElementById('menuBoxCat');
+                    const menuError = document.getElementById('menuErrorCat');
+                    if (menuBox) menuBox.style.borderColor = '';
+                    if (menuError && menuError.innerText === "Sample Menu is required") {
+                        menuError.style.display = 'none';
+                    }
+                }
+            });
+        }
+    });
 })();

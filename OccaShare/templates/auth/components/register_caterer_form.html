@@ -244,8 +244,9 @@
                         </label>
                     </div>
                     <div id="eventOtherContainer" style="display: none; margin-top: 0.75rem;">
-                        <input type="text" id="event_type_other" class="minimal-input">
+                        <input type="text" id="event_type_other" class="minimal-input" placeholder="Please specify...">
                     </div>
+                    <div id="eventTypeError" class="error-drawer" style="margin-top: 0.5rem;"></div>
                 </div>
                 <div class="form-group">
                     <label for="min_pax">Minimum Pax</label>
@@ -255,7 +256,7 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label for="starting_price">Starting Price (₱)</label>
+                    <label for="starting_price">Starting Price per Pax (₱)</label>
                     <div class="input-wrapper" id="priceWrapper">
                         <input type="text" id="starting_price" name="starting_price" class="minimal-input js-format-comma" required inputmode="numeric">
                         <div id="priceError" class="error-drawer">Required</div>

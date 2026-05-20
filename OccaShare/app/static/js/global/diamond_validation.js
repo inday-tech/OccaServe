@@ -451,16 +451,84 @@
         });
 
         paxInputs.forEach(input => {
-            input.addEventListener('input', function() {
+            let lastValidValue = input.value;
+
+            input.addEventListener('input', function(e) {
+                let cleanVal = this.value.replace(/,/g, '');
+                if (cleanVal === '') {
+                    lastValidValue = '';
+                    window.setDiamondError('minPax', "Required", true);
+                    return;
+                }
+
+                if (!/^[0-9]+$/.test(cleanVal)) {
+                    cleanVal = cleanVal.replace(/[^0-9]/g, '');
+                }
+
+                const num = parseInt(cleanVal, 10);
+                if (isNaN(num)) {
+                    this.value = '';
+                    lastValidValue = '';
+                } else if (num > 5000) {
+                    this.value = lastValidValue;
+                } else {
+                    this.value = cleanVal;
+                    lastValidValue = cleanVal;
+                }
+
+                if (typeof window.applyCommaFormatting === 'function') {
+                    window.applyCommaFormatting(this);
+                }
+
                 const { valid, message } = window.diamondValidators.minPax(this.value);
                 window.setDiamondError('minPax', message, !valid);
+            });
+
+            input.addEventListener('keydown', function(e) {
+                if (['e', 'E', '+', '-', '.'].includes(e.key)) {
+                    e.preventDefault();
+                }
             });
         });
 
         priceInputs.forEach(input => {
-            input.addEventListener('input', function() {
+            let lastValidValue = input.value;
+
+            input.addEventListener('input', function(e) {
+                let cleanVal = this.value.replace(/,/g, '');
+                if (cleanVal === '') {
+                    lastValidValue = '';
+                    window.setDiamondError('price', "Required", true);
+                    return;
+                }
+
+                if (!/^[0-9]+$/.test(cleanVal)) {
+                    cleanVal = cleanVal.replace(/[^0-9]/g, '');
+                }
+
+                const num = parseFloat(cleanVal);
+                if (isNaN(num)) {
+                    this.value = '';
+                    lastValidValue = '';
+                } else if (num > 1000000) {
+                    this.value = lastValidValue;
+                } else {
+                    this.value = cleanVal;
+                    lastValidValue = cleanVal;
+                }
+
+                if (typeof window.applyCommaFormatting === 'function') {
+                    window.applyCommaFormatting(this);
+                }
+
                 const { valid, message } = window.diamondValidators.price(this.value);
                 window.setDiamondError('price', message, !valid);
+            });
+
+            input.addEventListener('keydown', function(e) {
+                if (['e', 'E', '+', '-', '.'].includes(e.key)) {
+                    e.preventDefault();
+                }
             });
         });
 
