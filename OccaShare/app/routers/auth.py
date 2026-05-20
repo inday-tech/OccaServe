@@ -513,19 +513,19 @@ async def register(
                 print(f"[AUTH] Performing real OCR for new caterer: {business_name}")
                 try:
                     # 1. OCR for ID
-                    id_res = verification_service.verify_id_document(
+                    id_res = await verification_service.verify_id_document(
                         gov_id_url, full_name, id_number or "", id_type or "Passport"
                     )
                     
                     # 2. OCR for Permit
-                    permit_res = verification_service.verify_business_permit(
+                    permit_res = await verification_service.verify_business_permit(
                         permit_url, business_name, owner_name=full_name, db=db
                     )
                     
                     # 3. Face Match (If selfie provided)
                     face_res = {"status": "skipped"}
                     if selfie_url:
-                        face_res = verification_service.verify_identity_v2(
+                        face_res = await verification_service.verify_identity_v2(
                             gov_id_url, [selfie_url], full_name, id_number or "", id_type or "Passport", db, new_user.id
                         )
 

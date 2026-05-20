@@ -385,6 +385,9 @@ class VerificationService:
 
     def _extract_rich_ocr_data(self, text: str) -> Dict[str, Any]:
         """Extracts Full Name, ID Number, DOB, Expiry, and Address using regex."""
+        print(f"[KYC OCR] ─────────────────────────────────────────────")
+        print(f"[KYC OCR] Extracting structured data from OCR text...")
+        
         data = {
             "full_name": "",
             "id_number": "",
@@ -413,6 +416,9 @@ class VerificationService:
 
         if potential_names:
             data["full_name"] = potential_names[0]
+            print(f"[KYC OCR] ✓ Name extracted: {data['full_name']}")
+        else:
+            print(f"[KYC OCR] ⚠ No name found in OCR text")
 
         # 2. ID Number Extraction
         id_patterns = [
@@ -427,7 +433,11 @@ class VerificationService:
             match = re.search(pattern, clean_text_upper)
             if match:
                 data["id_number"] = match.group(1).strip()
+                print(f"[KYC OCR] ✓ ID number extracted: {data['id_number']}")
                 break
+        
+        if not data["id_number"]:
+            print(f"[KYC OCR] ⚠ No ID number found in OCR text")
 
         # 3. Birth Date Detection (Aggressive)
         date_pattern = r"(\b(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z.]*\s+\d{1,2},?\s+\d{4}\b|\d{2}[-/]\d{2}[-/]\d{4}|\d{4}[-/]\d{2}[-/]\d{2})"
@@ -452,8 +462,15 @@ class VerificationService:
         
         if address_parts:
             data["extracted_address"] = ", ".join(address_parts)
-
-        return data
+            print(f"[KYC OCR] ✓ Address extracted: {data['extracted_address'][:50]}...")
+        
+        print(f"[KYC OCR] ─────────────────────────────────────────────")
+        print(f"[KYC OCR] Extraction Summary:")
+        print(f"[KYC OCR]   • Name: {'✓' if data['full_name'] else '✗'} {data['full_name']}")
+        print(f"[KYC OCR]   • ID: {'✓' if data['id_number'] else '✗'} {data['id_number']}")
+        print(f"[KYC OCR]   • DOB: {'✓' if data['extracted_dob'] else '✗'} {data['extracted_dob']}")
+        print(f"[KYC OCR]   • Address: {'✓' if data['extracted_address'] else '✗'} {data['extracted_address'][:30]}...")
+        print(f"[KYC OCR] ─────────────────────────────────────────────")
 
         return data
 
@@ -560,35 +577,45 @@ class VerificationService:
             print("[KYC ERROR] OCR requested but OpenCV not available for preprocessing.")
             return ""
 
+        print("[KYC OCR] ─────────────────────────────────────────────")
+        print("[KYC OCR] Starting Tesseract OCR extraction...")
+        print("[KYC OCR] ─────────────────────────────────────────────")
+        
         # 1. Deskew
         image = self._deskew(image)
+        print(f"[KYC OCR] Step 1: Image deskewed")
         
         # 2. Rescale for better OCR quality
         height, width = image.shape[:2]
         # Target height of ~1000px for OCR is often optimal
         scaling_factor = 2.0 if height < 800 else 1.0
         upscaled = cv2.resize(image, (int(width * scaling_factor), int(height * scaling_factor)), interpolation=cv2.INTER_CUBIC)
+        print(f"[KYC OCR] Step 2: Image upscaled {height}x{width} → {int(height*scaling_factor)}x{int(width*scaling_factor)}")
         
         # 3. Robust Grayscale & Noise Reduction
         gray = cv2.cvtColor(upscaled, cv2.COLOR_BGR2GRAY)
+        print(f"[KYC OCR] Step 3: Converted to grayscale")
         
         # Background subtraction to handle textured backgrounds
         # Using a large kernel to estimate the background then subtracting it
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (21, 21))
         bg = cv2.morphologyEx(gray, cv2.MORPH_DILATE, kernel)
         gray_sub = cv2.divide(gray, bg, scale=255)
+        print(f"[KYC OCR] Step 4: Background subtraction applied")
         
         # Bilateral Filtering (Noise reduction while preserving edges)
         filtered = cv2.bilateralFilter(gray_sub, 9, 75, 75)
+        print(f"[KYC OCR] Step 5: Bilateral filtering applied (noise reduction)")
         
         # 4. Adaptive Thresholding (Otsu + Gaussian fallback)
         # We'll try both to see which gives better text density
         thresh_gaussian = cv2.adaptiveThreshold(filtered, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
         _, thresh_otsu = cv2.threshold(filtered, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+        print(f"[KYC OCR] Step 6: Thresholding methods prepared (Gaussian & Otsu)")
         
         best_text = ""
         
-        def run_pass(img_pass):
+        def run_pass(img_pass, method_name=""):
             nonlocal best_text
             # PSM 3: Automatic segmentation. 
             # PSM 6: Uniform block (often best for IDs).
@@ -598,24 +625,34 @@ class VerificationService:
                 config = f'--psm {psm} -l eng'
                 try:
                     if not pytesseract: return False
+                    print(f"[KYC OCR] Recognizing text using {method_name} (PSM {psm})...")
                     current_text = pytesseract.image_to_string(img_pass, config=config)
-                    if len(current_text.strip()) > len(best_text.strip()):
+                    text_length = len(current_text.strip())
+                    print(f"[KYC OCR] ✓ Recognized {text_length} characters from {method_name}")
+                    if text_length > 0:
+                        print(f"[KYC OCR] Text preview: {current_text[:100].strip()}...")
+                    if text_length > len(best_text.strip()):
                         best_text = current_text
                         # If we have a decent amount of text, stop early to save time
-                        if len(best_text.strip()) > 50: return True
-                except: continue
+                        if text_length > 50: 
+                            print(f"[KYC OCR] ✓ Sufficient text extracted ({text_length} chars), proceeding...")
+                            return True
+                except Exception as e: 
+                    print(f"[KYC OCR ERROR] Failed during {method_name}: {e}")
+                    continue
             return False
 
         # Attempt with Gaussian Thresholding first
-        run_pass(thresh_gaussian)
+        print(f"[KYC OCR] Starting Tesseract OCR with multi-pass strategy...")
+        run_pass(thresh_gaussian, "Gaussian Thresholding")
         
         # Only try Otsu or Rotation if Gaussian was very poor (< 30 chars)
         if len(best_text.strip()) < 30:
-            print("[KYC DEBUG] Tesseract fallback: Gaussian poor, trying Otsu/Rotation/Orientation/Raw...")
-            if not run_pass(thresh_otsu):
+            print("[KYC OCR] ⚠ Gaussian thresholding insufficient, trying alternative methods...")
+            if not run_pass(thresh_otsu, "Otsu Thresholding"):
                 # Try raw filtered image (no thresholding)
-                if run_pass(filtered):
-                    print("[KYC DEBUG] OCR match found using Raw Filtered image.")
+                if run_pass(filtered, "Raw Filtered Image"):
+                    print("[KYC OCR] ✓ OCR match found using Raw Filtered image.")
                 else:
                     # Try 90-degree rotations of the UPSCALED image (more robust than rotating thresh)
                     for rot_const in [cv2.ROTATE_90_CLOCKWISE, cv2.ROTATE_180, cv2.ROTATE_90_COUNTERCLOCKWISE]:
@@ -623,18 +660,27 @@ class VerificationService:
                             rotated = cv2.rotate(upscaled, rot_const)
                             gray_rot = cv2.cvtColor(rotated, cv2.COLOR_BGR2GRAY)
                             _, thresh_rot = cv2.threshold(gray_rot, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-                            if run_pass(thresh_rot):
-                                print(f"[KYC DEBUG] OCR match found after rotation {rot_const}.")
+                            rot_name = {cv2.ROTATE_90_CLOCKWISE: "90° Clockwise", cv2.ROTATE_180: "180°", cv2.ROTATE_90_COUNTERCLOCKWISE: "90° Counter-clockwise"}[rot_const]
+                            if run_pass(thresh_rot, f"Rotation {rot_name}"):
+                                print(f"[KYC OCR] ✓ OCR match found after {rot_name} rotation.")
                                 break
-                        except: continue
+                        except Exception as e:
+                            print(f"[KYC OCR] Rotation {rot_const} failed: {e}")
+                            continue
 
             # Final attempt: High Contrast Binarization
             if len(best_text.strip()) < 30:
+                print("[KYC OCR] Trying high contrast adjustment...")
                 alpha = 1.5 # Contrast
                 adjusted = cv2.convertScaleAbs(upscaled, alpha=alpha, beta=0)
                 gray_adj = cv2.cvtColor(adjusted, cv2.COLOR_BGR2GRAY)
                 _, thresh_adj = cv2.threshold(gray_adj, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-                run_pass(thresh_adj)
+                run_pass(thresh_adj, "High Contrast Binarization")
+        
+        if len(best_text.strip()) > 0:
+            print(f"[KYC OCR] ✓ Final OCR result: {len(best_text.strip())} characters extracted")
+        else:
+            print(f"[KYC OCR] ✗ No text could be recognized from the ID image")
             
         return best_text
 
