@@ -173,7 +173,7 @@
     // --- BINDING LOGIC ---
     window.initDiamondValidation = function(rootElement = document) {
         console.log("Diamond Validation Initializing...");
-        
+
         const emailInputs = Array.from(rootElement.querySelectorAll('input[type="email"]')).filter(el => !el.id.includes('login'));
         const mobileInputs = Array.from(rootElement.querySelectorAll('input[type="tel"], input[name="mobile_number"]')).filter(el => !el.id.includes('login'));
         const passInputs = Array.from(rootElement.querySelectorAll('input[type="password"]')).filter(el => !el.id.includes('login'));
@@ -182,11 +182,50 @@
         const priceInputs = Array.from(rootElement.querySelectorAll('input[name="starting_price"]')).filter(el => !el.id.includes('login'));
         const commaInputs = Array.from(rootElement.querySelectorAll('.js-format-comma')).filter(el => !el.id.includes('login'));
         const businessInputs = Array.from(rootElement.querySelectorAll('input[name="business_name"]')).filter(el => !el.id.includes('login'));
+        const barangaySelects = Array.from(rootElement.querySelectorAll('select[id*="barangay"]'));
 
         // Apply formatting listeners
         commaInputs.forEach(input => {
             input.addEventListener('input', function() {
                 window.applyCommaFormatting(this);
+            });
+        });
+
+        // Real-time Barangay Validation (clears error on selection)
+        barangaySelects.forEach(select => {
+            select.addEventListener('change', function() {
+                const fieldIdPrefix = this.id.replace('barangay_', '').replace('_cat', '');
+                const errorFieldId = fieldIdPrefix ? `barangay${fieldIdPrefix.charAt(0).toUpperCase() + fieldIdPrefix.slice(1)}` : 'barangay';
+
+                if (this.value && this.value.trim() !== '') {
+                    window.setDiamondError(errorFieldId, '', false);
+                }
+            });
+        });
+
+        // Real-time City/Municipality Validation (clears error on selection)
+        const citySelects = Array.from(rootElement.querySelectorAll('select[id*="city"]'));
+        citySelects.forEach(select => {
+            select.addEventListener('change', function() {
+                const fieldIdPrefix = this.id.replace('city_', '').replace('_cat', '');
+                const errorFieldId = fieldIdPrefix ? `city${fieldIdPrefix.charAt(0).toUpperCase() + fieldIdPrefix.slice(1)}` : 'city';
+
+                if (this.value && this.value.trim() !== '') {
+                    window.setDiamondError(errorFieldId, '', false);
+                }
+            });
+        });
+
+        // Real-time Province Validation (clears error on selection)
+        const provinceSelects = Array.from(rootElement.querySelectorAll('select[id*="province"]'));
+        provinceSelects.forEach(select => {
+            select.addEventListener('change', function() {
+                const fieldIdPrefix = this.id.replace('province_', '').replace('_cat', '');
+                const errorFieldId = fieldIdPrefix ? `province${fieldIdPrefix.charAt(0).toUpperCase() + fieldIdPrefix.slice(1)}` : 'province';
+
+                if (this.value && this.value.trim() !== '') {
+                    window.setDiamondError(errorFieldId, '', false);
+                }
             });
         });
 
