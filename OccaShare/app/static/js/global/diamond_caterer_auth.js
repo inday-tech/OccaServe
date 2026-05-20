@@ -1176,44 +1176,50 @@
     document.addEventListener('DOMContentLoaded', () => {
         window.initCatererGeoDropdowns();
 
-        // Set up real-time error clearing for Step 3
+        // ── Step 2: Street Address ───────────────────────────────────────────
+        document.getElementById('street_cat')?.addEventListener('input', function () {
+            if (this.value.trim()) window.setDiamondError('streetCat', '', false);
+        });
+
+        // ── Step 2: Business Type ────────────────────────────────────────────
+        document.getElementById('business_type')?.addEventListener('change', function () {
+            if (this.value) window.setDiamondError('businessType', '', false);
+        });
+
+        // ── Step 2: Short Description ────────────────────────────────────────
+        document.getElementById('business_description')?.addEventListener('input', function () {
+            if (this.value.trim()) window.setDiamondError('description', '', false);
+        });
+
+        // ── Step 3: Event Type checkboxes ────────────────────────────────────
         document.querySelectorAll('input[name="event_type_choice"]').forEach(cb => {
             cb.addEventListener('change', () => {
-                const eventErrorDrawer = document.getElementById('eventTypeError');
-                const checked = document.querySelectorAll('input[name="event_type_choice"]:checked');
-                if (eventErrorDrawer && checked.length > 0) {
-                    if (eventErrorDrawer.innerText === "Please select at least one event type") {
-                        eventErrorDrawer.style.display = 'none';
-                    }
+                const anyChecked = document.querySelectorAll('input[name="event_type_choice"]:checked').length > 0;
+                const drawer = document.getElementById('eventTypeError');
+                if (anyChecked && drawer) {
+                    drawer.innerText = '';
+                    drawer.style.display = 'none';
                 }
             });
         });
 
-        const eventOtherInput = document.getElementById('event_type_other');
-        if (eventOtherInput) {
-            eventOtherInput.addEventListener('input', () => {
-                const eventErrorDrawer = document.getElementById('eventTypeError');
-                if (eventOtherInput.value.trim()) {
-                    eventOtherInput.style.borderColor = '';
-                    if (eventErrorDrawer && eventErrorDrawer.innerText === "Please specify the other event type") {
-                        eventErrorDrawer.style.display = 'none';
-                    }
-                }
-            });
-        }
+        // ── Step 3: "Other" event type text field ────────────────────────────
+        document.getElementById('event_type_other')?.addEventListener('input', function () {
+            const drawer = document.getElementById('eventTypeError');
+            if (this.value.trim()) {
+                this.style.borderColor = '';
+                if (drawer) { drawer.innerText = ''; drawer.style.display = 'none'; }
+            }
+        });
 
-        const menuInputCat = document.getElementById('sample_menu_cat');
-        if (menuInputCat) {
-            menuInputCat.addEventListener('change', () => {
-                if (menuInputCat.files.length > 0) {
-                    const menuBox = document.getElementById('menuBoxCat');
-                    const menuError = document.getElementById('menuErrorCat');
-                    if (menuBox) menuBox.style.borderColor = '';
-                    if (menuError && menuError.innerText === "Sample Menu is required") {
-                        menuError.style.display = 'none';
-                    }
-                }
-            });
-        }
+        // ── Step 3: Sample Menu file ─────────────────────────────────────────
+        document.getElementById('sample_menu_cat')?.addEventListener('change', function () {
+            if (this.files.length > 0) {
+                const menuBox = document.getElementById('menuBoxCat');
+                const menuError = document.getElementById('menuErrorCat');
+                if (menuBox) menuBox.style.borderColor = '';
+                if (menuError) { menuError.innerText = ''; menuError.style.display = 'none'; }
+            }
+        });
     });
 })();
