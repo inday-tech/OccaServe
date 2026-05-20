@@ -210,6 +210,25 @@
                 valid = false;
             }
 
+            const bizTypeEl = document.getElementById('business_type');
+            if (bizTypeEl && (!bizTypeEl.value || bizTypeEl.value.trim() === '')) {
+                window.setDiamondError('businessType', "Required");
+                valid = false;
+            }
+
+            const yearsEl = document.getElementById('years_of_operation');
+            if (yearsEl) {
+                const res = window.diamondValidators.years(yearsEl.value);
+                window.setDiamondError('years', res.message, !res.valid);
+                if (!res.valid) valid = false;
+            }
+
+            const descEl = document.getElementById('business_description');
+            if (descEl && (!descEl.value || descEl.value.trim() === '')) {
+                window.setDiamondError('description', "Required");
+                valid = false;
+            }
+
             // If formatting passed, run awaited business name uniqueness check
             if (valid && bizNameEl && bizNameEl.value) {
                 try {
@@ -225,19 +244,6 @@
 
         // 4. Perform formatting checks for Step 3
         if (currentStepCat === 3) {
-            const bizTypeEl = document.getElementById('business_type');
-            if (bizTypeEl && (!bizTypeEl.value || bizTypeEl.value.trim() === '')) {
-                window.setDiamondError('businessType', "Required");
-                valid = false;
-            }
-
-            const yearsEl = document.getElementById('years_of_operation');
-            if (yearsEl) {
-                const res = window.diamondValidators.years(yearsEl.value);
-                window.setDiamondError('years', res.message, !res.valid);
-                if (!res.valid) valid = false;
-            }
-
             const minPaxEl = document.getElementById('min_pax');
             if (minPaxEl) {
                 const res = window.diamondValidators.minPax(minPaxEl.value);
@@ -250,12 +256,6 @@
                 const res = window.diamondValidators.price(priceEl.value);
                 window.setDiamondError('price', res.message, !res.valid);
                 if (!res.valid) valid = false;
-            }
-
-            const descEl = document.getElementById('business_description');
-            if (descEl && (!descEl.value || descEl.value.trim() === '')) {
-                window.setDiamondError('description', "Required");
-                valid = false;
             }
 
             // Event Types Validation
