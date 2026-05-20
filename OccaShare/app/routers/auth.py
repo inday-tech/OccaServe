@@ -39,8 +39,11 @@ async def check_phone(phone: str, db: Session = Depends(database.get_db)):
 
 @router.get("/check-business-name")
 async def check_business_name(name: str, db: Session = Depends(database.get_db)):
-    """Check if business name is already taken."""
-    existing = db.query(models.CatererProfile).filter(models.CatererProfile.business_name == name.strip()).first()
+    """Check if business name is already taken (case-insensitively)."""
+    stripped_name = name.strip()
+    existing = db.query(models.CatererProfile).filter(
+        func.lower(models.CatererProfile.business_name) == func.lower(stripped_name)
+    ).first()
     return {"available": existing is None}
 
 @router.post("/scan-document")
@@ -302,11 +305,13 @@ async def register(
             errors["business_name"] = "Business name is required for caterers"
         else:
             bn_error = is_dummy_name(business_name)
-            if bn_error: 
+            if bn_error:
                 errors["business_name"] = bn_error
-            
-            # Uniqueness Check
-            existing_biz = db.query(models.CatererProfile).filter(models.CatererProfile.business_name == business_name).first()
+
+            # Uniqueness Check (case-insensitive)
+            existing_biz = db.query(models.CatererProfile).filter(
+                func.lower(models.CatererProfile.business_name) == func.lower(business_name.strip())
+            ).first()
             if existing_biz:
                 errors["business_name"] = "This business name is already registered."
             

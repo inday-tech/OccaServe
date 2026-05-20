@@ -362,11 +362,52 @@
             });
         });
 
-        // 5. Numerical Inputs (Caterer operation metrics)
+        // 5. Numerical Inputs (Caterer operation metrics with strict input-blocking)
         yearInputs.forEach(input => {
-            input.addEventListener('input', function() {
+            let lastValidValue = input.value;
+
+            // Restrict input to digits and range [0-100]
+            input.addEventListener('input', function(e) {
+                let cleanVal = this.value.replace(/,/g, '');
+
+                if (cleanVal === '') {
+                    lastValidValue = '';
+                    return;
+                }
+
+                // Strip non-digits
+                if (!/^[0-9]+$/.test(cleanVal)) {
+                    cleanVal = cleanVal.replace(/[^0-9]/g, '');
+                }
+
+                const num = parseInt(cleanVal, 10);
+
+                if (isNaN(num)) {
+                    this.value = '';
+                    lastValidValue = '';
+                } else if (num > 100) {
+                    // Block input exceeding 100 by reverting to last valid state
+                    this.value = lastValidValue;
+                } else {
+                    this.value = cleanVal;
+                    lastValidValue = cleanVal;
+                }
+
+                // Maintain comma formatting if necessary
+                if (typeof window.applyCommaFormatting === 'function') {
+                    window.applyCommaFormatting(this);
+                }
+
+                // Show/hide live validation message
                 const { valid, message } = window.diamondValidators.years(this.value);
                 window.setDiamondError('years', message, !valid);
+            });
+
+            // Prevent characters like e, E, +, -, and decimal points .
+            input.addEventListener('keydown', function(e) {
+                if (['e', 'E', '+', '-', '.'].includes(e.key)) {
+                    e.preventDefault();
+                }
             });
         });
 

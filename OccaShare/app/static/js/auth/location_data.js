@@ -2979,3 +2979,5 @@ const LOCATION_DATA = {
         ]
     }
 };
+
+window.LOCATION_DATA = LOCATION_DATA;
