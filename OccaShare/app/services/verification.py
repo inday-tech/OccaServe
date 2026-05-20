@@ -927,7 +927,7 @@ class VerificationService:
                     
                 clean_ocr_upper = ocr_text.upper()
                 
-                # 5. Legitimacy Check (STRICTER but with FUZZY)
+                # 5. Legitimacy Check (LENIENT - accept if image quality is good OR if ID pattern is found)
                 def fuzzy_contains_id_keywords(text):
                     if any(kw in text for kw in self.ID_LEGITIMACY_KEYWORDS):
                         return True
@@ -938,9 +938,23 @@ class VerificationService:
                             if match: return True
                     return False
                 
+                # Check if any ID number pattern exists in text (lenient legitimacy)
+                id_pattern_found = False
+                id_patterns_check = [
+                    r'\d{4}-\d{4}-\d{4}-\d{4}',  # PhilID
+                    r'[A-Z]\d{2}-\d{2}-\d{6}',   # Driver's License
+                    r'\d{2}-\d{7}-\d{1}',        # SSS
+                    r'\d{3}-\d{3}-\d{3}',        # TIN variants
+                ]
+                for pattern in id_patterns_check:
+                    if re.search(pattern, clean_ocr_upper):
+                        id_pattern_found = True
+                        break
+                
                 id_faces = self._detect_faces_detailed(id_img)
                 has_face = len(id_faces) > 0
-                is_likely_id = (fuzzy_contains_id_keywords(clean_ocr_upper) or has_face) and len(clean_ocr_upper.strip()) > 15
+                # RELAXED: Accept if keywords found OR face detected OR ID pattern found
+                is_likely_id = (fuzzy_contains_id_keywords(clean_ocr_upper) or has_face or id_pattern_found) and len(clean_ocr_upper.strip()) > 10
                 
                 rich_data = self._extract_rich_ocr_data(ocr_text)
                 
@@ -1007,19 +1021,19 @@ class VerificationService:
                 if (ocr_data_name and clean_input in ocr_data_name.lower()) or clean_input in full_ocr_lower:
                     return True
                 
-                # Typo tolerance (Fuzzy)
+                # Typo tolerance (Fuzzy) - lowered from 0.85 to 0.70 for more lenient matching
                 if ocr_data_name:
                     ratio = difflib.SequenceMatcher(None, clean_input, ocr_data_name.lower()).ratio()
-                    if ratio > 0.85: return True
+                    if ratio > 0.70: return True
                 
-                # Check parts (lowered to 60% match for robustness)
+                # Check parts (lowered to 50% match for robustness - was 60%)
                 input_parts = [p for p in clean_input.split() if len(p) > 2]
                 if not input_parts: return False
                 matches = 0
                 for part in input_parts:
-                    if part in full_ocr_lower or any(difflib.SequenceMatcher(None, part, w).ratio() > 0.8 for w in full_ocr_lower.split()):
+                    if part in full_ocr_lower or any(difflib.SequenceMatcher(None, part, w).ratio() > 0.75 for w in full_ocr_lower.split()):
                         matches += 1
-                return (matches / len(input_parts)) >= 0.60
+                return (matches / len(input_parts)) >= 0.50
 
             # Helper for Date of Birth matching
             def match_dob(input_dob, extracted_dob, full_ocr_text):
@@ -1044,7 +1058,13 @@ class VerificationService:
             # --- EXECUTE VALIDATIONS ---
             # A. Validate the document looks like an actual ID
             if not is_likely_id:
-                reasons.append("Invalid ID Document.")
+                # Less strict: only reject if it's extremely unlikely to be an ID
+                # (very short text, no face, no ID keywords, no ID pattern)
+                if not id_pattern_found and len(clean_ocr_upper.strip()) < 20:
+                    print(f"[KYC DEBUG] Document legitimacy check FAILED: text_len={len(clean_ocr_upper.strip())}, has_keywords={fuzzy_contains_id_keywords(clean_ocr_upper)}, has_face={has_face}, has_id_pattern={id_pattern_found}")
+                    reasons.append("Invalid ID Document. The image doesn't appear to be an ID document.")
+                else:
+                    print(f"[KYC DEBUG] Document legitimacy check PASSED (lenient): text_len={len(clean_ocr_upper.strip())}, has_keywords={fuzzy_contains_id_keywords(clean_ocr_upper)}, has_face={has_face}, has_id_pattern={id_pattern_found}")
             
             # B. ID Number Cross-Reference: Match entered ID number against OCR-extracted ID number
             norm_id_input = id_number.replace("-", "").replace(" ", "").upper()
@@ -1054,13 +1074,16 @@ class VerificationService:
             gemini_id_extracted = (rich_data.get("id_number") or "").replace("-", "").replace(" ", "").upper()
             id_number_matched = False
             
+            print(f"[KYC DEBUG] ID Matching - Input: {norm_id_input}, Gemini: {gemini_id_extracted}, OCR contains: {norm_id_input in norm_id_ocr}")
+            
             if norm_id_input and gemini_id_extracted:
-                # Strict comparison for Gemini-extracted ID
+                # Exact match
                 if norm_id_input == gemini_id_extracted:
                     id_number_matched = True
-                elif difflib.SequenceMatcher(None, norm_id_input, gemini_id_extracted).ratio() > 0.85:
+                # Lenient fuzzy: lower threshold from 0.85 to 0.75 to catch OCR errors
+                elif difflib.SequenceMatcher(None, norm_id_input, gemini_id_extracted).ratio() > 0.75:
                     id_number_matched = True
-                    print(f"[KYC DEBUG] ID number fuzzy match: input='{norm_id_input}' vs extracted='{gemini_id_extracted}'")
+                    print(f"[KYC DEBUG] ID number fuzzy match (75%): input='{norm_id_input}' vs extracted='{gemini_id_extracted}'")
             
             # Fallback: Check if ID number exists anywhere in raw OCR text
             if not id_number_matched and norm_id_input:
@@ -1068,15 +1091,25 @@ class VerificationService:
                     id_number_matched = True
                 elif id_number.upper() in clean_ocr_upper:
                     id_number_matched = True
+                # Even more lenient: check if most digits match (for OCR misreads like 0→O, 1→I)
+                elif not id_number_matched:
+                    # Check if 80% of digits match in sequence
+                    digit_ratio = difflib.SequenceMatcher(None, norm_id_input, norm_id_ocr).ratio()
+                    if digit_ratio > 0.75:
+                        id_number_matched = True
+                        print(f"[KYC DEBUG] ID number partial match (75% digit ratio): {digit_ratio:.2f}")
             
             if norm_id_input and not id_number_matched:
-                reasons.append(f"ID Number mismatch. Detected: {rich_data.get('id_number', 'None')}")
+                detected_id = gemini_id_extracted or rich_data.get('id_number') or 'Not extracted'
+                print(f"[KYC DEBUG] ID Number mismatch: Input='{norm_id_input}', Detected='{detected_id}'")
+                reasons.append(f"ID Number mismatch. Detected: {detected_id}")
             
             # C. Name Cross-Reference: Match registration name against OCR-extracted name
             name_matched = match_name(full_name, rich_data.get("full_name"), ocr_text)
+            print(f"[KYC DEBUG] Name matching - Input: '{full_name}', Extracted: '{rich_data.get('full_name')}', Match: {name_matched}")
             
-            # Also check individual parts (last_name, first_name) from Gemini
-            if not name_matched and rich_data.get("last_name"):
+            # Also check individual parts (last_name, first_name) from Gemini - LENIENT
+            if not name_matched and (rich_data.get("last_name") or rich_data.get("first_name")):
                 input_parts = [p.lower() for p in full_name.split() if len(p) > 1]
                 extracted_last = (rich_data.get("last_name") or "").lower()
                 extracted_first = (rich_data.get("first_name") or "").lower()
@@ -1087,16 +1120,21 @@ class VerificationService:
                 for part in input_parts:
                     if part in extracted_last or part in extracted_first or part in extracted_middle:
                         parts_found += 1
-                    elif any(difflib.SequenceMatcher(None, part, w).ratio() > 0.8 
+                    # Lowered from 0.8 to 0.70 for more lenient matching
+                    elif any(difflib.SequenceMatcher(None, part, w).ratio() > 0.70 
                              for w in [extracted_last, extracted_first, extracted_middle] if w):
                         parts_found += 1
                 
-                if total_parts > 0 and (parts_found / total_parts) >= 0.5:
+                # Lowered from 0.5 to 0.40 (less than half of parts need to match)
+                if total_parts > 0 and (parts_found / total_parts) >= 0.40:
                     name_matched = True
                     print(f"[KYC DEBUG] Name matched via individual parts: {parts_found}/{total_parts}")
+                else:
+                    print(f"[KYC DEBUG] Name parts NOT matched: {parts_found}/{total_parts} (need 40%). Last: '{extracted_last}', First: '{extracted_first}', Middle: '{extracted_middle}'")
             
             if not name_matched:
                 detected_name = rich_data.get("full_name") or "None"
+                print(f"[KYC DEBUG] Name mismatch: Input='{full_name}', Detected='{detected_name}'")
                 reasons.append(f"Name mismatch. Detected: {detected_name}")
             
             # D. Tampering / AI-Editing Detection
