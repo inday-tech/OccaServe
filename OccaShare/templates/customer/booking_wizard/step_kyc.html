@@ -385,6 +385,292 @@
         border-color: var(--kyc-accent) !important;
         color: var(--kyc-accent) !important;
     }
+
+    /* ═══════════════════════════════════════════════════════ */
+    /*  OCR VERIFICATION MODAL                                */
+    /* ═══════════════════════════════════════════════════════ */
+    .ocr-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.35s ease;
+    }
+    .ocr-modal-overlay.visible {
+        opacity: 1;
+        visibility: visible;
+    }
+    .ocr-modal {
+        background: #fff;
+        border-radius: 1.75rem;
+        max-width: 560px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 25px 60px rgba(0,0,0,0.15);
+        transform: translateY(30px) scale(0.96);
+        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .ocr-modal-overlay.visible .ocr-modal {
+        transform: translateY(0) scale(1);
+    }
+    .ocr-modal-header {
+        padding: 2rem 2rem 0;
+        text-align: center;
+    }
+    .ocr-modal-header .modal-icon {
+        width: 64px; height: 64px;
+        background: linear-gradient(135deg, #f97316, #fb923c);
+        border-radius: 1rem;
+        display: inline-flex;
+        align-items: center; justify-content: center;
+        font-size: 1.75rem; color: white;
+        margin-bottom: 1rem;
+        box-shadow: 0 8px 20px rgba(249, 115, 22, 0.25);
+    }
+    .ocr-modal-header h2 {
+        font-size: 1.35rem;
+        font-weight: 800;
+        color: #1e293b;
+        margin-bottom: 0.35rem;
+    }
+    .ocr-modal-header p {
+        font-size: 0.85rem;
+        color: #94a3b8;
+        font-weight: 600;
+    }
+    .ocr-modal-body {
+        padding: 1.5rem 2rem;
+    }
+    .ocr-field-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        padding: 1rem 0;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .ocr-field-row:last-child { border-bottom: none; }
+    .ocr-field-icon {
+        width: 40px; height: 40px;
+        background: var(--kyc-accent-soft);
+        border-radius: 0.75rem;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--kyc-accent);
+        font-size: 0.9rem;
+        flex-shrink: 0;
+    }
+    .ocr-field-content { flex: 1; }
+    .ocr-field-content label {
+        display: block !important;
+        font-size: 0.7rem !important;
+        font-weight: 800 !important;
+        color: #94a3b8 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.06em !important;
+        margin-bottom: 0.35rem !important;
+    }
+    .ocr-field-content input {
+        width: 100%;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 0.75rem;
+        padding: 0.6rem 1rem;
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #1e293b;
+        background: #f8fafc;
+        transition: all 0.2s ease;
+    }
+    .ocr-field-content input:focus {
+        outline: none;
+        border-color: var(--kyc-accent);
+        background: #fff;
+        box-shadow: 0 0 0 3px var(--kyc-accent-soft);
+    }
+    .ocr-confidence-bar {
+        margin: 0.5rem 0 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .ocr-confidence-bar .bar-track {
+        flex: 1;
+        height: 6px;
+        background: #e2e8f0;
+        border-radius: 3px;
+        overflow: hidden;
+    }
+    .ocr-confidence-bar .bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #f97316, #22c55e);
+        border-radius: 3px;
+        transition: width 0.6s ease;
+    }
+    .ocr-confidence-bar .bar-label {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: #64748b;
+        white-space: nowrap;
+    }
+    .ocr-modal-footer {
+        padding: 0 2rem 2rem;
+        display: flex;
+        gap: 0.75rem;
+    }
+    .ocr-modal-footer button {
+        flex: 1;
+        padding: 0.85rem 1.5rem;
+        border-radius: 1rem;
+        font-weight: 800;
+        font-size: 0.9rem;
+        border: none;
+        cursor: pointer;
+        transition: all 0.25s ease;
+    }
+    .btn-modal-secondary {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+    .btn-modal-secondary:hover { background: #e2e8f0; }
+    .btn-modal-primary {
+        background: linear-gradient(135deg, #f97316, #ea580c);
+        color: white;
+        box-shadow: 0 6px 15px rgba(249, 115, 22, 0.25);
+    }
+    .btn-modal-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(249, 115, 22, 0.35);
+    }
+
+    /* ═══════════════════════════════════════════════════════ */
+    /*  COMPLIANCE CHECKING STATE                             */
+    /* ═══════════════════════════════════════════════════════ */
+    .compliance-check-container {
+        text-align: center;
+        padding: 3rem 1.5rem;
+    }
+    .compliance-icon-wrap {
+        width: 80px; height: 80px;
+        background: linear-gradient(135deg, #f97316, #fb923c);
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center; justify-content: center;
+        font-size: 2rem; color: white;
+        margin-bottom: 1.5rem;
+        animation: compliancePulse 2s ease-in-out infinite;
+        box-shadow: 0 10px 30px rgba(249, 115, 22, 0.25);
+    }
+    @keyframes compliancePulse {
+        0%, 100% { transform: scale(1); box-shadow: 0 10px 30px rgba(249, 115, 22, 0.25); }
+        50% { transform: scale(1.08); box-shadow: 0 15px 40px rgba(249, 115, 22, 0.35); }
+    }
+    .compliance-checklist {
+        max-width: 340px;
+        margin: 1.5rem auto 0;
+        text-align: left;
+    }
+    .compliance-check-item {
+        display: flex; align-items: center; gap: 0.75rem;
+        padding: 0.75rem 0;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #94a3b8;
+        transition: all 0.4s ease;
+    }
+    .compliance-check-item.checked {
+        color: #1e293b;
+    }
+    .compliance-check-item .check-icon {
+        width: 28px; height: 28px;
+        border-radius: 50%;
+        background: #f1f5f9;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.7rem;
+        color: #94a3b8;
+        flex-shrink: 0;
+        transition: all 0.4s ease;
+    }
+    .compliance-check-item.checked .check-icon {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+
+    /* ═══════════════════════════════════════════════════════ */
+    /*  PREMIUM LIVENESS FACE FRAME                           */
+    /* ═══════════════════════════════════════════════════════ */
+    .liveness-premium-container .face-circle-frame {
+        width: 260px; height: 260px;
+        border: 4px solid var(--kyc-accent);
+        border-radius: 50%;
+        position: relative;
+        margin: 0 auto 1.5rem;
+        overflow: hidden;
+        box-shadow: 0 0 0 8px var(--kyc-accent-soft), 0 15px 40px rgba(0,0,0,0.1);
+    }
+    .face-circle-frame video {
+        width: 100%; height: 100%;
+        object-fit: cover;
+    }
+    .liveness-instruction-pill {
+        display: inline-flex;
+        align-items: center; gap: 0.5rem;
+        background: #1e293b;
+        color: white;
+        padding: 0.65rem 1.5rem;
+        border-radius: 2rem;
+        font-size: 0.85rem;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+    }
+    .liveness-instruction-pill i {
+        color: var(--kyc-accent);
+    }
+    .face-compare-row {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 1.5rem;
+        margin: 1.5rem 0;
+    }
+    .face-compare-item {
+        text-align: center;
+    }
+    .face-compare-item img, .face-compare-item .placeholder-face {
+        width: 80px; height: 80px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid #e2e8f0;
+    }
+    .face-compare-item .placeholder-face {
+        background: #f1f5f9;
+        display: flex; align-items: center; justify-content: center;
+        color: #94a3b8; font-size: 2rem;
+    }
+    .face-compare-item span {
+        display: block;
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: #94a3b8;
+        margin-top: 0.5rem;
+        letter-spacing: 0.05em;
+    }
+    .compare-arrow {
+        font-size: 1.5rem;
+        color: var(--kyc-accent);
+        animation: arrowPulse 1.5s ease-in-out infinite;
+    }
+    @keyframes arrowPulse {
+        0%, 100% { opacity: 0.4; transform: scale(0.9); }
+        50% { opacity: 1; transform: scale(1.1); }
+    }
 </style>
 <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_kyc.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/wizard_navigation.css') }}">
@@ -597,45 +883,151 @@
                 </div>
             </div>
 
-            <!-- Liveness -->
-            <div id="scanner-container" style="display: none;">
-                <div class="scanner-viewport person-scanner" style="margin-bottom: 2rem;">
-                    <video id="webcam" autoplay playsinline></video>
-                    <div class="scanner-overlay">
-                        <div class="face-guide">
-                            <i class="fas fa-user-circle placeholder-icon" id="camera-placeholder"
-                                style="font-size: 8rem; color: var(--kyc-slate-200); position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); transition: opacity 0.3s ease;"></i>
-                            <div class="scanning-line" id="scan-line" style="display: none;"></div>
+            <!-- ═══════════════════════════════════════════ -->
+            <!--  OCR VERIFICATION MODAL                     -->
+            <!-- ═══════════════════════════════════════════ -->
+            <div id="ocr-verification-modal" class="ocr-modal-overlay">
+                <div class="ocr-modal">
+                    <div class="ocr-modal-header">
+                        <div class="modal-icon"><i class="fas fa-file-lines"></i></div>
+                        <h2>Review Extracted Details</h2>
+                        <p>Verify the information below matches your ID</p>
+                    </div>
+                    <div class="ocr-modal-body">
+                        <div class="ocr-confidence-bar">
+                            <span class="bar-label">Confidence:</span>
+                            <div class="bar-track"><div class="bar-fill" id="ocr-confidence-fill" style="width: 0%;"></div></div>
+                            <span class="bar-label" id="ocr-confidence-pct">0%</span>
                         </div>
-                        <div id="selfie-countdown" class="scan-feedback"
-                            style="font-size: 4rem; font-weight: 800; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; z-index: 10; color: white;">
-                            3</div>
+
+                        <div class="ocr-field-row">
+                            <div class="ocr-field-icon"><i class="fas fa-user"></i></div>
+                            <div class="ocr-field-content">
+                                <label>Full Name</label>
+                                <input type="text" id="ocr-full-name" placeholder="—">
+                            </div>
+                        </div>
+                        <div class="ocr-field-row">
+                            <div class="ocr-field-icon"><i class="fas fa-hashtag"></i></div>
+                            <div class="ocr-field-content">
+                                <label>ID Number</label>
+                                <input type="text" id="ocr-id-number" placeholder="—">
+                            </div>
+                        </div>
+                        <div class="ocr-field-row">
+                            <div class="ocr-field-icon"><i class="fas fa-calendar"></i></div>
+                            <div class="ocr-field-content">
+                                <label>Date of Birth</label>
+                                <input type="text" id="ocr-dob" placeholder="—">
+                            </div>
+                        </div>
+                        <div class="ocr-field-row">
+                            <div class="ocr-field-icon"><i class="fas fa-map-marker-alt"></i></div>
+                            <div class="ocr-field-content">
+                                <label>Address</label>
+                                <input type="text" id="ocr-address" placeholder="—">
+                            </div>
+                        </div>
+                        <div class="ocr-field-row">
+                            <div class="ocr-field-icon"><i class="fas fa-venus-mars"></i></div>
+                            <div class="ocr-field-content">
+                                <label>Sex</label>
+                                <input type="text" id="ocr-sex" placeholder="—">
+                            </div>
+                        </div>
                     </div>
+                    <div class="ocr-modal-footer">
+                        <button type="button" class="btn-modal-secondary" onclick="cancelOcrModal()"><i class="fas fa-redo-alt" style="margin-right:0.4rem;"></i> Rescan</button>
+                        <button type="button" class="btn-modal-primary" onclick="saveOcrAndContinue()"><i class="fas fa-check" style="margin-right:0.4rem;"></i> Save & Continue</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════ -->
+            <!--  COMPLIANCE CHECKING STATE                  -->
+            <!-- ═══════════════════════════════════════════ -->
+            <div id="compliance-checking" style="display: none;">
+                <div class="compliance-check-container">
+                    <div class="compliance-icon-wrap">
+                        <i class="fas fa-clipboard-check"></i>
+                    </div>
+                    <h2 style="font-weight: 800; font-size: 1.4rem; color: #1e293b; margin-bottom: 0.5rem;">Checking Caterer Compliance</h2>
+                    <p style="color: #94a3b8; font-weight: 600; font-size: 0.9rem; max-width: 380px; margin: 0 auto;">We're verifying your identity data against caterer requirements</p>
+
+                    <div class="compliance-checklist" id="compliance-checklist">
+                        <div class="compliance-check-item" id="comp-check-1">
+                            <div class="check-icon"><i class="fas fa-spinner fa-spin"></i></div>
+                            <span>Validating ID document authenticity</span>
+                        </div>
+                        <div class="compliance-check-item" id="comp-check-2">
+                            <div class="check-icon"><i class="fas fa-circle" style="font-size:0.4rem;"></i></div>
+                            <span>Cross-referencing caterer requirements</span>
+                        </div>
+                        <div class="compliance-check-item" id="comp-check-3">
+                            <div class="check-icon"><i class="fas fa-circle" style="font-size:0.4rem;"></i></div>
+                            <span>Checking booking eligibility</span>
+                        </div>
+                        <div class="compliance-check-item" id="comp-check-4">
+                            <div class="check-icon"><i class="fas fa-circle" style="font-size:0.4rem;"></i></div>
+                            <span>Preparing biometric verification</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════ -->
+            <!--  PREMIUM LIVENESS DETECTION                 -->
+            <!-- ═══════════════════════════════════════════ -->
+            <div id="scanner-container" style="display: none;">
+                <div class="liveness-premium-container" style="text-align: center;">
+                    <h3 style="font-weight: 800; font-size: 1.2rem; color: #1e293b; margin-bottom: 0.5rem;">AI Face Verification</h3>
+                    <p style="color: #94a3b8; font-size: 0.85rem; font-weight: 600; margin-bottom: 1.5rem;">Position your face within the circle for biometric comparison</p>
+
+                    <div class="face-circle-frame">
+                        <video id="webcam" autoplay playsinline></video>
+                        <div id="selfie-countdown" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 4rem; font-weight: 800; color: white; text-shadow: 0 2px 10px rgba(0,0,0,0.5); display: none; z-index: 10;">3</div>
+                    </div>
+
+                    <div class="liveness-instruction-pill" id="liveness-instruction">
+                        <i class="fas fa-crosshairs"></i>
+                        <span id="scan-feedback">Tap 'Start Camera' to begin</span>
+                    </div>
+
+                    <div class="face-compare-row" id="face-compare-row" style="display: none;">
+                        <div class="face-compare-item">
+                            <img id="id-photo-thumb" src="" alt="ID Photo" style="display:none;">
+                            <div class="placeholder-face" id="id-photo-placeholder"><i class="fas fa-id-badge"></i></div>
+                            <span>ID Photo</span>
+                        </div>
+                        <div class="compare-arrow"><i class="fas fa-exchange-alt"></i></div>
+                        <div class="face-compare-item">
+                            <div class="placeholder-face" id="selfie-placeholder"><i class="fas fa-camera"></i></div>
+                            <span>Live Selfie</span>
+                        </div>
+                    </div>
+
                     <canvas id="frame-canvas" style="display: none;"></canvas>
-                </div>
-                <div id="scan-feedback" class="scan-feedback" style="margin-bottom: 2rem;">Tap 'Start Camera' to begin
-                </div>
-                <div id="liveness-controls" class="mt-4"
-                    style="text-align: center; display: flex; flex-direction: column; gap: 1.25rem; align-items: center;">
-                    <button type="button" id="btn-start-camera" class="btn-primary-kyc"
-                        onclick="startRealtimeScanner()">Start Camera</button>
 
-                    <div id="liveness-camera-switch-group"
-                        style="display: none; background: #f1f5f9; border-radius: 2rem; padding: 0.25rem; gap: 0.25rem; border: 1px solid #e2e8f0;">
-                        <button type="button" id="btn-live-cam-front" class="btn-toggle active"
-                            onclick="switchLivenessCamera('user')"
-                            style="border: none; background: transparent; border-radius: 1.75rem; padding: 0.5rem 1.25rem; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.4rem; transition: all 0.3s ease; color: #64748b;">
-                            <i class="fas fa-portrait"></i> <span>Front</span>
-                        </button>
-                        <button type="button" id="btn-live-cam-back" class="btn-toggle"
-                            onclick="switchLivenessCamera('environment')"
-                            style="border: none; background: transparent; border-radius: 1.75rem; padding: 0.5rem 1.25rem; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.4rem; transition: all 0.3s ease; color: #64748b;">
-                            <i class="fas fa-camera"></i> <span>Back</span>
-                        </button>
+                    <div id="liveness-controls" style="display: flex; flex-direction: column; gap: 1rem; align-items: center; margin-top: 1rem;">
+                        <button type="button" id="btn-start-camera" class="btn-primary-kyc" onclick="startRealtimeScanner()">Start Camera</button>
+
+                        <div id="liveness-camera-switch-group"
+                            style="display: none; background: #f1f5f9; border-radius: 2rem; padding: 0.25rem; gap: 0.25rem; border: 1px solid #e2e8f0;">
+                            <button type="button" id="btn-live-cam-front" class="btn-toggle active"
+                                onclick="switchLivenessCamera('user')"
+                                style="border: none; background: transparent; border-radius: 1.75rem; padding: 0.5rem 1.25rem; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.4rem; transition: all 0.3s ease; color: #64748b;">
+                                <i class="fas fa-portrait"></i> <span>Front</span>
+                            </button>
+                            <button type="button" id="btn-live-cam-back" class="btn-toggle"
+                                onclick="switchLivenessCamera('environment')"
+                                style="border: none; background: transparent; border-radius: 1.75rem; padding: 0.5rem 1.25rem; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.4rem; transition: all 0.3s ease; color: #64748b;">
+                                <i class="fas fa-camera"></i> <span>Back</span>
+                            </button>
+                        </div>
+
+                        <button type="button" id="btn-begin-capture" class="btn-primary-kyc"
+                            onclick="beginLivenessSequence()" style="display: none;">I'm Ready</button>
                     </div>
-
-                    <button type="button" id="btn-begin-capture" class="btn-primary-kyc"
-                        onclick="beginLivenessSequence()" style="display: none;">I'm Ready</button>
                 </div>
             </div>
 

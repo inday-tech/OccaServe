@@ -331,16 +331,19 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     window.finalizeIdAndProceed = async function () {
-        if (!validateKycForm()) {
-            if (window.showError) window.showError('Please complete all required fields.', 'Validation Error');
+        const idType = document.getElementById('id_type').value;
+        if (!idType) {
+            if (window.showError) window.showError('Please select an ID type first.', 'Validation Error');
             return;
         }
 
         document.getElementById('step-id-form').style.display = 'none';
+        document.getElementById('id-preview').style.display = 'none';
         document.getElementById('ocr-loading').style.display = 'block';
-        document.getElementById('extraction-title').innerText = "Uploading Identity Document";
+        document.getElementById('extraction-title').innerText = "Scanning Your ID";
+        updateStatusTracker(2);
         
-        // Simulated progress for better UX
+        // Simulated quality indicator progress
         const statusEl = document.getElementById('extraction-status');
         const indicators = ['qc-resolution', 'qc-focus', 'qc-ocr'];
         let indicatorIdx = 0;
@@ -353,28 +356,164 @@ document.addEventListener('DOMContentLoaded', function () {
                     el.querySelector('i').style.color = 'var(--kyc-accent)';
                 }
                 indicatorIdx++;
-                if (indicatorIdx === 1) statusEl.innerText = "Optimizing image for fast upload...";
-                if (indicatorIdx === 2) statusEl.innerText = "Securely transmitting biometric data...";
-                if (indicatorIdx === 3) statusEl.innerText = "Finalizing extraction...";
+                if (indicatorIdx === 1) statusEl.innerText = "Analyzing document quality...";
+                if (indicatorIdx === 2) statusEl.innerText = "Running AI-powered OCR extraction...";
+                if (indicatorIdx === 3) statusEl.innerText = "Finalizing data extraction...";
             }
         }, 800);
 
-        // --- CLIENT SIDE COMPRESSION (Major Speed Boost) ---
+        // --- CLIENT SIDE COMPRESSION ---
         let finalFile = idFile;
         try {
             const compressedBlob = await compressImage(idFile, 1280, 0.8);
             finalFile = new File([compressedBlob], idFile.name, { type: 'image/jpeg' });
-            console.log(`[KYC] Client-side compression: ${(idFile.size / 1024).toFixed(1)}KB -> ${(finalFile.size / 1024).toFixed(1)}KB`);
+            console.log(`[KYC] Compression: ${(idFile.size / 1024).toFixed(1)}KB -> ${(finalFile.size / 1024).toFixed(1)}KB`);
         } catch (e) {
-            console.warn("[KYC] Compression failed, using original file", e);
+            console.warn("[KYC] Compression failed, using original", e);
         }
 
+        // Step 1: Call extract-id to get OCR data (NO validation yet)
+        const extractForm = new FormData();
+        extractForm.append('id_type', idType);
+        extractForm.append('id_document', finalFile);
+
+        try {
+            const res = await fetch('/api/bookings/extract-id', { method: 'POST', body: extractForm });
+            clearInterval(progressTimer);
+
+            if (res.ok) {
+                const result = await res.json();
+                console.log('[KYC] OCR extraction result:', result);
+
+                // Store the extracted data and temp URL for later upload
+                window._ocrExtractedData = result.extracted_data || {};
+                window._ocrTempIdUrl = result.temp_id_url || '';
+                window._ocrCompressedFile = finalFile;
+
+                // Populate the modal fields
+                showOcrModal(result.extracted_data);
+            } else {
+                const data = await res.json().catch(() => ({}));
+                if (window.showError) window.showError(data.detail || "OCR extraction failed. Please try again.", "Extraction Error");
+                resetToIdForm();
+            }
+        } catch (err) {
+            clearInterval(progressTimer);
+            console.error('[KYC] Extract-id network error:', err);
+            if (window.showError) window.showError("Connection lost during extraction.", "Network Error");
+            resetToIdForm();
+        }
+    };
+
+    function resetToIdForm() {
+        document.getElementById('ocr-loading').style.display = 'none';
+        document.getElementById('step-id-form').style.display = 'block';
+    }
+
+    // ─── OCR VERIFICATION MODAL ────────────────────────────────────────
+    function showOcrModal(data) {
+        document.getElementById('ocr-loading').style.display = 'none';
+
+        // Populate fields from extracted data
+        const fields = data.fields || data || {};
+        document.getElementById('ocr-full-name').value = data.full_name || fields.full_name || '';
+        document.getElementById('ocr-id-number').value = data.id_number || fields.id_number || fields.pcn_number || fields.license_number || fields.passport_number || '';
+        document.getElementById('ocr-dob').value = data.birth_date || fields.date_of_birth || '';
+        document.getElementById('ocr-address').value = data.address || fields.address || '';
+        document.getElementById('ocr-sex').value = fields.sex || '';
+
+        // Set confidence bar
+        const confidence = Math.round((data.confidence_score || fields.confidence_score || 0) * 100);
+        document.getElementById('ocr-confidence-fill').style.width = confidence + '%';
+        document.getElementById('ocr-confidence-pct').innerText = confidence + '%';
+
+        // Also pre-fill the hidden id_number field if OCR found one
+        const ocrIdNum = data.id_number || fields.id_number || '';
+        if (ocrIdNum && !document.getElementById('id_number').value.trim()) {
+            document.getElementById('id_number').value = ocrIdNum;
+        }
+
+        // Show modal with animation
+        const modal = document.getElementById('ocr-verification-modal');
+        modal.style.display = 'flex';
+        requestAnimationFrame(() => {
+            modal.classList.add('visible');
+        });
+    }
+
+    window.cancelOcrModal = function () {
+        const modal = document.getElementById('ocr-verification-modal');
+        modal.classList.remove('visible');
+        setTimeout(() => {
+            modal.style.display = 'none';
+            resetToIdForm();
+            updateStatusTracker(1);
+        }, 350);
+    };
+
+    // ─── SAVE & CONTINUE → COMPLIANCE → UPLOAD → LIVENESS ────────────
+    window.saveOcrAndContinue = async function () {
+        const modal = document.getElementById('ocr-verification-modal');
+        modal.classList.remove('visible');
+        setTimeout(() => { modal.style.display = 'none'; }, 350);
+
+        // Get reviewed/edited values from modal
+        const reviewedName = document.getElementById('ocr-full-name').value.trim();
+        const reviewedIdNumber = document.getElementById('ocr-id-number').value.trim() || document.getElementById('id_number').value.trim();
+        const reviewedDob = document.getElementById('ocr-dob').value.trim();
+        const reviewedAddress = document.getElementById('ocr-address').value.trim();
+
+        // Update hidden form fields with reviewed data
+        if (reviewedName) {
+            const nameParts = reviewedName.split(' ');
+            document.getElementById('first_name').value = nameParts[0] || '';
+            document.getElementById('last_name').value = nameParts[nameParts.length - 1] || '';
+        }
+        if (reviewedIdNumber) document.getElementById('id_number').value = reviewedIdNumber;
+        if (reviewedDob) document.getElementById('dob').value = reviewedDob;
+        if (reviewedAddress) document.getElementById('address').value = reviewedAddress;
+
+        // Show Compliance Checking animation
+        document.getElementById('compliance-checking').style.display = 'block';
+        updateStatusTracker(2);
+
+        // Animate compliance checklist items sequentially
+        await runComplianceAnimation();
+
+        // After compliance animation, proceed to actual upload
+        document.getElementById('compliance-checking').style.display = 'none';
+        await performIdUpload();
+    };
+
+    async function runComplianceAnimation() {
+        const checks = [
+            { id: 'comp-check-1', delay: 1200 },
+            { id: 'comp-check-2', delay: 1000 },
+            { id: 'comp-check-3', delay: 800 },
+            { id: 'comp-check-4', delay: 600 }
+        ];
+
+        for (const check of checks) {
+            await new Promise(r => setTimeout(r, check.delay));
+            const item = document.getElementById(check.id);
+            if (item) {
+                item.classList.add('checked');
+                const icon = item.querySelector('.check-icon');
+                if (icon) icon.innerHTML = '<i class="fas fa-check"></i>';
+            }
+        }
+
+        // Brief pause to let user see all green checks
+        await new Promise(r => setTimeout(r, 800));
+    }
+
+    async function performIdUpload() {
         const formData = new FormData();
         formData.append('id_type', document.getElementById('id_type').value);
         formData.append('id_number', document.getElementById('id_number').value.trim());
-        formData.append('id_document', finalFile);
+        formData.append('id_document', window._ocrCompressedFile || idFile);
         formData.append('first_name', document.getElementById('first_name').value.trim());
-        formData.append('middle_name', document.getElementById('middle_name')?.value.trim() || '');
+        formData.append('middle_name', document.getElementById('middle_name')?.value?.trim() || '');
         formData.append('last_name', document.getElementById('last_name').value.trim());
         formData.append('dob', document.getElementById('dob').value);
         formData.append('address', document.getElementById('address').value.trim());
@@ -383,29 +522,41 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             const res = await fetch(`/api/bookings/${bookingId}/upload-id`, { method: 'POST', body: formData });
             if (res.ok) {
-                clearInterval(progressTimer);
-                document.getElementById('ocr-loading').style.display = 'none';
+                // Transition to Premium Liveness Detection
                 document.getElementById('scanner-container').style.display = 'block';
+                document.getElementById('face-compare-row').style.display = 'flex';
                 updateStatusTracker(3);
-                
-                // Automatically start the liveness camera scanner for a truly frictionless flow
+
+                // Show the uploaded ID as thumbnail in the compare row
+                if (idFile) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const thumb = document.getElementById('id-photo-thumb');
+                        if (thumb) {
+                            thumb.src = e.target.result;
+                            thumb.style.display = 'block';
+                            document.getElementById('id-photo-placeholder').style.display = 'none';
+                        }
+                    };
+                    reader.readAsDataURL(idFile);
+                }
+
+                // Auto-start the liveness camera
                 if (window.startRealtimeScanner) {
                     window.startRealtimeScanner();
                 }
             } else {
-                clearInterval(progressTimer);
-                const data = await res.json();
+                const data = await res.json().catch(() => ({}));
                 if (window.showError) window.showError(data.detail || "Upload failed", "Upload Error");
-                document.getElementById('ocr-loading').style.display = 'none';
-                document.getElementById('step-id-form').style.display = 'block';
+                resetToIdForm();
+                updateStatusTracker(1);
             }
         } catch (err) {
-            clearInterval(progressTimer);
             if (window.showError) window.showError("Connection lost.", "Network Error");
-            document.getElementById('ocr-loading').style.display = 'none';
-            document.getElementById('step-id-form').style.display = 'block';
+            resetToIdForm();
+            updateStatusTracker(1);
         }
-    };
+    }
 
     // Helper: Client-side Image Compression
     async function compressImage(file, maxDim, quality) {
@@ -472,11 +623,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (success) {
             video.srcObject = stream;
-            document.getElementById('scan-line').style.display = 'block';
-            document.getElementById('camera-placeholder').style.opacity = '0';
             startBtn.style.display = 'none';
             beginBtn.style.display = 'inline-block';
-            document.getElementById('scan-feedback').innerText = "Look into the center of the circle and click 'I'm Ready'";
+            const feedbackEl = document.getElementById('scan-feedback');
+            if (feedbackEl) feedbackEl.innerText = "Look into the center of the circle and click 'I'm Ready'";
             await getCameraDevices();
         } else {
             if (window.showError) window.showError("Unable to access camera.", "Camera Error"); else alert("Unable to access camera.");
@@ -492,7 +642,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const prompts = ["Look into the camera", "Blink slowly", "Stay still..."];
 
         for (let i = 0; i < 3; i++) {
-            feedbackEl.innerText = prompts[i];
+            const feedbackEl = document.getElementById('scan-feedback');
+            if (feedbackEl) feedbackEl.innerText = prompts[i];
 
             // 3-2-1 Countdown
             countdownEl.style.display = 'block';
@@ -552,8 +703,8 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('scanner-container').style.display = 'block';
         document.getElementById('btn-start-camera').style.display = 'inline-block';
         document.getElementById('btn-begin-capture').style.display = 'none';
-        document.getElementById('camera-placeholder').style.opacity = '1';
-        document.getElementById('scan-feedback').innerText = "Tap 'Start Camera' to begin";
+        const feedbackEl = document.getElementById('scan-feedback');
+        if (feedbackEl) feedbackEl.innerText = "Tap 'Start Camera' to begin";
     };
 
     window.submitLiveness = async function () {
