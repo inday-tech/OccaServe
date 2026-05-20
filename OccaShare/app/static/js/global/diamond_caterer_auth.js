@@ -70,11 +70,10 @@
 
         let valid = true;
 
-        // 1. Force touched class and trigger input dispatch on all fields in this step
+        // 1. Mark all fields in this step as touched (so real-time validators show errors)
         const inputs = step.querySelectorAll('input, select, textarea');
         inputs.forEach(input => {
             input.classList.add('touched');
-            input.dispatchEvent(new Event('input', { bubbles: true }));
         });
 
         // 2. Perform formatting checks for Step 1
@@ -153,6 +152,8 @@
                 } else if (!confirmEl.value) {
                     window.setDiamondError('confirmCat', "Required");
                     valid = false;
+                } else {
+                    window.setDiamondError('confirmCat', "", false);
                 }
             }
 
@@ -330,14 +331,6 @@
                 }
                 valid = false;
             }
-        }
-
-        // 6. Generic check for any element with .input-wrapper.error inside the current step
-        const errorWrappers = step.querySelectorAll('.input-wrapper.error');
-        if (errorWrappers.length > 0) {
-            valid = false;
-            // Focus on the first error field
-            errorWrappers[0].querySelector('input, select, textarea')?.focus();
         }
 
         // Sync full name if on Step 1

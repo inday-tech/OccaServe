@@ -95,7 +95,7 @@
     // --- CORE VALIDATORS ---
     window.diamondValidators = {
         name: (name) => {
-            const nameRegex = /^[a-zA-Z\s\.\-']{2,60}$/;
+            const nameRegex = /^[a-zA-ZñÑ\s\.\-']{2,60}$/;
             const dummyNames = ['test', 'dummy', 'guest', 'demo'];
             const lowerName = name.toLowerCase().trim();
 
@@ -130,12 +130,10 @@
         },
         mobile: (val) => {
             const mobileRegex = /^(09|\+639)\d{9}$/;
-            const repetitiveRegex = /(.)\1\1/;
             const valClean = val.replace(/\s/g, '');
 
             if (!valClean) return { valid: false, message: "Required" };
             if (!mobileRegex.test(valClean)) return { valid: false, message: "Format: 09XXXXXXXXX (11 digits)" };
-            if (repetitiveRegex.test(valClean)) return { valid: false, message: "Too many repetitive digits (e.g., 111)" };
             return { valid: true };
         },
         password: (p) => {
