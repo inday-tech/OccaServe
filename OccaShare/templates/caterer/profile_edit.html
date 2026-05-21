@@ -61,7 +61,7 @@
                         <i class="fas fa-wallet"></i> <span>Payments & Policies</span>
                     </button>
                     <button type="button" class="tab-btn" data-tab="brand">
-                        <i class="fas fa-palette"></i> <span>Customization</span>
+                        <i class="fas fa-palette"></i> <span>Professional Branding</span>
                     </button>
                     <button type="button" class="tab-btn" data-tab="account">
                         <i class="fas fa-user-shield"></i> <span>Account & Security</span>
@@ -136,13 +136,13 @@
                 <div class="tab-content" id="location">
                     <div class="section-header-compact">
                         <h3><i class="fas fa-map-location-dot"></i> Registered Business Location</h3>
-                        <p>This is your official business address used for search and bookings.</p>
+                        <p>Your official business address used for search and bookings.</p>
                     </div>
 
                     <div class="location-picker-card" style="margin-top: 0;">
                         <label><i class="fas fa-crosshairs"></i> Interactive Street Map</label>
                         <p class="field-hint">Pin your exact kitchen location. This ensures accurate distance calculation for customers.</p>
-                        
+
                         <div class="location-picker-wrapper">
                             <div class="map-search-group" style="display:flex;gap:0.5rem;align-items:center;">
                                 <div style="position:relative;flex:1;">
@@ -159,15 +159,33 @@
                                 <span><i class="fas fa-map-pin" style="color:var(--primary-color);margin-right:4px;"></i> Lon: <strong id="lonDisplay">{{ profile.longitude or '0.00' }}</strong></span>
                             </div>
                         </div>
-                        
+
                         <input type="hidden" name="latitude" id="latInput" value="{{ profile.latitude or '' }}">
                         <input type="hidden" name="longitude" id="lonInput" value="{{ profile.longitude or '' }}">
                     </div>
 
-                    <div class="form-row-two-col" style="margin-top: 2rem;">
+                    <!-- Address Components -->
+                    <div class="section-header-compact" style="margin-top: 2rem;">
+                        <h3><i class="fas fa-home"></i> Address Components</h3>
+                        <p>Complete address information for your business location.</p>
+                    </div>
+
+                    <div class="form-row-two-col">
                         <div class="form-group">
-                            <label><i class="fas fa-city"></i> City / Municipality</label>
-                            <input type="text" name="city" id="locationCity" value="{{ profile.city }}" required placeholder="e.g. Laguna">
+                            <label><i class="fas fa-flag"></i> Province</label>
+                            <input type="text" name="province" id="locationProvince" value="{{ profile.province_code or '' }}" placeholder="e.g. Laguna" required>
+                            <span class="field-hint">Your registered province from KYC</span>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-city"></i> Municipality / City</label>
+                            <input type="text" name="municipality" id="locationMunicipality" value="{{ profile.city or '' }}" required placeholder="e.g. Laguna de Bay">
+                        </div>
+                    </div>
+
+                    <div class="form-row-two-col">
+                        <div class="form-group">
+                            <label><i class="fas fa-map-pin"></i> Barangay</label>
+                            <input type="text" name="barangay" id="locationBarangay" value="{{ profile.city_code or '' }}" placeholder="e.g. Bagumbayan">
                         </div>
                         <div class="form-group">
                             <label><i class="fas fa-phone"></i> Business Hotline</label>
@@ -176,9 +194,9 @@
                     </div>
 
                     <div class="form-group">
-                        <label><i class="fas fa-location-arrow"></i> Detailed Street Address</label>
-                        <textarea name="contact_address" id="businessAddress" rows="2" placeholder="Purok, Barangay, Street Name" required>{{ profile.contact_address or '' }}</textarea>
-                        <span class="field-hint">This address was verified during your registration/KYC.</span>
+                        <label><i class="fas fa-location-dot"></i> Landmark / Detailed Address</label>
+                        <textarea name="contact_address" id="businessAddress" rows="3" placeholder="e.g. Near San Agustin Church, Beside Jollibee on Main Street" required>{{ profile.contact_address or '' }}</textarea>
+                        <span class="field-hint">Include landmarks and specific directions to help customers find you easily.</span>
                     </div>
                 </div>
 
@@ -208,6 +226,152 @@
                         <label><i class="fas fa-envelope"></i> Registered Email</label>
                         <input type="email" value="{{ user.email }}" disabled style="background-color: #f1f5f9; cursor: not-allowed; opacity: 0.7;">
                         <span class="field-hint"><i class="fas fa-lock"></i> Email cannot be changed for security.</span>
+                    </div>
+
+                    <div style="margin-top: 1.5rem;">
+                        <button type="button" class="profile-action-btn secondary" onclick="openPasswordModal()" style="max-width: 280px;">
+                            <i class="fas fa-key"></i> <span>Change Password</span>
+                        </button>
+                    </div>
+
+                    <!-- Notification Preferences -->
+                    <div class="section-header-compact" style="margin-top: 2.5rem;">
+                        <h3><i class="fas fa-bell"></i> Notification Preferences</h3>
+                        <p>Choose which notifications you'd like to receive.</p>
+                    </div>
+
+                    {% set notif_prefs = profile.notification_preferences or {"email_new_booking": True, "email_payment_confirmed": True, "email_weekly_summary": False, "push_messages": True, "email_review_received": True} %}
+
+                    <div class="notification-prefs-list" id="notifPrefsList">
+                        <div class="notif-pref-item">
+                            <div class="notif-pref-info">
+                                <i class="fas fa-calendar-plus"></i>
+                                <div>
+                                    <span class="notif-pref-title">New Booking Requests</span>
+                                    <span class="notif-pref-desc">Get notified when a customer submits a new booking.</span>
+                                </div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" data-pref="email_new_booking" {% if notif_prefs.get('email_new_booking', True) %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="notif-pref-item">
+                            <div class="notif-pref-info">
+                                <i class="fas fa-credit-card"></i>
+                                <div>
+                                    <span class="notif-pref-title">Payment Confirmed</span>
+                                    <span class="notif-pref-desc">Receive alerts when a payment is verified.</span>
+                                </div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" data-pref="email_payment_confirmed" {% if notif_prefs.get('email_payment_confirmed', True) %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="notif-pref-item">
+                            <div class="notif-pref-info">
+                                <i class="fas fa-star"></i>
+                                <div>
+                                    <span class="notif-pref-title">New Review Received</span>
+                                    <span class="notif-pref-desc">Get notified when a customer leaves a review.</span>
+                                </div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" data-pref="email_review_received" {% if notif_prefs.get('email_review_received', True) %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="notif-pref-item">
+                            <div class="notif-pref-info">
+                                <i class="fas fa-comment-dots"></i>
+                                <div>
+                                    <span class="notif-pref-title">Push Notifications for Messages</span>
+                                    <span class="notif-pref-desc">Real-time alerts for customer messages.</span>
+                                </div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" data-pref="push_messages" {% if notif_prefs.get('push_messages', True) %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="notif-pref-item">
+                            <div class="notif-pref-info">
+                                <i class="fas fa-chart-line"></i>
+                                <div>
+                                    <span class="notif-pref-title">Weekly Performance Summary</span>
+                                    <span class="notif-pref-desc">Receive a weekly email with your business analytics.</span>
+                                </div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" data-pref="email_weekly_summary" {% if notif_prefs.get('email_weekly_summary', False) %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-save-notifs" id="saveNotifsBtn" onclick="saveNotificationPrefs()">
+                        <i class="fas fa-save"></i> Save Notification Preferences
+                    </button>
+
+                    <!-- Login Activity -->
+                    <div class="section-header-compact" style="margin-top: 2.5rem;">
+                        <h3><i class="fas fa-clock-rotate-left"></i> Login Activity</h3>
+                        <p>Recent login information for your account.</p>
+                    </div>
+
+                    <div class="login-activity-card">
+                        <div class="login-activity-row">
+                            <div class="la-icon"><i class="fas fa-calendar-day"></i></div>
+                            <div class="la-info">
+                                <span class="la-label">Last Login</span>
+                                <span class="la-value">{{ user.last_login.strftime('%b %d, %Y — %I:%M %p') if user.last_login else 'Never' }}</span>
+                            </div>
+                        </div>
+                        <div class="login-activity-row">
+                            <div class="la-icon"><i class="fas fa-shield-check"></i></div>
+                            <div class="la-info">
+                                <span class="la-label">Account Status</span>
+                                <span class="la-value" style="color: {{ '#10b981' if profile.account_status == 'Active' else '#ef4444' }};">
+                                    <i class="fas fa-{{ 'check-circle' if profile.account_status == 'Active' else 'exclamation-triangle' }}"></i>
+                                    {{ profile.account_status or 'Active' }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="login-activity-row">
+                            <div class="la-icon"><i class="fas fa-user-check"></i></div>
+                            <div class="la-info">
+                                <span class="la-label">Member Since</span>
+                                <span class="la-value">{{ user.created_at.strftime('%B %d, %Y') if user.created_at else 'N/A' }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Danger Zone -->
+                    <div class="danger-zone-section">
+                        <div class="danger-zone-header">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span>Danger Zone</span>
+                        </div>
+                        <div class="danger-zone-body">
+                            <div class="danger-action-row">
+                                <div>
+                                    <strong>Deactivate Account</strong>
+                                    <p>Temporarily hide your business from customers. You can reactivate anytime.</p>
+                                </div>
+                                <button type="button" class="btn-danger-outline" onclick="handleDeactivate()">
+                                    <i class="fas fa-eye-slash"></i> Deactivate
+                                </button>
+                            </div>
+                            <div class="danger-action-row" style="border-top: 1px solid #fee2e2;">
+                                <div>
+                                    <strong>Request Account Deletion</strong>
+                                    <p>Permanently delete all your data. This action cannot be undone.</p>
+                                </div>
+                                <button type="button" class="btn-danger-solid" onclick="handleDeleteRequest()">
+                                    <i class="fas fa-trash-alt"></i> Request Deletion
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -487,8 +651,6 @@
                                                 <option value="topo" {% if profile.dashboard_texture=='topo' %}selected{% endif %}>Topography Elite</option>
                                                 <option value="marble" {% if profile.dashboard_texture=='marble' %}selected{% endif %}>Luxury Marble</option>
                                                 <option value="circuit" {% if profile.dashboard_texture=='circuit' %}selected{% endif %}>Digital Circuit</option>
-                                                <option value="food" {% if profile.dashboard_texture=='food' %}selected{% endif %}>Food Doodle</option>
-                                                <option value="dining" {% if profile.dashboard_texture=='dining' %}selected{% endif %}>Fine Dining</option>
                                             </select>
                                         </div>
                                         <div class="control-group" style="flex: 1;">
@@ -500,39 +662,6 @@
                                 </div>
                             </div>
 
-                            <!-- Navigation Decorations -->
-                            <div class="brand-settings-card">
-                                <div class="brand-card-header">
-                                    <i class="fas fa-wand-magic-sparkles"></i>
-                                    <span>Navigation Decorations (Stickers)</span>
-                                </div>
-                                <div class="brand-card-body">
-                                    <div class="form-row-two-col" style="gap: 1.5rem;">
-                                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
-                                            <label>Sidebar Decoration Pack</label>
-                                            <select name="sidebar_decoration" class="filter-select-pro">
-                                                <option value="none" {% if profile.sidebar_decoration=='none' %}selected{% endif %}>None</option>
-                                                <option value="chef-hat" {% if profile.sidebar_decoration=='chef-hat' %}selected{% endif %}>Chef Essentials (Hat & Utensils)</option>
-                                                <option value="food-pack" {% if profile.sidebar_decoration=='food-pack' %}selected{% endif %}>Catering Favorites (Pizza, Burger, Ice Cream)</option>
-                                                <option value="party-pack" {% if profile.sidebar_decoration=='party-pack' %}selected{% endif %}>Event Vibes (Balloons, Music, Cheers)</option>
-                                                <option value="steam" {% if profile.sidebar_decoration=='steam' %}selected{% endif %}>Morning Service (Coffee & Cookies)</option>
-                                            </select>
-                                        </div>
-                                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
-                                            <label>Header Accent Pack</label>
-                                            <select name="header_decoration" class="filter-select-pro">
-                                                <option value="none" {% if profile.header_decoration=='none' %}selected{% endif %}>None</option>
-                                                <option value="utensils" {% if profile.header_decoration=='utensils' %}selected{% endif %}>Dining Duo (Fork & Glass)</option>
-                                                <option value="sparkles" {% if profile.header_decoration=='sparkles' %}selected{% endif %}>Elite Shimmer (Sparkles & Stars)</option>
-                                                <option value="delivery" {% if profile.header_decoration=='delivery' %}selected{% endif %}>Quick Delivery (Truck & Box)</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <p style="font-size: 0.7rem; color: var(--text-light); margin-top: 1rem;">
-                                        <i class="fas fa-info-circle"></i> Add subtle catering-themed animations to your navigation areas.
-                                    </p>
-                                </div>
-                            </div>
 
                             <div class="brand-settings-card">
                                 <div class="brand-card-header">
@@ -649,186 +778,6 @@
                     </div>
                 </div>
 
-                <!-- Tab: Account & Security -->
-                <div class="tab-content" id="account">
-                    <div class="section-header-compact">
-                        <h3><i class="fas fa-user-edit"></i> Personal Information</h3>
-                        <p>Your personal details linked to this caterer account.</p>
-                    </div>
-
-                    <div class="form-row-three-col">
-                        <div class="form-group">
-                            <label><i class="fas fa-user"></i> First Name</label>
-                            <input type="text" name="first_name" value="{{ user.first_name or '' }}" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Middle Name</label>
-                            <input type="text" name="middle_name" value="{{ user.middle_name or '' }}">
-                        </div>
-                        <div class="form-group">
-                            <label>Last Name</label>
-                            <input type="text" name="last_name" value="{{ user.last_name or '' }}" required>
-                        </div>
-                    </div>
-
-                    <div class="form-row-two-col">
-                        <div class="form-group">
-                            <label><i class="fas fa-home"></i> Personal Address</label>
-                            <input type="text" name="personal_address" value="{{ user.address or '' }}" placeholder="Your home address">
-                        </div>
-                        <div class="form-group">
-                            <label><i class="fas fa-envelope"></i> Email Address</label>
-                            <input type="email" value="{{ user.email }}" disabled style="opacity:0.6; cursor:not-allowed;">
-                            <span class="field-hint">Email cannot be changed for security reasons.</span>
-                        </div>
-                    </div>
-
-                    <div style="margin-top: 0.5rem;">
-                        <button type="button" class="profile-action-btn secondary" onclick="openPasswordModal()" style="max-width: 280px;">
-                            <i class="fas fa-key"></i> <span>Change Password</span>
-                        </button>
-                    </div>
-
-                    <!-- Notification Preferences -->
-                    <div class="section-header-compact" style="margin-top: 2.5rem;">
-                        <h3><i class="fas fa-bell"></i> Notification Preferences</h3>
-                        <p>Choose which notifications you'd like to receive.</p>
-                    </div>
-
-                    {% set notif_prefs = profile.notification_preferences or {"email_new_booking": True, "email_payment_confirmed": True, "email_weekly_summary": False, "push_messages": True, "email_review_received": True} %}
-
-                    <div class="notification-prefs-list" id="notifPrefsList">
-                        <div class="notif-pref-item">
-                            <div class="notif-pref-info">
-                                <i class="fas fa-calendar-plus"></i>
-                                <div>
-                                    <span class="notif-pref-title">New Booking Requests</span>
-                                    <span class="notif-pref-desc">Get notified when a customer submits a new booking.</span>
-                                </div>
-                            </div>
-                            <label class="toggle-switch">
-                                <input type="checkbox" data-pref="email_new_booking" {% if notif_prefs.get('email_new_booking', True) %}checked{% endif %}>
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        <div class="notif-pref-item">
-                            <div class="notif-pref-info">
-                                <i class="fas fa-credit-card"></i>
-                                <div>
-                                    <span class="notif-pref-title">Payment Confirmed</span>
-                                    <span class="notif-pref-desc">Receive alerts when a payment is verified.</span>
-                                </div>
-                            </div>
-                            <label class="toggle-switch">
-                                <input type="checkbox" data-pref="email_payment_confirmed" {% if notif_prefs.get('email_payment_confirmed', True) %}checked{% endif %}>
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        <div class="notif-pref-item">
-                            <div class="notif-pref-info">
-                                <i class="fas fa-star"></i>
-                                <div>
-                                    <span class="notif-pref-title">New Review Received</span>
-                                    <span class="notif-pref-desc">Get notified when a customer leaves a review.</span>
-                                </div>
-                            </div>
-                            <label class="toggle-switch">
-                                <input type="checkbox" data-pref="email_review_received" {% if notif_prefs.get('email_review_received', True) %}checked{% endif %}>
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        <div class="notif-pref-item">
-                            <div class="notif-pref-info">
-                                <i class="fas fa-comment-dots"></i>
-                                <div>
-                                    <span class="notif-pref-title">Push Notifications for Messages</span>
-                                    <span class="notif-pref-desc">Real-time alerts for customer messages.</span>
-                                </div>
-                            </div>
-                            <label class="toggle-switch">
-                                <input type="checkbox" data-pref="push_messages" {% if notif_prefs.get('push_messages', True) %}checked{% endif %}>
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        <div class="notif-pref-item">
-                            <div class="notif-pref-info">
-                                <i class="fas fa-chart-line"></i>
-                                <div>
-                                    <span class="notif-pref-title">Weekly Performance Summary</span>
-                                    <span class="notif-pref-desc">Receive a weekly email with your business analytics.</span>
-                                </div>
-                            </div>
-                            <label class="toggle-switch">
-                                <input type="checkbox" data-pref="email_weekly_summary" {% if notif_prefs.get('email_weekly_summary', False) %}checked{% endif %}>
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                    </div>
-                    <button type="button" class="btn-save-notifs" id="saveNotifsBtn" onclick="saveNotificationPrefs()">
-                        <i class="fas fa-save"></i> Save Notification Preferences
-                    </button>
-
-                    <!-- Login Activity -->
-                    <div class="section-header-compact" style="margin-top: 2.5rem;">
-                        <h3><i class="fas fa-clock-rotate-left"></i> Login Activity</h3>
-                        <p>Recent login information for your account.</p>
-                    </div>
-
-                    <div class="login-activity-card">
-                        <div class="login-activity-row">
-                            <div class="la-icon"><i class="fas fa-calendar-day"></i></div>
-                            <div class="la-info">
-                                <span class="la-label">Last Login</span>
-                                <span class="la-value">{{ user.last_login.strftime('%b %d, %Y — %I:%M %p') if user.last_login else 'Never' }}</span>
-                            </div>
-                        </div>
-                        <div class="login-activity-row">
-                            <div class="la-icon"><i class="fas fa-shield-check"></i></div>
-                            <div class="la-info">
-                                <span class="la-label">Account Status</span>
-                                <span class="la-value" style="color: {{ '#10b981' if profile.account_status == 'Active' else '#ef4444' }};">
-                                    <i class="fas fa-{{ 'check-circle' if profile.account_status == 'Active' else 'exclamation-triangle' }}"></i>
-                                    {{ profile.account_status or 'Active' }}
-                                </span>
-                            </div>
-                        </div>
-                        <div class="login-activity-row">
-                            <div class="la-icon"><i class="fas fa-user-check"></i></div>
-                            <div class="la-info">
-                                <span class="la-label">Member Since</span>
-                                <span class="la-value">{{ user.created_at.strftime('%B %d, %Y') if user.created_at else 'N/A' }}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Danger Zone -->
-                    <div class="danger-zone-section">
-                        <div class="danger-zone-header">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <span>Danger Zone</span>
-                        </div>
-                        <div class="danger-zone-body">
-                            <div class="danger-action-row">
-                                <div>
-                                    <strong>Deactivate Account</strong>
-                                    <p>Temporarily hide your business from customers. You can reactivate anytime.</p>
-                                </div>
-                                <button type="button" class="btn-danger-outline" onclick="handleDeactivate()">
-                                    <i class="fas fa-eye-slash"></i> Deactivate
-                                </button>
-                            </div>
-                            <div class="danger-action-row" style="border-top: 1px solid #fee2e2;">
-                                <div>
-                                    <strong>Request Account Deletion</strong>
-                                    <p>Permanently delete all your data. This action cannot be undone.</p>
-                                </div>
-                                <button type="button" class="btn-danger-solid" onclick="handleDeleteRequest()">
-                                    <i class="fas fa-trash-alt"></i> Request Deletion
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
                 <div class="form-footer-actions">
                     <button type="submit" class="btn-primary btn-save-changes">Save All Changes</button>

@@ -1979,28 +1979,26 @@ async def update_profile(
     border_radius: int = Form(12),
     sidebar_mode: str = Form("full"),
     show_platform_logo: bool = Form(True),
-    glass_mode: bool = Form(False),
-    sidebar_color: str = Form("#000000"),
-    header_color: str = Form("#FFFFFF"),
     dashboard_texture: str = Form("none"),
-    sidebar_decoration: str = Form("none"),
-    header_decoration: str = Form("none"),
     latitude: Optional[float] = Form(None),
     longitude: Optional[float] = Form(None),
     contact_address: Optional[str] = Form(None),
     payout_method: Optional[str] = Form(None),
+    province: Optional[str] = Form(None),
+    municipality: Optional[str] = Form(None),
+    barangay: Optional[str] = Form(None),
     gallery: Optional[List[UploadFile]] = File(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
     profile = user.caterer_profile
-    
+
     # Update User Info
     user.first_name = first_name
     user.last_name = last_name
     user.middle_name = middle_name
     user.address = personal_address
-    
+
     # Update Profile Info
     profile.business_name = business_name
     profile.description = description
@@ -2009,6 +2007,16 @@ async def update_profile(
         profile.contact_address = contact_address
     profile.contact_phone = contact_phone
     profile.payout_method = payout_method
+
+    # Update address components
+    if province:
+        profile.province_code = province
+    if municipality:
+        profile.city = municipality
+    if barangay:
+        profile.brgy_code = barangay
+
+    # Update payment methods
     profile.gcash_number = gcash_number
     profile.maya_number = maya_number
     profile.bank_name = bank_name
@@ -2021,6 +2029,8 @@ async def update_profile(
     profile.booking_policy = booking_policy
     profile.payment_policy = payment_policy
     profile.cancellation_policy = cancellation_policy
+
+    # Update branding
     profile.primary_color = primary_color
     profile.secondary_color = secondary_color
     profile.accent_color = accent_color
@@ -2029,13 +2039,8 @@ async def update_profile(
     profile.border_radius = border_radius
     profile.sidebar_mode = sidebar_mode
     profile.show_platform_logo = show_platform_logo
-    profile.glass_mode = glass_mode
-    profile.sidebar_color = sidebar_color
-    profile.header_color = header_color
     profile.dashboard_texture = dashboard_texture
-    profile.sidebar_decoration = sidebar_decoration
-    profile.header_decoration = header_decoration
-    
+
     if latitude is not None:
         profile.latitude = latitude
     if longitude is not None:
