@@ -205,61 +205,57 @@
             <div class="form-grid">
                 <div class="form-group full-width" style="margin-top: 1.5rem;">
                     <label>Type of Events Supported</label>
-                    <div class="checkbox-group">
-                        <label class="checkbox-item">
-                            <input type="checkbox" name="event_type_choice" value="Wedding" onchange="this.parentElement.classList.toggle('checked', this.checked)"> 
-                            Wedding
-                        </label>
-                        <label class="checkbox-item">
-                            <input type="checkbox" name="event_type_choice" value="Birthday" onchange="this.parentElement.classList.toggle('checked', this.checked)"> 
-                            Birthday
-                        </label>
-                        <label class="checkbox-item">
-                            <input type="checkbox" name="event_type_choice" value="Corporate" onchange="this.parentElement.classList.toggle('checked', this.checked)"> 
-                            Corporate
-                        </label>
-                        <label class="checkbox-item">
-                            <input type="checkbox" name="event_type_choice" value="Christening" onchange="this.parentElement.classList.toggle('checked', this.checked)"> 
-                            Christening
-                        </label>
-                        <label class="checkbox-item">
-                            <input type="checkbox" name="event_type_choice" value="Anniversary" onchange="this.parentElement.classList.toggle('checked', this.checked)"> 
-                            Anniversary
-                        </label>
-                        <label class="checkbox-item">
-                            <input type="checkbox" name="event_type_choice" value="Seminar" onchange="this.parentElement.classList.toggle('checked', this.checked)"> 
-                            Seminar
-                        </label>
-                        <label class="checkbox-item">
-                            <input type="checkbox" name="event_type_choice" value="Gala" onchange="this.parentElement.classList.toggle('checked', this.checked)"> 
-                            Gala
-                        </label>
-                        <label class="checkbox-item">
-                            <input type="checkbox" name="event_type_choice" value="Wake" onchange="this.parentElement.classList.toggle('checked', this.checked)"> 
-                            Wake
-                        </label>
-                        <label class="checkbox-item">
-                            <input type="checkbox" name="event_type_choice" value="Other" id="eventOtherCheck" onchange="toggleEventOther(this)"> 
-                            Other
-                        </label>
-                    </div>
-                    <div id="eventOtherContainer" style="display: none; margin-top: 0.75rem;">
-                        <input type="text" id="event_type_other" class="minimal-input" placeholder="Please specify...">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-top: 0.5rem;">
+                        
+                        <!-- Social Gatherings -->
+                        <div style="background: var(--auth-slate-50); padding: 1rem; border-radius: 0.75rem; border: 1px solid var(--auth-slate-100);">
+                            <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--auth-slate-700); margin-bottom: 0.75rem;"><i class="fas fa-glass-cheers" style="color: #f59e0b; margin-right: 0.25rem;"></i> Social Gatherings</h4>
+                            <div class="checkbox-group" style="display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start;">
+                                <label class="checkbox-item" style="margin: 0; padding: 0.4rem 0.75rem; width: 100%; border-radius: 0.5rem; transition: background 0.2s;"><input type="checkbox" name="event_type_choice" value="Wedding" onchange="this.parentElement.classList.toggle('checked', this.checked)"> Wedding</label>
+                                <label class="checkbox-item" style="margin: 0; padding: 0.4rem 0.75rem; width: 100%; border-radius: 0.5rem; transition: background 0.2s;"><input type="checkbox" name="event_type_choice" value="Birthday" onchange="this.parentElement.classList.toggle('checked', this.checked)"> Birthday</label>
+                                <label class="checkbox-item" style="margin: 0; padding: 0.4rem 0.75rem; width: 100%; border-radius: 0.5rem; transition: background 0.2s;"><input type="checkbox" name="event_type_choice" value="Christening" onchange="this.parentElement.classList.toggle('checked', this.checked)"> Christening</label>
+                                <label class="checkbox-item" style="margin: 0; padding: 0.4rem 0.75rem; width: 100%; border-radius: 0.5rem; transition: background 0.2s;"><input type="checkbox" name="event_type_choice" value="Anniversary" onchange="this.parentElement.classList.toggle('checked', this.checked)"> Anniversary</label>
+                                <label class="checkbox-item" style="margin: 0; padding: 0.4rem 0.75rem; width: 100%; border-radius: 0.5rem; transition: background 0.2s;"><input type="checkbox" name="event_type_choice" value="Debut" onchange="this.parentElement.classList.toggle('checked', this.checked)"> Debut</label>
+                                <label class="checkbox-item" style="margin: 0; padding: 0.4rem 0.75rem; width: 100%; border-radius: 0.5rem; transition: background 0.2s;"><input type="checkbox" name="event_type_choice" value="Reunion" onchange="this.parentElement.classList.toggle('checked', this.checked)"> Reunion</label>
+                                <label class="checkbox-item" style="margin: 0; padding: 0.4rem 0.75rem; width: 100%; border-radius: 0.5rem; transition: background 0.2s;"><input type="checkbox" name="event_type_choice" value="Graduation" onchange="this.parentElement.classList.toggle('checked', this.checked)"> Graduation</label>
+                                <label class="checkbox-item" style="margin: 0; padding: 0.4rem 0.75rem; width: 100%; border-radius: 0.5rem; transition: background 0.2s;"><input type="checkbox" name="event_type_choice" value="Fiesta" onchange="this.parentElement.classList.toggle('checked', this.checked)"> Fiesta</label>
+                            </div>
+                        </div>
+
+                        <!-- Corporate Events -->
+                        <div style="background: var(--auth-slate-50); padding: 1rem; border-radius: 0.75rem; border: 1px solid var(--auth-slate-100);">
+                            <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--auth-slate-700); margin-bottom: 0.75rem;"><i class="fas fa-briefcase" style="color: #3b82f6; margin-right: 0.25rem;"></i> Corporate Events</h4>
+                            <div class="checkbox-group" style="display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start;">
+                                <label class="checkbox-item" style="margin: 0; padding: 0.4rem 0.75rem; width: 100%; border-radius: 0.5rem; transition: background 0.2s;"><input type="checkbox" name="event_type_choice" value="Seminar" onchange="this.parentElement.classList.toggle('checked', this.checked)"> Seminar / Training</label>
+                                <label class="checkbox-item" style="margin: 0; padding: 0.4rem 0.75rem; width: 100%; border-radius: 0.5rem; transition: background 0.2s;"><input type="checkbox" name="event_type_choice" value="Conference" onchange="this.parentElement.classList.toggle('checked', this.checked)"> Conference</label>
+                                <label class="checkbox-item" style="margin: 0; padding: 0.4rem 0.75rem; width: 100%; border-radius: 0.5rem; transition: background 0.2s;"><input type="checkbox" name="event_type_choice" value="Banquet" onchange="this.parentElement.classList.toggle('checked', this.checked)"> Banquet</label>
+                                <label class="checkbox-item" style="margin: 0; padding: 0.4rem 0.75rem; width: 100%; border-radius: 0.5rem; transition: background 0.2s;"><input type="checkbox" name="event_type_choice" value="Product Launch" onchange="this.parentElement.classList.toggle('checked', this.checked)"> Product Launch</label>
+                                <label class="checkbox-item" style="margin: 0; padding: 0.4rem 0.75rem; width: 100%; border-radius: 0.5rem; transition: background 0.2s;"><input type="checkbox" name="event_type_choice" value="Gala" onchange="this.parentElement.classList.toggle('checked', this.checked)"> Gala</label>
+                                <label class="checkbox-item" style="margin: 0; padding: 0.4rem 0.75rem; width: 100%; border-radius: 0.5rem; transition: background 0.2s;"><input type="checkbox" name="event_type_choice" value="Team Building" onchange="this.parentElement.classList.toggle('checked', this.checked)"> Team Building</label>
+                            </div>
+                        </div>
+
+                        <!-- Other Occasions -->
+                        <div style="background: var(--auth-slate-50); padding: 1rem; border-radius: 0.75rem; border: 1px solid var(--auth-slate-100);">
+                            <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--auth-slate-700); margin-bottom: 0.75rem;"><i class="fas fa-calendar-star" style="color: #10b981; margin-right: 0.25rem;"></i> Other Occasions</h4>
+                            <div class="checkbox-group" style="display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start;">
+                                <label class="checkbox-item" style="margin: 0; padding: 0.4rem 0.75rem; width: 100%; border-radius: 0.5rem; transition: background 0.2s;"><input type="checkbox" name="event_type_choice" value="Housewarming" onchange="this.parentElement.classList.toggle('checked', this.checked)"> Housewarming</label>
+                                <label class="checkbox-item" style="margin: 0; padding: 0.4rem 0.75rem; width: 100%; border-radius: 0.5rem; transition: background 0.2s;"><input type="checkbox" name="event_type_choice" value="Wake" onchange="this.parentElement.classList.toggle('checked', this.checked)"> Wake</label>
+                                <label class="checkbox-item" style="margin: 0; padding: 0.4rem 0.75rem; width: 100%; border-radius: 0.5rem; transition: background 0.2s;"><input type="checkbox" name="event_type_choice" value="Other" id="eventOtherCheck" onchange="toggleEventOther(this)"> Custom / Others</label>
+                            </div>
+                            <div id="eventOtherContainer" style="display: none; margin-top: 0.75rem;">
+                                <input type="text" id="event_type_other" class="minimal-input" placeholder="Please specify...">
+                            </div>
+                        </div>
+
                     </div>
                     <div id="eventTypeError" class="error-drawer" style="margin-top: 0.5rem;"></div>
                 </div>
-                <div class="form-group">
+                <div class="form-group full-width">
                     <label for="min_pax">Minimum Pax</label>
                     <div class="input-wrapper" id="minPaxWrapper">
                         <input type="text" id="min_pax" name="min_pax" class="minimal-input js-format-comma" required inputmode="numeric">
                         <div id="minPaxError" class="error-drawer">Required</div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="starting_price">Starting Price per Pax (₱)</label>
-                    <div class="input-wrapper" id="priceWrapper">
-                        <input type="text" id="starting_price" name="starting_price" class="minimal-input js-format-comma" required inputmode="numeric">
-                        <div id="priceError" class="error-drawer">Required</div>
                     </div>
                 </div>
                 <div class="form-group full-width">
@@ -321,8 +317,86 @@
                 </div>
                 <div class="form-group full-width">
                     <label for="id_number_cat">ID Number <span style="color:#ef4444;">*</span></label>
-                    <input type="text" id="id_number_cat" name="id_number" class="minimal-input">
+                    <input type="text" id="id_number_cat" name="id_number" class="minimal-input" oninput="formatIdNumberInline(this, 'id_type_cat')">
                 </div>
+                
+                <script>
+                    function formatIdNumberInline(inputEl, selectId) {
+                        const selectEl = document.getElementById(selectId);
+                        const idType = selectEl ? selectEl.value : '';
+                        
+                        let val = inputEl.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+                        let formatted = val;
+                
+                        if (idType === 'PhilID (National ID)') {
+                            val = val.replace(/[^0-9]/g, '');
+                            const parts = [];
+                            for (let i = 0; i < val.length && i < 16; i += 4) {
+                                parts.push(val.substring(i, i + 4));
+                            }
+                            formatted = parts.join('-');
+                        } 
+                        else if (idType === "Driver's License") {
+                            if (val.length > 0) {
+                                const firstChar = val.charAt(0).replace(/[^A-Z]/g, '');
+                                const rest = val.substring(1).replace(/[^0-9]/g, '');
+                                val = firstChar + rest;
+                                
+                                let formattedVal = firstChar;
+                                if (rest.length > 0) {
+                                    formattedVal += rest.substring(0, 2);
+                                    if (rest.length > 2) {
+                                        formattedVal += '-' + rest.substring(2, 4);
+                                        if (rest.length > 4) {
+                                            formattedVal += '-' + rest.substring(4, 10);
+                                        }
+                                    }
+                                }
+                                formatted = formattedVal;
+                            }
+                        }
+                        else if (idType === 'UMID' || idType === 'SSS ID') {
+                            val = val.replace(/[^0-9]/g, '');
+                            const parts = [];
+                            if (val.length > 0) parts.push(val.substring(0, 2));
+                            if (val.length > 2) parts.push(val.substring(2, 9));
+                            if (val.length > 9) parts.push(val.substring(9, 10));
+                            formatted = parts.join('-');
+                        }
+                        else if (idType === 'TIN ID') {
+                            val = val.replace(/[^0-9]/g, '');
+                            const parts = [];
+                            for (let i = 0; i < val.length && i < 12; i += 3) {
+                                parts.push(val.substring(i, i + 3));
+                            }
+                            formatted = parts.join('-');
+                        }
+                        else if (idType === 'Passport') {
+                            formatted = val.substring(0, 9);
+                        }
+                
+                        if (inputEl.value !== formatted) {
+                            inputEl.value = formatted;
+                        }
+                    }
+                
+                    document.getElementById('id_type_cat').addEventListener('change', function() {
+                        const inputEl = document.getElementById('id_number_cat');
+                        if (inputEl) {
+                            let ph = '';
+                            if (this.value === 'PhilID (National ID)') ph = '0000-0000-0000-0000';
+                            else if (this.value === "Driver's License") ph = 'A00-00-000000';
+                            else if (this.value === 'UMID' || this.value === 'SSS ID') ph = '00-0000000-0';
+                            else if (this.value === 'TIN ID') ph = '000-000-000-000';
+                            else if (this.value === 'Passport') ph = 'P1234567A';
+                            
+                            inputEl.setAttribute('placeholder', ph);
+                            if (inputEl.value) {
+                                formatIdNumberInline(inputEl, 'id_type_cat');
+                            }
+                        }
+                    });
+                </script>
 
                 <div class="form-group full-width">
                     <label for="gov_id_cat">Valid Government ID</label>

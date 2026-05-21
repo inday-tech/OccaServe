@@ -83,11 +83,11 @@ async def scan_document(
         doc_url = doc_urls[0]
         
         if doc_type == "permit":
-            result = verification_service.verify_business_permit(
+            result = await verification_service.verify_business_permit(
                 doc_url, user_name, owner_name=owner_name or user_name, db=db
             )
         elif doc_type == "menu":
-            result = verification_service.verify_menu_document(doc_url)
+            result = await verification_service.verify_menu_document(doc_url)
         elif doc_type == "selfie":
             imgs = [verification_service._prepare_image(u) for u in doc_urls]
             liveness = verification_service._check_liveness_mediapipe(imgs)
@@ -131,7 +131,7 @@ async def scan_document(
                     "ocr_match": False
                 }
         else:
-            result = verification_service.verify_id_document(doc_url, user_name, id_number or "", id_type or "Passport")
+            result = await verification_service.verify_id_document(doc_url, user_name, id_number or "", id_type or "Passport")
             # Return path to be used as reference for selfie comparison
             result["doc_path"] = doc_url
             # Ensure ocr_data is always in the response for frontend display
@@ -198,7 +198,6 @@ async def register(
     pax_range: Optional[str] = Form(None),
     city: Optional[str] = Form(None), # RESTORED
     min_pax: Optional[int] = Form(None),
-    starting_price: Optional[float] = Form(None),
     sample_menu: Optional[UploadFile] = File(None),
     logo: Optional[UploadFile] = File(None), # RESTORED
     permit: Optional[UploadFile] = File(None),
@@ -320,9 +319,6 @@ async def register(
             
         if min_pax is None or min_pax < 1 or min_pax > 5000:
             errors["min_pax"] = "Minimum Pax must be between 1 and 5,000"
-            
-        if starting_price is None or starting_price < 0 or starting_price > 10000000:
-            errors["starting_price"] = "Starting Price must be between 0 and 10000000"
 
     # Only return error if there ARE validation errors
     if errors:
@@ -502,7 +498,6 @@ async def register(
                 logo_url=logo_url,
                 event_types=event_list,
                 min_pax=min_pax,
-                starting_price=starting_price,
                 city=city,
                 sample_menu_url=sample_menu_url,
                 permit_url=permit_url,

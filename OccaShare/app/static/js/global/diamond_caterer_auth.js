@@ -243,19 +243,11 @@
             }
         }
 
-        // 4. Perform formatting checks for Step 3
         if (currentStepCat === 3) {
             const minPaxEl = document.getElementById('min_pax');
             if (minPaxEl) {
                 const res = window.diamondValidators.minPax(minPaxEl.value);
                 window.setDiamondError('minPax', res.message, !res.valid);
-                if (!res.valid) valid = false;
-            }
-
-            const priceEl = document.getElementById('starting_price');
-            if (priceEl) {
-                const res = window.diamondValidators.price(priceEl.value);
-                window.setDiamondError('price', res.message, !res.valid);
                 if (!res.valid) valid = false;
             }
 
@@ -378,7 +370,7 @@
             formData.set('event_types', eventTypes);
 
             // Sanitize numeric fields (remove commas)
-            const numericFields = ['min_pax', 'starting_price', 'years_of_operation'];
+            const numericFields = ['min_pax', 'years_of_operation'];
             numericFields.forEach(f => {
                 const val = formData.get(f);
                 if (val) formData.set(f, val.toString().replace(/,/g, ''));

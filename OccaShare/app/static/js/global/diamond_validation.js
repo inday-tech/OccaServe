@@ -158,13 +158,6 @@
             const n = parseInt(cleanV);
             if (n < 1 || n > 5000) return { valid: false, message: "Enter a valid number (1-5000)." };
             return { valid: true };
-        },
-        price: (v) => {
-            const cleanV = String(v).replace(/,/g, '');
-            if (cleanV === "" || cleanV === "null" || cleanV === "undefined") return { valid: false, message: "Required" };
-            const n = parseFloat(cleanV);
-            if (isNaN(n) || n < 300 || n > 1000000) return { valid: false, message: "Price must be between 300 and 1,000,000." };
-            return { valid: true };
         }
     };
 
@@ -177,7 +170,6 @@
         const passInputs = Array.from(rootElement.querySelectorAll('input[type="password"]')).filter(el => !el.id.includes('login'));
         const yearInputs = Array.from(rootElement.querySelectorAll('input[name="years_of_operation"]')).filter(el => !el.id.includes('login'));
         const paxInputs = Array.from(rootElement.querySelectorAll('input[name="min_pax"]')).filter(el => !el.id.includes('login'));
-        const priceInputs = Array.from(rootElement.querySelectorAll('input[name="starting_price"]')).filter(el => !el.id.includes('login'));
         const commaInputs = Array.from(rootElement.querySelectorAll('.js-format-comma')).filter(el => !el.id.includes('login'));
         const businessInputs = Array.from(rootElement.querySelectorAll('input[name="business_name"]')).filter(el => !el.id.includes('login'));
         const barangaySelects = Array.from(rootElement.querySelectorAll('select[id*="barangay"]'));
@@ -223,6 +215,90 @@
 
                 if (this.value && this.value.trim() !== '') {
                     window.setDiamondError(errorFieldId, '', false);
+                }
+            });
+        });
+
+        // ID Number Auto-Formatting based on ID Type
+        const idTypeSelects = Array.from(rootElement.querySelectorAll('select[name="id_type"]'));
+        const idNumberInputs = Array.from(rootElement.querySelectorAll('input[name="id_number"]'));
+        
+        idTypeSelects.forEach(select => {
+            select.addEventListener('change', function() {
+                // When ID type changes, clear the input to force re-entry with correct format
+                const inputId = this.id.replace('id_type', 'id_number');
+                const inputEl = document.getElementById(inputId);
+                if (inputEl) {
+                    inputEl.value = '';
+                    inputEl.setAttribute('placeholder', getPlaceholderForIdType(this.value));
+                    window.setDiamondError(inputId, '', false);
+                }
+            });
+        });
+
+        function getPlaceholderForIdType(type) {
+            if (type === 'PhilID (National ID)') return '0000-0000-0000-0000';
+            if (type === "Driver's License") return 'A00-00-000000';
+            if (type === 'UMID' || type === 'SSS ID') return '00-0000000-0';
+            if (type === 'TIN ID') return '000-000-000-000';
+            return '';
+        }
+
+        idNumberInputs.forEach(input => {
+            input.addEventListener('input', function(e) {
+                const selectId = this.id.replace('id_number', 'id_type');
+                const selectEl = document.getElementById(selectId);
+                const idType = selectEl ? selectEl.value : '';
+                
+                let val = this.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+                let formatted = val;
+
+                if (idType === 'PhilID (National ID)') {
+                    val = val.replace(/[^0-9]/g, '');
+                    const parts = [];
+                    for (let i = 0; i < val.length && i < 16; i += 4) {
+                        parts.push(val.substring(i, i + 4));
+                    }
+                    formatted = parts.join('-');
+                } 
+                else if (idType === "Driver's License") {
+                    if (val.length > 0) {
+                        const firstChar = val.charAt(0).replace(/[^A-Z]/g, '');
+                        const rest = val.substring(1).replace(/[^0-9]/g, '');
+                        val = firstChar + rest;
+                        
+                        let formattedVal = firstChar;
+                        if (rest.length > 0) {
+                            formattedVal += rest.substring(0, 2);
+                            if (rest.length > 2) {
+                                formattedVal += '-' + rest.substring(2, 4);
+                                if (rest.length > 4) {
+                                    formattedVal += '-' + rest.substring(4, 10);
+                                }
+                            }
+                        }
+                        formatted = formattedVal;
+                    }
+                }
+                else if (idType === 'UMID' || idType === 'SSS ID') {
+                    val = val.replace(/[^0-9]/g, '');
+                    const parts = [];
+                    if (val.length > 0) parts.push(val.substring(0, 2));
+                    if (val.length > 2) parts.push(val.substring(2, 9));
+                    if (val.length > 9) parts.push(val.substring(9, 10));
+                    formatted = parts.join('-');
+                }
+                else if (idType === 'TIN ID') {
+                    val = val.replace(/[^0-9]/g, '');
+                    const parts = [];
+                    for (let i = 0; i < val.length && i < 12; i += 3) {
+                        parts.push(val.substring(i, i + 3));
+                    }
+                    formatted = parts.join('-');
+                }
+
+                if (this.value !== formatted) {
+                    this.value = formatted;
                 }
             });
         });
@@ -480,47 +556,6 @@
 
                 const { valid, message } = window.diamondValidators.minPax(this.value);
                 window.setDiamondError('minPax', message, !valid);
-            });
-
-            input.addEventListener('keydown', function(e) {
-                if (['e', 'E', '+', '-', '.'].includes(e.key)) {
-                    e.preventDefault();
-                }
-            });
-        });
-
-        priceInputs.forEach(input => {
-            let lastValidValue = input.value;
-
-            input.addEventListener('input', function(e) {
-                let cleanVal = this.value.replace(/,/g, '');
-                if (cleanVal === '') {
-                    lastValidValue = '';
-                    window.setDiamondError('price', "Required", true);
-                    return;
-                }
-
-                if (!/^[0-9]+$/.test(cleanVal)) {
-                    cleanVal = cleanVal.replace(/[^0-9]/g, '');
-                }
-
-                const num = parseFloat(cleanVal);
-                if (isNaN(num)) {
-                    this.value = '';
-                    lastValidValue = '';
-                } else if (num > 1000000) {
-                    this.value = lastValidValue;
-                } else {
-                    this.value = cleanVal;
-                    lastValidValue = cleanVal;
-                }
-
-                if (typeof window.applyCommaFormatting === 'function') {
-                    window.applyCommaFormatting(this);
-                }
-
-                const { valid, message } = window.diamondValidators.price(this.value);
-                window.setDiamondError('price', message, !valid);
             });
 
             input.addEventListener('keydown', function(e) {
