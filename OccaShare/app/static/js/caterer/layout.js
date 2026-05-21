@@ -249,7 +249,11 @@
                 }
 
                 if (window.location.pathname.includes('/caterer/bookings')) {
-                    setTimeout(() => window.location.reload(), 1000);
+                    if (typeof window.refreshBookingsTable === 'function') {
+                        window.refreshBookingsTable();
+                    } else {
+                        setTimeout(() => window.location.reload(), 1000);
+                    }
                 }
 
                 if (window.showToast) {

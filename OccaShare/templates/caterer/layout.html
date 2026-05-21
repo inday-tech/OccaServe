@@ -1257,6 +1257,80 @@
                 window.history.replaceState({}, document.title, newUrl);
             }
         });
+        // Global Watchdog for Urgent Bookings (Runs on every page except bookings)
+        window.addEventListener('load', async function() {
+            if (window.location.pathname === '/caterer/bookings') return; // Handled by native Bookings UI
+
+            try {
+                const res = await fetch('/caterer/api/bookings/urgent-check');
+                if (!res.ok) return;
+                const data = await res.json();
+                
+                if (data.has_urgent) {
+                    // Create Global Lock Modal
+                    const lockStyle = document.createElement('style');
+                    lockStyle.innerHTML = `
+                        body.global-urgent-lock .sidebar,
+                        body.global-urgent-lock .dashboard-header,
+                        body.global-urgent-lock .main-content {
+                            pointer-events: none !important;
+                            filter: blur(5px) grayscale(50%);
+                            transition: all 0.3s ease;
+                        }
+                        #globalUrgentModal {
+                            position: fixed !important;
+                            inset: 0 !important;
+                            z-index: 999999 !important;
+                            background: rgba(15, 23, 42, 0.95) !important;
+                            backdrop-filter: blur(8px);
+                            display: flex !important;
+                            align-items: center !important;
+                            justify-content: center !important;
+                            opacity: 1 !important;
+                            visibility: visible !important;
+                        }
+                    `;
+                    document.head.appendChild(lockStyle);
+
+                    const modalHTML = `
+                        <div id="globalUrgentModal" class="occ-modal-overlay" onclick="event.stopPropagation();">
+                            <div class="occ-modal-box sz-sm occ-content-zoom-in" style="border: 2px solid #ef4444; box-shadow: 0 10px 25px -5px rgba(239, 68, 68, 0.5); background: white; border-radius: 16px; width: 90%; max-width: 450px; overflow: hidden;" onclick="event.stopPropagation();">
+                                <div class="occ-modal-header" style="background: #fef2f2; border-bottom: 1px solid #fee2e2; padding: 1.5rem; text-align: center;">
+                                    <h2 class="occ-modal-title" style="color:#ef4444; margin:0; font-size:1.25rem;"><i class="fas fa-exclamation-triangle"></i> Critical Action Required</h2>
+                                </div>
+                                <div class="occ-modal-body" style="text-align: center; padding: 2rem 1.5rem;">
+                                    <div style="font-size: 3rem; color: #ef4444; margin-bottom: 1rem;">
+                                        <i class="fas fa-clock fa-shake"></i>
+                                    </div>
+                                    <h3 style="font-size: 1.25rem; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem;">You have an URGENT Booking!</h3>
+                                    <p style="font-size: 0.9rem; color: #475569; margin-bottom: 0; line-height: 1.5;">
+                                        There is a pending booking that is less than 48 hours away. 
+                                        You must review and <strong style="color:#ef4444;">Accept or Reject</strong> this immediately to prevent event failure.
+                                    </p>
+                                </div>
+                                <div class="occ-modal-footer" style="padding: 1.5rem; background: #fafafa; border-top: 1px solid #f1f5f9; display: flex; justify-content: center;">
+                                    <button type="button" onclick="window.location.href='/caterer/bookings'" class="btn-primary-pro" style="background:#ef4444 !important; width: 100%; border: none; padding: 0.75rem; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                                        <i class="fas fa-arrow-right"></i> Go to Bookings Page
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.body.insertAdjacentHTML('beforeend', modalHTML);
+                    document.body.classList.add('global-urgent-lock');
+                    document.body.style.overflow = 'hidden';
+                    
+                    // Simple animate-in by adding the active class
+                    setTimeout(() => {
+                        const modal = document.getElementById('globalUrgentModal');
+                        if (modal) modal.classList.add('active');
+                    }, 50);
+                }
+            } catch(e) {
+                console.error("Global Watchdog Error:", e);
+            }
+        });
     </script>
 </body>
 

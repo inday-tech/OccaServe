@@ -601,6 +601,31 @@ def _get_caterer_stats(profile, bookings, timeframe='month'):
         "timeframe": timeframe
     }
 
+@router.get("/api/bookings/urgent-check")
+async def check_urgent_bookings(
+    user: models.User = Depends(caterer_only)
+):
+    profile = user.caterer_profile
+    if not profile:
+        return {"has_urgent": False}
+        
+    today = date.today()
+    urgent_found = False
+    
+    for b in profile.bookings:
+        caterer_action_needed = False
+        if b.status in ['pending', 'pending_quotation']:
+            caterer_action_needed = True
+        if b.payment_status in ['proof_submitted', 'balance_proof_submitted']:
+            caterer_action_needed = True
+            
+        if not b.is_archived and caterer_action_needed and b.event_date:
+            if (b.event_date - today).days <= 2:
+                urgent_found = True
+                break
+                
+    return {"has_urgent": urgent_found}
+
 @router.get("/dashboard", response_class=HTMLResponse)
 async def caterer_dashboard(
     request: Request, 

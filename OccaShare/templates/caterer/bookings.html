@@ -145,42 +145,53 @@
 {% set urgent_events = [] %}
 
 {% for b in bookings %}
-    {% set is_urgent = (b.event_date - today).days <= 2 and b.status not in ['completed', 'cancelled'] %}
-    {% if b.payment_status in ['proof_submitted', 'balance_proof_submitted'] %}
-        {% set _ = payments_to_verify.append(b) %}
-    {% endif %}
-    {% if b.status in ['pending_quotation', 'awaiting_caterer'] %}
-        {% set _ = contracts_to_sign.append(b) %}
-    {% endif %}
+    {% set caterer_action_needed = b.status in ['pending', 'pending_quotation'] or b.payment_status in ['proof_submitted', 'balance_proof_submitted'] %}
+    {% set is_urgent = (b.event_date - today).days <= 2 and caterer_action_needed %}
     {% if is_urgent %}
         {% set _ = urgent_events.append(b) %}
+    {% else %}
+        {% if b.payment_status in ['proof_submitted', 'balance_proof_submitted'] %}
+            {% set _ = payments_to_verify.append(b) %}
+        {% endif %}
+        {% if b.status in ['pending_quotation', 'awaiting_caterer'] %}
+            {% set _ = contracts_to_sign.append(b) %}
+        {% endif %}
     {% endif %}
 {% endfor %}
 
-{% set total_alerts = (payments_to_verify|length + contracts_to_sign|length + urgent_events|length) %}
+{% set normal_alerts = (payments_to_verify|length + contracts_to_sign|length) %}
+{% set total_alerts = (normal_alerts + urgent_events|length) %}
 
 {% if total_alerts > 0 %}
-<div class="action-banner-premium animate-up delay-1" id="alertBanner">
+{% set is_critical = urgent_events|length > 0 %}
+<div class="action-banner-premium animate-up delay-1" id="alertBanner" style="{% if is_critical %}background: #fef2f2; border: 2px solid #ef4444; color: #7f1d1d; box-shadow: 0 10px 25px -5px rgba(239, 68, 68, 0.2);{% endif %}">
     <div class="action-banner-content">
-        <div class="action-banner-icon">
-            <i class="fas fa-shield-check"></i>
+        <div class="action-banner-icon" style="{% if is_critical %}background: #ef4444; color: white; border-radius: 50%; font-size: 1.5rem; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;{% endif %}">
+            <i class="fas {% if is_critical %}fa-exclamation-triangle fa-beat-fade{% else %}fa-shield-check{% endif %}"></i>
         </div>
         <div class="action-banner-text">
-            <h4>Action Required <span class="alert-count-badge">{{ total_alerts }} Alerts</span></h4>
-            <p style="margin-top: 6px; font-size: 0.9rem; color: rgba(255,255,255,0.7); font-weight: 500;">
+            <h4 style="{% if is_critical %}color: #b91c1c; font-size: 1.15rem; font-weight: 800;{% endif %}">
+                {% if is_critical %}Critical Action Required{% else %}Action Required{% endif %} 
+                <span class="alert-count-badge" style="{% if is_critical %}background: #ef4444; color: white;{% endif %}">{{ total_alerts }} ALERTS</span>
+            </h4>
+            <p style="margin-top: 6px; font-size: 0.9rem; {% if is_critical %}color: #7f1d1d;{% else %}color: rgba(255,255,255,0.7);{% endif %} font-weight: 500;">
                 <span id="bannerTaskDetails">
-                    Pending: 
-                    {% set msg_parts = [] %}
-                    {% if payments_to_verify %} {% set _ = msg_parts.append('<span style="color: #f59e0b; font-weight: 800;">' ~ payments_to_verify|length ~ '</span> payments') %} {% endif %}
-                    {% if contracts_to_sign %} {% set _ = msg_parts.append('<span style="color: #f59e0b; font-weight: 800;">' ~ contracts_to_sign|length ~ '</span> contracts') %} {% endif %}
-                    {% if urgent_events %} {% set _ = msg_parts.append('<span style="color: #fb7185; font-weight: 800;">' ~ urgent_events|length ~ '</span> urgent events') %} {% endif %}
-                    {{ msg_parts|join(' &bull; ')|safe }}
+                    {% if is_critical %}
+                        You have <strong style="font-size: 1.1rem; color: #ef4444;">{{ urgent_events|length }}</strong> urgent pending bookings (less than 48 hours away).
+                        <br>All other pages are locked until you Review and Accept/Reject them below.
+                    {% else %}
+                        Pending: 
+                        {% set msg_parts = [] %}
+                        {% if payments_to_verify %} {% set _ = msg_parts.append('<span style="color: #f59e0b; font-weight: 800;">' ~ payments_to_verify|length ~ '</span> payments') %} {% endif %}
+                        {% if contracts_to_sign %} {% set _ = msg_parts.append('<span style="color: #f59e0b; font-weight: 800;">' ~ contracts_to_sign|length ~ '</span> contracts') %} {% endif %}
+                        {{ msg_parts|join(' &bull; ')|safe }}
+                    {% endif %}
                 </span>
             </p>
         </div>
     </div>
-    <button onclick="scrollToActionTable()" class="btn-banner-action">
-        Attend Now <i class="fas fa-arrow-right"></i>
+    <button onclick="scrollToActionTable()" class="btn-banner-action" style="{% if is_critical %}background: #ef4444 !important; color: white; box-shadow: 0 4px 10px rgba(239, 68, 68, 0.4);{% endif %}">
+        {% if is_critical %}Resolve Now{% else %}Attend Now{% endif %} <i class="fas fa-arrow-right"></i>
     </button>
 </div>
 <script>
@@ -204,6 +215,7 @@
     }
 </script>
 {% endif %}
+
 
 <!-- Process Legend -->
 <div class="process-legend-container animate-up delay-2" style="display: flex; gap: 1.5rem; margin-bottom: 1.5rem; padding: 1rem; background: #f8fafc; border-radius: var(--border-radius); border: 1px solid #e2e8f0; align-items: center;">
@@ -287,15 +299,17 @@
             </thead>
             <tbody>
                 {% for booking in bookings %}
-                <tr id="booking-row-{{ booking.id }}" class="booking-row-item {% if (booking.event_date - today).days <= 2 and booking.status not in ['completed', 'cancelled', 'confirmed', 'in_progress', 'on_the_way', 'preparing'] %}urgent-booking-row{% endif %}" 
+                {% set caterer_action_needed = booking.status in ['pending', 'pending_quotation'] or booking.payment_status in ['proof_submitted', 'balance_proof_submitted'] %}
+                {% set row_is_urgent = (booking.event_date - today).days <= 2 and caterer_action_needed %}
+                <tr id="booking-row-{{ booking.id }}" class="booking-row-item {% if row_is_urgent %}urgent-booking-row{% endif %}" 
                     data-status="{{ booking.status }}" 
                     data-payment-status="{{ booking.payment_status }}"
-                    data-is-urgent="{% if (booking.event_date - today).days <= 2 and booking.status not in ['completed', 'cancelled', 'confirmed', 'in_progress', 'on_the_way', 'preparing'] %}true{% else %}false{% endif %}"
+                    data-is-urgent="{{ 'true' if row_is_urgent else 'false' }}"
                     style="border-bottom: 1px solid #f8fafc; transition: all 0.2s ease;">
                     <!-- ID -->
                     <td style="padding: 1.5rem; font-weight: 800; color: #64748b; font-size: 0.85rem; letter-spacing: 0.05em; text-transform: uppercase;">
                         <div style="display: flex; align-items: center;">
-                            {% if (booking.event_date - today).days <= 2 and booking.status not in ['completed', 'cancelled', 'confirmed', 'in_progress', 'on_the_way', 'preparing'] %}
+                            {% if row_is_urgent %}
                                 <div class="urgent-pulse-indicator" title="Event Happening Soon!"></div>
                             {% endif %}
                             BK-{{ "%03d" | format(booking.id) }}
@@ -346,9 +360,10 @@
                     <!-- DATE -->
                     <td class="booking-cell-first" style="padding: 1.5rem;">
                         <div class="flex-column">
-                            {% set is_urgent = (booking.event_date - today).days <= 2 and booking.status not in ['completed', 'cancelled'] %}
+                            {% set caterer_action_needed_cell = booking.status in ['pending', 'pending_quotation'] or booking.payment_status in ['proof_submitted', 'balance_proof_submitted'] %}
+                            {% set cell_is_urgent = (booking.event_date - today).days <= 2 and caterer_action_needed_cell %}
                             <div class="event-date-main">
-                                {% if is_urgent %}
+                                {% if cell_is_urgent %}
                                     <div class="urgent-status-chip" style="margin-bottom: 4px;">
                                         <div class="urgent-pulse-indicator"></div>
                                         <span>Urgent</span>
@@ -428,6 +443,7 @@
                             <button class="view-details"
                                 style="width: 100%; text-align: left; padding: 0.75rem 1rem; background: none; border: none; font-size: 0.85rem; color: #475569; cursor: pointer; display: flex; align-items: center; gap: 0.6rem; transition: background 0.2s;"
                                 data-id="{{ booking.id }}" data-event-name="{{ booking.event_name or 'N/A' }}"
+                                data-event-date="{{ booking.event_date.isoformat() }}"
                                 data-event-type="{{ booking.event_type or 'N/A' }}"
                                 data-venue="{{ booking.venue_address or 'TBD' }}"
                                 data-requests="{{ booking.special_requests or 'None' }}" {% if booking.user %}
@@ -589,7 +605,7 @@
      MODAL: VIEW DETAILS
 ════════════════════════════════════════════════════ -->
 <div id="bookingDetailModal" class="occ-modal-overlay">
-    <div class="occ-modal-box sz-lg occ-content-pop">
+    <div class="occ-modal-box sz-xl occ-content-pop">
         <div class="occ-modal-header">
             <div>
                 <h2 id="modalBookingId" class="occ-modal-title">Booking Details</h2>
@@ -600,231 +616,216 @@
             </button>
         </div>
 
-        <div class="occ-modal-body">
-            <!-- Elite Header Status Bar -->
-            <div class="elite-status-bar" style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); padding: 1.5rem 2rem; border-radius: 1.25rem; border: 1px solid #f1f5f9; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.03);">
-                <div style="display: flex; gap: 4rem;">
+        <div class="occ-modal-body" style="padding: 1.5rem 2rem;">
+            <!-- Action-Oriented Header / Elite Status Bar -->
+            <div class="elite-status-bar" style="background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); padding: 1.5rem; border-radius: 1rem; border: 1px solid #e2e8f0; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                <div style="display: flex; gap: 3rem; align-items: center;">
                     <div class="status-info-group">
-                        <span class="status-info-label" style="font-size: 0.65rem; color: #94a3b8; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;">Booking Status</span>
-                        <div id="modalStatus" class="premium-status-badge" style="font-size: 0.85rem; padding: 0.65rem 1.5rem; margin-top: 6px; border-radius: 12px;"></div>
+                        <span class="status-info-label" style="font-size: 0.65rem; color: #64748b; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;">Booking Status</span>
+                        <div id="modalStatus" class="premium-status-badge" style="font-size: 0.85rem; padding: 0.5rem 1rem; margin-top: 4px; border-radius: 8px;"></div>
                     </div>
                     <div class="status-info-group">
-                        <span class="status-info-label" style="font-size: 0.65rem; color: #94a3b8; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;">Created On</span>
-                        <div id="modalBookedOn" style="font-weight: 800; color: #1e293b; font-size: 1.15rem; margin-top: 4px; letter-spacing: -0.02em;"></div>
+                        <span class="status-info-label" style="font-size: 0.65rem; color: #64748b; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;">Created On</span>
+                        <div id="modalBookedOn" style="font-weight: 800; color: #0f172a; font-size: 1rem; margin-top: 4px;"></div>
                     </div>
                 </div>
-                <div id="modalRiskAlert" class="action-required-alert" style="display: none; margin-top: 0; padding: 0.85rem 1.5rem; border-radius: 12px; font-weight: 900; background: #fff1f2; color: #e11d48; border: 1.5px solid #fecdd3; font-size: 0.75rem; letter-spacing: 0.05em; box-shadow: 0 10px 20px -5px rgba(225, 29, 72, 0.2);">
-                    <i class="fas fa-shield-exclamation"></i> CRITICAL: HIGH RISK
+                <!-- Action Center Header -->
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <div id="modalRiskAlert" class="action-required-alert" style="display: none; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 800; background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; font-size: 0.75rem;">
+                        <i class="fas fa-shield-exclamation"></i> HIGH RISK
+                    </div>
+                    <!-- Moved Actions here -->
+                    <div id="bookingModalActionsTop" style="display: flex; gap: 0.5rem;"></div>
                 </div>
             </div>
 
-            <!-- Tabs Navigation -->
-            <div class="modal-tabs-pro" style="margin-bottom: 1.5rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0;">
-                <button type="button" class="mtab-btn-pro active" onclick="switchBookingTab('summary')" style="padding-bottom: 1rem;">Summary</button>
-                <button type="button" class="mtab-btn-pro" onclick="switchBookingTab('checklist')" style="padding-bottom: 1rem;"><i class="fas fa-clipboard-list" style="margin-right: 5px;"></i> Checklist</button>
-                <button type="button" class="mtab-btn-pro" onclick="switchBookingTab('financials')" style="padding-bottom: 1rem;">Financials</button>
-                <button type="button" class="mtab-btn-pro" onclick="switchBookingTab('logistics')" style="padding-bottom: 1rem;">Menu & Logistics</button>
-                <button type="button" class="mtab-btn-pro" onclick="switchBookingTab('history')" style="padding-bottom: 1rem;"><i class="fas fa-history" style="margin-right: 5px;"></i> History</button>
-            </div>
-
-            <!-- Tab Content -->
-            <div id="btab-summary" class="mtab-pane-pro active">
-                <!-- Progress Stepper -->
-                <div class="booking-stepper-pro" style="margin-bottom: 2rem; padding: 1.5rem; background: #fff; border-radius: 1rem; border: 1px solid #f1f5f9; box-shadow: 0 4px 12px rgba(0,0,0,0.02);">
-                    <div class="stepper-track-pro" style="top: 2.75rem;"></div>
-                    <div class="stepper-steps-pro">
-                        <div class="step-pro" data-step="pending" title="Initial Inquiry">
-                            <div class="step-dot">1</div>
-                            <span class="step-label">Draft</span>
-                        </div>
-                        <div class="step-pro" data-step="confirmed" title="Agreement Locked">
-                            <div class="step-dot">2</div>
-                            <span class="step-label">Confirmed</span>
-                        </div>
-                        <div class="step-pro" data-step="preparing" title="Kitchen Prep Started">
-                            <div class="step-dot">3</div>
-                            <span class="step-label">Preparing</span>
-                        </div>
-                        <div class="step-pro" data-step="on_the_way" title="Dispatch Ongoing">
-                            <div class="step-dot">4</div>
-                            <span class="step-label">Transit</span>
-                        </div>
-                        <div class="step-pro" data-step="in_progress" title="Live Event Service">
-                            <div class="step-dot">5</div>
-                            <span class="step-label">Ongoing</span>
-                        </div>
-                        <div class="step-pro" data-step="completed" title="Event Finalized">
-                            <div class="step-dot">6</div>
-                            <span class="step-label">Completed</span>
-                        </div>
+            <!-- Progress Stepper (Full Width Top) -->
+            <div class="booking-stepper-pro" style="padding: 1.5rem; background: #fff; border-radius: 1rem; border: 1px solid #f1f5f9; margin-bottom: 1.5rem;">
+                <div class="stepper-track-pro" style="top: 2.75rem;"></div>
+                <div class="stepper-steps-pro">
+                    <div class="step-pro" data-step="pending" title="Initial Inquiry">
+                        <div class="step-dot">1</div>
+                        <span class="step-label">Draft</span>
+                    </div>
+                    <div class="step-pro" data-step="confirmed" title="Agreement Locked">
+                        <div class="step-dot">2</div>
+                        <span class="step-label">Confirmed</span>
+                    </div>
+                    <div class="step-pro" data-step="preparing" title="Kitchen Prep Started">
+                        <div class="step-dot">3</div>
+                        <span class="step-label">Preparing</span>
+                    </div>
+                    <div class="step-pro" data-step="on_the_way" title="Dispatch Ongoing">
+                        <div class="step-dot">4</div>
+                        <span class="step-label">Transit</span>
+                    </div>
+                    <div class="step-pro" data-step="in_progress" id="stepperStepOngoing" title="Live Event Service">
+                        <div class="step-dot">5</div>
+                        <span class="step-label">Ongoing</span>
+                    </div>
+                    <div class="step-pro" data-step="completed" id="stepperStepCompleted" title="Event Finalized">
+                        <div class="step-dot" id="stepperStepCompletedDot">6</div>
+                        <span class="step-label">Completed</span>
                     </div>
                 </div>
+            </div>
 
-                <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
-                    <div class="modal-info-card-premium" style="background: white; border-radius: 1rem; padding: 1.25rem; border: 1px solid #f1f5f9; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
-                        <div class="modal-card-label-premium" style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.7rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem;">
-                            <i class="fas fa-user-circle" style="color: var(--primary-color);"></i> Customer Information
-                        </div>
-                        <div id="modalCustomer" style="font-size: 1.15rem; font-weight: 800; color: #1e293b; margin-bottom: 4px;"></div>
-                        <div id="modalEmail" style="font-size: 0.85rem; color: #64748b; font-weight: 600;"></div>
-                    </div>
+            <!-- Asymmetric Grid (60/40) -->
+            <div class="occ-form-grid" style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 1.5rem; align-items: start;">
+                <!-- LEFT COLUMN: Static Event Details (60%) -->
+                <div class="form-column-left" style="display: flex; flex-direction: column; gap: 1rem;">
                     
-                    <div class="modal-info-card-premium" style="background: white; border-radius: 1rem; padding: 1.25rem; border: 1px solid #f1f5f9; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
-                        <div class="modal-card-label-premium" style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.7rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem;">
-                            <i class="fas fa-calendar-star" style="color: var(--primary-color);"></i> Event & Capacity
+                    <!-- Customer & Event Compact Block -->
+                    <div style="background: white; border-radius: 1rem; border: 1px solid #e2e8f0; padding: 1.5rem;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; border-bottom: 1px dashed #cbd5e1; padding-bottom: 1.5rem;">
+                            <div>
+                                <div style="font-size: 0.65rem; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 0.5rem;"><i class="fas fa-user-circle"></i> Customer</div>
+                                <div id="modalCustomer" style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin-bottom: 2px;"></div>
+                                <div id="modalEmail" style="font-size: 0.8rem; color: #475569; font-weight: 600;"></div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.65rem; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 0.5rem;"><i class="fas fa-calendar-star"></i> Event Details</div>
+                                <div id="modalEventName" style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin-bottom: 4px;"></div>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <span id="modalEventType" style="font-size: 0.7rem; font-weight: 800; color: var(--primary-color); background: #f8fafc; padding: 2px 8px; border-radius: 4px; border: 1px solid #e2e8f0;"></span>
+                                    <span id="modalGuestCount" style="font-size: 0.7rem; font-weight: 700; color: #475569; background: #f1f5f9; padding: 2px 8px; border-radius: 4px;"></span>
+                                </div>
+                            </div>
                         </div>
-                        <div id="modalEventName" style="font-size: 1.15rem; font-weight: 800; color: #1e293b; margin-bottom: 4px;"></div>
-                        <div class="flex-between align-center">
-                            <span id="modalEventType" style="font-size: 0.7rem; font-weight: 800; color: var(--primary-color); text-transform: uppercase; background: #fff7ed; padding: 2px 8px; border-radius: 4px;"></span>
-                            <span id="modalGuestCount" style="font-size: 0.75rem; font-weight: 700; color: #475569; background: #f8fafc; padding: 2px 8px; border-radius: 4px; border: 1px solid #e2e8f0;"></span>
+                        <div>
+                            <div style="font-size: 0.65rem; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 0.5rem;"><i class="fas fa-map-marker-alt"></i> Venue Location</div>
+                            <div id="modalVenue" style="font-size: 0.9rem; color: #334155; line-height: 1.5; font-weight: 500;"></div>
                         </div>
                     </div>
 
-                    <div class="occ-form-group full-width" style="grid-column: span 2;">
-                        <div class="modal-info-card-premium" style="background: white; border-radius: 1rem; padding: 1.25rem; border: 1px solid #f1f5f9; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
-                            <div class="modal-card-label-premium" style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.7rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem;">
-                                <i class="fas fa-map-marker-alt" style="color: var(--primary-color);"></i> Logistics & Venue
-                            </div>
-                            <div id="modalVenue" style="font-size: 0.95rem; color: #334155; line-height: 1.6; font-weight: 600;"></div>
+                    <!-- Final Menu (Collapsible) -->
+                    <details style="background: white; border-radius: 1rem; border: 1px solid #e2e8f0; overflow: hidden;" open>
+                        <summary style="padding: 1.25rem; font-size: 0.8rem; font-weight: 800; color: #0f172a; cursor: pointer; text-transform: uppercase; background: #f8fafc; list-style: none; display: flex; justify-content: space-between; align-items: center;">
+                            <span><i class="fas fa-utensils" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Final Menu Inclusions</span>
+                            <i class="fas fa-chevron-down" style="color: #94a3b8;"></i>
+                        </summary>
+                        <div id="modalMenuSection" style="padding: 1.25rem; border-top: 1px solid #e2e8f0;">
+                            <div id="modalMenuItems" class="modal-menu-container"></div>
                         </div>
-                    </div>
+                    </details>
                     
-                    <div class="occ-form-group full-width" style="grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
-                        <div class="modal-info-card-premium" style="background: #fffbeb; border-color: #fef3c7; border-radius: 1rem; padding: 1.25rem;">
-                            <div class="modal-card-label-premium" style="color: #b45309; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; margin-bottom: 0.5rem;"><i class="fas fa-comment-dots"></i> Special Requests</div>
-                            <div id="modalRequests" style="font-size: 0.9rem; color: #92400e; font-weight: 600; line-height: 1.5; font-style: italic;"></div>
-                        </div>
-                        <div class="modal-info-card-premium" style="background: #f0fdfa; border-color: #ccfbf1; border-radius: 1rem; padding: 1.25rem;">
-                            <div class="modal-card-label-premium" style="color: #0f766e; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; margin-bottom: 0.5rem;"><i class="fas fa-sticky-note"></i> Operations Memo</div>
-                            <textarea id="modalCatererNotes" placeholder="Write internal team notes here..." style="width: 100%; height: 70px; border: 1px solid #99f6e4; border-radius: 0.5rem; padding: 0.75rem; font-size: 0.85rem; background: white; margin-top: 0.5rem; resize: none; font-family: inherit; font-weight: 500;"></textarea>
-                            <div style="display: flex; justify-content: flex-end; margin-top: 0.5rem;">
-                                <button type="button" onclick="saveCatererNotes()" class="btn-action-premium" style="padding: 6px 14px; font-size: 0.75rem; background: #0d9488; color: white; border: none; border-radius: 0.5rem; font-weight: 700; cursor: pointer; transition: all 0.2s ease;">
-                                    Update Memo
-                                </button>
-                            </div>
-                        </div>
+                    <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 1rem; padding: 1.25rem;">
+                        <div style="color: #b45309; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; margin-bottom: 0.5rem;"><i class="fas fa-comment-dots"></i> Special Requests</div>
+                        <div id="modalRequests" style="font-size: 0.85rem; color: #92400e; font-weight: 500; line-height: 1.5; font-style: italic;"></div>
                     </div>
                 </div>
-            </div>
 
-            </div>
-
-            <div id="btab-history" class="mtab-pane-pro">
-                <div class="audit-timeline-pro" id="modalHistoryTimeline">
-                    <!-- Timeline items will be injected here -->
-                    <div style="text-align:center;padding:2rem;color:#94a3b8;">
-                        <i class="fas fa-circle-notch fa-spin fa-2x" style="margin-bottom:1rem;"></i>
-                        <p>Loading history audit trail...</p>
-                    </div>
-                </div>
-            </div>
-
-            <div id="btab-financials" class="mtab-pane-pro">
-                <div class="financial-stat-box-pro" style="background: linear-gradient(135deg, #0f172a 0%, #334155 100%); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);">
-                    <span class="fsn-label" style="opacity: 0.7; font-weight: 700;">Contract Total Amount</span>
-                    <span id="modalTotalAmount" class="fsn-value" style="font-size: 2rem; letter-spacing: -0.02em;">₱0.00</span>
-                </div>
-                
-                <div class="occ-form-grid" style="margin-top: 1.5rem;">
-                    <div class="modal-info-card-premium">
-                        <div class="modal-card-label-premium">Payment Status</div>
-                        <div id="modalPaymentStatus" class="premium-status-badge" style="width: fit-content;"></div>
-                    </div>
-                    <div class="modal-info-card-premium">
-                        <div class="modal-card-label-premium">Method & Plan</div>
-                        <div id="modalPaymentMethod" style="font-weight: 800; color: #1e293b; font-size: 0.95rem;"></div>
-                    </div>
+                <!-- RIGHT COLUMN: Action & Operations Center (40%) -->
+                <div class="form-column-right" style="display: flex; flex-direction: column; gap: 1rem;">
                     
-                    <div class="occ-form-group full-width">
-                        <div class="due-date-card-premium">
-                            <div class="due-date-header">
-                                <div>
-                                    <div class="modal-card-label-premium" style="margin-bottom: 0.5rem;"><i class="fas fa-clock"></i> Balance Due Date</div>
-                                    <div id="dueDateDisplaySection">
-                                        <div id="modalDueDate" style="font-size: 1.5rem; font-weight: 900; color: var(--primary-color); letter-spacing: -0.02em;">Not Set</div>
-                                    </div>
-                                </div>
-                                <div id="dueDateBadgeContainer">
-                                    <!-- Badge dynamically injected -->
-                                </div>
-                                <button onclick="toggleDueDateEdit()" class="btn-update-due-date" id="btnEditDueDate">
-                                    <i class="fas fa-edit"></i> Update
-                                </button>
+                    <!-- Financials Focus -->
+                    <div style="background: white; border-radius: 1rem; border: 1px solid #e2e8f0; padding: 1.25rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);">
+                        <div style="background: #0f172a; padding: 1rem; border-radius: 0.75rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="color: #94a3b8; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; margin-bottom: 2px;">Total Amount</div>
+                                <div id="modalTotalAmount" style="color: white; font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em;">₱0.00</div>
                             </div>
-
-                            <div id="dueDateEditSection" style="display: none; background: white; padding: 1.25rem; border-radius: var(--border-radius); border: 1px solid #e2e8f0; margin-top: 1rem;">
-                                <label class="occ-form-label" style="margin-bottom: 0.5rem; display: block;">Select New Deadline</label>
-                                <div class="d-flex gap-2">
-                                    <input type="date" id="balanceDueDateInput" class="occ-form-input" style="flex: 1;">
-                                    <button onclick="saveDueDate()" class="btn-sm-confirm">Save & Notify</button>
-                                    <button onclick="toggleDueDateEdit()" class="btn-sm-cancel"><i class="fas fa-times"></i></button>
-                                </div>
-                                <p style="font-size: 0.75rem; color: #64748b; margin-top: 0.75rem;">
-                                    <i class="fas fa-info-circle"></i> The customer will be notified of this new deadline automatically.
-                                </p>
+                            <div style="text-align: right;">
+                                <div style="color: #94a3b8; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; margin-bottom: 2px;">Status</div>
+                                <div id="modalPaymentStatus" class="premium-status-badge" style="font-size: 0.7rem; padding: 2px 8px;"></div>
                             </div>
                         </div>
-                    </div>
-
-                    <div id="modalProofSection" class="occ-form-group full-width" style="display: none; margin-top: 1rem;">
-                        <div class="flex-between align-center mb-2">
-                            <label class="occ-form-label" style="margin:0; font-weight: 800; color: #475569;"><i class="fas fa-file-invoice-dollar"></i> Customer Payment Proofs</label>
-                            <button id="aiVerifyBtn" onclick="runAIScan()" class="btn-sm-outline" style="background:#f0f9ff; border-color:#bae6fd; color:#0369a1; padding: 0.5rem 1rem; border-radius: calc(var(--border-radius) * 0.5);">
-                                <i class="fas fa-microchip me-1"></i> Run AI Verification
-                            </button>
-                        </div>
-                        <div id="modalProofContainer" class="modal-proof-container" style="background:#f8fafc; border: 1px dashed #cbd5e1; padding:1.5rem; border-radius:var(--border-radius);"></div>
                         
-                        <div id="aiScanResults" class="mt-4" style="display: none; background: white; border: 1px solid #e2e8f0; border-radius: var(--border-radius); overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-                            <div class="ai-report-header" style="background: #f8fafc; padding: 1rem 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
-                                <span class="ai-report-title" style="font-weight: 800; color: #1e293b; font-size: 0.85rem;"><i class="fas fa-robot" style="color: #0ea5e9;"></i> AI LEGITIMACY REPORT</span>
-                                <div id="aiConfidenceBadge"></div>
+                        <div style="font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px dashed #cbd5e1;">
+                            <i class="fas fa-credit-card" style="margin-right: 4px;"></i> <span id="modalPaymentMethod"></span>
+                        </div>
+                        
+                        <!-- Dynamic Due Date -->
+                        <div id="dueDateCardPremium" style="background: #f8fafc; border-radius: 0.75rem; padding: 1rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                <div>
+                                    <div style="font-size: 0.65rem; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 4px;"><i class="fas fa-clock"></i> Balance Due Date</div>
+                                    <div id="dueDateDisplaySection">
+                                        <div id="modalDueDate" style="font-size: 1rem; font-weight: 800; color: var(--primary-color);">Not Set</div>
+                                    </div>
+                                    <div id="dueDateBadgeContainer" style="margin-top: 4px;"></div>
+                                </div>
+                                <button onclick="toggleDueDateEdit()" class="btn-update-due-date" id="btnEditDueDate" style="padding: 4px 8px; font-size: 0.65rem; border: 1px solid #cbd5e1; background: white; border-radius: 6px; font-weight: 600; cursor: pointer;">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
                             </div>
-                            <div id="aiScanContent" style="padding: 1.5rem;"></div>
-                            <div id="aiScanFlags" class="mt-2" style="padding: 0 1.5rem 1.5rem;"></div>
+                            <div id="dueDateEditSection" style="display: none; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #e2e8f0;">
+                                <input type="date" id="balanceDueDateInput" class="occ-form-input" style="width: 100%; padding: 0.4rem; font-size: 0.8rem; margin-bottom: 0.5rem;">
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <button onclick="saveDueDate()" class="btn-sm-confirm" style="flex: 1; padding: 0.4rem; font-size: 0.75rem;">Save</button>
+                                    <button onclick="toggleDueDateEdit()" class="btn-sm-cancel" style="padding: 0.4rem;"><i class="fas fa-times"></i></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dynamic Proofs -->
+                        <div id="modalProofSection" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                <div style="font-size: 0.7rem; font-weight: 800; color: #0f172a; text-transform: uppercase;"><i class="fas fa-file-invoice-dollar"></i> Receipts</div>
+                                <button id="aiVerifyBtn" onclick="runAIScan()" style="background: #f0f9ff; color: #0369a1; border: 1px solid #bae6fd; padding: 2px 8px; font-size: 0.65rem; font-weight: 700; border-radius: 4px; cursor: pointer;"><i class="fas fa-microchip"></i> Verify</button>
+                            </div>
+                            <div id="modalProofContainer" style="background: #f8fafc; border: 1px dashed #cbd5e1; padding: 0.75rem; border-radius: 0.5rem;"></div>
+                            
+                            <!-- AI Results -->
+                            <div id="aiScanResults" style="display: none; background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; margin-top: 0.75rem; overflow: hidden;">
+                                <div style="background: #f8fafc; padding: 0.5rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-weight: 800; color: #1e293b; font-size: 0.65rem;"><i class="fas fa-robot" style="color: #0ea5e9;"></i> AI REPORT</span>
+                                    <div id="aiConfidenceBadge"></div>
+                                </div>
+                                <div id="aiScanContent" style="padding: 0.75rem; font-size: 0.75rem;"></div>
+                                <div id="aiScanFlags" style="padding: 0 0.75rem 0.75rem;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Operational Checklist & Memo -->
+                    <div id="modalChecklistSection" style="background: white; border-radius: 1rem; border: 1px solid #e2e8f0; padding: 1.25rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);">
+                        <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <div style="font-size: 0.8rem; font-weight: 800; color: #0f172a; text-transform: uppercase;"><i class="fas fa-tasks" style="color: var(--secondary-color);"></i> Operations</div>
+                            <button onclick="addNewCustomTask()" style="background: white; border: 1px solid #e2e8f0; color: #475569; border-radius: 50px; padding: 2px 10px; font-size: 0.65rem; font-weight: 700; cursor: pointer;"><i class="fas fa-plus"></i> Add Task</button>
+                        </div>
+                        
+                        <div style="background: #f8fafc; padding: 0.75rem; border-radius: 0.5rem; margin-bottom: 1rem;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <span style="font-size: 0.65rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Progress</span>
+                                <span id="checklistProgressText" style="font-size: 0.75rem; font-weight: 800; color: var(--primary-color);">0%</span>
+                            </div>
+                            <div style="height: 6px; background: #e2e8f0; border-radius: 50px; overflow: hidden;">
+                                <div id="checklistProgressBar" style="height: 100%; width: 0%; background: var(--primary-color); transition: width 0.3s ease;"></div>
+                            </div>
+                        </div>
+                        
+                        <div id="bookingTasksList" style="max-height: 200px; overflow-y: auto; margin-bottom: 1rem; padding-right: 4px;"></div>
+                        
+                        <div style="border-top: 1px solid #e2e8f0; padding-top: 1rem;">
+                            <div style="font-size: 0.65rem; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 0.5rem;"><i class="fas fa-sticky-note"></i> Internal Memo</div>
+                            <textarea id="modalCatererNotes" placeholder="Write internal team notes here..." style="width: 100%; height: 60px; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 0.5rem; font-size: 0.75rem; resize: none;"></textarea>
+                            <div style="text-align: right; margin-top: 0.5rem;">
+                                <button onclick="saveCatererNotes()" style="background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; padding: 4px 10px; font-size: 0.65rem; font-weight: 700; border-radius: 4px; cursor: pointer;">Save Memo</button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div id="btab-logistics" class="mtab-pane-pro">
-                <div id="modalMenuSection">
-                    <label class="occ-form-label mb-3 d-block" style="font-weight: 800; color: #475569;"><i class="fas fa-utensils"></i> Final Menu & Event Inclusions</label>
-                    <div id="modalMenuItems" class="modal-menu-container" style="background: white; border: 1px solid #f1f5f9; border-radius: var(--border-radius); padding: 0.5rem;"></div>
-                </div>
-            </div>
-
-            <!-- Operational Checklist Tab -->
-            <div id="btab-checklist" class="mtab-pane-pro">
-                <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <div>
-                        <h4 style="margin:0; font-size: 1rem; font-weight: 800; color: var(--secondary-color);">Operations Checklist</h4>
-                        <p style="margin:2px 0 0; font-size: 0.75rem; color: #64748b;">Manage preparation, logistics, and service tasks.</p>
+            <!-- Audit Trail (Collapsible) -->
+            <div style="margin-top: 1.5rem; background: #f8fafc; border-radius: 1rem; border: 1px solid #e2e8f0; overflow: hidden;">
+                <details style="padding: 1rem;">
+                    <summary style="font-size: 0.75rem; font-weight: 800; color: #475569; cursor: pointer; text-transform: uppercase; letter-spacing: 0.05em; outline: none; list-style-position: inside;">
+                        <i class="fas fa-history" style="margin-right: 0.5rem; color: #94a3b8;"></i> Audit Trail & History
+                    </summary>
+                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed #cbd5e1;">
+                        <div class="audit-timeline-pro" id="modalHistoryTimeline"></div>
                     </div>
-                    <button onclick="addNewCustomTask()" class="btn-sm-outline" style="border-radius: 50px; padding: 0.5rem 1rem; font-weight: 800; font-size: 0.75rem;">
-                        <i class="fas fa-plus"></i> Add Custom Task
-                    </button>
-                </div>
-
-                <div class="progress-container-pro" style="margin-bottom: 2rem; background: #f8fafc; padding: 1.25rem; border-radius: var(--border-radius); border: 1px solid #f1f5f9;">
-                    <div class="flex-between" style="margin-bottom: 10px;">
-                        <span style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase;">Overall Completion</span>
-                        <span id="checklistProgressText" style="font-size: 1rem; font-weight: 900; color: var(--primary-color);">0%</span>
-                    </div>
-                    <div class="progress-bar-pro">
-                        <div id="checklistProgressBar" class="progress-fill-pro" style="width: 0%"></div>
-                    </div>
-                </div>
-
-                <div id="bookingTasksList" class="tasks-list-pro">
-                    <!-- Tasks will be injected here via JS -->
-                </div>
+                </details>
             </div>
         </div>
 
-        <div class="occ-modal-footer modal-footer-centered" style="padding: 1.5rem 2rem; background: #f8fafc; border-top: 1px solid #e2e8f0; gap: 1rem;">
-            <button onclick="bk_closeBookingDetailModal()" class="btn-sm-outline" style="min-width:120px; height:48px; border-radius: 12px; font-weight: 700;">Close View</button>
-            <div id="bookingModalActions" class="modal-actions-container-p" style="display: flex; gap: 0.75rem; align-items: center; justify-content: center;"></div>
+        <!-- Footer just for closing, main actions are top right -->
+        <div class="occ-modal-footer" style="padding: 1.25rem 2rem; background: #f8fafc; border-top: 1px solid #e2e8f0; text-align: right;">
+            <button onclick="bk_closeBookingDetailModal()" class="btn-sm-outline" style="border-radius: 8px; font-weight: 700;">Close Details</button>
+            <!-- Maintain empty div to avoid script errors if it searches for it -->
+            <div id="bookingModalActions" style="display: none;"></div>
         </div>
     </div>
 </div>
@@ -889,7 +890,7 @@
      MODAL: NEW BOOKING
 ════════════════════════════════════════════════════ -->
 <div id="walkinBookingModal" class="occ-modal-overlay">
-    <div class="occ-modal-box sz-md occ-content-slide-down">
+    <div class="occ-modal-box sz-xl occ-content-slide-down" style="max-width: 1000px;">
         <div class="occ-modal-header">
             <div>
                 <h2 class="occ-modal-title"><i class="fas fa-plus-circle" style="color:var(--primary-color);"></i> New Walk-in Booking</h2>
@@ -900,125 +901,131 @@
             </button>
         </div>
 
-        <div class="occ-modal-body">
+        <div class="occ-modal-body" style="padding-top: 1rem;">
             <form id="walkinBookingForm" onsubmit="submitWalkinBooking(event)" novalidate>
-                <div class="occ-form-grid" style="gap: 0.85rem;">
-                    <!-- Customer Group -->
-                    <div class="occ-form-group full-width" style="margin-bottom:0.25rem;">
-                        <span style="font-size:0.75rem; font-weight:800; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.05em;">Customer Details</span>
-                    </div>
+                <div class="occ-form-grid">
                     
-                    <div class="occ-form-group full-width" style="margin-bottom: -0.25rem;">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem;">
-                            <div>
-                                <label class="occ-form-label">Customer Name *</label>
-                                <input type="text" id="bookCustName" name="customer_name" class="occ-form-input" required placeholder="e.g. Juan Dela Cruz">
+                    <!-- LEFT COLUMN: Customer & Menu -->
+                    <div class="form-column-left" style="display: flex; flex-direction: column; gap: 0.85rem;">
+                        <div class="occ-form-group full-width" style="margin-bottom:0.25rem;">
+                            <span style="font-size:0.75rem; font-weight:800; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.05em;">Customer Details</span>
+                        </div>
+                        
+                        <div class="occ-form-group">
+                            <label class="occ-form-label">Customer Name *</label>
+                            <input type="text" id="bookCustName" name="customer_name" class="occ-form-input" required placeholder="e.g. Juan Dela Cruz">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        
+                        <div class="occ-form-group">
+                            <label class="occ-form-label">Email Address *</label>
+                            <input type="email" id="bookCustEmail" name="customer_email" class="occ-form-input" required placeholder="e.g. email@example.com">
+                            <div class="invalid-feedback"></div>
+                            <div id="bookUserDetectionBadge" style="display: none; align-items: center; gap: 0.35rem; font-size: 0.75rem; margin-top: 0.5rem; padding: 0.4rem 0.6rem; border-radius: 6px; width: fit-content; line-height: 1.2;">
+                                <i class="fas fa-info-circle"></i> <span id="bookUserDetectionText"></span>
+                            </div>
+                        </div>
+
+                        <div class="occ-form-group">
+                            <label class="occ-form-label">Contact Number *</label>
+                            <input type="text" id="bookCustContact" name="customer_contact" class="occ-form-input" maxlength="11" required placeholder="e.g. 09123456789">
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="occ-form-group full-width" style="margin-top:1rem; margin-bottom:0.25rem; border-top:1px solid #f1f5f9; padding-top:1rem;">
+                            <span style="font-size:0.75rem; font-weight:800; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.05em;">Menu & Pricing</span>
+                        </div>
+                        
+                        <div class="occ-form-group full-width">
+                            <label class="occ-form-label">Select Package (Optional)</label>
+                            <select id="bookPackage" name="package_id" class="filter-select-pro">
+                                <option value="" data-price="0" data-unit="fixed" data-min="1">None / Custom</option>
+                                {% for pkg in packages %}
+                                {% set display_price = pkg.price if (pkg.price and pkg.price > 0) else (pkg.price_per_head or 0) %}
+                                <option value="{{ pkg.id }}" data-price="{{ display_price }}" data-unit="{{ pkg.price_unit or 'per_guest' }}" data-min="{{ pkg.min_guests or 1 }}">{{ pkg.name }} (₱{{ '{:,.2f}'.format(display_price) }}{{ '/pax' if pkg.price_unit == 'per_guest' else '' }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="occ-form-grid" style="gap: 0.85rem;">
+                            <div class="occ-form-group">
+                                <label class="occ-form-label">No. of Guests *</label>
+                                <input type="number" id="bookGuests" name="guest_count" required min="1" max="100000" class="occ-form-input" placeholder="e.g. 100">
+                                <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
+                            </div>
+                            <div class="occ-form-group">
+                                <label class="occ-form-label">Total Amount (₱) *</label>
+                                <input type="text" id="bookTotalAmount" name="total_amount" required class="occ-form-input" placeholder="₱ 0.00" onblur="this.value = formatCurrency(this.value)" onfocus="this.value = this.value.replace(/[₱,]/g, '')">
+                                <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT COLUMN: Event Logistics -->
+                    <div class="form-column-right" style="display: flex; flex-direction: column; gap: 0.85rem; padding-left: 1rem; border-left: 1px solid #f1f5f9;">
+                        <div class="occ-form-group full-width" style="margin-bottom:0.25rem;">
+                            <span style="font-size:0.75rem; font-weight:800; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.05em;">Event Logistics</span>
+                        </div>
+
+                        <div class="occ-form-group">
+                            <label class="occ-form-label">Event Name *</label>
+                            <input type="text" id="bookEventName" name="event_name" required class="occ-form-input" placeholder="e.g. 18th Birthday Party">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        
+                        <div class="occ-form-grid" style="gap: 0.85rem;">
+                            <div class="occ-form-group">
+                                <label class="occ-form-label">Event Type *</label>
+                                <select name="event_type" required class="filter-select-pro">
+                                    <option value="">Select Type...</option>
+                                    <option value="Wedding">Wedding</option>
+                                    <option value="Birthday">Birthday</option>
+                                    <option value="Corporate">Corporate</option>
+                                    <option value="Private Party">Private Party</option>
+                                    <option value="Other">Other</option>
+                                </select>
                                 <div class="invalid-feedback"></div>
                             </div>
-                            <div>
-                                <label class="occ-form-label">Email Address *</label>
-                                <input type="email" id="bookCustEmail" name="customer_email" class="occ-form-input" required placeholder="e.g. email@example.com">
+                            <div class="occ-form-group">
+                                <label class="occ-form-label">Event Date *</label>
+                                <input type="date" name="event_date" id="walkin_event_date" required class="occ-form-input">
                                 <div class="invalid-feedback"></div>
                             </div>
                         </div>
-                        <div id="bookUserDetectionBadge" style="display: none; align-items: center; gap: 0.35rem; font-size: 0.75rem; margin-top: 0.5rem; padding: 0.4rem 0.6rem; border-radius: 6px; width: fit-content; line-height: 1.2;">
-                            <i class="fas fa-info-circle"></i> <span id="bookUserDetectionText"></span>
+
+                        <div class="occ-form-grid" style="gap: 0.85rem;">
+                            <div class="occ-form-group">
+                                <label class="occ-form-label">Province *</label>
+                                <select id="bookProvince" name="province" required class="filter-select-pro">
+                                    <option value="">Select Province...</option>
+                                    <option value="Laguna">Laguna</option>
+                                    <option value="Batangas">Batangas</option>
+                                    <option value="Cavite">Cavite</option>
+                                    <option value="Rizal">Rizal</option>
+                                </select>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            <div class="occ-form-group">
+                                <label class="occ-form-label">City / Town *</label>
+                                <select id="bookCity" name="city" required class="filter-select-pro">
+                                    <option value="">Select City...</option>
+                                </select>
+                                <div class="invalid-feedback"></div>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="occ-form-group">
-                        <label class="occ-form-label">Contact Number *</label>
-                        <input type="text" id="bookCustContact" name="customer_contact" class="occ-form-input" maxlength="11" required placeholder="e.g. 09123456789">
-                        <div class="invalid-feedback"></div>
-                    </div>
+                        <div class="occ-form-group">
+                            <label class="occ-form-label">Barangay *</label>
+                            <select id="bookBarangay" name="barangay" required class="filter-select-pro">
+                                <option value="">Select Barangay...</option>
+                            </select>
+                            <div class="invalid-feedback"></div>
+                        </div>
 
-                    <!-- Event Group -->
-                    <div class="occ-form-group full-width" style="margin-top:0.75rem; margin-bottom:-0.25rem; border-top:1px solid #f1f5f9; padding-top:1rem;">
-                        <span style="font-size:0.75rem; font-weight:800; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.05em;">Event Logistics</span>
-                    </div>
-
-                    <div class="occ-form-group">
-                        <label class="occ-form-label">Event Name *</label>
-                        <input type="text" id="bookEventName" name="event_name" required class="occ-form-input" placeholder="e.g. 18th Birthday Party">
-                        <div class="invalid-feedback"></div>
-                    </div>
-                    <div class="occ-form-group">
-                        <label class="occ-form-label">Event Type *</label>
-                        <select name="event_type" required class="filter-select-pro">
-                            <option value="">Select Type...</option>
-                            <option value="Wedding">Wedding</option>
-                            <option value="Birthday">Birthday</option>
-                            <option value="Corporate">Corporate</option>
-                            <option value="Private Party">Private Party</option>
-                            <option value="Other">Other</option>
-                        </select>
-                        <div class="invalid-feedback"></div>
-                    </div>
-                    
-                    <div class="occ-form-group">
-                        <label class="occ-form-label">Event Date *</label>
-                        <input type="date" name="event_date" id="walkin_event_date" required class="occ-form-input">
-                        <div class="invalid-feedback"></div>
-                    </div>
-                    <div class="occ-form-group full-width">
-                        <label class="occ-form-label">Province *</label>
-                        <select id="bookProvince" name="province" required class="filter-select-pro">
-                            <option value="">Select Province...</option>
-                            <option value="Laguna">Laguna</option>
-                            <option value="Batangas">Batangas</option>
-                            <option value="Cavite">Cavite</option>
-                            <option value="Rizal">Rizal</option>
-                        </select>
-                        <div class="invalid-feedback"></div>
-                    </div>
-
-                    <div class="occ-form-group">
-                        <label class="occ-form-label">City / Municipality *</label>
-                        <select id="bookCity" name="city" required class="filter-select-pro">
-                            <option value="">Select City...</option>
-                        </select>
-                        <div class="invalid-feedback"></div>
-                    </div>
-
-                    <div class="occ-form-group">
-                        <label class="occ-form-label">Barangay *</label>
-                        <select id="bookBarangay" name="barangay" required class="filter-select-pro">
-                            <option value="">Select Barangay...</option>
-                        </select>
-                        <div class="invalid-feedback"></div>
-                    </div>
-
-                    <div class="occ-form-group full-width">
-                        <label class="occ-form-label">Street Address / Landmark *</label>
-                        <textarea name="venue_address" rows="1" required class="occ-form-input" style="height:auto; min-height:46px;" placeholder="Unit #, Street, Phase, Landmark"></textarea>
-                    </div>
-
-                    <!-- Menu Group -->
-                    <div class="occ-form-group full-width" style="margin-top:0.75rem; margin-bottom:-0.25rem; border-top:1px solid #f1f5f9; padding-top:1rem;">
-                        <span style="font-size:0.75rem; font-weight:800; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.05em;">Menu & Pricing</span>
-                    </div>
-                    
-                    <div class="occ-form-group">
-                        <label class="occ-form-label">Number of Guests *</label>
-                        <input type="number" id="bookGuests" name="guest_count" required min="1" max="100000" class="occ-form-input" placeholder="e.g. 100">
-                        <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
-                    </div>
-
-                    <div class="occ-form-group">
-                        <label class="occ-form-label">Total Amount (₱) *</label>
-                        <input type="text" id="bookTotalAmount" name="total_amount" required class="occ-form-input" placeholder="₱ 0.00" onblur="this.value = formatCurrency(this.value)" onfocus="this.value = this.value.replace(/[₱,]/g, '')">
-                        <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
-                    </div>
-
-                    <div class="occ-form-group full-width">
-                        <label class="occ-form-label">Select Package (Optional)</label>
-                        <select id="bookPackage" name="package_id" class="filter-select-pro">
-                            <option value="" data-price="0" data-unit="fixed" data-min="1">None / Custom</option>
-                            {% for pkg in packages %}
-                            {% set display_price = pkg.price if (pkg.price and pkg.price > 0) else (pkg.price_per_head or 0) %}
-                            <option value="{{ pkg.id }}" data-price="{{ display_price }}" data-unit="{{ pkg.price_unit or 'per_guest' }}" data-min="{{ pkg.min_guests or 1 }}">{{ pkg.name }} (₱{{ '{:,.2f}'.format(display_price) }}{{ '/pax' if pkg.price_unit == 'per_guest' else '' }})</option>
-                            {% endfor %}
-                        </select>
+                        <div class="occ-form-group full-width">
+                            <label class="occ-form-label">Street Address / Landmark *</label>
+                            <textarea name="venue_address" rows="2" required class="occ-form-input" style="height:auto; min-height:60px;" placeholder="Unit #, Street, Phase, Landmark"></textarea>
+                        </div>
                     </div>
                 </div>
             </form>
@@ -1072,9 +1079,15 @@
                     </div>
                 </div>
 
-                <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
-                    <h4 style="font-size: 0.9rem; font-weight: 700; color: #1e293b; margin: 0;">Expense Breakdown</h4>
+                <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.5rem;">
+                    <h4 style="font-size: 0.9rem; font-weight: 700; color: #1e293b; margin: 0; text-transform: uppercase; letter-spacing: 0.05em;">Expense Breakdown</h4>
                     <span style="font-size: 0.7rem; color: #64748b; background: white; padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid #e2e8f0;">Actual Costs</span>
+                </div>
+                
+                <div class="ledger-header" style="display: flex; gap: 0.75rem; padding: 0 0.5rem 0.5rem 0.5rem; font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;">
+                    <div style="flex: 2;">Item Description</div>
+                    <div style="flex: 1;">Amount (₱)</div>
+                    <div style="width: 30px;"></div>
                 </div>
                 
                 <div id="actualExpenseRows" style="display:flex; flex-direction:column; gap:0.75rem;">
@@ -1098,9 +1111,58 @@
                 <i class="fas fa-save me-1"></i> Save Expenses
             </button>
         </div>
+        </div>
 {% endblock %}
 
+
 {% block extra_body %}
+<!-- ═══════════════════════════════════════════════════
+     MODAL: DISPATCH PROOF (PANEL DEFENSE)
+════════════════════════════════════════════════════ -->
+<div id="dispatchProofModal" class="occ-modal-overlay" style="z-index: 9999;">
+    <div class="occ-modal-box sz-sm occ-content-zoom-in">
+        <div class="occ-modal-header">
+            <div>
+                <h2 class="occ-modal-title"><i class="fas fa-camera" style="color:#0ea5e9;"></i> Proof of Preparation</h2>
+                <div class="occ-modal-subtitle">Upload photo of packed orders to unlock dispatch.</div>
+            </div>
+            <button type="button" onclick="closeDispatchProofModal()" class="occ-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="occ-modal-body">
+            <form id="dispatchProofForm" onsubmit="submitDispatchProof(event)">
+                <input type="hidden" id="dispatchProofBookingId">
+                <input type="hidden" id="dispatchProofStage">
+                
+                <div style="background:#f0f9ff; color:#0369a1; padding:1rem; border-radius:0.75rem; font-size:0.85rem; margin-bottom:1.5rem; display:flex; gap:0.75rem; align-items:flex-start;">
+                    <i class="fas fa-info-circle mt-1"></i>
+                    <div>
+                        <strong>Quality Assurance Lock</strong><br>
+                        To ensure quality and prevent blind checklist completion, you must provide photographic evidence of the prepared food before dispatching.
+                    </div>
+                </div>
+
+                <div class="occ-form-group">
+                    <label class="occ-form-label">Upload Photo Evidence *</label>
+                    <input type="file" id="dispatchProofImage" class="occ-form-input" accept="image/png, image/jpeg" required>
+                    <div style="font-size:0.7rem; color:#64748b; margin-top:0.25rem;">Max size: 5MB (JPG/PNG)</div>
+                </div>
+            </form>
+        </div>
+        <div class="occ-modal-footer">
+            <button type="button" onclick="closeDispatchProofModal()" class="btn-secondary-pro">Cancel</button>
+            <button type="submit" form="dispatchProofForm" id="dispatchProofSubmitBtn" class="btn-primary-pro" style="background:#0ea5e9 !important;">
+                <i class="fas fa-cloud-upload-alt me-1"></i> Confirm & Dispatch
+            </button>
+        </div>
+    </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     TIER 1 FORCED ACTION (REMOVED MODAL, REPLACED BY BANNER)
+════════════════════════════════════════════════════ -->
 <script>
     // Robust inline verification to identify why modals/validation might fail
     (function() {
@@ -1149,5 +1211,5 @@
 
 {% block extra_js %}
 <script src="{{ url_for('static', path='/js/auth/location_data.js') }}"></script>
-<script src="{{ url_for('static', path='/js/caterer/bookings.js') }}?v=2.3"></script>
+<script src="{{ url_for('static', path='/js/caterer/bookings.js') }}?v=3.2"></script>
 {% endblock %}
