@@ -123,7 +123,10 @@ def master_migration():
             ("card_number", "VARCHAR"),
             ("cash_instructions", "TEXT"),
             ("verification_status", "VARCHAR DEFAULT 'Pending'"),
-            ("account_status", "VARCHAR DEFAULT 'Active'")
+            ("account_status", "VARCHAR DEFAULT 'Active'"),
+            ("notification_preferences", "JSONB"),
+            ("deactivation_reason", "TEXT"),
+            ("deactivated_at", "TIMESTAMP WITH TIME ZONE")
         ]
         
         # Menu Items
