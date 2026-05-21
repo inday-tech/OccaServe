@@ -1,20 +1,20 @@
 {% extends "caterer/layout.html" %}
 
-{% block title %}Edit Profile - Caterer Dashboard{% endblock %}
+{% block title %}Settings - Caterer Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/profile_edit.css') }}?v=1.6">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/profile_edit.css') }}?v=2.0">
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', path='/js/caterer/profile_edit.js') }}?v=1.2"></script>
+<script src="{{ url_for('static', path='/js/caterer/profile_edit.js') }}?v=2.0"></script>
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div class="header-title-group">
-        <h1>Business Profile</h1>
-        <p>Update your business information shown to potential customers.</p>
+        <h1>Settings</h1>
+        <p>Manage your business profile, payments, customization, and account preferences.</p>
     </div>
 </div>
 
@@ -52,25 +52,19 @@
             <div class="tabs-nav-wrapper">
                 <div class="tabs-nav">
                     <button type="button" class="tab-btn active" data-tab="general">
-                        <i class="fas fa-store"></i> <span>Business Details</span>
+                        <i class="fas fa-store"></i> <span>Business</span>
                     </button>
                     <button type="button" class="tab-btn" data-tab="location">
-                        <i class="fas fa-map-marked-alt"></i> <span>Location</span>
+                        <i class="fas fa-map-marked-alt"></i> <span>Location & Contact</span>
                     </button>
                     <button type="button" class="tab-btn" data-tab="payments">
-                        <i class="fas fa-wallet"></i> <span>Payments</span>
-                    </button>
-                    <button type="button" class="tab-btn" data-tab="policies">
-                        <i class="fas fa-file-contract"></i> <span>Policies</span>
+                        <i class="fas fa-wallet"></i> <span>Payments & Policies</span>
                     </button>
                     <button type="button" class="tab-btn" data-tab="brand">
-                        <i class="fas fa-brush"></i> <span>Identity</span>
-                    </button>
-                    <button type="button" class="tab-btn" data-tab="gallery">
-                        <i class="fas fa-images"></i> <span>Gallery</span>
+                        <i class="fas fa-palette"></i> <span>Customization</span>
                     </button>
                     <button type="button" class="tab-btn" data-tab="account">
-                        <i class="fas fa-user-shield"></i> <span>Account</span>
+                        <i class="fas fa-user-shield"></i> <span>Account & Security</span>
                     </button>
                 </div>
             </div>
@@ -112,6 +106,30 @@
                             placeholder="Describe your catering services, specialties, and experience..."
                             required>{{ profile.description }}</textarea>
                     </div>
+
+                    <!-- Gallery Section (merged into Business tab) -->
+                    <div class="section-header-compact" style="margin-top: 2rem;">
+                        <h3><i class="fas fa-camera-retro"></i> Business Gallery</h3>
+                        <p>Showcase your best dishes and event setups to attract clients.</p>
+                    </div>
+                    <div class="form-group">
+                        <label>Add to Gallery (Multiple)</label>
+                        <input type="file" name="gallery" accept="image/*" multiple class="form-file-input">
+                    </div>
+
+                    {% if profile.gallery_items %}
+                    <div class="gallery-management-grid">
+                        {% for item in profile.gallery_items if not item.is_archived %}
+                        <div class="gallery-item-wrapper">
+                            <img src="{{ item.media_url }}" class="gallery-item-img">
+                            <button type="button" onclick="archiveGalleryItem({{ item.id }})"
+                                class="archive-gallery-item-btn" title="Archive Image">
+                                <i class="fas fa-archive"></i>
+                            </button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 </div>
 
                 <!-- Tab: Location & Contact -->
@@ -331,13 +349,11 @@
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Tab: Policies -->
-                <div class="tab-content" id="policies">
-                    <div class="section-header-compact">
+                    <!-- Policies Section (merged into Payments tab) -->
+                    <div class="section-header-compact" style="margin-top: 2.5rem;">
                         <h3><i class="fas fa-shield-halved"></i> Business Policies</h3>
-                        <p>Set clear expectations for bookings and cancellations.</p>
+                        <p>Set clear expectations for bookings, payments, and cancellations.</p>
                     </div>
 
                     <div class="form-group">
@@ -579,6 +595,19 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Reset to Default Button -->
+                            <div class="brand-settings-card">
+                                <div class="brand-card-body" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+                                    <div>
+                                        <strong style="color: #334155;">Reset All Customizations</strong>
+                                        <p style="font-size: 0.8rem; color: #64748b; margin: 0.25rem 0 0;">Revert colors, fonts, and decorations to OccaServe defaults.</p>
+                                    </div>
+                                    <button type="button" class="btn-danger-outline" onclick="resetBrandDefaults()" style="white-space: nowrap;">
+                                        <i class="fas fa-rotate-left"></i> Reset to Default
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Right Sticky: Preview -->
@@ -620,30 +649,185 @@
                     </div>
                 </div>
 
-                <!-- Tab: Gallery -->
-                <div class="tab-content" id="gallery">
+                <!-- Tab: Account & Security -->
+                <div class="tab-content" id="account">
                     <div class="section-header-compact">
-                        <h3><i class="fas fa-camera-retro"></i> Business Gallery</h3>
-                        <p>Showcase your best dishes and event setups to attract clients.</p>
-                    </div>
-                    <div class="form-group">
-                        <label>Add to Gallery (Multiple)</label>
-                        <input type="file" name="gallery" accept="image/*" multiple class="form-file-input">
+                        <h3><i class="fas fa-user-edit"></i> Personal Information</h3>
+                        <p>Your personal details linked to this caterer account.</p>
                     </div>
 
-                    {% if profile.gallery_items %}
-                    <div class="gallery-management-grid">
-                        {% for item in profile.gallery_items if not item.is_archived %}
-                        <div class="gallery-item-wrapper">
-                            <img src="{{ item.media_url }}" class="gallery-item-img">
-                            <button type="button" onclick="archiveGalleryItem({{ item.id }})"
-                                class="archive-gallery-item-btn" title="Archive Image">
-                                <i class="fas fa-archive"></i>
-                            </button>
+                    <div class="form-row-three-col">
+                        <div class="form-group">
+                            <label><i class="fas fa-user"></i> First Name</label>
+                            <input type="text" name="first_name" value="{{ user.first_name or '' }}" required>
                         </div>
-                        {% endfor %}
+                        <div class="form-group">
+                            <label>Middle Name</label>
+                            <input type="text" name="middle_name" value="{{ user.middle_name or '' }}">
+                        </div>
+                        <div class="form-group">
+                            <label>Last Name</label>
+                            <input type="text" name="last_name" value="{{ user.last_name or '' }}" required>
+                        </div>
                     </div>
-                    {% endif %}
+
+                    <div class="form-row-two-col">
+                        <div class="form-group">
+                            <label><i class="fas fa-home"></i> Personal Address</label>
+                            <input type="text" name="personal_address" value="{{ user.address or '' }}" placeholder="Your home address">
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-envelope"></i> Email Address</label>
+                            <input type="email" value="{{ user.email }}" disabled style="opacity:0.6; cursor:not-allowed;">
+                            <span class="field-hint">Email cannot be changed for security reasons.</span>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 0.5rem;">
+                        <button type="button" class="profile-action-btn secondary" onclick="openPasswordModal()" style="max-width: 280px;">
+                            <i class="fas fa-key"></i> <span>Change Password</span>
+                        </button>
+                    </div>
+
+                    <!-- Notification Preferences -->
+                    <div class="section-header-compact" style="margin-top: 2.5rem;">
+                        <h3><i class="fas fa-bell"></i> Notification Preferences</h3>
+                        <p>Choose which notifications you'd like to receive.</p>
+                    </div>
+
+                    {% set notif_prefs = profile.notification_preferences or {"email_new_booking": True, "email_payment_confirmed": True, "email_weekly_summary": False, "push_messages": True, "email_review_received": True} %}
+
+                    <div class="notification-prefs-list" id="notifPrefsList">
+                        <div class="notif-pref-item">
+                            <div class="notif-pref-info">
+                                <i class="fas fa-calendar-plus"></i>
+                                <div>
+                                    <span class="notif-pref-title">New Booking Requests</span>
+                                    <span class="notif-pref-desc">Get notified when a customer submits a new booking.</span>
+                                </div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" data-pref="email_new_booking" {% if notif_prefs.get('email_new_booking', True) %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="notif-pref-item">
+                            <div class="notif-pref-info">
+                                <i class="fas fa-credit-card"></i>
+                                <div>
+                                    <span class="notif-pref-title">Payment Confirmed</span>
+                                    <span class="notif-pref-desc">Receive alerts when a payment is verified.</span>
+                                </div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" data-pref="email_payment_confirmed" {% if notif_prefs.get('email_payment_confirmed', True) %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="notif-pref-item">
+                            <div class="notif-pref-info">
+                                <i class="fas fa-star"></i>
+                                <div>
+                                    <span class="notif-pref-title">New Review Received</span>
+                                    <span class="notif-pref-desc">Get notified when a customer leaves a review.</span>
+                                </div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" data-pref="email_review_received" {% if notif_prefs.get('email_review_received', True) %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="notif-pref-item">
+                            <div class="notif-pref-info">
+                                <i class="fas fa-comment-dots"></i>
+                                <div>
+                                    <span class="notif-pref-title">Push Notifications for Messages</span>
+                                    <span class="notif-pref-desc">Real-time alerts for customer messages.</span>
+                                </div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" data-pref="push_messages" {% if notif_prefs.get('push_messages', True) %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="notif-pref-item">
+                            <div class="notif-pref-info">
+                                <i class="fas fa-chart-line"></i>
+                                <div>
+                                    <span class="notif-pref-title">Weekly Performance Summary</span>
+                                    <span class="notif-pref-desc">Receive a weekly email with your business analytics.</span>
+                                </div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" data-pref="email_weekly_summary" {% if notif_prefs.get('email_weekly_summary', False) %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-save-notifs" id="saveNotifsBtn" onclick="saveNotificationPrefs()">
+                        <i class="fas fa-save"></i> Save Notification Preferences
+                    </button>
+
+                    <!-- Login Activity -->
+                    <div class="section-header-compact" style="margin-top: 2.5rem;">
+                        <h3><i class="fas fa-clock-rotate-left"></i> Login Activity</h3>
+                        <p>Recent login information for your account.</p>
+                    </div>
+
+                    <div class="login-activity-card">
+                        <div class="login-activity-row">
+                            <div class="la-icon"><i class="fas fa-calendar-day"></i></div>
+                            <div class="la-info">
+                                <span class="la-label">Last Login</span>
+                                <span class="la-value">{{ user.last_login.strftime('%b %d, %Y — %I:%M %p') if user.last_login else 'Never' }}</span>
+                            </div>
+                        </div>
+                        <div class="login-activity-row">
+                            <div class="la-icon"><i class="fas fa-shield-check"></i></div>
+                            <div class="la-info">
+                                <span class="la-label">Account Status</span>
+                                <span class="la-value" style="color: {{ '#10b981' if profile.account_status == 'Active' else '#ef4444' }};">
+                                    <i class="fas fa-{{ 'check-circle' if profile.account_status == 'Active' else 'exclamation-triangle' }}"></i>
+                                    {{ profile.account_status or 'Active' }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="login-activity-row">
+                            <div class="la-icon"><i class="fas fa-user-check"></i></div>
+                            <div class="la-info">
+                                <span class="la-label">Member Since</span>
+                                <span class="la-value">{{ user.created_at.strftime('%B %d, %Y') if user.created_at else 'N/A' }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Danger Zone -->
+                    <div class="danger-zone-section">
+                        <div class="danger-zone-header">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span>Danger Zone</span>
+                        </div>
+                        <div class="danger-zone-body">
+                            <div class="danger-action-row">
+                                <div>
+                                    <strong>Deactivate Account</strong>
+                                    <p>Temporarily hide your business from customers. You can reactivate anytime.</p>
+                                </div>
+                                <button type="button" class="btn-danger-outline" onclick="handleDeactivate()">
+                                    <i class="fas fa-eye-slash"></i> Deactivate
+                                </button>
+                            </div>
+                            <div class="danger-action-row" style="border-top: 1px solid #fee2e2;">
+                                <div>
+                                    <strong>Request Account Deletion</strong>
+                                    <p>Permanently delete all your data. This action cannot be undone.</p>
+                                </div>
+                                <button type="button" class="btn-danger-solid" onclick="handleDeleteRequest()">
+                                    <i class="fas fa-trash-alt"></i> Request Deletion
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="form-footer-actions">
@@ -824,9 +1008,9 @@ async function handlePasswordChange(event) {
         const result = await response.json();
         
         if (result.success) {
-            window.showSuccess('Password updated successfully! You will be logged out to refresh your session.');
+            window.showSuccess('Password updated successfully!');
             window.closePasswordModal();
-            setTimeout(() => window.location.href = '/auth/logout', 2000);
+            form.reset();
         } else {
             window.showError(result.message || 'Failed to update password.');
         }

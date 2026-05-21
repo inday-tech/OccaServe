@@ -414,8 +414,103 @@ async function archiveGalleryItem(itemId) {
             const item = btn?.closest('.gallery-item-wrapper');
             if (item) {
                 item.style.opacity = '0';
+                item.style.transform = 'scale(0.8)';
                 setTimeout(() => item.remove(), 300);
             }
+            if (window.showSuccess) window.showSuccess('Photo archived successfully.');
         }
     } catch (err) { console.error(err); }
+}
+
+// Notification Preferences
+async function saveNotificationPrefs() {
+    const btn = document.getElementById('saveNotifsBtn');
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    btn.disabled = true;
+
+    const prefs = {};
+    document.querySelectorAll('#notifPrefsList input[data-pref]').forEach(input => {
+        prefs[input.dataset.pref] = input.checked;
+    });
+
+    try {
+        const response = await fetch('/caterer/settings/notifications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(prefs)
+        });
+        const result = await response.json();
+        if (result.status === 'success') {
+            if (window.showSuccess) window.showSuccess('Notification preferences saved!');
+        } else {
+            if (window.showError) window.showError(result.message || 'Failed to save.');
+        }
+    } catch (err) {
+        console.error(err);
+        if (window.showError) window.showError('An error occurred. Please try again.');
+    } finally {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+    }
+}
+
+// Account Deactivation
+async function handleDeactivate() {
+    const reason = prompt('Please provide a reason for deactivating your account (optional):');
+    if (reason === null) return; // User cancelled
+
+    if (!confirm('Are you sure you want to deactivate your account? Your business will be hidden from customers.')) return;
+
+    try {
+        const response = await fetch('/caterer/settings/deactivate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason: reason || 'No reason provided' })
+        });
+        const result = await response.json();
+        if (result.status === 'success') {
+            if (window.showSuccess) window.showSuccess('Account deactivated. Redirecting...');
+            setTimeout(() => window.location.href = '/auth/logout', 2000);
+        } else {
+            if (window.showError) window.showError(result.message || 'Failed to deactivate.');
+        }
+    } catch (err) {
+        console.error(err);
+        if (window.showError) window.showError('An error occurred.');
+    }
+}
+
+// Account Deletion Request
+function handleDeleteRequest() {
+    const confirmed = prompt('Type "DELETE" to confirm permanent account deletion:');
+    if (confirmed !== 'DELETE') {
+        if (confirmed !== null) {
+            if (window.showError) window.showError('You must type "DELETE" to confirm.');
+        }
+        return;
+    }
+
+    if (window.showSuccess) {
+        window.showSuccess('Your deletion request has been submitted. An admin will review and process it within 7 business days.');
+    }
+}
+
+// Reset Brand to Defaults
+async function resetBrandDefaults() {
+    if (!confirm('Reset all customization settings to OccaServe defaults? This will clear your colors, fonts, textures, and decorations.')) return;
+
+    try {
+        const response = await fetch('/caterer/settings/reset-brand', { method: 'POST' });
+        const result = await response.json();
+        if (result.status === 'success') {
+            if (window.showSuccess) window.showSuccess('Brand settings reset! Reloading page...');
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            if (window.showError) window.showError(result.message || 'Failed to reset.');
+        }
+    } catch (err) {
+        console.error(err);
+        if (window.showError) window.showError('An error occurred.');
+    }
 }

@@ -140,6 +140,19 @@ class CatererProfile(Base):
     payment_policy = Column(Text, nullable=True)
     cancellation_policy = Column(Text, nullable=True)
     
+    # NEW: Notification Preferences (JSONB for flexibility)
+    notification_preferences = Column(JSONB, default={
+        "email_new_booking": True,
+        "email_payment_confirmed": True,
+        "email_weekly_summary": False,
+        "push_messages": True,
+        "email_review_received": True
+    })
+    
+    # NEW: Account Deactivation
+    deactivation_reason = Column(Text, nullable=True)
+    deactivated_at = Column(DateTime(timezone=True), nullable=True)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User", back_populates="caterer_profile")

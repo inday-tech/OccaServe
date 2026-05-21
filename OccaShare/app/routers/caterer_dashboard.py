@@ -1747,7 +1747,7 @@ async def edit_profile(
         "request": request,
         "user": user,
         "profile": user.caterer_profile,
-        "active_page": "profile"
+        "active_page": "settings"
     })
 
 @router.post("/packages/add")
@@ -3931,3 +3931,102 @@ async def toggle_vip_status_api(
     # For now, VIP is dynamic (>=3 bookings), so we return a helpful message
     return {"status": "success", "message": "VIP status is calculated automatically based on booking volume (3+ bookings)."}
 
+# ──────────────────────────────────────────────────────
+# SETTINGS: Gallery Archive
+# ──────────────────────────────────────────────────────
+@router.post("/gallery/{item_id}/archive")
+async def archive_gallery_item(
+    item_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    item = db.query(models.CatererGallery).filter(
+        models.CatererGallery.id == item_id,
+        models.CatererGallery.caterer_id == user.caterer_profile.id
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Gallery item not found")
+    
+    item.is_archived = True
+    db.commit()
+    return {"status": "success", "message": "Gallery item archived."}
+
+# ──────────────────────────────────────────────────────
+# SETTINGS: Notification Preferences
+# ──────────────────────────────────────────────────────
+@router.post("/settings/notifications")
+async def update_notification_preferences(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    data = await request.json()
+    profile = user.caterer_profile
+    
+    # Build preferences object from submitted data
+    prefs = {
+        "email_new_booking": data.get("email_new_booking", True),
+        "email_payment_confirmed": data.get("email_payment_confirmed", True),
+        "email_weekly_summary": data.get("email_weekly_summary", False),
+        "push_messages": data.get("push_messages", True),
+        "email_review_received": data.get("email_review_received", True)
+    }
+    
+    profile.notification_preferences = prefs
+    db.commit()
+    return {"status": "success", "message": "Notification preferences updated."}
+
+# ──────────────────────────────────────────────────────
+# SETTINGS: Account Deactivation
+# ──────────────────────────────────────────────────────
+@router.post("/settings/deactivate")
+async def deactivate_account(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    data = await request.json()
+    reason = data.get("reason", "No reason provided")
+    profile = user.caterer_profile
+    
+    profile.account_status = "Deactivated"
+    profile.deactivation_reason = reason
+    profile.deactivated_at = datetime.now()
+    
+    db.commit()
+    return {"status": "success", "message": "Account deactivated. You will be logged out."}
+
+@router.post("/settings/reactivate")
+async def reactivate_account(
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    profile = user.caterer_profile
+    profile.account_status = "Active"
+    profile.deactivation_reason = None
+    profile.deactivated_at = None
+    db.commit()
+    return {"status": "success", "message": "Account reactivated successfully!"}
+
+# ──────────────────────────────────────────────────────
+# SETTINGS: Reset Brand to Defaults
+# ──────────────────────────────────────────────────────
+@router.post("/settings/reset-brand")
+async def reset_brand_defaults(
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    profile = user.caterer_profile
+    profile.primary_color = "#2D3748"
+    profile.secondary_color = "#4A5568"
+    profile.accent_color = "#48BB78"
+    profile.highlight_color = "#48BB78"
+    profile.font_family = "'Poppins', sans-serif"
+    profile.border_radius = 12
+    profile.dashboard_texture = "none"
+    profile.sidebar_decoration = "none"
+    profile.header_decoration = "none"
+    profile.sidebar_mode = "full"
+    profile.show_platform_logo = True
+    db.commit()
+    return {"status": "success", "message": "Brand settings reset to OccaServe defaults."}
