@@ -992,8 +992,8 @@ class VerificationService:
             
             raw_data = buffer.tobytes()
                 
-            # Use gemini-flash-latest to ensure future compatibility and avoid 404 errors with deprecated models
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={gemini_key}"
+            # Use gemini-2.0-flash for OCR - fast, multimodal, and widely available
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_key}"
             headers = {"Content-Type": "application/json"}
             base64_image = base64.b64encode(raw_data).decode('utf-8')
             

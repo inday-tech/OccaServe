@@ -463,7 +463,7 @@ document.addEventListener('DOMContentLoaded', function () {
         
         // Detect ID Type
         const idType = document.getElementById('id_type').value || data.document_type_detected || "PhilID (National ID)";
-        const configFields = ID_TYPE_CONFIG[idType] || ID_TYPE_CONFIG["PhilID (National ID)"];
+        const configFields = ID_TYPE_CONFIG[idType] || ID_TYPE_CONFIG["PhilSys / PhilID"];
 
         // Set confidence bar
         const confidence = Math.round((data.confidence_score || fields.confidence_score || 0) * 100);
@@ -543,7 +543,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Get reviewed/edited values from dynamic modal inputs
         const idType = document.getElementById('id_type').value || "PhilID (National ID)";
-        const configFields = ID_TYPE_CONFIG[idType] || ID_TYPE_CONFIG["PhilID (National ID)"];
+        const configFields = ID_TYPE_CONFIG[idType] || ID_TYPE_CONFIG["PhilSys / PhilID"];
         
         let extracted = {};
         configFields.forEach(field => {
