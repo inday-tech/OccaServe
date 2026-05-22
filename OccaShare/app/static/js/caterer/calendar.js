@@ -1,15 +1,106 @@
 /* ==========================================================================
-   CATERER CALENDAR CORE LOGIC (v12.0)
+   CATERER CALENDAR CORE LOGIC (v13.0)
+   - Real-time WebSocket Updates
    - Intelligent Validation & Conflict Detection
    - Automated Pricing & ROI Engine
-   - Adaptive Mobile View Switching
+   - Professional Performance Optimizations
    ========================================================================== */
 
+let wsConnection = null;
+let calendarRefreshTimer = null;
+
+function initWebSocket() {
+    if (wsConnection) return;
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const url = `${protocol}//${window.location.host}/ws/caterer/calendar`;
+
+    wsConnection = new WebSocket(url);
+
+    wsConnection.onopen = function() {
+        console.log('✓ Calendar WebSocket Connected');
+    };
+
+    wsConnection.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        handleRealtimeUpdate(data);
+    };
+
+    wsConnection.onerror = function(error) {
+        console.error('✗ WebSocket error:', error);
+    };
+
+    wsConnection.onclose = function() {
+        console.log('↻ WebSocket disconnected, will retry...');
+        wsConnection = null;
+        setTimeout(initWebSocket, 5000);
+    };
+}
+
+function handleRealtimeUpdate(data) {
+    if (!window.fullCalendarInstance) return;
+
+    switch(data.type) {
+        case 'booking_added':
+        case 'booking_updated':
+            window.fullCalendarInstance.refetchEvents();
+            showNotification('Booking Updated', 'Calendar synchronized', 'success');
+            break;
+        case 'availability_changed':
+            window.fullCalendarInstance.refetchEvents();
+            break;
+        case 'booking_count_changed':
+            updateCapacityDisplay(data);
+            break;
+    }
+}
+
+function showNotification(title, message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+        font-weight: 600;
+        z-index: 10000;
+        animation: slideInRight 0.3s ease-out;
+        max-width: 400px;
+    `;
+
+    const bgColor = {
+        'success': '#d1fae5',
+        'error': '#fee2e2',
+        'warning': '#fef3c7',
+        'info': '#dbeafe'
+    }[type];
+
+    const textColor = {
+        'success': '#065f46',
+        'error': '#991b1b',
+        'warning': '#92400e',
+        'info': '#1e40af'
+    }[type];
+
+    notification.style.background = bgColor;
+    notification.style.color = textColor;
+    notification.innerHTML = `<strong>${title}</strong><br><small>${message}</small>`;
+
+    document.body.appendChild(notification);
+    setTimeout(() => {
+        notification.style.animation = 'slideOutRight 0.3s ease-out';
+        setTimeout(() => notification.remove(), 300);
+    }, 4000);
+}
+
 document.addEventListener('DOMContentLoaded', function () {
+    initWebSocket();
     const calendarEl = document.getElementById('calendar');
     if (calendarEl) {
         const initialView = window.innerWidth <= 768 ? 'listMonth' : 'dayGridMonth';
-        
+
         const calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: initialView,
             headerToolbar: {
@@ -19,7 +110,9 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             themeSystem: 'standard',
             events: '/caterer/api/events',
-            // --- BLOCK PAST DATES ---
+            editable: false,
+            selectable: true,
+            selectConstraint: 'businessHours',
             selectAllow: function(selectInfo) {
                 const today = new Date();
                 today.setHours(0,0,0,0);
@@ -30,7 +123,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const isBlocked = props.type === 'BLOCKED';
                 const iconClass = isBlocked ? 'fas fa-ban' : 'fas fa-utensils';
                 return {
-                    html: `<div class="custom-calendar-event" style="background-color: ${arg.event.backgroundColor}; color: ${arg.event.textColor || '#fff'};">
+                    html: `<div class="custom-calendar-event" style="background-color: ${arg.event.backgroundColor}; color: ${arg.event.textColor || '#fff'};" title="${arg.event.title}">
                             <i class="${iconClass}" style="font-size: 0.7rem;"></i>
                             <span>${arg.event.title}</span>
                         </div>`
@@ -39,9 +132,8 @@ document.addEventListener('DOMContentLoaded', function () {
             eventClick: function (info) {
                 const today = new Date();
                 today.setHours(0,0,0,0);
-                // Prevent clicking events on past dates
                 if (info.event.start < today) {
-                    window.showError('Audit Guard: Past event details are archived.');
+                    showNotification('Archive Notice', 'Past event details are not editable', 'info');
                     return;
                 }
                 if (info.event.extendedProps.type === 'BLOCKED') {
@@ -54,12 +146,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 const today = new Date();
                 today.setHours(0,0,0,0);
                 const clickedDate = new Date(info.dateStr);
-                
+
                 if (clickedDate < today) {
-                    window.showError('Audit Guard: You cannot manage past dates.');
-                    return; 
+                    showNotification('Error', 'Cannot manage past dates', 'error');
+                    return;
                 }
-                
+
                 const blockInput = document.getElementById('blockDate');
                 const manInput = document.getElementById('manDate');
                 if (blockInput) blockInput.value = info.dateStr;
@@ -71,16 +163,30 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             height: 'auto',
             dayMaxEvents: 3,
+            eventDidMount: function(info) {
+                info.el.setAttribute('role', 'button');
+                info.el.setAttribute('tabindex', '0');
+            },
             windowResize: function(arg) {
                 if (window.innerWidth <= 768) {
                     calendar.changeView('listMonth');
                 } else {
                     calendar.changeView('dayGridMonth');
                 }
+            },
+            datesSet: function(info) {
+                updateVisibleCapacity(info.start, info.end);
             }
         });
         calendar.render();
         window.fullCalendarInstance = calendar;
+
+        window.addEventListener('resize', function() {
+            clearTimeout(calendarRefreshTimer);
+            calendarRefreshTimer = setTimeout(() => {
+                calendar.updateSize();
+            }, 250);
+        });
     }
 
     // --- FIELD LEVEL VALIDATION HELPER ---
@@ -108,15 +214,280 @@ document.addEventListener('DOMContentLoaded', function () {
     attachInputRestrictions();
 });
 
-/**
- * Throttles and restricts inputs in real-time
- */
-function attachInputRestrictions() {
+function validateFirstName() {
+    const field = document.getElementById('manFirstName');
+    const error = document.getElementById('error-manFirstName');
+    const val = field.value.trim();
+
+    if (!val) {
+        error.textContent = 'First name is required';
+        field.classList.add('is-invalid');
+        return false;
+    }
+    if (val.length < 2) {
+        error.textContent = 'First name must be at least 2 characters';
+        field.classList.add('is-invalid');
+        return false;
+    }
+    field.classList.remove('is-invalid');
+    error.textContent = '';
+    return true;
+}
+
+function validateLastName() {
+    const field = document.getElementById('manLastName');
+    const error = document.getElementById('error-manLastName');
+    const val = field.value.trim();
+
+    if (!val) {
+        error.textContent = 'Last name is required';
+        field.classList.add('is-invalid');
+        return false;
+    }
+    if (val.length < 2) {
+        error.textContent = 'Last name must be at least 2 characters';
+        field.classList.add('is-invalid');
+        return false;
+    }
+    field.classList.remove('is-invalid');
+    error.textContent = '';
+    return true;
+}
+
+function validateEmail() {
+    const field = document.getElementById('manCustEmail');
+    const error = document.getElementById('error-manCustEmail');
+    const val = field.value.trim();
+
+    if (!val) {
+        error.textContent = 'Email is required';
+        field.classList.add('is-invalid');
+        return false;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(val)) {
+        error.textContent = 'Please enter a valid email address';
+        field.classList.add('is-invalid');
+        return false;
+    }
+    field.classList.remove('is-invalid');
+    error.textContent = '';
+    return true;
+}
+
+function validateContact() {
+    const field = document.getElementById('manCustContact');
+    const error = document.getElementById('error-manCustContact');
+    const val = field.value.trim();
+
+    if (!val) {
+        error.textContent = 'Contact number is required';
+        field.classList.add('is-invalid');
+        return false;
+    }
+    if (!val.startsWith('09')) {
+        error.textContent = 'PH number must start with 09';
+        field.classList.add('is-invalid');
+        return false;
+    }
+    if (val.length !== 11) {
+        error.textContent = 'PH number must be 11 digits';
+        field.classList.add('is-invalid');
+        return false;
+    }
+    if (/(\d)\1{7,}/.test(val)) {
+        error.textContent = 'Invalid pattern detected';
+        field.classList.add('is-invalid');
+        return false;
+    }
+    field.classList.remove('is-invalid');
+    error.textContent = '';
+    return true;
+}
+
+function validateEventName() {
+    const field = document.getElementById('manEventName');
+    const error = document.getElementById('error-manEventName');
+    const val = field.value.trim();
+
+    if (!val) {
+        error.textContent = 'Event name is required';
+        field.classList.add('is-invalid');
+        return false;
+    }
+    if (val.length < 3) {
+        error.textContent = 'Event name must be at least 3 characters';
+        field.classList.add('is-invalid');
+        return false;
+    }
+    field.classList.remove('is-invalid');
+    error.textContent = '';
+    return true;
+}
+
+function validateEventType() {
+    const field = document.getElementById('manEventType');
+    const error = document.getElementById('error-manEventType');
+
+    if (!field.value) {
+        error.textContent = 'Please select an event type';
+        field.classList.add('is-invalid');
+        return false;
+    }
+    field.classList.remove('is-invalid');
+    error.textContent = '';
+    return true;
+}
+
+function validateOtherType() {
+    const typeField = document.getElementById('manEventType');
+    const field = document.getElementById('manOtherType');
+    const error = document.getElementById('error-manOtherType');
+
+    if (typeField.value === 'Other') {
+        if (!field.value.trim()) {
+            error.textContent = 'Please specify the event type';
+            field.classList.add('is-invalid');
+            return false;
+        }
+        if (field.value.trim().length < 3) {
+            error.textContent = 'Description must be at least 3 characters';
+            field.classList.add('is-invalid');
+            return false;
+        }
+    }
+    field.classList.remove('is-invalid');
+    error.textContent = '';
+    return true;
+}
+
+function validateEventDate() {
+    const field = document.getElementById('manDate');
+    const error = document.getElementById('error-manDate');
+    const val = field.value;
+
+    if (!val) {
+        error.textContent = 'Event date is required';
+        field.classList.add('is-invalid');
+        return false;
+    }
+    const eventDate = new Date(val);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (eventDate < today) {
+        error.textContent = 'Date must be in the future';
+        field.classList.add('is-invalid');
+        return false;
+    }
+    field.classList.remove('is-invalid');
+    error.textContent = '';
+    return true;
+}
+
+function validateEventTime() {
+    const field = document.getElementById('manTime');
+    const error = document.getElementById('error-manTime');
+    const val = field.value;
+
+    if (!val) {
+        error.textContent = 'Event time is required';
+        field.classList.add('is-invalid');
+        return false;
+    }
+    field.classList.remove('is-invalid');
+    error.textContent = '';
+    return true;
+}
+
+function validateGuestCount() {
+    const field = document.getElementById('manGuests');
+    const error = document.getElementById('error-manGuests');
+    const packageSelect = document.getElementById('manPackage');
+    const val = parseInt(field.value) || 0;
+
+    if (!field.value || val < 1) {
+        error.textContent = 'Guest count must be at least 1';
+        field.classList.add('is-invalid');
+        return false;
+    }
+
+    if (packageSelect && packageSelect.value) {
+        const selectedOption = packageSelect.options[packageSelect.selectedIndex];
+        const minPax = parseInt(selectedOption.getAttribute('data-min')) || 1;
+        if (val < minPax) {
+            error.textContent = `Selected package requires minimum ${minPax} guests`;
+            field.classList.add('is-invalid');
+            return false;
+        }
+    }
+
+    field.classList.remove('is-invalid');
+    error.textContent = '';
+    return true;
+}
+
+function validateProvince() {
+    const field = document.getElementById('manProvince');
+    const error = document.getElementById('error-manProvince');
+
+    if (!field.value) {
+        error.textContent = 'Province is required';
+        field.classList.add('is-invalid');
+        return false;
+    }
+    field.classList.remove('is-invalid');
+    error.textContent = '';
+    return true;
+}
+
+function validateMunicipality() {
+    const field = document.getElementById('manMunicipality');
+    const error = document.getElementById('error-manMunicipality');
+
+    if (!field.value) {
+        error.textContent = 'Municipality is required';
+        field.classList.add('is-invalid');
+        return false;
+    }
+    field.classList.remove('is-invalid');
+    error.textContent = '';
+    return true;
+}
+
+function validateBarangay() {
+    const field = document.getElementById('manBarangay');
+    const error = document.getElementById('error-manBarangay');
+
+    if (!field.value) {
+        error.textContent = 'Barangay is required';
+        field.classList.add('is-invalid');
+        return false;
+    }
+    field.classList.remove('is-invalid');
+    error.textContent = '';
+    return true;
+}
+
+function validatePackage() {
+    const field = document.getElementById('manPackage');
+    const error = document.getElementById('error-manPackage');
+
+    if (!field.value) {
+        error.textContent = 'Please select a catering package';
+        field.classList.add('is-invalid');
+        return false;
+    }
+    field.classList.remove('is-invalid');
+    error.textContent = '';
+    return true;
+}
     const contactInput = document.getElementById('manCustContact');
     if (contactInput) {
         contactInput.addEventListener('input', function(e) {
             // Only allow numbers
             this.value = this.value.replace(/[^0-9]/g, '');
+            // Must start with 09 logic check (will show error in validate)
             // Limit to 11 digits
             if (this.value.length > 11) {
                 this.value = this.value.slice(0, 11);
@@ -125,12 +496,57 @@ function attachInputRestrictions() {
         });
     }
 
-    const nameInput = document.getElementById('manCustName');
-    if (nameInput) {
-        nameInput.addEventListener('input', function() {
-            validateSmartName(this.value);
-        });
-    }
+    const guestsInput = document.getElementById('manGuests');
+    const packageSelect = document.getElementById('manPackage');
+    
+    const validateGuests = () => {
+        if (!guestsInput || !packageSelect) return;
+        const val = parseInt(guestsInput.value) || 0;
+        if (packageSelect.value) {
+            const selectedOption = packageSelect.options[packageSelect.selectedIndex];
+            const minPax = parseInt(selectedOption.getAttribute('data-min')) || 1;
+            if (val < minPax) {
+                window.setFieldError('manGuests', `Selected package requires min ${minPax} guests.`);
+            } else {
+                window.clearFieldError('manGuests');
+            }
+        } else if (val < 1) {
+            window.setFieldError('manGuests', 'Minimum 1 guest required.');
+        } else {
+            window.clearFieldError('manGuests');
+        }
+    };
+    
+    if (guestsInput) guestsInput.addEventListener('input', validateGuests);
+    if (packageSelect) packageSelect.addEventListener('change', validateGuests);
+    const fNameInput = document.getElementById('manFirstName');
+    const lNameInput = document.getElementById('manLastName');
+
+    const validateNameFields = () => {
+        const f = (fNameInput ? fNameInput.value.trim().toLowerCase() : "");
+        const m = (document.getElementById('manMiddleName') ? document.getElementById('manMiddleName').value.trim().toLowerCase() : "");
+        const l = (lNameInput ? lNameInput.value.trim().toLowerCase() : "");
+        
+        if (f && l && f === l) {
+            window.setFieldError('manFirstName', 'First and Last name cannot be identical.');
+            window.setFieldError('manLastName', 'First and Last name cannot be identical.');
+            return false;
+        } else if (f && m && l && f === m && m === l) {
+            window.setFieldError('manFirstName', 'Names cannot be identical.');
+            return false;
+        } else if (f && f.length < 2) {
+            window.setFieldError('manFirstName', 'First name too short.');
+            return false;
+        } else {
+            window.clearFieldError('manFirstName');
+            window.clearFieldError('manLastName');
+            return true;
+        }
+    };
+    
+    if (fNameInput) fNameInput.addEventListener('input', validateNameFields);
+    if (lNameInput) lNameInput.addEventListener('input', validateNameFields);
+    if (document.getElementById('manMiddleName')) document.getElementById('manMiddleName').addEventListener('input', validateNameFields);
 
     const emailInput = document.getElementById('manCustEmail');
     if (emailInput) {
@@ -142,39 +558,28 @@ function attachInputRestrictions() {
 
 function validateSmartEmail(val) {
     if (!val) { window.clearFieldError('manCustEmail'); return false; }
-    if (!val.toLowerCase().endsWith('@gmail.com')) {
+    const emailLower = val.toLowerCase();
+    if (!emailLower.endsWith('@gmail.com')) {
         window.setFieldError('manCustEmail', 'Only @gmail.com addresses are permitted.');
+        return false;
+    }
+    if (emailLower.startsWith('test@') || emailLower.startsWith('dummy@') || emailLower.startsWith('admin@')) {
+        window.setFieldError('manCustEmail', 'Dummy or generic emails are not allowed.');
         return false;
     }
     window.clearFieldError('manCustEmail');
     return true;
 }
 
-function validateSmartName(val) {
-    if (!val) { window.clearFieldError('manCustName'); return false; }
-    const parts = val.trim().split(/\s+/);
-    
-    // Check structure: First, Middle/Initial, Last
-    if (parts.length < 3) {
-        window.setFieldError('manCustName', 'Format: First Name, Middle Initial, and Surname.');
-        return false;
-    }
-
-    // Check for repetitive parts (e.g., "John John")
-    const firstName = parts[0].toLowerCase();
-    const lastName = parts[parts.length - 1].toLowerCase();
-    if (firstName === lastName) {
-        window.setFieldError('manCustName', 'First name and Surname cannot be identical.');
-        return false;
-    }
-
-    window.clearFieldError('manCustName');
-    return true;
-}
-
 function validateSmartContact(val) {
     if (!val) { window.clearFieldError('manCustContact'); return false; }
     
+    // Check start
+    if (!val.startsWith('09')) {
+        window.setFieldError('manCustContact', 'Must start with 09');
+        return false;
+    }
+
     // Check length
     if (val.length < 11) {
         window.setFieldError('manCustContact', 'Incomplete number (11 digits required).');
@@ -197,7 +602,8 @@ function validateSmartContact(val) {
 function initCustomerDetection() {
     let detectionTimeout;
     const emailInput = document.getElementById('manCustEmail');
-    const nameInput = document.getElementById('manCustName');
+    const fNameInput = document.getElementById('manFirstName');
+    const lNameInput = document.getElementById('manLastName');
     const contactInput = document.getElementById('manCustContact');
     const badge = document.getElementById('userDetectionBadge');
     
@@ -207,51 +613,54 @@ function initCustomerDetection() {
         clearTimeout(detectionTimeout);
         detectionTimeout = setTimeout(async () => {
             const email = emailInput.value.trim();
-            const name = nameInput.value.trim();
+            const name = (fNameInput.value.trim() + " " + lNameInput.value.trim()).trim();
             const contact = contactInput.value.trim();
 
-            if (email.length < 10 && name.length < 5 && contact.length < 11) {
+            if (email.length < 10 && name.length < 3 && contact.length < 11) {
                 badge.style.display = 'none';
                 return;
             }
 
             // Real-time validation check before API call
             const isEmailValid = validateSmartEmail(email);
-            const isNameValid = validateSmartName(name);
-            if (!isEmailValid || !isNameValid) { badge.style.display = 'none'; return; }
+            if (!isEmailValid || fNameInput.value.trim().length === 0 || lNameInput.value.trim().length === 0) { badge.style.display = 'none'; return; }
 
             badge.style.display = 'flex';
             badge.innerHTML = `<div class="badge-spinner"><i class="fas fa-circle-notch fa-spin"></i></div><div class="badge-content"><span class="badge-title">AI Scanner</span><span style="font-size: 11px; color: #64748b;">Analyzing platform records...</span></div>`;
 
             try {
-                const resp = await fetch('/caterer/api/check-customer', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, email, contact })
-                });
+                const resp = await fetch(`/caterer/api/customers/check_duplicate?email=${encodeURIComponent(email)}&contact=${encodeURIComponent(contact)}`);
                 const data = await resp.json();
                 
                 if (data.exists) {
-                    badge.style.borderLeftColor = data.is_taken ? '#ef4444' : '#0ea5e9';
-                    badge.style.background = data.is_taken ? '#fff1f2' : '#f0f9ff';
+                    badge.style.borderLeftColor = '#0ea5e9';
+                    badge.style.background = '#f0f9ff';
                     badge.innerHTML = `
-                        <div class="badge-spinner" style="color: ${data.is_taken ? '#ef4444' : '#0ea5e9'};"><i class="fas ${data.is_taken ? 'fa-user-lock' : 'fa-user-check'}"></i></div>
+                        <div class="badge-spinner" style="color: #0ea5e9;"><i class="fas fa-user-check"></i></div>
                         <div class="badge-content">
-                            <span class="badge-title" style="color: ${data.is_taken ? '#ef4444' : '#0ea5e9'};">${data.is_taken ? 'Registered Client' : 'Match Found'}</span>
-                            <span style="font-size: 11px; color: #475569;">Verified: <b>${data.name}</b>. Profiles will be linked.</span>
+                            <span class="badge-title" style="color: #0ea5e9;">Existing Customer Record Found</span>
+                            <span style="font-size: 11px; color: #334155;">System will link booking to: <b>${data.name}</b></span>
                         </div>
                     `;
-                    if (!contactInput.value && data.contact) contactInput.value = data.contact;
                 } else {
                     badge.style.borderLeftColor = '#10b981';
-                    badge.style.background = '#f0fdf4';
-                    badge.innerHTML = `<div class="badge-spinner" style="color: #10b981;"><i class="fas fa-user-plus"></i></div><div class="badge-content"><span class="badge-title" style="color: #10b981;">New Discovery</span><span style="font-size: 11px; color: #166534;">Unique customer detected. Ready for registration.</span></div>`;
+                    badge.style.background = '#ecfdf5';
+                    badge.innerHTML = `
+                        <div class="badge-spinner" style="color: #10b981;"><i class="fas fa-user-plus"></i></div>
+                        <div class="badge-content">
+                            <span class="badge-title" style="color: #10b981;">New Walk-in Record</span>
+                            <span style="font-size: 11px; color: #334155;">A secure shadow account will be created automatically.</span>
+                        </div>
+                    `;
                 }
-            } catch (e) { badge.style.display = 'none'; }
+            } catch (err) {
+                badge.style.display = 'none';
+            }
+
         }, 800);
     };
 
-    [emailInput, nameInput, contactInput].forEach(el => el.addEventListener('input', runDetection));
+    [emailInput, fNameInput, lNameInput, contactInput].forEach(el => el.addEventListener('input', runDetection));
 }
 
 /**
@@ -260,47 +669,88 @@ function initCustomerDetection() {
 async function submitManualEvent(e) {
     e.preventDefault();
     const btn = document.getElementById('btnSubmitManual');
-    
-    // Clear all errors first
-    ['manCustName', 'manCustEmail', 'manCustContact', 'manEventName', 'manGuests', 'manDate', 'manVenue'].forEach(id => window.clearFieldError(id));
 
-    // Client-side validation
-    const name = document.getElementById('manCustName').value.trim();
+    // Run all validators
+    const validations = [
+        validateFirstName(),
+        validateLastName(),
+        validateEmail(),
+        validateContact(),
+        validateEventName(),
+        validateEventType(),
+        validateEventDate(),
+        validateEventTime(),
+        validateGuestCount(),
+        validateProvince(),
+        validateMunicipality(),
+        validateBarangay(),
+        validatePackage()
+    ];
+
+    if (document.getElementById('manEventType').value === 'Other') {
+        validations.push(validateOtherType());
+    }
+
+    const allValid = validations.every(v => v === true);
+    if (!allValid) {
+        showNotification('Validation Error', 'Please check the highlighted fields and try again', 'error');
+        return;
+    }
+
+    // Get form data
+    const date = document.getElementById('manDate').value;
+    const guests = parseInt(document.getElementById('manGuests').value);
+    const fName = document.getElementById('manFirstName').value.trim();
+    const lName = document.getElementById('manLastName').value.trim();
+    const mName = document.getElementById('manMiddleName').value.trim();
     const email = document.getElementById('manCustEmail').value.trim();
     const contact = document.getElementById('manCustContact').value.trim();
-    const guests = parseInt(document.getElementById('manGuests').value) || 0;
-    const date = document.getElementById('manDate').value;
+    const province = document.getElementById('manProvinceText').value.trim();
+    const municipality = document.getElementById('manMunicipalityText').value.trim();
+    const barangay = document.getElementById('manBarangayText').value.trim();
+    const landmark = document.getElementById('manLandmark').value.trim();
 
-    const isNameValid = validateSmartName(name);
-    const isEmailValid = validateSmartEmail(email);
-    const isContactValid = validateSmartContact(contact);
-    
-    let hasError = !isNameValid || !isEmailValid || !isContactValid;
-
-    if (guests < 1) { window.setFieldError('manGuests', 'Minimum 1 guest required.'); hasError = true; }
-    
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    if (new Date(date) < today) { window.setFieldError('manDate', 'Past dates not allowed.'); hasError = true; }
-
-    if (hasError) {
-        window.showError("Audit Check: Please resolve all field errors before proceeding.");
+    // Check for date conflicts
+    const conflictRes = await checkDateConflict(date);
+    if (!conflictRes.available && conflictRes.isManualBlock) {
+        const error = document.getElementById('error-manDate');
+        error.textContent = `Cannot book: ${conflictRes.reason}`;
+        document.getElementById('manDate').classList.add('is-invalid');
+        showNotification('Date Unavailable', conflictRes.reason, 'error');
         return;
+    }
+
+    // Warn if capacity full
+    let forceOverride = false;
+    if (!conflictRes.available && !conflictRes.isManualBlock) {
+        if (!confirm(`⚠️ Capacity Warning\n\n${conflictRes.reason}\n\nDo you still want to create this booking?`)) {
+            return;
+        }
+        forceOverride = true;
     }
 
     if (window.apiAction) {
         const payload = {
-            customer_name: name,
+            first_name: fName,
+            last_name: lName,
+            middle_name: mName,
             customer_email: email,
             customer_contact: contact,
             event_name: document.getElementById('manEventName').value.trim(),
             event_type: document.getElementById('manEventType').value,
             event_date: date,
             event_time: document.getElementById('manTime').value || null,
-            venue_address: document.getElementById('manVenue').value.trim(),
+            province: province,
+            municipality: municipality,
+            barangay: barangay,
+            landmark: landmark,
             guest_count: guests,
             total_amount: parseFloat(document.getElementById('manAmount').value) || 0,
-            package_id: document.getElementById('manPackage').value ? parseInt(document.getElementById('manPackage').value) : null
+            package_id: document.getElementById('manPackage').value ? parseInt(document.getElementById('manPackage').value) : null,
+            special_notes: document.getElementById('manSpecialNotes') ? document.getElementById('manSpecialNotes').value.trim() : "",
+            payment_method: document.getElementById('manPaymentMethod') ? document.getElementById('manPaymentMethod').value : "Cash",
+            payment_status: document.getElementById('manPaymentStatus') ? document.getElementById('manPaymentStatus').value : "paid",
+            force_override: forceOverride
         };
 
         const res = await window.apiAction('/caterer/api/bookings/manual', {
@@ -310,8 +760,149 @@ async function submitManualEvent(e) {
 
         if (res) {
             closeModal('manualBookingModal');
-            setTimeout(() => window.location.reload(), 1000);
+            window.showSuccess("Booking successfully recorded to your system.");
+            
+            // Real-Time Update: FullCalendar
+            if (window.fullCalendarInstance) {
+                window.fullCalendarInstance.refetchEvents();
+            }
+            
+            // Real-Time Update: Prepend to Sidebar list
+            injectBookingToSidebar({
+                id: res.booking_id || 'NEW',
+                customer: payload.first_name + ' ' + payload.last_name,
+                type: payload.event_type === 'Other' ? document.getElementById('manOtherType').value : payload.event_type,
+                eventName: payload.event_name,
+                date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: '2-digit' }),
+                dateFull: new Date(date),
+                time: payload.event_time,
+                venue: payload.venue_address,
+                guests: guests,
+                packageText: document.getElementById('manPackage').options[document.getElementById('manPackage').selectedIndex].text
+            });
+            
+            document.getElementById('manualBookingForm').reset();
+            document.getElementById('displayTotal').innerText = '₱0.00';
+            const badge = document.getElementById('userDetectionBadge');
+            if(badge) badge.style.display = 'none';
         }
+    }
+}
+
+function toggleOtherEventType() {
+    const sel = document.getElementById('manEventType');
+    const otherDiv = document.getElementById('otherEventTypeDiv');
+    if (sel.value === 'Other') {
+        otherDiv.style.display = 'block';
+        document.getElementById('manOtherType').required = true;
+    } else {
+        otherDiv.style.display = 'none';
+        document.getElementById('manOtherType').required = false;
+    }
+}
+
+function injectBookingToSidebar(data) {
+    const list = document.querySelector('.cal-tracker-list');
+    if (!list) return;
+    
+    // Remove "No events" placeholder if it exists
+    if (list.innerHTML.includes('No events scheduled')) {
+        list.innerHTML = '';
+    }
+    
+    const d = data.dateFull;
+    const typeClass = data.type ? data.type.toLowerCase().split(' ')[0] : 'other';
+    const month = d.toLocaleDateString('en-US', { month: 'short' });
+    const day = d.toLocaleDateString('en-US', { day: '2-digit' });
+    
+    let timeFormatted = 'TBD';
+    if (data.time) {
+        const [h, m] = data.time.split(':');
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const h12 = h % 12 || 12;
+        timeFormatted = `${h12}:${m} ${ampm}`;
+    }
+    const datetimeStr = `${d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at ${timeFormatted}`;
+
+    const newEl = document.createElement('div');
+    newEl.className = `weekly-event-card type-${typeClass}`;
+    newEl.dataset.id = data.id;
+    newEl.dataset.customer = data.customer;
+    newEl.dataset.type = data.type;
+    newEl.dataset.title = data.eventName;
+    newEl.dataset.datetime = datetimeStr;
+    newEl.dataset.venue = data.venue;
+    newEl.dataset.package = `${data.guests} Guests - ${data.packageText}`;
+    newEl.setAttribute('onclick', 'openSidebarEventModal(this)');
+    
+    newEl.innerHTML = `
+        <div class="weekly-event-date">
+            <span>${month}</span>
+            <span>${day}</span>
+        </div>
+        <div class="weekly-event-info">
+            <div class="weekly-event-name">${data.eventName}</div>
+            <div class="event-status-badge status-upcoming">New Booking</div>
+        </div>
+    `;
+    
+    // Add glowing effect to highlight new entry
+    newEl.style.boxShadow = "0 0 15px rgba(16, 185, 129, 0.4)";
+    list.prepend(newEl);
+    setTimeout(() => { newEl.style.boxShadow = ""; }, 3000);
+}
+
+async function checkAvailabilityStatus(dateStr) {
+    if (!dateStr) return;
+    const box = document.getElementById('availabilityStatusBox');
+    const icon = document.getElementById('availabilityStatusIcon');
+    const text = document.getElementById('availabilityStatusText');
+    const btnBlock = document.getElementById('btnBlockDate');
+    const btnOpen = document.getElementById('btnOpenDate');
+
+    if (!box) return;
+
+    box.style.display = 'flex';
+    box.style.background = '#f1f5f9';
+    box.style.color = '#64748b';
+    icon.className = 'fas fa-spinner fa-spin';
+    text.textContent = 'Checking status...';
+    btnBlock.style.display = 'none';
+    btnOpen.style.display = 'none';
+
+    try {
+        const resp = await fetch(`/caterer/api/availability/check?date=${dateStr}`);
+        const data = await resp.json();
+        
+        const countStr = ` (${data.booking_count || 0}/${data.max_capacity || 1} slots booked)`;
+        
+        if (data.is_available) {
+            box.style.background = '#ecfdf5';
+            box.style.color = '#059669';
+            box.style.border = '1px solid #a7f3d0';
+            icon.className = 'fas fa-check-circle';
+            text.innerHTML = `<strong>Status: Available</strong><br><small style="opacity:0.8">${countStr}</small>`;
+            btnBlock.style.display = 'block';
+        } else {
+            if (data.is_manual_block) {
+                box.style.background = '#fef2f2';
+                box.style.color = '#e11d48';
+                box.style.border = '1px solid #fecaca';
+                icon.className = 'fas fa-lock';
+                text.innerHTML = `<strong>Status: Blocked Manually</strong><br><small style="opacity:0.8">Reason: ${data.reason}</small>`;
+                btnOpen.style.display = 'block';
+            } else {
+                // Auto-blocked due to capacity
+                box.style.background = '#fffbeb';
+                box.style.color = '#d97706';
+                box.style.border = '1px solid #fde68a';
+                icon.className = 'fas fa-exclamation-triangle';
+                text.innerHTML = `<strong>Status: Capacity Full</strong><br><small style="opacity:0.8">Auto-blocked ${countStr}</small>`;
+                btnBlock.style.display = 'block'; // Can still manually block if desired
+            }
+        }
+    } catch (e) {
+        box.style.display = 'none';
     }
 }
 
@@ -319,19 +910,28 @@ async function submitManualEvent(e) {
  * Real-time Conflict Detection
  */
 async function checkDateConflict(dateStr) {
-    const submitBtn = document.getElementById('btnSubmitManual');
     try {
         const resp = await fetch(`/caterer/api/availability/check?date=${dateStr}`);
         const data = await resp.json();
         
-        if (!data.is_available) {
-            window.setFieldError('manDate', `CONFLICT: This date is BLOCKED (${data.reason || 'No reason provided'}).`);
-            submitBtn.disabled = true;
+        if (!data.is_available && data.is_manual_block) {
+            window.setFieldError('manDate', `Date unavailable: ${data.reason}`);
+        } else if (!data.is_available && !data.is_manual_block) {
+            window.setFieldError('manDate', `Warning: Capacity Full (${data.booking_count}/${data.max_capacity}). Overriding this will exceed your limit.`);
         } else {
             window.clearFieldError('manDate');
-            submitBtn.disabled = false;
         }
-    } catch (e) { console.error("Conflict check failed:", e); }
+        
+        return {
+            available: data.is_available,
+            reason: data.reason,
+            isManualBlock: data.is_manual_block,
+            bookingCount: data.booking_count,
+            maxCapacity: data.max_capacity
+        };
+    } catch (e) {
+        return { available: true }; // Failsafe
+    }
 }
 
 /**
@@ -392,7 +992,8 @@ function recalculateTotal() {
 async function updateRoiPreview(pkgId, pax) {
     const roiPill = document.getElementById('roiPreviewLabel');
     const quoteBtn = document.getElementById('btnQuickQuote');
-    
+    const profitAmount = document.getElementById('profitAmount');
+
     if (!pkgId || pax <= 0) {
         if (roiPill) roiPill.style.display = 'none';
         if (quoteBtn) quoteBtn.style.display = 'none';
@@ -401,7 +1002,7 @@ async function updateRoiPreview(pkgId, pax) {
 
     if (roiPill) {
         roiPill.style.display = 'inline-flex';
-        roiPill.innerHTML = '<i class="fas fa-sync fa-spin"></i> Calculating ROI...';
+        roiPill.innerHTML = '<i class="fas fa-sync fa-spin"></i> Calculating...';
     }
 
     clearTimeout(window.roiTimer);
@@ -410,10 +1011,19 @@ async function updateRoiPreview(pkgId, pax) {
             const resp = await fetch(`/caterer/api/quick-quotation/${pkgId}?pax=${pax}`);
             if (resp.ok) {
                 const data = await resp.json();
-                roiPill.innerHTML = `<i class="fas fa-chart-line"></i> Est. Profit: ₱${data.roi.toLocaleString()} (${data.markup_label})`;
+                const roiText = `₱${data.roi.toLocaleString('en-US', { minimumFractionDigits: 0 })}`;
+                if (roiPill) {
+                    roiPill.innerHTML = `<i class="fas fa-chart-line"></i> Profit: <strong>${roiText}</strong>`;
+                    roiPill.style.display = 'inline-flex';
+                }
+                if (profitAmount) {
+                    profitAmount.textContent = roiText;
+                }
                 if (quoteBtn) quoteBtn.style.display = 'inline-block';
             }
-        } catch (e) { if (roiPill) roiPill.style.display = 'none'; }
+        } catch (e) {
+            if (roiPill) roiPill.style.display = 'none';
+        }
     }, 600);
 }
 
@@ -466,22 +1076,136 @@ function showEventDetails(event) {
     document.getElementById('detVenue').textContent = props.venue || '---';
     document.getElementById('detPackage').textContent = (props.guests || '0') + ' Guests - ' + (props.package || '---');
     
-    document.getElementById('currentBookingId').value = event.id;
+    // New Fields
+    const paymentMap = { 'pending': 'Unpaid', 'deposit_paid': 'Deposit Paid', 'paid': 'Fully Paid' };
+    const paymentStatusEl = document.getElementById('detPayment');
+    if (paymentStatusEl) paymentStatusEl.textContent = paymentMap[props.payment_status] || props.payment_status || '---';
+    
+    const specialEl = document.getElementById('detSpecial');
+    if (specialEl) specialEl.textContent = props.special_requests || 'None';
+    
+    document.getElementById('evModalBookingId').value = event.id;
     if (window.openModal) window.openModal('eventModal');
     else document.getElementById('eventModal').style.display = 'flex';
 }
 
+function showBlockedDetails(event) {
+    const props = event.extendedProps;
+    window.showError(`Date Blocked: ${props.reason || 'Capacity reached or manually blocked'}`);
+}
+
 window.showEventDetails = showEventDetails;
 window.showBlockedDetails = showBlockedDetails;
+/* ==========================================================================
+   PSGC ADDRESS API INTEGRATION
+   ========================================================================== */
+const PSGC_BASE = 'https://psgc.gitlab.io/api';
+
+async function initPSGC() {
+    try {
+        const res = await fetch(`${PSGC_BASE}/provinces/`);
+        const provinces = await res.json();
+        const sel = document.getElementById('manProvince');
+        if (!sel) return;
+        
+        provinces.sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.code;
+            opt.textContent = p.name;
+            sel.appendChild(opt);
+        });
+        
+        sel.addEventListener('change', async function() {
+            // Get text, not code, to store in input if needed, but for now value is code.
+            // Actually, we should store text in a hidden input if backend expects text.
+            document.getElementById('manProvinceText').value = this.options[this.selectedIndex].text;
+            
+            const citySel = document.getElementById('manMunicipality');
+            citySel.innerHTML = '<option value="" disabled selected>Municipality / City</option>';
+            document.getElementById('manBarangay').innerHTML = '<option value="" disabled selected>Barangay</option>';
+            
+            if (!this.value) return;
+            const res = await fetch(`${PSGC_BASE}/provinces/${this.value}/cities-municipalities/`);
+            const cities = await res.json();
+            cities.sort((a, b) => a.name.localeCompare(b.name)).forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.code;
+                opt.textContent = c.name;
+                citySel.appendChild(opt);
+            });
+        });
+        
+        document.getElementById('manMunicipality').addEventListener('change', async function() {
+            document.getElementById('manMunicipalityText').value = this.options[this.selectedIndex].text;
+            
+            const brgySel = document.getElementById('manBarangay');
+            brgySel.innerHTML = '<option value="" disabled selected>Barangay</option>';
+            if (!this.value) return;
+            const res = await fetch(`${PSGC_BASE}/cities-municipalities/${this.value}/barangays/`);
+            const brgys = await res.json();
+            brgys.sort((a, b) => a.name.localeCompare(b.name)).forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b.code;
+                opt.textContent = b.name;
+                brgySel.appendChild(opt);
+            });
+        });
+        
+        document.getElementById('manBarangay').addEventListener('change', function() {
+            document.getElementById('manBarangayText').value = this.options[this.selectedIndex].text;
+        });
+
+    } catch (err) { console.error("PSGC Load Failed", err); }
+}
+
+document.addEventListener('DOMContentLoaded', initPSGC);
+
 window.closeModal = window.closeModal || closeCalModal; // Fallback if global not exists
 window.closeCalModal = closeCalModal;
 window.toggleDateAvailability = toggleDateAvailability;
+window.checkAvailabilityStatus = checkAvailabilityStatus;
 window.openManualBookingModal = openManualBookingModal;
 window.submitManualEvent = submitManualEvent;
 window.unblockSelectedDate = unblockSelectedDate;
 window.getQuickQuotation = getQuickQuotation;
 window.closeRoiBreakdown = closeRoiBreakdown;
 window.toggleOtherEventType = toggleOtherEventType;
+window.updateCapacitySettings = updateCapacitySettings;
+window.setReminder = setReminder;
+
+async function updateCapacitySettings() {
+    const maxBookings = document.getElementById('capMaxBookings').value;
+    const autoBlock = document.getElementById('capAutoBlock').checked;
+    
+    if (window.apiAction) {
+        const res = await window.apiAction('/caterer/api/calendar/capacity-settings', {
+            method: 'POST',
+            body: JSON.stringify({
+                max_bookings_per_day: parseInt(maxBookings),
+                auto_block_enabled: autoBlock
+            })
+        });
+        if (res) {
+            window.showSuccess("Capacity settings updated successfully.");
+            setTimeout(() => location.reload(), 1500); // Reload to reflect max capacity correctly on calendar
+        }
+    }
+}
+
+async function setReminder() {
+    const bookingId = document.getElementById('evModalBookingId').value;
+    if (!bookingId) return;
+    
+    if (window.apiAction) {
+        const res = await window.apiAction(`/caterer/api/bookings/${bookingId}/reminders`, {
+            method: 'POST'
+        });
+        if (res) {
+            window.showSuccess("Reminder alert has been set for this booking.");
+            closeModal('eventDetailsModal');
+        }
+    }
+}
 
 
 async function getQuickQuotation() {
@@ -545,7 +1269,10 @@ async function toggleDateAvailability(isAvailable) {
 
         if (response.ok) {
             window.showSuccess(`Date successfully ${isAvailable ? "opened" : "blocked"}!`);
-            setTimeout(() => location.reload(), 1000);
+            if (window.fullCalendarInstance) {
+                window.fullCalendarInstance.refetchEvents();
+            }
+            document.getElementById('availabilityForm').reset();
         } else {
             window.showError("Failed to update availability.");
         }
@@ -566,7 +1293,11 @@ async function unblockSelectedDate() {
             body: JSON.stringify({ date: window.currentBlockedDate, is_available: true, reason: "" })
         });
         if (response.ok) {
-            location.reload();
+            if (window.fullCalendarInstance) {
+                window.fullCalendarInstance.refetchEvents();
+            }
+            window.showSuccess("Date unblocked successfully.");
+            closeModal('blockedDateModal');
         } else {
             window.showError("Failed to unblock date.");
         }
@@ -594,7 +1325,50 @@ window.openSidebarEventModal = function(elem) {
     document.getElementById("detVenue").textContent = ds.venue || "---";
     document.getElementById("detPackage").textContent = ds.package || "---";
     document.getElementById("currentBookingId").value = ds.id || "";
-    
+
     if (window.openModal) window.openModal("eventModal");
     else document.getElementById("eventModal").style.display = "flex";
 };
+
+function updateCapacityDisplay(data) {
+    const dateStr = data.date;
+    const count = data.booking_count;
+    const max = data.max_capacity;
+
+    const dayCell = document.querySelector(`[data-date="${dateStr}"]`);
+    if (dayCell) {
+        const indicator = dayCell.querySelector('.capacity-indicator');
+        if (indicator) {
+            indicator.textContent = `${count}/${max}`;
+            if (count >= max) {
+                indicator.style.color = '#ef4444';
+            } else if (count >= max * 0.75) {
+                indicator.style.color = '#f59e0b';
+            } else {
+                indicator.style.color = '#10b981';
+            }
+        }
+    }
+}
+
+function updateVisibleCapacity(start, end) {
+    const days = [];
+    const current = new Date(start);
+    while (current < end) {
+        days.push(current.toISOString().split('T')[0]);
+        current.setDate(current.getDate() + 1);
+    }
+}
+
+window.closeModal = window.closeModal || closeCalModal;
+window.closeCalModal = closeCalModal;
+window.toggleDateAvailability = toggleDateAvailability;
+window.checkAvailabilityStatus = checkAvailabilityStatus;
+window.openManualBookingModal = openManualBookingModal;
+window.submitManualEvent = submitManualEvent;
+window.unblockSelectedDate = unblockSelectedDate;
+window.getQuickQuotation = getQuickQuotation;
+window.closeRoiBreakdown = closeRoiBreakdown;
+window.toggleOtherEventType = toggleOtherEventType;
+window.updateCapacitySettings = updateCapacitySettings;
+window.setReminder = setReminder;

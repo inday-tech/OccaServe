@@ -1,38 +1,28 @@
-import psycopg2
+import asyncio
+from sqlalchemy import create_engine, text
+import sys
 import os
-from dotenv import load_dotenv
 
-load_dotenv()
+sys.path.append(os.path.join(os.path.dirname(__file__), 'app'))
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+from app.db.database import SQLALCHEMY_DATABASE_URL
 
-def migrate():
-    try:
-        conn = psycopg2.connect(DATABASE_URL)
-        cur = conn.cursor()
-        
-        print("Checking for is_archived columns...")
-        
-        tables = ['payouts', 'reviews', 'bookings', 'inquiries']
-        
-        for table in tables:
-            try:
-                cur.execute(f"ALTER TABLE {table} ADD COLUMN is_archived BOOLEAN DEFAULT FALSE;")
-                print(f"Added is_archived to {table}")
-            except psycopg2.errors.DuplicateColumn:
-                conn.rollback()
-                print(f"Column is_archived already exists in {table}")
-            except Exception as e:
-                conn.rollback()
-                print(f"Error adding column to {table}: {e}")
-            else:
-                conn.commit()
-                
-        cur.close()
-        conn.close()
-        print("Migration complete.")
-    except Exception as e:
-        print(f"Connection error: {e}")
+def upgrade():
+    print(f"Connecting to {SQLALCHEMY_DATABASE_URL}")
+    engine = create_engine(SQLALCHEMY_DATABASE_URL)
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("ALTER TABLE caterer_profiles ADD COLUMN max_bookings_per_day INTEGER DEFAULT 1;"))
+            print("Added max_bookings_per_day")
+        except Exception as e:
+            print("Could not add max_bookings_per_day", e)
+            
+        try:
+            conn.execute(text("ALTER TABLE caterer_profiles ADD COLUMN auto_block_enabled BOOLEAN DEFAULT TRUE;"))
+            print("Added auto_block_enabled")
+        except Exception as e:
+            print("Could not add auto_block_enabled", e)
+        conn.commit()
 
 if __name__ == "__main__":
-    migrate()
+    upgrade()
