@@ -2,6 +2,8 @@ from fastapi import FastAPI, Request, HTTPException, WebSocket, WebSocketDisconn
 # Trigger reload for DB schema sync
 from fastapi.responses import RedirectResponse, JSONResponse, Response
 import os
+from dotenv import load_dotenv
+load_dotenv(override=True)
 from fastapi.staticfiles import StaticFiles
 from .db.database import engine, Base, get_db
 from .routers import website, auth, admin, bookings, social_auth, caterers, packages, caterer_dashboard, customer_dashboard, verification, kyc, quotations, payments, contact, notifications, chat, caterer_feed
