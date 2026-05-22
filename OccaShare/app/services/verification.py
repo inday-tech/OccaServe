@@ -727,6 +727,73 @@ class VerificationService:
         text, _parsed, _word_data = self._run_tesseract_advanced(image, id_type)
         return text
 
+    def _extract_rich_ocr_data(self, ocr_text: str, detected_id_type: str = "Unknown") -> Dict[str, Any]:
+        """Extracts structured data from raw OCR text.
+        Detects ID type from OCR text if not provided, then parses fields.
+        Returns a dictionary with extracted fields and metadata."""
+        if not ocr_text or not ocr_text.strip():
+            return {
+                "full_name": "",
+                "id_number": "",
+                "extracted_dob": "",
+                "extracted_address": "",
+                "extracted_expiry": "",
+                "sex": "",
+                "first_name": "",
+                "last_name": "",
+                "middle_name": "",
+                "given_names": ""
+            }
+        
+        clean_text = ocr_text.upper()
+        
+        # Auto-detect ID type if not provided
+        id_type = detected_id_type
+        if id_type == "Unknown":
+            if "PASSPORT" in clean_text:
+                id_type = "Passport"
+            elif "DRIVER" in clean_text and "LICENSE" in clean_text:
+                id_type = "Driver's License"
+            elif "PHILID" in clean_text or "PHILSYS" in clean_text or "NATIONAL ID" in clean_text:
+                id_type = "PhilID (National ID)"
+            elif "UMID" in clean_text:
+                id_type = "UMID"
+            elif "SSS" in clean_text:
+                id_type = "SSS ID"
+            elif "POSTAL" in clean_text and "ID" in clean_text:
+                id_type = "Postal ID"
+            elif "VOTER" in clean_text:
+                id_type = "Voter's ID"
+            elif "TIN" in clean_text:
+                id_type = "TIN ID"
+            elif "PHILHEALTH" in clean_text:
+                id_type = "PhilHealth ID"
+            elif "PRC" in clean_text:
+                id_type = "PRC ID"
+            else:
+                id_type = "Unknown"
+        
+        # Parse fields using the advanced parser (returns dict with _all_not_detected flag)
+        word_data = []  # Empty word_data as we're just doing text-based parsing here
+        parsed = self._parse_ocr_fields_advanced(ocr_text, word_data, id_type)
+        
+        # Extract common fields and map them to the expected output format
+        result = {
+            "full_name": parsed.get("full_name", ""),
+            "id_number": parsed.get("id_number", ""),
+            "extracted_dob": parsed.get("date_of_birth", ""),
+            "extracted_address": parsed.get("address", ""),
+            "extracted_expiry": parsed.get("visa_until") or parsed.get("expiration_date") or "",
+            "sex": parsed.get("sex", ""),
+            "first_name": parsed.get("first_name") or parsed.get("given_names", ""),
+            "last_name": parsed.get("last_name", ""),
+            "middle_name": parsed.get("middle_name", ""),
+            "given_names": parsed.get("given_names") or parsed.get("first_name", ""),
+            "id_type": id_type
+        }
+        
+        return result
+
     async def _call_gemini_ocr(self, image_path: str, prompt: str) -> Dict[str, Any]:
         gemini_key = os.getenv("GEMINI_API_KEY")
         if not gemini_key:
