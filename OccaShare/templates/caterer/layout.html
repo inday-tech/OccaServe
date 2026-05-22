@@ -125,6 +125,7 @@
             width: 100% !important;
             max-width: 100% !important;
             margin: 0 !important;
+            margin-top: var(--header-height) !important; /* Compensate for fixed header */
         }
 
         /* Prevent children from centering away from sidebar */
@@ -154,12 +155,18 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 1.25rem !important; /* Consistent horizontal padding */
-            position: sticky;
+            padding: 0 1.25rem !important;
+            position: fixed;
             top: 0;
+            right: 0;
+            left: var(--sidebar-width);
             z-index: 1000;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03);
-            width: 100%;
+            transition: left var(--transition-speed) ease;
+        }
+        
+        .sidebar-is-mini .dashboard-header {
+            left: 80px;
         }
 
         .dashboard-wrapper:not(.texture-none) .dashboard-header {
