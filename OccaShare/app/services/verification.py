@@ -384,7 +384,7 @@ class VerificationService:
         }
 
     def _extract_rich_ocr_data(self, text: str) -> Dict[str, Any]:
-        """Extracts Full Name, ID Number, DOB, Expiry, and Address using regex."""
+        """Extracts Full Name, ID Number, DOB, Expiry, Address and Sex using regex."""
         print(f"[KYC OCR] ---------------------------------------------")
         print(f"[KYC OCR] Extracting structured data from OCR text...")
         
@@ -393,7 +393,11 @@ class VerificationService:
             "id_number": "",
             "extracted_dob": "",
             "extracted_expiry": "",
-            "extracted_address": ""
+            "extracted_address": "",
+            "sex": "",
+            "first_name": "",
+            "last_name": "",
+            "middle_name": ""
         }
         
         lines = [l.strip() for l in text.split("\n") if l.strip()]
@@ -401,21 +405,49 @@ class VerificationService:
         
         # 1. Name Extraction (Improved Heuristics)
         potential_names = []
+        surname = ""
+        given_names = ""
+        middle_name = ""
+        
         for i, line in enumerate(lines):
             upper_line = line.upper()
-            if any(k in upper_line for k in ["NAME", "SURNAME", "GIVEN", "FIRST", "MAIDEN"]):
+            
+            # PhilID Specific
+            if "APELYIDO" in upper_line or "SURNAME" in upper_line:
+                if i+1 < len(lines) and len(lines[i+1]) > 1:
+                    surname = lines[i+1].strip()
+            if "MGA PANGALAN" in upper_line or "GIVEN NAMES" in upper_line:
+                # PhilID often puts given names and middle name on next line
+                if i+1 < len(lines) and len(lines[i+1]) > 1:
+                    given_names = lines[i+1].strip()
+            if "GITNANG APELYIDO" in upper_line or "MIDDLE NAME" in upper_line:
+                # Sometimes on same line as given name, sometimes next
+                if i+1 < len(lines) and len(lines[i+1]) > 1 and "GIVEN" not in lines[i+1].upper():
+                    middle_name = lines[i+1].strip()
+            
+            # Generic
+            if any(k in upper_line for k in ["NAME", "GIVEN", "FIRST", "MAIDEN"]):
                 val = lines[i+1] if i+1 < len(lines) else ""
-                if len(val) > 4 and not any(char.isdigit() for char in val):
+                if len(val) > 2 and not any(char.isdigit() for char in val):
                     potential_names.append(val.strip())
             
             # Look for typical 2-3 word name format in all caps
             if 10 < len(line) < 50 and line.isupper() and re.match(r'^[A-Z ,.-]+$', line):
                 if not any(kw in line for kw in self.ID_LEGITIMACY_KEYWORDS) and \
-                   not any(kw in line for kw in ["PUROK", "BRGY", "CITY", "PROVINCE", "STREET", "BARANGAY"]):
+                   not any(kw in line for kw in ["PUROK", "BRGY", "CITY", "PROVINCE", "STREET", "BARANGAY", "SITIO", "PHILIPPINES"]):
                     potential_names.append(line)
 
-        if potential_names:
+        # Build name from parts if found (PhilID priority)
+        if surname or given_names:
+            name_parts = [p for p in [given_names, middle_name, surname] if p]
+            data["full_name"] = " ".join(name_parts).strip()
+            data["first_name"] = given_names
+            data["last_name"] = surname
+            data["middle_name"] = middle_name
+        elif potential_names:
             data["full_name"] = potential_names[0]
+
+        if data["full_name"]:
             print(f"[KYC OCR] [OK] Name extracted: {data['full_name']}")
         else:
             print(f"[KYC OCR] [WARN] No name found in OCR text")
@@ -441,27 +473,54 @@ class VerificationService:
 
         # 3. Birth Date Detection (Aggressive)
         date_pattern = r"(\b(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z.]*\s+\d{1,2},?\s+\d{4}\b|\d{2}[-/]\d{2}[-/]\d{4}|\d{4}[-/]\d{2}[-/]\d{2})"
-        dob_keywords = ["DATE OF BIRTH", "BIRTH DATE", "DOB", "BORN", "BIRTH", "DATE DE NAISSANCE"]
+        dob_keywords = ["DATE OF BIRTH", "BIRTH DATE", "DOB", "BORN", "BIRTH", "DATE DE NAISSANCE", "KAPANGANAKAN"]
         for kw in dob_keywords:
-            match = re.search(re.escape(kw) + r".{1,30}(" + date_pattern + r")", clean_text_upper, re.DOTALL)
+            match = re.search(re.escape(kw) + r".{1,80}(" + date_pattern + r")", clean_text_upper, re.DOTALL)
             if match:
                 data["extracted_dob"] = match.group(1)
                 break
-        
-        # 4. Address Detection (Philippine Specific)
-        address_parts = []
-        address_markers = ["PUROK", "BRGY", "BARANGAY", "CITY", "PROVINCE", "STREET", "SUBD", "MUNICIPALITY", "DISTRICT", "PHASE"]
-        for i, line in enumerate(lines):
-            line_upper = line.upper()
-            if any(marker in line_upper for marker in address_markers):
-                address_parts.append(line)
-                if i+1 < len(lines) and (lines[i+1].isupper() or len(lines[i+1]) < 30):
-                    if not any(kw in lines[i+1].upper() for kw in self.ID_LEGITIMACY_KEYWORDS):
-                        address_parts.append(lines[i+1])
+                
+        if not data["extracted_dob"]:
+            # Fallback: Just look for any valid date format that might be DOB
+            match = re.search(date_pattern, clean_text_upper)
+            if match:
+                data["extracted_dob"] = match.group(1)
+                
+        # 4. Sex / Gender Detection
+        sex_keywords = ["SEX", "GENDER", "KASARIAN"]
+        for kw in sex_keywords:
+            match = re.search(re.escape(kw) + r".{1,30}\b(M|F|MALE|FEMALE)\b", clean_text_upper, re.DOTALL)
+            if match:
+                data["sex"] = match.group(1)
                 break
         
+        # 5. Address Detection (Philippine Specific)
+        address_parts = []
+        address_markers = ["PUROK", "BRGY", "BARANGAY", "CITY", "PROVINCE", "STREET", "SUBD", "MUNICIPALITY", "DISTRICT", "PHASE", "SITIO", "PHILIPPINES"]
+        for i, line in enumerate(lines):
+            line_upper = line.upper()
+            if any(marker in line_upper for marker in address_markers) or "TIRAHAN" in line_upper or "ADDRESS" in line_upper:
+                # Clean up labels
+                addr_line = re.sub(r'^(TIRAHAN|ADDRESS)\s*[:/]*\s*', '', line_upper, flags=re.IGNORECASE)
+                if addr_line:
+                    address_parts.append(addr_line)
+                
+                # Look at next couple of lines for continuation
+                if i+1 < len(lines):
+                    next_line = lines[i+1].upper()
+                    if next_line.isupper() or len(next_line) < 50:
+                        if not any(kw in next_line for kw in self.ID_LEGITIMACY_KEYWORDS):
+                            address_parts.append(next_line)
+                break
+                
+        # Look for postal code at end of text if not in address
+        if not address_parts:
+            postal_match = re.search(r'\b(PHILIPPINES[, ]+\d{4})\b', clean_text_upper)
+            if postal_match:
+                address_parts.append(postal_match.group(1))
+
         if address_parts:
-            data["extracted_address"] = ", ".join(address_parts)
+            data["extracted_address"] = " ".join(address_parts).replace("  ", " ").strip()
             print(f"[KYC OCR] [OK] Address extracted: {data['extracted_address'][:50]}...")
         
         print(f"[KYC OCR] ---------------------------------------------")
@@ -1261,11 +1320,13 @@ class VerificationService:
                     "full_name": rich_data.get("full_name", ""),
                     "id_number": rich_data.get("id_number", ""),
                     "date_of_birth": rich_data.get("extracted_dob", ""),
-                    "address": rich_data.get("extracted_address", "")
+                    "address": rich_data.get("extracted_address", ""),
+                    "sex": rich_data.get("sex", "")
                 }
                 structured_ocr = {
                     "id_type": id_type,
                     "extraction_method": "tesseract",
+                    "confidence_score": 0.5, # Default confidence for Tesseract
                     "fields": tesseract_fields,
                     "full_name": tesseract_fields.get("full_name", ""),
                     "id_number": tesseract_fields.get("id_number", ""),

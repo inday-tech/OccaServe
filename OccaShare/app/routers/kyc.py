@@ -288,13 +288,9 @@ async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, ful
         
         print(f"[KYC BACKGROUND] Verification Service result: {result.get('status')}")
         
-        # Override 'approved' to 'manual_review' as per user requirement: 
-        # "this should be pending after because it needs to be checked and approved by the caterer first"
-        if result["status"] == "approved":
-            kyc_record.verification_status = "manual_review"
-            print(f"[KYC BACKGROUND] Result was 'approved', setting to 'manual_review' for caterer approval.")
-        else:
-            kyc_record.verification_status = result["status"]
+        # ALL results go to manual_review - caterer makes the final decision
+        kyc_record.verification_status = "manual_review"
+        print(f"[KYC BACKGROUND] AI result was '{result.get('status')}', setting to 'manual_review' for caterer decision.")
 
         kyc_record.fraud_score = result["fraud_score"]
         kyc_record.match_score = result.get("face_match_confidence", 0.0)
