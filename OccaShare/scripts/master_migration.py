@@ -126,7 +126,9 @@ def master_migration():
             ("account_status", "VARCHAR DEFAULT 'Active'"),
             ("notification_preferences", "JSONB"),
             ("deactivation_reason", "TEXT"),
-            ("deactivated_at", "TIMESTAMP WITH TIME ZONE")
+            ("deactivated_at", "TIMESTAMP WITH TIME ZONE"),
+            ("max_bookings_per_day", "INTEGER DEFAULT 1"),
+            ("auto_block_enabled", "BOOLEAN DEFAULT TRUE")
         ]
         
         # Menu Items
