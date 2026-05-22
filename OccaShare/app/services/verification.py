@@ -1060,22 +1060,22 @@ class VerificationService:
     # ── ID-Type-Specific OCR Prompt Engineering ──────────────────────────────
     ID_TYPE_OCR_PROMPTS = {
         "PhilID (National ID)": {
-            "fields": ["full_name", "pcn_number", "date_of_birth", "sex", "address", "blood_type", "nationality"],
+            "fields": ["last_name", "given_names", "middle_name", "id_number", "date_of_birth", "sex", "address", "blood_type", "nationality"],
             "prompt": (
                 "This is a Philippine National ID (PhilSys/PhilID). Extract ALL of the following fields. "
                 "Return a JSON object with these exact keys: "
-                "'document_type_detected', 'full_name', 'pcn_number' (PhilSys Card Number, format: XXXX-XXXX-XXXX-XXXX), "
+                "'document_type_detected', 'last_name', 'given_names', 'middle_name', 'id_number' (PhilSys Card Number or PCN, format: XXXX-XXXX-XXXX-XXXX), "
                 "'date_of_birth', 'sex', 'address', 'blood_type', 'nationality', "
                 "'face_visible' (boolean), 'confidence_score' (0-1). "
                 "If a field is not visible or unreadable, set its value to null."
             )
         },
         "Driver's License": {
-            "fields": ["full_name", "license_number", "nationality", "date_of_birth", "address", "expiry_date", "agency_code", "dl_codes", "restrictions", "height", "weight"],
+            "fields": ["last_name", "first_name", "middle_name", "license_number", "nationality", "date_of_birth", "address", "expiry_date", "agency_code", "dl_codes", "restrictions", "height", "weight"],
             "prompt": (
                 "This is a Philippine Driver's License issued by LTO. Extract ALL of the following fields. "
                 "Return a JSON object with these exact keys: "
-                "'document_type_detected', 'full_name', 'license_number' (format: X00-00-000000), "
+                "'document_type_detected', 'last_name', 'first_name', 'middle_name', 'license_number' (format: X00-00-000000), "
                 "'nationality', 'date_of_birth', 'address', 'expiry_date', "
                 "'agency_code', 'dl_codes' (DL codes/restrictions like A, A1, B, B1, B2, C, D, BE, CE), "
                 "'restrictions', 'height', 'weight', "
@@ -1084,11 +1084,11 @@ class VerificationService:
             )
         },
         "Passport": {
-            "fields": ["surname", "given_name", "middle_name", "passport_number", "nationality", "date_of_birth", "sex", "place_of_birth", "date_issued", "expiry_date", "mrz_line_1", "mrz_line_2"],
+            "fields": ["last_name", "given_names", "middle_name", "passport_number", "nationality", "date_of_birth", "sex", "place_of_birth", "date_issued", "expiry_date", "mrz_line_1", "mrz_line_2"],
             "prompt": (
                 "This is a Philippine Passport. Extract ALL of the following fields. "
                 "Return a JSON object with these exact keys: "
-                "'document_type_detected', 'surname', 'given_name', 'middle_name', "
+                "'document_type_detected', 'last_name', 'given_names', 'middle_name', "
                 "'passport_number' (format: X0000000 or XX0000000), "
                 "'nationality', 'date_of_birth', 'sex', 'place_of_birth', "
                 "'date_issued', 'expiry_date', "
@@ -1101,11 +1101,11 @@ class VerificationService:
             )
         },
         "UMID": {
-            "fields": ["full_name", "crn_number", "date_of_birth", "sex", "address"],
+            "fields": ["last_name", "given_names", "middle_name", "crn_number", "date_of_birth", "sex", "address"],
             "prompt": (
                 "This is a Philippine Unified Multi-Purpose ID (UMID). Extract ALL of the following fields. "
                 "Return a JSON object with these exact keys: "
-                "'document_type_detected', 'full_name', 'crn_number' (Common Reference Number, format: XXXX-XXXXXXX-X), "
+                "'document_type_detected', 'last_name', 'given_names', 'middle_name', 'crn_number' (Common Reference Number, format: XXXX-XXXXXXX-X), "
                 "'date_of_birth', 'sex', 'address', "
                 "'face_visible' (boolean), 'confidence_score' (0-1). "
                 "If a field is not visible or unreadable, set its value to null."
@@ -1117,7 +1117,7 @@ class VerificationService:
     DEFAULT_OCR_PROMPT = (
         "Extract data from this Philippine government ID image. "
         "Return a JSON object with these keys: "
-        "'document_type_detected', 'full_name', 'id_number', 'date_of_birth', "
+        "'document_type_detected', 'last_name', 'given_names', 'middle_name', 'id_number', 'date_of_birth', "
         "'sex', 'address', 'expiry_date', 'nationality', "
         "'face_visible' (boolean), 'confidence_score' (0-1). "
         "If a field is not visible or unreadable, set its value to null."
