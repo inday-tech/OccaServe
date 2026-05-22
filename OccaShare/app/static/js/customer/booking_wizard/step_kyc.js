@@ -412,7 +412,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ─── OCR VERIFICATION MODAL ────────────────────────────────────────
     const ID_TYPE_CONFIG = {
-        "PhilID (National ID)": [
+        "PhilSys / PhilID": [
             { key: "id_number", label: "ID Number", icon: "fa-hashtag" },
             { key: "last_name", label: "Last Name", icon: "fa-user" },
             { key: "given_names", label: "Given Names", icon: "fa-user" },
@@ -449,7 +449,7 @@ document.addEventListener('DOMContentLoaded', function () {
             { key: "nationality", label: "Nationality", icon: "fa-flag" },
             { key: "sex", label: "Sex", icon: "fa-venus-mars" },
             { key: "place_of_birth", label: "Place of Birth", icon: "fa-map-marker-alt" },
-            { key: "date_of_issue", label: "Date of Issue", icon: "fa-calendar-check" },
+            { key: "date_issued", label: "Date of Issue", icon: "fa-calendar-check" },
             { key: "visa_until", label: "Visa Until", icon: "fa-calendar-times" },
             { key: "issuing_authority", label: "Issuing Authority", icon: "fa-building" }
         ]
@@ -474,6 +474,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const container = document.getElementById('ocr-dynamic-fields-container');
         container.innerHTML = ''; // Clear existing
         
+        // Add responsive grid class
+        container.className = 'ocr-fields-grid';
+        
         configFields.forEach(field => {
             const rawVal = fields[field.key] || data[field.key];
             const val = rawVal && String(rawVal).trim() ? String(rawVal).trim() : '';
@@ -494,16 +497,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
-            const row = document.createElement('div');
-            row.className = 'ocr-field-row';
-            row.innerHTML = `
-                <div class="ocr-field-icon"><i class="fas ${field.icon}"></i></div>
-                <div class="ocr-field-content">
-                    <label>${field.label}</label>
-                    <input type="text" id="ocr-dynamic-${field.key}" value="${finalVal}" placeholder="${finalVal ? '' : 'NOT DETECTED'}" readonly class="${finalVal ? '' : 'not-detected'}">
+            if (finalVal === 'NOT DETECTED') finalVal = '';
+
+            const html = `
+                <div class="ocr-field-row" style="border: none; padding: 0.5rem; background: #f8fafc; border-radius: 1rem;">
+                    <div class="ocr-field-icon"><i class="fas ${field.icon}"></i></div>
+                    <div class="ocr-field-content">
+                        <label>${field.label}</label>
+                        <input type="text" id="ocr-dynamic-${field.key}" value="${finalVal}" placeholder="${finalVal ? '' : '-'}" readonly class="${finalVal ? '' : 'not-detected'}" style="border: none; background: transparent; padding: 0; box-shadow: none; margin-top: 0.2rem;">
+                    </div>
                 </div>
             `;
-            container.appendChild(row);
+            container.innerHTML += html;
         });
 
         // Also pre-fill the hidden id_number field if OCR found one

@@ -1071,32 +1071,27 @@ class VerificationService:
             )
         },
         "Driver's License": {
-            "fields": ["last_name", "first_name", "middle_name", "license_number", "nationality", "date_of_birth", "address", "expiry_date", "agency_code", "dl_codes", "restrictions", "height", "weight"],
+            "fields": ["last_name", "first_name", "middle_name", "nationality", "sex", "date_of_birth", "weight", "height", "address", "license_number", "expiration_date", "agency_code", "blood_type", "eyes_color", "restrictions", "conditions"],
             "prompt": (
                 "This is a Philippine Driver's License issued by LTO. Extract ALL of the following fields. "
                 "Return a JSON object with these exact keys: "
-                "'document_type_detected', 'last_name', 'first_name', 'middle_name', 'license_number' (format: X00-00-000000), "
-                "'nationality', 'date_of_birth', 'address', 'expiry_date', "
-                "'agency_code', 'dl_codes' (DL codes/restrictions like A, A1, B, B1, B2, C, D, BE, CE), "
-                "'restrictions', 'height', 'weight', "
+                "'document_type_detected', 'last_name', 'first_name', 'middle_name', 'nationality', 'sex', "
+                "'date_of_birth', 'weight' (include kg), 'height' (include m), 'address', "
+                "'license_number' (format: X00-00-000000), 'expiration_date', 'agency_code', "
+                "'blood_type', 'eyes_color', 'restrictions', 'conditions', "
                 "'face_visible' (boolean), 'confidence_score' (0-1). "
                 "If a field is not visible or unreadable, set its value to null."
             )
         },
         "Passport": {
-            "fields": ["last_name", "given_names", "middle_name", "passport_number", "nationality", "date_of_birth", "sex", "place_of_birth", "date_issued", "expiry_date", "mrz_line_1", "mrz_line_2"],
+            "fields": ["type", "country_code", "passport_number", "last_name", "given_names", "middle_name", "date_of_birth", "nationality", "sex", "place_of_birth", "date_issued", "visa_until", "issuing_authority"],
             "prompt": (
                 "This is a Philippine Passport. Extract ALL of the following fields. "
                 "Return a JSON object with these exact keys: "
-                "'document_type_detected', 'last_name', 'given_names', 'middle_name', "
-                "'passport_number' (format: X0000000 or XX0000000), "
-                "'nationality', 'date_of_birth', 'sex', 'place_of_birth', "
-                "'date_issued', 'expiry_date', "
-                "'mrz_line_1' (first line of Machine Readable Zone at bottom), "
-                "'mrz_line_2' (second line of Machine Readable Zone at bottom), "
+                "'document_type_detected', 'type', 'country_code', 'passport_number', "
+                "'last_name', 'given_names', 'middle_name', 'date_of_birth', 'nationality', 'sex', "
+                "'place_of_birth', 'date_issued', 'visa_until', 'issuing_authority', "
                 "'face_visible' (boolean), 'confidence_score' (0-1). "
-                "IMPORTANT: The MRZ lines are the two lines of text at the very bottom of the passport data page, "
-                "composed of capital letters, digits, and '<' characters. Extract them exactly as printed. "
                 "If a field is not visible or unreadable, set its value to null."
             )
         },
