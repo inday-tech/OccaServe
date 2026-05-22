@@ -191,6 +191,7 @@
             gap: 1.5rem;
         }
     }
+
     /* Operations Tracker Styles */
     .ops-tracker-card {
         background: white;
@@ -277,6 +278,27 @@
         margin-bottom: 1rem;
         opacity: 0.5;
     }
+
+    .export-btn-minimal {
+        background: transparent;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .export-btn-minimal:hover {
+        background: #f1f5f9;
+        color: var(--primary-color);
+        border-color: #cbd5e1;
+    }
 </style>
 {% endblock %}
 
@@ -285,19 +307,55 @@
     <div class="header-welcome-section">
         <h1>Welcome back, {{ user.first_name }}!</h1>
         <div style="display: flex; align-items: center; gap: 15px;">
-            <p class="header-subtitle" style="margin: 0;">Your business overview as of <strong>{{ now().strftime('%B %d, %Y') if now else 'today' }}</strong></p>
-            <div id="last-updated-tag" style="font-size: 0.7rem; font-weight: 700; color: #94a3b8; display: flex; align-items: center; background: #f8fafc; padding: 4px 10px; border-radius: 50px; border: 1px solid #f1f5f9;">
-                <i class="fas fa-sync-alt fa-spin" style="margin-right: 5px; font-size: 0.6rem;"></i> Syncing...
-            </div>
+            <p class="header-subtitle" style="margin: 0;">Your business overview as of <strong>{{ now().strftime('%B %d,
+                    %Y') if now else 'today' }}</strong></p>
         </div>
     </div>
 
-    <div class="header-action-section">
+    <div class="header-action-section" style="position: relative;">
         <div class="timeframe-selector" id="dashboard-timeframe">
             <button class="timeframe-btn" data-timeframe="day">Daily</button>
             <button class="timeframe-btn" data-timeframe="week">Weekly</button>
             <button class="timeframe-btn active" data-timeframe="month">Monthly</button>
             <button class="timeframe-btn" data-timeframe="year">Yearly</button>
+            <div class="custom-date-divider" style="width: 1px; height: 20px; background: #e2e8f0; margin: 0 4px;">
+            </div>
+            <button class="timeframe-btn" id="customDateBtn" onclick="toggleCustomDatePicker()"><i
+                    class="fas fa-calendar-alt" style="margin-right: 6px;"></i> Custom</button>
+        </div>
+
+        <!-- Custom Date Popover -->
+        <div id="customDatePopover" class="c-card-premium"
+            style="display: none; position: absolute; right: 0; top: calc(100% + 10px); z-index: 1000; padding: 1.5rem; width: 320px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h4 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: var(--secondary-color);">Custom Range
+                </h4>
+                <button onclick="toggleCustomDatePicker()"
+                    style="background: none; border: none; color: #94a3b8; cursor: pointer;"><i
+                        class="fas fa-times"></i></button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div>
+                    <label
+                        style="font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.5px;">Start
+                        Date</label>
+                    <input type="date" id="customStartDate" class="minimal-input"
+                        style="width: 100%; padding: 0.6rem 0.8rem; border: 1px solid #cbd5e1; border-radius: 8px; font-family: inherit;">
+                </div>
+                <div>
+                    <label
+                        style="font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.5px;">End
+                        Date</label>
+                    <input type="date" id="customEndDate" class="minimal-input"
+                        style="width: 100%; padding: 0.6rem 0.8rem; border: 1px solid #cbd5e1; border-radius: 8px; font-family: inherit;">
+                </div>
+                <div id="customDateError"
+                    style="color: #ef4444; font-size: 0.75rem; display: none; font-weight: 600; background: #fef2f2; padding: 8px; border-radius: 6px;">
+                    <i class="fas fa-exclamation-circle"></i> <span>Error message</span></div>
+                <button onclick="applyCustomDateRange()" class="btn-primary-pro"
+                    style="width: 100%; padding: 0.75rem; border-radius: 8px; margin-top: 0.5rem; border: none; background: var(--primary-color); color: white; font-weight: 700; cursor: pointer; transition: all 0.2s;">Apply
+                    Range Filter</button>
+            </div>
         </div>
     </div>
 </div>
@@ -305,7 +363,7 @@
 <!-- Quick Stats Summary -->
 <div class="stats-grid-dashboard">
     <div class="stat-card-premium c-card-premium stat-card-revenue animate-up">
-        <div class="stat-icon-bg"><i class="fas fa-coins"></i></div>
+        <div class="stat-icon-bg" style="color: var(--primary-color);"><i class="fas fa-coins"></i></div>
         <div class="stat-label-dashboard">Gross Revenue</div>
         <div class="stat-value-dashboard" id="stat-revenue">₱{{ "{:,.2f}".format(total_revenue|default(0.0)) }}</div>
         <div class="stat-hint-dashboard">Total cash collected</div>
@@ -332,7 +390,8 @@
     </div>
 
     <div class="stat-card-premium c-card-premium stat-card-white animate-up">
-        <div class="stat-icon-bg" style="color: #059669;"><i class="fas fa-hand-holding-usd"></i></div>
+        <div class="stat-icon-bg" style="color: {{ '#ef4444' if net_profit and net_profit < 0 else '#059669' }};"><i
+                class="fas fa-hand-holding-usd"></i></div>
         <div class="stat-label-dashboard">Net Profit</div>
         <div class="stat-value-dashboard" id="stat-profit"
             style="color: {{ '#ef4444' if net_profit and net_profit < 0 else '#059669' }};">₱{{
@@ -341,7 +400,7 @@
     </div>
 
     <div class="stat-card-premium c-card-premium stat-card-white animate-up">
-        <div class="stat-icon-bg" style="color: #7c3aed;"><i class="fas fa-users"></i></div>
+        <div class="stat-icon-bg" style="color: var(--secondary-color);"><i class="fas fa-users"></i></div>
         <div class="stat-label-dashboard">Total Customers</div>
         <div class="stat-value-dashboard" id="stat-customers">{{ total_customers|default(0) }}</div>
         <div class="stat-hint-dashboard">Unique client base</div>
@@ -353,10 +412,14 @@
     <div class="dashboard-analytics-area">
         <!-- Profit Efficiency Section -->
         <div class="roi-breakdown-card c-card-premium animate-up" style="margin-bottom: 24px;">
-            <div class="roi-header">
+            <div class="roi-header" style="align-items: flex-start;">
                 <div>
-                    <h3><i class="fas fa-chart-pie"></i> Profit Efficiency</h3>
-                    <p>Profit vs. Expenses distribution</p>
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                        <h3><i class="fas fa-chart-pie" style="color: var(--primary-color);"></i> Profit Efficiency</h3>
+                        <button onclick="exportToCSV('profit_efficiency')" class="export-btn-minimal"
+                            title="Export CSV"><i class="fas fa-download"></i> CSV</button>
+                    </div>
+                    <p style="margin-top: 4px;">Profit vs. Expenses distribution</p>
                 </div>
                 <div id="roi-status-badge" class="roi-badge-premium"
                     style="{% if net_profit and net_profit < 0 %}background:#ef4444; color:white;{% elif roi_percentage and roi_percentage < 15 %}background:rgba(245, 158, 11, 0.1); color:#f59e0b;{% else %}background:rgba(16, 185, 129, 0.1); color:#10b981;{% endif %}">
@@ -404,8 +467,13 @@
 
         <!-- Bookings Volume Chart -->
         <div class="roi-breakdown-card c-card-premium animate-up">
-            <h3 style="margin:0 0 1rem 0; font-weight: 800; color: var(--secondary-color); font-size: 1rem;"><i
-                    class="fas fa-calendar-check" style="margin-right: 0.5rem;"></i> Bookings Volume</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 style="margin:0; font-weight: 800; color: var(--secondary-color); font-size: 1rem;"><i
+                        class="fas fa-calendar-check" style="margin-right: 0.5rem; color: var(--primary-color);"></i>
+                    Bookings Volume</h3>
+                <button onclick="exportToCSV('bookings')" class="export-btn-minimal" title="Export CSV"><i
+                        class="fas fa-download"></i> CSV</button>
+            </div>
             <div class="chart-container" style="height: 250px;">
                 <canvas id="bookingsChart"></canvas>
             </div>
@@ -414,40 +482,69 @@
                 <div class="legend-item"><span class="legend-dot" style="background: #94a3b8;"></span> Pending</div>
             </div>
         </div>
+
+        <!-- Revenue by Event Type -->
+        <div class="roi-breakdown-card c-card-premium animate-up" style="margin-top: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 style="margin:0; font-weight: 800; color: var(--secondary-color); font-size: 1rem;"><i
+                        class="fas fa-glass-cheers" style="margin-right: 0.5rem; color: var(--primary-color);"></i>
+                    Revenue by Event</h3>
+                <button onclick="exportToCSV('event_revenue')" class="export-btn-minimal" title="Export CSV"><i
+                        class="fas fa-download"></i> CSV</button>
+            </div>
+            <div id="revenue-event-list">
+                {% if revenue_by_event %}
+                {% for item in revenue_by_event %}
+                <div class="profitability-row animate-in" style="padding: 0.8rem 0;">
+                    <div style="font-weight: 700; color: var(--secondary-color); font-size: 0.9rem;">{{ item.event_type
+                        }}</div>
+                    <div style="font-weight: 800; color: var(--primary-color); font-size: 1rem;">₱{{
+                        "{:,.2f}".format(item.revenue) }}</div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="empty-state-small"><i class="fas fa-chart-bar"></i>
+                    <p>No revenue data yet.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
     </div>
 
     <div class="dashboard-sidebar-area">
         <!-- Live Operations Tracker -->
         <div class="ops-tracker-card c-card-premium animate-up">
             <div class="ops-header">
-                <h3><i class="fas fa-tasks" style="color: var(--primary-color); margin-right: 8px;"></i> Operations Tracker</h3>
+                <h3><i class="fas fa-tasks" style="color: var(--primary-color); margin-right: 8px;"></i> Operations
+                    Tracker</h3>
                 <span class="ops-live-tag">Live</span>
             </div>
             <div id="ops-tracker-list">
                 {% if upcoming_events %}
-                    {% for event in upcoming_events %}
-                        {% set total_tasks = event.tasks|length %}
-                        {% set done_tasks = event.tasks|selectattr('is_completed', 'equalto', true)|list|length %}
-                        {% set progress = (done_tasks / total_tasks * 100)|round|int if total_tasks > 0 else 0 %}
-                        <div class="ops-item">
-                            <div class="ops-item-info">
-                                <span class="ops-event-name">{{ event.event_name or event.event_type }}</span>
-                                <span class="ops-progress-text">{{ progress }}%</span>
-                            </div>
-                            <div class="ops-progress-bar">
-                                <div class="ops-progress-fill" style="width: {{ progress }}%"></div>
-                            </div>
-                        </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="empty-ops-state">
-                        <i class="fas fa-clipboard-check"></i>
-                        <p style="font-size: 0.8rem; margin: 0;">No active event tasks.</p>
+                {% for event in upcoming_events %}
+                {% set total_tasks = event.tasks|length %}
+                {% set done_tasks = event.tasks|selectattr('is_completed', 'equalto', true)|list|length %}
+                {% set progress = (done_tasks / total_tasks * 100)|round|int if total_tasks > 0 else 0 %}
+                <div class="ops-item">
+                    <div class="ops-item-info">
+                        <span class="ops-event-name">{{ event.event_name or event.event_type }}</span>
+                        <span class="ops-progress-text">{{ progress }}%</span>
                     </div>
+                    <div class="ops-progress-bar">
+                        <div class="ops-progress-fill" style="width: {{ progress }}%"></div>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="empty-ops-state">
+                    <i class="fas fa-clipboard-check"></i>
+                    <p style="font-size: 0.8rem; margin: 0;">No active event tasks.</p>
+                </div>
                 {% endif %}
             </div>
             <div style="margin-top: 1.5rem; border-top: 1px solid #f1f5f9; padding-top: 1rem;">
-                <a href="{{ url_for('manage_bookings') }}" style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                <a href="{{ url_for('manage_bookings') }}"
+                    style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 5px;">
                     Manage Detailed Checklists <i class="fas fa-arrow-right" style="font-size: 0.65rem;"></i>
                 </a>
             </div>
@@ -486,11 +583,16 @@
 
         <!-- Package Efficiency -->
         <div class="sidebar-card-dashboard c-card-premium animate-up">
-            <h3 class="sidebar-card-title"><i class="fas fa-fire" style="color: #f59e0b;"></i> Package Efficiency</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                <h3 class="sidebar-card-title" style="margin: 0;"><i class="fas fa-fire"
+                        style="color: var(--primary-color);"></i> Package Efficiency</h3>
+                <button onclick="exportToCSV('packages')" class="export-btn-minimal" title="Export CSV"><i
+                        class="fas fa-download"></i></button>
+            </div>
             <div id="profitable-packages-list">
                 {% if popular_packages %}
                 {% for p in popular_packages %}
-                <div class="profitability-row">
+                <div class="profitability-row" style="padding: 0.75rem 0;">
                     <div class="profit-info">
                         <div class="package-name">{{ p.name }}</div>
                         <div class="package-meta">{{ p.orders }} orders</div>
@@ -513,6 +615,43 @@
             </div>
         </div>
 
+        <!-- Top Customers / Loyal Clients -->
+        <div class="sidebar-card-dashboard c-card-premium animate-up" style="margin-top: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                <h3 class="sidebar-card-title" style="margin: 0;"><i class="fas fa-crown"
+                        style="color: var(--primary-color);"></i> Top Clients</h3>
+                <button onclick="exportToCSV('top_clients')" class="export-btn-minimal" title="Export CSV"><i
+                        class="fas fa-download"></i></button>
+            </div>
+            <div id="top-spenders-list">
+                {% if top_spenders %}
+                {% for client in top_spenders %}
+                <div class="profitability-row animate-in"
+                    style="padding: 0.75rem 0; display: flex; align-items: center; gap: 12px;">
+                    <div
+                        style="width: 36px; height: 36px; border-radius: 50%; background: #f1f5f9; color: var(--secondary-color); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.8rem; flex-shrink: 0;">
+                        {{ client.initials }}
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div
+                            style="font-weight: 700; color: var(--secondary-color); font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            {{ client.name }}</div>
+                        <div style="font-size: 0.75rem; color: #64748b;">{{ client.orders }} orders</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-weight: 800; color: #10b981; font-size: 0.9rem;">₱{{
+                            "{:,.2f}".format(client.spent) }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="empty-state-small"><i class="fas fa-users"></i>
+                    <p>No clients yet.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
     </div>
 </div>
 
@@ -523,13 +662,18 @@
         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
         <div>
             <h3 style="margin:0; font-weight: 800; color: var(--secondary-color); font-size: 1.25rem;"><i
-                    class="fas fa-history" style="margin-right: 0.75rem; color: #94a3b8;"></i> Recent Orders</h3>
+                    class="fas fa-history" style="margin-right: 0.75rem; color: var(--primary-color);"></i> Recent
+                Orders</h3>
             <p style="margin: 4px 0 0; color: #64748b; font-size: 0.85rem;">Latest transactions and event bookings</p>
         </div>
-        <a href="{{ url_for('manage_bookings') }}" class="view-all-btn"
-            style="background: #f8fafc; padding: 10px 20px; border-radius: 12px; font-size: 0.85rem; font-weight: 700; color: var(--primary-color); border: 1px solid #f1f5f9; text-decoration: none; transition: all 0.2s;">
-            View All Bookings <i class="fas fa-chevron-right" style="font-size: 0.75rem; margin-left: 5px;"></i>
-        </a>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <button onclick="exportToCSV('recent_orders')" class="export-btn-minimal"
+                style="padding: 10px 15px; font-size: 0.85rem;"><i class="fas fa-file-csv"></i> Export</button>
+            <a href="{{ url_for('manage_bookings') }}" class="view-all-btn"
+                style="background: #f8fafc; padding: 10px 20px; border-radius: 12px; font-size: 0.85rem; font-weight: 700; color: var(--primary-color); border: 1px solid #f1f5f9; text-decoration: none; transition: all 0.2s;">
+                View All <i class="fas fa-chevron-right" style="font-size: 0.75rem; margin-left: 5px;"></i>
+            </a>
+        </div>
     </div>
     {% if recent_orders %}
     <div style="overflow-x: auto; width: 100%;">
@@ -584,6 +728,54 @@
     let financialPieChart = null;
     let bookingsChart = null;
     let currentTimeframe = 'month';
+    let isCustomRange = false;
+    let customStartStr = '';
+    let customEndStr = '';
+
+    // -- Custom Date Logic --
+    function toggleCustomDatePicker() {
+        const popover = document.getElementById('customDatePopover');
+        popover.style.display = popover.style.display === 'none' ? 'block' : 'none';
+
+        // Auto-fill inputs if already set
+        if (popover.style.display === 'block' && customStartStr) {
+            document.getElementById('customStartDate').value = customStartStr;
+            document.getElementById('customEndDate').value = customEndStr;
+        }
+    }
+
+    function applyCustomDateRange() {
+        const start = document.getElementById('customStartDate').value;
+        const end = document.getElementById('customEndDate').value;
+        const errorEl = document.getElementById('customDateError');
+
+        if (!start || !end) {
+            errorEl.querySelector('span').innerText = "Please select both start and end dates.";
+            errorEl.style.display = 'block';
+            return;
+        }
+
+        if (new Date(start) > new Date(end)) {
+            errorEl.querySelector('span').innerText = "End date cannot be before start date.";
+            errorEl.style.display = 'block';
+            return;
+        }
+
+        errorEl.style.display = 'none';
+
+        // Update UI Tabs
+        document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('customDateBtn').classList.add('active');
+
+        isCustomRange = true;
+        customStartStr = start;
+        customEndStr = end;
+        document.getElementById('customDatePopover').style.display = 'none';
+
+        refreshDashboardData('custom');
+    }
+
+    // The listeners are attached in the main DOMContentLoaded below.
 
     function initCharts(data) {
         const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#FF7B54';
@@ -642,13 +834,18 @@
     function refreshDashboardData(timeframe) {
         currentTimeframe = timeframe || currentTimeframe;
 
-        // Show loading state
+        // Show loading state (Skeleton Shimmer)
         const analyticsArea = document.querySelector('.dashboard-analytics-area');
         const statsGrid = document.querySelector('.stats-grid-dashboard');
+        const recentOrders = document.querySelector('.recent-requests-card');
         if (analyticsArea) analyticsArea.classList.add('loading-shimmer');
         if (statsGrid) statsGrid.classList.add('loading-shimmer');
+        if (recentOrders) recentOrders.classList.add('loading-shimmer');
 
-        const url = `/caterer/api/dashboard-overview?timeframe=${currentTimeframe}`;
+        let url = `/api/dashboard-overview?timeframe=${currentTimeframe}`;
+        if (currentTimeframe === 'custom' && isCustomRange) {
+            url += `&start_date=${customStartStr}&end_date=${customEndStr}`;
+        }
 
         fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(response => response.json())
@@ -719,6 +916,11 @@
                 updateProfitablePackages(data.popular_packages);
                 updateUpcomingEvents(data.upcoming_events);
                 updateRecentOrders(data.recent_orders);
+                updateTopSpenders(data.top_spenders);
+                updateRevenueByEvent(data.revenue_by_event);
+
+                // 7. Store latest data for Export
+                window._latestDashboardData = data;
 
                 // 7. Update Timestamp
                 const now = new Date();
@@ -728,11 +930,13 @@
 
                 if (analyticsArea) analyticsArea.classList.remove('loading-shimmer');
                 if (statsGrid) statsGrid.classList.remove('loading-shimmer');
+                if (recentOrders) recentOrders.classList.remove('loading-shimmer');
             })
             .catch(err => {
                 console.error("Filter Refresh Error:", err);
                 if (analyticsArea) analyticsArea.classList.remove('loading-shimmer');
                 if (statsGrid) statsGrid.classList.remove('loading-shimmer');
+                if (recentOrders) recentOrders.classList.remove('loading-shimmer');
 
                 const tag = document.getElementById('last-updated-tag');
                 if (tag) tag.innerHTML = `<i class="fas fa-exclamation-circle" style="color: #ef4444; margin-right: 5px;"></i> Sync Error - Retrying...`;
@@ -778,10 +982,118 @@
         container.innerHTML = html;
     }
 
+    function updateTopSpenders(clients) {
+        const container = document.getElementById('top-spenders-list');
+        if (!container) return;
+        if (!clients || clients.length === 0) {
+            container.innerHTML = '<div class="empty-state-small"><i class="fas fa-users"></i><p>No clients yet.</p></div>';
+            return;
+        }
+        const html = clients.map(c => `
+            <div class="profitability-row animate-in" style="padding: 0.75rem 0; display: flex; align-items: center; gap: 12px;">
+                <div style="width: 36px; height: 36px; border-radius: 50%; background: #f1f5f9; color: var(--secondary-color); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.8rem; flex-shrink: 0;">
+                    ${c.initials}
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-weight: 700; color: var(--secondary-color); font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${c.name}</div>
+                    <div style="font-size: 0.75rem; color: #64748b;">${c.orders} orders</div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-weight: 800; color: #10b981; font-size: 0.9rem;">${formatCurrency(c.spent)}</div>
+                </div>
+            </div>
+        `).join('');
+        container.innerHTML = html;
+    }
+
+    function updateRevenueByEvent(events) {
+        const container = document.getElementById('revenue-event-list');
+        if (!container) return;
+        if (!events || events.length === 0) {
+            container.innerHTML = '<div class="empty-state-small"><i class="fas fa-chart-bar"></i><p>No revenue data yet.</p></div>';
+            return;
+        }
+        const html = events.map(e => `
+            <div class="profitability-row animate-in" style="padding: 0.8rem 0;">
+                <div style="font-weight: 700; color: var(--secondary-color); font-size: 0.9rem;">${e.event_type}</div>
+                <div style="font-weight: 800; color: var(--primary-color); font-size: 1rem;">${formatCurrency(e.revenue)}</div>
+            </div>
+        `).join('');
+        container.innerHTML = html;
+    }
+
+    function escapeCSV(val) {
+        if (val === null || val === undefined) return '""';
+        let str = String(val);
+        str = str.replace(/"/g, '""');
+        return `"${str}"`;
+    }
+
+    function exportToCSV(section) {
+        let dataStr = "";
+        let filename = `${section}_export_${new Date().toISOString().split('T')[0]}.csv`;
+        const data = window._latestDashboardData;
+        if (!data) {
+            alert("Please wait for data to load before exporting.");
+            return;
+        }
+
+        if (section === 'profit_efficiency') {
+            dataStr = "Category,Amount\n";
+            dataStr += `Gross Revenue,${data.total_revenue || 0}\n`;
+            dataStr += `Expenses,${data.actual_expenses || 0}\n`;
+            dataStr += `Net Profit,${data.net_profit || 0}\n`;
+            dataStr += `ROI Percentage,${data.roi_percentage || 0}%\n`;
+        } else if (section === 'bookings') {
+            dataStr = "Date,Completed Bookings,Pending Bookings\n";
+            (data.bookings_chart_data || []).forEach(d => {
+                dataStr += `${escapeCSV(d.date)},${d.completed},${d.pending}\n`;
+            });
+        } else if (section === 'event_revenue') {
+            dataStr = "Event Type,Revenue (PHP)\n";
+            (data.revenue_by_event || []).forEach(d => {
+                dataStr += `${escapeCSV(d.event_type)},${d.revenue}\n`;
+            });
+        } else if (section === 'packages') {
+            dataStr = "Package Name,Orders,ROI Percentage\n";
+            (data.popular_packages || []).forEach(d => {
+                dataStr += `${escapeCSV(d.name)},${d.orders},${d.roi}%\n`;
+            });
+        } else if (section === 'top_clients') {
+            dataStr = "Client Name,Orders,Total Spent (PHP)\n";
+            (data.top_spenders || []).forEach(d => {
+                dataStr += `${escapeCSV(d.name)},${d.orders},${d.spent}\n`;
+            });
+        } else if (section === 'recent_orders') {
+            dataStr = "Customer,Event Type,Date,Status,Total Amount (PHP)\n";
+            (data.recent_orders || []).forEach(d => {
+                dataStr += `${escapeCSV(d.customer_name)},${escapeCSV(d.event_type)},${escapeCSV(d.event_date)},${escapeCSV(d.status)},${d.total_amount || 0}\n`;
+            });
+        }
+
+        // Add BOM for Excel UTF-8 compatibility
+        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+        let blob = new Blob([bom, dataStr], { type: 'text/csv;charset=utf-8;' });
+
+        let link = document.createElement("a");
+        let url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Show success indicator via button feedback
+        if (typeof window.showSuccess === 'function') {
+            window.showSuccess(`Exported ${section} data successfully.`);
+        }
+    }
+
     function updateUpcomingEvents(events) {
         const container = document.getElementById('upcoming-events-container');
         const opsContainer = document.getElementById('ops-tracker-list');
-        
+
         if (container) {
             if (events.length === 0) {
                 container.innerHTML = '<p style="color: #94a3b8; font-size: 0.85rem; padding: 1rem 0;">No upcoming events.</p>';
@@ -858,25 +1170,32 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
-        // Initial Data from Template
+        // Initial Data from Template (Fallback charts)
         const initialData = {
-            roi_trend_data: {{ roi_trend_data | tojson if roi_trend_data is defined else '[]'
-    }},
-        chart_data: {{ chart_data | tojson if chart_data is defined else '[]' }},
-    bookings_chart_data: {{ bookings_chart_data | tojson if bookings_chart_data is defined else '[]' }}
+            roi_trend_data: {{ roi_trend_data | tojson if roi_trend_data is defined else '[]' }},
+            chart_data: {{ chart_data | tojson if chart_data is defined else '[]' }},
+            bookings_chart_data: {{ bookings_chart_data | tojson if bookings_chart_data is defined else '[]' }}
         };
 
     initCharts(initialData);
 
     // Timeframe selector interaction
-    const filterBtns = document.querySelectorAll('.timeframe-btn');
+    const filterBtns = document.querySelectorAll('.timeframe-btn[data-timeframe]');
     filterBtns.forEach(btn => {
         btn.addEventListener('click', function () {
-            filterBtns.forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
+            isCustomRange = false;
+
+            const popover = document.getElementById('customDatePopover');
+            if (popover) popover.style.display = 'none';
+
             refreshDashboardData(this.dataset.timeframe);
         });
     });
+
+    // Auto-fetch to populate the brand new Top Spenders and Revenue By Event which are not in Jinja initial context
+    refreshDashboardData('month');
 
     // Start real-time sync interval (Every 60 seconds)
     setInterval(() => {
