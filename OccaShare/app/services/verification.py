@@ -1086,7 +1086,12 @@ class VerificationService:
                     "full_name": rich_data.get("full_name", ""),
                     "id_number": rich_data.get("id_number", ""),
                     "date_of_birth": rich_data.get("extracted_dob", ""),
-                    "address": rich_data.get("extracted_address", "")
+                    "address": rich_data.get("extracted_address", ""),
+                    "sex": rich_data.get("sex", ""),
+                    "first_name": rich_data.get("first_name", ""),
+                    "last_name": rich_data.get("last_name", ""),
+                    "middle_name": rich_data.get("middle_name", ""),
+                    "given_names": rich_data.get("first_name", "")
                 }
                 # For passport: attempt MRZ extraction
                 if id_type == "Passport":
@@ -1321,7 +1326,11 @@ class VerificationService:
                     "id_number": rich_data.get("id_number", ""),
                     "date_of_birth": rich_data.get("extracted_dob", ""),
                     "address": rich_data.get("extracted_address", ""),
-                    "sex": rich_data.get("sex", "")
+                    "sex": rich_data.get("sex", ""),
+                    "first_name": rich_data.get("first_name", ""),
+                    "last_name": rich_data.get("last_name", ""),
+                    "middle_name": rich_data.get("middle_name", ""),
+                    "given_names": rich_data.get("first_name", "")
                 }
                 structured_ocr = {
                     "id_type": id_type,
