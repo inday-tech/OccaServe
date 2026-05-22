@@ -113,6 +113,9 @@
                                 'id_number': 'ID Number',
                                 'surname': 'Surname',
                                 'given_name': 'Given Name',
+                                'last_name': 'Last Name',
+                                'first_name': 'First Name',
+                                'given_names': 'Given Names',
                                 'middle_name': 'Middle Name',
                                 'date_of_birth': 'Date of Birth',
                                 'sex': 'Sex',
@@ -131,13 +134,39 @@
                                 'mrz_line_2': 'MRZ Line 2'
                             } %}
 
-                            {% for key, value in fields.items() %}
+                            {% set id_type = verification.ocr_data.id_type or verification.verification_type %}
+                            {% set config_keys = [] %}
+                            {% if id_type == 'PhilID (National ID)' %}
+                                {% set config_keys = ['id_number', 'last_name', 'given_names', 'middle_name', 'date_of_birth', 'address'] %}
+                            {% elif id_type == "Driver's License" %}
+                                {% set config_keys = ['last_name', 'first_name', 'middle_name', 'nationality', 'sex', 'date_of_birth', 'weight', 'height', 'address', 'license_number', 'expiration_date', 'agency_code', 'blood_type', 'eyes_color', 'restrictions', 'conditions'] %}
+                            {% elif id_type == 'Passport' %}
+                                {% set config_keys = ['type', 'country_code', 'passport_number', 'last_name', 'given_names', 'middle_name', 'date_of_birth', 'nationality', 'sex', 'place_of_birth', 'date_of_issue', 'visa_until', 'issuing_authority'] %}
+                            {% else %}
+                                {% set config_keys = fields.keys() %}
+                            {% endif %}
+
+                            {% for key in config_keys %}
                                 {% if key not in ['mrz_line_1', 'mrz_line_2'] %}
+                                {% set val = fields.get(key) %}
+                                {% if not val %}
+                                    {% if key in ['id_number', 'license_number', 'passport_number'] %}
+                                        {% set val = fields.get('id_number') or fields.get('pcn_number') or fields.get('license_number') or fields.get('passport_number') %}
+                                    {% elif key == 'date_of_birth' %}
+                                        {% set val = fields.get('date_of_birth') or verification.ocr_data.birth_date %}
+                                    {% elif key in ['given_names', 'first_name'] %}
+                                        {% set val = fields.get('given_names') or fields.get('first_name') or verification.ocr_data.get('first_name') %}
+                                    {% elif key == 'last_name' %}
+                                        {% set val = fields.get('last_name') or verification.ocr_data.get('last_name') %}
+                                    {% elif key == 'middle_name' %}
+                                        {% set val = fields.get('middle_name') or verification.ocr_data.get('middle_name') %}
+                                    {% endif %}
+                                {% endif %}
                                 <div class="data-row-item">
                                     <span class="d-label">{{ field_labels.get(key, key | replace('_', ' ') | title) }}</span>
                                     <span class="d-value {{ 'mono' if key in ['pcn_number', 'license_number', 'passport_number', 'crn_number', 'id_number'] else '' }}">
-                                        {% if value %}
-                                            {{ value }}
+                                        {% if val %}
+                                            {{ val }}
                                         {% else %}
                                             <span style="color: #94a3b8; font-style: italic;">NOT DETECTED</span>
                                         {% endif %}
