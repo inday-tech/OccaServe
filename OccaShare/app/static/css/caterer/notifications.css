@@ -45,21 +45,19 @@
 
 .notif-tabs {
     display: flex;
-    gap: 0.25rem;
-    background: #f1f5f9;
-    padding: 0.3rem;
-    border-radius: 0.75rem;
+    gap: 0.5rem;
+    background: transparent;
     width: fit-content;
 }
 
 .notif-tab {
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
-    padding: 0.55rem 1.1rem;
-    border: none;
-    border-radius: 0.5rem;
-    background: transparent;
+    gap: 0.5rem;
+    padding: 0.5rem 1.25rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 50px; /* Pill design */
+    background: #ffffff;
     color: #64748b;
     font-size: var(--text-sm);
     font-weight: 600;
@@ -70,13 +68,15 @@
 
 .notif-tab:hover {
     color: var(--secondary-color);
-    background: rgba(255,255,255,0.5);
+    background: #f8fafc;
+    border-color: #cbd5e1;
 }
 
 .notif-tab.active {
-    background: #ffffff;
-    color: var(--secondary-color);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    background: var(--secondary-color);
+    color: #ffffff;
+    border-color: var(--secondary-color);
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.15);
 }
 
 .notif-tab-count {
@@ -130,12 +130,12 @@
 }
 
 .notif-item.notif-unread {
-    background: #fffbf7;
-    border-left: 3px solid var(--primary-color);
+    background: #f0f9ff;
+    border-left: 4px solid #0ea5e9;
 }
 
 .notif-item.notif-unread:hover {
-    background: #fff7ef;
+    background: #e0f2fe;
 }
 
 /* ── Notification Icon ── */
@@ -225,12 +225,19 @@
 
 /* ── Unread Dot ── */
 .notif-unread-dot {
-    width: 9px;
-    height: 9px;
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
-    background: var(--primary-color);
+    background: #0ea5e9;
     flex-shrink: 0;
-    box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.15);
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
+    animation: pulse-soft 2s infinite;
+}
+
+@keyframes pulse-soft {
+    0% { box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.4); }
+    70% { box-shadow: 0 0 0 6px rgba(14, 165, 233, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(14, 165, 233, 0); }
 }
 
 /* ── Action Buttons ── */

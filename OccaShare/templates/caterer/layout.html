@@ -125,6 +125,7 @@
             width: 100% !important;
             max-width: 100% !important;
             margin: 0 !important;
+            margin-top: var(--header-height) !important; /* Compensate for fixed header */
         }
 
         /* Prevent children from centering away from sidebar */
@@ -154,12 +155,18 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 1.25rem !important; /* Consistent horizontal padding */
-            position: sticky;
+            padding: 0 1.25rem !important;
+            position: fixed;
             top: 0;
+            right: 0;
+            left: var(--sidebar-width);
             z-index: 1000;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03);
-            width: 100%;
+            transition: left var(--transition-speed) ease;
+        }
+        
+        .sidebar-is-mini .dashboard-header {
+            left: 80px;
         }
 
         .dashboard-wrapper:not(.texture-none) .dashboard-header {
@@ -999,37 +1006,25 @@
                                 <i class="fas fa-bell"></i>
                                 <span id="nav-notif-badge" class="action-badge" style="display: {{ 'flex' if unread_count > 0 else 'none' }};">{{ unread_count }}</span>
                             </button>
-                            <div class="profile-dropdown" id="notificationsDropdown" style="width: 340px; right: -10px; cursor: default;">
-                                <div class="dropdown-header" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px;">
-                                    <p class="dropdown-user-name" style="margin: 0;">Notifications</p>
-                                    {% if unread_count > 0 %}
-                                    <span id="dropdown-notif-badge" style="background: #ef4444; color: white; font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; font-weight: 800;">{{ unread_count }} NEW</span>
-                                    {% endif %}
+                            <div class="profile-dropdown" id="notificationsDropdown" style="width: 360px; right: -10px; cursor: default; padding: 0; overflow: hidden;">
+                                <div class="dropdown-header" style="display: flex; justify-content: space-between; align-items: center; padding: 16px; background: #fff; border-bottom: 1px solid #f1f5f9;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <p class="dropdown-user-name" style="margin: 0; font-size: 1rem; color: #0f172a;">Notifications</p>
+                                        <span id="dropdown-notif-badge" style="background: #ef4444; color: white; font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; font-weight: 800; display: {{ 'inline-block' if unread_count > 0 else 'none' }};">{{ unread_count }} NEW</span>
+                                    </div>
+                                    <button type="button" onclick="window.markAllAsReadGlobal && window.markAllAsReadGlobal()" style="background: transparent; border: none; color: var(--primary-color); font-size: 0.75rem; font-weight: 700; cursor: pointer; padding: 0; transition: color 0.2s;">Mark all as read</button>
                                 </div>
-                                <div class="dropdown-body" style="max-height: 320px; overflow-y: auto;">
-                                    {% if user and user.notifications %}
-                                        {% for notif in user.notifications[:5] %}
-                                        <a href="/caterer/notifications" style="display: flex; gap: 12px; padding: 12px 16px; text-decoration: none; border-bottom: 1px solid #f1f5f9; background: {{ '#f8fafc' if not notif.is_read else 'transparent' }}; transition: background 0.2s;">
-                                            <div style="background: {{ '#e0e7ff' if not notif.is_read else '#f1f5f9' }}; color: {{ '#4f46e5' if not notif.is_read else '#94a3b8' }}; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.85rem;">
-                                                <i class="fas fa-bell"></i>
-                                            </div>
-                                            <div style="flex: 1; overflow: hidden;">
-                                                <p style="margin: 0 0 4px 0; font-size: 0.8rem; color: #1e293b; font-weight: {{ '700' if not notif.is_read else '500' }}; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ notif.message }}</p>
-                                                <p style="margin: 0; font-size: 0.65rem; color: #64748b; font-weight: 600;"><i class="far fa-clock" style="margin-right: 4px;"></i>{{ notif.created_at.strftime('%b %d, %I:%M %p') }}</p>
-                                            </div>
-                                        </a>
-                                        {% endfor %}
-                                    {% else %}
-                                        <div style="text-align: center; padding: 2rem 1rem;">
-                                            <div style="background: #f8fafc; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;">
-                                                <i class="fas fa-check-double" style="color: #cbd5e1; font-size: 1.25rem;"></i>
-                                            </div>
-                                            <p style="margin: 0; font-size: 0.85rem; color: #64748b;">You're all caught up!</p>
+                                <div class="dropdown-body" id="headerNotifContainer" style="max-height: 360px; overflow-y: auto; background: #f8fafc;">
+                                    <!-- Notifications will be injected here via Global JS -->
+                                    <div style="text-align: center; padding: 2rem 1rem;">
+                                        <div style="background: #f1f5f9; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;">
+                                            <i class="fas fa-circle-notch fa-spin" style="color: #cbd5e1; font-size: 1.25rem;"></i>
                                         </div>
-                                    {% endif %}
+                                        <p style="margin: 0; font-size: 0.85rem; color: #64748b;">Syncing notifications...</p>
+                                    </div>
                                 </div>
-                                <div class="dropdown-footer" style="padding: 10px; border-top: 1px solid #f1f5f9; text-align: center; background: #fafafa; border-radius: 0 0 16px 16px;">
-                                    <a href="/caterer/notifications" style="color: var(--primary-color); font-weight: 700; font-size: 0.8rem; text-decoration: none; display: block; width: 100%;">View All Notifications</a>
+                                <div class="dropdown-footer" style="padding: 12px; border-top: 1px solid #e2e8f0; text-align: center; background: #fff;">
+                                    <a href="/caterer/notifications" style="color: var(--primary-color); font-weight: 700; font-size: 0.85rem; text-decoration: none; display: block; width: 100%;">View All Notifications</a>
                                 </div>
                             </div>
                         </div>
@@ -1331,6 +1326,108 @@
                 console.error("Global Watchdog Error:", e);
             }
         });
+
+        // ── GLOBAL NOTIFICATION ENGINE ──
+        window.knownGlobalNotifIds = new Set();
+        let globalNotifTimer = null;
+        
+        async function fetchGlobalNotifications(isForced = false) {
+            try {
+                const response = await fetch('/api/notifications?limit=20');
+                if (!response.ok) return;
+                const data = await response.json();
+
+                // 1. Update UI Badges
+                const badge = document.getElementById('nav-notif-badge');
+                const dropBadge = document.getElementById('dropdown-notif-badge');
+                if (badge) {
+                    badge.style.display = data.unread_count > 0 ? 'flex' : 'none';
+                    badge.textContent = data.unread_count > 99 ? '99+' : data.unread_count;
+                }
+                if (dropBadge) {
+                    dropBadge.style.display = data.unread_count > 0 ? 'inline-block' : 'none';
+                    dropBadge.textContent = data.unread_count > 99 ? '99+ NEW' : data.unread_count + ' NEW';
+                }
+
+                // 2. Render Dropdown Container
+                const container = document.getElementById('headerNotifContainer');
+                if (!container) return;
+
+                if (data.notifications.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 2.5rem 1rem;">
+                            <div style="background: #f1f5f9; width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+                                <i class="fas fa-check-double" style="color: #94a3b8; font-size: 1.5rem;"></i>
+                            </div>
+                            <p style="margin: 0; font-size: 0.9rem; font-weight: 600; color: #1e293b;">You're all caught up!</p>
+                            <p style="margin: 4px 0 0; font-size: 0.75rem; color: #64748b;">No new notifications</p>
+                        </div>
+                    `;
+                } else {
+                    let htmlString = '';
+                    // Limit dropdown to 5 items
+                    const topNotifs = data.notifications.slice(0, 5);
+                    topNotifs.forEach(notif => {
+                        const iconMap = {
+                            'Booking': { i: 'fa-calendar-check', c: '#10b981', bg: '#d1fae5' },
+                            'Payment': { i: 'fa-wallet', c: '#0ea5e9', bg: '#e0f2fe' },
+                            'Review': { i: 'fa-star', c: '#f59e0b', bg: '#fef3c7' },
+                            'Verification': { i: 'fa-shield-check', c: '#8b5cf6', bg: '#ede9fe' },
+                            'Customer': { i: 'fa-user-plus', c: '#ec4899', bg: '#fce7f3' }
+                        };
+                        const info = iconMap[notif.type] || { i: 'fa-bell', c: '#64748b', bg: '#f1f5f9' };
+                        const isUnread = !notif.is_read;
+                        const timeStr = new Date(notif.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+                        
+                        // Click Handler embedded via data-id
+                        htmlString += `
+                        <a href="javascript:void(0)" onclick="handleGlobalNotifClick(${notif.id}, '${notif.link || ''}', ${isUnread})" 
+                           style="display: flex; gap: 12px; padding: 16px; text-decoration: none; border-bottom: 1px solid #e2e8f0; background: ${isUnread ? '#f0f9ff' : '#fff'}; transition: all 0.2s; align-items: flex-start; position: relative;">
+                            ${isUnread ? '<div style="position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: #0ea5e9;"></div>' : ''}
+                            <div style="background: ${isUnread ? info.c : info.bg}; color: ${isUnread ? '#fff' : info.c}; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1rem; box-shadow: ${isUnread ? '0 4px 10px -2px '+info.c+'66' : 'none'};">
+                                <i class="fas ${info.i}"></i>
+                            </div>
+                            <div style="flex: 1; overflow: hidden; padding-top: 2px;">
+                                <p style="margin: 0 0 4px 0; font-size: 0.85rem; color: #0f172a; font-weight: ${isUnread ? '700' : '500'}; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${notif.message}</p>
+                                <p style="margin: 0; font-size: 0.7rem; color: #64748b; font-weight: 600;"><i class="far fa-clock" style="margin-right: 4px;"></i>${timeStr}</p>
+                            </div>
+                        </a>`;
+                    });
+                    container.innerHTML = htmlString;
+                }
+
+                // 3. Broadcast to Notifications Page if it exists
+                if (window.syncLocalNotificationsPage) {
+                    window.syncLocalNotificationsPage(data.notifications, data.unread_count);
+                }
+
+            } catch (err) {
+                console.error("Global Notif Error:", err);
+            }
+        }
+
+        async function handleGlobalNotifClick(id, link, isUnread) {
+            if (isUnread) {
+                try {
+                    await fetch(`/api/notifications/${id}/read`, { method: 'POST' });
+                    fetchGlobalNotifications(true); // force refresh
+                } catch(e) {}
+            }
+            if (link) window.location.href = link;
+        }
+
+        window.markAllAsReadGlobal = async function() {
+            try {
+                await fetch('/api/notifications/read-all', { method: 'POST' });
+                fetchGlobalNotifications(true);
+            } catch(e) {}
+        }
+
+        window.addEventListener('load', () => {
+            fetchGlobalNotifications();
+            globalNotifTimer = setInterval(() => fetchGlobalNotifications(), 15000);
+        });
+
     </script>
 </body>
 

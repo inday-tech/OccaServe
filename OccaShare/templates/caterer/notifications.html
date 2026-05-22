@@ -4,7 +4,7 @@
 {% block title %}Notifications - OccaShare Caterer{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/notifications.css') }}?v=2.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/notifications.css') }}?v=3.0">
 {% endblock %}
 
 {% block content %}
@@ -150,58 +150,39 @@
         knownIds.add(item.id.replace('notif-', ''));
     });
 
-    // ── Real-time polling ──
-    let pollInterval;
-    function startPolling() {
-        pollInterval = setInterval(pollNewNotifications, 15000); // 15 seconds
-    }
+    // ── Real-time Sync (Hooked to Global Engine) ──
+    window.syncLocalNotificationsPage = function(notifications, unread_count) {
+        const list = document.getElementById('notifList');
+        if (!list) return;
 
-    async function pollNewNotifications() {
-        try {
-            const response = await fetch('/api/notifications?limit=20');
-            const data = await response.json();
-
-            // Update sidebar badge
-            const badge = document.getElementById('nav-notif-badge');
-            if (badge) {
-                if (data.unread_count > 0) {
-                    badge.style.display = 'flex';
-                    badge.textContent = data.unread_count > 99 ? '99+' : data.unread_count;
-                } else {
-                    badge.style.display = 'none';
-                }
-            }
-
-            // Check for new notifications not already in the DOM
-            const list = document.getElementById('notifList');
-            if (!list) return;
-
-            data.notifications.forEach(notif => {
-                const idStr = String(notif.id);
-                if (!knownIds.has(idStr)) {
-                    knownIds.add(idStr);
-                    const newItem = createNotifElement(notif);
-                    list.prepend(newItem);
-
-                    // Animate in
-                    newItem.style.opacity = '0';
-                    newItem.style.transform = 'translateY(-10px)';
-                    requestAnimationFrame(() => {
-                        newItem.style.transition = 'all 0.3s ease';
-                        newItem.style.opacity = '1';
-                        newItem.style.transform = 'translateY(0)';
-                    });
-
-                    // Apply current filter
-                    applyFilterToItem(newItem);
-                }
-            });
-
-            updateTabCounts();
-        } catch (e) {
-            console.error('Polling error:', e);
+        // Check for empty state handling if list was empty
+        const emptyState = document.querySelector('.notif-empty-state');
+        if (notifications.length > 0 && emptyState) {
+            emptyState.style.display = 'none';
         }
-    }
+
+        notifications.forEach(notif => {
+            const idStr = String(notif.id);
+            if (!knownIds.has(idStr)) {
+                knownIds.add(idStr);
+                const newItem = createNotifElement(notif);
+                list.prepend(newItem);
+
+                // Elegant slide-in animation
+                newItem.style.opacity = '0';
+                newItem.style.transform = 'translateY(-15px) scale(0.98)';
+                requestAnimationFrame(() => {
+                    newItem.style.transition = 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
+                    newItem.style.opacity = '1';
+                    newItem.style.transform = 'translateY(0) scale(1)';
+                });
+
+                applyFilterToItem(newItem);
+            }
+        });
+
+        updateTabCounts();
+    };
 
     // Build a notification DOM element from API data
     function createNotifElement(notif) {
@@ -288,7 +269,7 @@
                 const btnRead = card.querySelector('.notif-btn-read');
                 if (btnRead) btnRead.remove();
                 updateTabCounts();
-                if (typeof fetchNotifications === 'function') fetchNotifications(true);
+                if (window.fetchGlobalNotifications) window.fetchGlobalNotifications(true);
                 return true;
             }
         } catch (e) {
@@ -315,7 +296,7 @@
                     if (typeof window.showSuccess === 'function') {
                         window.showSuccess('All notifications marked as read.');
                     }
-                    if (typeof fetchNotifications === 'function') fetchNotifications(true);
+                    if (window.fetchGlobalNotifications) window.fetchGlobalNotifications(true);
                 }
             } catch (e) {
                 console.error('Failed to mark all as read', e);
@@ -355,7 +336,7 @@
                         updateTabCounts();
                     }, 400);
                 }
-                if (typeof fetchNotifications === 'function') fetchNotifications(true);
+                if (window.fetchGlobalNotifications) window.fetchGlobalNotifications(true);
                 if (typeof window.showSuccess === 'function') {
                     window.showSuccess('Notification deleted.');
                 }
@@ -376,8 +357,6 @@
         }
     }
 
-    // Start polling on page load
-    startPolling();
     // Initial count sync
     updateTabCounts();
 </script>
