@@ -303,14 +303,18 @@ def master_migration():
         print("  Synchronizing middle_initial data to middle_name...")
         try:
             with engine.begin() as conn:
-                conn.execute(text("""
-                    UPDATE users 
-                    SET middle_name = middle_initial 
-                    WHERE middle_name IS NULL 
-                    AND middle_initial IS NOT NULL 
-                    AND middle_initial != '';
-                """))
-            print("  Middle initial synchronization complete.")
+                res = conn.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'middle_initial'")).fetchone()
+                if res:
+                    conn.execute(text("""
+                        UPDATE users 
+                        SET middle_name = middle_initial 
+                        WHERE middle_name IS NULL 
+                        AND middle_initial IS NOT NULL 
+                        AND middle_initial != '';
+                    """))
+                    print("  Middle initial synchronization complete.")
+                else:
+                    print("  Column 'middle_initial' does not exist. Skipping synchronization.")
         except Exception as e:
             print(f"    Warning: Could not sync middle_initial data: {e}")
         
