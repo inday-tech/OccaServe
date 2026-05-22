@@ -1059,7 +1059,7 @@ class VerificationService:
 
     # ── ID-Type-Specific OCR Prompt Engineering ──────────────────────────────
     ID_TYPE_OCR_PROMPTS = {
-        "PhilID (National ID)": {
+        "PhilSys / PhilID": {
             "fields": ["last_name", "given_names", "middle_name", "id_number", "date_of_birth", "sex", "address", "blood_type", "nationality"],
             "prompt": (
                 "This is a Philippine National ID (PhilSys/PhilID). Extract ALL of the following fields. "
