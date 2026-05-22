@@ -10,7 +10,7 @@ import io
 import difflib
 import numpy as np
 import traceback
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
 from ..core.encryption import decrypt_data
 from PIL import Image, ImageOps
