@@ -721,6 +721,12 @@ class VerificationService:
                 
         return text, parsed, word_data
 
+    def _run_tesseract_multi_psm(self, image: np.ndarray, id_type: str = "Unknown") -> str:
+        """Backward-compatible wrapper around _run_tesseract_advanced.
+        Returns only the raw OCR text string so existing call sites keep working."""
+        text, _parsed, _word_data = self._run_tesseract_advanced(image, id_type)
+        return text
+
     async def _call_gemini_ocr(self, image_path: str, prompt: str) -> Dict[str, Any]:
         gemini_key = os.getenv("GEMINI_API_KEY")
         if not gemini_key:
