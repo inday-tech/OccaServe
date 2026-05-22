@@ -408,7 +408,7 @@ class VerificationService:
         return str(field_value).strip()
 
     def _parse_ocr_fields_advanced(self, text: str, word_data: List[Dict], id_type: str) -> Dict[str, Any]:
-        """Extracts JSON structure dynamically based on ID type using strict regex rules."""
+        """Extracts JSON structure dynamically based on ID type using flexible parsing rules."""
         clean = text.upper()
         clean = re.sub(r'[^A-Z0-9\s/.,:-]', '', clean)
         
@@ -432,17 +432,47 @@ class VerificationService:
         def get_match(pattern, text_corpus, group=1):
             m = re.search(pattern, text_corpus)
             return m.group(group) if m else ""
+        
+        # Helper to extract text chunks (heuristic for names when keywords not found)
+        def extract_text_chunks(text_str, min_length=3):
+            """Extracts capitalized text sequences that could be names."""
+            chunks = []
+            # Find sequences of uppercase words separated by spaces
+            pattern = r'\b[A-Z][A-Z\s]{' + str(min_length-1) + ',}\b'
+            matches = re.findall(pattern, text_str)
+            return [m.strip() for m in matches if len(m.strip()) >= min_length]
 
         lines = [l.strip() for l in clean.split('\n') if l.strip()]
         result = {"id_type": id_type, "full_name": "", "id_number": "", "date_of_birth": "", "address": "", "sex": ""}
         
         if id_type == "PhilID (National ID)" or id_type == "philsys":
             raw_id = get_match(r'(\d{4}-\d{4}-\d{4}-\d{4})', clean)
-            raw_last = get_after(["APELYIDO", "SURNAME"], lines)
-            raw_given = get_after(["MGA PANGALAN", "GIVEN NAMES"], lines)
-            raw_mid = get_after(["GITNANG APELYIDO", "MIDDLE NAME"], lines)
+            
+            # Improved name extraction with fallbacks
+            raw_last = get_after(["APELYIDO", "SURNAME", "LAST NAME"], lines)
+            raw_given = get_after(["MGA PANGALAN", "GIVEN NAMES", "FIRST NAME", "GIVEN NAME"], lines)
+            raw_mid = get_after(["GITNANG APELYIDO", "MIDDLE NAME", "MID NAME"], lines)
+            
+            # Fallback: Extract names from text chunks if keywords not found
+            if not raw_last and not raw_given:
+                text_chunks = extract_text_chunks(clean)
+                if len(text_chunks) >= 3:
+                    raw_last = text_chunks[0]
+                    raw_given = text_chunks[1]
+                    if len(text_chunks) >= 3:
+                        raw_mid = text_chunks[2]
+                elif len(text_chunks) >= 2:
+                    raw_last = text_chunks[0]
+                    raw_given = text_chunks[1]
+                elif len(text_chunks) >= 1:
+                    raw_given = text_chunks[0]
+            
+            # Flexible DOB patterns
             raw_dob = get_match(r'((?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*\s+\d{1,2},?\s+\d{4})', clean)
-            raw_addr = get_after(["ADDRESS", "TIRAHAN"], lines, 3)
+            if not raw_dob:
+                raw_dob = get_match(r'(\d{1,2}[-/]\d{1,2}[-/]\d{4}|\d{4}[-/]\d{1,2}[-/]\d{1,2})', clean)
+            
+            raw_addr = get_after(["ADDRESS", "TIRAHAN", "ADDRES"], lines, 4)
             
             result.update({
                 "id_type": "philsys",
@@ -460,20 +490,42 @@ class VerificationService:
             ln = result["last_name"] if result["last_name"] not in ["NOT DETECTED", "LOW CONFIDENCE"] else ""
             result["full_name"] = " ".join([gn, mn, ln]).strip()
 
+
         elif id_type == "Driver's License" or id_type == "drivers_license":
             raw_last = get_after(["LAST NAME"], lines)
             raw_first = get_after(["FIRST NAME"], lines)
             raw_mid = get_after(["MIDDLE NAME"], lines)
+            
+            # Fallback for names if keywords not found
+            if not raw_last and not raw_first:
+                text_chunks = extract_text_chunks(clean)
+                if len(text_chunks) >= 2:
+                    raw_last = text_chunks[0]
+                    raw_first = text_chunks[1]
+                    if len(text_chunks) >= 3:
+                        raw_mid = text_chunks[2]
+                elif len(text_chunks) >= 1:
+                    raw_first = text_chunks[0]
+            
+            # More flexible license number patterns
             raw_lic = get_match(r'([A-Z]\d{2}-\d{2}-\d{6})', clean)
+            if not raw_lic:
+                raw_lic = get_match(r'([A-Z0-9]{3}-\d{2}-\d{6})', clean)
+            
             raw_nat = get_match(r'NATIONALITY[:\s]*([A-Z]+)', clean)
             raw_sex = get_match(r'\b(M|F|MALE|FEMALE)\b', clean)
-            raw_dob = get_match(r'(\d{4}[-/]\d{2}[-/]\d{2}|\d{2}[-/]\d{2}[-/]\d{4})', clean)
+            
+            # More flexible date patterns
+            raw_dob = get_match(r'(\d{1,2}[-/]\d{1,2}[-/]\d{4}|\d{4}[-/]\d{1,2}[-/]\d{1,2})', clean)
+            if not raw_dob:
+                raw_dob = get_match(r'((?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*\s+\d{1,2},?\s+\d{4})', clean)
+            
             raw_wt = get_match(r'WEIGHT[:\s]*(\d+\s*KG)', clean)
             raw_ht = get_match(r'HEIGHT[:\s]*(\d+\.?\d*\s*M)', clean)
-            raw_addr = get_after(["ADDRESS"], lines, 2)
-            raw_exp = get_match(r'EXPIRATION DATE[:\s]*(\d{4}[-/]\d{2}[-/]\d{2}|\d{2}[-/]\d{2}[-/]\d{4})', clean)
+            raw_addr = get_after(["ADDRESS"], lines, 3)
+            raw_exp = get_match(r'EXPIRATION DATE[:\s]*(\d{1,2}[-/]\d{1,2}[-/]\d{4}|\d{4}[-/]\d{1,2}[-/]\d{1,2})', clean)
             raw_agc = get_match(r'AGENCY CODE[:\s]*([A-Z0-9]+)', clean)
-            raw_bld = get_match(r'BLOOD TYPE[:\s]*([A-Z][+-])', clean)
+            raw_bld = get_match(r'BLOOD TYPE[:\s]*([AB0][-+]|[A-Z][-+])', clean)
             raw_eye = get_match(r'EYES COLOR[:\s]*([A-Z]+)', clean)
             raw_rest = get_match(r'RESTRICTIONS[:\s]*([1-9]+)', clean)
             raw_cond = get_match(r'CONDITIONS[:\s]*([A-Z0-9]+)', clean)
@@ -503,19 +555,39 @@ class VerificationService:
             ln = result["last_name"] if result["last_name"] not in ["NOT DETECTED", "LOW CONFIDENCE"] else ""
             result["full_name"] = " ".join([fn, mn, ln]).strip()
 
+
         elif id_type == "Passport" or id_type == "passport":
             raw_type = get_match(r'TYPE[:\s]*([A-Z])', clean)
             raw_cc = get_match(r'COUNTRY CODE[:\s]*([A-Z]{3})', clean)
             raw_pass = get_match(r'PASSPORT NO\.?[:\s]*([A-Z0-9]{7,9})', clean)
+            if not raw_pass:
+                raw_pass = get_match(r'\b([A-Z][0-9]{7,8})\b', clean)
+            
             raw_last = get_after(["SURNAME", "LAST NAME"], lines)
-            raw_given = get_after(["GIVEN NAMES", "FIRST NAME"], lines)
+            raw_given = get_after(["GIVEN NAMES", "FIRST NAME", "GIVEN NAME"], lines)
             raw_mid = get_after(["MIDDLE NAME"], lines)
-            raw_dob = get_match(r'DATE OF BIRTH[:\s]*(\d{2}\s+[A-Z]{3}\s+\d{4})', clean)
+            
+            # Fallback for names if keywords not found
+            if not raw_last and not raw_given:
+                text_chunks = extract_text_chunks(clean)
+                if len(text_chunks) >= 2:
+                    raw_last = text_chunks[0]
+                    raw_given = text_chunks[1]
+                    if len(text_chunks) >= 3:
+                        raw_mid = text_chunks[2]
+                elif len(text_chunks) >= 1:
+                    raw_given = text_chunks[0]
+            
+            # Flexible date patterns
+            raw_dob = get_match(r'DATE OF BIRTH[:\s]*(\d{2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*\s+\d{4})', clean)
+            if not raw_dob:
+                raw_dob = get_match(r'(\d{1,2}[-/]\d{1,2}[-/]\d{4}|\d{4}[-/]\d{1,2}[-/]\d{1,2})', clean)
+            
             raw_nat = get_match(r'NATIONALITY[:\s]*([A-Z]+)', clean)
             raw_sex = get_match(r'SEX[:\s]*(M|F|MALE|FEMALE)', clean)
             raw_pob = get_after(["PLACE OF BIRTH"], lines)
-            raw_doi = get_match(r'DATE OF ISSUE[:\s]*(\d{2}\s+[A-Z]{3}\s+\d{4})', clean)
-            raw_vu = get_match(r'VISA UNTIL[:\s]*(\d{2}\s+[A-Z]{3}\s+\d{4})', clean)
+            raw_doi = get_match(r'DATE OF ISSUE[:\s]*(\d{2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*\s+\d{4})', clean)
+            raw_vu = get_match(r'VISA UNTIL[:\s]*(\d{2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*\s+\d{4})', clean)
             raw_auth = get_after(["ISSUING AUTHORITY"], lines)
             
             result.update({
@@ -540,6 +612,7 @@ class VerificationService:
             mn = result["middle_name"] if result["middle_name"] not in ["NOT DETECTED", "LOW CONFIDENCE"] else ""
             ln = result["last_name"] if result["last_name"] not in ["NOT DETECTED", "LOW CONFIDENCE"] else ""
             result["full_name"] = " ".join([gn, mn, ln]).strip()
+
             
         else:
             # UMID / Fallback Generic Logic
@@ -641,30 +714,46 @@ class VerificationService:
         return image
 
     def _preprocess_for_ocr_advanced(self, image: np.ndarray, aggressive=False) -> np.ndarray:
-        """Applies Advanced Preprocessing for OCR including deskewing, autocrop, sharpening, etc."""
+        """Applies Advanced Preprocessing for OCR including deskewing, autocrop, sharpening, contrast, etc."""
         if not CV2_AVAILABLE: return image
         image = self._deskew(image)
         image = self._auto_crop(image)
 
         height, width = image.shape[:2]
-        scaling_factor = 3.0 if aggressive else (2.0 if height < 800 else 1.0)
+        # More aggressive upscaling for better text extraction
+        scaling_factor = 4.0 if aggressive else (3.0 if height < 600 else (2.0 if height < 800 else 1.5))
         upscaled = cv2.resize(image, (int(width * scaling_factor), int(height * scaling_factor)), interpolation=cv2.INTER_CUBIC)
+        
         gray = cv2.cvtColor(upscaled, cv2.COLOR_BGR2GRAY)
         gray = cv2.normalize(gray, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
+        
+        # Enhanced contrast using CLAHE (Contrast Limited Adaptive Histogram Equalization)
+        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+        enhanced = clahe.apply(gray)
 
+        # Sharpening kernel
         kernel_sharpen = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
-        sharpened = cv2.filter2D(gray, -1, kernel_sharpen)
+        sharpened = cv2.filter2D(enhanced, -1, kernel_sharpen)
 
+        # Background subtraction to improve text visibility
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (21, 21))
         bg = cv2.morphologyEx(sharpened, cv2.MORPH_DILATE, kernel)
         gray_sub = cv2.divide(sharpened, bg, scale=255)
 
+        # Bilateral filtering to smooth while preserving edges
         filtered = cv2.bilateralFilter(gray_sub, 9, 75, 75)
 
+        # Improved thresholding for better text extraction
         if aggressive:
-            thresh = cv2.adaptiveThreshold(filtered, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 15, 3)
+            # More aggressive thresholding for low-quality images
+            thresh = cv2.adaptiveThreshold(filtered, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 21, 5)
+            # Optional: Apply morphological operations to clean up
+            kernel_clean = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+            thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel_clean, iterations=1)
         else:
-            thresh = cv2.adaptiveThreshold(filtered, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+            thresh = cv2.adaptiveThreshold(filtered, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 15, 3)
+        
+        print(f"[KYC DEBUG] Preprocessing: aggressive={aggressive}, input={height}x{width}, scaled={int(height*scaling_factor)}x{int(width*scaling_factor)}")
         return thresh
 
     def _extract_with_confidence(self, image: np.ndarray, psm_modes=[6, 11, 4]) -> Tuple[str, List[Dict]]:
@@ -688,11 +777,13 @@ class VerificationService:
                         word_data.append({"word": word, "conf": conf})
                 
                 current_text = " ".join(text_parts)
+                print(f"[KYC DEBUG] PSM {psm}: Extracted {len(current_text)} chars, {len(word_data)} words")
+                
                 if len(current_text) > len(best_text):
                     best_text = current_text
                     best_data = word_data
                 
-                if len(current_text) > 100:  # Sufficient text found
+                if len(current_text) > 150:  # Sufficient text found
                     break
             except Exception as e:
                 print(f"[KYC OCR ERROR] Failed PSM {psm}: {e}")
@@ -704,19 +795,25 @@ class VerificationService:
         if not PYTESSERACT_AVAILABLE:
             return "", {}, []
         
+        print(f"[KYC DEBUG] Starting Tesseract extraction for ID type: {id_type}")
+        
         # Pass 1: Standard preprocessing
         thresh = self._preprocess_for_ocr_advanced(image, aggressive=False)
-        text, word_data = self._extract_with_confidence(thresh, [6])
+        text, word_data = self._extract_with_confidence(thresh, [6, 11, 4])
         
         # Check if text is sparse or missing fields, triggering retry logic
         parsed = self._parse_ocr_fields_advanced(text, word_data, id_type)
-        if parsed.get("_all_not_detected", True) or len(text.strip()) < 30:
-            print("[KYC OCR] Fields not detected. Retrying with aggressive preprocessing and fallback PSM 11, 4...")
+        print(f"[KYC DEBUG] Pass 1 - Extracted {len(text)} chars, full_name: '{parsed.get('full_name')}', id_number: '{parsed.get('id_number')}'")
+        
+        if parsed.get("_all_not_detected", True) or len(text.strip()) < 50:
+            print("[KYC OCR] Pass 1 failed. Retrying with aggressive preprocessing...")
             thresh_agg = self._preprocess_for_ocr_advanced(image, aggressive=True)
-            text_agg, word_data_agg = self._extract_with_confidence(thresh_agg, [11, 4])
+            text_agg, word_data_agg = self._extract_with_confidence(thresh_agg, [11, 4, 6])
             parsed_agg = self._parse_ocr_fields_advanced(text_agg, word_data_agg, id_type)
+            print(f"[KYC DEBUG] Pass 2 - Extracted {len(text_agg)} chars, full_name: '{parsed_agg.get('full_name')}', id_number: '{parsed_agg.get('id_number')}'")
+            
             # Use aggressive run if it's better
-            if not parsed_agg.get("_all_not_detected", True):
+            if not parsed_agg.get("_all_not_detected", True) or len(text_agg) > len(text):
                 return text_agg, parsed_agg, word_data_agg
                 
         return text, parsed, word_data
