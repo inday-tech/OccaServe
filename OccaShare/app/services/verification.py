@@ -385,12 +385,18 @@ class VerificationService:
 
     def _calculate_field_confidence(self, field_value: str, word_data: List[Dict]) -> str:
         """Matches extracted field value to OCR word data to get avg confidence. 
-           Returns 'LOW CONFIDENCE' if avg < 50, else the field_value.
+           Returns the field_value if found (with lenient confidence threshold).
            If field_value is empty, returns 'NOT DETECTED'."""
         if not field_value or not str(field_value).strip():
             return "NOT DETECTED"
+        
+        field_str = str(field_value).strip()
+        
+        # If no word_data available, just return the field (common in Tesseract fallback)
+        if not word_data:
+            return field_str
             
-        words = str(field_value).split()
+        words = field_str.split()
         total_conf = 0
         match_count = 0
         
@@ -400,35 +406,45 @@ class VerificationService:
                     total_conf += d['conf']
                     match_count += 1
                     break
-                    
-        avg_conf = (total_conf / match_count) if match_count > 0 else 100
         
-        if avg_conf < 50:
-            return "LOW CONFIDENCE"
-        return str(field_value).strip()
+        # If we matched at least some words, use the confidence
+        if match_count > 0:
+            avg_conf = total_conf / match_count
+            # Much more lenient threshold (30 instead of 50)
+            if avg_conf < 30:
+                return "LOW CONFIDENCE"
+        
+        # Always return the field if it was extracted (lenient mode)
+        return field_str
 
     def _parse_ocr_fields_advanced(self, text: str, word_data: List[Dict], id_type: str) -> Dict[str, Any]:
-        """Extracts JSON structure dynamically based on ID type using flexible parsing rules."""
+        """Extracts JSON structure dynamically based on ID type using VERY flexible parsing rules."""
         clean = text.upper()
         clean = re.sub(r'[^A-Z0-9\s/.,:-]', '', clean)
         
-        # Helper to get line after a keyword
-        def get_after(keywords, lines_list, max_lines=2):
+        # Helper to get line after a keyword (more lenient)
+        def get_after(keywords, lines_list, max_lines=2, fallback_to_any=False):
             for i, line in enumerate(lines_list):
                 if any(kw in line for kw in keywords):
                     for kw in keywords:
                         if kw in line:
                             rest = line.split(kw, 1)[1].strip()
-                            if len(rest) > 2 and not re.match(r'^[A-Z\s]+$', rest) is False: 
+                            if len(rest) > 2: 
                                 return rest
                     for j in range(1, max_lines + 1):
                         if i + j < len(lines_list):
                             val = lines_list[i+j].strip()
-                            if len(val) > 2 and not any(kw in val for kw in ["DATE", "SEX", "WEIGHT", "ADDRESS", "NATIONALITY"]):
+                            if len(val) > 2 and not any(meta_kw in val for meta_kw in ["DATE", "VALID", "THRU", "EXPIR"]):
                                 return val
+            
+            # Fallback: Extract any substantial line if not found
+            if fallback_to_any:
+                for line in lines_list:
+                    if len(line.strip()) > 3 and line.strip() not in keywords:
+                        return line.strip()
             return ""
 
-        # Helper for regex matching
+        # Helper for regex matching (returns first match or empty)
         def get_match(pattern, text_corpus, group=1):
             m = re.search(pattern, text_corpus)
             return m.group(group) if m else ""
@@ -437,42 +453,63 @@ class VerificationService:
         def extract_text_chunks(text_str, min_length=3):
             """Extracts capitalized text sequences that could be names."""
             chunks = []
-            # Find sequences of uppercase words separated by spaces
+            # Find sequences of uppercase words
             pattern = r'\b[A-Z][A-Z\s]{' + str(min_length-1) + ',}\b'
             matches = re.findall(pattern, text_str)
-            return [m.strip() for m in matches if len(m.strip()) >= min_length]
+            chunks = [m.strip() for m in matches if len(m.strip()) >= min_length]
+            
+            # Also extract simple capitalized words
+            if len(chunks) < 3:
+                words = text_str.split()
+                for word in words:
+                    if len(word) >= 3 and word.isupper() and word not in chunks:
+                        chunks.append(word)
+                    if len(chunks) >= 5:
+                        break
+            
+            return chunks
 
         lines = [l.strip() for l in clean.split('\n') if l.strip()]
         result = {"id_type": id_type, "full_name": "", "id_number": "", "date_of_birth": "", "address": "", "sex": ""}
         
         if id_type == "PhilID (National ID)" or id_type == "philsys":
             raw_id = get_match(r'(\d{4}-\d{4}-\d{4}-\d{4})', clean)
+            if not raw_id:
+                raw_id = get_match(r'(\d{4}\s*\d{4}\s*\d{4}\s*\d{4})', clean)
             
-            # Improved name extraction with fallbacks
-            raw_last = get_after(["APELYIDO", "SURNAME", "LAST NAME"], lines)
-            raw_given = get_after(["MGA PANGALAN", "GIVEN NAMES", "FIRST NAME", "GIVEN NAME"], lines)
-            raw_mid = get_after(["GITNANG APELYIDO", "MIDDLE NAME", "MID NAME"], lines)
+            # Improved name extraction with aggressive fallbacks
+            raw_last = get_after(["APELYIDO", "SURNAME", "LAST NAME"], lines, 1)
+            raw_given = get_after(["MGA PANGALAN", "GIVEN NAMES", "FIRST NAME", "GIVEN NAME"], lines, 1)
+            raw_mid = get_after(["GITNANG APELYIDO", "MIDDLE NAME", "MID NAME"], lines, 1)
             
-            # Fallback: Extract names from text chunks if keywords not found
-            if not raw_last and not raw_given:
-                text_chunks = extract_text_chunks(clean)
-                if len(text_chunks) >= 3:
-                    raw_last = text_chunks[0]
-                    raw_given = text_chunks[1]
-                    if len(text_chunks) >= 3:
-                        raw_mid = text_chunks[2]
-                elif len(text_chunks) >= 2:
-                    raw_last = text_chunks[0]
-                    raw_given = text_chunks[1]
-                elif len(text_chunks) >= 1:
-                    raw_given = text_chunks[0]
+            # Aggressive fallback: extract names from text chunks
+            text_chunks = extract_text_chunks(clean)
+            if not raw_last and text_chunks:
+                raw_last = text_chunks[0]
+            if not raw_given and len(text_chunks) > 1:
+                raw_given = text_chunks[1]
+            if not raw_mid and len(text_chunks) > 2:
+                raw_mid = text_chunks[2]
+            
+            # Second fallback: extract names from any line with 2-4 words (likely a name)
+            if not raw_given and not raw_last:
+                for line in lines:
+                    word_count = len(line.split())
+                    if 2 <= word_count <= 4 and not any(meta in line for meta in ["DATE", "ADDRESS", "SEX"]):
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            raw_given = parts[0]
+                            raw_last = parts[-1]
+                            if len(parts) >= 3:
+                                raw_mid = parts[1]
+                            break
             
             # Flexible DOB patterns
             raw_dob = get_match(r'((?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*\s+\d{1,2},?\s+\d{4})', clean)
             if not raw_dob:
                 raw_dob = get_match(r'(\d{1,2}[-/]\d{1,2}[-/]\d{4}|\d{4}[-/]\d{1,2}[-/]\d{1,2})', clean)
             
-            raw_addr = get_after(["ADDRESS", "TIRAHAN", "ADDRES"], lines, 4)
+            raw_addr = get_after(["ADDRESS", "TIRAHAN", "ADDRES"], lines, 5)
             
             result.update({
                 "id_type": "philsys",
@@ -492,20 +529,31 @@ class VerificationService:
 
 
         elif id_type == "Driver's License" or id_type == "drivers_license":
-            raw_last = get_after(["LAST NAME"], lines)
-            raw_first = get_after(["FIRST NAME"], lines)
-            raw_mid = get_after(["MIDDLE NAME"], lines)
+            raw_last = get_after(["LAST NAME"], lines, 1)
+            raw_first = get_after(["FIRST NAME"], lines, 1)
+            raw_mid = get_after(["MIDDLE NAME"], lines, 1)
             
-            # Fallback for names if keywords not found
-            if not raw_last and not raw_first:
-                text_chunks = extract_text_chunks(clean)
-                if len(text_chunks) >= 2:
-                    raw_last = text_chunks[0]
-                    raw_first = text_chunks[1]
-                    if len(text_chunks) >= 3:
-                        raw_mid = text_chunks[2]
-                elif len(text_chunks) >= 1:
-                    raw_first = text_chunks[0]
+            # Aggressive fallback for names if keywords not found
+            text_chunks = extract_text_chunks(clean)
+            if not raw_last and text_chunks:
+                raw_last = text_chunks[0]
+            if not raw_first and len(text_chunks) > 1:
+                raw_first = text_chunks[1]
+            if not raw_mid and len(text_chunks) > 2:
+                raw_mid = text_chunks[2]
+            
+            # Second fallback: extract names from any line with 2-4 words
+            if not raw_first and not raw_last:
+                for line in lines:
+                    word_count = len(line.split())
+                    if 2 <= word_count <= 4 and not any(meta in line for meta in ["DATE", "ADDRESS", "EXPIR", "VALID"]):
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            raw_first = parts[0]
+                            raw_last = parts[-1]
+                            if len(parts) >= 3:
+                                raw_mid = parts[1]
+                            break
             
             # More flexible license number patterns
             raw_lic = get_match(r'([A-Z]\d{2}-\d{2}-\d{6})', clean)
@@ -563,13 +611,32 @@ class VerificationService:
             if not raw_pass:
                 raw_pass = get_match(r'\b([A-Z][0-9]{7,8})\b', clean)
             
-            raw_last = get_after(["SURNAME", "LAST NAME"], lines)
-            raw_given = get_after(["GIVEN NAMES", "FIRST NAME", "GIVEN NAME"], lines)
-            raw_mid = get_after(["MIDDLE NAME"], lines)
+            raw_last = get_after(["SURNAME", "LAST NAME"], lines, 1)
+            raw_given = get_after(["GIVEN NAMES", "FIRST NAME", "GIVEN NAME"], lines, 1)
+            raw_mid = get_after(["MIDDLE NAME"], lines, 1)
             
-            # Fallback for names if keywords not found
-            if not raw_last and not raw_given:
-                text_chunks = extract_text_chunks(clean)
+            # Aggressive fallback for names if keywords not found
+            text_chunks = extract_text_chunks(clean)
+            if not raw_last and text_chunks:
+                raw_last = text_chunks[0]
+            if not raw_given and len(text_chunks) > 1:
+                raw_given = text_chunks[1]
+            if not raw_mid and len(text_chunks) > 2:
+                raw_mid = text_chunks[2]
+            
+            # Second fallback: extract names from any line with 2-4 words
+            if not raw_given and not raw_last:
+                for line in lines:
+                    word_count = len(line.split())
+                    if 2 <= word_count <= 4 and not any(meta in line for meta in ["DATE", "ISSUE", "VALID", "NATIONALITY"]):
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            raw_given = parts[0]
+                            raw_last = parts[-1]
+                            if len(parts) >= 3:
+                                raw_mid = parts[1]
+                            break
+
                 if len(text_chunks) >= 2:
                     raw_last = text_chunks[0]
                     raw_given = text_chunks[1]
