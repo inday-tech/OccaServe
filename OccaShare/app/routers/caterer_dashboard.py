@@ -134,6 +134,76 @@ async def validate_dish_name(
     exists = query.first() is not None
     return {"exists": exists}
 
+@router.get("/api/availability/check")
+async def check_availability(
+    date: str,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    try:
+        target_date = datetime.strptime(date, "%Y-%m-%d").date()
+    except ValueError:
+        return {"is_available": False, "reason": "Invalid date format", "booking_count": 0, "max_capacity": 1, "is_manual_block": False}
+        
+    if target_date < datetime.today().date():
+        return {"is_available": False, "reason": "Past date", "booking_count": 0, "max_capacity": 1, "is_manual_block": False}
+    
+    profile = user.caterer_profile
+    max_capacity = profile.max_bookings_per_day or 1
+    auto_block = profile.auto_block_enabled if profile.auto_block_enabled is not None else True
+        
+    # Check if explicitly blocked
+    block = db.query(models.Availability).filter(
+        models.Availability.caterer_id == profile.id,
+        models.Availability.date == target_date
+    ).first()
+    
+    if block and not block.is_available:
+        return {"is_available": False, "reason": block.reason or "Manually blocked", "booking_count": 0, "max_capacity": max_capacity, "is_manual_block": True}
+        
+    # Count active bookings on that date
+    existing_on_date = db.query(models.Booking).filter(
+        models.Booking.caterer_id == profile.id,
+        models.Booking.event_date == target_date,
+        models.Booking.status != 'cancelled',
+        models.Booking.is_archived == False
+    ).count()
+    
+    if auto_block and existing_on_date >= max_capacity:
+        return {"is_available": False, "reason": f"Capacity full ({existing_on_date}/{max_capacity} slots used)", "booking_count": existing_on_date, "max_capacity": max_capacity, "is_manual_block": False}
+        
+    return {"is_available": True, "reason": "", "booking_count": existing_on_date, "max_capacity": max_capacity, "is_manual_block": False}
+
+@router.get("/api/customers/check_duplicate")
+async def check_customer_duplicate(
+    email: Optional[str] = None,
+    contact: Optional[str] = None,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    """Real-time duplicate check for walk-in bookings."""
+    if not email and not contact:
+        return {"exists": False}
+        
+    query = db.query(models.User)
+    
+    if email:
+        query = query.filter(models.User.email == email)
+    elif contact:
+        # Exact match or endswith for contact
+        query = query.filter(models.User.phone_number.like(f"%{contact[-10:]}"))
+        
+    existing_user = query.first()
+    
+    if existing_user:
+        return {
+            "exists": True, 
+            "name": f"{existing_user.first_name} {existing_user.last_name}".strip(),
+            "email": existing_user.email,
+            "contact": existing_user.phone_number
+        }
+    return {"exists": False}
+
 @router.post("/api/bookings/manual")
 async def create_manual_booking(
     request: Request,
@@ -144,10 +214,25 @@ async def create_manual_booking(
         data = await request.json()
         customer_email = data.get("customer_email", "").strip()
         customer_contact = data.get("customer_contact", "").strip()
-        customer_name = data.get("customer_name", "").strip()
         
-        if not customer_name:
-            raise HTTPException(status_code=400, detail="Customer name is required")
+        first_name = data.get("first_name", "").strip()
+        last_name = data.get("last_name", "").strip()
+        middle_name = data.get("middle_name", "").strip()
+        
+        if not first_name or not last_name:
+            raise HTTPException(status_code=400, detail="First name and Last name are required")
+            
+        customer_name = f"{first_name} {middle_name} {last_name}".replace("  ", " ").strip()
+        
+        province = data.get("province", "").strip()
+        municipality = data.get("municipality", "").strip()
+        barangay = data.get("barangay", "").strip()
+        landmark = data.get("landmark", "").strip()
+        
+        if not province or not municipality or not barangay:
+            raise HTTPException(status_code=400, detail="Complete address (Province, Municipality, Barangay) is required")
+            
+        venue_address = f"{landmark + ', ' if landmark else ''}{barangay}, {municipality}, {province}"
 
         # 1. Handle User (Customer)
         target_user = None
@@ -168,8 +253,7 @@ async def create_manual_booking(
 
         if not target_user:
             # Create a shadow/guest user
-            from ..core import security as auth_utils
-            temp_pass = auth_utils.pwd_context.hash(str(uuid.uuid4()))
+            temp_pass = auth.pwd_context.hash(str(uuid.uuid4()))
             target_user = models.User(
                 email=customer_email if "@" in customer_email else f"walkin_{uuid.uuid4().hex[:8]}@guest.occashare.com",
                 first_name=customer_name,
@@ -209,9 +293,23 @@ async def create_manual_booking(
             models.Booking.is_archived == False
         ).count()
         
-        # Professional Limit: 5 bookings per day max
-        if existing_on_date >= 5:
-            raise HTTPException(status_code=400, detail=f"Capacity Reached: You already have {existing_on_date} active bookings scheduled for {event_date}. Consider expanding your staff or rejecting new requests for this day.")
+        # Check manual block first
+        manual_block = db.query(models.Availability).filter(
+            models.Availability.caterer_id == user.caterer_profile.id,
+            models.Availability.date == event_date,
+            models.Availability.is_available == False
+        ).first()
+        
+        if manual_block:
+            raise HTTPException(status_code=400, detail=f"This date is manually blocked: {manual_block.reason or 'No reason provided'}. Unblock it first before adding bookings.")
+        
+        # Configurable capacity limit (caterer can override via force flag)
+        max_cap = user.caterer_profile.max_bookings_per_day or 1
+        force_override = data.get("force_override", False)
+        auto_block = user.caterer_profile.auto_block_enabled if user.caterer_profile.auto_block_enabled is not None else True
+        
+        if auto_block and existing_on_date >= max_cap and not force_override:
+            raise HTTPException(status_code=409, detail=f"Capacity Reached: You already have {existing_on_date}/{max_cap} active bookings on {event_date}. You can override this by confirming in the capacity warning dialog.")
 
         # 3. Create Booking
         event_time_str = data.get("event_time")
@@ -223,6 +321,14 @@ async def create_manual_booking(
         else:
             event_time = None
 
+        # Build special requests from notes
+        special_notes = data.get("special_notes", "").strip()
+        special_requests = f"Walk-in Booking{(' — ' + special_notes) if special_notes else ''}"
+        
+        # Payment handling
+        payment_method = data.get("payment_method", "Cash")
+        payment_status = data.get("payment_status", "paid")
+        
         new_booking = models.Booking(
             user_id=target_user.id,
             caterer_id=user.caterer_profile.id,
@@ -234,11 +340,11 @@ async def create_manual_booking(
             guest_count=guest_count,
             total_amount=data.get("total_amount", 0),
             total_price=data.get("total_amount", 0),
-            venue_address=data.get("venue_address"),
+            venue_address=venue_address,
             status="confirmed", 
-            payment_status="paid", 
-            payment_method="Cash",
-            special_requests="Walk-in Booking"
+            payment_status=payment_status, 
+            payment_method=payment_method,
+            special_requests=special_requests
         )
         db.add(new_booking)
         db.flush()
@@ -249,11 +355,11 @@ async def create_manual_booking(
             for mi_id in menu_item_ids:
                 mi = db.query(models.MenuItem).get(mi_id)
                 if mi:
-                    sel_item = models.SelectedMenuItem(
+                    sel_item = models.BookingMenuItem(
                         booking_id=new_booking.id,
                         menu_item_id=mi.id,
-                        quantity=1, # Default for now
-                        price_at_booking=mi.addon_price or mi.price or 0
+                        quantity=1,
+                        price=mi.addon_price or mi.price or 0
                     )
                     db.add(sel_item)
         
@@ -1725,6 +1831,9 @@ async def caterer_calendar(
         "current_date": current_date,
         "packages": packages,
         "menu_items": menu_items,
+        "max_bookings_per_day": user.caterer_profile.max_bookings_per_day or 1,
+        "auto_block_enabled": user.caterer_profile.auto_block_enabled if user.caterer_profile.auto_block_enabled is not None else True,
+        "primary_color": user.caterer_profile.primary_color or "#3b82f6",
         "active_page": "calendar"
     })
 
@@ -2598,6 +2707,34 @@ async def toggle_availability(
     
     db.commit()
     return {"status": "success"}
+
+@router.post("/api/calendar/capacity-settings")
+async def update_capacity_settings(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    """Update caterer's calendar capacity settings."""
+    data = await request.json()
+    profile = user.caterer_profile
+    
+    max_per_day = data.get("max_bookings_per_day")
+    auto_block = data.get("auto_block_enabled")
+    
+    if max_per_day is not None:
+        max_per_day = max(1, min(10, int(max_per_day)))  # Clamp 1-10
+        profile.max_bookings_per_day = max_per_day
+    
+    if auto_block is not None:
+        profile.auto_block_enabled = bool(auto_block)
+    
+    db.commit()
+    return {
+        "status": "success", 
+        "max_bookings_per_day": profile.max_bookings_per_day,
+        "auto_block_enabled": profile.auto_block_enabled
+    }
+
 @router.post("/api/sidebar-mode")
 async def toggle_sidebar_mode(
     request: Request,
@@ -2639,19 +2776,36 @@ async def get_calendar_events(
     
     events = []
     colors = {
-        "Wedding": "#ec4899", # Pink
-        "Birthday": "#3b82f6", # Blue
-        "Corporate": "#10b981", # Green
-        "Private Party": "#f59e0b" # Orange
+        "Wedding": "#6366f1", # Indigo
+        "Birthday": "#0ea5e9", # Cerulean
+        "Corporate": "#0f172a", # Charcoal
+        "Private Party": "#10b981" # Emerald
     }
     
     # Check if we should show full details (only for the caterer owner)
     is_owner = user and user.role == 'caterer' and user.caterer_profile.id == target_caterer_id
+    
+    # Get capacity settings
+    caterer_profile = None
+    if is_owner:
+        caterer_profile = user.caterer_profile
+    else:
+        caterer_profile = db.query(models.CatererProfile).get(target_caterer_id)
+    
+    max_capacity = (caterer_profile.max_bookings_per_day or 1) if caterer_profile else 1
+    auto_block = (caterer_profile.auto_block_enabled if caterer_profile and caterer_profile.auto_block_enabled is not None else True)
 
+    # Track booking counts per date for capacity visualization
+    date_booking_counts = {}
+    
     for b in bookings:
         start_dt = str(b.event_date)
         if b.event_time:
             start_dt += f"T{b.event_time}"
+        
+        # Track counts
+        date_key = str(b.event_date)
+        date_booking_counts[date_key] = date_booking_counts.get(date_key, 0) + 1
             
         event_data = {
             "id": b.id,
@@ -2670,7 +2824,11 @@ async def get_calendar_events(
                 "guests": b.guest_count,
                 "venue": b.venue_address or "TBD",
                 "package": b.package.name if b.package else "Custom",
-                "time": str(b.event_time) if b.event_time else "TBD"
+                "time": str(b.event_time) if b.event_time else "TBD",
+                "status": b.status,
+                "payment_status": b.payment_status or "pending",
+                "booking_id": b.id,
+                "special_requests": b.special_requests or ""
             }
         else:
             event_data["title"] = "BOOKED"
@@ -2696,9 +2854,32 @@ async def get_calendar_events(
             "extendedProps": {
                 "type": "BLOCKED",
                 "reason": a.reason or "No reason provided",
-                "customer": "N/A"
+                "customer": "N/A",
+                "is_manual_block": True
             }
         })
+    
+    # Add FULL indicators for dates at capacity (auto-block)
+    if is_owner and auto_block:
+        blocked_dates = {str(a.date) for a in availabilities}
+        for date_key, count in date_booking_counts.items():
+            if count >= max_capacity and date_key not in blocked_dates:
+                events.append({
+                    "title": f"FULL ({count}/{max_capacity})",
+                    "start": date_key,
+                    "allDay": True,
+                    "backgroundColor": "#f59e0b",
+                    "borderColor": "#d97706",
+                    "textColor": "#ffffff",
+                    "extendedProps": {
+                        "type": "CAPACITY_FULL",
+                        "reason": f"Auto-blocked: {count}/{max_capacity} slots filled",
+                        "customer": "N/A",
+                        "is_manual_block": False,
+                        "booking_count": count,
+                        "max_capacity": max_capacity
+                    }
+                })
         
     return events
 

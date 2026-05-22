@@ -127,6 +127,10 @@ class CatererProfile(Base):
     sidebar_mode = Column(String, default="full") # 'full' (text + icon), 'icons' (icon only)
     show_platform_logo = Column(Boolean, default=True)
     
+    # Calendar Capacity Settings
+    max_bookings_per_day = Column(Integer, default=1) # How many bookings caterer can handle per day
+    auto_block_enabled = Column(Boolean, default=True) # Auto-block dates when capacity reached
+    
     # NEW: Advanced Branding
     glass_mode = Column(Boolean, default=False)
     sidebar_color = Column(String, default="#000000")

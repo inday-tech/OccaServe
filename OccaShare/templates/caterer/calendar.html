@@ -1,82 +1,188 @@
 {% set nav_page = 'calendar' %}
 {% extends "caterer/layout.html" %}
 
-{% block title %}Calendar - Caterer Dashboard{% endblock %}
+{% block title %}Service Calendar - Caterer Dashboard{% endblock %}
 
 {% block extra_css %}
 <!-- FullCalendar CSS -->
 <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css' rel='stylesheet' />
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/calendar.css') }}?v=12.0">
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/menu.css') }}?v=1.6"> <!-- Reuse menu modal utils -->
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/calendar.css') }}?v=14.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/menu.css') }}?v=1.6">
+<style>
+    :root {
+        --caterer-primary: {{ primary_color }};
+        --caterer-primary-dark: {{ primary_color }}dd;
+        --caterer-primary-light: {{ primary_color }}20;
+    }
+
+    @keyframes slideInRight {
+        from { opacity: 0; transform: translateX(100px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes slideOutRight {
+        from { opacity: 1; transform: translateX(0); }
+        to { opacity: 0; transform: translateX(100px); }
+    }
+
+    /* Override color-primary with caterer's color */
+    :root {
+        --color-primary: var(--caterer-primary);
+    }
+
+    /* Dynamic button colors */
+    .btn-primary-pro {
+        background: var(--caterer-primary) !important;
+        box-shadow: 0 4px 12px var(--caterer-primary-light) !important;
+    }
+
+    .btn-primary-pro:hover {
+        background: var(--caterer-primary-dark) !important;
+    }
+
+    .btn-walkin-header {
+        background: var(--caterer-primary) !important;
+        box-shadow: 0 4px 12px var(--caterer-primary-light) !important;
+    }
+
+    .btn-walkin-header:hover {
+        background: var(--caterer-primary-dark) !important;
+    }
+
+    /* Dynamic calendar styling */
+    .fc-button.fc-button-active {
+        background: var(--caterer-primary) !important;
+        border-color: var(--caterer-primary) !important;
+    }
+
+    .fc .fc-daygrid-day.fc-day-today {
+        background-color: var(--caterer-primary-light) !important;
+    }
+
+    .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+        color: var(--caterer-primary) !important;
+    }
+
+    .weekly-event-date span:last-child {
+        color: var(--caterer-primary) !important;
+    }
+
+    .cal-section-header i {
+        color: var(--caterer-primary) !important;
+        background: var(--caterer-primary-light) !important;
+    }
+
+    .status-ongoing { background: var(--caterer-primary-light) !important; color: var(--caterer-primary) !important; }
+
+    .occ-modal-header.colored-header {
+        background: linear-gradient(135deg, var(--caterer-primary) 0%, var(--caterer-primary-dark) 100%) !important;
+    }
+
+    .fc .fc-col-header-cell { font-weight: 600; color: #374151; }
+    .fc .fc-daygrid-day { border: 1px solid #e5e7eb; }
+</style>
 {% endblock %}
 
 {% block content %}
-<!-- Page Header — Elite Styled -->
-<div class="cal-page-header animate-up">
+<!-- Page Header -->
+<div class="cal-page-header">
     <div>
         <h1>Service Calendar</h1>
-        <p>Manage your availability and track your high-value event bookings.</p>
+        <p>Manage your availability, track bookings, and optimize your catering schedule in real-time.</p>
     </div>
-    <button onclick="openManualBookingModal()" class="btn-walkin-header">
+    <button onclick="openManualBookingModal()" class="btn-walkin-header" title="Add a new walk-in booking">
         <i class="fas fa-plus"></i> Walk-in Booking
     </button>
 </div>
 
 <!-- Legend Bar -->
-<div class="cal-card cal-legend-bar animate-up delay-1" style="border: none; background: #f8fafc; margin-bottom: 1.5rem;">
+<div class="cal-card cal-legend-bar">
     <div class="legend-group">
-        <span class="legend-pill" style="background: rgba(236,72,153,0.1); border-color: #ec4899; color: #ec4899;">
-            <span class="pill-dot" style="background:#ec4899;"></span> Weddings
+        <span class="legend-pill" style="background: rgba(99,102,241,0.1); border-color: #6366f1; color: #6366f1;">
+            <span class="pill-dot" style="background:#6366f1;"></span> Weddings
         </span>
-        <span class="legend-pill" style="background: rgba(59,130,246,0.1); border-color: #3b82f6; color: #3b82f6;">
-            <span class="pill-dot" style="background:#3b82f6;"></span> Birthdays
+        <span class="legend-pill" style="background: rgba(14,165,233,0.1); border-color: #0ea5e9; color: #0ea5e9;">
+            <span class="pill-dot" style="background:#0ea5e9;"></span> Birthdays
+        </span>
+        <span class="legend-pill" style="background: rgba(15,23,42,0.1); border-color: #1f2937; color: #1f2937;">
+            <span class="pill-dot" style="background:#1f2937;"></span> Corporate
         </span>
         <span class="legend-pill" style="background: rgba(16,185,129,0.1); border-color: #10b981; color: #10b981;">
-            <span class="pill-dot" style="background:#10b981;"></span> Corporate
+            <span class="pill-dot" style="background:#10b981;"></span> Private Party
         </span>
-        <span class="legend-pill" style="background: rgba(245,158,11,0.1); border-color: #f59e0b; color: #f59e0b;">
-            <span class="pill-dot" style="background:#f59e0b;"></span> Private
-        </span>
-        <span class="legend-pill" style="background: #fff1f2; border-color: #fecaca; color: #ef4444;">
-            <span class="pill-square" style="background:#ef4444;"></span> Blocked Day
+        <span class="legend-pill" style="background: #fef2f2; border-color: #fca5a5; color: #ef4444;">
+            <span class="pill-square" style="background:#ef4444;"></span> Blocked Date
         </span>
     </div>
 </div>
 
-<!-- Main 8/4 Grid -->
+<!-- Main Content Grid -->
 <div class="cal-grid">
     <!-- Left: Calendar -->
-    <div class="cal-card cal-card-calendar animate-up delay-1">
+    <div class="cal-card cal-card-calendar">
         <div id='calendar'></div>
     </div>
 
     <!-- Right: Sidebar -->
     <div class="cal-sidebar">
-        <!-- Availability Management (Quick Access) -->
-        <div class="cal-card animate-up delay-2">
+        <!-- Availability Management -->
+        <div class="cal-card">
             <div class="cal-section-header">
                 <i class="fas fa-calendar-check"></i>
                 <h3>Manage Availability</h3>
             </div>
             <div class="cal-section-body" style="padding: 1.25rem;">
                 <form id="availabilityForm" class="cal-form-stack">
-                    <div class="cal-form-group">
+                    <div class="form-group-pro">
                         <label class="cal-label">Target Date</label>
-                        <input type="date" id="blockDate" class="control-pro" required min="{{ current_date.strftime('%Y-%m-%d') }}">
+                        <input type="date" id="blockDate" class="control-pro" required min="{{ current_date.strftime('%Y-%m-%d') }}" onchange="checkAvailabilityStatus(this.value)">
                     </div>
-                    <div class="cal-btn-row" style="display: flex; gap: 10px; margin-top: 1rem;">
-                        <button type="button" onclick="toggleDateAvailability(false)" class="btn-primary-pro" style="flex: 1; background: #ef4444; border: none;">Block Date</button>
-                        <button type="button" onclick="toggleDateAvailability(true)" class="btn-secondary-pro" style="flex: 1; background: #f1f5f9; color: #475569;">Open Date</button>
+
+                    <div id="availabilityStatusBox" style="display: none; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.85rem; font-weight: 600; border: 1px solid;">
+                        <i id="availabilityStatusIcon" class="fas" style="margin-right: 8px;"></i>
+                        <span id="availabilityStatusText">Checking status...</span>
+                    </div>
+
+                    <div style="display: flex; gap: 10px;">
+                        <button type="button" id="btnBlockDate" onclick="toggleDateAvailability(false)" class="btn-primary-pro" style="flex: 1; background: var(--color-danger); display: none;">
+                            <i class="fas fa-ban"></i> Block Date
+                        </button>
+                        <button type="button" id="btnOpenDate" onclick="toggleDateAvailability(true)" class="btn-secondary-pro" style="flex: 1; display: none;">
+                            <i class="fas fa-check"></i> Unblock
+                        </button>
                     </div>
                 </form>
             </div>
         </div>
 
-        <!-- Status Tracker (Real-time Feed) -->
-        <div class="cal-card animate-up delay-3">
+        <!-- Capacity Settings -->
+        <div class="cal-card">
             <div class="cal-section-header">
-                <i class="fas fa-stream"></i>
-                <h3>Upcoming Schedule</h3>
+                <i class="fas fa-sliders-h"></i>
+                <h3>Booking Capacity</h3>
+            </div>
+            <div class="cal-section-body" style="padding: 1.25rem;">
+                <div class="cal-form-stack">
+                    <div class="form-group-pro">
+                        <label class="cal-label">Max Bookings Per Day</label>
+                        <input type="number" id="capMaxBookings" class="control-pro" min="1" max="10" value="{{ max_bookings_per_day }}">
+                        <small style="color: #6b7280; font-size: 0.8rem;">Limit daily event capacity</small>
+                    </div>
+                    <div class="form-group-pro" style="display: flex; align-items: center; gap: 8px; margin-bottom: 0;">
+                        <input type="checkbox" id="capAutoBlock" {% if auto_block_enabled %}checked{% endif %} style="width: 18px; height: 18px; cursor: pointer;">
+                        <label for="capAutoBlock" class="cal-label" style="margin-bottom: 0;">Auto-block when full</label>
+                    </div>
+                    <button type="button" onclick="updateCapacitySettings()" class="btn-secondary-pro" style="width: 100%; justify-content: center; margin-top: 1rem;">
+                        <i class="fas fa-save"></i> Save Settings
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upcoming Schedule -->
+        <div class="cal-card">
+            <div class="cal-section-header">
+                <i class="fas fa-clock"></i>
+                <h3>Upcoming Bookings</h3>
             </div>
             <div class="cal-tracker-list">
             {% if bookings %}
@@ -88,7 +194,7 @@
                      data-title="{{ booking.event_name or 'Event' }}"
                      data-datetime="{{ booking.event_date.strftime('%A, %B %d, %Y') }} at {{ booking.event_time.strftime('%I:%M %p') if booking.event_time else 'TBD' }}"
                      data-venue="{{ booking.venue_address or 'TBD' }}"
-                     data-package="{{ booking.guest_count }} Guests - {{ booking.package.name if booking.package else 'Custom Package' }}"
+                     data-package="{{ booking.guest_count }} Guests - {{ booking.package.name if booking.package else 'Custom' }}"
                      onclick="openSidebarEventModal(this)">
                     <div class="weekly-event-date">
                         <span>{{ booking.event_date.strftime('%b') }}</span>
@@ -98,19 +204,19 @@
                         <div class="weekly-event-name">{{ booking.event_name or (booking.user.first_name if booking.user else 'Walk-in') }}</div>
                         {% set days_left = (booking.event_date - current_date).days %}
                         {% if days_left == 0 %}
-                            <div class="event-status-badge status-ongoing">Ongoing</div>
+                            <div class="event-status-badge status-ongoing">🔴 Ongoing</div>
                         {% elif days_left == 1 %}
-                            <div class="event-status-badge status-preparing">Tomorrow</div>
+                            <div class="event-status-badge status-preparing">⏰ Tomorrow</div>
                         {% else %}
-                            <div class="event-status-badge status-upcoming">In {{ days_left }} days</div>
+                            <div class="event-status-badge status-upcoming">📅 In {{ days_left }} days</div>
                         {% endif %}
                     </div>
                 </div>
                 {% endfor %}
             {% else %}
-                <div style="text-align: center; padding: 2rem;">
-                    <i class="fas fa-calendar-day fa-2x" style="color: #e2e8f0; margin-bottom: 1rem;"></i>
-                    <p style="color: #94a3b8; font-size: 0.8rem;">No events scheduled for this period.</p>
+                <div style="text-align: center; padding: 2rem; color: #9ca3af;">
+                    <i class="fas fa-calendar-day fa-2x" style="margin-bottom: 1rem; opacity: 0.5;"></i>
+                    <p style="font-size: 0.85rem;">No events scheduled yet.</p>
                 </div>
             {% endif %}
             </div>
@@ -123,181 +229,293 @@
     <div class="occ-modal-box sz-md occ-content-pop">
         <div class="occ-modal-header colored-header">
             <div>
-                <h3 id="calModalTitle" class="occ-modal-title">Event Logistics</h3>
-                <div class="occ-modal-subtitle">Review core requirements and service details.</div>
+                <h3 id="calModalTitle" class="occ-modal-title">Booking Details</h3>
+                <div class="occ-modal-subtitle">Review service logistics and customer information</div>
             </div>
-            <button onclick="closeModal('eventModal')" class="occ-modal-close"><i class="fas fa-times"></i></button>
+            <button onclick="closeModal('eventModal')" class="occ-modal-close" title="Close" aria-label="Close modal"><i class="fas fa-times"></i></button>
         </div>
         <div class="compact-body">
             <div class="calendar-detail-list">
                 <div class="calendar-detail-item">
-                    <i class="fas fa-user-circle"></i>
+                    <i class="fas fa-user"></i>
                     <div>
                         <div class="calendar-detail-label">Client Name</div>
                         <div id="detCustomer" class="calendar-detail-value">---</div>
                     </div>
                 </div>
                 <div class="calendar-detail-item">
-                    <i class="fas fa-star"></i>
+                    <i class="fas fa-heart"></i>
                     <div>
-                        <div class="calendar-detail-label">Service Type</div>
+                        <div class="calendar-detail-label">Event Type</div>
                         <div id="detType" class="calendar-detail-value">---</div>
                     </div>
                 </div>
                 <div class="calendar-detail-item">
-                    <i class="fas fa-clock"></i>
+                    <i class="fas fa-calendar-alt"></i>
                     <div>
                         <div class="calendar-detail-label">Date & Time</div>
                         <div id="detDateTime" class="calendar-detail-value">---</div>
                     </div>
                 </div>
                 <div class="calendar-detail-item">
-                    <i class="fas fa-map-pin"></i>
+                    <i class="fas fa-map-marker-alt"></i>
                     <div>
-                        <div class="calendar-detail-label">Event Location</div>
+                        <div class="calendar-detail-label">Venue Location</div>
                         <div id="detVenue" class="calendar-detail-value">---</div>
                     </div>
                 </div>
                 <div class="calendar-detail-item">
-                    <i class="fas fa-users-cog"></i>
+                    <i class="fas fa-users"></i>
                     <div>
-                        <div class="calendar-detail-label">Guest Logistics</div>
+                        <div class="calendar-detail-label">Guest Count & Package</div>
                         <div id="detPackage" class="calendar-detail-value">---</div>
+                    </div>
+                </div>
+                <div class="calendar-detail-item">
+                    <i class="fas fa-credit-card"></i>
+                    <div>
+                        <div class="calendar-detail-label">Payment Status</div>
+                        <div id="detPayment" class="calendar-detail-value">---</div>
+                    </div>
+                </div>
+                <div class="calendar-detail-item">
+                    <i class="fas fa-clipboard"></i>
+                    <div>
+                        <div class="calendar-detail-label">Special Requests</div>
+                        <div id="detSpecial" class="calendar-detail-value">---</div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="occ-modal-footer" style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 1.25rem 1.5rem; display: flex; justify-content: flex-end; gap: 12px;">
-            <input type="hidden" id="currentBookingId">
-            <button onclick="closeModal('eventModal')" class="btn-secondary-pro" style="background: #e2e8f0; color: #475569; border: none;">Close</button>
-            <button onclick="setReminder()" class="btn-primary-pro">Set Reminder Alert</button>
+        <div class="occ-modal-footer">
+            <input type="hidden" id="evModalBookingId">
+            <button onclick="window.location.href='/caterer/dashboard?page=bookings'" class="btn-secondary-pro">
+                <i class="fas fa-edit"></i> Edit
+            </button>
+            <div style="display: flex; gap: 12px;">
+                <button onclick="closeModal('eventModal')" class="btn-secondary-pro">Close</button>
+                <button onclick="setReminder()" class="btn-primary-pro">
+                    <i class="fas fa-bell"></i> Set Reminder
+                </button>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- WALK-IN BOOKING MODAL (AUDIT-READY) -->
+<!-- WALK-IN BOOKING MODAL -->
 <div id="manualBookingModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-lg occ-content-pop">
         <div class="occ-modal-header colored-header">
             <div>
-                <h3 class="occ-modal-title">Create Offline Booking</h3>
-                <div class="occ-modal-subtitle">Directly register walk-in clients into the smart inventory.</div>
+                <h3 class="occ-modal-title"><i class="fas fa-user-plus"></i> Create Walk-in Booking</h3>
+                <div class="occ-modal-subtitle">Register a new offline booking with complete service details</div>
             </div>
             <button onclick="closeModal('manualBookingModal')" class="occ-modal-close"><i class="fas fa-times"></i></button>
         </div>
-        
-        <form id="manualBookingForm" onsubmit="submitManualEvent(event)">
-            <div class="compact-body" style="padding-top: 1rem;">
-                <!-- Validation Error Drawer -->
-                <div id="manualBookingError" class="validation-error-drawer">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <span id="errorText">One or more fields require your attention.</span>
-                </div>
 
-                <!-- Customer Intelligence Badge -->
-                <div id="userDetectionBadge" class="detection-badge-container">
+        <form id="manualBookingForm" onsubmit="submitManualEvent(event)">
+            <div class="compact-body" style="padding: 1.5rem;">
+
+                <!-- Customer Detection Badge -->
+                <div id="userDetectionBadge" class="detection-badge-container" style="margin-bottom: 1.5rem;">
                     <!-- Injected via JS -->
                 </div>
 
-                <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
-                    <div class="form-group-pro">
-                        <label>Client Full Name</label>
-                        <input type="text" id="manCustName" name="customer_name" class="control-pro" required placeholder="Enter client name">
-                        <div class="field-error-msg" id="error-manCustName">Invalid name.</div>
-                    </div>
-
-                    <div class="form-group-pro">
-                        <label>Email Address</label>
-                        <input type="email" id="manCustEmail" name="customer_email" class="control-pro" required placeholder="client@example.com">
-                        <div class="field-error-msg" id="error-manCustEmail">Invalid email address.</div>
-                    </div>
-
-                    <div class="form-group-pro">
-                        <label>Contact Number (PH)</label>
-                        <input type="text" id="manCustContact" name="customer_contact" class="control-pro" required placeholder="09XXXXXXXXX">
-                        <div class="field-error-msg" id="error-manCustContact">Enter a valid PH mobile number.</div>
-                    </div>
-
-                    <div class="form-group-pro">
-                        <label>Event Name / Occasion</label>
-                        <input type="text" id="manEventName" name="event_name" class="control-pro" required placeholder="e.g. Santos Wedding">
-                        <div class="field-error-msg" id="error-manEventName">Required field.</div>
-                    </div>
-
-                    <div class="form-group-pro">
-                        <label>Event Type</label>
-                        <select id="manEventType" class="control-pro" required onchange="toggleOtherEventType()">
-                            <option value="Wedding">Wedding</option>
-                            <option value="Birthday">Birthday</option>
-                            <option value="Corporate">Corporate</option>
-                            <option value="Private Party">Private Party</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group-pro">
-                        <label>Expected Guest Count</label>
-                        <input type="number" id="manGuests" name="guest_count" class="control-pro" required min="1" placeholder="Minimum 1">
-                        <div class="field-error-msg" id="error-manGuests">Must be at least 1 pax.</div>
-                    </div>
-
-                    <div id="otherEventTypeDiv" class="form-group-pro" style="display: none; grid-column: span 2;">
-                        <label>Specify Event Type</label>
-                        <input type="text" id="manOtherType" class="control-pro" placeholder="Enter custom type">
-                        <div class="field-error-msg" id="error-manOtherType">Required for 'Other' types.</div>
-                    </div>
-
-                    <div class="form-group-pro">
-                        <label>Event Date</label>
-                        <input type="date" id="manDate" name="event_date" class="control-pro" required min="{{ current_date.strftime('%Y-%m-%d') }}">
-                        <div class="field-error-msg" id="error-manDate">Select a future date.</div>
-                    </div>
-
-                    <div class="form-group-pro">
-                        <label>Call Time</label>
-                        <input type="time" id="manTime" class="control-pro">
-                    </div>
-
-                    <div class="form-group-pro" style="grid-column: span 2;">
-                        <label>Venue Full Address</label>
-                        <input type="text" id="manVenue" name="venue_address" class="control-pro" required placeholder="Street, City, Province">
-                        <div class="field-error-msg" id="error-manVenue">Address required.</div>
-                    </div>
-
-                    <div class="form-group-pro" style="grid-column: span 2;">
-                        <label>Select Catering Package</label>
-                        <select id="manPackage" class="control-pro">
-                            <option value="" data-price="0">Custom Selection (No Base Package)</option>
-                            {% for pkg in packages %}
-                            <option value="{{ pkg.id }}" data-price="{{ pkg.price or 0 }}" data-min="{{ pkg.min_pax or 1 }}" data-unit="{{ pkg.price_unit or 'fixed' }}">
-                                {{ pkg.name }} (₱{{ '{:,.0f}'.format(pkg.price or 0) }} / {{ pkg.price_unit or 'fixed' }})
-                            </option>
-                            {% endfor %}
-                        </select>
+                <!-- CLIENT INFORMATION SECTION -->
+                <div style="margin-bottom: 2rem;">
+                    <h4 style="font-size: 0.9rem; font-weight: 700; text-transform: uppercase; color: #1f2937; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 2px solid var(--caterer-primary);">
+                        <i class="fas fa-user"></i> Client Information
+                    </h4>
+                    <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem;">
+                        <div class="form-group-pro">
+                            <label>First Name <span style="color: #ef4444;">*</span></label>
+                            <input type="text" id="manFirstName" name="first_name" class="control-pro" required onblur="validateFirstName()">
+                            <div class="field-error-msg" id="error-manFirstName"></div>
+                        </div>
+                        <div class="form-group-pro">
+                            <label>Middle Name</label>
+                            <input type="text" id="manMiddleName" name="middle_name" class="control-pro">
+                        </div>
+                        <div class="form-group-pro">
+                            <label>Last Name <span style="color: #ef4444;">*</span></label>
+                            <input type="text" id="manLastName" name="last_name" class="control-pro" required onblur="validateLastName()">
+                            <div class="field-error-msg" id="error-manLastName"></div>
+                        </div>
+                        <div class="form-group-pro" style="grid-column: span 2;">
+                            <label>Email Address <span style="color: #ef4444;">*</span></label>
+                            <input type="email" id="manCustEmail" name="customer_email" class="control-pro" required onblur="validateEmail()">
+                            <div class="field-error-msg" id="error-manCustEmail"></div>
+                        </div>
+                        <div class="form-group-pro">
+                            <label>Contact Number (PH) <span style="color: #ef4444;">*</span></label>
+                            <input type="text" id="manCustContact" name="customer_contact" class="control-pro" required onblur="validateContact()">
+                            <div class="field-error-msg" id="error-manCustContact"></div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Financial Breakdown Card -->
-                <div class="pricing-breakdown-card">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-                        <div>
-                            <div id="roiPreviewLabel" class="roi-preview-pill" style="display: none;">
-                                <i class="fas fa-chart-line"></i> Calculating Profit...
-                            </div>
-                            <button type="button" id="btnQuickQuote" onclick="getQuickQuotation()" class="btn-secondary-pro" style="display: none; padding: 4px 10px; font-size: 0.65rem; background: #e2e8f0; margin-top: 5px;">View ROI Breakdown</button>
+                <!-- EVENT INFORMATION SECTION -->
+                <div style="margin-bottom: 2rem;">
+                    <h4 style="font-size: 0.9rem; font-weight: 700; text-transform: uppercase; color: #1f2937; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 2px solid var(--caterer-primary);">
+                        <i class="fas fa-calendar"></i> Event Details
+                    </h4>
+                    <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem;">
+                        <div class="form-group-pro" style="grid-column: span 2;">
+                            <label>Event Name <span style="color: #ef4444;">*</span></label>
+                            <input type="text" id="manEventName" name="event_name" class="control-pro" required onblur="validateEventName()">
+                            <div class="field-error-msg" id="error-manEventName"></div>
                         </div>
-                        <div class="total-amount-display">
-                            <span>Contract Amount</span>
-                            <div id="displayTotal">₱0.00</div>
-                            <input type="hidden" id="manAmount" name="total_amount">
+                        <div class="form-group-pro">
+                            <label>Event Type <span style="color: #ef4444;">*</span></label>
+                            <select id="manEventType" class="control-pro" required onchange="toggleOtherEventType(); validateEventType()">
+                                <option value="" disabled selected>Select Type</option>
+                                <option value="Wedding">Wedding</option>
+                                <option value="Birthday">Birthday</option>
+                                <option value="Corporate">Corporate</option>
+                                <option value="Private Party">Private Party</option>
+                                <option value="Other">Other</option>
+                            </select>
+                            <div class="field-error-msg" id="error-manEventType"></div>
+                        </div>
+                        <div id="otherEventTypeDiv" class="form-group-pro" style="display: none; grid-column: span 3;">
+                            <label>Specify Event Type <span style="color: #ef4444;">*</span></label>
+                            <input type="text" id="manOtherType" class="control-pro" onblur="validateOtherType()">
+                            <div class="field-error-msg" id="error-manOtherType"></div>
+                        </div>
+                        <div class="form-group-pro">
+                            <label>Event Date <span style="color: #ef4444;">*</span></label>
+                            <input type="date" id="manDate" name="event_date" class="control-pro" required min="{{ current_date.strftime('%Y-%m-%d') }}" onchange="validateEventDate(); checkDateConflict(this.value)">
+                            <div class="field-error-msg" id="error-manDate"></div>
+                        </div>
+                        <div class="form-group-pro">
+                            <label>Call Time <span style="color: #ef4444;">*</span></label>
+                            <input type="time" id="manTime" class="control-pro" required onblur="validateEventTime()">
+                            <div class="field-error-msg" id="error-manTime"></div>
+                        </div>
+                        <div class="form-group-pro">
+                            <label>Guest Count <span style="color: #ef4444;">*</span></label>
+                            <input type="number" id="manGuests" name="guest_count" class="control-pro" required min="1" onblur="validateGuestCount()">
+                            <div class="field-error-msg" id="error-manGuests"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VENUE INFORMATION SECTION -->
+                <div style="margin-bottom: 2rem;">
+                    <h4 style="font-size: 0.9rem; font-weight: 700; text-transform: uppercase; color: #1f2937; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 2px solid var(--caterer-primary);">
+                        <i class="fas fa-map-pin"></i> Venue Location
+                    </h4>
+                    <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem;">
+                        <div class="form-group-pro">
+                            <label>Province <span style="color: #ef4444;">*</span></label>
+                            <select id="manProvince" class="control-pro" required onchange="validateProvince()">
+                                <option value="" disabled selected>Select Province</option>
+                            </select>
+                            <input type="hidden" id="manProvinceText" name="province">
+                            <div class="field-error-msg" id="error-manProvince"></div>
+                        </div>
+                        <div class="form-group-pro">
+                            <label>Municipality / City <span style="color: #ef4444;">*</span></label>
+                            <select id="manMunicipality" class="control-pro" required onchange="validateMunicipality()">
+                                <option value="" disabled selected>Municipality / City</option>
+                            </select>
+                            <input type="hidden" id="manMunicipalityText" name="municipality">
+                            <div class="field-error-msg" id="error-manMunicipality"></div>
+                        </div>
+                        <div class="form-group-pro">
+                            <label>Barangay <span style="color: #ef4444;">*</span></label>
+                            <select id="manBarangay" class="control-pro" required onchange="validateBarangay()">
+                                <option value="" disabled selected>Barangay</option>
+                            </select>
+                            <input type="hidden" id="manBarangayText" name="barangay">
+                            <div class="field-error-msg" id="error-manBarangay"></div>
+                        </div>
+                        <div class="form-group-pro" style="grid-column: span 3;">
+                            <label>Street / Building / Landmark</label>
+                            <input type="text" id="manLandmark" name="landmark" class="control-pro" placeholder="e.g., 123 Main St, ABC Building">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SERVICE PACKAGE SECTION -->
+                <div style="margin-bottom: 2rem;">
+                    <h4 style="font-size: 0.9rem; font-weight: 700; text-transform: uppercase; color: #1f2937; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 2px solid var(--caterer-primary);">
+                        <i class="fas fa-utensils"></i> Catering Package
+                    </h4>
+                    <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr; gap: 1.25rem;">
+                        <div class="form-group-pro">
+                            <label>Select Package <span style="color: #ef4444;">*</span></label>
+                            <select id="manPackage" class="control-pro" required onchange="recalculateTotal(); validatePackage()">
+                                <option value="" data-price="0">Custom Selection (No Base Package)</option>
+                                {% for pkg in packages %}
+                                <option value="{{ pkg.id }}" data-price="{{ pkg.price or 0 }}" data-min="{{ pkg.min_pax or 1 }}" data-unit="{{ pkg.price_unit or 'fixed' }}">
+                                    {{ pkg.name }} — ₱{{ '{:,.0f}'.format(pkg.price or 0) }} / {{ pkg.price_unit or 'fixed' }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="field-error-msg" id="error-manPackage"></div>
+                        </div>
+                        <div class="form-group-pro">
+                            <label>Special Notes & Instructions</label>
+                            <textarea id="manSpecialNotes" name="special_notes" class="control-pro" rows="3" placeholder="E.g., require chafing dishes, setup instructions, special dietary needs..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PAYMENT SECTION -->
+                <div style="margin-bottom: 2rem;">
+                    <h4 style="font-size: 0.9rem; font-weight: 700; text-transform: uppercase; color: #1f2937; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 2px solid var(--caterer-primary);">
+                        <i class="fas fa-credit-card"></i> Payment Details
+                    </h4>
+                    <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
+                        <div class="form-group-pro">
+                            <label>Payment Method <span style="color: #ef4444;">*</span></label>
+                            <select id="manPaymentMethod" class="control-pro" required>
+                                <option value="Cash">Cash on Delivery</option>
+                                <option value="GCash">GCash / Maya</option>
+                                <option value="Bank Transfer">Bank Transfer</option>
+                            </select>
+                        </div>
+                        <div class="form-group-pro">
+                            <label>Payment Status <span style="color: #ef4444;">*</span></label>
+                            <select id="manPaymentStatus" class="control-pro" required>
+                                <option value="pending">Unpaid (Pending)</option>
+                                <option value="deposit_paid">Deposit Paid (50%)</option>
+                                <option value="paid" selected>Fully Paid</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Financial Summary -->
+                    <div style="background: linear-gradient(135deg, var(--caterer-primary-light) 0%, transparent 100%); border: 1px solid var(--caterer-primary); border-radius: 12px; padding: 1.5rem; margin-top: 1.5rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div id="roiPreviewLabel" class="roi-preview-pill" style="display: none; background: rgba(59, 130, 246, 0.1); color: var(--caterer-primary);">
+                                    <i class="fas fa-chart-line"></i> Profit: <strong id="profitAmount">---</strong>
+                                </div>
+                                <button type="button" id="btnQuickQuote" onclick="getQuickQuotation()" class="btn-secondary-pro" style="display: none; margin-top: 0.5rem;">
+                                    <i class="fas fa-eye"></i> View Cost Breakdown
+                                </button>
+                            </div>
+                            <div style="text-align: right;">
+                                <small style="color: #6b7280; font-weight: 600; text-transform: uppercase;">Contract Amount</small>
+                                <div style="font-size: 2rem; font-weight: 900; color: var(--caterer-primary);">
+                                    <span id="displayTotal">₱0.00</span>
+                                </div>
+                                <input type="hidden" id="manAmount" name="total_amount">
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-            
-            <div class="occ-modal-footer" style="padding: 1.25rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
-                <button type="button" onclick="closeModal('manualBookingModal')" class="btn-secondary-pro" style="background: #e2e8f0; color: #475569; border: none;">Cancel</button>
-                <button type="submit" id="btnSubmitManual" class="btn-primary-pro">Verify & Create Booking</button>
+
+            <div class="occ-modal-footer">
+                <button type="button" onclick="closeModal('manualBookingModal')" class="btn-secondary-pro">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="submit" id="btnSubmitManual" class="btn-primary-pro">
+                    <i class="fas fa-check"></i> Create Booking
+                </button>
             </div>
         </form>
     </div>
@@ -306,22 +524,22 @@
 <!-- SMART ROI BREAKDOWN MODAL -->
 <div id="roiBreakdownModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-md occ-content-pop">
-        <div class="occ-modal-header colored-header" style="background: #0f172a;">
+        <div class="occ-modal-header colored-header">
             <div>
-                <h3 class="occ-modal-title"><i class="fas fa-shield-alt" style="color: #10b981; margin-right: 8px;"></i> Profit Analysis</h3>
+                <h3 class="occ-modal-title"><i class="fas fa-chart-pie"></i> Cost Breakdown & Profit</h3>
                 <div id="roiBreakdownSubtitle" class="occ-modal-subtitle">Package: ---</div>
             </div>
             <button onclick="closeRoiBreakdown()" class="occ-modal-close"><i class="fas fa-times"></i></button>
         </div>
         <div class="compact-body">
             <div class="cal-roi-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
-                <div style="background: #f0f9ff; padding: 1.25rem; border-radius: 12px; border: 1px solid #e0f2fe;">
-                    <span style="font-size: 0.7rem; font-weight: 800; color: #0ea5e9; text-transform: uppercase;">Raw Food Cost</span>
-                    <div id="breakdownTotalCost" style="font-size: 1.25rem; font-weight: 900; color: #0369a1;">₱0.00</div>
+                <div style="background: #dbeafe; padding: 1.25rem; border-radius: 12px; border: 1px solid #bfdbfe;">
+                    <span style="font-size: 0.7rem; font-weight: 800; color: #1e40af; text-transform: uppercase;">Total Food Cost</span>
+                    <div id="breakdownTotalCost" style="font-size: 1.5rem; font-weight: 900; color: #1e40af;">₱0.00</div>
                 </div>
-                <div style="background: #f0fdf4; padding: 1.25rem; border-radius: 12px; border: 1px solid #dcfce7;">
-                    <span style="font-size: 0.7rem; font-weight: 800; color: #10b981; text-transform: uppercase;">Net Profit</span>
-                    <div id="breakdownRoi" style="font-size: 1.25rem; font-weight: 900; color: #15803d;">₱0.00</div>
+                <div style="background: #dcfce7; padding: 1.25rem; border-radius: 12px; border: 1px solid #bbf7d0;">
+                    <span style="font-size: 0.7rem; font-weight: 800; color: #15803d; text-transform: uppercase;">Net Profit</span>
+                    <div id="breakdownRoi" style="font-size: 1.5rem; font-weight: 900; color: #15803d;">₱0.00</div>
                 </div>
             </div>
 
@@ -330,13 +548,13 @@
                 <!-- Injected via JS -->
             </div>
         </div>
-        <div class="occ-modal-footer" style="background: #0f172a; border-top: none; padding: 1.5rem; border-radius: 0 0 1.25rem 1.25rem;">
+        <div class="occ-modal-footer" style="background: #f9fafb; padding: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                 <div>
-                    <span style="color: rgba(255,255,255,0.6); font-size: 0.7rem; font-weight: 800; text-transform: uppercase;">Recommended Price</span>
-                    <div id="breakdownTotalPrice" style="font-size: 1.5rem; font-weight: 900; color: #10b981;">₱0.00</div>
+                    <span style="color: #6b7280; font-size: 0.7rem; font-weight: 800; text-transform: uppercase;">Total Contract Price</span>
+                    <div id="breakdownTotalPrice" style="font-size: 1.75rem; font-weight: 900; color: var(--caterer-primary);">₱0.00</div>
                 </div>
-                <button onclick="closeRoiBreakdown()" class="btn-primary-pro" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);">Close Audit</button>
+                <button onclick="closeRoiBreakdown()" class="btn-primary-pro">Close</button>
             </div>
         </div>
     </div>
@@ -345,23 +563,25 @@
 <!-- BLOCKED DATE MODAL -->
 <div id="blockedDateModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-sm occ-content-pop">
-        <div class="occ-modal-header colored-header" style="background: #ef4444;">
+        <div class="occ-modal-header colored-header" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
             <div>
-                <h3 class="occ-modal-title"><i class="fas fa-ban" style="margin-right: 8px;"></i> Blocked Date</h3>
-                <div class="occ-modal-subtitle">This date is restricted from online bookings.</div>
+                <h3 class="occ-modal-title"><i class="fas fa-ban" style="margin-right: 8px;"></i> Date Unavailable</h3>
+                <div class="occ-modal-subtitle">This date is not accepting new bookings</div>
             </div>
             <button onclick="closeModal('blockedDateModal')" class="occ-modal-close"><i class="fas fa-times"></i></button>
         </div>
         <div class="compact-body">
-            <div style="background: #fff5f5; border: 1px solid #fee2e2; padding: 1.25rem; border-radius: 12px;">
-                <div style="font-size: 0.7rem; font-weight: 800; color: #ef4444; text-transform: uppercase; margin-bottom: 0.5rem;">Reason for block</div>
-                <div id="detBlockedReason" style="font-weight: 700; color: #991b1b;">Maintenance or Full Capacity</div>
-                <div id="detBlockedDate" style="font-size: 0.8rem; color: #b91c1c; margin-top: 4px;">--</div>
+            <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 1.25rem; border-radius: 10px;">
+                <div style="font-size: 0.75rem; font-weight: 700; color: #ef4444; text-transform: uppercase; margin-bottom: 0.5rem;">Reason for Block</div>
+                <div id="detBlockedReason" style="font-weight: 700; color: #991b1b; font-size: 0.95rem;">Not available</div>
+                <div id="detBlockedDate" style="font-size: 0.85rem; color: #b91c1c; margin-top: 8px;">---</div>
             </div>
         </div>
-        <div class="occ-modal-footer" style="padding: 1.25rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
-            <button onclick="unblockSelectedDate()" class="btn-secondary-pro" style="background: #fee2e2; color: #ef4444; border: none;">Unblock This Date</button>
-            <button onclick="closeModal('blockedDateModal')" class="btn-primary-pro" style="background: #1e293b;">Close</button>
+        <div class="occ-modal-footer">
+            <button onclick="unblockSelectedDate()" class="btn-secondary-pro" style="background: #fef2f2; color: #ef4444; border: 1px solid #fecaca;">
+                <i class="fas fa-unlock"></i> Unblock This Date
+            </button>
+            <button onclick="closeModal('blockedDateModal')" class="btn-primary-pro">Close</button>
         </div>
     </div>
 </div>
@@ -371,5 +591,5 @@
 {% block extra_js %}
 <!-- FullCalendar JS -->
 <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js'></script>
-<script src="{{ url_for('static', path='/js/caterer/calendar.js') }}?v=6"></script>
+<script src="{{ url_for('static', path='/js/caterer/calendar.js') }}?v=13"></script>
 {% endblock %}
