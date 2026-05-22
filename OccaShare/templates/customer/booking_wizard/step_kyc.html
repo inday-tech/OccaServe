@@ -495,6 +495,11 @@
         background: #fff;
         box-shadow: 0 0 0 3px var(--kyc-accent-soft);
     }
+    .ocr-field-content input.not-detected {
+        color: #94a3b8;
+        font-style: italic;
+        font-weight: 600;
+    }
     .ocr-confidence-bar {
         margin: 0.5rem 0 1rem;
         display: flex;
@@ -901,41 +906,8 @@
                             <span class="bar-label" id="ocr-confidence-pct">0%</span>
                         </div>
 
-                        <div class="ocr-field-row">
-                            <div class="ocr-field-icon"><i class="fas fa-user"></i></div>
-                            <div class="ocr-field-content">
-                                <label>Full Name</label>
-                                <input type="text" id="ocr-full-name" placeholder="—">
-                            </div>
-                        </div>
-                        <div class="ocr-field-row">
-                            <div class="ocr-field-icon"><i class="fas fa-hashtag"></i></div>
-                            <div class="ocr-field-content">
-                                <label>ID Number</label>
-                                <input type="text" id="ocr-id-number" placeholder="—">
-                            </div>
-                        </div>
-                        <div class="ocr-field-row">
-                            <div class="ocr-field-icon"><i class="fas fa-calendar"></i></div>
-                            <div class="ocr-field-content">
-                                <label>Date of Birth</label>
-                                <input type="text" id="ocr-dob" placeholder="—">
-                            </div>
-                        </div>
-                        <div class="ocr-field-row">
-                            <div class="ocr-field-icon"><i class="fas fa-map-marker-alt"></i></div>
-                            <div class="ocr-field-content">
-                                <label>Address</label>
-                                <input type="text" id="ocr-address" placeholder="—">
-                            </div>
-                        </div>
-                        <div class="ocr-field-row">
-                            <div class="ocr-field-icon"><i class="fas fa-venus-mars"></i></div>
-                            <div class="ocr-field-content">
-                                <label>Sex</label>
-                                <input type="text" id="ocr-sex" placeholder="—">
-                            </div>
-                        </div>
+                        <!-- Dynamic fields will be injected here by step_kyc.js -->
+                        <div id="ocr-dynamic-fields-container"></div>
                     </div>
                     <div class="ocr-modal-footer">
                         <button type="button" class="btn-modal-secondary" onclick="cancelOcrModal()"><i class="fas fa-redo-alt" style="margin-right:0.4rem;"></i> Rescan</button>

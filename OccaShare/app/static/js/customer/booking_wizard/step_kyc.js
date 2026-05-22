@@ -411,24 +411,103 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ─── OCR VERIFICATION MODAL ────────────────────────────────────────
+    const ID_TYPE_CONFIG = {
+        "PhilID (National ID)": [
+            { key: "id_number", label: "ID Number", icon: "fa-hashtag" },
+            { key: "last_name", label: "Last Name", icon: "fa-user" },
+            { key: "given_names", label: "Given Names", icon: "fa-user" },
+            { key: "middle_name", label: "Middle Name", icon: "fa-user" },
+            { key: "date_of_birth", label: "Date of Birth", icon: "fa-calendar" },
+            { key: "address", label: "Address", icon: "fa-map-marker-alt" }
+        ],
+        "Driver's License": [
+            { key: "last_name", label: "Last Name", icon: "fa-user" },
+            { key: "first_name", label: "First Name", icon: "fa-user" },
+            { key: "middle_name", label: "Middle Name", icon: "fa-user" },
+            { key: "nationality", label: "Nationality", icon: "fa-flag" },
+            { key: "sex", label: "Sex", icon: "fa-venus-mars" },
+            { key: "date_of_birth", label: "Date of Birth", icon: "fa-calendar" },
+            { key: "weight", label: "Weight", icon: "fa-weight" },
+            { key: "height", label: "Height", icon: "fa-arrows-alt-v" },
+            { key: "address", label: "Address", icon: "fa-map-marker-alt" },
+            { key: "license_number", label: "License No.", icon: "fa-hashtag" },
+            { key: "expiration_date", label: "Expiration Date", icon: "fa-calendar-times" },
+            { key: "agency_code", label: "Agency Code", icon: "fa-building" },
+            { key: "blood_type", label: "Blood Type", icon: "fa-tint" },
+            { key: "eyes_color", label: "Eyes Color", icon: "fa-eye" },
+            { key: "restrictions", label: "Restrictions", icon: "fa-exclamation-triangle" },
+            { key: "conditions", label: "Conditions", icon: "fa-notes-medical" }
+        ],
+        "Passport": [
+            { key: "type", label: "Type", icon: "fa-passport" },
+            { key: "country_code", label: "Country Code", icon: "fa-globe" },
+            { key: "passport_number", label: "Passport No.", icon: "fa-hashtag" },
+            { key: "last_name", label: "Last Name", icon: "fa-user" },
+            { key: "given_names", label: "Given Names", icon: "fa-user" },
+            { key: "middle_name", label: "Middle Name", icon: "fa-user" },
+            { key: "date_of_birth", label: "Date of Birth", icon: "fa-calendar" },
+            { key: "nationality", label: "Nationality", icon: "fa-flag" },
+            { key: "sex", label: "Sex", icon: "fa-venus-mars" },
+            { key: "place_of_birth", label: "Place of Birth", icon: "fa-map-marker-alt" },
+            { key: "date_of_issue", label: "Date of Issue", icon: "fa-calendar-check" },
+            { key: "visa_until", label: "Visa Until", icon: "fa-calendar-times" },
+            { key: "issuing_authority", label: "Issuing Authority", icon: "fa-building" }
+        ]
+    };
+
     function showOcrModal(data) {
         document.getElementById('ocr-loading').style.display = 'none';
 
         // Populate fields from extracted data
         const fields = data.fields || data || {};
-        document.getElementById('ocr-full-name').value = data.full_name || fields.full_name || '';
-        document.getElementById('ocr-id-number').value = data.id_number || fields.id_number || fields.pcn_number || fields.license_number || fields.passport_number || '';
-        document.getElementById('ocr-dob').value = data.birth_date || fields.date_of_birth || '';
-        document.getElementById('ocr-address').value = data.address || fields.address || '';
-        document.getElementById('ocr-sex').value = fields.sex || '';
+        
+        // Detect ID Type
+        const idType = document.getElementById('id_type').value || data.document_type_detected || "PhilID (National ID)";
+        const configFields = ID_TYPE_CONFIG[idType] || ID_TYPE_CONFIG["PhilID (National ID)"];
 
         // Set confidence bar
         const confidence = Math.round((data.confidence_score || fields.confidence_score || 0) * 100);
         document.getElementById('ocr-confidence-fill').style.width = confidence + '%';
         document.getElementById('ocr-confidence-pct').innerText = confidence + '%';
 
+        // Render dynamic fields
+        const container = document.getElementById('ocr-dynamic-fields-container');
+        container.innerHTML = ''; // Clear existing
+        
+        configFields.forEach(field => {
+            const rawVal = fields[field.key] || data[field.key];
+            const val = rawVal && String(rawVal).trim() ? String(rawVal).trim() : '';
+            
+            // Map common fallbacks if exact key isn't found
+            let finalVal = val;
+            if (!finalVal) {
+                if (field.key === 'id_number' || field.key === 'license_number' || field.key === 'passport_number') {
+                    finalVal = fields.id_number || fields.pcn_number || fields.license_number || fields.passport_number || '';
+                } else if (field.key === 'date_of_birth') {
+                    finalVal = fields.date_of_birth || data.birth_date || fields.extracted_dob || '';
+                } else if (field.key === 'given_names' || field.key === 'first_name') {
+                    finalVal = fields.given_names || fields.first_name || data.first_name || '';
+                } else if (field.key === 'last_name') {
+                    finalVal = fields.last_name || data.last_name || '';
+                } else if (field.key === 'middle_name') {
+                    finalVal = fields.middle_name || data.middle_name || '';
+                }
+            }
+
+            const row = document.createElement('div');
+            row.className = 'ocr-field-row';
+            row.innerHTML = `
+                <div class="ocr-field-icon"><i class="fas ${field.icon}"></i></div>
+                <div class="ocr-field-content">
+                    <label>${field.label}</label>
+                    <input type="text" id="ocr-dynamic-${field.key}" value="${finalVal}" placeholder="${finalVal ? '' : 'NOT DETECTED'}" readonly class="${finalVal ? '' : 'not-detected'}">
+                </div>
+            `;
+            container.appendChild(row);
+        });
+
         // Also pre-fill the hidden id_number field if OCR found one
-        const ocrIdNum = data.id_number || fields.id_number || '';
+        const ocrIdNum = data.id_number || fields.id_number || fields.pcn_number || fields.license_number || fields.passport_number || '';
         if (ocrIdNum && !document.getElementById('id_number').value.trim()) {
             document.getElementById('id_number').value = ocrIdNum;
         }
@@ -457,18 +536,29 @@ document.addEventListener('DOMContentLoaded', function () {
         modal.classList.remove('visible');
         setTimeout(() => { modal.style.display = 'none'; }, 350);
 
-        // Get reviewed/edited values from modal
-        const reviewedName = document.getElementById('ocr-full-name').value.trim();
-        const reviewedIdNumber = document.getElementById('ocr-id-number').value.trim() || document.getElementById('id_number').value.trim();
-        const reviewedDob = document.getElementById('ocr-dob').value.trim();
-        const reviewedAddress = document.getElementById('ocr-address').value.trim();
+        // Get reviewed/edited values from dynamic modal inputs
+        const idType = document.getElementById('id_type').value || "PhilID (National ID)";
+        const configFields = ID_TYPE_CONFIG[idType] || ID_TYPE_CONFIG["PhilID (National ID)"];
+        
+        let extracted = {};
+        configFields.forEach(field => {
+            const el = document.getElementById(`ocr-dynamic-${field.key}`);
+            if (el) {
+                extracted[field.key] = el.value.trim();
+            }
+        });
 
-        // Update hidden form fields with reviewed data
-        if (reviewedName) {
-            const nameParts = reviewedName.split(' ');
-            document.getElementById('first_name').value = nameParts[0] || '';
-            document.getElementById('last_name').value = nameParts[nameParts.length - 1] || '';
-        }
+        // Update standard hidden form fields with extracted data
+        const reviewedFirstName = extracted['given_names'] || extracted['first_name'] || '';
+        const reviewedLastName = extracted['last_name'] || '';
+        const reviewedMiddleName = extracted['middle_name'] || '';
+        const reviewedIdNumber = extracted['id_number'] || extracted['license_number'] || extracted['passport_number'] || document.getElementById('id_number').value.trim();
+        const reviewedDob = extracted['date_of_birth'] || '';
+        const reviewedAddress = extracted['address'] || '';
+
+        if (reviewedFirstName) document.getElementById('first_name').value = reviewedFirstName;
+        if (reviewedLastName) document.getElementById('last_name').value = reviewedLastName;
+        if (reviewedMiddleName) document.getElementById('middle_name').value = reviewedMiddleName;
         if (reviewedIdNumber) document.getElementById('id_number').value = reviewedIdNumber;
         if (reviewedDob) document.getElementById('dob').value = reviewedDob;
         if (reviewedAddress) document.getElementById('address').value = reviewedAddress;
