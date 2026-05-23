@@ -47,6 +47,23 @@ except ImportError:
     MEDIAPIPE_AVAILABLE = False
     mp = None
 
+# EasyOCR (primary OCR engine - free, no API key needed, deep learning based)
+try:
+    import easyocr
+    EASYOCR_AVAILABLE = True
+    # Singleton reader - initialized once at module load, reused for all requests
+    # gpu=False for compatibility; set gpu=True if CUDA is available
+    _easyocr_reader = easyocr.Reader(['en'], gpu=False, verbose=False)
+    print("[KYC DEBUG] EasyOCR initialized successfully (English).")
+except ImportError:
+    print("[KYC WARNING] EasyOCR not available. Install with: pip install easyocr")
+    EASYOCR_AVAILABLE = False
+    _easyocr_reader = None
+except Exception as _easyocr_err:
+    print(f"[KYC WARNING] EasyOCR init failed: {_easyocr_err}")
+    EASYOCR_AVAILABLE = False
+    _easyocr_reader = None
+
 # Configure Tesseract Path for Windows and Linux
 if PYTESSERACT_AVAILABLE:
     if os.name != "nt":  # Linux (Railway)
@@ -893,6 +910,93 @@ class VerificationService:
         text, _parsed, _word_data = self._run_tesseract_advanced(image, id_type)
         return text
 
+    # ── EasyOCR Methods ──────────────────────────────────────────────────────────
+
+    def _run_easyocr(self, image: np.ndarray, id_type: str = "Unknown") -> Tuple[str, List[Dict]]:
+        """Run EasyOCR on an image. Returns (text, word_data) matching Tesseract format."""
+        if not EASYOCR_AVAILABLE or _easyocr_reader is None:
+            return "", []
+        
+        try:
+            # EasyOCR accepts numpy arrays directly (BGR or grayscale)
+            results = _easyocr_reader.readtext(image, detail=1, paragraph=False)
+            
+            # Sort by vertical position (top-to-bottom), then horizontal (left-to-right)
+            results.sort(key=lambda r: (r[0][0][1], r[0][0][0]))
+            
+            text_parts = []
+            word_data = []
+            
+            for (bbox, text, conf) in results:
+                clean_text = text.strip()
+                if clean_text and conf > 0.15:  # Low threshold to catch faint text on IDs
+                    text_parts.append(clean_text)
+                    word_data.append({
+                        "word": clean_text,
+                        "conf": int(conf * 100),
+                        "bbox": bbox  # [[x1,y1],[x2,y2],[x3,y3],[x4,y4]]
+                    })
+            
+            full_text = " ".join(text_parts)
+            print(f"[KYC DEBUG] EasyOCR: Extracted {len(full_text)} chars, {len(word_data)} words for {id_type}")
+            return full_text, word_data
+        except Exception as e:
+            print(f"[KYC ERROR] EasyOCR failed: {e}")
+            return "", []
+
+    def _run_ocr_pipeline(self, image: np.ndarray, id_type: str) -> Tuple[str, Dict[str, Any], List[Dict]]:
+        """
+        Unified OCR Pipeline: EasyOCR (primary) -> Tesseract (fallback).
+        Uses OpenCV preprocessing passes to maximize extraction quality.
+        Returns (raw_text, parsed_fields_dict, word_data).
+        """
+        text = ""
+        word_data = []
+        parsed = {"_all_not_detected": True}
+        
+        if EASYOCR_AVAILABLE and _easyocr_reader is not None:
+            # Pass 1: Standard preprocessing + EasyOCR
+            if CV2_AVAILABLE:
+                preprocessed = self._preprocess_for_ocr_advanced(image, aggressive=False)
+                text, word_data = self._run_easyocr(preprocessed, id_type)
+                parsed = self._parse_ocr_fields_advanced(text, word_data, id_type)
+                print(f"[KYC DEBUG] EasyOCR Pass 1 (preprocessed): {len(text)} chars, all_not_detected={parsed.get('_all_not_detected')}")
+            
+            # Pass 1b: Also try on original (unprocessed) image - sometimes works better for high-res photos
+            if parsed.get("_all_not_detected", True) or len(text.strip()) < 30:
+                text_raw, wd_raw = self._run_easyocr(image, id_type)
+                parsed_raw = self._parse_ocr_fields_advanced(text_raw, wd_raw, id_type)
+                print(f"[KYC DEBUG] EasyOCR Pass 1b (raw): {len(text_raw)} chars, all_not_detected={parsed_raw.get('_all_not_detected')}")
+                if not parsed_raw.get("_all_not_detected", True) or len(text_raw) > len(text):
+                    text, word_data, parsed = text_raw, wd_raw, parsed_raw
+            
+            # Pass 2: Aggressive preprocessing + EasyOCR (for low-quality images)
+            if CV2_AVAILABLE and (parsed.get("_all_not_detected", True) or len(text.strip()) < 50):
+                print("[KYC DEBUG] EasyOCR Pass 1 insufficient. Retrying with aggressive preprocessing...")
+                preprocessed_agg = self._preprocess_for_ocr_advanced(image, aggressive=True)
+                text_agg, wd_agg = self._run_easyocr(preprocessed_agg, id_type)
+                parsed_agg = self._parse_ocr_fields_advanced(text_agg, wd_agg, id_type)
+                print(f"[KYC DEBUG] EasyOCR Pass 2 (aggressive): {len(text_agg)} chars, all_not_detected={parsed_agg.get('_all_not_detected')}")
+                if not parsed_agg.get("_all_not_detected", True) or len(text_agg) > len(text):
+                    text, word_data, parsed = text_agg, wd_agg, parsed_agg
+        
+        # Pass 3: Tesseract fallback (if EasyOCR failed completely or is unavailable)
+        if parsed.get("_all_not_detected", True) and PYTESSERACT_AVAILABLE:
+            print("[KYC DEBUG] EasyOCR insufficient. Falling back to Tesseract...")
+            text_tess, parsed_tess, wd_tess = self._run_tesseract_advanced(image, id_type)
+            if not parsed_tess.get("_all_not_detected", True) or len(text_tess) > len(text):
+                text, word_data, parsed = text_tess, wd_tess, parsed_tess
+                print(f"[KYC DEBUG] Tesseract fallback succeeded: {len(text_tess)} chars")
+        
+        return text, parsed, word_data
+
+    def _calc_overall_confidence(self, word_data: List[Dict]) -> float:
+        """Calculate average confidence score from word-level OCR data (0.0 to 1.0)."""
+        if not word_data:
+            return 0.0
+        confs = [w["conf"] for w in word_data if "conf" in w]
+        return round(sum(confs) / len(confs) / 100, 2) if confs else 0.0
+
     def _extract_rich_ocr_data(self, ocr_text: str, detected_id_type: str = "Unknown") -> Dict[str, Any]:
         """Extracts structured data from raw OCR text.
         Detects ID type from OCR text if not provided, then parses fields.
@@ -1212,12 +1316,17 @@ class VerificationService:
                 return {"status": "mismatched", "ocr_match": False, "pattern_valid": pattern_valid,
                         "failure_reason": quality_check["reason"]}
             
-            # 4. Perform OCR via Gemini API (if key available) or fallback to Tesseract
-            gemini_data = None
-            gemini_prompt = self._get_id_type_ocr_prompt(id_type)
-            gemini_data = await self._call_gemini_ocr(id_path, gemini_prompt)
+            # 4. Perform OCR via unified EasyOCR -> Tesseract pipeline
+            ocr_text, parsed, word_data = self._run_ocr_pipeline(id_img, id_type)
             
-            structured_ocr = None  # Will hold the new structured format
+            # Fallback to Gemini if OCR pipeline failed completely and Gemini key is available
+            gemini_data = None
+            if (not ocr_text or not ocr_text.strip() or self._is_ocr_garbage(ocr_text)) and os.getenv("GEMINI_API_KEY"):
+                print("[KYC DEBUG] EasyOCR/Tesseract failed or produced noise. Falling back to Gemini...")
+                gemini_prompt = self._get_id_type_ocr_prompt(id_type)
+                gemini_data = await self._call_gemini_ocr(id_path, gemini_prompt)
+            
+            structured_ocr = None
             
             if gemini_data and isinstance(gemini_data, dict) and any(gemini_data.values()):
                 print(f"[KYC DEBUG] Gemini OCR Succeeded for ID type: {id_type}")
@@ -1238,19 +1347,23 @@ class VerificationService:
                     "id_number": structured_ocr.get("id_number", "") or id_number,
                     "extracted_dob": gemini_data.get("date_of_birth", ""),
                     "extracted_expiry": gemini_data.get("expiry_date", ""),
-                    "extracted_address": gemini_data.get("address", "")
+                    "extracted_address": gemini_data.get("address", ""),
+                    "first_name": gemini_data.get("first_name", ""),
+                    "last_name": gemini_data.get("last_name", ""),
+                    "middle_name": gemini_data.get("middle_name", ""),
+                    "given_names": gemini_data.get("given_names", ""),
+                    "is_tampered": False
                 }
                 # Optimization: Trust Gemini for face visibility to save OpenCV processing time
                 has_face = gemini_data.get("face_visible", True)
                 id_faces = [1] if has_face else [] 
             else:
-                ocr_text = self._run_tesseract_multi_psm(id_img)
-                
+                # Normal path: EasyOCR / Tesseract pipeline
+                # Handle empty/garbage text for Demo mode if no Gemini key or Gemini failed
                 if not ocr_text or not ocr_text.strip() or self._is_ocr_garbage(ocr_text):
-                    print(f"[KYC WARNING] Tesseract failed to parse text for ID.")
+                    print(f"[KYC WARNING] OCR pipeline failed to parse text for ID.")
                     if not os.getenv("GEMINI_API_KEY"):
                         print("[KYC DEBUG] Permitting empty OCR text for ID in Demo mode.")
-                        # Inject input into OCR text so the strict matching logic passes in demo mode
                         ocr_text = f"DEMO_BYPASS_MODE_TEXT {full_name} {id_number}"
                     else:
                         return {
@@ -1258,20 +1371,12 @@ class VerificationService:
                             "ocr_match": False,
                             "failure_reason": "❌ Unable to read the ID. Please upload a clearer image."
                         }
-
-                    
+                
                 clean_ocr_upper = ocr_text.upper()
                 
-                # 5. Legitimacy Check (LENIENT - accept if image quality is good OR if ID pattern is found)
-                def fuzzy_contains_id_keywords(text):
-                    if any(kw in text for kw in self.ID_LEGITIMACY_KEYWORDS):
-                        return True
-                    typo_tolerant_kws = ["PHILIPPINES", "REPUBLIC", "IDENTITY", "IDENTIFICATION", "PASSPORT", "LICENSE"]
-                    for kw in typo_tolerant_kws:
-                        if len(text) > 20:
-                            match = difflib.get_close_matches(kw, text.split(), n=1, cutoff=0.7)
-                            if match: return True
-                    return False
+                # Check for face
+                id_faces = self._detect_faces_detailed(id_img)
+                has_face = len(id_faces) > 0
                 
                 # Check if any ID number pattern exists in text (lenient legitimacy)
                 id_pattern_found = False
@@ -1286,41 +1391,61 @@ class VerificationService:
                         id_pattern_found = True
                         break
                 
-                id_faces = self._detect_faces_detailed(id_img)
-                has_face = len(id_faces) > 0
-                # RELAXED: Accept if keywords found OR face detected OR ID pattern found
+                # 5. Legitimacy Check (LENIENT - accept if image quality is good OR if ID pattern is found)
+                def fuzzy_contains_id_keywords(text):
+                    if any(kw in text for kw in self.ID_LEGITIMACY_KEYWORDS):
+                        return True
+                    typo_tolerant_kws = ["PHILIPPINES", "REPUBLIC", "IDENTITY", "IDENTIFICATION", "PASSPORT", "LICENSE"]
+                    for kw in typo_tolerant_kws:
+                        if len(text) > 20:
+                            match = difflib.get_close_matches(kw, text.split(), n=1, cutoff=0.7)
+                            if match: return True
+                    return False
+                
                 is_likely_id = (fuzzy_contains_id_keywords(clean_ocr_upper) or has_face or id_pattern_found) and len(clean_ocr_upper.strip()) > 10
                 
-                rich_data = self._extract_rich_ocr_data(ocr_text)
-                
-                # Build structured OCR for Tesseract fallback
-                tesseract_fields = {
-                    "full_name": rich_data.get("full_name", ""),
-                    "id_number": rich_data.get("id_number", ""),
-                    "date_of_birth": rich_data.get("extracted_dob", ""),
-                    "address": rich_data.get("extracted_address", ""),
-                    "sex": rich_data.get("sex", ""),
-                    "first_name": rich_data.get("first_name", ""),
-                    "last_name": rich_data.get("last_name", ""),
-                    "middle_name": rich_data.get("middle_name", ""),
-                    "given_names": rich_data.get("first_name", "")
+                rich_data = {
+                    "full_name": parsed.get("full_name") if parsed.get("full_name") not in ["NOT DETECTED", "LOW CONFIDENCE"] else "",
+                    "id_number": parsed.get("id_number") if parsed.get("id_number") not in ["NOT DETECTED", "LOW CONFIDENCE"] else "",
+                    "extracted_dob": parsed.get("date_of_birth") if parsed.get("date_of_birth") not in ["NOT DETECTED", "LOW CONFIDENCE"] else "",
+                    "extracted_address": parsed.get("address") if parsed.get("address") not in ["NOT DETECTED", "LOW CONFIDENCE"] else "",
+                    "extracted_expiry": parsed.get("visa_until") or parsed.get("expiration_date") or "",
+                    "first_name": parsed.get("first_name") or parsed.get("given_names", "") if parsed.get("first_name") not in ["NOT DETECTED", "LOW CONFIDENCE"] else "",
+                    "last_name": parsed.get("last_name") if parsed.get("last_name") not in ["NOT DETECTED", "LOW CONFIDENCE"] else "",
+                    "middle_name": parsed.get("middle_name") if parsed.get("middle_name") not in ["NOT DETECTED", "LOW CONFIDENCE"] else "",
+                    "given_names": parsed.get("given_names") or parsed.get("first_name", "") if parsed.get("given_names") not in ["NOT DETECTED", "LOW CONFIDENCE"] else "",
+                    "is_tampered": False
                 }
-                # For passport: attempt MRZ extraction
+                
+                # Build fields for structured_ocr
+                fields = {
+                    "full_name": parsed.get("full_name", ""),
+                    "id_number": parsed.get("id_number", ""),
+                    "date_of_birth": parsed.get("date_of_birth", ""),
+                    "address": parsed.get("address", ""),
+                    "sex": parsed.get("sex", ""),
+                    "first_name": parsed.get("first_name", ""),
+                    "last_name": parsed.get("last_name", ""),
+                    "middle_name": parsed.get("middle_name", ""),
+                    "given_names": parsed.get("given_names", "")
+                }
                 if id_type == "Passport":
                     mrz = self._extract_mrz_from_text(ocr_text)
-                    tesseract_fields.update(mrz)
+                    fields.update(mrz)
+                
+                method = "easyocr" if EASYOCR_AVAILABLE else "tesseract"
                 
                 structured_ocr = {
                     "id_type": id_type,
-                    "extraction_method": "tesseract",
+                    "extraction_method": method,
                     "document_type_detected": id_type,
-                    "confidence_score": 0.5,
+                    "confidence_score": self._calc_overall_confidence(word_data),
                     "face_visible": has_face,
-                    "fields": tesseract_fields,
-                    "full_name": tesseract_fields.get("full_name", ""),
-                    "id_number": tesseract_fields.get("id_number", ""),
-                    "birth_date": tesseract_fields.get("date_of_birth", ""),
-                    "address": tesseract_fields.get("address", "")
+                    "fields": fields,
+                    "full_name": fields.get("full_name", ""),
+                    "id_number": fields.get("id_number", ""),
+                    "birth_date": fields.get("date_of_birth", ""),
+                    "address": fields.get("address", "")
                 }
 
             
@@ -1520,46 +1645,40 @@ class VerificationService:
             return {"status": "error", "failure_reason": f"System Error during ID scan: {str(e)}"}
 
     async def extract_id_data(self, id_path: str, id_type: str) -> Dict[str, Any]:
-        """Extracts text from ID without performing validation against user input."""
+        """Extracts text from ID using EasyOCR + OpenCV pipeline (no validation)."""
         try:
             id_img = self._prepare_image(id_path)
             quality_check = self.check_image_quality(id_img)
             
-            gemini_prompt = self._get_id_type_ocr_prompt(id_type)
-            gemini_data = await self._call_gemini_ocr(id_path, gemini_prompt)
+            # Run unified OCR pipeline (EasyOCR primary → Tesseract fallback)
+            text, parsed, word_data = self._run_ocr_pipeline(id_img, id_type)
             
-            if gemini_data and isinstance(gemini_data, dict) and any(gemini_data.values()):
-                structured_ocr = self._build_structured_ocr_data(gemini_data, id_type, "gemini")
-            else:
-                ocr_text = self._run_tesseract_multi_psm(id_img)
-                rich_data = self._extract_rich_ocr_data(ocr_text)
-                tesseract_fields = {
-                    "full_name": rich_data.get("full_name", ""),
-                    "id_number": rich_data.get("id_number", ""),
-                    "date_of_birth": rich_data.get("extracted_dob", ""),
-                    "address": rich_data.get("extracted_address", ""),
-                    "sex": rich_data.get("sex", ""),
-                    "first_name": rich_data.get("first_name", ""),
-                    "last_name": rich_data.get("last_name", ""),
-                    "middle_name": rich_data.get("middle_name", ""),
-                    "given_names": rich_data.get("first_name", "")
-                }
-                structured_ocr = {
-                    "id_type": id_type,
-                    "extraction_method": "tesseract",
-                    "confidence_score": 0.5, # Default confidence for Tesseract
-                    "fields": tesseract_fields,
-                    "full_name": tesseract_fields.get("full_name", ""),
-                    "id_number": tesseract_fields.get("id_number", ""),
-                    "birth_date": tesseract_fields.get("date_of_birth", ""),
-                    "address": tesseract_fields.get("address", "")
-                }
+            # Build structured output compatible with frontend
+            fields = {k: v for k, v in parsed.items() if k != "_all_not_detected"}
             
-            return {
-                "success": True,
-                "data": structured_ocr,
-                "quality": quality_check
+            # Determine extraction method used
+            method = "easyocr" if EASYOCR_AVAILABLE else "tesseract"
+            
+            structured_ocr = {
+                "id_type": id_type,
+                "extraction_method": method,
+                "document_type_detected": id_type,
+                "confidence_score": self._calc_overall_confidence(word_data),
+                "face_visible": False,  # Face detection handled separately
+                "fields": fields,
+                # Backward-compatible flat keys
+                "full_name": parsed.get("full_name", ""),
+                "id_number": parsed.get("id_number") or parsed.get("license_number") or parsed.get("passport_number") or "",
+                "birth_date": parsed.get("date_of_birth", ""),
+                "address": parsed.get("address", "")
             }
+            
+            # If we have face detection capability, check for face
+            if CV2_AVAILABLE:
+                id_faces = self._detect_faces_detailed(id_img)
+                structured_ocr["face_visible"] = len(id_faces) > 0
+            
+            return {"success": True, "data": structured_ocr, "quality": quality_check}
         except Exception as e:
             traceback.print_exc()
             return {"success": False, "error": str(e)}
