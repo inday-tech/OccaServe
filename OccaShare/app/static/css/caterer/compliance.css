@@ -275,9 +275,9 @@
 
 .status-pending { background: var(--color-neutral-100); color: var(--color-neutral-700); border: 1px solid var(--color-neutral-200); }
 .status-processing { background: #eff6ff; color: #2563eb; border: 1px solid #dbeafe; }
-.status-manual_review { background: #fff7ed; color: #ea580c; border: 1px solid #ffedd5; }
+.status-manual_review, .status-pending_manual_review { background: #fff7ed; color: #ea580c; border: 1px solid #ffedd5; }
 .status-approved, .status-verified { background: #ecfdf5; color: #059669; border: 1px solid #d1fae5; }
-.status-rejected, .status-failed { background: #fef2f2; color: #dc2626; border: 1px solid #fee2e2; }
+.status-rejected, .status-failed, .status-liveliness_failed { background: #fef2f2; color: #dc2626; border: 1px solid #fee2e2; }
 
 /* ─── Action Button ─── */
 .btn-review-kyc {

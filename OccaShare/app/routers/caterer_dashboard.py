@@ -3665,7 +3665,7 @@ async def verify_customer_compliance(
         target_user.is_verified = True
         target_user.is_kyc_complete = True
         if kyc_record:
-            kyc_record.verification_status = "approved"
+            kyc_record.verification_status = "verified"
             kyc_record.verified_at = func.now()
         
         # Also update all bookings for this user with this caterer
@@ -3705,7 +3705,7 @@ async def verify_customer_compliance(
     try:
         await manager.broadcast_to_user(target_user.id, {
             "type": "kyc_update",
-            "status": "approved" if action == "approve" else "rejected",
+            "status": "verified" if action == "approve" else "rejected",
             "reason": reason if action == "reject" else None
         })
     except Exception as e:

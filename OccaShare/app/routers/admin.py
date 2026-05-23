@@ -1809,7 +1809,7 @@ async def view_kyc_queue(
 
     # 3. Fetch Verified History (Last 20 for history tab)
     recent_history = db.query(models.IdentityVerification).filter(
-        models.IdentityVerification.verification_status.in_(["approved", "rejected"])
+        models.IdentityVerification.verification_status.in_(["approved", "verified", "rejected"])
     ).order_by(models.IdentityVerification.created_at.desc()).limit(20).all()
 
     return templates.TemplateResponse("admin/kyc_logs.html", {
@@ -1876,6 +1876,8 @@ async def kyc_manual_action(
         db.add(kyc)
         db.flush()
     
+    old_status = kyc.verification_status
+    
     target_user = db.query(models.User).get(kyc.user_id)
     if not target_user:
         raise HTTPException(status_code=404, detail="Target user not found")
@@ -1883,7 +1885,7 @@ async def kyc_manual_action(
     full_name = f"{target_user.first_name} {target_user.last_name}"
     
     if action == "approve":
-        kyc.verification_status = "approved"
+        kyc.verification_status = "verified"
         kyc.failure_reason = None
         target_user.is_verified = True
         target_user.is_kyc_complete = True
@@ -1911,7 +1913,7 @@ async def kyc_manual_action(
     audit = models.AuditLog(
         user_id=target_user.id,
         action="manual_kyc_decision",
-        old_status="manual_review",
+        old_status=old_status,
         new_status=kyc.verification_status,
         notes=f"Admin {user.email}: {notes}"
     )
@@ -2675,7 +2677,7 @@ async def kyc_manual_action(
         return {"success": False, "message": "KYC record not found"}
         
     if action == "approve":
-        kyc.verification_status = "approved"
+        kyc.verification_status = "verified"
         target_user.is_verified = True
         target_user.status = "active"
         

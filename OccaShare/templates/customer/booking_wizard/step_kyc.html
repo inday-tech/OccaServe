@@ -733,23 +733,22 @@
         {% set kyc_status = user.identity_verification.verification_status if user.identity_verification else 'pending'
         %}
         <div class="kyc-stepper-minimal">
-            <div class="step-node {% if kyc_status == 'pending' or kyc_status == 'rejected' or kyc_status == 'failed' %}active{% elif user.identity_verification and user.identity_verification.document_url %}completed{% endif %}"
+            <div class="step-node {% if kyc_status in ['pending', 'rejected', 'failed', 'liveliness_failed'] %}active{% elif user.identity_verification and user.identity_verification.document_url %}completed{% endif %}"
                 id="node-1">
                 <div class="node-icon"><i class="fas fa-id-card"></i></div>
                 <span class="node-label">ID Details</span>
             </div>
-            <div class="step-node {% if user.identity_verification and user.identity_verification.document_url and not user.identity_verification.selfie_url %}active{% elif user.identity_verification and user.identity_verification.selfie_url %}completed{% endif %}"
+            <div class="step-node {% if kyc_status == 'pending_confirmation' %}active{% elif kyc_status in ['pending_liveliness', 'processing', 'pending_manual_review', 'manual_review', 'verified', 'approved'] %}completed{% endif %}"
                 id="node-2">
-                <div class="node-icon"><i class="fas fa-file-import"></i></div>
                 <div class="node-icon"><i class="fas fa-magic"></i></div>
                 <span class="node-label">Extraction</span>
             </div>
-            <div class="step-node {% if user.identity_verification and user.identity_verification.selfie_url and kyc_status == 'pending' %}active{% elif kyc_status in ['processing', 'manual_review', 'approved'] %}completed{% endif %}"
+            <div class="step-node {% if kyc_status == 'pending_liveliness' %}active{% elif kyc_status in ['processing', 'pending_manual_review', 'manual_review', 'verified', 'approved'] %}completed{% endif %}"
                 id="node-3">
                 <div class="node-icon"><i class="fas fa-face-smile"></i></div>
                 <span class="node-label">Biometrics</span>
             </div>
-            <div class="step-node {% if kyc_status in ['processing', 'manual_review'] %}active{% elif kyc_status == 'approved' %}completed{% endif %}"
+            <div class="step-node {% if kyc_status in ['processing', 'pending_manual_review', 'manual_review'] %}active{% elif kyc_status in ['verified', 'approved'] %}completed{% endif %}"
                 id="node-4">
                 <div class="node-icon"><i class="fas fa-clipboard-check"></i></div>
                 <span class="node-label">Review</span>
@@ -787,8 +786,8 @@
             {% set kyc_status = user.identity_verification.verification_status if user.identity_verification else
             'pending' %}
             <div id="step-id-form"
-                class="kyc-substep {% if kyc_status in ['pending', 'failed', 'rejected'] %}active{% endif %}"
-                style="display: {% if kyc_status in ['pending', 'failed', 'rejected'] %}block{% else %}none{% endif %};">
+                class="kyc-substep {% if kyc_status in ['pending', 'failed', 'rejected', 'liveliness_failed'] %}active{% endif %}"
+                style="display: {% if kyc_status in ['pending', 'failed', 'rejected', 'liveliness_failed'] %}block{% else %}none{% endif %};">
 
                 <!-- Identity fields removed per user request: OCR will handle extraction -->
 
@@ -1030,7 +1029,7 @@
 
             <!-- WAITING FOR CATERER APPROVAL -->
             <div id="kyc-waiting-approval"
-                style="display: {% if user.identity_verification and user.identity_verification.verification_status == 'manual_review' %}block{% else %}none{% endif %}; text-align: center; padding: 2rem 0;">
+                style="display: {% if user.identity_verification and user.identity_verification.verification_status in ['manual_review', 'pending_manual_review'] %}block{% else %}none{% endif %}; text-align: center; padding: 2rem 0;">
                 <div class="ocr-loader"
                     style="width: 60px; height: 60px; margin: 0 auto 2rem; border-top-color: var(--primary-color);">
                 </div>

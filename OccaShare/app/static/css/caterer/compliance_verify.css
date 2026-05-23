@@ -47,9 +47,9 @@
     letter-spacing: 0.05em;
 }
 
-.status-approved { background: var(--color-success-50); color: var(--color-success-700); border: 1px solid var(--color-success-100); }
-.status-pending { background: var(--color-warning-50); color: var(--color-warning-700); border: 1px solid var(--color-warning-100); }
-.status-rejected { background: var(--color-danger-50); color: var(--color-danger-700); border: 1px solid var(--color-danger-100); }
+.status-approved, .status-verified { background: var(--color-success-50); color: var(--color-success-700); border: 1px solid var(--color-success-100); }
+.status-pending, .status-pending_manual_review { background: var(--color-warning-50); color: var(--color-warning-700); border: 1px solid var(--color-warning-100); }
+.status-rejected, .status-failed, .status-liveliness_failed { background: var(--color-danger-50); color: var(--color-danger-700); border: 1px solid var(--color-danger-100); }
 
 /* Grid Layout */
 .verify-audit-grid {
@@ -364,8 +364,8 @@
     margin-bottom: var(--space-lg);
 }
 
-.audit-status-result.status-approved .status-icon { color: var(--color-success-500); }
-.audit-status-result.status-rejected .status-icon { color: var(--color-danger-500); }
+.audit-status-result.status-approved .status-icon, .audit-status-result.status-verified .status-icon { color: var(--color-success-500); }
+.audit-status-result.status-rejected .status-icon, .audit-status-result.status-liveliness_failed .status-icon { color: var(--color-danger-500); }
 
 .status-info h3 {
     margin: 0;

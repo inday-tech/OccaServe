@@ -878,19 +878,21 @@ async def run_customer_verification_bg(user_id: int, client_id: str, id_path: st
         kyc_record.verification_status = result["status"]
         kyc_record.fraud_score = result["fraud_score"]
         
-        if result["status"] == "approved":
+        if result["status"] == "pending_manual_review":
+            msg = "Verification submitted for manual review! Please wait for caterer approval."
+        elif result["status"] in ["approved", "verified"]:
             user.is_verified = True
             user.is_kyc_complete = True
             msg = "Verification Successful! Redirecting..."
         else:
-            msg = "Verification Failed: Low clarity or fraud detected."
+            msg = f"Verification Failed: {result.get('failure_reason', 'Low clarity or fraud detected.')}"
             
         db.commit()
         
         # 4. Final UI Update
         await manager.broadcast_to_client(client_id, {
             "type": "verification_update",
-            "status": "success" if result["status"] == "approved" else "error",
+            "status": "success" if result["status"] in ["approved", "verified", "pending_manual_review"] else "error",
             "message": msg
         })
         
