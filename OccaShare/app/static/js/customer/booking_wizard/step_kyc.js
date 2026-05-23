@@ -842,11 +842,11 @@ document.addEventListener('DOMContentLoaded', function () {
             const data = JSON.parse(event.data);
             console.log("[KYC WS] Received update:", data);
             if (data.type === 'kyc_update') {
-                if (data.status === 'approved' || data.status === 'manual_review_approved') {
+                if (data.status === 'approved' || data.status === 'verified' || data.status === 'manual_review_approved') {
                     stopPolling();
                     if (ws) ws.close();
                     handleApproval(data);
-                } else if (data.status === 'rejected') {
+                } else if (data.status === 'rejected' || data.status === 'liveliness_failed') {
                     stopPolling();
                     if (ws) ws.close();
                     handleRejection(data.reason || "Verification rejected by caterer");
@@ -872,10 +872,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 const res = await fetch(`/api/bookings/${bookingId}/status`);
                 const data = await res.json();
 
-                if (data.status === 'approved') {
+                if (data.status === 'approved' || data.status === 'verified') {
                     stopPolling();
                     handleApproval(data);
-                } else if (data.status === 'manual_review') {
+                } else if (data.status === 'manual_review' || data.status === 'pending_manual_review') {
                     // Stay in polling/waiting mode, but update UI
                     document.getElementById('status-text').innerText = "Pending Review";
                     document.getElementById('status-text').style.color = "#f59e0b";
@@ -885,7 +885,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (!ws) {
                         initWebSocket(data.user_id);
                     }
-                } else if (data.status === 'rejected' || data.status === 'blocked') {
+                } else if (data.status === 'rejected' || data.status === 'blocked' || data.status === 'liveliness_failed') {
                     stopPolling();
                     handleRejection(data.reason || "Verification failed");
                 }

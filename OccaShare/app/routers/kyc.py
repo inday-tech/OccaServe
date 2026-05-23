@@ -31,9 +31,16 @@ async def extract_id(
 ):
     """Endpoint for Section B: Extracts data from ID for the booking form."""
     content = await id_document.read()
-    file_error = validate_file_type_and_size(content, id_document.filename)
-    if file_error:
-        raise HTTPException(status_code=400, detail=f"❌ {file_error}")
+    
+    # 1. File Type Validation
+    import os
+    ext = os.path.splitext(id_document.filename)[1].lower()
+    if ext not in [".jpg", ".jpeg", ".png"]:
+        raise HTTPException(status_code=400, detail="Invalid file type. Please upload JPG or PNG image only.")
+    
+    # 2. File Size Validation (Max 10MB)
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File is too large. Maximum size is 10MB.")
     
     # Save file temporarily or permanently
     filename = f"temp_ocr_{current_user.id}_{uuid.uuid4()}.enc"
@@ -47,7 +54,18 @@ async def extract_id(
     result = await verification_service.extract_id_data(id_url, id_type)
     
     if not result["success"]:
-        raise HTTPException(status_code=500, detail=f"OCR extraction failed: {result.get('error')}")
+        raise HTTPException(status_code=400, detail=result.get("error"))
+    
+    # Update/Create verification record as pending_confirmation
+    kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).first()
+    if not kyc_record:
+        kyc_record = models.IdentityVerification(user_id=current_user.id)
+        db.add(kyc_record)
+    
+    kyc_record.verification_status = "pending_confirmation"
+    kyc_record.document_url = id_url
+    kyc_record.verification_type = id_type
+    db.commit()
     
     return {
         "success": True,
@@ -100,11 +118,18 @@ async def upload_id(
     # Increment attempts
     current_user.kyc_attempts += 1
 
-    # Security: File Validation
+    # Read file content
     content = await id_document.read()
-    file_error = validate_file_type_and_size(content, id_document.filename)
-    if file_error:
-        raise HTTPException(status_code=400, detail=f"❌ {file_error}")
+
+    # 1. File Type Validation
+    import os
+    ext = os.path.splitext(id_document.filename)[1].lower()
+    if ext not in [".jpg", ".jpeg", ".png"]:
+        raise HTTPException(status_code=400, detail="Invalid file type. Please upload JPG or PNG image only.")
+    
+    # 2. File Size Validation (Max 10MB)
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File is too large. Maximum size is 10MB.")
     
     # Encrypt data
     encrypted_content = encrypt_data(content)
@@ -122,10 +147,6 @@ async def upload_id(
     if not kyc_record:
         kyc_record = models.IdentityVerification(user_id=current_user.id)
         db.add(kyc_record)
-    
-    # Always reset status to pending when starting a new upload attempt
-    kyc_record.verification_status = "pending"
-    kyc_record.failure_reason = None
     
     # Update User Profile with provided KYC data if available
     if first_name: current_user.first_name = first_name
@@ -165,10 +186,8 @@ async def upload_id(
     
     db.commit() 
 
-    # --- STRICT SYNCHRONOUS VALIDATION ---
-    print(f"[KYC] Performing synchronous ID validation for User {current_user.id}...")
-    
-    # Construct full name as per user's pseudo-code logic: Given + Middle + Last
+    # --- Run OCR Matching to populate ocr_data (but NEVER auto-reject or block) ---
+    print(f"[KYC] Running ID document matching for User {current_user.id} to save data...")
     full_name_parts = [first_name]
     if middle_name: full_name_parts.append(middle_name)
     full_name_parts.append(last_name)
@@ -185,33 +204,16 @@ async def upload_id(
         address=address
     )
     
-    if id_result["status"] in ["mismatched", "rejected"]:
-        # Delete the uploaded file and roll back the record status to prevent blocked progression
-        try:
-            os.remove(path)
-        except:
-            pass
-        kyc_record.verification_status = "failed"
-        kyc_record.failure_reason = id_result["failure_reason"]
-        kyc_record.document_url = None # Clear the URL so they can't "resume" with a bad ID
-        db.commit()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail=id_result["failure_reason"]
-        )
-    elif id_result["status"] == "error":
-        # Generic system error during scan
-        raise HTTPException(status_code=500, detail=id_result["failure_reason"])
-
-    # If matched, we proceed
+    # Always proceed to liveness check regardless of OCR match results
     kyc_record.document_url = id_url
     kyc_record.id_number = id_number
     kyc_record.verification_type = id_type
     kyc_record.ocr_data = id_result.get("ocr_data", {})
-    kyc_record.verification_status = "pending" # Keep as pending until full verification (selfie) is done
+    kyc_record.verification_status = "pending_liveliness"
+    kyc_record.failure_reason = None
     db.commit()
 
-    return {"success": True, "message": "ID uploaded and verified. You may now proceed to liveness check."}
+    return {"success": True, "message": "ID details saved successfully. Proceeding to liveness detection."}
 
 @router.post("/{booking_id}/verify-full")
 async def verify_full(
@@ -288,9 +290,13 @@ async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, ful
         
         print(f"[KYC BACKGROUND] Verification Service result: {result.get('status')}")
         
-        # ALL results go to manual_review - caterer makes the final decision
-        kyc_record.verification_status = "manual_review"
-        print(f"[KYC BACKGROUND] AI result was '{result.get('status')}', setting to 'manual_review' for caterer decision.")
+        # Set status based on verify_identity_v2 output
+        if result["status"] == "liveliness_failed":
+            kyc_record.verification_status = "liveliness_failed"
+        else:
+            kyc_record.verification_status = "pending_manual_review"
+
+        print(f"[KYC BACKGROUND] AI result was '{result.get('status')}', setting status to '{kyc_record.verification_status}' for caterer decision.")
 
         kyc_record.fraud_score = result["fraud_score"]
         kyc_record.match_score = result.get("face_match_confidence", 0.0)
@@ -298,20 +304,14 @@ async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, ful
         kyc_record.id_detected = result.get("ocr_match", False) or result.get("ocr_data", {}).get("full_name") is not None
         kyc_record.failure_reason = result["failure_reason"]
         kyc_record.ocr_data = result.get("ocr_data", {})
-        kyc_record.liveness_status = "passed" if result.get("liveness_score", 0.0) >= 0.4 else "failed"
-        
-        if result["status"] == "approved":
-            user.is_verified = True
-            user.is_kyc_complete = True
-            booking.ocr_verified = True
-            booking.liveness_verified = True
+        kyc_record.liveness_status = "passed" if result["status"] != "liveliness_failed" else "failed"
             
         # Log to Audit
         audit = models.AuditLog(
             user_id=user_id,
             action="kyc_verification",
             old_status="processing",
-            new_status=result.get("status", "failed"),
+            new_status=kyc_record.verification_status,
             notes=f"Fraud Score: {result.get('fraud_score', 0)}, OCR: {result.get('ocr_match', False)}"
         )
         db.add(audit)
@@ -319,10 +319,10 @@ async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, ful
 
         # Terminal Logging for the background process
         print(f"\n[KYC BACKGROUND] Verification Complete for User {user_id}")
-        print(f" - Status: {result.get('status')}")
+        print(f" - Status: {kyc_record.verification_status}")
         print(f" - Fraud Score: {result.get('fraud_score')}")
         print(f" - OCR Match: {result.get('ocr_match')}")
-        print(f" - Liveness PASSED: {'passed' if result.get('liveness_score', 0.0) >= 0.4 else 'failed'}")
+        print(f" - Liveness Status: {kyc_record.liveness_status}")
         if result.get('failure_reason'):
             print(f" - Failure Reason: {result.get('failure_reason')}")
         print("-" * 40 + "\n")

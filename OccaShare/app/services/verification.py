@@ -738,16 +738,45 @@ class VerificationService:
         
         # Threshold 100 is usually good for ID cards, but let's be very lenient for demo/panel defense (5)
         if blur_score < 5:
-            return {"valid": False, "reason": "Image is too blurry. Please ensure the camera is in focus."}
+            return {"valid": False, "reason": "Image is too blurry. Please retake your ID photo."}
             
         return {"valid": True}
+
+    def _is_image_cropped(self, image: np.ndarray) -> bool:
+        """Heuristic to check if the ID card is cropped (e.g. border of card is cut off)."""
+        if not CV2_AVAILABLE:
+            return False
+        try:
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+            edged = cv2.Canny(blurred, 30, 150)
+            contours, _ = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            if not contours:
+                return False
+            
+            img_h, img_w = image.shape[:2]
+            img_area = img_h * img_w
+            
+            for c in contours:
+                area = cv2.contourArea(c)
+                # If contour is reasonably large (at least 15% of the image area)
+                if area > img_area * 0.15:
+                    x, y, w, h = cv2.boundingRect(c)
+                    # Check if bounding box is too close (within 10 pixels) to any edge of the image
+                    if x < 10 or y < 10 or (x + w) > img_w - 10 or (y + h) > img_h - 10:
+                        print(f"[KYC DEBUG] Card is cropped: bbox=[{x},{y},{w},{h}] on image {img_w}x{img_h}")
+                        return True
+            return False
+        except Exception as e:
+            print(f"[KYC WARNING] Cropped ID check failed: {e}")
+            return False
 
     def check_duplicate_id(self, db: Session, id_number: str, current_user_id: int) -> bool:
         """Checks if the ID number is already associated with another verified user."""
         existing = db.query(IdentityVerification).filter(
             IdentityVerification.id_number == id_number,
             IdentityVerification.user_id != current_user_id,
-            IdentityVerification.verification_status == 'approved'
+            IdentityVerification.verification_status.in_(['approved', 'verified'])
         ).first()
         return existing is not None
 
@@ -1645,13 +1674,58 @@ class VerificationService:
             return {"status": "error", "failure_reason": f"System Error during ID scan: {str(e)}"}
 
     async def extract_id_data(self, id_path: str, id_type: str) -> Dict[str, Any]:
-        """Extracts text from ID using EasyOCR + OpenCV pipeline (no validation)."""
+        """Extracts text from ID using EasyOCR + OpenCV pipeline with validations."""
         try:
             id_img = self._prepare_image(id_path)
+            
+            # 1. Blurry / Resolution Check
             quality_check = self.check_image_quality(id_img)
+            if not quality_check["valid"]:
+                return {"success": False, "error": quality_check["reason"]}
+            
+            # 2. Cropped ID Check
+            if self._is_image_cropped(id_img):
+                return {"success": False, "error": "Please capture the entire ID card."}
             
             # Run unified OCR pipeline (EasyOCR primary → Tesseract fallback)
             text, parsed, word_data = self._run_ocr_pipeline(id_img, id_type)
+            
+            clean_ocr_upper = text.upper()
+            id_faces = self._detect_faces_detailed(id_img)
+            has_face = len(id_faces) > 0
+            
+            # Pattern check for ID
+            id_pattern_found = False
+            id_patterns_check = [
+                r'\d{4}-\d{4}-\d{4}-\d{4}',  # PhilID
+                r'[A-Z]\d{2}-\d{2}-\d{6}',   # Driver's License
+                r'\d{2}-\d{7}-\d{1}',        # SSS
+                r'\d{3}-\d{3}-\d{3}',        # TIN variants
+            ]
+            for pattern in id_patterns_check:
+                if re.search(pattern, clean_ocr_upper):
+                    id_pattern_found = True
+                    break
+            
+            def fuzzy_contains_id_keywords(text):
+                if any(kw in text for kw in self.ID_LEGITIMACY_KEYWORDS):
+                    return True
+                typo_tolerant_kws = ["PHILIPPINES", "REPUBLIC", "IDENTITY", "IDENTIFICATION", "PASSPORT", "LICENSE"]
+                for kw in typo_tolerant_kws:
+                    if len(text) > 20:
+                        match = difflib.get_close_matches(kw, text.split(), n=1, cutoff=0.7)
+                        if match: return True
+                return False
+
+            is_likely_id = (fuzzy_contains_id_keywords(clean_ocr_upper) or has_face or id_pattern_found) and len(clean_ocr_upper.strip()) > 10
+            
+            # 3. No ID Detected
+            if not is_likely_id:
+                return {"success": False, "error": "No valid ID detected. Please upload a clear ID image."}
+
+            # 4. OCR Failed / Garbage Text
+            if not text or not text.strip() or self._is_ocr_garbage(text):
+                return {"success": False, "error": "Unable to extract ID details. Please try again."}
             
             # Build structured output compatible with frontend
             fields = {k: v for k, v in parsed.items() if k != "_all_not_detected"}
@@ -1664,7 +1738,7 @@ class VerificationService:
                 "extraction_method": method,
                 "document_type_detected": id_type,
                 "confidence_score": self._calc_overall_confidence(word_data),
-                "face_visible": False,  # Face detection handled separately
+                "face_visible": has_face,
                 "fields": fields,
                 # Backward-compatible flat keys
                 "full_name": parsed.get("full_name", ""),
@@ -1673,15 +1747,10 @@ class VerificationService:
                 "address": parsed.get("address", "")
             }
             
-            # If we have face detection capability, check for face
-            if CV2_AVAILABLE:
-                id_faces = self._detect_faces_detailed(id_img)
-                structured_ocr["face_visible"] = len(id_faces) > 0
-            
             return {"success": True, "data": structured_ocr, "quality": quality_check}
         except Exception as e:
             traceback.print_exc()
-            return {"success": False, "error": str(e)}
+            return {"success": False, "error": "Unable to extract ID details. Please try again."}
 
     async def verify_identity_v2(self, 
                            id_path: str, 
@@ -1693,9 +1762,9 @@ class VerificationService:
                            user_id: int = None,
                            dob: str = None,
                            address: str = None) -> Dict[str, Any]:
-        """Refactored full verification logic using verify_id_document."""
+        """Refactored full verification logic using verify_id_document and liveness checks."""
         try:
-            # 1. Document Verification (Now just re-using the method)
+            # 1. Document Verification
             id_result = await self.verify_id_document(id_path, full_name, id_number, id_type, db, user_id, dob, address)
             if id_result["status"] == "error":
                 return id_result # Bubble up error
@@ -1704,42 +1773,77 @@ class VerificationService:
             pattern_valid = id_result["pattern_valid"]
             ocr_text = id_result["ocr_data"]["raw_text"]
 
-            # 3. MediaPipe Liveness Detection
+            # Load selfie images
             selfie_imgs = []
             for sp in selfie_paths:
                 selfie_imgs.append(self._prepare_image(sp))
+
+            # --- VALIDATIONS FOR LIVELINESS ---
+            liveness_failure = None
             
+            # 1. No Face Detected
             liveness_result = self._check_liveness_mediapipe(selfie_imgs)
             liveness_score = liveness_result["score"]
+            face_count = liveness_result.get("face_count", 0)
             
-            # 4. Face Matching (Detection Check)
+            if face_count == 0:
+                liveness_failure = "No face detected. Please face the camera clearly."
+            
+            # 2. Multiple Faces Check
+            if not liveness_failure:
+                for img in selfie_imgs:
+                    faces = self._detect_faces_detailed(img)
+                    if len(faces) > 1:
+                        liveness_failure = "Multiple faces detected. Only one person is allowed."
+                        break
+            
+            # 3. Face Too Dark Check
+            if not liveness_failure:
+                for img in selfie_imgs:
+                    if CV2_AVAILABLE:
+                        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                        if np.mean(gray) < 40: # Threshold for dark environment
+                            liveness_failure = "Environment is too dark. Please improve lighting."
+                            break
+            
+            # 4. Fake / Spoof Detection
+            if not liveness_failure:
+                if liveness_score < 0.4:
+                    liveness_failure = "Liveliness verification failed. Please try again without using a photo or screen."
+            
+            # 5. Face Not Matching ID
+            face_match_confidence = 0.0
             id_img = self._prepare_image(id_path)
             id_faces = self._detect_faces_detailed(id_img)
-            face_match_confidence = 0.0
-            if len(id_faces) == 1 and liveness_result["face_count"] > 0:
-                face_match_confidence = 0.75 # Placeholder for real recognition
             
-            # 5. Calculate Fraud Score
+            # Compare faces
+            if not liveness_failure:
+                if len(id_faces) == 1 and face_count > 0:
+                    # Let's run a real comparison using compare_faces if available
+                    compare_res = self.compare_faces(id_img, selfie_imgs[0])
+                    face_match_confidence = compare_res.get("confidence", 0.0)
+                    if face_match_confidence < 0.5: # threshold for match
+                        liveness_failure = "Face does not match the uploaded ID."
+                else:
+                    face_match_confidence = 0.0
+                    liveness_failure = "Face does not match the uploaded ID."
+
+            # Calculate Fraud Score
             fraud_score = self.calculate_fraud_score(
                 face_match_confidence,
                 liveness_score,
                 ocr_match,
                 pattern_valid
             )
-            
-            # 6. Decision logic
-            status = "approved"
-            reasons = []
-            if not ocr_match: reasons.append("Name or ID not found on document")
-            if not pattern_valid: reasons.append("ID number format is invalid")
-            if liveness_score < 0.4: reasons.append("Liveness check failed (suspicious movement or no face)")
-            
-            if fraud_score < 60 or reasons:
-                status = "rejected"
-                failure_reason = ", ".join(reasons) if reasons else "Low verification confidence"
+
+            # Decision logic
+            if liveness_failure:
+                status = "liveliness_failed"
+                failure_reason = liveness_failure
             else:
-                failure_reason = None
-                
+                status = "pending_manual_review"
+                failure_reason = id_result.get("failure_reason") # Save OCR discrepancy if any
+
             return {
                 "status": status,
                 "fraud_score": fraud_score,
@@ -1890,7 +1994,7 @@ class VerificationService:
                 
                 # Search specifically in ocr_data JSONB
                 existing_v = db.query(IdentityVerification).filter(
-                    IdentityVerification.verification_status == "approved",
+                    IdentityVerification.verification_status.in_(["approved", "verified"]),
                     cast(IdentityVerification.ocr_data, String).contains(permit_number)
                 ).first()
                 
