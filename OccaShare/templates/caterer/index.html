@@ -1162,7 +1162,7 @@
                     <div class="ro-date" style="font-weight: 600; font-size: 0.85rem; color: #94a3b8;">${order.event_date}</div>
                 </div>
                 <div class="ro-status" style="text-align: right;">
-                    <span class="ro-badge ro-status-${order.status}" style="font-weight: 800; letter-spacing: 0.5px; font-size: 0.75rem; padding: 0.5rem 1rem; border-radius: 2rem;">${order.status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}</span>
+                    <span class="ro-badge ro-status-${order.status || 'pending'}" style="font-weight: 800; letter-spacing: 0.5px; font-size: 0.75rem; padding: 0.5rem 1rem; border-radius: 2rem;">${(order.status || 'pending').split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}</span>
                 </div>
             </div>
         `).join('');

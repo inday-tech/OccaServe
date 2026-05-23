@@ -1703,7 +1703,7 @@ async def caterer_customers(
             customers.append(c)
 
     repeat_rate = round((repeat_customers_count / total_customers_count * 100), 1) if total_customers_count > 0 else 0
-    
+
     return templates.TemplateResponse("caterer/customers.html", {
         "request": request,
         "user": user,
@@ -1714,6 +1714,7 @@ async def caterer_customers(
             "new": new_customers_this_month_count,
             "repeat": f"{repeat_rate}%"
         },
+        "primary_color": user.caterer_profile.primary_color or "#3b82f6",
         "active_page": "customers",
         "today": now
 
@@ -3984,7 +3985,8 @@ async def register_manual_customer(
             role="customer",
             status="active",
             is_verified=True,
-            auth_provider="manual_entry"
+            auth_provider="manual_entry",
+            investigation_notes=notes if notes else None
         )
         db.add(new_user)
         db.commit()
@@ -4040,9 +4042,49 @@ async def get_customer_crm_details(
         "total_spent": float(total_spent),
         "total_bookings": len(bookings),
         "created_at": target_user.created_at.isoformat(),
-        "notes": "Premium client with history of large corporate events.",
+        "notes": target_user.investigation_notes or "No notes added yet.",
         "history": history
     }
+
+@router.post("/api/customers/{customer_id}/edit")
+async def update_customer_crm_profile(
+    customer_id: int,
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    try:
+        target_user = db.query(models.User).filter(models.User.id == customer_id).first()
+        if not target_user:
+            return {"status": "error", "message": "Customer not found."}
+            
+        form_data = await request.form()
+        f_name = form_data.get("first_name", "").strip()
+        l_name = form_data.get("last_name", "").strip()
+        email = form_data.get("email", "").strip()
+        phone = form_data.get("phone", "").strip()
+        notes = form_data.get("notes", "").strip()
+        
+        if not f_name or not email:
+            return {"status": "error", "message": "First Name and Email are required."}
+            
+        # Check if email is used by someone else
+        existing_email = db.query(models.User).filter(models.User.email == email, models.User.id != customer_id).first()
+        if existing_email:
+            return {"status": "error", "message": "This email is already in use by another user."}
+            
+        target_user.first_name = f_name
+        target_user.last_name = l_name
+        target_user.email = email
+        target_user.phone_number = phone
+        target_user.investigation_notes = notes
+        
+        db.commit()
+        return {"status": "success", "message": "Customer profile updated successfully."}
+        
+    except Exception as e:
+        print(f"[CRM Update] Error: {e}")
+        return {"status": "error", "message": "Failed to update profile due to a system error."}
 
 @router.post("/api/payments/request-payout")
 async def request_payout(

@@ -16,19 +16,65 @@ document.addEventListener('DOMContentLoaded', function() {
 /**
  * Optimized Filtering Logic
  */
-window.filterCustomers = function() {
+window.filterCustomerTable = function() {
     const bridge = document.getElementById('custSearchInput');
-    if (!bridge) return;
-    const filter = bridge.value.toLowerCase();
+    const filterText = bridge ? bridge.value.toLowerCase() : '';
+    const statusSelect = document.getElementById('tableFilterStatus');
+    const statusFilter = statusSelect ? statusSelect.value : 'All';
+    
     const rows = document.querySelectorAll('#customersTable tbody .premium-row');
-    let visibleCount = 0;
-
+    
     rows.forEach(row => {
         const text = row.dataset.name || row.innerText.toLowerCase();
-        const match = text.includes(filter);
-        row.style.display = match ? '' : 'none';
-        if (match) visibleCount++;
+        const textMatch = text.includes(filterText);
+        
+        let statusMatch = true;
+        if (statusFilter !== 'All') {
+            const badge = row.querySelector('.p-badge');
+            const rowStatus = badge ? badge.innerText.trim() : '';
+            if (statusFilter === 'VIP Elite' && rowStatus !== 'VIP Elite') statusMatch = false;
+            if (statusFilter === 'Standard' && rowStatus !== 'Standard') statusMatch = false;
+            if (statusFilter === 'Blacklisted' && rowStatus !== 'Blacklisted') statusMatch = false;
+        }
+        
+        row.style.display = (textMatch && statusMatch) ? '' : 'none';
     });
+};
+
+window.filterCustomers = window.filterCustomerTable; // Keep compatibility if called externally
+
+window.exportCustomerCSV = function() {
+    const rows = document.querySelectorAll('#customersTable tbody .premium-row');
+    if (rows.length === 0) {
+        if (window.showError) window.showError("No data to export.");
+        return;
+    }
+    
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Customer ID,Name,Email,Account Tier,Lifetime Spend,Events,Last Engagement\n";
+    
+    rows.forEach(row => {
+        if (row.style.display === 'none') return; // Only export visible
+        
+        const id = row.querySelector('.customer-id-pill').innerText.replace('#', '').trim();
+        const name = row.querySelector('.cust-name-pro').innerText.trim();
+        const email = row.querySelector('.cust-email-pro').innerText.trim();
+        const tier = row.querySelector('.p-badge') ? row.querySelector('.p-badge').innerText.trim() : '';
+        const spend = row.querySelector('.spend-value').innerText.replace('₱', '').replace(/,/g, '').trim();
+        const events = row.querySelector('.booking-count-badge').innerText.replace(' events', '').trim();
+        const lastSeen = row.querySelector('.last-seen-pro').innerText.trim();
+        
+        const rowData = `"${id}","${name}","${email}","${tier}","${spend}","${events}","${lastSeen}"`;
+        csvContent += rowData + "\n";
+    });
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "customer_database_export.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 };
 
 /**
@@ -73,7 +119,7 @@ window.openCustomerProfile = async function(id) {
     if (window.openModal) window.openModal('customerProfileModal');
 
     try {
-        const res = await fetch(`/caterer/api/customers/${id}/details`);
+        const res = await fetch(`/api/customers/${id}/details`);
         if (!res.ok) throw new Error("Intelligence Sync Failed");
         
         const data = await res.json();
@@ -104,6 +150,13 @@ window.openCustomerProfile = async function(id) {
             blacklistBtn.innerText = "BLOCK RELATIONSHIP";
             blacklistBtn.classList.remove('active');
         }
+        
+        // Populate Edit Form
+        document.getElementById('editFirstName').value = c.first_name || '';
+        document.getElementById('editLastName').value = c.last_name || '';
+        document.getElementById('editEmail').value = c.email || '';
+        document.getElementById('editPhone').value = c.phone || '';
+        document.getElementById('editNotes').value = c.notes !== "No notes added yet." ? c.notes : '';
 
         // Render History
         const historyContainer = document.getElementById('profHistory');
@@ -124,6 +177,44 @@ window.openCustomerProfile = async function(id) {
     } catch (err) {
         console.error("[CRM] Sync Error:", err);
         if (window.showError) window.showError("Failed to synchronize intelligence hub.");
+    }
+};
+
+window.updateCustomerProfile = async function(event) {
+    event.preventDefault();
+    if (!currentCustomerId) return;
+    
+    const btn = document.getElementById('btnUpdateCustomer');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    btn.disabled = true;
+    
+    try {
+        const form = document.getElementById('editCustomerForm');
+        const formData = new FormData(form);
+        
+        const res = await fetch(`/api/customers/${currentCustomerId}/edit`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await res.json();
+        
+        if (data.status === 'success') {
+            if (window.showSuccess) window.showSuccess(data.message);
+            // Refresh modal data
+            await window.openCustomerProfile(currentCustomerId);
+            // Optionally reload page to update table after 1.5s
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            if (window.showError) window.showError(data.message);
+        }
+    } catch (err) {
+        console.error("Update Error:", err);
+        if (window.showError) window.showError("A system error occurred while updating the profile.");
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
     }
 };
 
@@ -152,8 +243,10 @@ function clearFieldError(fieldId) {
 
 function validateSmartEmail(val) {
     if (!val) { clearFieldError('regEmail'); return false; }
-    if (!val.toLowerCase().endsWith('@gmail.com')) {
-        setFieldError('regEmail', 'Only @gmail.com addresses are permitted.');
+    // Standard email validation regex
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(val)) {
+        setFieldError('regEmail', 'Please enter a valid email address.');
         return false;
     }
     clearFieldError('regEmail');
@@ -163,8 +256,8 @@ function validateSmartEmail(val) {
 function validateSmartName(val) {
     if (!val) { clearFieldError('regName'); return false; }
     const parts = val.trim().split(/\s+/);
-    if (parts.length < 3) {
-        setFieldError('regName', 'Format: First Name, Middle Initial, and Surname.');
+    if (parts.length < 2) {
+        setFieldError('regName', 'Please provide both First Name and Surname.');
         return false;
     }
     clearFieldError('regName');
@@ -173,12 +266,8 @@ function validateSmartName(val) {
 
 function validateSmartContact(val) {
     if (!val) { clearFieldError('regPhone'); return false; }
-    if (val.length < 11) {
-        setFieldError('regPhone', 'Incomplete number (11 digits required).');
-        return false;
-    }
-    if (/(\d)\1{7,}/.test(val)) {
-        setFieldError('regPhone', 'Invalid pattern: Repetitive numbers detected.');
+    if (val.length < 11 || !val.startsWith('09')) {
+        setFieldError('regPhone', 'Please enter a valid 11-digit PH mobile number starting with 09.');
         return false;
     }
     clearFieldError('regPhone');
@@ -220,8 +309,6 @@ window.registerCustomer = async function(e) {
     
     // Reset errors
     ['regName', 'regEmail', 'regPhone'].forEach(id => clearFieldError(id));
-    const errorDrawer = document.getElementById('addCustomerError');
-    if (errorDrawer) errorDrawer.style.display = 'none';
 
     // Perform validation
     const isNameValid = validateSmartName(document.getElementById('regName').value);
@@ -229,14 +316,13 @@ window.registerCustomer = async function(e) {
     const isContactValid = validateSmartContact(document.getElementById('regPhone').value);
 
     if (!isNameValid || !isEmailValid || !isContactValid) {
-        if (errorDrawer) errorDrawer.style.display = 'flex';
         return;
     }
 
     const formData = new FormData(form);
 
     if (window.apiAction) {
-        const res = await window.apiAction('/caterer/api/customers/register', {
+        const res = await window.apiAction('/api/customers/register', {
             method: 'POST',
             body: formData
         }, btn);
@@ -263,7 +349,7 @@ window.toggleBlacklist = async function() {
     if (window.showConfirm) {
         window.showConfirm(message, async () => {
             // Using the correct endpoint from the router
-            const res = await window.apiAction(`/caterer/api/customers/${currentCustomerId}/blacklist`, {
+            const res = await window.apiAction(`/api/customers/${currentCustomerId}/blacklist`, {
                 method: 'POST'
             });
             if (res) {

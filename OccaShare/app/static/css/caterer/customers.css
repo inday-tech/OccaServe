@@ -38,24 +38,6 @@
     margin-bottom: 2.5rem;
 }
 
-.stat-card-diamond {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 20px;
-    border: 1px solid #e2e8f0;
-    display: flex;
-    align-items: center;
-    gap: 1.25rem;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-}
-
-.stat-card-diamond:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.1);
-    border-color: var(--crm-emerald);
-}
-
 .stat-icon-diamond {
     width: 54px;
     height: 54px;
@@ -67,10 +49,10 @@
     flex-shrink: 0;
 }
 
-.stat-icon-diamond.bg-emerald { background: #ecfdf5; color: #10b981; }
-.stat-icon-diamond.bg-amber { background: #fffbeb; color: #f59e0b; }
-.stat-icon-diamond.bg-blue { background: #eff6ff; color: #3b82f6; }
-.stat-icon-diamond.bg-indigo { background: #f5f3ff; color: #6366f1; }
+.stat-icon-diamond.bg-emerald { background: rgba(var(--primary-color-rgb), 0.1); color: var(--primary-color); }
+.stat-icon-diamond.bg-amber { background: rgba(var(--secondary-color-rgb), 0.1); color: var(--secondary-color); }
+.stat-icon-diamond.bg-blue { background: rgba(var(--primary-color-rgb), 0.1); color: var(--primary-color); }
+.stat-icon-diamond.bg-indigo { background: rgba(var(--secondary-color-rgb), 0.1); color: var(--secondary-color); }
 
 .stat-label {
     display: block;
@@ -92,10 +74,10 @@
 /* --- ORGANIZED DATABASE TABLE --- */
 .table-container-diamond {
     background: white;
-    border-radius: 24px;
+    border-radius: 1.5rem;
     border: 1px solid #e2e8f0;
     overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
 }
 
 .table-header-diamond {
@@ -120,37 +102,7 @@
     font-weight: 600;
 }
 
-.header-search-bridge {
-    position: relative;
-    max-width: 300px;
-    width: 100%;
-}
-
-.header-search-bridge i {
-    position: absolute;
-    left: 14px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #94a3b8;
-}
-
-.header-search-bridge input {
-    width: 100%;
-    height: 42px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 0 15px 0 40px;
-    font-size: 0.9rem;
-    transition: all 0.2s;
-}
-
-.header-search-bridge input:focus {
-    background: white;
-    border-color: var(--crm-emerald);
-    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
-    outline: none;
-}
+/* Search Bridge removed as requested */
 
 /* --- TABLE CUSTOMIZATIONS --- */
 .customer-id-pill {
@@ -231,9 +183,9 @@
 
 /* --- PREMIUM MODAL UTILS (CALENDAR PARITY) --- */
 .occ-modal-header.colored-header {
-    background: #0f172a;
+    background: var(--secondary-color);
     padding: 1.5rem 2rem;
-    border-radius: 20px 20px 0 0;
+    border-radius: 1.5rem 1.5rem 0 0;
     color: white;
     display: flex;
     justify-content: space-between;
@@ -287,7 +239,7 @@
 
 /* --- INTELLIGENCE HUB MODAL --- */
 .intelligence-header-bg {
-    background: linear-gradient(to right, #0f172a, #1e293b) !important;
+    background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-color) 100%) !important;
     color: white !important;
     border: none !important;
 }
@@ -332,14 +284,14 @@
     display: flex;
     gap: 2rem;
     padding: 0 2rem;
-    background: #0f172a;
+    background: var(--secondary-color);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .intel-tab {
     background: transparent;
     border: none;
-    color: #94a3b8;
+    color: rgba(255, 255, 255, 0.7);
     padding: 1rem 0;
     font-weight: 700;
     font-size: 0.9rem;
@@ -356,7 +308,7 @@
 }
 
 .intel-tab.active {
-    color: #10b981;
+    color: var(--primary-color);
 }
 
 .intel-tab.active::after {
@@ -366,7 +318,7 @@
     left: 0;
     width: 100%;
     height: 3px;
-    background: #10b981;
+    background: var(--primary-color);
     border-radius: 3px 3px 0 0;
 }
 
@@ -529,4 +481,37 @@
 
 .btn-risk-blacklist.active {
     background: #059669;
+}
+
+/* --- RESPONSIVE DESIGN --- */
+@media (max-width: 1400px) {
+    .stats-grid-diamond {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (max-width: 1024px) {
+    .stats-grid-diamond {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .occ-form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .stats-grid-diamond {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .table-container-dashboard {
+        overflow-x: auto;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-grid-diamond {
+        grid-template-columns: 1fr;
+    }
 }

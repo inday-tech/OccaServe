@@ -1,7 +1,29 @@
 {% extends "caterer/layout.html" %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/customers.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/customers.css') }}?v=5.0">
+<style>
+    :root {
+        --caterer-primary: {{ primary_color }};
+        --caterer-primary-dark: {{ primary_color }}dd;
+        --caterer-primary-light: {{ primary_color }}20;
+    }
+
+    /* Dynamic color overrides */
+    .stat-icon-diamond.bg-emerald { background: var(--caterer-primary-light) !important; color: var(--caterer-primary) !important; }
+    .stat-icon-diamond.bg-amber { background: var(--caterer-primary-light) !important; color: var(--caterer-primary) !important; }
+    .stat-icon-diamond.bg-blue { background: var(--caterer-primary-light) !important; color: var(--caterer-primary) !important; }
+    .stat-icon-diamond.bg-indigo { background: var(--caterer-primary-light) !important; color: var(--caterer-primary) !important; }
+    .btn-primary-pro { background: var(--caterer-primary) !important; }
+    .btn-primary-pro:hover { background: var(--caterer-primary-dark) !important; }
+    .occ-modal-header.colored-header { background: linear-gradient(135deg, var(--caterer-primary) 0%, var(--caterer-primary-dark) 100%) !important; }
+    .intelligence-header-bg { background: linear-gradient(135deg, var(--caterer-primary) 0%, var(--caterer-primary-dark) 100%) !important; }
+    .intelligence-tabs-container { background: var(--caterer-primary) !important; }
+    .intel-tab.active { color: white !important; border-bottom: 3px solid white; }
+    .intel-tab.active::after { background: white !important; }
+    .modal-section-header { font-size: 0.9rem; font-weight: 700; text-transform: uppercase; color: #1f2937; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 2px solid var(--caterer-primary); display: flex; align-items: center; gap: 8px; }
+    .modal-section-header i { color: var(--caterer-primary); font-size: 1rem; }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -21,7 +43,7 @@
 
     <!-- Symmetrical Stats Grid -->
     <div class="stats-grid-diamond">
-        <div class="stat-card-diamond">
+        <div class="c-card-premium" style="display: flex; align-items: center; gap: 1.25rem;">
             <div class="stat-icon-diamond bg-emerald">
                 <i class="fas fa-users"></i>
             </div>
@@ -30,7 +52,7 @@
                 <h2 class="stat-value">{{ stats.total }}</h2>
             </div>
         </div>
-        <div class="stat-card-diamond">
+        <div class="c-card-premium" style="display: flex; align-items: center; gap: 1.25rem;">
             <div class="stat-icon-diamond bg-amber">
                 <i class="fas fa-crown"></i>
             </div>
@@ -39,7 +61,7 @@
                 <h2 class="stat-value">{{ stats.vip }}</h2>
             </div>
         </div>
-        <div class="stat-card-diamond">
+        <div class="c-card-premium" style="display: flex; align-items: center; gap: 1.25rem;">
             <div class="stat-icon-diamond bg-blue">
                 <i class="fas fa-chart-line"></i>
             </div>
@@ -48,7 +70,7 @@
                 <h2 class="stat-value">{{ stats.new }}</h2>
             </div>
         </div>
-        <div class="stat-card-diamond">
+        <div class="c-card-premium" style="display: flex; align-items: center; gap: 1.25rem;">
             <div class="stat-icon-diamond bg-indigo">
                 <i class="fas fa-repeat"></i>
             </div>
@@ -60,15 +82,22 @@
     </div>
 
     <!-- Organized Database Table -->
-    <div class="table-container-diamond">
-        <div class="table-header-diamond">
-            <div class="header-title-diamond">
-                <h3>Relationship List</h3>
-                <p>Real-time data synchronization active</p>
+    <div class="c-card-premium" style="padding: 0; overflow: hidden;">
+        <div class="table-header-diamond" style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 2rem; border-bottom: 1px solid #e2e8f0;">
+            <div class="header-title-diamond" style="margin: 0;">
+                <h3 style="margin: 0; color: #1e293b; font-weight: 800; font-size: 1.25rem;">Relationship List</h3>
+                <p style="margin: 4px 0 0; color: #64748b; font-size: 0.85rem;">Real-time data synchronization active</p>
             </div>
-            <div class="header-search-bridge">
-                <i class="fas fa-search"></i>
-                <input type="text" id="custSearchInput" placeholder="Search relationship..." oninput="window.filterCustomers()">
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <select id="tableFilterStatus" class="control-pro" style="height: 40px; border-radius: 8px; padding: 0 1rem; border: 1px solid #e2e8f0; font-weight: 600; color: #475569;" onchange="filterCustomerTable()">
+                    <option value="All">All Clients</option>
+                    <option value="VIP Elite">VIP Elite</option>
+                    <option value="Standard">Standard</option>
+                    <option value="Blacklisted">Blacklisted</option>
+                </select>
+                <button class="btn-secondary-pro" onclick="exportCustomerCSV()" style="height: 40px; padding: 0 1rem; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-file-csv"></i> Export to CSV
+                </button>
             </div>
         </div>
         
@@ -121,8 +150,19 @@
                             </div>
                         </td>
                         <td class="premium-cell">
-                            <button class="btn-view-details-pro" onclick="openCustomerProfile({{ customer.id }})">
-                                <i class="fas fa-brain"></i> Open Hub
+                            <button class="btn-primary-pro" style="padding: 0.5rem 1rem; font-size: 0.85rem;" onclick="openCustomerProfile({{ customer.id }})">
+                                <i class="fas fa-user-circle"></i> View Profile
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 4rem 2rem;">
+                            <div style="color: #94a3b8; font-size: 3rem; margin-bottom: 1rem;"><i class="fas fa-users-slash"></i></div>
+                            <h4 style="color: #334155; font-weight: 700; margin-bottom: 0.5rem;">No Relationships Yet</h4>
+                            <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem;">Start building your client database by registering a new customer.</p>
+                            <button class="btn-primary-dashboard" onclick="window.openModal('addCustomerModal')">
+                                <i class="fas fa-plus"></i> Register First Customer
                             </button>
                         </td>
                     </tr>
@@ -136,65 +176,63 @@
 <!-- Register New Customer Modal (Elite Diamond Standard) -->
 <div id="addCustomerModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-lg occ-content-pop">
-        <div class="occ-modal-header colored-header" style="background: #0f172a; padding: 2rem 2.5rem;">
-            <div style="display: flex; align-items: center; gap: 18px;">
-                <div style="width: 54px; height: 54px; background: rgba(16, 185, 129, 0.1); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #10b981;">
-                    <i class="fas fa-user-plus"></i>
-                </div>
-                <div>
-                    <h3 class="occ-modal-title" style="color: white !important; font-size: 1.5rem; font-weight: 850;">Relationship Registration</h3>
-                    <div class="occ-modal-subtitle" style="color: rgba(255,255,255,0.6) !important;">Establish a new entry in your client intelligence database.</div>
-                </div>
+        <div class="occ-modal-header colored-header">
+            <div>
+                <h3 class="occ-modal-title" style="color: white !important;"><i class="fas fa-user-plus"></i> Relationship Registration</h3>
+                <div class="occ-modal-subtitle" style="color: rgba(255,255,255,0.8) !important;">Establish a new entry in your client intelligence database.</div>
             </div>
-            <button type="button" class="occ-modal-close" onclick="window.closeModal('addCustomerModal')" style="background: rgba(255,255,255,0.05); color: white !important;">
+            <button type="button" class="occ-modal-close" onclick="window.closeModal('addCustomerModal')" style="color: white !important;">
                 <i class="fas fa-times"></i>
             </button>
         </div>
 
         <form id="addCustomerForm" onsubmit="window.registerCustomer(event)">
             <div class="occ-modal-body" style="padding: 2.5rem;">
-                <!-- Validation Error Drawer -->
-                <div id="addCustomerError" class="validation-error-drawer" style="display: none; margin-bottom: 2rem;">
-                    <i class="fas fa-exclamation-shield"></i>
-                    <span id="addCustomerErrorText">Audit Guard: Please resolve all field validation errors.</span>
-                </div>
+                <!-- Validation Error Drawer removed in favor of inline feedback -->
 
-                <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                <h4 style="font-size: 1.1rem; font-weight: 800; color: var(--primary-color); margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-user-circle"></i> Customer Information
+                </h4>
+
+                <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
                     <div class="form-group-pro">
-                        <label style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 10px;">Full Client Name *</label>
-                        <input type="text" id="regName" name="name" class="control-pro" placeholder="e.g. Maria Clara Santos" required style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem;">
-                        <div class="field-error-msg" id="error-regName">Format: First, Middle, and Last Name required.</div>
+                        <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; display: block; margin-bottom: 8px;">Full Client Name *</label>
+                        <input type="text" id="regName" name="name" class="control-pro" placeholder="e.g. Maria Clara Santos" required style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem; width: 100%;">
+                        <div class="field-error-msg" id="error-regName">Please provide both First Name and Surname.</div>
                     </div>
                     
                     <div class="form-group-pro">
-                        <label style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 10px;">Email Address *</label>
-                        <input type="email" id="regEmail" name="email" class="control-pro" placeholder="client@gmail.com" required style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem;">
-                        <div class="field-error-msg" id="error-regEmail">Only @gmail.com addresses are permitted.</div>
+                        <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; display: block; margin-bottom: 8px;">Email Address *</label>
+                        <input type="email" id="regEmail" name="email" class="control-pro" placeholder="client@example.com" required style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem; width: 100%;">
+                        <div class="field-error-msg" id="error-regEmail">Please enter a valid email address.</div>
                     </div>
 
                     <div class="form-group-pro">
-                        <label style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 10px;">Phone Number *</label>
-                        <input type="text" id="regPhone" name="phone" class="control-pro" placeholder="09XXXXXXXXX" required maxlength="11" style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem;">
+                        <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; display: block; margin-bottom: 8px;">Phone Number *</label>
+                        <input type="text" id="regPhone" name="phone" class="control-pro" placeholder="09XXXXXXXXX" required maxlength="11" style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem; width: 100%;">
                         <div class="field-error-msg" id="error-regPhone">Enter a valid 11-digit PH mobile number.</div>
                     </div>
 
                     <div class="form-group-pro">
-                        <label style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 10px;">Relationship Status</label>
-                        <div style="height: 50px; background: #f8fafc; border-radius: 12px; border: 1.5px solid #e2e8f0; display: flex; align-items: center; padding: 0 1.25rem; color: #94a3b8; font-weight: 700; font-size: 0.85rem;">
+                        <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; display: block; margin-bottom: 8px;">Relationship Status</label>
+                        <div style="height: 50px; background: #f8fafc; border-radius: 12px; border: 1.5px solid #e2e8f0; display: flex; align-items: center; padding: 0 1.25rem; color: #94a3b8; font-weight: 700; font-size: 0.85rem; width: 100%; box-sizing: border-box;">
                             <i class="fas fa-robot" style="margin-right: 10px;"></i> Calculated Automatically
                         </div>
                     </div>
+                </div>
 
-                    <div class="form-group-pro" style="grid-column: span 2;">
-                        <label style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 10px;">Operational Notes & Special Preferences</label>
-                        <textarea id="regNotes" name="notes" class="control-pro" placeholder="Record specific catering requirements, past event context, or client tiering notes..." rows="3" style="height: auto; min-height: 120px; padding: 1.25rem; border-radius: 12px; border: 1.5px solid #e2e8f0; font-weight: 500;"></textarea>
-                    </div>
+                <h4 style="font-size: 1.1rem; font-weight: 800; color: var(--primary-color); margin-bottom: 1.25rem; margin-top: 1.5rem; padding-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-clipboard-list"></i> Additional Notes
+                </h4>
+
+                <div class="form-group-pro">
+                    <textarea id="regNotes" name="notes" class="control-pro" placeholder="Record specific catering requirements, past event context, or client tiering notes..." rows="3" style="height: auto; min-height: 120px; padding: 1.25rem; border-radius: 12px; border: 1.5px solid #e2e8f0; font-weight: 500; width: 100%; resize: vertical;"></textarea>
                 </div>
             </div>
             
             <div class="occ-modal-footer" style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 1.5rem 2.5rem; display: flex; justify-content: flex-end; gap: 15px;">
-                <button type="button" class="btn-secondary-pro" onclick="window.closeModal('addCustomerModal')" style="background: #e2e8f0; color: #475569; border: none; font-weight: 700; padding: 0.85rem 2rem; border-radius: 12px;">Dismiss</button>
-                <button type="submit" id="btnSubmitRegistration" class="btn-primary-pro" style="background: #10b981; color: white; padding: 0.85rem 3rem; border-radius: 12px; font-weight: 800; border: none; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);">Establish Relationship</button>
+                <button type="button" class="btn-secondary-pro" onclick="window.closeModal('addCustomerModal')">Dismiss</button>
+                <button type="submit" id="btnSubmitRegistration" class="btn-primary-pro">Establish Relationship</button>
             </div>
         </form>
     </div>
@@ -203,17 +241,13 @@
 <!-- Customer Intelligence Hub (CRM Profile) -->
 <div id="customerProfileModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-lg occ-content-pop">
-        <div class="occ-modal-header intelligence-header-bg">
-            <div class="customer-profile-brief">
-                <div class="brief-avatar">
-                    <span id="profInitials">--</span>
-                </div>
-                <div class="brief-info">
-                    <h3 id="profName" class="occ-modal-title">--</h3>
-                    <p id="profStatus" class="intelligence-tag">Analyzing Relationship...</p>
-                </div>
+        <div class="occ-modal-header colored-header">
+            <div>
+                <span id="profInitials" style="display:none;"></span>
+                <h3 id="profName" class="occ-modal-title" style="color: white !important;"><i class="fas fa-user-circle"></i> Customer Profile</h3>
+                <div id="profStatus" class="occ-modal-subtitle intelligence-tag" style="color: rgba(255,255,255,0.8) !important;">Analyzing Relationship...</div>
             </div>
-            <button type="button" class="occ-modal-close" onclick="window.closeModal('customerProfileModal')">
+            <button type="button" class="occ-modal-close" onclick="window.closeModal('customerProfileModal')" style="color: white !important;">
                 <i class="fas fa-times"></i>
             </button>
         </div>
@@ -224,6 +258,9 @@
             </button>
             <button class="intel-tab" data-tab="history" onclick="switchIntelTab('history', this)">
                 <i class="fas fa-history"></i> Booking History
+            </button>
+            <button class="intel-tab" data-tab="edit" onclick="switchIntelTab('edit', this)">
+                <i class="fas fa-edit"></i> Edit Profile
             </button>
             <button class="intel-tab" data-tab="risk" onclick="switchIntelTab('risk', this)">
                 <i class="fas fa-shield-alt"></i> Risk Management
@@ -257,8 +294,41 @@
 
                 <div class="notes-section-pro">
                     <label>Operational Notes</label>
-                    <div class="notes-display-pro" id="profNotes">--</div>
+                    <div class="notes-display-pro" id="profNotes" style="white-space: pre-wrap;">--</div>
                 </div>
+            </div>
+
+            <!-- Edit Profile Tab -->
+            <div id="intel-edit" class="intel-content">
+                <form id="editCustomerForm" onsubmit="updateCustomerProfile(event)">
+                    <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                        <div class="form-group-pro">
+                            <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase;">First Name</label>
+                            <input type="text" id="editFirstName" name="first_name" class="control-pro" required style="height: 45px; border-radius: 8px; border: 1px solid #e2e8f0; padding: 0 1rem; width: 100%;">
+                        </div>
+                        <div class="form-group-pro">
+                            <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase;">Last Name</label>
+                            <input type="text" id="editLastName" name="last_name" class="control-pro" required style="height: 45px; border-radius: 8px; border: 1px solid #e2e8f0; padding: 0 1rem; width: 100%;">
+                        </div>
+                        <div class="form-group-pro">
+                            <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase;">Email Address</label>
+                            <input type="email" id="editEmail" name="email" class="control-pro" required style="height: 45px; border-radius: 8px; border: 1px solid #e2e8f0; padding: 0 1rem; width: 100%;">
+                        </div>
+                        <div class="form-group-pro">
+                            <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase;">Contact Number</label>
+                            <input type="text" id="editPhone" name="phone" class="control-pro" required maxlength="11" style="height: 45px; border-radius: 8px; border: 1px solid #e2e8f0; padding: 0 1rem; width: 100%;">
+                        </div>
+                        <div class="form-group-pro" style="grid-column: span 2;">
+                            <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase;">Internal Notes</label>
+                            <textarea id="editNotes" name="notes" class="control-pro" rows="4" style="border-radius: 8px; border: 1px solid #e2e8f0; padding: 1rem; width: 100%; resize: vertical;"></textarea>
+                        </div>
+                    </div>
+                    <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end;">
+                        <button type="submit" class="btn-primary-pro" id="btnUpdateCustomer">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
             </div>
 
             <!-- Booking History Tab -->
@@ -287,12 +357,12 @@
         </div>
 
         <div class="occ-modal-footer">
-            <button type="button" class="btn-secondary-pro" onclick="window.closeModal('customerProfileModal')">Close Hub</button>
+            <button type="button" class="btn-secondary-pro" onclick="window.closeModal('customerProfileModal')">Close Profile</button>
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', path='/js/caterer/customers.js') }}"></script>
+<script src="{{ url_for('static', path='/js/caterer/customers.js') }}?v=4.5"></script>
 {% endblock %}
