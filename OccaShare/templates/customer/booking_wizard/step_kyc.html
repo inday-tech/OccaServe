@@ -793,6 +793,7 @@
 
                 <!-- Address fields removed per user request -->
                 <input type="hidden" id="first_name" value="{{ user.first_name or '' }}">
+                <input type="hidden" id="middle_name" value="{{ user.middle_name or '' }}">
                 <input type="hidden" id="last_name" value="{{ user.last_name or '' }}">
                 <input type="hidden" id="dob" value="{{ user.dob.strftime('%Y-%m-%d') if user.dob else '' }}">
                 <input type="hidden" id="id_address">

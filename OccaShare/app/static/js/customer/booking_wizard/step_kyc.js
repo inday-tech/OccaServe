@@ -561,12 +561,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const reviewedDob = extracted['date_of_birth'] || '';
         const reviewedAddress = extracted['address'] || '';
 
-        if (reviewedFirstName) document.getElementById('first_name').value = reviewedFirstName;
-        if (reviewedLastName) document.getElementById('last_name').value = reviewedLastName;
-        if (reviewedMiddleName) document.getElementById('middle_name').value = reviewedMiddleName;
-        if (reviewedIdNumber) document.getElementById('id_number').value = reviewedIdNumber;
-        if (reviewedDob) document.getElementById('dob').value = reviewedDob;
-        if (reviewedAddress) document.getElementById('address').value = reviewedAddress;
+        if (reviewedFirstName && document.getElementById('first_name')) document.getElementById('first_name').value = reviewedFirstName;
+        if (reviewedLastName && document.getElementById('last_name')) document.getElementById('last_name').value = reviewedLastName;
+        if (reviewedMiddleName && document.getElementById('middle_name')) document.getElementById('middle_name').value = reviewedMiddleName;
+        if (reviewedIdNumber && document.getElementById('id_number')) document.getElementById('id_number').value = reviewedIdNumber;
+        if (reviewedDob && document.getElementById('dob')) document.getElementById('dob').value = reviewedDob;
+        if (reviewedAddress && document.getElementById('address')) document.getElementById('address').value = reviewedAddress;
 
         // Show Compliance Checking animation
         document.getElementById('compliance-checking').style.display = 'block';
