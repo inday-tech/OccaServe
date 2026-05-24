@@ -133,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const uploadBox = document.getElementById('option-upload');
 
         let value = idInput.value;
-        let isValid = false;
+        let isIdNumberValid = false;
 
         if (idType && validationPatterns[idType]) {
             const pattern = validationPatterns[idType];
@@ -145,11 +145,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 value = formatted;
             }
 
-            isValid = pattern.regex.test(value);
+            isIdNumberValid = pattern.regex.test(value);
             idInput.placeholder = pattern.placeholder;
 
             if (value.length > 0) {
-                if (isValid) {
+                if (isIdNumberValid) {
                     idInput.style.borderColor = 'var(--kyc-accent)';
                     validationMsg.innerText = 'Format valid';
                     validationMsg.style.color = 'var(--kyc-accent)';
@@ -164,9 +164,11 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         } else {
             idInput.placeholder = 'Enter ID number';
+            idInput.style.borderColor = 'var(--kyc-slate-200)';
             validationMsg.innerText = '';
         }
 
+        // Only require ID Type to be selected to enable upload/scan (OCR will extract the number)
         if (idType) {
             scanBox.classList.remove('disabled');
             uploadBox.classList.remove('disabled');
