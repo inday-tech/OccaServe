@@ -1254,7 +1254,7 @@
         });
         // Global Watchdog for Urgent Bookings (Runs on every page except bookings)
         window.addEventListener('load', async function() {
-            if (window.location.pathname === '/caterer/bookings') return; // Handled by native Bookings UI
+            if (window.location.pathname.startsWith('/caterer/bookings')) return; // Handled by native Bookings UI and subpages
 
             try {
                 const res = await fetch('/caterer/api/bookings/urgent-check');
