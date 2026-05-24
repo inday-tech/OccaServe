@@ -3956,32 +3956,45 @@ async def register_manual_customer(
 ):
     try:
         form_data = await request.form()
-        name = form_data.get("name", "").strip()
+        first_name = form_data.get("first_name", "").strip()
+        middle_name = form_data.get("middle_name", "").strip()
+        last_name = form_data.get("last_name", "").strip()
         email = form_data.get("email", "").strip()
         phone = form_data.get("phone", "").strip()
         notes = form_data.get("notes", "").strip()
         
-        if not name or not email:
-            return {"status": "error", "message": "Name and Email are required."}
+        # Address parts
+        province = form_data.get("province", "").strip()
+        city = form_data.get("city", "").strip()
+        barangay = form_data.get("barangay", "").strip()
+        landmark = form_data.get("landmark", "").strip()
+        
+        if not first_name or not last_name or not email:
+            return {"status": "error", "message": "First Name, Last Name, and Email are required."}
             
-        # Check if user exists
+        # Check if user exists by email
         existing_user = db.query(models.User).filter(models.User.email == email).first()
         if existing_user:
             return {"status": "error", "message": "A client with this email already exists in the master database."}
+
+        # Check if phone already exists
+        if phone:
+            existing_phone = db.query(models.User).filter(models.User.phone_number == phone).first()
+            if existing_phone:
+                return {"status": "error", "message": "This phone number is already registered to another client."}
             
-        # Split name
-        parts = name.split()
-        f_name = parts[0]
-        l_name = parts[-1] if len(parts) > 1 else ""
-        m_name = parts[1] if len(parts) > 2 else ""
+        # Construct Address
+        address_parts = [p for p in [landmark, barangay, city, province] if p]
+        full_address = ", ".join(address_parts)
         
         # Create a new "Manual/Walk-in" style user
         new_user = models.User(
             email=email,
-            first_name=f_name,
-            middle_name=m_name if m_name else None,
-            last_name=l_name,
+            first_name=first_name,
+            middle_name=middle_name if middle_name else None,
+            last_name=last_name,
             phone_number=phone,
+            address=full_address if full_address else None,
             role="customer",
             status="active",
             is_verified=True,
@@ -4067,11 +4080,17 @@ async def update_customer_crm_profile(
         
         if not f_name or not email:
             return {"status": "error", "message": "First Name and Email are required."}
-            
+
         # Check if email is used by someone else
         existing_email = db.query(models.User).filter(models.User.email == email, models.User.id != customer_id).first()
         if existing_email:
             return {"status": "error", "message": "This email is already in use by another user."}
+
+        # Check if phone is used by someone else
+        if phone:
+            existing_phone = db.query(models.User).filter(models.User.phone_number == phone, models.User.id != customer_id).first()
+            if existing_phone:
+                return {"status": "error", "message": "This phone number is already registered to another customer."}
             
         target_user.first_name = f_name
         target_user.last_name = l_name

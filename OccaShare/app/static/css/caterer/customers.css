@@ -49,10 +49,10 @@
     flex-shrink: 0;
 }
 
-.stat-icon-diamond.bg-emerald { background: rgba(var(--primary-color-rgb), 0.1); color: var(--primary-color); }
-.stat-icon-diamond.bg-amber { background: rgba(var(--secondary-color-rgb), 0.1); color: var(--secondary-color); }
-.stat-icon-diamond.bg-blue { background: rgba(var(--primary-color-rgb), 0.1); color: var(--primary-color); }
-.stat-icon-diamond.bg-indigo { background: rgba(var(--secondary-color-rgb), 0.1); color: var(--secondary-color); }
+.stat-icon-diamond.bg-emerald { background: var(--caterer-primary-light) !important; color: var(--caterer-primary) !important; }
+.stat-icon-diamond.bg-amber { background: var(--caterer-primary-light) !important; color: var(--caterer-primary) !important; }
+.stat-icon-diamond.bg-blue { background: var(--caterer-primary-light) !important; color: var(--caterer-primary) !important; }
+.stat-icon-diamond.bg-indigo { background: var(--caterer-primary-light) !important; color: var(--caterer-primary) !important; }
 
 .stat-label {
     display: block;
@@ -102,6 +102,12 @@
     font-weight: 600;
 }
 
+.table-controls-diamond {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
 /* Search Bridge removed as requested */
 
 /* --- TABLE CUSTOMIZATIONS --- */
@@ -110,7 +116,7 @@
     color: #475569;
     padding: 0.25rem 0.75rem;
     border-radius: 6px;
-    font-family: 'Monaco', 'Consolas', monospace;
+    font-family: 'Poppins', sans-serif !important;
     font-size: 0.85rem;
     font-weight: 700;
 }
@@ -124,7 +130,7 @@
 .cust-avatar-mini {
     width: 36px;
     height: 36px;
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    background: linear-gradient(135deg, var(--caterer-primary) 0%, var(--caterer-primary-dark) 100%);
     color: white;
     border-radius: 10px;
     display: flex;
@@ -152,8 +158,8 @@
 }
 
 .booking-count-badge {
-    background: #eff6ff;
-    color: #3b82f6;
+    background: var(--caterer-primary-light);
+    color: var(--caterer-primary);
     padding: 0.25rem 0.6rem;
     border-radius: 20px;
     font-size: 0.75rem;
@@ -176,14 +182,14 @@
 }
 
 .btn-view-details-pro:hover {
-    border-color: var(--primary-color);
-    color: var(--primary-color);
-    background: rgba(var(--primary-color-rgb), 0.05);
+    border-color: var(--caterer-primary);
+    color: var(--caterer-primary);
+    background: var(--caterer-primary-light);
 }
 
 /* --- PREMIUM MODAL UTILS (CALENDAR PARITY) --- */
 .occ-modal-header.colored-header {
-    background: var(--secondary-color);
+    background: linear-gradient(135deg, var(--caterer-primary) 0%, var(--caterer-primary-dark) 100%);
     padding: 1.5rem 2rem;
     border-radius: 1.5rem 1.5rem 0 0;
     color: white;
@@ -239,7 +245,7 @@
 
 /* --- INTELLIGENCE HUB MODAL --- */
 .intelligence-header-bg {
-    background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-color) 100%) !important;
+    background: linear-gradient(135deg, var(--caterer-primary) 0%, var(--caterer-primary-dark) 100%) !important;
     color: white !important;
     border: none !important;
 }
@@ -284,7 +290,7 @@
     display: flex;
     gap: 2rem;
     padding: 0 2rem;
-    background: var(--secondary-color);
+    background: var(--caterer-primary);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -308,7 +314,7 @@
 }
 
 .intel-tab.active {
-    color: var(--primary-color);
+    color: white;
 }
 
 .intel-tab.active::after {
@@ -318,7 +324,7 @@
     left: 0;
     width: 100%;
     height: 3px;
-    background: var(--primary-color);
+    background: white;
     border-radius: 3px 3px 0 0;
 }
 
@@ -492,26 +498,91 @@
 
 @media (max-width: 1024px) {
     .stats-grid-diamond {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(2, 1fr);
     }
     
     .occ-form-grid {
         grid-template-columns: 1fr;
     }
+    
+    .page-header-premium {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
 }
 
 @media (max-width: 768px) {
     .stats-grid-diamond {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: 1fr;
     }
     
-    .table-container-dashboard {
+    .table-container-diamond {
         overflow-x: auto;
+    }
+
+    .table-header-diamond {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.5rem;
+    }
+
+    .table-controls-diamond {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .premium-table-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .customer-profile-brief {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+
+    .intelligence-tabs-container {
+        flex-wrap: wrap;
+        padding: 0 1rem;
+        gap: 1rem;
+    }
+
+    .stats-mini-grid, .info-details-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .risk-card-pro-danger {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .btn-risk-blacklist {
+        margin-left: 0;
+        width: 100%;
+    }
+    
+    .occ-modal-header.colored-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+    }
+    
+    .occ-modal-close {
+        position: absolute;
+        top: 15px;
+        right: 15px;
     }
 }
 
 @media (max-width: 480px) {
-    .stats-grid-diamond {
-        grid-template-columns: 1fr;
+    .page-title-pro {
+        font-size: 1.5rem;
+    }
+    
+    .table-header-diamond h3 {
+        font-size: 1.1rem;
     }
 }

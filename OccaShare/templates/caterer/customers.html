@@ -1,7 +1,7 @@
 {% extends "caterer/layout.html" %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/customers.css') }}?v=5.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/customers.css') }}?v=8.0">
 <style>
     :root {
         --caterer-primary: {{ primary_color }};
@@ -83,19 +83,19 @@
 
     <!-- Organized Database Table -->
     <div class="c-card-premium" style="padding: 0; overflow: hidden;">
-        <div class="table-header-diamond" style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 2rem; border-bottom: 1px solid #e2e8f0;">
-            <div class="header-title-diamond" style="margin: 0;">
+        <div class="table-header-diamond">
+            <div class="header-title-diamond">
                 <h3 style="margin: 0; color: #1e293b; font-weight: 800; font-size: 1.25rem;">Relationship List</h3>
                 <p style="margin: 4px 0 0; color: #64748b; font-size: 0.85rem;">Real-time data synchronization active</p>
             </div>
-            <div style="display: flex; gap: 12px; align-items: center;">
-                <select id="tableFilterStatus" class="control-pro" style="height: 40px; border-radius: 8px; padding: 0 1rem; border: 1px solid #e2e8f0; font-weight: 600; color: #475569;" onchange="filterCustomerTable()">
+            <div class="table-controls-diamond">
+                <select id="tableFilterStatus" class="control-pro" style="height: 40px; border-radius: 8px; padding: 0 1rem; border: 1px solid #e2e8f0; font-weight: 600; color: #475569; min-width: 150px;" onchange="window.filterCustomerTable()">
                     <option value="All">All Clients</option>
                     <option value="VIP Elite">VIP Elite</option>
                     <option value="Standard">Standard</option>
                     <option value="Blacklisted">Blacklisted</option>
                 </select>
-                <button class="btn-secondary-pro" onclick="exportCustomerCSV()" style="height: 40px; padding: 0 1rem; display: flex; align-items: center; gap: 8px;">
+                <button class="btn-secondary-pro" onclick="window.exportCustomerCSV()" style="height: 40px; padding: 0 1rem; display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 150px;">
                     <i class="fas fa-file-csv"></i> Export to CSV
                 </button>
             </div>
@@ -194,30 +194,69 @@
                     <i class="fas fa-user-circle"></i> Customer Information
                 </h4>
 
-                <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                <div class="occ-form-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
+                    <!-- Names -->
                     <div class="form-group-pro">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; display: block; margin-bottom: 8px;">Full Client Name *</label>
-                        <input type="text" id="regName" name="name" class="control-pro" placeholder="e.g. Maria Clara Santos" required style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem; width: 100%;">
-                        <div class="field-error-msg" id="error-regName">Please provide both First Name and Surname.</div>
+                        <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; display: block; margin-bottom: 8px;">First Name *</label>
+                        <input type="text" id="regFirstName" name="first_name" class="control-pro" placeholder="Maria" required style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem; width: 100%;">
+                        <div class="field-error-msg" id="error-regFirstName">First Name is required.</div>
                     </div>
-                    
                     <div class="form-group-pro">
+                        <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; display: block; margin-bottom: 8px;">Middle Name</label>
+                        <input type="text" id="regMiddleName" name="middle_name" class="control-pro" placeholder="Clara" style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem; width: 100%;">
+                    </div>
+                    <div class="form-group-pro">
+                        <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; display: block; margin-bottom: 8px;">Last Name *</label>
+                        <input type="text" id="regLastName" name="last_name" class="control-pro" placeholder="Santos" required style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem; width: 100%;">
+                        <div class="field-error-msg" id="error-regLastName">Last Name is required.</div>
+                    </div>
+
+                    <!-- Contact Info -->
+                    <div class="form-group-pro" style="grid-column: span 2;">
                         <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; display: block; margin-bottom: 8px;">Email Address *</label>
                         <input type="email" id="regEmail" name="email" class="control-pro" placeholder="client@example.com" required style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem; width: 100%;">
                         <div class="field-error-msg" id="error-regEmail">Please enter a valid email address.</div>
                     </div>
-
                     <div class="form-group-pro">
                         <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; display: block; margin-bottom: 8px;">Phone Number *</label>
                         <input type="text" id="regPhone" name="phone" class="control-pro" placeholder="09XXXXXXXXX" required maxlength="11" style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem; width: 100%;">
                         <div class="field-error-msg" id="error-regPhone">Enter a valid 11-digit PH mobile number.</div>
                     </div>
+                </div>
 
+                <h4 style="font-size: 1.1rem; font-weight: 800; color: var(--primary-color); margin-bottom: 1.25rem; margin-top: 1.5rem; padding-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-map-marker-alt"></i> Client Address
+                </h4>
+                
+                <div class="occ-form-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
                     <div class="form-group-pro">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; display: block; margin-bottom: 8px;">Relationship Status</label>
-                        <div style="height: 50px; background: #f8fafc; border-radius: 12px; border: 1.5px solid #e2e8f0; display: flex; align-items: center; padding: 0 1.25rem; color: #94a3b8; font-weight: 700; font-size: 0.85rem; width: 100%; box-sizing: border-box;">
-                            <i class="fas fa-robot" style="margin-right: 10px;"></i> Calculated Automatically
-                        </div>
+                        <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; display: block; margin-bottom: 8px;">Province *</label>
+                        <select id="regProv" name="province" class="control-pro" required style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem; width: 100%;" onchange="window.loadCities(this.value, 'regCity')">
+                            <option value="">Select Province</option>
+                        </select>
+                        <div class="field-error-msg" id="error-regProv">Province is required.</div>
+                    </div>
+                    
+                    <div class="form-group-pro">
+                        <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; display: block; margin-bottom: 8px;">City / Municipality *</label>
+                        <select id="regCity" name="city" class="control-pro" required disabled style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem; width: 100%;" onchange="window.loadBarangays(this.value, 'regBrgy')">
+                            <option value="">Select City</option>
+                        </select>
+                        <div class="field-error-msg" id="error-regCity">City is required.</div>
+                    </div>
+                    
+                    <div class="form-group-pro">
+                        <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; display: block; margin-bottom: 8px;">Barangay *</label>
+                        <select id="regBrgy" name="barangay" class="control-pro" required disabled style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem; width: 100%;">
+                            <option value="">Select Barangay</option>
+                        </select>
+                        <div class="field-error-msg" id="error-regBrgy">Barangay is required.</div>
+                    </div>
+
+                    <div class="form-group-pro" style="grid-column: span 3;">
+                        <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; display: block; margin-bottom: 8px;">Street / Landmark / House No. *</label>
+                        <input type="text" id="regLandmark" name="landmark" class="control-pro" placeholder="e.g. 123 Main St, Near Plaza" required style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem; width: 100%;">
+                        <div class="field-error-msg" id="error-regLandmark">Street/Landmark is required.</div>
                     </div>
                 </div>
 
@@ -305,18 +344,22 @@
                         <div class="form-group-pro">
                             <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase;">First Name</label>
                             <input type="text" id="editFirstName" name="first_name" class="control-pro" required style="height: 45px; border-radius: 8px; border: 1px solid #e2e8f0; padding: 0 1rem; width: 100%;">
+                            <div class="field-error-msg" id="error-editFirstName">First name is required.</div>
                         </div>
                         <div class="form-group-pro">
                             <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase;">Last Name</label>
                             <input type="text" id="editLastName" name="last_name" class="control-pro" required style="height: 45px; border-radius: 8px; border: 1px solid #e2e8f0; padding: 0 1rem; width: 100%;">
+                            <div class="field-error-msg" id="error-editLastName">Last name is required.</div>
                         </div>
                         <div class="form-group-pro">
                             <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase;">Email Address</label>
                             <input type="email" id="editEmail" name="email" class="control-pro" required style="height: 45px; border-radius: 8px; border: 1px solid #e2e8f0; padding: 0 1rem; width: 100%;">
+                            <div class="field-error-msg" id="error-editEmail">Please enter a valid email address.</div>
                         </div>
                         <div class="form-group-pro">
                             <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase;">Contact Number</label>
                             <input type="text" id="editPhone" name="phone" class="control-pro" required maxlength="11" style="height: 45px; border-radius: 8px; border: 1px solid #e2e8f0; padding: 0 1rem; width: 100%;">
+                            <div class="field-error-msg" id="error-editPhone">Enter a valid 11-digit PH mobile number.</div>
                         </div>
                         <div class="form-group-pro" style="grid-column: span 2;">
                             <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase;">Internal Notes</label>
@@ -364,5 +407,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', path='/js/caterer/customers.js') }}?v=4.5"></script>
+<script src="{{ url_for('static', path='/js/caterer/customers.js') }}?v=8.0"></script>
 {% endblock %}
