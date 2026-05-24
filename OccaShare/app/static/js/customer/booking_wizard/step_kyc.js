@@ -413,12 +413,12 @@ document.addEventListener('DOMContentLoaded', function () {
     // ─── OCR VERIFICATION MODAL ────────────────────────────────────────
     const ID_TYPE_CONFIG = {
         "PhilSys / PhilID": [
-            { key: "id_number", label: "ID Number", icon: "fa-hashtag" },
-            { key: "last_name", label: "Last Name", icon: "fa-user" },
-            { key: "given_names", label: "Given Names", icon: "fa-user" },
-            { key: "middle_name", label: "Middle Name", icon: "fa-user" },
-            { key: "date_of_birth", label: "Date of Birth", icon: "fa-calendar" },
-            { key: "address", label: "Address", icon: "fa-map-marker-alt" }
+            { key: "id_number", label: "id number", icon: "fa-hashtag" },
+            { key: "last_name", label: "Apelyido/Last Name", icon: "fa-user" },
+            { key: "given_names", label: "Mga Pangalan/ Given Names", icon: "fa-user" },
+            { key: "middle_name", label: "Gitnang Apelyido/ Middle Name", icon: "fa-user" },
+            { key: "date_of_birth", label: "Petsa ng Kapanganakan/ Date of Birth", icon: "fa-calendar" },
+            { key: "address", label: "Tirahan/ Address", icon: "fa-map-marker-alt" }
         ],
         "Driver's License": [
             { key: "last_name", label: "Last Name", icon: "fa-user" },
@@ -427,31 +427,31 @@ document.addEventListener('DOMContentLoaded', function () {
             { key: "nationality", label: "Nationality", icon: "fa-flag" },
             { key: "sex", label: "Sex", icon: "fa-venus-mars" },
             { key: "date_of_birth", label: "Date of Birth", icon: "fa-calendar" },
-            { key: "weight", label: "Weight", icon: "fa-weight" },
-            { key: "height", label: "Height", icon: "fa-arrows-alt-v" },
+            { key: "weight", label: "Weight(kg)", icon: "fa-weight" },
+            { key: "height", label: "Height(m)", icon: "fa-arrows-alt-v" },
             { key: "address", label: "Address", icon: "fa-map-marker-alt" },
             { key: "license_number", label: "License No.", icon: "fa-hashtag" },
-            { key: "expiration_date", label: "Expiration Date", icon: "fa-calendar-times" },
+            { key: "expiration_date", label: "Expiration date", icon: "fa-calendar-times" },
             { key: "agency_code", label: "Agency Code", icon: "fa-building" },
-            { key: "blood_type", label: "Blood Type", icon: "fa-tint" },
+            { key: "blood_type", label: "Blood type", icon: "fa-tint" },
             { key: "eyes_color", label: "Eyes Color", icon: "fa-eye" },
             { key: "restrictions", label: "Restrictions", icon: "fa-exclamation-triangle" },
             { key: "conditions", label: "Conditions", icon: "fa-notes-medical" }
         ],
         "Passport": [
-            { key: "type", label: "Type", icon: "fa-passport" },
-            { key: "country_code", label: "Country Code", icon: "fa-globe" },
-            { key: "passport_number", label: "Passport No.", icon: "fa-hashtag" },
-            { key: "last_name", label: "Last Name", icon: "fa-user" },
-            { key: "given_names", label: "Given Names", icon: "fa-user" },
-            { key: "middle_name", label: "Middle Name", icon: "fa-user" },
-            { key: "date_of_birth", label: "Date of Birth", icon: "fa-calendar" },
-            { key: "nationality", label: "Nationality", icon: "fa-flag" },
-            { key: "sex", label: "Sex", icon: "fa-venus-mars" },
-            { key: "place_of_birth", label: "Place of Birth", icon: "fa-map-marker-alt" },
-            { key: "date_issued", label: "Date of Issue", icon: "fa-calendar-check" },
-            { key: "visa_until", label: "Visa Until", icon: "fa-calendar-times" },
-            { key: "issuing_authority", label: "Issuing Authority", icon: "fa-building" }
+            { key: "type", label: "Uri/ Type", icon: "fa-passport" },
+            { key: "country_code", label: "Kodigo ng Bansa/ Country Code", icon: "fa-globe" },
+            { key: "passport_number", label: "Pasaporte blg/ Passport No", icon: "fa-hashtag" },
+            { key: "last_name", label: "Apelyido/Last Name", icon: "fa-user" },
+            { key: "given_names", label: "Mga Pangalan/ Given Names", icon: "fa-user" },
+            { key: "middle_name", label: "Gitnang Apelyido/ Middle Name", icon: "fa-user" },
+            { key: "date_of_birth", label: "Araw ng Kapanganakan/ Date of Birth", icon: "fa-calendar" },
+            { key: "nationality", label: "Nasyonalidad/ Nationality", icon: "fa-flag" },
+            { key: "sex", label: "Kasarian/ Sex", icon: "fa-venus-mars" },
+            { key: "place_of_birth", label: "Pook ng Kapanganakan/ Place of Birth", icon: "fa-map-marker-alt" },
+            { key: "date_of_issue", label: "Araw ng Pagkakaloob/ Date of Issue", icon: "fa-calendar-check" },
+            { key: "visa_until", label: "Petsa ng pagkawala ng visa/ Visa Until", icon: "fa-calendar-times" },
+            { key: "issuing_authority", label: "may kapangyarihang nagkaloob/ issuing authority", icon: "fa-building" }
         ]
     };
 
