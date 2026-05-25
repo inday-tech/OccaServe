@@ -164,6 +164,8 @@ async function editPackage(pkgId) {
         // Reset wizard to Step 1
         const firstStep = document.getElementById('step-btn-basic');
         if (firstStep) switchPackageTab(firstStep, 'basic');
+        
+        loadPkgMenuLibrary();
 
         if (typeof window.reactivelyValidateForm === 'function') {
             window.reactivelyValidateForm();
@@ -351,6 +353,21 @@ function validateTab(tabName, silent = false) {
                 addError(form.reservation_fee, `Reservation fee cannot exceed 50% of the total base package cost (₱${maxAllowedFee.toLocaleString()}).`);
             }
         }
+        
+        // Anti-Bankruptcy Margin Check
+        const internalInput = document.getElementById('pkgInternalCostPerPax');
+        if (internalInput) {
+            const internalCost = parseFloat(internalInput.value) || 0;
+            if (price < internalCost) {
+                addError(form.price_per_head, `Selling Price (₱${price}) cannot be lower than the Est. Cost / Pax (₱${internalCost.toFixed(2)}). You will lose money on every booking.`);
+            }
+        }
+
+        // Validate overhead costs
+        if (form.labor_cost && (form.labor_cost.value === '' || parseFloat(form.labor_cost.value) < 0)) addError(form.labor_cost, "Cannot be empty");
+        if (form.utility_cost && (form.utility_cost.value === '' || parseFloat(form.utility_cost.value) < 0)) addError(form.utility_cost, "Cannot be empty");
+        if (form.equipment_cost && (form.equipment_cost.value === '' || parseFloat(form.equipment_cost.value) < 0)) addError(form.equipment_cost, "Cannot be empty");
+        if (form.base_pax && (form.base_pax.value === '' || parseInt(form.base_pax.value) < 1)) addError(form.base_pax, "Required");
     }
     
     return isValid;
@@ -368,17 +385,11 @@ window.reactivelyValidateForm = function() {
     const saveBtn = document.getElementById('pkgSaveBtn');
     if (saveBtn) {
         if (isAllValid) {
-            saveBtn.disabled = false;
             saveBtn.style.opacity = '1';
-            saveBtn.style.cursor = 'pointer';
-            saveBtn.style.pointerEvents = 'auto';
-            saveBtn.style.background = 'linear-gradient(135deg, #FF7B54 0%, #ff5c2b 100%)';
+            saveBtn.style.background = 'var(--primary-color)';
             saveBtn.innerHTML = '<i class="fas fa-check-circle"></i> Save Package';
         } else {
-            saveBtn.disabled = true;
-            saveBtn.style.opacity = '0.4';
-            saveBtn.style.cursor = 'not-allowed';
-            saveBtn.style.pointerEvents = 'none';
+            saveBtn.style.opacity = '0.7'; // Make it more visible even if incomplete
             saveBtn.style.background = '#94a3b8';
             saveBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Form Incomplete';
         }
@@ -430,7 +441,7 @@ window.goToWizardBackStep = function(prevTab) {
     const prevBtn = document.getElementById('step-btn-' + prevTab);
     if (prevBtn) {
         // Validation bypass on back navigation
-        document.querySelectorAll('.pkg-step').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.pkg-step-side, .pkg-step').forEach(s => s.classList.remove('active'));
         prevBtn.classList.add('active');
 
         document.querySelectorAll('#packageModal .tab-pane-pro').forEach(p => p.classList.remove('active'));
@@ -459,7 +470,7 @@ function switchPackageTab(el, tabName) {
     // Validate previous tabs on forward click
     const stepsOrder = ['basic', 'perks', 'menu', 'pricing'];
     const targetIdx = stepsOrder.indexOf(tabName);
-    const activeStepEl = document.querySelector('.pkg-step.active');
+    const activeStepEl = document.querySelector('.pkg-step-side.active') || document.querySelector('.pkg-step.active');
     const currentTabName = activeStepEl ? activeStepEl.id.replace('step-btn-', '') : 'basic';
     const currentIdx = stepsOrder.indexOf(currentTabName);
     
@@ -468,7 +479,7 @@ function switchPackageTab(el, tabName) {
             if (!validateTab(stepsOrder[i])) {
                 const failEl = document.getElementById('step-btn-' + stepsOrder[i]);
                 if (failEl) {
-                    document.querySelectorAll('.pkg-step').forEach(s => s.classList.remove('active'));
+                    document.querySelectorAll('.pkg-step-side, .pkg-step').forEach(s => s.classList.remove('active'));
                     failEl.classList.add('active');
                 }
                 return;
@@ -476,7 +487,7 @@ function switchPackageTab(el, tabName) {
         }
     }
 
-    document.querySelectorAll('.pkg-step').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.pkg-step-side, .pkg-step').forEach(s => s.classList.remove('active'));
     el.classList.add('active');
 
     document.querySelectorAll('#packageModal .tab-pane-pro').forEach(p => p.classList.remove('active'));
@@ -494,49 +505,7 @@ function switchPackageTab(el, tabName) {
         progressEl.style.width = pct + '%';
     }
 
-    // Update Footer Buttons dynamically!
-    const footer = document.getElementById('pkgWizardFooter');
-    if (footer) {
-        let buttonsHtml = '';
-        if (tabName === 'basic') {
-            buttonsHtml = `
-                <button type="button" class="btn-secondary-pro" onclick="window.closeModal('packageModal')">Cancel</button>
-                <button type="button" class="btn-primary-pro" onclick="window.goToWizardNextStep('perks')">
-                    Next: Inclusions <i class="fas fa-chevron-right" style="margin-left: 6px;"></i>
-                </button>
-            `;
-        } else if (tabName === 'perks') {
-            buttonsHtml = `
-                <button type="button" class="btn-secondary-pro" onclick="window.goToWizardBackStep('basic')">
-                    <i class="fas fa-chevron-left" style="margin-right: 6px;"></i> Back
-                </button>
-                <button type="button" class="btn-primary-pro" onclick="window.goToWizardNextStep('menu')">
-                    Next: Menu Setup <i class="fas fa-chevron-right" style="margin-left: 6px;"></i>
-                </button>
-            `;
-        } else if (tabName === 'menu') {
-            buttonsHtml = `
-                <button type="button" class="btn-secondary-pro" onclick="window.goToWizardBackStep('perks')">
-                    <i class="fas fa-chevron-left" style="margin-right: 6px;"></i> Back
-                </button>
-                <button type="button" class="btn-primary-pro" onclick="window.goToWizardNextStep('pricing')">
-                    Next: Pricing <i class="fas fa-chevron-right" style="margin-left: 6px;"></i>
-                </button>
-            `;
-        } else if (tabName === 'pricing') {
-            buttonsHtml = `
-                <button type="button" class="btn-secondary-pro" onclick="window.goToWizardBackStep('menu')">
-                    <i class="fas fa-chevron-left" style="margin-right: 6px;"></i> Back
-                </button>
-                <button type="submit" id="pkgSaveBtn" class="btn-primary-pro">
-                    <i class="fas fa-check-circle" style="margin-right: 6px;"></i> Save Package
-                </button>
-            `;
-        }
-        footer.innerHTML = buttonsHtml;
-    }
-
-    if (tabName === 'menu') loadPkgMenuLibrary();
+    // Footer is now static (Cancel & Save) in the HTML for the sidebar layout
     
     if (typeof window.reactivelyValidateForm === 'function') {
         window.reactivelyValidateForm();
@@ -573,14 +542,20 @@ async function loadPkgMenuLibrary() {
                      data-cost="${item.cost_price || 0}"
                      data-category="${item.category}"
                      onclick="window.toggleLibItemSelectCard(this, ${item.id})"
-                     style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; cursor: pointer; transition: all 0.2s; margin-bottom: 0.5rem; background: ${isSelected ? '#f0fdf4' : 'white'}; border-color: ${isSelected ? '#22c55e' : '#e2e8f0'};">
-                    <img src="${item.image_url || DISH_PLACEHOLDER}" alt="${item.name}" onerror="this.src='${DISH_PLACEHOLDER}'" style="width: 40px; height: 40px; border-radius: 0.5rem; object-fit: cover;">
-                    <div style="flex: 1;">
-                        <h6 style="margin: 0; font-size: 0.85rem; font-weight: 700;">${item.name}</h6>
-                        <div style="font-size: 0.7rem; color: #94a3b8;">${item.category} • ₱${(item.cost_price || 0).toFixed(2)} cost</div>
+                     style="position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.5rem; padding: 1.25rem 0.75rem; border: 1px solid ${isSelected ? 'var(--primary-color)' : '#e2e8f0'}; border-radius: 0.75rem; cursor: pointer; transition: all 0.2s; background: ${isSelected ? '#f0fdf4' : 'white'}; box-shadow: ${isSelected ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'};">
+                    
+                    <div style="position: absolute; top: 10px; right: 10px; font-size: 1.2rem; color: ${isSelected ? 'var(--primary-color)' : '#cbd5e1'}; transition: all 0.2s;">
+                        ${isSelected ? '<i class="fas fa-check-circle"></i>' : '<i class="far fa-circle"></i>'}
+                    </div>
+
+                    <img src="${item.image_url || DISH_PLACEHOLDER}" alt="${item.name}" onerror="this.src='${DISH_PLACEHOLDER}'" style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 3px solid #f8fafc; margin-bottom: 0.25rem; box-shadow: 0 4px 8px rgba(0,0,0,0.06);">
+                    
+                    <div style="flex: 1; width: 100%;">
+                        <h6 style="margin: 0; font-size: 0.85rem; font-weight: 800; color: #1e293b; line-height: 1.2; text-overflow: ellipsis; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">${item.name}</h6>
+                        <div style="font-size: 0.65rem; font-weight: 800; color: var(--primary-color); text-transform: uppercase; margin-top: 6px; letter-spacing: 0.05em;">${item.category}</div>
+                        <div style="font-size: 0.75rem; color: #64748b; font-weight: 700; margin-top: 2px;">₱${(item.cost_price || 0).toLocaleString('en-PH', {minimumFractionDigits: 2})} cost</div>
                     </div>
                     <input type="checkbox" name="linked_menu_ids" value="${item.id}" ${isSelected ? 'checked' : ''} style="display:none;">
-                    ${isSelected ? '<i class="fas fa-check-circle text-green-500"></i>' : '<i class="far fa-circle text-slate-200"></i>'}
                 </div>
             `;
         }).join('');
@@ -670,8 +645,8 @@ function updateSelectionRulesBuilder() {
         const currentLimit = existingRules[cat] || '';
         const maxLimit = catCounts[cat] || 1;
         container.innerHTML += `
-            <div class="form-group-pro" style="margin-bottom: 0;">
-                <label style="font-size: 0.75rem; font-weight:700;">Choice Limit for ${cat} (Max: ${maxLimit})</label>
+            <div class="form-group-pro" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: flex-end; height: 100%;">
+                <label style="font-size: 0.7rem; font-weight:800; color: #475569; text-transform: uppercase; letter-spacing: 0.02em; margin-bottom: 0.5rem; display: block; line-height: 1.2;">Limit for ${cat} (Max: ${maxLimit})</label>
                 <input type="number" class="control-pro selection-rule-input" data-category="${cat}" value="${currentLimit}" placeholder="Unlimited" min="1" max="${maxLimit}" oninput="window.clampSelectionRule(this, ${maxLimit})">
                 <small class="error-msg text-red-500" style="font-size: 10px; display: none; margin-top: 4px; font-weight:600;"></small>
             </div>
@@ -816,13 +791,13 @@ async function loadPackageMenu() {
         }
 
         container.innerHTML = items.map(item => `
-            <div class="menu-item-pro-row" style="display: flex; align-items: center; gap: 1rem; background: #f8fafc; padding: 1rem; border-radius: 1rem; border-left: 4px solid #ef4444;">
-                <img src="${item.image_url || DISH_PLACEHOLDER}" class="dish-thumb" style="width: 50px; height: 50px; border-radius: 0.75rem; object-fit: cover;">
+            <div class="menu-item-pro-row" style="display: flex; align-items: center; gap: 1rem; background: #fff; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #e2e8f0; border-left: 4px solid var(--primary-color); margin-bottom: 0.5rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                <img src="${item.image_url || DISH_PLACEHOLDER}" class="dish-thumb" style="width: 40px; height: 40px; border-radius: 0.5rem; object-fit: cover;">
                 <div class="dish-info-pro" style="flex: 1;">
-                    <h6 style="margin: 0; font-weight: 800;">${item.name}</h6>
-                    <span style="font-size: 0.75rem; color: #94a3b8;">${item.category}</span>
+                    <h6 style="margin: 0; font-size: 0.85rem; font-weight: 700; color: #1e293b;">${item.name}</h6>
+                    <span style="font-size: 0.7rem; color: #94a3b8;">${item.category}</span>
                 </div>
-                <button type="button" onclick="window.unlinkDish(${item.id})" class="text-red-400" style="border:none; background:none; cursor:pointer;"><i class="fas fa-unlink"></i></button>
+                <button type="button" onclick="window.unlinkDish(${item.id})" class="text-red-500 hover:text-red-700" style="border:none; background:none; cursor:pointer; font-size: 1.1rem; padding: 0.5rem; transition: color 0.2s;" title="Unlink Dish"><i class="fas fa-unlink"></i></button>
             </div>
         `).join('');
     } catch (e) {
@@ -878,22 +853,39 @@ function filterLibraryItems() {
 async function linkDish(dishId) {
     if (!window.apiAction) return;
     
-    const formData = new FormData();
-    formData.append('item_id', dishId);
-    
-    const res = await window.apiAction(`/caterer/packages/${currentPackageId}/menu/link`, {
-        method: 'POST',
-        body: formData
-    });
-    if (res) loadLibraryItems();
+    const doLink = async () => {
+        const formData = new FormData();
+        formData.append('item_id', dishId);
+        
+        const res = await window.apiAction(`/caterer/packages/${currentPackageId}/menu/link`, {
+            method: 'POST',
+            body: formData
+        });
+        if (res) loadLibraryItems();
+    };
+
+    if (window.showConfirm) {
+        window.showConfirm('Link this dish to the current package?', doLink, 'Link Dish');
+    } else {
+        if (confirm('Link this dish?')) doLink();
+    }
 }
 
 async function unlinkDish(dishId) {
     if (!window.apiAction) return;
-    const res = await window.apiAction(`/caterer/packages/${currentPackageId}/menu/${dishId}/unlink`, {
-        method: 'POST'
-    });
-    if (res) loadPackageMenu();
+    
+    const doUnlink = async () => {
+        const res = await window.apiAction(`/caterer/packages/${currentPackageId}/menu/${dishId}/unlink`, {
+            method: 'POST'
+        });
+        if (res) loadPackageMenu();
+    };
+
+    if (window.showConfirm) {
+        window.showConfirm('Are you sure you want to remove this dish from the package?', doUnlink, 'Unlink Dish');
+    } else {
+        if (confirm('Remove this dish from the package?')) doUnlink();
+    }
 }
 
 async function archivePackage(id) {
@@ -1096,5 +1088,35 @@ window.toggleLibItemSelectCard = toggleLibItemSelectCard;
 window.togglePackageStatus = togglePackageStatus;
 window.filterPackages = filterPackages;
 window.previewPackageImage = previewPackageImage;
+window.validateTab = validateTab;
 
-console.log("[Packages] v15.0 Exported.");
+console.log("[Packages] v18.0 Exported.");
+
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('packageForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            // Trigger visual validation for all tabs
+            const isBasicValid = window.validateTab ? window.validateTab('basic', false) : true;
+            const isPerksValid = window.validateTab ? window.validateTab('perks', false) : true;
+            const isMenuValid = window.validateTab ? window.validateTab('menu', false) : true;
+            const isPricingValid = window.validateTab ? window.validateTab('pricing', false) : true;
+            
+            if (!(isBasicValid && isPerksValid && isMenuValid && isPricingValid)) {
+                e.preventDefault();
+                alert("Form is incomplete. Please check all tabs for errors.");
+                
+                // Focus on the first tab that has an error
+                if (!isBasicValid) {
+                    window.switchPackageTab(document.getElementById('step-btn-basic'), 'basic');
+                } else if (!isPerksValid) {
+                    window.switchPackageTab(document.getElementById('step-btn-perks'), 'perks');
+                } else if (!isMenuValid) {
+                    window.switchPackageTab(document.getElementById('step-btn-menu'), 'menu');
+                } else if (!isPricingValid) {
+                    window.switchPackageTab(document.getElementById('step-btn-pricing'), 'pricing');
+                }
+            }
+        });
+    }
+});

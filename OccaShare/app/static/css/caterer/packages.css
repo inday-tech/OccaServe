@@ -1,4 +1,18 @@
 /* Caterer Packages - Professional Redesign */
+.occ-modal-box.sz-lg { max-width: 950px !important; max-height: 90vh; display: flex; flex-direction: column; }
+.pkg-wizard-sidebar { width: 280px; background: #f8fafc; border-right: 1px solid #e2e8f0; padding: 2rem 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; flex-shrink: 0; }
+.pkg-wizard-content { flex: 1; padding: 2rem 2.5rem; overflow-y: auto; background: white; min-width: 0; }
+.pkg-step-side { display: flex; align-items: center; gap: 1rem; padding: 1rem; border-radius: var(--border-radius); cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid transparent; }
+.pkg-step-side:hover { background: white; border-color: #e2e8f0; transform: translateX(4px); }
+.pkg-step-side.active { background: white; border-color: var(--primary-color); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); }
+.step-icon-side { width: 40px; height: 40px; border-radius: 50%; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; transition: all 0.3s; flex-shrink: 0; }
+.pkg-step-side.active .step-icon-side { background: var(--primary-color); color: white; box-shadow: 0 4px 10px rgba(var(--primary-color-rgb, 16, 185, 129), 0.3); }
+.step-text-side { display: flex; flex-direction: column; }
+.step-title-side { font-size: 0.9rem; font-weight: 800; color: #1e293b; line-height: 1.2; transition: color 0.2s; }
+.step-desc-side { font-size: 0.75rem; color: #94a3b8; font-weight: 600; }
+.pkg-step-side.active .step-title-side { color: var(--primary-color); }
+.sidebar-progress-wrapper { margin-top: auto; padding-top: 2rem; }
+
 :root {
     --glass-bg: rgba(255, 255, 255, 0.75);
     --glass-border: rgba(255, 255, 255, 0.4);
@@ -239,13 +253,14 @@
     width: 100%;
     max-width: 600px;
     max-height: 90vh;
-    border-radius: var(--radius-lg);
+    border-radius: calc(var(--border-radius) * 1.5);
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     display: flex;
     flex-direction: column;
     transform: translateY(20px);
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     overflow: hidden;
+    font-family: 'Poppins', sans-serif !important;
 }
 
 .modal-content-pro form {
@@ -254,6 +269,7 @@
     flex: 1;
     overflow: hidden;
     margin: 0;
+    font-family: 'Poppins', sans-serif !important;
 }
 
 .modal-pro.active .modal-content-pro {
@@ -299,7 +315,7 @@
 .roi-margin-container {
     background: #f8fafc;
     border: 1px solid #e2e8f0;
-    border-radius: 1rem;
+    border-radius: var(--border-radius);
     padding: 1.5rem;
     margin-top: 1rem;
 }
@@ -379,9 +395,10 @@
     padding: 0 var(--space-md);
     background: var(--color-neutral-50);
     border: 1.5px solid var(--border-color, #e2e8f0);
-    border-radius: var(--radius-md);
+    border-radius: var(--border-radius);
     font-size: var(--text-sm);
-    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 500;
     color: var(--secondary-color, #1e293b);
     transition: all 0.2s ease;
 }
@@ -635,7 +652,8 @@ textarea.control-pro {
     margin-bottom: 2rem;
     padding: 0.5rem;
     background: #f1f5f9;
-    border-radius: 1rem;
+    border-radius: var(--border-radius);
+    font-family: 'Poppins', sans-serif;
 }
 
 .pkg-step {
@@ -646,7 +664,7 @@ textarea.control-pro {
     gap: 0.4rem;
     padding: 0.75rem 0.5rem;
     cursor: pointer;
-    border-radius: 0.75rem;
+    border-radius: calc(var(--border-radius) * 0.8);
     transition: all 0.2s ease;
 }
 
@@ -739,7 +757,7 @@ textarea.control-pro {
 .pricing-overview-card {
     background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
     border: 1px solid var(--color-neutral-200);
-    border-radius: var(--radius-lg);
+    border-radius: var(--border-radius);
     padding: var(--space-xl);
     margin-bottom: var(--space-xl);
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
@@ -1758,7 +1776,7 @@ textarea.control-pro {
 }
 
 /* Menu Selection Optimization */
-.menu-items-scroll {
+.menu-grid-scroll {
     max-height: 300px;
     overflow-y: auto;
     padding: 4px;
@@ -1768,7 +1786,7 @@ textarea.control-pro {
 }
 
 @media (max-width: 480px) {
-    .menu-items-scroll {
+    .menu-grid-scroll {
         grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
         gap: 8px;
     }

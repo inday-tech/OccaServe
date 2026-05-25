@@ -1971,6 +1971,41 @@ async def add_package(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    errors = []
+    if not name.strip():
+        errors.append("Package name is required.")
+    if booking_lead_time < 3:
+        errors.append("Lead time must be at least 3 days.")
+    if not linked_menu_ids or len(linked_menu_ids) == 0:
+        errors.append("Please select at least 1 menu item from your library.")
+    if price_per_head <= 0:
+        errors.append("Price per head must be greater than 0.")
+    if min_guests < 10:
+        errors.append("Minimum guests must be at least 10.")
+    if reservation_fee <= 0:
+        errors.append("Reservation fee must be greater than 0.")
+    elif price_per_head > 0 and min_guests > 0:
+        max_allowed_fee = (price_per_head * min_guests) * 0.5
+        if reservation_fee > max_allowed_fee:
+            errors.append(f"Reservation fee cannot exceed 50% of the total base package cost.")
+    if price_per_head < internal_cost_per_pax:
+        errors.append(f"Selling Price cannot be lower than the Est. Cost / Pax.")
+
+    # Smart Validation: Detect existing package with the same name
+    existing_pkg = db.query(models.CateringPackage).filter(
+        models.CateringPackage.caterer_id == user.caterer_profile.id,
+        models.CateringPackage.name.ilike(name.strip())
+    ).first()
+    
+    if existing_pkg:
+        errors.append(f"A package named '{name}' already exists in your library.")
+        
+    if errors:
+        error_msg = " | ".join(errors)
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return JSONResponse({"status": "error", "message": error_msg}, status_code=400)
+        return RedirectResponse(url=f"/caterer/packages?error_msg={error_msg}", status_code=303)
+
     image_url = None
     if image and image.filename:
         ext = os.path.splitext(image.filename)[1]
@@ -2377,7 +2412,43 @@ async def update_package(
     ).first()
     if not package:
         raise HTTPException(status_code=404, detail="Package not found")
+        
+    errors = []
+    if not name.strip():
+        errors.append("Package name is required.")
+    if booking_lead_time < 3:
+        errors.append("Lead time must be at least 3 days.")
+    if not linked_menu_ids or len(linked_menu_ids) == 0:
+        errors.append("Please select at least 1 menu item from your library.")
+    if price_per_head <= 0:
+        errors.append("Price per head must be greater than 0.")
+    if min_guests < 10:
+        errors.append("Minimum guests must be at least 10.")
+    if reservation_fee <= 0:
+        errors.append("Reservation fee must be greater than 0.")
+    elif price_per_head > 0 and min_guests > 0:
+        max_allowed_fee = (price_per_head * min_guests) * 0.5
+        if reservation_fee > max_allowed_fee:
+            errors.append(f"Reservation fee cannot exceed 50% of the total base package cost.")
+    if price_per_head < internal_cost_per_pax:
+        errors.append(f"Selling Price cannot be lower than the Est. Cost / Pax.")
+
+    # Smart Validation: Detect existing package with the same name, excluding this package
+    existing_pkg = db.query(models.CateringPackage).filter(
+        models.CateringPackage.caterer_id == user.caterer_profile.id,
+        models.CateringPackage.name.ilike(name.strip()),
+        models.CateringPackage.id != package_id
+    ).first()
     
+    if existing_pkg:
+        errors.append(f"A package named '{name}' already exists in your library.")
+        
+    if errors:
+        error_msg = " | ".join(errors)
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return JSONResponse({"status": "error", "message": error_msg}, status_code=400)
+        return RedirectResponse(url=f"/caterer/packages?error_msg={error_msg}", status_code=303)
+
     package.name = name
     package.description = description
     package.service_type = service_type
@@ -2602,7 +2673,8 @@ async def get_all_menu_items_api(
             "id": i.id,
             "name": i.name,
             "category": i.category,
-            "image_url": i.image_url
+            "image_url": i.image_url,
+            "cost_price": i.cost_price
         }
         for i in items
     ]

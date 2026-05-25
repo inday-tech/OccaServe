@@ -842,7 +842,7 @@
         if (statsGrid) statsGrid.classList.add('loading-shimmer');
         if (recentOrders) recentOrders.classList.add('loading-shimmer');
 
-        let url = `/api/dashboard-overview?timeframe=${currentTimeframe}`;
+        let url = `/caterer/api/dashboard-overview?timeframe=${currentTimeframe}`;
         if (currentTimeframe === 'custom' && isCustomRange) {
             url += `&start_date=${customStartStr}&end_date=${customEndStr}`;
         }
