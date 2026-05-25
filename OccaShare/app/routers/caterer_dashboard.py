@@ -4010,6 +4010,36 @@ async def register_manual_customer(
         print(f"[CRM] Error: {e}")
         return {"status": "error", "message": str(e)}
 
+@router.post("/api/customers/validate")
+async def validate_customer_api(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    try:
+        data = await request.json()
+        email = data.get("email", "").strip()
+        phone = data.get("phone", "").strip()
+        exclude_id = data.get("exclude_id")
+        
+        if email:
+            q = db.query(models.User).filter(models.User.email == email)
+            if exclude_id:
+                q = q.filter(models.User.id != int(exclude_id))
+            if q.first():
+                return {"status": "error", "field": "email", "message": "Email is already in use by another user."}
+                
+        if phone:
+            q = db.query(models.User).filter(models.User.phone_number == phone)
+            if exclude_id:
+                q = q.filter(models.User.id != int(exclude_id))
+            if q.first():
+                return {"status": "error", "field": "phone", "message": "Phone number is already registered."}
+                
+        return {"status": "success"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 @router.get("/api/customers/{customer_id}/details")
 async def get_customer_crm_details(
     customer_id: int,
@@ -4048,9 +4078,11 @@ async def get_customer_crm_details(
     return {
         "id": target_user.id,
         "first_name": target_user.first_name,
+        "middle_name": target_user.middle_name,
         "last_name": target_user.last_name,
         "email": target_user.email,
         "phone": target_user.phone_number,
+        "address": target_user.address,
         "status": status,
         "total_spent": float(total_spent),
         "total_bookings": len(bookings),
@@ -4234,6 +4266,7 @@ async def request_payout(
 @router.post("/api/customers/{customer_id}/blacklist")
 async def blacklist_customer_api(
     customer_id: int,
+    request: Request,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
@@ -4241,13 +4274,23 @@ async def blacklist_customer_api(
     if not target_user:
         return {"status": "error", "message": "Customer not found."}
         
+    try:
+        data = await request.json()
+        reason = data.get("reason", "").strip()
+    except:
+        reason = ""
+        
     if target_user.status == "blacklisted":
         target_user.status = "active"
         msg = "Customer access restored."
+        if reason:
+            target_user.investigation_notes = (target_user.investigation_notes or "") + f"\n[RESTORED] {datetime.now().strftime('%Y-%m-%d')}: {reason}"
     else:
         target_user.status = "blacklisted"
         msg = "Customer blacklisted and blocked from further bookings."
-        
+        if reason:
+            target_user.investigation_notes = (target_user.investigation_notes or "") + f"\n[BLACKLISTED] {datetime.now().strftime('%Y-%m-%d')}: {reason}"
+            
     db.commit()
     return {"status": "success", "message": msg}
 

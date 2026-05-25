@@ -1,150 +1,218 @@
 /**
- * DIAMOND CRM & RELATIONSHIP INTELLIGENCE (v8.0)
- * Integrated with OccaServe Premium Global Modal System
+ * PREMIUM CRM ENGINE v10.0
+ * Fully inherits global UI context and dynamic functionality.
  */
 
-console.log("[CRM] Intelligence Hub Initializing... v8.0");
-
-// Centralized State
-let currentCustomerId = null;
 const PSGC_BASE = 'https://psgc.gitlab.io/api';
+let currentCustomerId = null;
+let validationDebounceTimer = null;
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Attach Input Restrictions for Registration
-    attachRegistrationRestrictions();
-    // Preload provinces for Registration Modal
+    attachSmartRealtimeValidation();
     if(document.getElementById('regProv')) {
         window.loadProvinces('regProv');
     }
 });
 
-/**
- * Optimized Filtering Logic
- */
-window.filterCustomerTable = function() {
-    const bridge = document.getElementById('custSearchInput');
-    const filterText = bridge ? bridge.value.toLowerCase() : '';
+// Hook into Global Search from Layout
+window.addEventListener('globalSearch', function(e) {
+    const query = e.detail.value.toLowerCase();
+    window.filterCustomerTable(query);
+});
+
+// Action Menu Toggler
+window.toggleActionMenu = function(id) {
+    const menus = document.querySelectorAll('.action-dropdown-menu');
+    menus.forEach(menu => {
+        if (menu.id !== `actionMenu-${id}`) menu.classList.remove('menu-open');
+    });
+    const targetMenu = document.getElementById(`actionMenu-${id}`);
+    if (targetMenu) {
+        targetMenu.classList.toggle('menu-open');
+    }
+};
+
+// Close menus when clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.action-dropdown-container')) {
+        document.querySelectorAll('.action-dropdown-menu').forEach(m => m.classList.remove('menu-open'));
+    }
+});
+
+window.filterCustomerTable = function(searchQuery = null) {
+    const filterText = (typeof searchQuery === 'string') ? searchQuery : (document.getElementById('globalSearchInput') ? document.getElementById('globalSearchInput').value.toLowerCase() : '');
+    
     const statusSelect = document.getElementById('tableFilterStatus');
     const statusFilter = statusSelect ? statusSelect.value : 'All';
     
-    const rows = document.querySelectorAll('#customersTable tbody .premium-row');
+    const rows = document.querySelectorAll('#customersTableBody .table-row-pro');
+    let visibleCount = 0;
     
     rows.forEach(row => {
-        const text = row.dataset.name || row.innerText.toLowerCase();
-        const textMatch = text.includes(filterText);
+        const textMatchName = (row.dataset.name || "").includes(filterText);
+        const textMatchEmail = (row.dataset.email || "").includes(filterText);
+        const textMatch = filterText === '' || textMatchName || textMatchEmail;
         
         let statusMatch = true;
         if (statusFilter !== 'All') {
-            const badge = row.querySelector('.p-badge');
+            const badge = row.querySelector('.badge-pro');
             const rowStatus = badge ? badge.innerText.trim() : '';
             if (statusFilter === 'VIP Elite' && rowStatus !== 'VIP Elite') statusMatch = false;
             if (statusFilter === 'Standard' && rowStatus !== 'Standard') statusMatch = false;
             if (statusFilter === 'Blacklisted' && rowStatus !== 'Blacklisted') statusMatch = false;
         }
         
-        row.style.display = (textMatch && statusMatch) ? '' : 'none';
+        if (textMatch && statusMatch) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
     });
+
+    const emptyState = document.getElementById('emptyStateRow');
+    if (emptyState) {
+        if (visibleCount === 0 && rows.length > 0) {
+            emptyState.style.display = '';
+            emptyState.querySelector('h4').innerText = "No Matches Found";
+            emptyState.querySelector('p').innerText = "Try adjusting your search or filters.";
+            const btn = emptyState.querySelector('button');
+            if(btn) btn.style.display = 'none';
+        } else if (rows.length === 0) {
+            emptyState.style.display = '';
+            emptyState.querySelector('h4').innerText = "No Client Records Found";
+            emptyState.querySelector('p').innerText = "Your client database is empty. Add a new customer to start building intelligence.";
+            const btn = emptyState.querySelector('button');
+            if(btn) btn.style.display = '';
+        } else {
+            emptyState.style.display = 'none';
+        }
+    }
 };
 
-window.filterCustomers = window.filterCustomerTable; // Keep compatibility if called externally
-
-window.exportCustomerCSV = function() {
-    const rows = document.querySelectorAll('#customersTable tbody .premium-row');
+window.exportCustomerCSV = function(format = 'csv') {
+    const rows = document.querySelectorAll('#customersTableBody .table-row-pro');
     if (rows.length === 0) {
         if (window.showError) window.showError("No data to export.");
         return;
     }
     
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Customer ID,Name,Email,Account Tier,Lifetime Spend,Events,Last Engagement\n";
+    csvContent += "Client ID,First Name,Last Name,Email,Account Tier,Lifetime Spend,Events,Last Active\n";
     
     rows.forEach(row => {
-        if (row.style.display === 'none') return; // Only export visible
-        
+        if (row.style.display === 'none') return;
         try {
-            const idEl = row.querySelector('.customer-id-pill');
-            const nameEl = row.querySelector('.cust-name-pro');
-            const emailEl = row.querySelector('.cust-email-pro');
-            const tierEl = row.querySelector('.p-badge');
-            const spendEl = row.querySelector('.spend-value');
-            const eventsEl = row.querySelector('.booking-count-badge');
-            const lastSeenEl = row.querySelector('.last-seen-pro');
-
-            const id = idEl ? idEl.innerText.replace('#', '').trim() : '';
-            const name = nameEl ? nameEl.innerText.trim() : '';
-            const email = emailEl ? emailEl.innerText.trim() : '';
-            const tier = tierEl ? tierEl.innerText.trim() : 'Standard';
-            const spend = spendEl ? spendEl.innerText.replace('₱', '').replace(/,/g, '').trim() : '0.00';
-            const events = eventsEl ? eventsEl.innerText.replace(' events', '').trim() : '0';
-            const lastSeen = lastSeenEl ? lastSeenEl.innerText.trim() : 'N/A';
+            const cells = row.querySelectorAll('td');
+            const id = cells[0].innerText.replace('#', '').trim();
+            const fullName = row.querySelector('.name-text').innerText.trim();
+            const names = fullName.split(' ');
+            const firstName = names[0];
+            const lastName = names.slice(1).join(' ');
+            const email = row.querySelector('.email-text').innerText.trim();
+            const tier = cells[2].innerText.trim();
+            const spend = cells[3].innerText.replace('₱', '').replace(/,/g, '').trim();
+            const events = cells[4].innerText.replace('events', '').trim();
+            const lastSeen = cells[5].innerText.trim();
             
-            const rowData = `"${id}","${name}","${email}","${tier}","${spend}","${events}","${lastSeen}"`;
-            csvContent += rowData + "\n";
-        } catch(e) {
-            console.warn("Failed to export a row due to missing elements.", e);
-        }
+            csvContent += `"${id}","${firstName}","${lastName}","${email}","${tier}","${spend}","${events}","${lastSeen}"\n`;
+        } catch(e) {}
     });
     
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "customer_database_export.csv");
+    link.setAttribute("download", format === 'excel' ? "customer_database.xls" : "customer_database.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    
+    window.toggleActionMenu('export');
 };
 
-/**
- * Intelligence Hub: Tab Navigation
- */
+window.exportCustomerPDF = function() {
+    window.toggleActionMenu('export');
+    const rows = document.querySelectorAll('#customersTableBody .table-row-pro');
+    if (rows.length === 0) {
+        if (window.showError) window.showError("No data to export.");
+        return;
+    }
+
+    let printHtml = `
+    <html><head><title>Customer Database Report</title>
+    <style>
+        body { font-family: 'Poppins', sans-serif; padding: 2rem; color: #0f172a; }
+        h2 { border-bottom: 2px solid #e2e8f0; padding-bottom: 0.5rem; margin-bottom: 1.5rem; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th, td { border: 1px solid #e2e8f0; padding: 0.75rem; text-align: left; }
+        th { background: #f8fafc; font-weight: 800; text-transform: uppercase; color: #64748b; }
+        tr:nth-child(even) { background: #fcfcfd; }
+    </style></head><body>
+    <h2>OccaServe Caterer - Customer Database Report</h2>
+    <table><thead><tr>
+        <th>ID</th><th>Name</th><th>Email</th><th>Tier</th><th>LTV (Spend)</th><th>Events</th>
+    </tr></thead><tbody>`;
+
+    rows.forEach(row => {
+        if (row.style.display === 'none') return;
+        try {
+            const cells = row.querySelectorAll('td');
+            const id = cells[0].innerText.replace('#', '').trim();
+            const fullName = row.querySelector('.name-text').innerText.trim();
+            const email = row.querySelector('.email-text').innerText.trim();
+            const tier = cells[2].innerText.trim();
+            const spend = cells[3].innerText.trim();
+            const events = cells[4].innerText.trim();
+            printHtml += `<tr><td>${id}</td><td>${fullName}</td><td>${email}</td><td>${tier}</td><td>${spend}</td><td>${events}</td></tr>`;
+        } catch(e) {}
+    });
+
+    printHtml += `</tbody></table></body></html>`;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(printHtml);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); }, 500);
+};
+
 window.switchIntelTab = function(tabId, btn) {
-    // Update Buttons
-    const tabs = document.querySelectorAll('.intel-tab');
+    const tabs = document.querySelectorAll('.tab-btn-pro');
     tabs.forEach(tab => tab.classList.remove('active'));
     btn.classList.add('active');
 
-    // Update Content
     const contents = document.querySelectorAll('.intel-content');
-    contents.forEach(content => content.classList.remove('active'));
+    contents.forEach(content => content.style.display = 'none');
     
     const target = document.getElementById(`intel-${tabId}`);
-    if (target) target.classList.add('active');
+    if (target) target.style.display = 'block';
 };
 
-/**
- * Fetch & Render Customer Intelligence
- */
 window.openCustomerProfile = async function(id) {
     currentCustomerId = id;
     
-    // Reset Modal UI
-    document.getElementById('profName').innerText = "Loading Hub...";
-    document.getElementById('profInitials').innerText = "--";
-    document.getElementById('profStatus').innerText = "Analyzing Relationship...";
-    document.getElementById('profLTV').innerText = "₱0.00";
-    document.getElementById('profEvents').innerText = "0";
-    document.getElementById('profEmail').innerText = "--";
-    document.getElementById('profPhone').innerText = "--";
-    document.getElementById('profNotes').innerText = "Initializing data stream...";
-    document.getElementById('profHistory').innerHTML = '<div class="empty-intel-msg"><i class="fas fa-spinner fa-spin"></i><p>Synchronizing history...</p></div>';
-
-    // Switch to Overview Tab by default
-    const overviewTab = document.querySelector('.intel-tab[data-tab="overview"]');
+    document.getElementById('profName').innerHTML = `<i class="fas fa-user-circle"></i> Analyzing...`;
+    document.getElementById('profStatus').innerText = "Connecting to intelligence stream...";
+    
+    const overviewTab = document.querySelector('.tab-btn-pro[data-tab="overview"]');
     if (overviewTab) window.switchIntelTab('overview', overviewTab);
 
-    // Open Modal
     if (window.openModal) window.openModal('customerProfileModal');
 
     try {
-        const res = await fetch(`/api/customers/${id}/details`);
+        const res = await fetch(`/caterer/api/customers/${id}/details`);
         if (!res.ok) throw new Error("Intelligence Sync Failed");
-        
-        const data = await res.json();
-        const c = data; // Backend returns the user object directly, not wrapped in 'customer'
+        const c = await res.json();
+        if (c.status === "error") throw new Error(c.message);
 
-        // Render Overview
-        document.getElementById('profName').innerText = `${c.first_name} ${c.last_name}`;
-        document.getElementById('profInitials').innerText = `${c.first_name[0]}${c.last_name[0]}`;
+        document.getElementById('profName').innerHTML = `<i class="fas fa-user-circle"></i> ${c.first_name} ${c.last_name}`;
+        
+        let mName = c.middle_name ? ` ${c.middle_name} ` : ' ';
+        const fullNameEl = document.getElementById('profFullName');
+        if (fullNameEl) fullNameEl.innerText = `${c.first_name}${mName}${c.last_name}`;
+        
+        const addrEl = document.getElementById('profAddress');
+        if (addrEl) addrEl.innerText = c.address || 'Location not provided';
+
         document.getElementById('profLTV').innerText = `₱${parseFloat(c.total_spent || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}`;
         document.getElementById('profEvents').innerText = c.total_bookings || 0;
         document.getElementById('profEmail').innerText = c.email;
@@ -155,82 +223,272 @@ window.openCustomerProfile = async function(id) {
         const blacklistBtn = document.getElementById('blacklistBtn');
 
         if (c.status === 'BLACKLISTED') {
-            statusTag.innerText = "Blacklisted / High Risk";
-            statusTag.style.color = "#ef4444";
-            statusTag.style.background = "rgba(239, 68, 68, 0.1)";
-            blacklistBtn.innerText = "RESTORE RELATIONSHIP";
-            blacklistBtn.classList.add('active');
+            statusTag.innerText = "Status: Blacklisted / High Risk";
+            statusTag.style.color = "#fca5a5";
+            blacklistBtn.innerText = "Restore Account";
+            blacklistBtn.className = "btn-primary bg-success border-none";
         } else {
-            statusTag.innerText = c.status === 'VIP' ? "VIP Engagement" : "Standard Relationship";
-            statusTag.style.color = "#10b981";
-            statusTag.style.background = "rgba(16, 185, 129, 0.1)";
-            blacklistBtn.innerText = "BLOCK RELATIONSHIP";
-            blacklistBtn.classList.remove('active');
+            statusTag.innerText = c.status === 'VIP' ? "Status: VIP Elite Client" : "Status: Standard Client";
+            statusTag.style.color = "#93c5fd";
+            blacklistBtn.innerText = "Execute Block";
+            blacklistBtn.className = "btn-primary bg-danger border-none";
         }
         
-        // Populate Edit Form
-        document.getElementById('editFirstName').value = c.first_name || '';
-        document.getElementById('editLastName').value = c.last_name || '';
-        document.getElementById('editEmail').value = c.email || '';
-        document.getElementById('editPhone').value = c.phone || '';
-        document.getElementById('editNotes').value = c.notes !== "No notes added yet." ? c.notes : '';
+        const blacklistReasonField = document.getElementById('blacklistReason');
+        if (blacklistReasonField) blacklistReasonField.value = '';
 
-        // Render History
+        document.getElementById('editNotes').value = (c.notes && c.notes !== "No notes added yet.") ? c.notes : '';
+
         const historyContainer = document.getElementById('profHistory');
-        if (data.history && data.history.length > 0) {
-            historyContainer.innerHTML = data.history.map(item => `
-                <div class="history-item-pro">
-                    <div class="hist-main">
-                        <span class="hist-date">${new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                        <span class="hist-package">${item.package_name}</span>
+        if (c.history && c.history.length > 0) {
+            historyContainer.innerHTML = c.history.map(item => `
+                <div style="padding: 15px; border-left: 2px solid #e2e8f0; margin-left: 10px; position: relative;">
+                    <div style="position: absolute; left: -6px; top: 20px; width: 10px; height: 10px; border-radius: 50%; background: var(--primary-color);"></div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <span style="font-size: 0.75rem; font-weight: 700; color: #64748b;">${new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                            <div style="font-weight: 800; font-size: 1rem; color: #0f172a; margin-top: 2px;">${item.package_name}</div>
+                        </div>
+                        <div style="font-weight: 900; color: var(--primary-color);">₱${item.amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
                     </div>
-                    <div class="hist-price">₱${item.amount.toLocaleString()}</div>
                 </div>
             `).join('');
         } else {
-            historyContainer.innerHTML = '<div class="empty-intel-msg"><i class="fas fa-calendar-minus"></i><p>No historical bookings found for this relationship.</p></div>';
+            historyContainer.innerHTML = '<div style="text-align:center; padding: 2rem; color: #64748b;"><i class="fas fa-receipt" style="font-size:2rem; margin-bottom:1rem; opacity: 0.5;"></i><p>No historical ledger data.</p></div>';
         }
 
     } catch (err) {
-        console.error("[CRM] Sync Error:", err);
-        if (window.showError) window.showError("Failed to synchronize intelligence hub.");
+        console.error("Sync Error:", err);
+        if (window.showError) window.showError(err.message || "Failed to synchronize intelligence hub.");
+        window.closeModal('customerProfileModal');
     }
 };
+
+/* --- Real-Time Async Validation --- */
+function setFieldStatus(fieldId, status, msg = '') {
+    const field = document.getElementById(fieldId);
+    const errorDiv = document.getElementById(`error-${fieldId}`);
+    if (!field || !errorDiv) return;
+
+    if (status === 'error') {
+        field.classList.add('is-invalid');
+        field.classList.remove('is-valid');
+        errorDiv.textContent = msg;
+        errorDiv.style.display = 'block';
+    } else if (status === 'success') {
+        field.classList.add('is-valid');
+        field.classList.remove('is-invalid');
+        errorDiv.style.display = 'none';
+    } else {
+        field.classList.remove('is-invalid', 'is-valid');
+        errorDiv.style.display = 'none';
+    }
+}
+
+async function validateAgainstDatabase(field, value, excludeId = null) {
+    if (!value) return true;
+    try {
+        const payload = {};
+        payload[field] = value;
+        if (excludeId) payload['exclude_id'] = excludeId;
+
+        const res = await fetch('/caterer/api/customers/validate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        
+        if (data.status === 'error') {
+            let inputId = field === 'email' ? 'regEmail' : 'regPhone';
+            if (excludeId) inputId = field === 'email' ? 'editEmail' : 'editPhone';
+            setFieldStatus(inputId, 'error', data.message);
+            return false;
+        }
+        return true;
+    } catch (e) {
+        return true; 
+    }
+}
+
+function attachSmartRealtimeValidation() {
+    const handleTextRegex = (e, fieldId, label) => {
+        const val = e.target.value;
+        if (!val.trim()) { setFieldStatus(fieldId, 'error', `${label} is required.`); return false; }
+        if (!/^[A-Za-zñÑáéíóúÁÉÍÓÚ\s\-\']+$/.test(val)) {
+            setFieldStatus(fieldId, 'error', `Numbers/Symbols not allowed.`);
+            return false;
+        }
+        setFieldStatus(fieldId, 'success');
+        return true;
+    };
+
+    ['regFirstName', 'editFirstName'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.addEventListener('input', (e) => handleTextRegex(e, id, 'First Name'));
+    });
+    
+    ['regLastName', 'editLastName'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.addEventListener('input', (e) => handleTextRegex(e, id, 'Last Name'));
+    });
+
+    ['regPhone', 'editPhone'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) {
+            el.addEventListener('input', (e) => {
+                e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 11);
+                const val = e.target.value;
+                
+                if (val.length > 0 && (val.length !== 11 || !val.startsWith('09'))) {
+                    setFieldStatus(id, 'error', 'Must be exactly 11 digits starting with 09.');
+                } else if (val.length === 11) {
+                    setFieldStatus(id, 'success');
+                    clearTimeout(validationDebounceTimer);
+                    validationDebounceTimer = setTimeout(() => {
+                        const exId = id.includes('edit') ? currentCustomerId : null;
+                        validateAgainstDatabase('phone', val, exId);
+                    }, 500);
+                } else {
+                    setFieldStatus(id, 'default');
+                }
+            });
+        }
+    });
+
+    ['regEmail', 'editEmail'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) {
+            el.addEventListener('input', (e) => {
+                const val = e.target.value;
+                if (!val) { setFieldStatus(id, 'default'); return; }
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+                    setFieldStatus(id, 'error', 'Invalid email format.');
+                } else {
+                    setFieldStatus(id, 'success');
+                    clearTimeout(validationDebounceTimer);
+                    validationDebounceTimer = setTimeout(() => {
+                        const exId = id.includes('edit') ? currentCustomerId : null;
+                        validateAgainstDatabase('email', val, exId);
+                    }, 500);
+                }
+            });
+        }
+    });
+}
+
+function checkFormErrors(formId) {
+    const form = document.getElementById(formId);
+    const errors = form.querySelectorAll('.form-control.is-invalid');
+    return errors.length > 0;
+}
+
+function dynamicallyUpdateCustomerRow(c) {
+    const tableBody = document.getElementById('customersTableBody');
+    const existingRow = document.getElementById(`row-cust-${c.id}`);
+    
+    let badgeHtml = '';
+    if (c.status === 'BLACKLISTED') badgeHtml = '<span class="badge-pro badge-danger">Blacklisted</span>';
+    else if (c.total_bookings > 5 || c.status === 'VIP') badgeHtml = '<span class="badge-pro badge-warning">VIP Elite</span>';
+    else badgeHtml = '<span class="badge-pro badge-secondary">Standard</span>';
+
+    const fnInitial = c.first_name ? c.first_name[0].toUpperCase() : '?';
+    const lnInitial = c.last_name ? c.last_name[0].toUpperCase() : '';
+
+    const rowContent = `
+        <td>
+            <span class="badge-subtle">#${String(c.id).padStart(3, '0')}</span>
+        </td>
+        <td>
+            <div class="identity-flex">
+                <div class="avatar-circle-pro">${fnInitial}${lnInitial}</div>
+                <div class="identity-text">
+                    <div class="name-text">${c.first_name} ${c.last_name}</div>
+                    <div class="email-text">${c.email}</div>
+                </div>
+            </div>
+        </td>
+        <td>${badgeHtml}</td>
+        <td>
+            <div class="amount-text">₱${parseFloat(c.total_spent || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+        </td>
+        <td>
+            <span class="badge-pro bg-primary-light" style="color: var(--primary-color);">${c.total_bookings || 0} events</span>
+        </td>
+        <td>
+            <div class="date-text">
+                ${c.history && c.history.length > 0 ? new Date(c.history[0].date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No data'}
+            </div>
+        </td>
+        <td class="text-right">
+            <div class="action-dropdown-container">
+                <button class="btn-icon-dots" onclick="window.toggleActionMenu('cust${c.id}')">
+                    <i class="fas fa-ellipsis-v"></i>
+                </button>
+                <div class="action-dropdown-menu" id="actionMenu-cust${c.id}">
+                    <button onclick="window.openCustomerProfile(${c.id})"><i class="fas fa-id-card text-primary"></i> View Profile</button>
+                    <button onclick="window.quickEditCustomer(${c.id})"><i class="fas fa-pen text-warning"></i> Quick Edit</button>
+                    <div class="dropdown-divider"></div>
+                    <button onclick="window.quickToggleBlacklist(${c.id}, '${c.status}')">
+                        <i class="fas ${c.status === 'BLACKLISTED' ? 'fa-check text-success' : 'fa-ban text-danger'}"></i> 
+                        ${c.status === 'BLACKLISTED' ? 'Restore Account' : 'Block Account'}
+                    </button>
+                </div>
+            </div>
+        </td>
+    `;
+
+    if (existingRow) {
+        existingRow.innerHTML = rowContent;
+        existingRow.dataset.name = `${c.first_name} ${c.last_name}`.toLowerCase();
+        existingRow.dataset.email = c.email.toLowerCase();
+        existingRow.style.transition = "background 0.5s";
+        existingRow.style.backgroundColor = 'rgba(var(--primary-color-rgb), 0.1)';
+        setTimeout(() => existingRow.style.backgroundColor = '', 1000);
+    } else {
+        const tr = document.createElement('tr');
+        tr.className = 'table-row-pro';
+        tr.id = `row-cust-${c.id}`;
+        tr.dataset.name = `${c.first_name} ${c.last_name}`.toLowerCase();
+        tr.dataset.email = c.email.toLowerCase();
+        tr.innerHTML = rowContent;
+        tableBody.prepend(tr);
+        
+        const emptyState = document.getElementById('emptyStateRow');
+        if(emptyState) emptyState.style.display = 'none';
+
+        const totalEl = document.getElementById('statTotalClients');
+        if(totalEl) totalEl.innerText = parseInt(totalEl.innerText) + 1;
+        const growthEl = document.getElementById('statGrowthClients');
+        if(growthEl) growthEl.innerText = parseInt(growthEl.innerText) + 1;
+    }
+}
+
+window.quickEditCustomer = async function(id) {
+    await window.openCustomerProfile(id);
+    const editTab = document.querySelector('.tab-btn-pro[data-tab="edit"]');
+    if(editTab) window.switchIntelTab('edit', editTab);
+}
+
+window.quickToggleBlacklist = function(id, currentStatus) {
+    currentCustomerId = id;
+    window.toggleBlacklist(currentStatus === 'BLACKLISTED');
+}
 
 window.updateCustomerProfile = async function(event) {
     event.preventDefault();
     if (!currentCustomerId) return;
 
-    // Validate edit form before submit
-    const firstName = document.getElementById('editFirstName').value.trim();
-    const email = document.getElementById('editEmail').value.trim();
-    const phone = document.getElementById('editPhone').value.trim();
-
-    if (!firstName) {
-        setFieldError('editFirstName', 'First name is required.');
-        return;
-    }
-
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        setFieldError('editEmail', 'Please enter a valid email address.');
-        return;
-    }
-
-    if (phone && (phone.length < 11 || !phone.startsWith('09'))) {
-        setFieldError('editPhone', 'Please enter a valid 11-digit PH mobile number starting with 09.');
-        return;
-    }
-
     const btn = document.getElementById('btnUpdateCustomer');
     const originalText = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Committing...';
     btn.disabled = true;
 
     try {
         const form = document.getElementById('editCustomerForm');
         const formData = new FormData(form);
 
-        const res = await fetch(`/api/customers/${currentCustomerId}/edit`, {
+        const res = await fetch(`/caterer/api/customers/${currentCustomerId}/edit`, {
             method: 'POST',
             body: formData
         });
@@ -239,257 +497,127 @@ window.updateCustomerProfile = async function(event) {
 
         if (data.status === 'success') {
             if (window.showSuccess) window.showSuccess(data.message);
-            // Refresh modal data
             await window.openCustomerProfile(currentCustomerId);
-            // Optionally reload page to update table after 1.5s
-            setTimeout(() => window.location.reload(), 1500);
+            const updatedDetailsRes = await fetch(`/caterer/api/customers/${currentCustomerId}/details`);
+            if (updatedDetailsRes.ok) {
+                const updatedDetails = await updatedDetailsRes.json();
+                dynamicallyUpdateCustomerRow(updatedDetails);
+            }
         } else {
             if (window.showError) window.showError(data.message);
-            // Try to set specific field errors if they relate to email/phone
-            if (data.message.includes('email')) {
-                setFieldError('editEmail', data.message);
-            } else if (data.message.includes('phone')) {
-                setFieldError('editPhone', data.message);
-            }
         }
     } catch (err) {
-        console.error("Update Error:", err);
-        if (window.showError) window.showError("A system error occurred while updating the profile.");
+        if (window.showError) window.showError("A system error occurred.");
     } finally {
         btn.innerHTML = originalText;
         btn.disabled = false;
     }
 };
 
-/**
- * --- VALIDATION LOGIC (CALENDAR PARITY) ---
- */
-
-function setFieldError(fieldId, msg) {
-    const field = document.getElementById(fieldId);
-    const errorDiv = document.getElementById(`error-${fieldId}`);
-    if (field && errorDiv) {
-        field.classList.add('is-invalid');
-        errorDiv.textContent = msg;
-        errorDiv.style.display = 'block';
-    }
-}
-
-function clearFieldError(fieldId) {
-    const field = document.getElementById(fieldId);
-    const errorDiv = document.getElementById(`error-${fieldId}`);
-    if (field && errorDiv) {
-        field.classList.remove('is-invalid');
-        errorDiv.style.display = 'none';
-    }
-}
-
-function validateSmartEmail(val) {
-    if (!val) { clearFieldError('regEmail'); return false; }
-    // Standard email validation regex
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(val)) {
-        setFieldError('regEmail', 'Please enter a valid email address.');
-        return false;
-    }
-    clearFieldError('regEmail');
-    return true;
-}
-
-function validateSmartName(val) {
-    if (!val) { clearFieldError('regName'); return false; }
-    const parts = val.trim().split(/\s+/);
-    if (parts.length < 2) {
-        setFieldError('regName', 'Please provide both First Name and Surname.');
-        return false;
-    }
-    clearFieldError('regName');
-    return true;
-}
-
-function validateSmartContact(val) {
-    if (!val) { clearFieldError('regPhone'); return false; }
-    if (val.length < 11 || !val.startsWith('09')) {
-        setFieldError('regPhone', 'Please enter a valid 11-digit PH mobile number starting with 09.');
-        return false;
-    }
-    clearFieldError('regPhone');
-    return true;
-}
-
-function attachRegistrationRestrictions() {
-    const phoneInput = document.getElementById('regPhone');
-    if (phoneInput) {
-        phoneInput.addEventListener('input', function() {
-            this.value = this.value.replace(/[^0-9]/g, '');
-            if (this.value.length > 11) this.value = this.value.slice(0, 11);
-            validateSmartContact(this.value);
-        });
-    }
-
-    const firstNameInput = document.getElementById('regFirstName');
-    if (firstNameInput) {
-        firstNameInput.addEventListener('input', function() {
-            validateSmartNamePart(this.value, 'regFirstName', 'First name');
-        });
-    }
-    
-    const lastNameInput = document.getElementById('regLastName');
-    if (lastNameInput) {
-        lastNameInput.addEventListener('input', function() {
-            validateSmartNamePart(this.value, 'regLastName', 'Last name');
-        });
-    }
-
-    const emailInput = document.getElementById('regEmail');
-    if (emailInput) {
-        emailInput.addEventListener('input', function() {
-            validateSmartEmail(this.value, 'regEmail');
-        });
-    }
-
-    // Attach edit form validation
-    attachEditFormValidation();
-}
-
-function attachEditFormValidation() {
-    const editFirstName = document.getElementById('editFirstName');
-    const editLastName = document.getElementById('editLastName');
-    const editEmail = document.getElementById('editEmail');
-    const editPhone = document.getElementById('editPhone');
-
-    if (editFirstName) {
-        editFirstName.addEventListener('input', function() {
-            if (this.value.trim()) {
-                clearFieldError('editFirstName');
-            } else {
-                setFieldError('editFirstName', 'First name is required.');
-            }
-        });
-    }
-
-    if (editLastName) {
-        editLastName.addEventListener('input', function() {
-            validateSmartNamePart(this.value, 'editLastName', 'Last name');
-        });
-    }
-
-    if (editEmail) {
-        editEmail.addEventListener('input', function() {
-            validateSmartEmail(this.value, 'editEmail');
-        });
-    }
-
-    if (editPhone) {
-        editPhone.addEventListener('input', function() {
-            this.value = this.value.replace(/[^0-9]/g, '');
-            if (this.value.length > 11) this.value = this.value.slice(0, 11);
-            if (this.value) {
-                validateSmartContact(this.value, 'editPhone');
-            } else {
-                clearFieldError('editPhone');
-            }
-        });
-    }
-}
-
-function validateSmartEmail(val, fieldId = 'regEmail') {
-    if (!val) { clearFieldError(fieldId); return false; }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(val)) {
-        setFieldError(fieldId, 'Please enter a valid email address.');
-        return false;
-    }
-    clearFieldError(fieldId);
-    return true;
-}
-
-function validateSmartContact(val, fieldId = 'regPhone') {
-    if (!val) { clearFieldError(fieldId); return false; }
-    if (val.length < 11 || !val.startsWith('09')) {
-        setFieldError(fieldId, 'Please enter a valid 11-digit PH mobile number starting with 09.');
-        return false;
-    }
-    clearFieldError(fieldId);
-    return true;
-}
-
-function validateSmartNamePart(val, fieldId, label) {
-    if (!val || !val.trim()) {
-        setFieldError(fieldId, `${label} is required.`);
-        return false;
-    }
-    clearFieldError(fieldId);
-    return true;
-}
-
-/**
- * Action: Register Relationship
- */
 window.registerCustomer = async function(e) {
     e.preventDefault();
+    if (checkFormErrors('addCustomerForm')) {
+        if (window.showError) window.showError("Please resolve the validation errors before registering.");
+        return;
+    }
+
     const form = e.target;
     const btn = document.getElementById('btnSubmitRegistration');
-
-    // Reset errors
-    ['regFirstName', 'regLastName', 'regEmail', 'regPhone', 'regProv', 'regCity', 'regBrgy', 'regLandmark'].forEach(id => clearFieldError(id));
-
-    // Perform validation
-    const fName = document.getElementById('regFirstName').value.trim();
-    const lName = document.getElementById('regLastName').value.trim();
-    const email = document.getElementById('regEmail').value.trim();
-    const phone = document.getElementById('regPhone').value.trim();
-    const prov = document.getElementById('regProv').value;
-    const city = document.getElementById('regCity').value;
-    const brgy = document.getElementById('regBrgy').value;
-    const landmark = document.getElementById('regLandmark').value.trim();
-    
-    let hasError = false;
-    if(!fName) { setFieldError('regFirstName', 'First Name is required.'); hasError = true; }
-    if(!lName) { setFieldError('regLastName', 'Last Name is required.'); hasError = true; }
-    if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setFieldError('regEmail', 'Valid email is required.'); hasError = true; }
-    if(phone && (phone.length < 11 || !phone.startsWith('09'))) { setFieldError('regPhone', 'Valid 11-digit mobile number required.'); hasError = true; }
-    if(!prov) { setFieldError('regProv', 'Province is required.'); hasError = true; }
-    if(!city) { setFieldError('regCity', 'City is required.'); hasError = true; }
-    if(!brgy) { setFieldError('regBrgy', 'Barangay is required.'); hasError = true; }
-    if(!landmark) { setFieldError('regLandmark', 'Street/Landmark is required.'); hasError = true; }
-    
-    if (hasError) return;
-
-    // Add loading state
     const originalText = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Establishing...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
     btn.disabled = true;
 
     const formData = new FormData(form);
 
-    if (window.apiAction) {
-        try {
-            const res = await window.apiAction('/api/customers/register', {
-                method: 'POST',
-                body: formData
-            }, btn);
+    try {
+        const res = await fetch('/caterer/api/customers/register', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await res.json();
 
-            if (res && res.status === 'success') {
-                window.closeModal('addCustomerModal');
-                if (window.showSuccess) window.showSuccess(res.message || "Relationship established successfully.");
-                setTimeout(() => location.reload(), 800);
-            } else {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-                if (res && res.message) {
-                    if (window.showError) window.showError(res.message);
-                }
+        if (data.status === 'success' && data.customer_id) {
+            window.closeModal('addCustomerModal');
+            if (window.showSuccess) window.showSuccess(data.message);
+            
+            const newCustomerRes = await fetch(`/caterer/api/customers/${data.customer_id}/details`);
+            if (newCustomerRes.ok) {
+                const newCustomer = await newCustomerRes.json();
+                dynamicallyUpdateCustomerRow(newCustomer);
             }
-        } catch (err) {
-            console.error("Registration Error:", err);
-            btn.innerHTML = originalText;
-            btn.disabled = false;
+            form.reset();
+            form.querySelectorAll('.form-control').forEach(el => el.classList.remove('is-valid', 'is-invalid'));
+            ['regProv', 'regCity', 'regBrgy'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el && el.options) el.selectedIndex = 0;
+            });
+            document.getElementById('regCity').disabled = true;
+            document.getElementById('regBrgy').disabled = true;
+        } else {
+            if (window.showError) window.showError(data.message);
         }
+    } catch (err) {
+        if (window.showError) window.showError("System error during registration.");
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
     }
 };
 
-// --- PSGC Address Functions ---
+window.toggleBlacklist = async function(isCurrentlyBlocked = false) {
+    if (!currentCustomerId) return;
+    
+    const btn = document.getElementById('blacklistBtn');
+    if (btn && btn.classList.contains('bg-success')) isCurrentlyBlocked = true;
+
+    const reasonField = document.getElementById('blacklistReason');
+    const reason = reasonField ? reasonField.value.trim() : "";
+
+    if (!isCurrentlyBlocked && !reason) {
+        if (window.showError) window.showError("Please provide a reason for restricting this account.");
+        if (reasonField) reasonField.focus();
+        return;
+    }
+
+    const action = isCurrentlyBlocked ? 'Restore' : 'Block';
+    const message = isCurrentlyBlocked 
+        ? "Restore relationship with this client?" 
+        : "Are you sure you want to block this relationship? They will not be able to book with you again.";
+
+    if (window.showConfirm) {
+        window.showConfirm(message, async () => {
+            try {
+                const res = await fetch(`/caterer/api/customers/${currentCustomerId}/blacklist`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason: reason })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    if(window.showSuccess) window.showSuccess(data.message);
+                    
+                    const modal = document.getElementById('customerProfileModal');
+                    if (modal && modal.classList.contains('active')) {
+                        await window.openCustomerProfile(currentCustomerId);
+                    }
+                    
+                    const updatedDetailsRes = await fetch(`/caterer/api/customers/${currentCustomerId}/details`);
+                    if (updatedDetailsRes.ok) {
+                        const updatedDetails = await updatedDetailsRes.json();
+                        dynamicallyUpdateCustomerRow(updatedDetails);
+                        window.filterCustomerTable();
+                    }
+                } else {
+                    if(window.showError) window.showError(data.message);
+                }
+            } catch(e) {
+                if(window.showError) window.showError("System error processing request.");
+            }
+        }, action === 'Block' ? 'Warning' : 'Restore');
+    }
+};
+
 window.loadProvinces = async function(selectId) {
     const select = document.getElementById(selectId);
     if(!select) return;
@@ -498,19 +626,12 @@ window.loadProvinces = async function(selectId) {
         const data = await res.json();
         data.sort((a,b) => a.name.localeCompare(b.name));
         select.innerHTML = '<option value="">Select Province</option>';
-        data.forEach(p => {
-            select.innerHTML += `<option value="${p.name}" data-code="${p.code}">${p.name}</option>`;
-        });
+        data.forEach(p => select.innerHTML += `<option value="${p.name}" data-code="${p.code}">${p.name}</option>`);
         
-        // Load NCR
         const resNcr = await fetch(`${PSGC_BASE}/regions/130000000/districts/`);
         const distData = await resNcr.json();
-        distData.forEach(d => {
-            select.innerHTML += `<option value="${d.name}" data-code="${d.code}">${d.name}</option>`;
-        });
-    } catch(err) {
-        console.error("Failed to load provinces", err);
-    }
+        distData.forEach(d => select.innerHTML += `<option value="${d.name}" data-code="${d.code}">${d.name}</option>`);
+    } catch(err) {}
 };
 
 window.loadCities = async function(provName, citySelectId) {
@@ -533,25 +654,19 @@ window.loadCities = async function(provName, citySelectId) {
     }
     
     const code = selectedOption.dataset.code;
-    
     try {
         let endpoint = `${PSGC_BASE}/provinces/${code}/cities-municipalities/`;
-        if(code.startsWith('13')) {
-            endpoint = `${PSGC_BASE}/districts/${code}/cities-municipalities/`;
-        }
+        if(code.startsWith('13')) endpoint = `${PSGC_BASE}/districts/${code}/cities-municipalities/`;
         
         const res = await fetch(endpoint);
         const data = await res.json();
         data.sort((a,b) => a.name.localeCompare(b.name));
         
         citySelect.innerHTML = '<option value="">Select City/Municipality</option>';
-        data.forEach(c => {
-            citySelect.innerHTML += `<option value="${c.name}" data-code="${c.code}">${c.name}</option>`;
-        });
+        data.forEach(c => citySelect.innerHTML += `<option value="${c.name}" data-code="${c.code}">${c.name}</option>`);
         citySelect.disabled = false;
-        clearFieldError('regProv');
+        setFieldStatus('regProv', 'success');
     } catch(err) {
-        console.error("Failed to load cities", err);
         citySelect.innerHTML = '<option value="">Error loading</option>';
     }
 };
@@ -570,55 +685,16 @@ window.loadBarangays = async function(cityName, brgySelectId) {
         return;
     }
     
-    const code = selectedOption.dataset.code;
-    
     try {
-        const res = await fetch(`${PSGC_BASE}/cities-municipalities/${code}/barangays/`);
+        const res = await fetch(`${PSGC_BASE}/cities-municipalities/${selectedOption.dataset.code}/barangays/`);
         const data = await res.json();
         data.sort((a,b) => a.name.localeCompare(b.name));
         
         brgySelect.innerHTML = '<option value="">Select Barangay</option>';
-        data.forEach(b => {
-            brgySelect.innerHTML += `<option value="${b.name}">${b.name}</option>`;
-        });
+        data.forEach(b => brgySelect.innerHTML += `<option value="${b.name}">${b.name}</option>`);
         brgySelect.disabled = false;
-        clearFieldError('regCity');
+        setFieldStatus('regCity', 'success');
     } catch(err) {
-        console.error("Failed to load barangays", err);
         brgySelect.innerHTML = '<option value="">Error loading</option>';
     }
 };
-
-/**
- * Action: Risk Management (Blacklist)
- */
-window.toggleBlacklist = async function() {
-    if (!currentCustomerId) return;
-
-    const action = document.getElementById('blacklistBtn').classList.contains('active') ? 'restore' : 'block';
-    const message = action === 'block' 
-        ? "Are you sure you want to block this relationship? They will not be able to book with you again."
-        : "Restore relationship with this client?";
-
-    if (window.showConfirm) {
-        window.showConfirm(message, async () => {
-            // Using the correct endpoint from the router
-            const res = await window.apiAction(`/api/customers/${currentCustomerId}/blacklist`, {
-                method: 'POST'
-            });
-            if (res) {
-                window.closeModal('customerProfileModal');
-                setTimeout(() => location.reload(), 600);
-            }
-        }, action === 'block' ? 'Warning' : 'Restore');
-    }
-};
-
-// Global Bridge for Layout Search
-window.addEventListener('globalSearch', function(e) {
-    const bridge = document.getElementById('custSearchInput');
-    if (bridge) {
-        bridge.value = e.detail.value;
-        window.filterCustomers();
-    }
-});

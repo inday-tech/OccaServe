@@ -1,168 +1,170 @@
 {% extends "caterer/layout.html" %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/customers.css') }}?v=8.0">
-<style>
-    :root {
-        --caterer-primary: {{ primary_color }};
-        --caterer-primary-dark: {{ primary_color }}dd;
-        --caterer-primary-light: {{ primary_color }}20;
-    }
-
-    /* Dynamic color overrides */
-    .stat-icon-diamond.bg-emerald { background: var(--caterer-primary-light) !important; color: var(--caterer-primary) !important; }
-    .stat-icon-diamond.bg-amber { background: var(--caterer-primary-light) !important; color: var(--caterer-primary) !important; }
-    .stat-icon-diamond.bg-blue { background: var(--caterer-primary-light) !important; color: var(--caterer-primary) !important; }
-    .stat-icon-diamond.bg-indigo { background: var(--caterer-primary-light) !important; color: var(--caterer-primary) !important; }
-    .btn-primary-pro { background: var(--caterer-primary) !important; }
-    .btn-primary-pro:hover { background: var(--caterer-primary-dark) !important; }
-    .occ-modal-header.colored-header { background: linear-gradient(135deg, var(--caterer-primary) 0%, var(--caterer-primary-dark) 100%) !important; }
-    .intelligence-header-bg { background: linear-gradient(135deg, var(--caterer-primary) 0%, var(--caterer-primary-dark) 100%) !important; }
-    .intelligence-tabs-container { background: var(--caterer-primary) !important; }
-    .intel-tab.active { color: white !important; border-bottom: 3px solid white; }
-    .intel-tab.active::after { background: white !important; }
-    .modal-section-header { font-size: 0.9rem; font-weight: 700; text-transform: uppercase; color: #1f2937; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 2px solid var(--caterer-primary); display: flex; align-items: center; gap: 8px; }
-    .modal-section-header i { color: var(--caterer-primary); font-size: 1rem; }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/customers.css') }}?v=10.1">
 {% endblock %}
 
 {% block content %}
 <div class="customers-page-container">
-    <!-- Header Section -->
+    <!-- Header Section matching standard layout -->
     <div class="page-header-premium">
         <div class="header-left-pro">
-            <h1 class="page-title-pro">My Customer Database</h1>
-            <p class="page-subtitle-pro">Manage your client relationships and intelligence.</p>
+            <h1 class="page-title-pro">Client Intelligence Hub</h1>
+            <p class="page-subtitle-pro">Manage your client relationships and analytics.</p>
         </div>
         <div class="header-actions-pro">
-            <button class="btn-primary-pro" onclick="window.openModal('addCustomerModal')">
-                <i class="fas fa-plus"></i> Register New Customer
+            <button class="btn-primary" onclick="window.openModal('addCustomerModal')" style="padding: 0.75rem 1.5rem; font-weight: 600;">
+                <i class="fas fa-plus"></i> Register New Client
             </button>
         </div>
     </div>
 
-    <!-- Symmetrical Stats Grid -->
-    <div class="stats-grid-diamond">
-        <div class="c-card-premium" style="display: flex; align-items: center; gap: 1.25rem;">
-            <div class="stat-icon-diamond bg-emerald">
-                <i class="fas fa-users"></i>
+    <!-- Stats Grid using Standard Dashboard Cards -->
+    <div class="stats-grid-pro">
+        <div class="dashboard-card stats-card">
+            <div class="stat-icon-box bg-primary-light">
+                <i class="fas fa-users" style="color: var(--primary-color);"></i>
             </div>
-            <div class="stat-info-diamond">
-                <span class="stat-label">Total Clients</span>
-                <h2 class="stat-value">{{ stats.total }}</h2>
+            <div class="stat-info-pro">
+                <span class="stat-label-pro">Total Portfolio</span>
+                <h2 class="stat-value-pro" id="statTotalClients">{{ stats.total }}</h2>
             </div>
         </div>
-        <div class="c-card-premium" style="display: flex; align-items: center; gap: 1.25rem;">
-            <div class="stat-icon-diamond bg-amber">
+        <div class="dashboard-card stats-card">
+            <div class="stat-icon-box" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
                 <i class="fas fa-crown"></i>
             </div>
-            <div class="stat-info-diamond">
-                <span class="stat-label">VIP Accounts</span>
-                <h2 class="stat-value">{{ stats.vip }}</h2>
+            <div class="stat-info-pro">
+                <span class="stat-label-pro">VIP Accounts</span>
+                <h2 class="stat-value-pro" id="statVipClients">{{ stats.vip }}</h2>
             </div>
         </div>
-        <div class="c-card-premium" style="display: flex; align-items: center; gap: 1.25rem;">
-            <div class="stat-icon-diamond bg-blue">
+        <div class="dashboard-card stats-card">
+            <div class="stat-icon-box" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
                 <i class="fas fa-chart-line"></i>
             </div>
-            <div class="stat-info-diamond">
-                <span class="stat-label">Monthly Growth</span>
-                <h2 class="stat-value">{{ stats.new }}</h2>
+            <div class="stat-info-pro">
+                <span class="stat-label-pro">Monthly Acquisition</span>
+                <h2 class="stat-value-pro" id="statGrowthClients">{{ stats.new }}</h2>
             </div>
         </div>
-        <div class="c-card-premium" style="display: flex; align-items: center; gap: 1.25rem;">
-            <div class="stat-icon-diamond bg-indigo">
+        <div class="dashboard-card stats-card">
+            <div class="stat-icon-box" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">
                 <i class="fas fa-repeat"></i>
             </div>
-            <div class="stat-info-diamond">
-                <span class="stat-label">Repeat Rate</span>
-                <h2 class="stat-value">{{ stats.repeat }}</h2>
+            <div class="stat-info-pro">
+                <span class="stat-label-pro">Repeat Rate</span>
+                <h2 class="stat-value-pro" id="statRepeatClients">{{ stats.repeat }}</h2>
             </div>
         </div>
     </div>
 
-    <!-- Organized Database Table -->
-    <div class="c-card-premium" style="padding: 0; overflow: hidden;">
-        <div class="table-header-diamond">
-            <div class="header-title-diamond">
-                <h3 style="margin: 0; color: #1e293b; font-weight: 800; font-size: 1.25rem;">Relationship List</h3>
-                <p style="margin: 4px 0 0; color: #64748b; font-size: 0.85rem;">Real-time data synchronization active</p>
+    <!-- Main Table Container -->
+    <div class="dashboard-card table-card-container">
+        <div class="card-header-flex">
+            <div>
+                <h3 class="card-title-main">Relationship Database</h3>
+                <p class="card-subtitle-main">Real-time dynamic sync is active.</p>
             </div>
-            <div class="table-controls-diamond">
-                <select id="tableFilterStatus" class="control-pro" style="height: 40px; border-radius: 8px; padding: 0 1rem; border: 1px solid #e2e8f0; font-weight: 600; color: #475569; min-width: 150px;" onchange="window.filterCustomerTable()">
-                    <option value="All">All Clients</option>
+            <div class="card-actions-flex">
+                <select id="tableFilterStatus" class="form-control input-sm" onchange="window.filterCustomerTable()" style="width: auto; min-width: 150px;">
+                    <option value="All">All Tiers</option>
                     <option value="VIP Elite">VIP Elite</option>
                     <option value="Standard">Standard</option>
                     <option value="Blacklisted">Blacklisted</option>
                 </select>
-                <button class="btn-secondary-pro" onclick="window.exportCustomerCSV()" style="height: 40px; padding: 0 1rem; display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 150px;">
-                    <i class="fas fa-file-csv"></i> Export to CSV
-                </button>
+                <div class="action-dropdown-container">
+                    <button class="btn-outline input-sm" onclick="window.toggleActionMenu('export')">
+                        <i class="fas fa-file-export"></i> Export Data <i class="fas fa-chevron-down ml-1"></i>
+                    </button>
+                    <div class="action-dropdown-menu" id="actionMenu-export">
+                        <button onclick="window.exportCustomerCSV('csv')"><i class="fas fa-file-csv" style="color: #10b981;"></i> Export to Excel (CSV)</button>
+                        <div class="dropdown-divider"></div>
+                        <button onclick="window.exportCustomerPDF()"><i class="fas fa-file-pdf" style="color: #ef4444;"></i> Export to PDF</button>
+                    </div>
+                </div>
             </div>
         </div>
         
-        <div class="premium-table-wrapper">
-            <table class="premium-table" id="customersTable">
+        <div class="table-responsive">
+            <table class="table-dashboard" id="customersTable">
                 <thead>
                     <tr>
-                        <th>Customer ID</th>
-                        <th>Name & Contact</th>
+                        <th>Client ID</th>
+                        <th>Identity & Contact</th>
                         <th>Account Tier</th>
                         <th>Lifetime Spend</th>
-                        <th>Events</th>
-                        <th>Last Engagement</th>
-                        <th>Actions</th>
+                        <th>Engagement</th>
+                        <th>Last Active</th>
+                        <th class="text-right">Manage</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="customersTableBody">
                     {% for customer in customers %}
-                    <tr class="premium-row" data-name="{{ customer.first_name | lower }} {{ customer.last_name | lower }}">
-                        <td class="premium-cell">
-                            <span class="customer-id-pill">#{{ "00%d"|format(customer.id) }}</span>
+                    <tr class="table-row-pro" id="row-cust-{{ customer.id }}" data-name="{{ customer.first_name | lower }} {{ customer.last_name | lower }}" data-email="{{ customer.email | lower }}">
+                        <td>
+                            <span class="badge-subtle">#{{ "00%d"|format(customer.id) }}</span>
                         </td>
-                        <td class="premium-cell">
-                            <div class="customer-info-cell">
-                                <div class="cust-avatar-mini">{{ customer.first_name[0] }}{{ customer.last_name[0] }}</div>
-                                <div class="cust-text-info">
-                                    <div class="cust-name-pro">{{ customer.first_name }} {{ customer.last_name }}</div>
-                                    <div class="cust-email-pro">{{ customer.email }}</div>
+                        <td>
+                            <div class="identity-flex">
+                                <div class="avatar-circle-pro">
+                                    {{ (customer.first_name[0]|upper) if customer.first_name else '?' }}{{ (customer.last_name[0]|upper) if customer.last_name else '' }}
+                                </div>
+                                <div class="identity-text">
+                                    <div class="name-text">{{ customer.first_name }} {{ customer.last_name }}</div>
+                                    <div class="email-text">{{ customer.email }}</div>
                                 </div>
                             </div>
                         </td>
-                        <td class="premium-cell">
+                        <td>
                             {% if customer.status == 'Blacklisted' %}
-                                <span class="p-badge p-badge-cancelled">Blacklisted</span>
+                                <span class="badge-pro badge-danger">Blacklisted</span>
                             {% elif customer.total_bookings > 5 %}
-                                <span class="p-badge p-badge-confirmed">VIP Elite</span>
+                                <span class="badge-pro badge-warning">VIP Elite</span>
                             {% else %}
-                                <span class="p-badge p-badge-draft">Standard</span>
+                                <span class="badge-pro badge-secondary">Standard</span>
                             {% endif %}
                         </td>
-                        <td class="premium-cell">
-                            <div class="spend-value">₱{{ "{:,.2f}".format(customer.total_spent or 0) }}</div>
+                        <td>
+                            <div class="amount-text">₱{{ "{:,.2f}".format(customer.total_spent or 0) }}</div>
                         </td>
-                        <td class="premium-cell">
-                            <span class="booking-count-badge">{{ customer.total_bookings }} events</span>
+                        <td>
+                            <span class="badge-pro bg-primary-light" style="color: var(--primary-color);">{{ customer.total_bookings }} events</span>
                         </td>
-                        <td class="premium-cell">
-                            <div class="last-seen-pro">
+                        <td>
+                            <div class="date-text">
                                 {{ customer.last_booking_date.strftime('%b %d, %Y') if customer.last_booking_date else 'No data' }}
                             </div>
                         </td>
-                        <td class="premium-cell">
-                            <button class="btn-primary-pro" style="padding: 0.5rem 1rem; font-size: 0.85rem;" onclick="openCustomerProfile({{ customer.id }})">
-                                <i class="fas fa-user-circle"></i> View Profile
-                            </button>
+                        <td class="text-right">
+                            <div class="action-dropdown-container">
+                                <button class="btn-icon-dots" onclick="window.toggleActionMenu('cust{{ customer.id }}')">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                                <div class="action-dropdown-menu" id="actionMenu-cust{{ customer.id }}">
+                                    <button onclick="window.openCustomerProfile({{ customer.id }})">
+                                        <i class="fas fa-id-card text-primary"></i> View Profile
+                                    </button>
+                                    <button onclick="window.quickEditCustomer({{ customer.id }})">
+                                        <i class="fas fa-pen text-warning"></i> Quick Edit
+                                    </button>
+                                    <div class="dropdown-divider"></div>
+                                    <button onclick="window.quickToggleBlacklist({{ customer.id }}, '{{ customer.status }}')">
+                                        <i class="fas {{ 'fa-check text-success' if customer.status == 'Blacklisted' else 'fa-ban text-danger' }}"></i> 
+                                        {{ 'Restore Account' if customer.status == 'Blacklisted' else 'Block Account' }}
+                                    </button>
+                                </div>
+                            </div>
                         </td>
                     </tr>
                     {% else %}
-                    <tr>
-                        <td colspan="7" style="text-align: center; padding: 4rem 2rem;">
-                            <div style="color: #94a3b8; font-size: 3rem; margin-bottom: 1rem;"><i class="fas fa-users-slash"></i></div>
-                            <h4 style="color: #334155; font-weight: 700; margin-bottom: 0.5rem;">No Relationships Yet</h4>
-                            <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem;">Start building your client database by registering a new customer.</p>
-                            <button class="btn-primary-dashboard" onclick="window.openModal('addCustomerModal')">
-                                <i class="fas fa-plus"></i> Register First Customer
+                    <tr id="emptyStateRow">
+                        <td colspan="7" class="empty-state-cell">
+                            <div class="empty-icon"><i class="fas fa-users-slash"></i></div>
+                            <h4>No Client Records Found</h4>
+                            <p>Your client database is empty. Add a new customer to start building intelligence.</p>
+                            <button class="btn-primary mt-3" onclick="window.openModal('addCustomerModal')" style="padding: 0.6rem 1.25rem;">
+                                <i class="fas fa-plus"></i> Register First Client
                             </button>
                         </td>
                     </tr>
@@ -173,239 +175,219 @@
     </div>
 </div>
 
-<!-- Register New Customer Modal (Elite Diamond Standard) -->
+<!-- Register New Customer Modal -->
 <div id="addCustomerModal" class="occ-modal-overlay">
-    <div class="occ-modal-box sz-lg occ-content-pop">
+    <div class="occ-modal-box sz-lg flex-col-modal">
         <div class="occ-modal-header colored-header">
             <div>
-                <h3 class="occ-modal-title" style="color: white !important;"><i class="fas fa-user-plus"></i> Relationship Registration</h3>
-                <div class="occ-modal-subtitle" style="color: rgba(255,255,255,0.8) !important;">Establish a new entry in your client intelligence database.</div>
+                <h3 class="occ-modal-title"><i class="fas fa-user-plus"></i> Client Registration</h3>
+                <div class="occ-modal-subtitle">Establish a verified entry in your intelligence database.</div>
             </div>
-            <button type="button" class="occ-modal-close" onclick="window.closeModal('addCustomerModal')" style="color: white !important;">
+            <button type="button" class="occ-modal-close" onclick="window.closeModal('addCustomerModal')">
                 <i class="fas fa-times"></i>
             </button>
         </div>
 
-        <form id="addCustomerForm" onsubmit="window.registerCustomer(event)">
-            <div class="occ-modal-body" style="padding: 2.5rem;">
-                <!-- Validation Error Drawer removed in favor of inline feedback -->
-
-                <h4 style="font-size: 1.1rem; font-weight: 800; color: var(--primary-color); margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px;">
-                    <i class="fas fa-user-circle"></i> Customer Information
-                </h4>
-
-                <div class="occ-form-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
-                    <!-- Names -->
+        <form id="addCustomerForm" onsubmit="window.registerCustomer(event)" class="flex-1 overflow-hidden flex-col-modal">
+            <div class="occ-modal-body overflow-y-auto modal-padding">
+                
+                <h4 class="section-heading-pro"><i class="fas fa-id-badge"></i> Core Identity</h4>
+                
+                <div class="grid-2-col mb-4">
                     <div class="form-group-pro">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; display: block; margin-bottom: 8px;">First Name *</label>
-                        <input type="text" id="regFirstName" name="first_name" class="control-pro" placeholder="Maria" required style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem; width: 100%;">
-                        <div class="field-error-msg" id="error-regFirstName">First Name is required.</div>
+                        <label class="form-label">First Name <span class="text-danger">*</span></label>
+                        <input type="text" id="regFirstName" name="first_name" class="form-control" placeholder="e.g. Maria" required>
+                        <div class="invalid-feedback" id="error-regFirstName"></div>
                     </div>
                     <div class="form-group-pro">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; display: block; margin-bottom: 8px;">Middle Name</label>
-                        <input type="text" id="regMiddleName" name="middle_name" class="control-pro" placeholder="Clara" style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem; width: 100%;">
-                    </div>
-                    <div class="form-group-pro">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; display: block; margin-bottom: 8px;">Last Name *</label>
-                        <input type="text" id="regLastName" name="last_name" class="control-pro" placeholder="Santos" required style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem; width: 100%;">
-                        <div class="field-error-msg" id="error-regLastName">Last Name is required.</div>
-                    </div>
-
-                    <!-- Contact Info -->
-                    <div class="form-group-pro" style="grid-column: span 2;">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; display: block; margin-bottom: 8px;">Email Address *</label>
-                        <input type="email" id="regEmail" name="email" class="control-pro" placeholder="client@example.com" required style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem; width: 100%;">
-                        <div class="field-error-msg" id="error-regEmail">Please enter a valid email address.</div>
-                    </div>
-                    <div class="form-group-pro">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; display: block; margin-bottom: 8px;">Phone Number *</label>
-                        <input type="text" id="regPhone" name="phone" class="control-pro" placeholder="09XXXXXXXXX" required maxlength="11" style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem; width: 100%;">
-                        <div class="field-error-msg" id="error-regPhone">Enter a valid 11-digit PH mobile number.</div>
+                        <label class="form-label">Last Name <span class="text-danger">*</span></label>
+                        <input type="text" id="regLastName" name="last_name" class="form-control" placeholder="e.g. Santos" required>
+                        <div class="invalid-feedback" id="error-regLastName"></div>
                     </div>
                 </div>
 
-                <h4 style="font-size: 1.1rem; font-weight: 800; color: var(--primary-color); margin-bottom: 1.25rem; margin-top: 1.5rem; padding-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px;">
-                    <i class="fas fa-map-marker-alt"></i> Client Address
-                </h4>
-                
-                <div class="occ-form-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
+                <div class="grid-2-col mb-4">
                     <div class="form-group-pro">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; display: block; margin-bottom: 8px;">Province *</label>
-                        <select id="regProv" name="province" class="control-pro" required style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem; width: 100%;" onchange="window.loadCities(this.value, 'regCity')">
+                        <label class="form-label">Email Address <span class="text-danger">*</span></label>
+                        <input type="email" id="regEmail" name="email" class="form-control" placeholder="client@example.com" required>
+                        <div class="invalid-feedback" id="error-regEmail"></div>
+                    </div>
+                    <div class="form-group-pro">
+                        <label class="form-label">Mobile Number <span class="text-danger">*</span></label>
+                        <input type="text" id="regPhone" name="phone" class="form-control" placeholder="09XXXXXXXXX" required maxlength="11">
+                        <div class="invalid-feedback" id="error-regPhone"></div>
+                    </div>
+                </div>
+
+                <h4 class="section-heading-pro mt-4"><i class="fas fa-map-marker-alt"></i> Location Intelligence</h4>
+                
+                <div class="grid-2-col mb-4">
+                    <div class="form-group-pro">
+                        <label class="form-label">Province <span class="text-danger">*</span></label>
+                        <select id="regProv" name="province" class="form-control" required onchange="window.loadCities(this.value, 'regCity')">
                             <option value="">Select Province</option>
                         </select>
-                        <div class="field-error-msg" id="error-regProv">Province is required.</div>
+                        <div class="invalid-feedback" id="error-regProv"></div>
                     </div>
-                    
                     <div class="form-group-pro">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; display: block; margin-bottom: 8px;">City / Municipality *</label>
-                        <select id="regCity" name="city" class="control-pro" required disabled style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem; width: 100%;" onchange="window.loadBarangays(this.value, 'regBrgy')">
+                        <label class="form-label">City / Municipality <span class="text-danger">*</span></label>
+                        <select id="regCity" name="city" class="form-control" required disabled onchange="window.loadBarangays(this.value, 'regBrgy')">
                             <option value="">Select City</option>
                         </select>
-                        <div class="field-error-msg" id="error-regCity">City is required.</div>
+                        <div class="invalid-feedback" id="error-regCity"></div>
                     </div>
-                    
+                </div>
+                
+                <div class="grid-2-col mb-4">
                     <div class="form-group-pro">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; display: block; margin-bottom: 8px;">Barangay *</label>
-                        <select id="regBrgy" name="barangay" class="control-pro" required disabled style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem; width: 100%;">
+                        <label class="form-label">Barangay <span class="text-danger">*</span></label>
+                        <select id="regBrgy" name="barangay" class="form-control" required disabled>
                             <option value="">Select Barangay</option>
                         </select>
-                        <div class="field-error-msg" id="error-regBrgy">Barangay is required.</div>
+                        <div class="invalid-feedback" id="error-regBrgy"></div>
                     </div>
-
-                    <div class="form-group-pro" style="grid-column: span 3;">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase; display: block; margin-bottom: 8px;">Street / Landmark / House No. *</label>
-                        <input type="text" id="regLandmark" name="landmark" class="control-pro" placeholder="e.g. 123 Main St, Near Plaza" required style="height: 50px; font-weight: 600; border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 0 1.25rem; width: 100%;">
-                        <div class="field-error-msg" id="error-regLandmark">Street/Landmark is required.</div>
+                    <div class="form-group-pro">
+                        <label class="form-label">Detailed Address <span class="text-danger">*</span></label>
+                        <input type="text" id="regLandmark" name="landmark" class="form-control" placeholder="e.g. 123 Main St" required>
+                        <div class="invalid-feedback" id="error-regLandmark"></div>
                     </div>
                 </div>
 
-                <h4 style="font-size: 1.1rem; font-weight: 800; color: var(--primary-color); margin-bottom: 1.25rem; margin-top: 1.5rem; padding-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px;">
-                    <i class="fas fa-clipboard-list"></i> Additional Notes
-                </h4>
-
-                <div class="form-group-pro">
-                    <textarea id="regNotes" name="notes" class="control-pro" placeholder="Record specific catering requirements, past event context, or client tiering notes..." rows="3" style="height: auto; min-height: 120px; padding: 1.25rem; border-radius: 12px; border: 1.5px solid #e2e8f0; font-weight: 500; width: 100%; resize: vertical;"></textarea>
+                <h4 class="section-heading-pro mt-4"><i class="fas fa-clipboard-list"></i> Operational Notes</h4>
+                <div class="form-group-pro mb-4">
+                    <textarea id="regNotes" name="notes" class="form-control" placeholder="Internal remarks, allergies, preferences..." rows="3"></textarea>
                 </div>
             </div>
             
-            <div class="occ-modal-footer" style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 1.5rem 2.5rem; display: flex; justify-content: flex-end; gap: 15px;">
-                <button type="button" class="btn-secondary-pro" onclick="window.closeModal('addCustomerModal')">Dismiss</button>
-                <button type="submit" id="btnSubmitRegistration" class="btn-primary-pro">Establish Relationship</button>
+            <div class="occ-modal-footer">
+                <button type="button" class="btn-secondary" onclick="window.closeModal('addCustomerModal')">Cancel</button>
+                <button type="submit" id="btnSubmitRegistration" class="btn-primary">Authorize & Register</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Customer Intelligence Hub (CRM Profile) -->
+<!-- CRM Hub Modal -->
 <div id="customerProfileModal" class="occ-modal-overlay">
-    <div class="occ-modal-box sz-lg occ-content-pop">
+    <div class="occ-modal-box sz-lg flex-col-modal">
         <div class="occ-modal-header colored-header">
             <div>
-                <span id="profInitials" style="display:none;"></span>
-                <h3 id="profName" class="occ-modal-title" style="color: white !important;"><i class="fas fa-user-circle"></i> Customer Profile</h3>
-                <div id="profStatus" class="occ-modal-subtitle intelligence-tag" style="color: rgba(255,255,255,0.8) !important;">Analyzing Relationship...</div>
+                <h3 id="profName" class="occ-modal-title"><i class="fas fa-user-circle"></i> Analyzing...</h3>
+                <div id="profStatus" class="occ-modal-subtitle status-pill-indicator">Connecting to intelligence stream...</div>
             </div>
-            <button type="button" class="occ-modal-close" onclick="window.closeModal('customerProfileModal')" style="color: white !important;">
+            <button type="button" class="occ-modal-close" onclick="window.closeModal('customerProfileModal')">
                 <i class="fas fa-times"></i>
             </button>
         </div>
 
-        <div class="intelligence-tabs-container">
-            <button class="intel-tab active" data-tab="overview" onclick="switchIntelTab('overview', this)">
-                <i class="fas fa-info-circle"></i> Overview
+        <div class="tab-header-container bg-primary-dark">
+            <button class="tab-btn-pro active" data-tab="overview" onclick="switchIntelTab('overview', this)">
+                <i class="fas fa-fingerprint"></i> Identity
             </button>
-            <button class="intel-tab" data-tab="history" onclick="switchIntelTab('history', this)">
-                <i class="fas fa-history"></i> Booking History
+            <button class="tab-btn-pro" data-tab="edit" onclick="switchIntelTab('edit', this)">
+                <i class="fas fa-sticky-note"></i> CRM Notes
             </button>
-            <button class="intel-tab" data-tab="edit" onclick="switchIntelTab('edit', this)">
-                <i class="fas fa-edit"></i> Edit Profile
+            <button class="tab-btn-pro" data-tab="history" onclick="switchIntelTab('history', this)">
+                <i class="fas fa-history"></i> Ledger
             </button>
-            <button class="intel-tab" data-tab="risk" onclick="switchIntelTab('risk', this)">
-                <i class="fas fa-shield-alt"></i> Risk Management
+            <button class="tab-btn-pro" data-tab="risk" onclick="switchIntelTab('risk', this)">
+                <i class="fas fa-shield-alt"></i> Security
             </button>
         </div>
 
-        <div class="occ-modal-body intelligence-body">
+        <div class="occ-modal-body flex-1 overflow-y-auto modal-padding">
             <!-- Overview Tab -->
             <div id="intel-overview" class="intel-content active">
-                <div class="stats-mini-grid">
-                    <div class="stat-mini-card">
-                        <label>Total Life-Time Value</label>
-                        <div class="value" id="profLTV">₱0.00</div>
-                    </div>
-                    <div class="stat-mini-card">
-                        <label>Successful Events</label>
-                        <div class="value" id="profEvents">0</div>
-                    </div>
-                </div>
-
-                <div class="info-details-grid">
-                    <div class="info-box-pro">
-                        <label>Email Address</label>
-                        <p id="profEmail">--</p>
-                    </div>
-                    <div class="info-box-pro">
-                        <label>Contact Number</label>
-                        <p id="profPhone">--</p>
+                
+                <!-- Identity & Location Section -->
+                <div class="dashboard-card p-4 mb-4 border-subtle">
+                    <h4 class="text-sm font-bold text-dark mb-3" style="text-transform: uppercase; font-family: 'Poppins', sans-serif;"><i class="fas fa-id-card text-primary" style="margin-right: 0.5rem;"></i> Identity & Location</h4>
+                    <div class="grid-2-col" style="gap: 1.5rem;">
+                        <div>
+                            <label class="text-xs font-bold text-muted block mb-1" style="text-transform: uppercase;">Full Legal Name</label>
+                            <p class="font-bold text-base text-dark m-0" id="profFullName" style="font-family: 'Poppins', sans-serif;">--</p>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-muted block mb-1" style="text-transform: uppercase;">Registered Address</label>
+                            <p class="font-bold text-base text-dark m-0" id="profAddress" style="font-family: 'Poppins', sans-serif;">--</p>
+                        </div>
                     </div>
                 </div>
 
-                <div class="notes-section-pro">
-                    <label>Operational Notes</label>
-                    <div class="notes-display-pro" id="profNotes" style="white-space: pre-wrap;">--</div>
+                <div class="grid-2-col mb-4">
+                    <div class="dashboard-card p-3 border-subtle">
+                        <label class="text-xs font-bold text-muted block mb-1">Registered Email</label>
+                        <p class="font-bold text-sm text-dark m-0" id="profEmail" style="font-family: 'Poppins', sans-serif;">--</p>
+                    </div>
+                    <div class="dashboard-card p-3 border-subtle">
+                        <label class="text-xs font-bold text-muted block mb-1">Contact Number</label>
+                        <p class="font-bold text-sm text-dark m-0" id="profPhone" style="font-family: 'Poppins', sans-serif;">--</p>
+                    </div>
+                </div>
+
+                <div class="grid-2-col mb-4">
+                    <div class="dashboard-card p-4">
+                        <label class="text-xs font-bold text-muted text-uppercase mb-1 block">Lifetime Value (LTV)</label>
+                        <div class="text-2xl font-black text-primary" id="profLTV" style="font-family: 'Poppins', sans-serif;">₱0.00</div>
+                    </div>
+                    <div class="dashboard-card p-4">
+                        <label class="text-xs font-bold text-muted text-uppercase mb-1 block">Total Engagements</label>
+                        <div class="text-2xl font-black text-dark" id="profEvents" style="font-family: 'Poppins', sans-serif;">0</div>
+                    </div>
+                </div>
+
+                <div class="dashboard-card p-4 bg-warning-light border-warning-subtle">
+                    <label class="text-xs font-bold text-warning-dark block mb-2">Internal Operations Log</label>
+                    <div class="text-sm text-warning-dark whitespace-pre-wrap" id="profNotes" style="font-family: 'Poppins', sans-serif;">--</div>
                 </div>
             </div>
 
-            <!-- Edit Profile Tab -->
-            <div id="intel-edit" class="intel-content">
-                <form id="editCustomerForm" onsubmit="updateCustomerProfile(event)">
-                    <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-                        <div class="form-group-pro">
-                            <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase;">First Name</label>
-                            <input type="text" id="editFirstName" name="first_name" class="control-pro" required style="height: 45px; border-radius: 8px; border: 1px solid #e2e8f0; padding: 0 1rem; width: 100%;">
-                            <div class="field-error-msg" id="error-editFirstName">First name is required.</div>
-                        </div>
-                        <div class="form-group-pro">
-                            <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase;">Last Name</label>
-                            <input type="text" id="editLastName" name="last_name" class="control-pro" required style="height: 45px; border-radius: 8px; border: 1px solid #e2e8f0; padding: 0 1rem; width: 100%;">
-                            <div class="field-error-msg" id="error-editLastName">Last name is required.</div>
-                        </div>
-                        <div class="form-group-pro">
-                            <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase;">Email Address</label>
-                            <input type="email" id="editEmail" name="email" class="control-pro" required style="height: 45px; border-radius: 8px; border: 1px solid #e2e8f0; padding: 0 1rem; width: 100%;">
-                            <div class="field-error-msg" id="error-editEmail">Please enter a valid email address.</div>
-                        </div>
-                        <div class="form-group-pro">
-                            <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase;">Contact Number</label>
-                            <input type="text" id="editPhone" name="phone" class="control-pro" required maxlength="11" style="height: 45px; border-radius: 8px; border: 1px solid #e2e8f0; padding: 0 1rem; width: 100%;">
-                            <div class="field-error-msg" id="error-editPhone">Enter a valid 11-digit PH mobile number.</div>
-                        </div>
-                        <div class="form-group-pro" style="grid-column: span 2;">
-                            <label style="font-size: 0.75rem; font-weight: 800; color: #475569; text-transform: uppercase;">Internal Notes</label>
-                            <textarea id="editNotes" name="notes" class="control-pro" rows="4" style="border-radius: 8px; border: 1px solid #e2e8f0; padding: 1rem; width: 100%; resize: vertical;"></textarea>
+            <!-- Edit Tab -->
+            <div id="intel-edit" class="intel-content" style="display: none;">
+                <form id="editCustomerForm" onsubmit="window.updateCustomerProfile(event)">
+                    <div class="form-grid-2">
+                        <div class="form-group-pro col-span-2">
+                            <label class="form-label">Internal Operations Notes</label>
+                            <textarea id="editNotes" name="notes" class="form-control" rows="8" placeholder="Add specific preferences, allergies, or past experiences with this client..."></textarea>
+                            <span class="field-hint" style="color:#64748b; font-size: 0.75rem;">Clients cannot view these internal CRM notes. Personal identity fields are locked for security and compliance.</span>
                         </div>
                     </div>
-                    <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end;">
-                        <button type="submit" class="btn-primary-pro" id="btnUpdateCustomer">
-                            <i class="fas fa-save"></i> Save Changes
+                    <div class="mt-4 text-right">
+                        <button type="submit" class="btn-primary" id="btnUpdateCustomer">
+                            <i class="fas fa-save"></i> Commit Changes
                         </button>
                     </div>
                 </form>
             </div>
 
-            <!-- Booking History Tab -->
-            <div id="intel-history" class="intel-content">
-                <div class="history-timeline" id="profHistory">
-                    <div class="empty-intel-msg">
-                        <i class="fas fa-calendar-minus"></i>
-                        <p>No historical bookings found for this relationship.</p>
-                    </div>
+            <!-- History Tab -->
+            <div id="intel-history" class="intel-content" style="display: none;">
+                <div class="ledger-timeline" id="profHistory">
+                    <!-- Populated dynamically -->
                 </div>
             </div>
 
-            <!-- Risk Management Tab -->
-            <div id="intel-risk" class="intel-content">
-                <div class="risk-card-pro-danger">
-                    <div class="risk-icon-box">
-                        <i class="fas fa-user-slash"></i>
+            <!-- Risk Tab -->
+            <div id="intel-risk" class="intel-content" style="display: none;">
+                <div class="dashboard-card p-4 bg-danger-light border-danger-subtle d-flex align-items-center gap-4 flex-wrap-mobile">
+                    <div class="text-4xl text-danger"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="flex-1">
+                        <h4 class="text-danger-dark font-bold mb-2">Account Restriction</h4>
+                        <p class="text-sm text-danger-dark m-0">Placing an account on the blacklist prevents them from submitting future booking requests. Use this protocol for fraudulent activity or severe policy violations.</p>
+                        
+                        <div class="form-group-pro" style="margin-top: 1rem; margin-bottom: 0;">
+                            <label class="form-label text-danger-dark">Reason for Restriction / Restoration <span class="text-danger">*</span></label>
+                            <textarea id="blacklistReason" class="form-control" rows="2" placeholder="e.g. Cancelled 3 times without notice..." style="border-color: #fca5a5;"></textarea>
+                        </div>
                     </div>
-                    <div class="risk-info">
-                        <h4>Security Enforcement</h4>
-                        <p>Restrict this client from making future bookings. Use this for persistent no-shows or fraudulent behavior. This action can be undone if behavior improves.</p>
-                    </div>
-                    <button class="btn-risk-blacklist" id="blacklistBtn" onclick="toggleBlacklist()">BLOCK RELATIONSHIP</button>
+                    <button type="button" class="btn-primary bg-danger border-none" id="blacklistBtn" onclick="window.toggleBlacklist()">Execute Block</button>
                 </div>
             </div>
-        </div>
-
-        <div class="occ-modal-footer">
-            <button type="button" class="btn-secondary-pro" onclick="window.closeModal('customerProfileModal')">Close Profile</button>
         </div>
     </div>
 </div>
 {% endblock %}
 
-{% block scripts %}
-<script src="{{ url_for('static', path='/js/caterer/customers.js') }}?v=8.0"></script>
+{% block extra_js %}
+<script src="{{ url_for('static', path='/js/caterer/customers.js') }}?v=10.3"></script>
 {% endblock %}
