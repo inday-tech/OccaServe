@@ -260,6 +260,16 @@
                     <option value="cancelled">Cancelled</option>
                 </select>
             </div>
+            <div class="action-dropdown-container" style="position: relative;">
+                <button class="btn-outline input-sm" style="padding: 0.75rem 1.25rem; height: 100%; border: 1px solid #cbd5e1; border-radius: 8px; font-weight: 700; color: #475569; background: white; cursor: pointer; display: flex; align-items: center; gap: 8px;" onclick="window.toggleBookingExportMenu(event)">
+                    <i class="fas fa-file-export"></i> Export Data <i class="fas fa-chevron-down" style="font-size: 0.75rem;"></i>
+                </button>
+                <div class="action-dropdown-menu" id="bookingExportMenu" style="display: none; position: absolute; top: 100%; right: 0; margin-top: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); width: 200px; z-index: 100; overflow: hidden;">
+                    <button onclick="window.exportBookings('excel')" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 600; color: #475569; border-bottom: 1px solid #f1f5f9;"><i class="fas fa-file-excel" style="color: #10b981; font-size: 1.1rem; width: 20px;"></i> Excel (CSV)</button>
+                    <button onclick="window.exportBookings('pdf')" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 600; color: #475569; border-bottom: 1px solid #f1f5f9;"><i class="fas fa-file-pdf" style="color: #ef4444; font-size: 1.1rem; width: 20px;"></i> PDF Report</button>
+                    <button onclick="window.exportBookings('word')" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 600; color: #475569;"><i class="fas fa-file-word" style="color: #3b82f6; font-size: 1.1rem; width: 20px;"></i> Word Doc</button>
+                </div>
+            </div>
             <button onclick="openWalkinModal()" class="btn-primary-pro">
                 <i class="fas fa-plus"></i><span class="btn-text">New Booking</span>
             </button>
@@ -1233,5 +1243,5 @@
 
 {% block extra_js %}
 <script src="{{ url_for('static', path='/js/auth/location_data.js') }}"></script>
-<script src="{{ url_for('static', path='/js/caterer/bookings.js') }}?v=3.2"></script>
+<script src="{{ url_for('static', path='/js/caterer/bookings.js') }}?v=3.4"></script>
 {% endblock %}

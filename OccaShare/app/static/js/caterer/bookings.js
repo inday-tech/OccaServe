@@ -1810,3 +1810,164 @@ function initWalkinLocation() {
         }
     });
 }
+
+window.toggleBookingExportMenu = function(event) {
+    event.stopPropagation();
+    const menu = document.getElementById('bookingExportMenu');
+    if (menu) {
+        menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    }
+};
+
+document.addEventListener('click', function(e) {
+    const menu = document.getElementById('bookingExportMenu');
+    if (menu && !e.target.closest('.action-dropdown-container')) {
+        menu.style.display = 'none';
+    }
+});
+
+window.exportBookings = function(format) {
+    const menu = document.getElementById('bookingExportMenu');
+    if (menu) menu.style.display = 'none';
+    
+    const rows = document.querySelectorAll('.bookings-list-table tbody tr.booking-row-item');
+    const searchInput = (document.getElementById('bookingSearchInput') ? document.getElementById('bookingSearchInput').value : '').toLowerCase();
+    const statusFilter = document.getElementById('statusFilter') ? document.getElementById('statusFilter').value : '';
+    const visibleRows = Array.from(rows).filter(function(row) {
+        const rawStatus = row.dataset.status || '';
+        const payStatus = row.dataset.paymentStatus || '';
+        const rowText = row.innerText.toLowerCase();
+        
+        const matchesSearch = rowText.indexOf(searchInput) > -1;
+        let matchesStatus = false;
+        
+        if (statusFilter === '') {
+            matchesStatus = true;
+        } else if (statusFilter === 'action_required') {
+            const needsSignature = ['pending_quotation', 'awaiting_caterer'].includes(rawStatus);
+            const needsPaymentVerify = ['proof_submitted', 'balance_proof_submitted'].includes(payStatus);
+            const isUrgent = row.dataset.isUrgent === 'true';
+            matchesStatus = needsSignature || needsPaymentVerify || isUrgent;
+        } else if (statusFilter === 'pending') {
+            matchesStatus = ['pending', 'awaiting_caterer', 'pending_quotation'].includes(rawStatus);
+        } else {
+            matchesStatus = rawStatus === statusFilter;
+        }
+        
+        return matchesSearch && matchesStatus;
+    });
+    
+    if (visibleRows.length === 0) {
+        alert("No bookings visible to export. Try clearing your filters.");
+        return;
+    }
+
+    const data = [];
+    visibleRows.forEach(row => {
+        try {
+            const cells = row.querySelectorAll('td');
+            if (cells.length < 7) return;
+            
+            // Clean up innerText by replacing newlines with spaces and trimming
+            const clean = (text) => text.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+            
+            const idText = clean(cells[0].innerText);
+            const customer = clean(cells[1].innerText);
+            const eventInfo = clean(cells[2].innerText);
+            const dateTime = clean(cells[3].innerText);
+            const guests = clean(cells[4].innerText);
+            const amount = clean(cells[5].innerText).replace('₱', '').trim();
+            const status = clean(cells[6].innerText);
+            
+            data.push({ idText, customer, eventInfo, dateTime, guests, amount, status });
+        } catch(e) {
+            console.error('Row parsing error', e);
+        }
+    });
+
+    if (data.length === 0) return;
+
+    if (format === 'excel') {
+        let csvContent = "data:text/csv;charset=utf-8,";
+        csvContent += "Booking ID,Customer,Event,Date & Time,Guests,Amount,Status\n";
+        
+        data.forEach(d => {
+            const escapeCSV = (val) => '"' + String(val).replace(/"/g, '""') + '"';
+            const rowStr = [d.idText, d.customer, d.eventInfo, d.dateTime, d.guests, d.amount, d.status].map(escapeCSV).join(",");
+            csvContent += rowStr + "\n";
+        });
+        
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `bookings_export_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } 
+    else if (format === 'pdf' || format === 'word') {
+        let html = `
+        <html><head><title>Bookings Report</title>
+        <style>
+            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 2rem; color: #333; }
+            h2 { border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; color: #0f172a; margin-bottom: 25px; }
+            .meta-info { margin-bottom: 20px; font-size: 14px; color: #64748b; }
+            table { width: 100%; border-collapse: collapse; font-size: 12px; }
+            th, td { border: 1px solid #cbd5e1; padding: 12px 8px; text-align: left; vertical-align: top; }
+            th { background: #f8fafc; font-weight: 700; color: #475569; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; }
+            tr:nth-child(even) { background: #fcfcfd; }
+            .amount { font-weight: bold; color: #0f172a; white-space: nowrap; }
+            .status { font-weight: bold; color: #64748b; }
+        </style></head><body>
+        <h2>Bookings Database Report</h2>
+        <div class="meta-info"><strong>Generated on:</strong> ${new Date().toLocaleString()}</div>
+        <table>
+            <thead>
+                <tr>
+                    <th width="10%">ID</th>
+                    <th width="20%">Customer</th>
+                    <th width="20%">Event Info</th>
+                    <th width="15%">Date & Time</th>
+                    <th width="10%">Guests</th>
+                    <th width="12%">Amount</th>
+                    <th width="13%">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+        `;
+        
+        data.forEach(d => {
+            html += `<tr>
+                <td><strong>${d.idText}</strong></td>
+                <td>${d.customer}</td>
+                <td>${d.eventInfo}</td>
+                <td>${d.dateTime}</td>
+                <td>${d.guests}</td>
+                <td class="amount">${d.amount}</td>
+                <td class="status">${d.status}</td>
+            </tr>`;
+        });
+        
+        html += `</tbody></table></body></html>`;
+
+        if (format === 'word') {
+            const blob = new Blob(['\ufeff', html], {
+                type: 'application/msword'
+            });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `bookings_export_${new Date().toISOString().split('T')[0]}.doc`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } else {
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(html);
+            printWindow.document.close();
+            setTimeout(() => {
+                printWindow.print();
+            }, 500);
+        }
+    }
+};
