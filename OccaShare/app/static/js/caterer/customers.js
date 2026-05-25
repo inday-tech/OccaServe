@@ -302,7 +302,16 @@ async function validateAgainstDatabase(field, value, excludeId = null) {
         if (data.status === 'error') {
             let inputId = field === 'email' ? 'regEmail' : 'regPhone';
             if (excludeId) inputId = field === 'email' ? 'editEmail' : 'editPhone';
-            setFieldStatus(inputId, 'error', data.message);
+            
+            if (field === 'identity') {
+                setFieldStatus('regFirstName', 'error', data.message);
+                setFieldStatus('regLastName', 'error', data.message);
+                if (document.getElementById('regMiddleName')) {
+                    setFieldStatus('regMiddleName', 'error', data.message);
+                }
+            } else {
+                setFieldStatus(inputId, 'error', data.message);
+            }
             return false;
         }
         return true;
@@ -323,14 +332,47 @@ function attachSmartRealtimeValidation() {
         return true;
     };
 
-    ['regFirstName', 'editFirstName'].forEach(id => {
+    ['regFirstName', 'regMiddleName', 'regLastName'].forEach(id => {
         const el = document.getElementById(id);
-        if(el) el.addEventListener('input', (e) => handleTextRegex(e, id, 'First Name'));
-    });
-    
-    ['regLastName', 'editLastName'].forEach(id => {
-        const el = document.getElementById(id);
-        if(el) el.addEventListener('input', (e) => handleTextRegex(e, id, 'Last Name'));
+        if(el) {
+            el.addEventListener('input', (e) => {
+                const isRequired = id !== 'regMiddleName';
+                const label = id.replace('reg', '').replace('Name', ' Name');
+                
+                if (isRequired && !handleTextRegex(e, id, label)) return;
+                else if (!isRequired && e.target.value.trim() && !handleTextRegex(e, id, label)) return;
+                else if (!isRequired) setFieldStatus(id, 'default');
+                
+                clearTimeout(validationDebounceTimer);
+                validationDebounceTimer = setTimeout(() => {
+                    const fn = document.getElementById('regFirstName')?.value.trim();
+                    const ln = document.getElementById('regLastName')?.value.trim();
+                    const mn = document.getElementById('regMiddleName')?.value.trim() || "";
+                    
+                    if (fn && ln) {
+                        fetch('/caterer/api/customers/validate', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ first_name: fn, last_name: ln, middle_name: mn })
+                        }).then(res => res.json()).then(data => {
+                            if (data.status === 'error' && data.field === 'identity') {
+                                setFieldStatus('regFirstName', 'error', data.message);
+                                setFieldStatus('regLastName', 'error', data.message);
+                                if (document.getElementById('regMiddleName')) {
+                                    setFieldStatus('regMiddleName', 'error', data.message);
+                                }
+                            } else {
+                                setFieldStatus('regFirstName', 'success');
+                                setFieldStatus('regLastName', 'success');
+                                if (document.getElementById('regMiddleName') && mn) {
+                                    setFieldStatus('regMiddleName', 'success');
+                                }
+                            }
+                        }).catch(console.error);
+                    }
+                }, 800);
+            });
+        }
     });
 
     ['regPhone', 'editPhone'].forEach(id => {

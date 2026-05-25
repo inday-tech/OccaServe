@@ -3981,7 +3981,21 @@ async def register_manual_customer(
         if phone:
             existing_phone = db.query(models.User).filter(models.User.phone_number == phone).first()
             if existing_phone:
-                return {"status": "error", "message": "This phone number is already registered to another client."}
+                return {"status": "error", "message": "This phone number is already registered."}
+                
+        # Check exact identity duplicate among customers only
+        q_identity = db.query(models.User).filter(
+            models.User.first_name == first_name,
+            models.User.last_name == last_name,
+            models.User.role == "customer"
+        )
+        if middle_name:
+            q_identity = q_identity.filter(models.User.middle_name == middle_name)
+        else:
+            q_identity = q_identity.filter((models.User.middle_name == None) | (models.User.middle_name == ""))
+            
+        if q_identity.first():
+            return {"status": "error", "message": "A customer with this exact First, Middle, and Last name already exists."}
             
         # Construct Address
         address_parts = [p for p in [landmark, barangay, city, province] if p]
@@ -4027,7 +4041,7 @@ async def validate_customer_api(
             if exclude_id:
                 q = q.filter(models.User.id != int(exclude_id))
             if q.first():
-                return {"status": "error", "field": "email", "message": "Email is already in use by another user."}
+                return {"status": "error", "field": "email", "message": "This email is already registered."}
                 
         if phone:
             q = db.query(models.User).filter(models.User.phone_number == phone)
@@ -4035,6 +4049,30 @@ async def validate_customer_api(
                 q = q.filter(models.User.id != int(exclude_id))
             if q.first():
                 return {"status": "error", "field": "phone", "message": "Phone number is already registered."}
+                
+        # Validate Identity
+        first_name = data.get("first_name", "").strip()
+        last_name = data.get("last_name", "").strip()
+        middle_name = data.get("middle_name", "").strip()
+        
+        if first_name and last_name:
+            q = db.query(models.User).filter(
+                models.User.first_name == first_name,
+                models.User.last_name == last_name,
+                models.User.role == "customer"
+            )
+            # Match middle name (or absence thereof) if passed
+            if middle_name:
+                q = q.filter(models.User.middle_name == middle_name)
+            else:
+                q = q.filter((models.User.middle_name == None) | (models.User.middle_name == ""))
+                
+            if exclude_id:
+                q = q.filter(models.User.id != int(exclude_id))
+            
+            existing = q.first()
+            if existing:
+                return {"status": "error", "field": "identity", "message": "A client with this exact First, Middle, and Last name already exists."}
                 
         return {"status": "success"}
     except Exception as e:
