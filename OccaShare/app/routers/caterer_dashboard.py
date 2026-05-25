@@ -2135,6 +2135,39 @@ async def add_menu_item(
 
     return RedirectResponse(url="/caterer/menu?success_msg=Menu+item+added+successfully", status_code=303)
 
+@router.post("/api/validate-dish-name")
+async def validate_dish_name(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    try:
+        data = await request.json()
+        name = data.get("value", "").strip()
+        exclude_id = data.get("exclude_id")
+
+        if not name:
+            return JSONResponse({"valid": True})
+
+        query = db.query(models.MenuItem).filter(
+            models.MenuItem.caterer_id == user.caterer_profile.id,
+            models.MenuItem.name.ilike(name),
+            models.MenuItem.is_archived == False
+        )
+        
+        if exclude_id and str(exclude_id).isdigit():
+            query = query.filter(models.MenuItem.id != int(exclude_id))
+
+        exists = query.first() is not None
+        
+        return JSONResponse({
+            "valid": not exists,
+            "message": "This dish name is already in your library." if exists else ""
+        })
+    except Exception as e:
+        return JSONResponse({"valid": True}) # Default to true on error so we don't block
+
+
 @router.post("/profile")
 async def update_profile(
     request: Request,

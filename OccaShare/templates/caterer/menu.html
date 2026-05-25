@@ -4,7 +4,7 @@
 {% block title %}Menu Library - OccaShare Caterer{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/menu.css') }}?v=1.5">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/menu.css') }}?v=2.0">
 {% endblock %}
 
 {% block content %}
@@ -217,7 +217,7 @@
                                 <option value="{{ ing.id }}" data-price="{{ ing.unit_price }}" data-unit="{{ ing.unit }}">{{ ing.name }}</option>
                                 {% endfor %}
                             </select>
-                            <input type="number" id="ingredientQty" class="control-pro-sm" placeholder="Qty" step="0.01" style="width: 70px;">
+                            <input type="number" id="ingredientQty" class="control-pro-sm" placeholder="Qty" step="0.01" min="0.01" style="width: 70px;">
                             <button type="button" class="btn-add-recipe-pro" onclick="addIngredientToRecipe()"><i class="fas fa-plus"></i></button>
                         </div>
 
@@ -230,7 +230,7 @@
                         <div class="form-row-pro">
                             <div class="form-group-pro">
                                 <label>Target Markup (%)</label>
-                                <input type="number" id="markupInput" class="control-pro" placeholder="300" oninput="suggestPrice()">
+                                <input type="number" id="markupInput" class="control-pro" placeholder="300" min="0" max="10000" oninput="if(this.value.length > 5) this.value = this.value.slice(0,5); suggestPrice();">
                             </div>
                             <div class="form-group-pro">
                                 <label>Suggested Price</label>
@@ -243,11 +243,11 @@
                         <div class="form-row-pro mt-3">
                             <div class="form-group-pro">
                                 <label>Selling Price (₱) *</label>
-                                <input type="text" name="price" class="control-pro js-format-comma" placeholder="0" required inputmode="numeric">
+                                <input type="text" name="price" class="control-pro js-format-comma" placeholder="0" required inputmode="numeric" maxlength="10">
                             </div>
                             <div class="form-group-pro">
                                 <label>Prep Cost (₱) *</label>
-                                <input type="text" name="cost_price" id="cost_price_input" class="control-pro js-format-comma" placeholder="0" required inputmode="numeric">
+                                <input type="text" name="cost_price" id="cost_price_input" class="control-pro js-format-comma" placeholder="0" required inputmode="numeric" maxlength="10">
                             </div>
                         </div>
                         <div class="margin-analytics-pro" id="roiMarginBadge">Margin: --%</div>
@@ -341,10 +341,10 @@
         </div>
         <div class="occ-modal-body">
             <div style="text-align: center; padding: var(--space-md) 0;">
-                <div style="width: 64px; height: 64px; background: #fee2e2; color: #ef4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-lg); font-size: 1.5rem;">
+                <div style="width: 64px; height: 64px; background: var(--danger-light, #fee2e2); color: var(--danger-color, #ef4444); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto var(--space-lg); font-size: 1.5rem;">
                     <i class="fas fa-archive"></i>
                 </div>
-                <p style="font-size: var(--text-sm); color: var(--color-neutral-600); line-height: 1.6;">
+                <p style="font-size: var(--text-sm); color: var(--text-muted, #64748b); line-height: 1.6;">
                     Are you sure you want to archive "<strong id="archiveItemName"></strong>"? This dish will be hidden from your library and active packages.
                 </p>
             </div>
@@ -493,8 +493,24 @@
         const pricePerUnit = parseFloat(opt.dataset.price);
         const qty = parseFloat(qtyInput.value);
 
+        if (isNaN(qty) || qty <= 0) {
+            alert("Quantity must be greater than zero.");
+            return;
+        }
+
         currentRecipe.push({ ingId, name, qty, unit, pricePerUnit });
         qtyInput.value = '';
+        updateRecipeUI();
+    }
+
+    function updateIngredientQty(index, qty) {
+        const val = parseFloat(qty);
+        if (isNaN(val) || val <= 0) {
+            alert("Quantity must be greater than zero.");
+            updateRecipeUI(); // Re-render to reset to old value
+            return;
+        }
+        currentRecipe[index].qty = val;
         updateRecipeUI();
     }
 
@@ -523,7 +539,10 @@
                 row.innerHTML = `
                     <div class="recipe-item-info">
                         <strong>${item.name}</strong>
-                        <span>${item.qty} ${item.unit} @ ₱${item.pricePerUnit}/${item.unit}</span>
+                        <span>
+                            <input type="number" step="0.01" min="0.01" value="${item.qty}" class="qty-inline-edit" onchange="updateIngredientQty(${index}, this.value)" style="width: 50px; padding: 2px 4px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); color: white; border-radius: 4px; font-size: 0.65rem; margin-right: 4px;">
+                            ${item.unit} @ ₱${item.pricePerUnit}/${item.unit}
+                        </span>
                     </div>
                     <div class="recipe-item-price">₱${itemCost.toFixed(2)}</div>
                     <button type="button" class="btn-remove-recipe-pro" onclick="removeIngredientFromRecipe(${index})"><i class="fas fa-times"></i></button>
@@ -670,9 +689,9 @@
             badge.innerText = `Margin: ${margin.toFixed(1)}%`;
             if (margin < 0) {
                 badge.innerText = `Loss: ${Math.abs(margin).toFixed(1)}%`;
-                badge.style.background = '#ef4444';
+                badge.style.background = 'var(--danger-color, #ef4444)';
             } else if (margin < 20) badge.style.background = '#f59e0b';
-            else badge.style.background = '#22c55e';
+            else badge.style.background = 'var(--success-color, #22c55e)';
         } else badge.innerText = 'Margin: --%';
     }
 
@@ -687,6 +706,30 @@
         if (!this.checkValidity()) return;
         const btn = this.querySelector('button[type="submit"]');
         this.querySelectorAll('.js-format-comma').forEach(i => i.value = i.value.replace(/,/g, ''));
+        
+        // --- PRICING & MARGIN VALIDATION ---
+        const sellPrice = parseFloat(this.querySelector('input[name="price"]').value) || 0;
+        const costPrice = parseFloat(document.getElementById('cost_price_input').value) || 0;
+        
+        if (sellPrice <= 0) {
+            alert("Selling Price must be greater than zero.");
+            switchDishTab('recipe');
+            if (btn) btn.disabled = false;
+            return;
+        }
+        if (costPrice < 0) {
+            alert("Prep Cost cannot be negative.");
+            switchDishTab('recipe');
+            if (btn) btn.disabled = false;
+            return;
+        }
+        if (sellPrice < costPrice) {
+            alert("Warning: Selling Price is lower than Prep Cost. A negative margin (loss) is not allowed for dishes.");
+            switchDishTab('recipe');
+            if (btn) btn.disabled = false;
+            return;
+        }
+
         const data = new FormData(this);
         
         // Map is_visible checkbox to is_hidden for backend
@@ -696,6 +739,20 @@
         if (this.querySelector('#isComboCheckbox').checked) {
             const rawOptions = document.getElementById('comboOptionsInput').value;
             const optionsArray = rawOptions.split(',').map(s => s.trim()).filter(s => s !== '');
+            const maxChoices = parseInt(document.getElementById('maxChoicesInput').value) || 0;
+            
+            if (optionsArray.length === 0 || maxChoices < 1) {
+                alert("For Combo/Platter mode, please provide at least one valid Option and set Max Choices to 1 or more.");
+                switchDishTab('labels');
+                if (btn) btn.disabled = false;
+                return;
+            }
+            if (maxChoices > optionsArray.length) {
+                alert("Max Choices cannot be greater than the number of Available Combo Options.");
+                switchDishTab('labels');
+                if (btn) btn.disabled = false;
+                return;
+            }
             data.set('combo_options', JSON.stringify(optionsArray));
         } else {
             data.set('combo_options', JSON.stringify([]));
