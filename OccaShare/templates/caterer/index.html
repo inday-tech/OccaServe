@@ -854,6 +854,9 @@
                 if (analyticsArea) analyticsArea.classList.remove('loading-shimmer');
                 if (statsGrid) statsGrid.classList.remove('loading-shimmer');
 
+                // 0. Store latest data for Export immediately
+                window._latestDashboardData = data;
+
                 // 1. Update Top Stats
                 updateStatValue('stat-revenue', formatCurrency(data.total_revenue || 0));
                 updateStatValue('stat-profit', formatCurrency(data.net_profit || 0));
@@ -918,9 +921,6 @@
                 updateRecentOrders(data.recent_orders);
                 updateTopSpenders(data.top_spenders);
                 updateRevenueByEvent(data.revenue_by_event);
-
-                // 7. Store latest data for Export
-                window._latestDashboardData = data;
 
                 // 7. Update Timestamp
                 const now = new Date();
@@ -1029,13 +1029,20 @@
         return `"${str}"`;
     }
 
-    function exportToCSV(section) {
+    async function exportToCSV(section) {
         let dataStr = "";
         let filename = `${section}_export_${new Date().toISOString().split('T')[0]}.csv`;
-        const data = window._latestDashboardData;
+        let data = window._latestDashboardData;
+        
         if (!data) {
-            alert("Please wait for data to load before exporting.");
-            return;
+            try {
+                const res = await fetch(`/caterer/api/dashboard-overview?timeframe=${currentTimeframe}`);
+                data = await res.json();
+                window._latestDashboardData = data;
+            } catch (e) {
+                alert("Network error. Please wait for the dashboard to finish loading.");
+                return;
+            }
         }
 
         if (section === 'profit_efficiency') {
