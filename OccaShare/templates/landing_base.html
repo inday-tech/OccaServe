@@ -33,6 +33,7 @@
 <body data-nav-page="{{ nav_page | default('') }}">
 
     <!-- Navigation -->
+    {% if not request.query_params.get('preview') %}
     <nav class="navbar" id="mainNavbar">
         <div class="container nav-container">
             <a href="/" class="logo" style="display: flex; align-items: center;">
@@ -97,10 +98,12 @@
             </div>
         </div>
     </nav>
+    {% endif %}
 
     {% block content %}{% endblock %}
 
     <!-- Footer -->
+    {% if not request.query_params.get('preview') %}
     <footer class="footer">
         <div class="container">
             <div class="footer-grid">
@@ -157,6 +160,7 @@
             </div>
         </div>
     </footer>
+    {% endif %}
 
     {% include "shared/auth_modals.html" %}
     <script src="{{ url_for('static', path='/js/main.js') }}?v=4.2"></script>

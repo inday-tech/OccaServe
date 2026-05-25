@@ -76,6 +76,65 @@
             --transition-speed: 0.3s;
         }
 
+        /* =========================================
+           GLOBAL DASHBOARD BRAND COLOR ENFORCEMENT
+           Applies the Caterer's Custom Palette 
+           across all dashboard elements
+           ========================================= */
+        
+        /* 1. PRIMARY COLOR - Main Actions & Active States */
+        .btn-primary, .bg-primary, .badge-primary { 
+            background-color: var(--primary-color) !important; 
+            color: #ffffff !important; 
+        }
+        .text-primary, .text-brand { 
+            color: var(--primary-color) !important; 
+        }
+        .sidebar-menu a.active {
+            border-left-color: var(--primary-color) !important;
+            background: rgba(var(--primary-color-rgb), 0.08) !important;
+            color: var(--primary-color) !important;
+        }
+        .sidebar-menu a.active i {
+            color: var(--primary-color) !important;
+        }
+
+        /* 2. SECONDARY COLOR - Headings, Outline Buttons */
+        .dashboard-wrapper h1, .dashboard-wrapper h2, .dashboard-wrapper h3, .dashboard-wrapper h4, .text-secondary { 
+            color: var(--secondary-color); 
+        }
+        .border-secondary { 
+            border-color: var(--secondary-color) !important; 
+        }
+        .btn-outline, .btn-secondary {
+            border: 2px solid var(--secondary-color) !important;
+            color: var(--secondary-color) !important;
+        }
+        .btn-outline:hover {
+            background-color: rgba(var(--secondary-color-rgb), 0.05) !important;
+        }
+
+        /* 3. ACCENT COLOR - Notifications, Important Icons */
+        .text-accent, .action-badge, .status-badge.active, i.fa-check-circle { 
+            color: var(--accent-color); 
+        }
+        .bg-accent, .action-badge { 
+            background-color: var(--accent-color) !important; 
+            color: #ffffff !important;
+        }
+        
+        /* 4. HIGHLIGHT COLOR - Interactive Hover States */
+        .btn-primary:hover, .hover-highlight:hover { 
+            background-color: var(--highlight-color) !important; 
+            border-color: var(--highlight-color) !important;
+            color: #ffffff !important;
+            box-shadow: 0 4px 12px rgba(var(--highlight-color-rgb), 0.3) !important;
+        }
+        .stat-card-premium:hover {
+            border-color: rgba(var(--highlight-color-rgb), 0.3) !important;
+            box-shadow: 0 8px 24px rgba(var(--highlight-color-rgb), 0.1) !important;
+        }
+
         /* Prevent Layout Shift from Scrollbars */
         html {
             overflow-y: scroll;

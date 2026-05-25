@@ -2208,7 +2208,7 @@ async def update_profile(
     request: Request,
     business_name: str = Form(...),
     description: str = Form(...),
-    city: str = Form(...),
+    city: Optional[str] = Form(None),
     contact_phone: str = Form(...),
     first_name: str = Form(...),
     last_name: str = Form(...),
@@ -2247,6 +2247,9 @@ async def update_profile(
     province: Optional[str] = Form(None),
     municipality: Optional[str] = Form(None),
     barangay: Optional[str] = Form(None),
+    province_code: Optional[str] = Form(None),
+    city_code: Optional[str] = Form(None),
+    brgy_code: Optional[str] = Form(None),
     gallery: Optional[List[UploadFile]] = File(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
@@ -2262,20 +2265,30 @@ async def update_profile(
     # Update Profile Info
     profile.business_name = business_name
     profile.description = description
-    profile.city = city
+    if city:
+        profile.city = city
     if contact_address:
         profile.contact_address = contact_address
     profile.contact_phone = contact_phone
     profile.payout_method = payout_method
 
     # Update address components
-    if province:
-        profile.province_code = province
-    if municipality:
+    if province_code:
+        profile.province_code = province_code
+    if city_code:
+        profile.city_code = city_code
+    if brgy_code:
+        profile.brgy_code = brgy_code
+        
+    # Also save the names if provided
+    if province and province != province_code:
+        # Assuming we might want to store province name somewhere, or just in address_details
+        pass 
+    if municipality and municipality != city_code:
         profile.city = municipality
-    if barangay:
-        profile.brgy_code = barangay
-
+    if barangay and barangay != brgy_code:
+        # We don't have a specific column for barangay name, maybe just keep it in address_details if needed
+        pass
     # Update payment methods
     profile.gcash_number = gcash_number
     profile.maya_number = maya_number

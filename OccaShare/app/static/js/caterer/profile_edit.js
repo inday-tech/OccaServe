@@ -394,8 +394,102 @@ document.addEventListener('DOMContentLoaded', function () {
                         mockLogo.style.backgroundPosition = 'center';
                         mockLogo.style.backgroundColor = 'transparent';
                     }
+                    
+                    // Also update the sidebar logo preview!
+                    const sidebarLogo = document.querySelector('.profile-sidebar-logo');
+                    if (sidebarLogo) {
+                        sidebarLogo.innerHTML = `<img src="${e.target.result}" alt="Business Logo" style="width: 100%; height: 100%; object-fit: cover;">`;
+                    }
                 };
                 reader.readAsDataURL(this.files[0]);
+            }
+        });
+    });
+
+    // Magic Palette Extraction Logic
+    const magicBtns = document.querySelectorAll('.magic-extract-shared');
+    magicBtns.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Get file from the input closest to this button, or fallback to the first one found
+            const formGroup = this.closest('.form-group') || this.closest('.logo-extraction-row') || document;
+            const fileInput = formGroup.querySelector('.logo-input-shared') || document.querySelector('.logo-input-shared');
+            const file = fileInput ? fileInput.files[0] : null;
+            
+            if (!file && !document.querySelector('.profile-sidebar-logo img')) {
+                if (window.showError) window.showError("Please select a logo file first!");
+                else alert("Please select a logo file first!");
+                return;
+            }
+            
+            const btnOriginalHtml = this.innerHTML;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+            this.disabled = true;
+
+            const processImage = (imgSrc) => {
+                const img = new Image();
+                img.crossOrigin = "Anonymous";
+                img.src = imgSrc;
+                img.onload = function() {
+                    try {
+                        const colorThief = new ColorThief();
+                        const dominantColor = colorThief.getColor(img);
+                        const palette = colorThief.getPalette(img, 3) || [];
+                        
+                        const rgbToHex = (r, g, b) => '#' + [r, g, b].map(x => {
+                            const hex = x.toString(16);
+                            return hex.length === 1 ? '0' + hex : hex;
+                        }).join('');
+
+                        const primaryHex = rgbToHex(dominantColor[0], dominantColor[1], dominantColor[2]);
+                        const secondaryHex = palette.length > 0 ? rgbToHex(palette[0][0], palette[0][1], palette[0][2]) : primaryHex;
+                        const accentHex = palette.length > 1 ? rgbToHex(palette[1][0], palette[1][1], palette[1][2]) : primaryHex;
+                        const highlightHex = palette.length > 2 ? rgbToHex(palette[2][0], palette[2][1], palette[2][2]) : accentHex;
+
+                        const applyColor = (name, hex) => {
+                            const input = document.querySelector(`input[name="${name}"]`);
+                            if (input) {
+                                input.value = hex;
+                                input.dispatchEvent(new Event('input', { bubbles: true }));
+                                const span = input.nextElementSibling;
+                                if (span && span.classList.contains('color-code')) {
+                                    span.textContent = hex.toUpperCase();
+                                }
+                            }
+                        };
+
+                        applyColor('primary_color', primaryHex);
+                        applyColor('secondary_color', secondaryHex);
+                        applyColor('accent_color', accentHex);
+                        applyColor('highlight_color', highlightHex);
+                        
+                        if (typeof updateMockup === 'function') updateMockup();
+
+                        if (window.showSuccess) window.showSuccess("Magic Palette applied successfully!");
+                        else alert("Magic Palette applied successfully!");
+                    } catch (err) {
+                        console.error("Extraction error", err);
+                        if (window.showError) window.showError("Failed to extract colors. Please try a different image format.");
+                    } finally {
+                        btn.innerHTML = btnOriginalHtml;
+                        btn.disabled = false;
+                    }
+                };
+                img.onerror = () => {
+                    if (window.showError) window.showError("Failed to load image for extraction.");
+                    btn.innerHTML = btnOriginalHtml;
+                    btn.disabled = false;
+                };
+            };
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => processImage(event.target.result);
+                reader.readAsDataURL(file);
+            } else {
+                const existingImg = document.querySelector('.profile-sidebar-logo img');
+                if (existingImg) processImage(existingImg.src);
             }
         });
     });
@@ -457,10 +551,33 @@ async function saveNotificationPrefs() {
 
 // Account Deactivation
 async function handleDeactivate() {
-    const reason = prompt('Please provide a reason for deactivating your account (optional):');
-    if (reason === null) return; // User cancelled
+    if (!window.Swal) return;
 
-    if (!confirm('Are you sure you want to deactivate your account? Your business will be hidden from customers.')) return;
+    const { value: reason, isConfirmed } = await Swal.fire({
+        title: 'Deactivate Account',
+        text: 'Please provide a reason for deactivating your account (optional):',
+        input: 'text',
+        inputPlaceholder: 'e.g. Taking a break, remodeling...',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Proceed to Deactivate'
+    });
+
+    if (!isConfirmed) return; // User cancelled
+
+    const confirmResult = await Swal.fire({
+        title: 'Are you absolutely sure?',
+        text: 'Your business will be hidden from customers. You can reactivate anytime by logging back in and going to settings.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, deactivate my account'
+    });
+
+    if (!confirmResult.isConfirmed) return;
 
     try {
         const response = await fetch('/caterer/settings/deactivate', {
@@ -482,12 +599,25 @@ async function handleDeactivate() {
 }
 
 // Account Deletion Request
-function handleDeleteRequest() {
-    const confirmed = prompt('Type "DELETE" to confirm permanent account deletion:');
+async function handleDeleteRequest() {
+    if (!window.Swal) return;
+
+    const { value: confirmed, isConfirmed } = await Swal.fire({
+        title: 'Request Account Deletion',
+        html: 'Permanently delete all your data. This action <b>cannot be undone</b>.<br><br>Type <strong>DELETE</strong> to confirm:',
+        input: 'text',
+        inputPlaceholder: 'DELETE',
+        icon: 'error',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Request Deletion'
+    });
+
+    if (!isConfirmed) return;
+
     if (confirmed !== 'DELETE') {
-        if (confirmed !== null) {
-            if (window.showError) window.showError('You must type "DELETE" to confirm.');
-        }
+        if (window.showError) window.showError('You must type "DELETE" exactly to confirm.');
         return;
     }
 
@@ -498,16 +628,28 @@ function handleDeleteRequest() {
 
 // Reset Brand to Defaults
 async function resetBrandDefaults() {
-    if (!confirm('Reset all customization settings to OccaServe defaults? This will clear your colors, fonts, textures, and decorations.')) return;
+    if (!window.Swal) return;
+
+    const result = await Swal.fire({
+        title: 'Reset Brand Settings?',
+        text: 'This will clear all your custom colors, fonts, textures, and decorations, reverting to OccaServe defaults.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, reset to defaults'
+    });
+
+    if (!result.isConfirmed) return;
 
     try {
         const response = await fetch('/caterer/settings/reset-brand', { method: 'POST' });
-        const result = await response.json();
-        if (result.status === 'success') {
+        const resJson = await response.json();
+        if (resJson.status === 'success') {
             if (window.showSuccess) window.showSuccess('Brand settings reset! Reloading page...');
             setTimeout(() => window.location.reload(), 1500);
         } else {
-            if (window.showError) window.showError(result.message || 'Failed to reset.');
+            if (window.showError) window.showError(resJson.message || 'Failed to reset.');
         }
     } catch (err) {
         console.error(err);

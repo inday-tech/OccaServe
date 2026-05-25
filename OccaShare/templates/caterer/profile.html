@@ -15,7 +15,8 @@
                 colors: {
                     primary: '{{ caterer.primary_color if caterer.primary_color else "#f97316" }}',
                     secondary: '{{ caterer.secondary_color if caterer.secondary_color else "#334155" }}',
-                    accent: '{{ caterer.accent_color if caterer.accent_color else "#f97316" }}'
+                    accent: '{{ caterer.accent_color if caterer.accent_color else "#f97316" }}',
+                    highlight: '{{ caterer.highlight_color if caterer.highlight_color else "#fdba74" }}'
                 },
                 borderRadius: {
                     'xl': '{{ caterer.border_radius if caterer.border_radius else 16 }}px',
@@ -41,6 +42,7 @@
         --brand-primary: {{ caterer.primary_color if caterer.primary_color else "#f97316" }};
         --brand-secondary: {{ caterer.secondary_color if caterer.secondary_color else "#334155" }};
         --brand-accent: {{ caterer.accent_color if caterer.accent_color else "#f97316" }};
+        --brand-highlight: {{ caterer.highlight_color if caterer.highlight_color else "#fdba74" }};
     }
     body { 
         font-family: '{{ caterer.font_family if caterer.font_family else "Poppins" }}', sans-serif; 
@@ -69,9 +71,9 @@
         transform: scale(0.95) !important;
     }
     .btn-outline {
-        border: 2px solid var(--brand-primary) !important;
-        color: var(--brand-primary) !important;
-        background-color: #ffffff !important;
+        border: 2px solid var(--brand-secondary) !important;
+        color: var(--brand-secondary) !important;
+        background-color: transparent !important;
         padding: 0.75rem 1.5rem !important;
         border-radius: 0.75rem !important;
         font-weight: 700 !important;
@@ -107,6 +109,16 @@
     .text-brand { color: var(--brand-primary) !important; }
     .bg-brand { background-color: var(--brand-primary) !important; }
     .border-brand { border-color: var(--brand-primary) !important; }
+    
+    .text-secondary { color: var(--brand-secondary) !important; }
+    .bg-secondary { background-color: var(--brand-secondary) !important; }
+    .border-secondary { border-color: var(--brand-secondary) !important; }
+    
+    .text-accent { color: var(--brand-accent) !important; }
+    .bg-accent { background-color: var(--brand-accent) !important; }
+    .border-accent { border-color: var(--brand-accent) !important; }
+
+    .hover-highlight:hover { background-color: var(--brand-highlight) !important; color: white !important; }
 
     #map {
         height: 300px;
@@ -196,14 +208,14 @@
                 <div class="flex items-center justify-center gap-3 mb-3">
                     <h1 class="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">{{ caterer.business_name }}</h1>
                     {% if caterer.is_verified %}
-                    <span class="text-brand text-2xl animate-pulse" title="Verified Partner"><i class="fas fa-check-circle"></i></span>
+                    <span class="text-accent text-2xl animate-pulse" title="Verified Partner"><i class="fas fa-check-circle"></i></span>
                     {% endif %}
                 </div>
 
                 <div class="flex flex-wrap items-center justify-center gap-3 text-xs text-slate-500 font-semibold mb-5">
-                    <span class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100/80 rounded-full"><i class="fas fa-map-marker-alt text-brand"></i> {{ caterer.contact_address if caterer.contact_address else (caterer.city or 'Location') }}</span>
-                    <span class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100/80 rounded-full"><i class="fas fa-star text-amber-500"></i> {{ "%.1f"|format(caterer.rating) if caterer.rating else 'New Partner' }}</span>
-                    <span class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100/80 rounded-full"><i class="fas fa-eye text-brand"></i> {{ caterer.profile_views or 0 }} Views</span>
+                    <span class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100/80 rounded-full border border-secondary border-opacity-20"><i class="fas fa-map-marker-alt text-secondary"></i> {{ caterer.contact_address if caterer.contact_address else (caterer.city or 'Location') }}</span>
+                    <span class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100/80 rounded-full border border-secondary border-opacity-20"><i class="fas fa-star text-accent"></i> {{ "%.1f"|format(caterer.rating) if caterer.rating else 'New Partner' }}</span>
+                    <span class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100/80 rounded-full border border-secondary border-opacity-20"><i class="fas fa-eye text-secondary"></i> {{ caterer.profile_views or 0 }} Views</span>
                 </div>
 
                 <p class="text-slate-600 text-sm max-w-2xl mx-auto leading-relaxed italic">
@@ -223,25 +235,25 @@
                     <span class="w-8 h-[1px] bg-slate-200"></span> Operation Intel
                 </h2>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <div class="bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
-                        <div class="text-brand mb-2 text-xl"><i class="far fa-clock"></i></div>
+                    <div class="bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1 hover-highlight">
+                        <div class="text-secondary mb-2 text-xl hover:text-white"><i class="far fa-clock"></i></div>
                         <div class="text-2xl font-black text-slate-800">{{ caterer.years_of_operation or 1 }}+</div>
                         <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Years Exp</div>
                     </div>
-                    <div class="bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
-                        <div class="text-brand mb-2 text-xl"><i class="fas fa-utensils"></i></div>
+                    <div class="bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1 hover-highlight">
+                        <div class="text-secondary mb-2 text-xl hover:text-white"><i class="fas fa-utensils"></i></div>
                         <div class="text-2xl font-black text-slate-800">
                             {{ caterer.menu_items|selectattr('is_archived', 'equalto', false)|selectattr('is_hidden', 'equalto', false)|list|length }}
                         </div>
                         <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Dishes</div>
                     </div>
-                    <div class="bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
-                        <div class="text-brand mb-2 text-xl"><i class="fas fa-gift"></i></div>
+                    <div class="bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1 hover-highlight">
+                        <div class="text-secondary mb-2 text-xl hover:text-white"><i class="fas fa-gift"></i></div>
                         <div class="text-2xl font-black text-slate-800">{{ packages|length }}</div>
                         <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Live Pkgs</div>
                     </div>
-                    <div class="bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1">
-                        <div class="text-brand mb-2 text-xl"><i class="fas fa-shield-check"></i></div>
+                    <div class="bg-slate-50 p-5 rounded-2xl text-center border border-slate-100/80 transition-all hover:bg-white hover:shadow-md hover:-translate-y-1 hover-highlight">
+                        <div class="text-accent mb-2 text-xl hover:text-white"><i class="fas fa-shield-check"></i></div>
                         <div class="text-2xl font-black text-slate-800">100%</div>
                         <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Audit Pass</div>
                     </div>
@@ -256,14 +268,14 @@
                 <div class="flex flex-wrap gap-3">
                     {% if caterer.event_types %}
                         {% for event in caterer.event_types %}
-                        <span class="px-4 py-2 bg-brand/5 border border-brand/10 rounded-xl text-[10px] font-black text-brand uppercase tracking-widest flex items-center gap-2">
+                        <span class="px-4 py-2 bg-brand/5 border border-brand/10 rounded-xl text-[10px] font-black text-brand uppercase tracking-widest flex items-center gap-2 hover-highlight transition-colors">
                             <i class="fas fa-check"></i> {{ event }}
                         </span>
                         {% endfor %}
                     {% endif %}
                     {% if caterer.cuisine_types %}
                         {% for cuisine in caterer.cuisine_types %}
-                        <span class="px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                        <span class="px-4 py-2 bg-secondary/5 border border-secondary/10 rounded-xl text-[10px] font-black text-secondary uppercase tracking-widest flex items-center gap-2 hover-highlight transition-colors">
                             <i class="fas fa-utensils"></i> {{ cuisine }}
                         </span>
                         {% endfor %}
@@ -278,7 +290,7 @@
                     <h2 class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
                         <span class="w-8 h-[1px] bg-slate-200"></span> Culinary Library
                     </h2>
-                    <span class="text-[10px] font-black text-brand uppercase bg-brand/5 px-2.5 py-1 rounded-full">
+                    <span class="text-[10px] font-black text-accent uppercase bg-accent/10 px-2.5 py-1 rounded-full">
                         {{ caterer.menu_items|selectattr('is_archived', 'equalto', false)|selectattr('is_hidden', 'equalto', false)|list|length }} Dishes Available
                     </span>
                 </div>
@@ -305,7 +317,7 @@
                         {% set cat_cover_image = active_photo_item.image_url if active_photo_item else get_category_default_image(cat)|trim %}
                         
                         <div onclick="openCategoryShowcase('{{ cat|e }}')" 
-                             class="group cursor-pointer border border-slate-200/80 rounded-3xl overflow-hidden transition-all duration-300 hover:border-brand/40 hover:-translate-y-2 bg-white hover:shadow-xl relative flex flex-col shadow-sm">
+                             class="group cursor-pointer border border-slate-200/80 rounded-3xl overflow-hidden transition-all duration-300 hover:border-secondary/40 hover:-translate-y-2 bg-white hover:shadow-xl relative flex flex-col shadow-sm">
                             
                             <!-- Cover Header Image -->
                             <div class="h-40 w-full overflow-hidden relative bg-slate-100 flex-shrink-0">
@@ -314,7 +326,7 @@
                             </div>
 
                             <!-- Floating Centered Icon Ring -->
-                            <div class="absolute top-[132px] left-1/2 -translate-x-1/2 w-14 h-14 rounded-2xl bg-white text-brand flex items-center justify-center text-2xl transition-all duration-300 group-hover:scale-110 shadow-md border border-slate-100 group-hover:bg-brand group-hover:text-white group-hover:border-brand">
+                            <div class="absolute top-[132px] left-1/2 -translate-x-1/2 w-14 h-14 rounded-2xl bg-white text-secondary flex items-center justify-center text-2xl transition-all duration-300 group-hover:scale-110 shadow-md border border-slate-100 group-hover:bg-secondary group-hover:text-white group-hover:border-secondary">
                                 <i class="fas {{ icon_class }}"></i>
                             </div>
 
@@ -322,7 +334,7 @@
                             <div class="p-6 pt-10 text-center flex-1 flex flex-col">
                                 <div class="flex flex-col items-center mb-3">
                                     <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest mb-1.5 truncate max-w-full px-2">{{ cat }}</h3>
-                                    <span class="text-[9px] font-bold text-slate-400 bg-slate-100 group-hover:bg-brand/10 group-hover:text-brand px-3 py-1 rounded-full transition-colors flex-shrink-0">
+                                    <span class="text-[9px] font-bold text-slate-400 bg-slate-100 group-hover:bg-highlight group-hover:text-white px-3 py-1 rounded-full transition-colors flex-shrink-0">
                                         {{ cat_items|length }} Items
                                     </span>
                                 </div>
@@ -369,7 +381,7 @@
                             <img src="https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=400" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
                             {% endif %}
                             <div class="absolute top-4 left-4">
-                                <span class="bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-black text-brand uppercase tracking-widest shadow-sm">
+                                <span class="bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-black text-accent uppercase tracking-widest shadow-sm">
                                     {{ pkg.service_type if pkg.service_type else 'Premium' }}
                                 </span>
                             </div>
@@ -426,7 +438,7 @@
                         <p class="text-xs text-slate-600 font-bold">Must be booked at least {{ caterer.booking_lead_time if caterer.booking_lead_time else 7 }} days in advance.</p>
                     </div>
                     <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                        <div class="text-[10px] font-black text-brand uppercase tracking-widest mb-2 flex items-center gap-2">
+                        <div class="text-[10px] font-black text-secondary uppercase tracking-widest mb-2 flex items-center gap-2">
                             <i class="fas fa-users"></i> Minimum Guests
                         </div>
                         <p class="text-xs text-slate-600 font-bold">Services start for groups of {{ caterer.min_pax if caterer.min_pax else 20 }} pax and above.</p>
@@ -536,10 +548,10 @@
                 </div>
 
                 <div class="space-y-3">
-                    <button onclick="promptBookingAuth()" class="btn-primary w-full text-sm py-4">
+                    <button {% if not request.query_params.get('preview') %}onclick="promptBookingAuth()"{% else %}disabled title="Preview Mode - Action Disabled" onclick="Swal.fire({icon: 'info', title: 'Preview Mode', text: 'This action is disabled while previewing your profile.', confirmButtonColor: 'var(--brand-primary)'})"{% endif %} class="btn-primary w-full text-sm py-4 {% if request.query_params.get('preview') %}opacity-80{% endif %}">
                         <i class="fas fa-calendar-check"></i> Initiate Booking
                     </button>
-                    <button onclick="promptInquiryAuth()" class="btn-outline w-full text-sm py-4 border-2">
+                    <button {% if not request.query_params.get('preview') %}onclick="promptInquiryAuth()"{% else %}disabled title="Preview Mode - Action Disabled" onclick="Swal.fire({icon: 'info', title: 'Preview Mode', text: 'This action is disabled while previewing your profile.', confirmButtonColor: 'var(--brand-primary)'})"{% endif %} class="btn-outline w-full text-sm py-4 border-2 {% if request.query_params.get('preview') %}opacity-80 bg-slate-50{% endif %}">
                         <i class="far fa-comment-dots"></i> Send Inquiry
                     </button>
                 </div>

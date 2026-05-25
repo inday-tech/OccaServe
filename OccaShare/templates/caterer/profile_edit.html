@@ -7,7 +7,8 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', path='/js/caterer/profile_edit.js') }}?v=2.0"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/color-thief/2.3.0/color-thief.umd.js"></script>
+<script src="{{ url_for('static', path='/js/caterer/profile_edit.js') }}?v=2.1"></script>
 {% endblock %}
 
 {% block content %}
@@ -22,12 +23,22 @@
     <div class="profile-card">
         <!-- Profile Sidebar Info -->
         <div class="profile-sidebar-column">
-            <div class="profile-sidebar-logo">
-                {{ profile.business_name[0] if profile.business_name else 'B' }}
+            <div class="profile-sidebar-logo" style="overflow: hidden;">
+                {% if profile.logo_url %}
+                    <img src="{{ profile.logo_url }}" alt="Business Logo" style="width: 100%; height: 100%; object-fit: cover;">
+                {% else %}
+                    {{ profile.business_name[0] if profile.business_name else 'B' }}
+                {% endif %}
             </div>
             <div class="profile-sidebar-header-info">
                 <h3 class="sidebar-business-name">{{ profile.business_name or 'My Business' }}</h3>
-                <p class="sidebar-location"><i class="fas fa-map-marker-alt"></i> {{ profile.city or 'Add Address' }}</p>
+                <p class="sidebar-location">
+                    <i class="fas fa-map-marker-alt"></i> 
+                    {% set addr = [] %}
+                    {% if profile.contact_address %}{% set _ = addr.append(profile.contact_address) %}{% endif %}
+                    {% if profile.city and profile.city not in (profile.contact_address or '') %}{% set _ = addr.append(profile.city) %}{% endif %}
+                    {{ addr | join(', ') if addr else 'Add Address' }}
+                </p>
             </div>
 
             <div class="account-status-box">
@@ -38,9 +49,9 @@
             </div>
 
             <div class="profile-sidebar-actions">
-                <a href="/caterers/{{ profile.id }}" target="_blank" class="profile-action-btn secondary">
-                    <i class="fas fa-external-link-alt"></i> <span>View Public Profile</span>
-                </a>
+                <button type="button" class="profile-action-btn secondary" onclick="openProfilePreviewModal('{{ profile.id }}')">
+                    <i class="fas fa-eye"></i> <span>View Public Profile</span>
+                </button>
 
                 <button type="button" class="profile-action-btn danger" onclick="openPasswordModal()">
                     <i class="fas fa-key"></i> <span>Change Password</span>
@@ -173,19 +184,31 @@
                     <div class="form-row-two-col">
                         <div class="form-group">
                             <label><i class="fas fa-flag"></i> Province</label>
-                            <input type="text" name="province" id="locationProvince" value="{{ profile.province_code or '' }}" placeholder="e.g. Laguna" required>
+                            <select id="locationProvince" required class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:8px;">
+                                <option value="">Select Province</option>
+                            </select>
+                            <input type="hidden" name="province_code" id="provinceCodeHidden" value="{{ profile.province_code or '' }}">
+                            <input type="hidden" name="province" id="provinceNameHidden" value="">
                             <span class="field-hint">Your registered province from KYC</span>
                         </div>
                         <div class="form-group">
                             <label><i class="fas fa-city"></i> Municipality / City</label>
-                            <input type="text" name="municipality" id="locationMunicipality" value="{{ profile.city or '' }}" required placeholder="e.g. Laguna de Bay">
+                            <select id="locationMunicipality" required class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:8px;" disabled>
+                                <option value="">Select Municipality</option>
+                            </select>
+                            <input type="hidden" name="city_code" id="cityCodeHidden" value="{{ profile.city_code or '' }}">
+                            <input type="hidden" name="municipality" id="cityNameHidden" value="{{ profile.city or '' }}">
                         </div>
                     </div>
 
                     <div class="form-row-two-col">
                         <div class="form-group">
                             <label><i class="fas fa-map-pin"></i> Barangay</label>
-                            <input type="text" name="barangay" id="locationBarangay" value="{{ profile.city_code or '' }}" placeholder="e.g. Bagumbayan">
+                            <select id="locationBarangay" required class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:8px;" disabled>
+                                <option value="">Select Barangay</option>
+                            </select>
+                            <input type="hidden" name="brgy_code" id="brgyCodeHidden" value="{{ profile.brgy_code or '' }}">
+                            <input type="hidden" name="barangay" id="brgyNameHidden" value="">
                         </div>
                         <div class="form-group">
                             <label><i class="fas fa-phone"></i> Business Hotline</label>
@@ -207,7 +230,7 @@
                         <p>This information is used for legal contracts and is pulled from your account.</p>
                     </div>
 
-                    <div class="form-row-three-col" style="display: grid; grid-template-columns: 1fr 1fr 80px; gap: 1rem;">
+                    <div class="form-row-three-col" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
                         <div class="form-group">
                             <label><i class="fas fa-user"></i> Last Name</label>
                             <input type="text" name="last_name" value="{{ user.last_name or '' }}" required>
@@ -814,6 +837,8 @@
                         <div class="password-requirements" style="margin-top: 8px; font-size: 0.7rem; display: flex; flex-direction: column; gap: 4px;">
                             <div id="req-length" class="req-item" style="color: #64748b; font-weight: 500;"><i class="fas fa-circle" style="font-size: 0.5rem; vertical-align: middle; margin-right: 6px;"></i> Minimum 8 characters</div>
                             <div id="req-different" class="req-item" style="color: #64748b; font-weight: 500;"><i class="fas fa-circle" style="font-size: 0.5rem; vertical-align: middle; margin-right: 6px;"></i> Must be different from current</div>
+                            <div id="req-upper" class="req-item" style="color: #64748b; font-weight: 500;"><i class="fas fa-circle" style="font-size: 0.5rem; vertical-align: middle; margin-right: 6px;"></i> At least 1 uppercase letter</div>
+                            <div id="req-special" class="req-item" style="color: #64748b; font-weight: 500;"><i class="fas fa-circle" style="font-size: 0.5rem; vertical-align: middle; margin-right: 6px;"></i> At least 1 special character</div>
                         </div>
                     </div>
                     
@@ -829,12 +854,43 @@
             </div>
             
             <div class="occ-modal-footer">
-                <button type="button" onclick="window.closeModal('passwordModal')" class="btn-sm-outline" style="min-width:100px;">Cancel</button>
+                <button type="button" onclick="window.closeModal('passwordModal')" class="btn-outline" style="min-width:100px; height:44px; display:inline-flex; align-items:center; justify-content:center;">Cancel</button>
                 <button type="submit" id="submitPasswordBtn" class="btn-primary" style="height:44px; padding:0 1.5rem;">Save Changes</button>
             </div>
         </form>
     </div>
 </div>
+
+<!-- Public Profile Preview Modal -->
+<div id="profilePreviewModal" class="occ-modal-overlay">
+    <div class="occ-modal-box" style="max-width: 1200px; width: 95%; height: 90vh; display: flex; flex-direction: column; padding: 0;">
+        <div class="occ-modal-header" style="padding: 1rem 1.5rem; border-bottom: 1px solid #e2e8f0; background: #fff; border-radius: 16px 16px 0 0;">
+            <div>
+                <h3 class="occ-modal-title"><i class="fas fa-desktop" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Public Profile Preview</h3>
+            </div>
+            <button type="button" onclick="window.closeModal('profilePreviewModal')" class="occ-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div style="flex: 1; overflow: hidden; border-radius: 0 0 16px 16px; background: #f8fafc; position: relative;">
+            <div id="previewLoader" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: white; z-index: 1;">
+                <div style="display: flex; flex-direction: column; align-items: center; color: #64748b;">
+                    <i class="fas fa-spinner fa-spin fa-2x mb-3" style="color: var(--primary-color);"></i>
+                    <span>Loading preview...</span>
+                </div>
+            </div>
+            <iframe id="profilePreviewIframe" src="" style="width: 100%; height: 100%; border: none; position: relative; z-index: 2;" onload="document.getElementById('previewLoader').style.display='none'"></iframe>
+        </div>
+    </div>
+</div>
+
+<script>
+window.openProfilePreviewModal = function(profileId) {
+    document.getElementById('previewLoader').style.display = 'flex';
+    document.getElementById('profilePreviewIframe').src = '/caterers/' + profileId + '?preview=true';
+    window.openModal('profilePreviewModal');
+};
+</script>
 
 <style>
 /* Location Picker Styles */
@@ -932,6 +988,16 @@ async function handlePasswordChange(event) {
         return;
     }
     
+    if (!/[A-Z]/.test(newPass)) {
+        window.showError('New password must contain at least 1 uppercase letter.');
+        return;
+    }
+    
+    if (!/[^A-Za-z0-9]/.test(newPass)) {
+        window.showError('New password must contain at least 1 special character.');
+        return;
+    }
+    
     if (newPass !== confPass) {
         window.showError('Passwords do not match.');
         return;
@@ -1005,7 +1071,27 @@ function validateRequirements() {
         reqDiff.querySelector('i').className = 'fas fa-circle';
     }
     
-    // 3. Matching Status
+    // 3. Uppercase Requirement
+    const reqUpper = document.getElementById('req-upper');
+    if (/[A-Z]/.test(newPass)) {
+        reqUpper.style.color = '#10b981';
+        reqUpper.querySelector('i').className = 'fas fa-check-circle';
+    } else {
+        reqUpper.style.color = newPass.length > 0 ? '#f59e0b' : '#64748b';
+        reqUpper.querySelector('i').className = 'fas fa-circle';
+    }
+    
+    // 4. Special Character Requirement
+    const reqSpecial = document.getElementById('req-special');
+    if (/[^A-Za-z0-9]/.test(newPass)) {
+        reqSpecial.style.color = '#10b981';
+        reqSpecial.querySelector('i').className = 'fas fa-check-circle';
+    } else {
+        reqSpecial.style.color = newPass.length > 0 ? '#f59e0b' : '#64748b';
+        reqSpecial.querySelector('i').className = 'fas fa-circle';
+    }
+    
+    // 5. Matching Status
     const statusText = document.getElementById('matchIndicatorText');
     const statusIcon = document.getElementById('matchIndicatorIcon');
     
@@ -1279,6 +1365,159 @@ window.addEventListener('load', () => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('action') === 'change-password') {
         if(window.openPasswordModal) window.openPasswordModal();
+    }
+});
+
+// PSGC API Integration for Address Dropdowns
+document.addEventListener('DOMContentLoaded', async () => {
+    const PSGC_BASE = 'https://psgc.gitlab.io/api';
+    const provSelect = document.getElementById('locationProvince');
+    const citySelect = document.getElementById('locationMunicipality');
+    const brgySelect = document.getElementById('locationBarangay');
+    
+    const provCodeHidden = document.getElementById('provinceCodeHidden');
+    const provNameHidden = document.getElementById('provinceNameHidden');
+    const cityCodeHidden = document.getElementById('cityCodeHidden');
+    const cityNameHidden = document.getElementById('cityNameHidden');
+    const brgyCodeHidden = document.getElementById('brgyCodeHidden');
+    const brgyNameHidden = document.getElementById('brgyNameHidden');
+
+    const savedProvCode = provCodeHidden.value;
+    const savedCityCode = cityCodeHidden.value;
+    const savedBrgyCode = brgyCodeHidden.value;
+
+    try {
+        // Fetch Provinces
+        const res = await fetch(`${PSGC_BASE}/provinces/`);
+        const provinces = await res.json();
+        
+        provinces.sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.code;
+            opt.textContent = p.name;
+            provSelect.appendChild(opt);
+        });
+
+        // Add NCR as it's not in provinces endpoint
+        const optNCR = document.createElement('option');
+        optNCR.value = "130000000";
+        optNCR.textContent = "NATIONAL CAPITAL REGION (NCR)";
+        provSelect.appendChild(optNCR);
+
+        if (savedProvCode) {
+            provSelect.value = savedProvCode;
+            if (provSelect.options[provSelect.selectedIndex]) {
+                provNameHidden.value = provSelect.options[provSelect.selectedIndex].text;
+            }
+            await fetchCities(savedProvCode, savedCityCode);
+        }
+    } catch (e) { console.error('Failed to load provinces:', e); }
+
+    provSelect.addEventListener('change', async (e) => {
+        const code = e.target.value;
+        const name = e.target.options[e.target.selectedIndex]?.text || '';
+        provCodeHidden.value = code;
+        provNameHidden.value = name;
+        
+        citySelect.innerHTML = '<option value="">Select Municipality</option>';
+        brgySelect.innerHTML = '<option value="">Select Barangay</option>';
+        citySelect.disabled = true;
+        brgySelect.disabled = true;
+        cityCodeHidden.value = '';
+        cityNameHidden.value = '';
+        brgyCodeHidden.value = '';
+        brgyNameHidden.value = '';
+
+        if (code) {
+            await fetchCities(code);
+        }
+    });
+
+    citySelect.addEventListener('change', async (e) => {
+        const code = e.target.value;
+        const name = e.target.options[e.target.selectedIndex]?.text || '';
+        cityCodeHidden.value = code;
+        cityNameHidden.value = name;
+        
+        brgySelect.innerHTML = '<option value="">Select Barangay</option>';
+        brgySelect.disabled = true;
+        brgyCodeHidden.value = '';
+        brgyNameHidden.value = '';
+
+        if (code) {
+            await fetchBarangays(code);
+        }
+    });
+
+    brgySelect.addEventListener('change', (e) => {
+        brgyCodeHidden.value = e.target.value;
+        brgyNameHidden.value = e.target.options[e.target.selectedIndex]?.text || '';
+    });
+
+    async function fetchCities(provCode, preSelectCode = null) {
+        if (!provCode) return;
+        try {
+            citySelect.disabled = true;
+            citySelect.innerHTML = '<option value="">Loading...</option>';
+            
+            let endpoint = `${PSGC_BASE}/provinces/${provCode}/cities-municipalities/`;
+            if (provCode === "130000000") {
+                endpoint = `${PSGC_BASE}/regions/${provCode}/cities-municipalities/`;
+            }
+            
+            const res = await fetch(endpoint);
+            const cities = await res.json();
+            
+            citySelect.innerHTML = '<option value="">Select Municipality</option>';
+            cities.sort((a, b) => a.name.localeCompare(b.name)).forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.code;
+                opt.textContent = c.name;
+                citySelect.appendChild(opt);
+            });
+            citySelect.disabled = false;
+
+            if (preSelectCode) {
+                citySelect.value = preSelectCode;
+                if (citySelect.options[citySelect.selectedIndex]) {
+                    cityNameHidden.value = citySelect.options[citySelect.selectedIndex].text;
+                }
+                await fetchBarangays(preSelectCode, savedBrgyCode);
+            }
+        } catch (e) {
+            console.error('Failed to load cities:', e);
+            citySelect.innerHTML = '<option value="">Error loading</option>';
+        }
+    }
+
+    async function fetchBarangays(cityCode, preSelectCode = null) {
+        if (!cityCode) return;
+        try {
+            brgySelect.disabled = true;
+            brgySelect.innerHTML = '<option value="">Loading...</option>';
+            
+            const res = await fetch(`${PSGC_BASE}/cities-municipalities/${cityCode}/barangays/`);
+            const brgys = await res.json();
+            
+            brgySelect.innerHTML = '<option value="">Select Barangay</option>';
+            brgys.sort((a, b) => a.name.localeCompare(b.name)).forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b.code;
+                opt.textContent = b.name;
+                brgySelect.appendChild(opt);
+            });
+            brgySelect.disabled = false;
+
+            if (preSelectCode) {
+                brgySelect.value = preSelectCode;
+                if (brgySelect.options[brgySelect.selectedIndex]) {
+                    brgyNameHidden.value = brgySelect.options[brgySelect.selectedIndex].text;
+                }
+            }
+        } catch (e) {
+            console.error('Failed to load barangays:', e);
+            brgySelect.innerHTML = '<option value="">Error loading</option>';
+        }
     }
 });
 </script>
