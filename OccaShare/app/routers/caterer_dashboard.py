@@ -3755,9 +3755,21 @@ async def save_ingredient(
 ):
     data = await request.json()
     ing_id = data.get("id")
-    name = data.get("name")
+    name = data.get("name", "").strip()
     unit = data.get("unit")
     unit_price = float(data.get("unit_price") or 0)
+
+    # Check for duplicate
+    existing = db.query(models.Ingredient).filter(
+        models.Ingredient.caterer_id == user.caterer_profile.id,
+        models.Ingredient.name.ilike(name),
+        models.Ingredient.is_archived == False
+    )
+    if ing_id:
+        existing = existing.filter(models.Ingredient.id != int(ing_id))
+    
+    if existing.first():
+        return {"status": "error", "message": "This material is already in your database."}
 
     if ing_id:
         ingredient = db.query(models.Ingredient).get(ing_id)
@@ -3778,6 +3790,7 @@ async def save_ingredient(
     
     db.commit()
     db.refresh(ingredient)
+    return {"status": "success", "message": "Material saved successfully.", "id": ingredient.id}
     
     # Cascade updates if price changed
     if ing_id:
