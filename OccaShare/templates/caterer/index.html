@@ -3,12 +3,62 @@
 {% block title %}Overview - Caterer Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/index.css') }}?v=2.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/index.css') }}?v=2.2">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <style>
     :root {
         --chart-profit: #10b981;
         --chart-expenses: #ef4444;
         --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    
+    /* Flatpickr Professional Overrides */
+    .flatpickr-calendar {
+        font-family: 'Poppins', sans-serif !important;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+        border: 1px solid #f1f5f9 !important;
+        border-radius: 12px !important;
+    }
+    
+    .flatpickr-day.selected,
+    .flatpickr-day.startRange,
+    .flatpickr-day.endRange,
+    .flatpickr-day.selected.inRange,
+    .flatpickr-day.startRange.inRange,
+    .flatpickr-day.endRange.inRange,
+    .flatpickr-day.selected:focus,
+    .flatpickr-day.startRange:focus,
+    .flatpickr-day.endRange:focus,
+    .flatpickr-day.selected:hover,
+    .flatpickr-day.startRange:hover,
+    .flatpickr-day.endRange:hover,
+    .flatpickr-day.selected.prevMonthDay,
+    .flatpickr-day.startRange.prevMonthDay,
+    .flatpickr-day.endRange.prevMonthDay,
+    .flatpickr-day.selected.nextMonthDay,
+    .flatpickr-day.startRange.nextMonthDay,
+    .flatpickr-day.endRange.nextMonthDay {
+        background: #0f172a !important;
+        border-color: #0f172a !important;
+    }
+
+    .flatpickr-current-month {
+        font-size: 1rem !important; /* Elegant month/year header */
+    }
+
+    .flatpickr-day {
+        font-size: 0.85rem !important; /* Smaller numbers */
+    }
+
+    .flatpickr-weekday {
+        font-size: 0.75rem !important; /* Smaller weekdays */
+    }
+
+    #dashboard-date-range:focus,
+    #dashboard-date-range:active {
+        outline: none !important;
+        box-shadow: none !important;
+        border: none !important;
     }
 
     /* Dashboard Layout Cleanup */
@@ -313,50 +363,11 @@
         </div>
     </div>
 
-    <div class="header-action-section" style="position: relative;">
-        <div class="timeframe-selector" id="dashboard-timeframe">
-            <button class="timeframe-btn" data-timeframe="day">Daily</button>
-            <button class="timeframe-btn" data-timeframe="week">Weekly</button>
-            <button class="timeframe-btn active" data-timeframe="month">Monthly</button>
-            <button class="timeframe-btn" data-timeframe="year">Yearly</button>
-            <div class="custom-date-divider" style="width: 1px; height: 20px; background: #e2e8f0; margin: 0 4px;">
-            </div>
-            <button class="timeframe-btn" id="customDateBtn" onclick="toggleCustomDatePicker()"><i
-                    class="fas fa-calendar-alt" style="margin-right: 6px;"></i> Custom</button>
-        </div>
-
-        <!-- Custom Date Popover -->
-        <div id="customDatePopover" class="c-card-premium"
-            style="display: none; position: absolute; right: 0; top: calc(100% + 10px); z-index: 1000; padding: 1.5rem; width: 320px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h4 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: var(--secondary-color);">Custom Range
-                </h4>
-                <button onclick="toggleCustomDatePicker()"
-                    style="background: none; border: none; color: #94a3b8; cursor: pointer;"><i
-                        class="fas fa-times"></i></button>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 1rem;">
-                <div>
-                    <label
-                        style="font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.5px;">Start
-                        Date</label>
-                    <input type="date" id="customStartDate" class="minimal-input"
-                        style="width: 100%; padding: 0.6rem 0.8rem; border: 1px solid #cbd5e1; border-radius: 8px; font-family: inherit;">
-                </div>
-                <div>
-                    <label
-                        style="font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.5px;">End
-                        Date</label>
-                    <input type="date" id="customEndDate" class="minimal-input"
-                        style="width: 100%; padding: 0.6rem 0.8rem; border: 1px solid #cbd5e1; border-radius: 8px; font-family: inherit;">
-                </div>
-                <div id="customDateError"
-                    style="color: #ef4444; font-size: 0.75rem; display: none; font-weight: 600; background: #fef2f2; padding: 8px; border-radius: 6px;">
-                    <i class="fas fa-exclamation-circle"></i> <span>Error message</span></div>
-                <button onclick="applyCustomDateRange()" class="btn-primary-pro"
-                    style="width: 100%; padding: 0.75rem; border-radius: 8px; margin-top: 0.5rem; border: none; background: var(--primary-color); color: white; font-weight: 700; cursor: pointer; transition: all 0.2s;">Apply
-                    Range Filter</button>
-            </div>
+    <div class="header-action-section">
+        <div style="display: flex; align-items: center; background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 10px 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); cursor: pointer;" id="flatpickr-container" onclick="const fp = document.getElementById('dashboard-date-range')._flatpickr; if(fp) fp.open();">
+            <i class="fas fa-calendar-day" style="color: var(--primary-color); margin-right: 12px; font-size: 1.1rem;"></i>
+            <input type="text" id="dashboard-date-range" placeholder="Select date range..." style="border: none; outline: none; background: transparent; font-family: 'Poppins', sans-serif !important; font-weight: 700; color: #0f172a; width: 230px; cursor: pointer; font-size: 0.9rem;" readonly>
+            <i class="fas fa-chevron-down" style="color: #94a3b8; font-size: 0.8rem; margin-left: 10px;"></i>
         </div>
     </div>
 </div>
@@ -408,25 +419,27 @@
         <div class="roi-breakdown-card c-card-premium animate-up" style="margin-bottom: 24px;">
             <div class="roi-header" style="align-items: flex-start;">
                 <div>
-                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 15px;">
                         <h3 style="margin:0; font-weight: 800; color: #0f172a;">Profit Efficiency</h3>
-                        <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
                             <button onclick="exportToCSV('profit_efficiency')" class="export-btn-minimal" title="Export CSV"><i class="fas fa-download"></i> CSV</button>
                             <span class="roi-tooltip">
                                 <i class="fas fa-info-circle roi-help-icon" style="margin: 0; font-size: 1.15rem; color: #94a3b8;"></i>
-                                <span class="tooltip-text" style="left: auto; right: 0; transform: none; bottom: 130%;">Shows the ratio of revenue earned versus expenses incurred.</span>
+                                <span class="tooltip-text" style="left: auto; right: 0; transform: none; bottom: 130%;">Shows how much you earn compared to your expenses.</span>
                             </span>
                         </div>
                     </div>
-                    <p style="margin-top: 4px;">Profit vs. Expenses distribution</p>
+                    <p style="margin-top: 4px;">Your profit compared to your expenses.</p>
                 </div>
-                <div id="roi-status-badge" class="roi-badge-premium"
-                    style="{% if net_profit and net_profit < 0 %}background:#ef4444; color:white;{% elif roi_percentage and roi_percentage < 15 %}background:rgba(245, 158, 11, 0.1); color:#f59e0b;{% else %}background:rgba(16, 185, 129, 0.1); color:#10b981;{% endif %}">
-                    {% if net_profit and net_profit < 0 %} <i class="fas fa-exclamation-triangle"></i> LOSS
-                        {% elif roi_percentage and roi_percentage < 15 %} <i class="fas fa-info-circle"></i> LOW MARGIN
-                            {% else %}
-                            <i class="fas fa-check-circle"></i> PROFITABLE
-                            {% endif %}
+                <div style="display: flex; align-items: center;">
+                    <div id="roi-status-badge" class="roi-badge-premium"
+                        style="{% if net_profit and net_profit < 0 %}background:#ef4444; color:white;{% elif roi_percentage and roi_percentage < 15 %}background:rgba(245, 158, 11, 0.1); color:#f59e0b;{% else %}background:rgba(16, 185, 129, 0.1); color:#10b981;{% endif %}">
+                        {% if net_profit and net_profit < 0 %} <i class="fas fa-exclamation-triangle"></i> LOSS
+                            {% elif roi_percentage and roi_percentage < 15 %} <i class="fas fa-info-circle"></i> LOW MARGIN
+                                {% else %}
+                                <i class="fas fa-check-circle"></i> PROFITABLE
+                                {% endif %}
+                    </div>
                 </div>
             </div>
 
@@ -468,11 +481,11 @@
         <div class="roi-breakdown-card c-card-premium animate-up">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <h3 style="margin:0; font-weight: 800; color: #0f172a; font-size: 1rem;">Bookings Volume</h3>
-                <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
                     <button onclick="exportToCSV('bookings')" class="export-btn-minimal" title="Export CSV"><i class="fas fa-download"></i> CSV</button>
                     <span class="roi-tooltip">
                         <i class="fas fa-info-circle roi-help-icon" style="margin: 0; font-size: 1.15rem; color: #94a3b8;"></i>
-                        <span class="tooltip-text" style="left: auto; right: 0; transform: none; bottom: 130%;">Monitor the volume of completed versus pending bookings.</span>
+                        <span class="tooltip-text" style="left: auto; right: 0; transform: none; bottom: 130%;">Shows your completed and pending bookings.</span>
                     </span>
                 </div>
             </div>
@@ -489,11 +502,11 @@
         <div class="roi-breakdown-card c-card-premium animate-up" style="margin-top: 24px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                 <h3 style="margin:0; font-weight: 800; color: #0f172a; font-size: 1rem;">Revenue by Event</h3>
-                <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
                     <button onclick="exportToCSV('event_revenue')" class="export-btn-minimal" title="Export CSV"><i class="fas fa-download"></i> CSV</button>
                     <span class="roi-tooltip">
                         <i class="fas fa-info-circle roi-help-icon" style="margin: 0; font-size: 1.15rem; color: #94a3b8;"></i>
-                        <span class="tooltip-text" style="left: auto; right: 0; transform: none; bottom: 130%;">Identify which event types generate the highest revenue.</span>
+                        <span class="tooltip-text" style="left: auto; right: 0; transform: none; bottom: 130%;">Shows which events bring in the most money.</span>
                     </span>
                 </div>
             </div>
@@ -521,11 +534,11 @@
         <div class="ops-tracker-card c-card-premium animate-up">
             <div class="ops-header" style="align-items: center;">
                 <h3 style="margin:0; font-weight: 800; color: #0f172a;">Operations Tracker</h3>
-                <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
                     <span class="ops-live-tag">Live</span>
                     <span class="roi-tooltip">
                         <i class="fas fa-info-circle roi-help-icon" style="margin: 0; font-size: 1.15rem; color: #94a3b8;"></i>
-                        <span class="tooltip-text" style="left: auto; right: 0; transform: none; bottom: 130%;">Track the progress of upcoming events based on active tasks.</span>
+                        <span class="tooltip-text" style="left: auto; right: 0; transform: none; bottom: 130%;">Shows the progress of your upcoming events.</span>
                     </span>
                 </div>
             </div>
@@ -562,7 +575,7 @@
 
         <!-- Upcoming Events -->
         <div class="sidebar-card-dashboard c-card-premium animate-up">
-            <h3 class="sidebar-card-title">Upcoming Events</h3>
+            <h3 class="sidebar-card-title" style="margin: 0; margin-bottom: 15px; font-family: 'Poppins', sans-serif !important; font-weight: 800; font-size: 1.1rem; color: #0f172a;">Upcoming Events</h3>
             {% if upcoming_events %}
             <div class="event-list-dashboard" id="upcoming-events-container">
                 {% for event in upcoming_events %}
@@ -584,9 +597,9 @@
                 {% endfor %}
             </div>
             {% else %}
-            <div class="empty-state-small">
+            <div class="empty-state-small" style="font-family: 'Poppins', sans-serif !important;">
                 <i class="fas fa-calendar-day"></i>
-                <p>No upcoming events.</p>
+                <p style="font-family: 'Poppins', sans-serif !important;">No upcoming events.</p>
             </div>
             {% endif %}
         </div>
@@ -594,7 +607,7 @@
         <!-- Package Efficiency -->
         <div class="sidebar-card-dashboard c-card-premium animate-up">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
-                <h3 class="sidebar-card-title" style="margin: 0;">Package Efficiency</h3>
+                <h3 class="sidebar-card-title" style="margin: 0; font-family: 'Poppins', sans-serif !important; font-weight: 800; font-size: 1.1rem; color: #0f172a;">Top Packages</h3>
                 <button onclick="exportToCSV('packages')" class="export-btn-minimal" title="Export CSV"><i
                         class="fas fa-download"></i></button>
             </div>
@@ -616,9 +629,9 @@
                 </div>
                 {% endfor %}
                 {% else %}
-                <div class="empty-state-small">
+                <div class="empty-state-small" style="font-family: 'Poppins', sans-serif !important;">
                     <i class="fas fa-chart-line"></i>
-                    <p>No data yet.</p>
+                    <p style="font-family: 'Poppins', sans-serif !important;">No data yet.</p>
                 </div>
                 {% endif %}
             </div>
@@ -627,7 +640,7 @@
         <!-- Top Customers / Loyal Clients -->
         <div class="sidebar-card-dashboard c-card-premium animate-up" style="margin-top: 24px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
-                <h3 class="sidebar-card-title" style="margin: 0;">Top Clients</h3>
+                <h3 class="sidebar-card-title" style="margin: 0; font-family: 'Poppins', sans-serif !important; font-weight: 800; font-size: 1.1rem; color: #0f172a;">Top Clients</h3>
                 <button onclick="exportToCSV('top_clients')" class="export-btn-minimal" title="Export CSV"><i
                         class="fas fa-download"></i></button>
             </div>
@@ -669,9 +682,8 @@
     <div
         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
         <div>
-            <h3 style="margin:0; font-weight: 800; color: var(--secondary-color); font-size: 1.25rem;">Recent
-                Orders</h3>
-            <p style="margin: 4px 0 0; color: #64748b; font-size: 0.85rem;">Latest transactions and event bookings</p>
+            <h3 style="margin:0; font-weight: 800; color: #0f172a; font-size: 1.25rem;">Recent Orders</h3>
+            <p style="margin: 4px 0 0; color: #64748b; font-size: 0.85rem;">Your newest bookings and transactions</p>
         </div>
         <div style="display: flex; gap: 10px; align-items: center;">
             <button onclick="exportToCSV('recent_orders')" class="export-btn-minimal"
@@ -694,7 +706,7 @@
                     {% else %}WI{% endif %}
                 </div>
                 <div class="ro-details">
-                    <div class="ro-name" style="font-size: 1rem; font-weight: 700; color: var(--secondary-color);">
+                    <div class="ro-name" style="font-family: 'Poppins', sans-serif !important; font-size: 1rem; font-weight: 700; color: #0f172a;">
                         {% if booking.user %}{{ booking.user.first_name }} {{ booking.user.last_name }}{% else %}Walk-in
                         Customer{% endif %}
                     </div>
@@ -703,9 +715,9 @@
                         booking.event_type }} • {{ booking.package.name if booking.package else 'Custom Menu' }}</div>
                 </div>
                 <div class="ro-price-date" style="text-align: right;">
-                    <div class="ro-amount" style="font-size: 1.1rem; font-weight: 800; color: var(--secondary-color);">
+                    <div class="ro-amount" style="font-family: 'Poppins', sans-serif !important; font-size: 1.1rem; font-weight: 800; color: #0f172a;">
                         ₱{{ "{:,.2f}".format(booking.total_amount) if booking.total_amount else '0.00' }}</div>
-                    <div class="ro-date" style="font-weight: 600; font-size: 0.85rem; color: #94a3b8;">{{
+                    <div class="ro-date" style="font-family: 'Poppins', sans-serif !important; font-weight: 600; font-size: 0.85rem; color: #94a3b8;">{{
                         booking.event_date.strftime('%b %d, %Y') if booking.event_date else '' }}</div>
                 </div>
                 <div class="ro-status" style="text-align: right;">
@@ -731,6 +743,7 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
     let financialPieChart = null;
     let bookingsChart = null;
@@ -739,50 +752,38 @@
     let customStartStr = '';
     let customEndStr = '';
 
-    // -- Custom Date Logic --
-    function toggleCustomDatePicker() {
-        const popover = document.getElementById('customDatePopover');
-        popover.style.display = popover.style.display === 'none' ? 'block' : 'none';
-
-        // Auto-fill inputs if already set
-        if (popover.style.display === 'block' && customStartStr) {
-            document.getElementById('customStartDate').value = customStartStr;
-            document.getElementById('customEndDate').value = customEndStr;
+    document.addEventListener("DOMContentLoaded", function() {
+        const dateInput = document.getElementById('dashboard-date-range');
+        if (dateInput) {
+            flatpickr(dateInput, {
+                mode: "range",
+                dateFormat: "M j, Y",
+                defaultDate: [
+                    new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                    new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
+                ],
+                onChange: function(selectedDates, dateStr, instance) {
+                    if (selectedDates.length === 2) {
+                        isCustomRange = true;
+                        customStartStr = instance.formatDate(selectedDates[0], "Y-m-d");
+                        customEndStr = instance.formatDate(selectedDates[1], "Y-m-d");
+                        refreshDashboardData('custom');
+                    }
+                }
+            });
+            
+            // Set initial state
+            const now = new Date();
+            customStartStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+            customEndStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${new Date(now.getFullYear(), now.getMonth()+1, 0).getDate()}`;
+            isCustomRange = true;
         }
-    }
-
-    function applyCustomDateRange() {
-        const start = document.getElementById('customStartDate').value;
-        const end = document.getElementById('customEndDate').value;
-        const errorEl = document.getElementById('customDateError');
-
-        if (!start || !end) {
-            errorEl.querySelector('span').innerText = "Please select both start and end dates.";
-            errorEl.style.display = 'block';
-            return;
-        }
-
-        if (new Date(start) > new Date(end)) {
-            errorEl.querySelector('span').innerText = "End date cannot be before start date.";
-            errorEl.style.display = 'block';
-            return;
-        }
-
-        errorEl.style.display = 'none';
-
-        // Update UI Tabs
-        document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById('customDateBtn').classList.add('active');
-
-        isCustomRange = true;
-        customStartStr = start;
-        customEndStr = end;
-        document.getElementById('customDatePopover').style.display = 'none';
-
-        refreshDashboardData('custom');
-    }
-
-    // The listeners are attached in the main DOMContentLoaded below.
+        
+        // Wait for charts to initialize before fetching data
+        setTimeout(() => {
+            refreshDashboardData('custom');
+        }, 300);
+    });
 
     function initCharts(data) {
         const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#FF7B54';
@@ -975,12 +976,12 @@
         const html = packages.map(p => `
             <div class="profitability-row animate-in">
                 <div>
-                    <div style="font-weight: 700; color: var(--secondary-color); font-size: 0.9rem;">${p.name}</div>
-                    <div style="font-size: 0.75rem; color: #94a3b8;">${p.orders} orders</div>
+                    <div style="font-family: 'Poppins', sans-serif !important; font-weight: 700; color: #0f172a; font-size: 0.9rem;">${p.name}</div>
+                    <div style="font-family: 'Poppins', sans-serif !important; font-size: 0.75rem; color: #94a3b8;">${p.orders} orders</div>
                 </div>
                 <div class="profitability-details">
-                    <div style="font-weight: 800; color: var(--secondary-color); font-size: 1rem;">${parseFloat(p.roi).toFixed(1)}%</div>
-                    <div class="profit-indicator ${p.roi > 15 ? 'indicator-positive' : 'indicator-negative'}">
+                    <div style="font-family: 'Poppins', sans-serif !important; font-weight: 800; color: #0f172a; font-size: 1rem;">${parseFloat(p.roi).toFixed(1)}%</div>
+                    <div class="profit-indicator ${p.roi > 15 ? 'indicator-positive' : 'indicator-negative'}" style="font-family: 'Poppins', sans-serif !important;">
                         ${p.roi > 15 ? 'High Margin' : 'Low Margin'}
                     </div>
                 </div>
@@ -1002,8 +1003,8 @@
                     ${c.initials}
                 </div>
                 <div style="flex: 1; min-width: 0;">
-                    <div style="font-weight: 700; color: var(--secondary-color); font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${c.name}</div>
-                    <div style="font-size: 0.75rem; color: #64748b;">${c.orders} orders</div>
+                    <div style="font-family: 'Poppins', sans-serif !important; font-weight: 700; color: #0f172a; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${c.name}</div>
+                    <div style="font-family: 'Poppins', sans-serif !important; font-size: 0.75rem; color: #64748b;">${c.orders} orders</div>
                 </div>
                 <div style="text-align: right;">
                     <div style="font-weight: 800; color: #10b981; font-size: 0.9rem;">${formatCurrency(c.spent)}</div>
@@ -1022,8 +1023,8 @@
         }
         const html = events.map(e => `
             <div class="profitability-row animate-in" style="padding: 0.8rem 0;">
-                <div style="font-weight: 700; color: var(--secondary-color); font-size: 0.9rem;">${e.event_type}</div>
-                <div style="font-weight: 800; color: var(--primary-color); font-size: 1rem;">${formatCurrency(e.revenue)}</div>
+                <div style="font-family: 'Poppins', sans-serif !important; font-weight: 700; color: #0f172a; font-size: 0.9rem;">${e.event_type}</div>
+                <div style="font-family: 'Poppins', sans-serif !important; font-weight: 800; color: #0f172a; font-size: 1rem;">${formatCurrency(e.revenue)}</div>
             </div>
         `).join('');
         container.innerHTML = html;
@@ -1168,12 +1169,12 @@
             <div class="recent-order-row animate-in" style="background: white; border: 1px solid #f1f5f9; margin-bottom: 12px; padding: 1rem 1.5rem; border-radius: 1.25rem; display: grid; grid-template-columns: 60px 1fr 200px 150px; align-items: center; transition: all 0.2s ease;">
                 <div class="ro-avatar" style="width: 45px; height: 45px; background: #f1f5f9; color: #475569; font-size: 0.9rem; margin-right: 0; display: flex; align-items: center; justify-content: center; font-weight: 800; border-radius: 50%;">${order.customer_initials}</div>
                 <div class="ro-details">
-                    <div class="ro-name" style="font-size: 1rem; font-weight: 700; color: var(--secondary-color);">${order.customer_name}</div>
-                    <div class="ro-event" style="color: #64748b; font-weight: 500; font-size: 0.85rem;">${order.event_type}</div>
+                    <div class="ro-name" style="font-family: 'Poppins', sans-serif !important; font-size: 1rem; font-weight: 700; color: #0f172a;">${order.customer_name}</div>
+                    <div class="ro-event" style="font-family: 'Poppins', sans-serif !important; color: #64748b; font-weight: 500; font-size: 0.85rem;">${order.event_type}</div>
                 </div>
                 <div class="ro-price-date" style="text-align: right; padding-right: 1.5rem;">
-                    <div class="ro-amount" style="font-size: 1.1rem; font-weight: 800; color: var(--secondary-color);">${formatCurrency(order.total_amount)}</div>
-                    <div class="ro-date" style="font-weight: 600; font-size: 0.85rem; color: #94a3b8;">${order.event_date}</div>
+                    <div class="ro-amount" style="font-family: 'Poppins', sans-serif !important; font-size: 1.1rem; font-weight: 800; color: #0f172a;">${formatCurrency(order.total_amount)}</div>
+                    <div class="ro-date" style="font-family: 'Poppins', sans-serif !important; font-weight: 600; font-size: 0.85rem; color: #94a3b8;">${order.event_date}</div>
                 </div>
                 <div class="ro-status" style="text-align: right;">
                     <span class="ro-badge ro-status-${order.status || 'pending'}" style="font-weight: 800; letter-spacing: 0.5px; font-size: 0.75rem; padding: 0.5rem 1rem; border-radius: 2rem;">${(order.status || 'pending').split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}</span>

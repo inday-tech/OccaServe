@@ -151,7 +151,7 @@
         padding: var(--space-lg) var(--space-lg) var(--space-md) !important;
         border-radius: var(--radius-lg) !important;
         position: relative;
-        overflow: hidden;
+        overflow: visible !important;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
         background: #ffffff;
         border: 1px solid var(--color-neutral-100);
@@ -1859,6 +1859,7 @@
     }
 
     .empty-state-small p {
+        font-family: 'Poppins', sans-serif !important;
         font-size: var(--text-xs);
         font-weight: 500;
         margin: 0;
