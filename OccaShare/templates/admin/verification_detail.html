@@ -105,7 +105,7 @@
     </div>
     <div class="header-actions">
         {% set status = (verification.verification_status if verification else 'PENDING')|upper %}
-        <span class="badge-clean" style="background: {% if status == 'APPROVED' %}#ecfdf5; color: #059669;{% elif status == 'REJECTED' %}#fef2f2; color: #dc2626;{% else %}#fff7ed; color: #f97316;{% endif %} padding: 10px 20px; font-size: 0.85rem; border: 1px solid currentColor;">
+        <span class="badge-clean" style="background: {% if status == 'APPROVED' or status == 'VERIFIED' %}#ecfdf5; color: #059669;{% elif status == 'REJECTED' %}#fef2f2; color: #dc2626;{% else %}#fff7ed; color: #f97316;{% endif %} padding: 10px 20px; font-size: 0.85rem; border: 1px solid currentColor;">
             <i class="fas fa-shield-check"></i> {{ status }}
         </span>
     </div>
@@ -129,7 +129,7 @@
                     <div class="gauge-circle" style="width: 80px; height: 80px;">
                         <svg width="80" height="80">
                             <circle class="bg" cx="40" cy="40" r="35" style="stroke: #e2e8f0;"></circle>
-                            {% set score = (verification.match_score * 100)|int if verification.match_score else (100 if status == 'APPROVED' else 0) %}
+                            {% set score = (verification.match_score * 100)|int if verification.match_score else (100 if status == 'APPROVED' or status == 'VERIFIED' else 0) %}
                             <circle class="fill" cx="40" cy="40" r="35" style="stroke-dashoffset: {{ 219.8 * (1 - score/100) }}; stroke-dasharray: 219.8; stroke: {% if score < 50 %}#ef4444{% elif score < 80 %}#f97316{% else %}#10b981{% endif %};"></circle>
                         </svg>
                         <div class="gauge-value" style="font-size: 1.2rem; color: {% if score < 50 %}#ef4444{% elif score < 80 %}#f97316{% else %}#10b981{% endif %};">{{ score }}%</div>
@@ -137,7 +137,7 @@
                     <div>
                         <h3 style="margin: 0; font-size: 1.1rem; color: var(--adm-navy);">Integrity Correlation Index</h3>
                         <p style="margin: 4px 0 0; font-size: 0.8rem; color: var(--adm-muted);">
-                            {% if status == 'APPROVED' and score < 80 %}
+                            {% if (status == 'APPROVED' or status == 'VERIFIED') and score < 80 %}
                                 <i class="fas fa-user-check" style="color: #10b981;"></i> <strong>ADMIN OVERRIDE:</strong> Identity manually sanctioned by senior compliance officer.
                             {% elif score >= 80 %}
                                 <i class="fas fa-robot" style="color: #10b981;"></i> <strong>AI VERIFIED:</strong> High-fidelity biometric match detected.
@@ -297,7 +297,7 @@
                     </button>
                 </div>
 
-                {% if status != 'APPROVED' %}
+                {% if status != 'APPROVED' and status != 'VERIFIED' %}
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 2rem;">
                     <button type="button" class="btn-action-primary" onclick="confirmAdjudication('approve')">Authorize</button>
                     <button type="button" class="btn-action-secondary" onclick="confirmAdjudication('reject')">Terminate</button>

@@ -639,12 +639,12 @@
 
 <div id="bookingDetailModal" class="occ-modal-overlay">
     <div class="occ-modal-box modal-b-container occ-content-pop">
-        <div class="occ-modal-header" style="background: var(--sidebar-bg); border-bottom: 1px solid #e2e8f0;">
+        <div class="occ-modal-header" style="background: var(--sidebar-bg); border-bottom: 1px solid #e2e8f0; position: relative;">
             <div>
-                <h2 id="modalBookingId" class="occ-modal-title" style="color: var(--secondary-color); font-weight: 800;">Booking Details</h2>
-                <div class="occ-modal-subtitle">Comprehensive overview of event and financials</div>
+                <h2 id="modalBookingId" class="occ-modal-title" style="color: var(--sidebar-bg); filter: invert(1) grayscale(1) contrast(1000); font-weight: 800;">Booking Details</h2>
+                <div class="occ-modal-subtitle" style="color: var(--sidebar-bg); filter: invert(1) grayscale(1) contrast(1000); opacity: 0.8;">Comprehensive overview of event and financials</div>
             </div>
-            <button onclick="bk_closeBookingDetailModal()" class="occ-modal-close" style="background: #f1f5f9; border-radius: 50%;">
+            <button onclick="bk_closeBookingDetailModal()" class="occ-modal-close" style="background: transparent; border: 1px solid rgba(0,0,0,0.1); color: var(--sidebar-bg); filter: invert(1) grayscale(1) contrast(1000); border-radius: 50%;">
                 <i class="fas fa-times"></i>
             </button>
         </div>
@@ -923,12 +923,14 @@
 ════════════════════════════════════════════════════ -->
 <div id="walkinBookingModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-xl occ-content-slide-down" style="max-width: 1000px;">
-        <div class="occ-modal-header">
+        <div class="occ-modal-header" style="background: var(--sidebar-bg); border-bottom: 1px solid #e2e8f0;">
             <div>
-                <h2 class="occ-modal-title"><i class="fas fa-plus-circle" style="color:var(--primary-color);"></i> New Walk-in Booking</h2>
-                <div class="occ-modal-subtitle">Manually record an event directly into your dashboard.</div>
+                <h2 class="occ-modal-title" style="color: var(--sidebar-bg); filter: invert(1) grayscale(1) contrast(1000); font-weight: 800;">
+                    <i class="fas fa-clipboard-list"></i> Manual Walk-in Booking
+                </h2>
+                <div class="occ-modal-subtitle" style="color: var(--sidebar-bg); filter: invert(1) grayscale(1) contrast(1000); opacity: 0.8;">Register a direct/offline customer event</div>
             </div>
-            <button type="button" onclick="closeWalkinModal()" class="occ-modal-close">
+            <button type="button" onclick="closeWalkinModal()" class="occ-modal-close" style="color: var(--sidebar-bg); filter: invert(1) grayscale(1) contrast(1000);">
                 <i class="fas fa-times"></i>
             </button>
         </div>

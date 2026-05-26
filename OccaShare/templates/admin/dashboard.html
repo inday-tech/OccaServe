@@ -200,8 +200,30 @@
     }
 
     function flagPartner(id) {
-        openReasonModal('Flag for Audit', 'Enter investigation reason for the audit trail.', (reason) => {
-            executePartnerAction(id, 'flag', reason);
+        Swal.fire({
+            title: 'Require Re-verification',
+            text: 'Select the reason for requiring re-verification:',
+            input: 'select',
+            inputOptions: {
+                'Expired Business Permit': 'Expired Business Permit',
+                'Suspicious Document Uploaded': 'Suspicious Document Uploaded',
+                'Customer Complaints / Fraud Report': 'Customer Complaints / Fraud Report',
+                'Unresponsive Contact Details': 'Unresponsive Contact Details',
+                'Other': 'Other (Please specify in audit notes later)'
+            },
+            inputPlaceholder: 'Select a reason',
+            showCancelButton: true,
+            confirmButtonText: 'Submit',
+            confirmButtonColor: '#f97316',
+            inputValidator: (value) => {
+                if (!value) {
+                    return 'You need to select a reason.';
+                }
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                executePartnerAction(id, 'flag', result.value);
+            }
         });
     }
 

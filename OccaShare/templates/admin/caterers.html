@@ -181,7 +181,7 @@
     </div>
     <div class="header-actions-area">
         <button class="btn-clean" style="background: var(--adm-navy); color: white;" onclick="openAddCatererModal()">
-            <i class="fas fa-plus"></i> Onboard Partner
+            <i class="fas fa-plus"></i> Add New Caterer
         </button>
     </div>
 </div>
@@ -284,7 +284,7 @@
                     <td>
                         {% if caterer.verification_status == 'Verified' %}
                         <span class="badge-clean badge-active">VERIFIED</span>
-                        {% elif caterer.verification_status == 'Pending Review' %}
+                        {% elif caterer.verification_status == 'Pending Review' or caterer.verification_status == 'Pending' %}
                         <span class="badge-clean badge-pending">AUDIT REQ</span>
                         {% else %}
                         <span class="badge-clean" style="background: #f1f5f9; color: #64748b;">{{
@@ -298,7 +298,7 @@
                             </button>
                             <div class="dropdown-menu-dm">
                                 <a href="/admin/verify/{{ caterer.user_id }}" class="dm-dropdown-item">
-                                    <i class="fas fa-shield-check"></i> Compliance Audit
+                                    <i class="fas fa-shield-check"></i> Review Documents
                                 </a>
                                 <button class="dm-dropdown-item" data-id="{{ caterer.id }}"
                                     data-business="{{ caterer.business_name }}" 
@@ -311,26 +311,26 @@
                                     data-brgy-code="{{ caterer.brgy_code }}"
                                     data-address-details="{{ caterer.address_details }}"
                                     onclick="openEditModal(this)">
-                                    <i class="fas fa-edit"></i> Edit Business Profile
+                                    <i class="fas fa-edit"></i> Edit Partner Details
                                 </button>
                                 <div style="height: 1px; background: #f1f5f9; margin: 4px 8px;"></div>
                                 {% if caterer.verification_status == 'Rejected' or caterer.verification_status ==
                                 'Suspended' %}
                                 <button class="dm-dropdown-item" style="color: #2563eb;"
                                     onclick="restorePartner({{ caterer.id }})">
-                                    <i class="fas fa-rotate-left"></i> Restore Access
+                                    <i class="fas fa-rotate-left"></i> Reactivate Account
                                 </button>
                                 {% else %}
                                 <button class="dm-dropdown-item" style="color: #f97316;"
                                     onclick="flagPartner({{ caterer.id }})">
-                                    <i class="fas fa-flag"></i> Flag for Audit
+                                    <i class="fas fa-flag"></i> Require Re-verification
                                 </button>
                                 <button class="dm-dropdown-item danger" onclick="suspendPartner({{ caterer.id }})">
-                                    <i class="fas fa-ban"></i> Suspend Partner
+                                    <i class="fas fa-ban"></i> Ban / Suspend Account
                                 </button>
                                 <div style="height: 1px; background: #f1f5f9; margin: 4px 8px;"></div>
                                 <button class="dm-dropdown-item" onclick="archiveItem('caterers', {{ caterer.id }})" style="color: #64748b;">
-                                    <i class="fas fa-archive"></i> Archive Partner
+                                    <i class="fas fa-archive"></i> Archive / Delete Partner
                                 </button>
                                 {% endif %}
                             </div>
@@ -411,9 +411,8 @@
                 <div>
                     <h3
                         style="font-size: 0.9rem; font-weight: 800; text-transform: uppercase; margin: 0; color: var(--adm-navy);">
-                        Onboard New Partner</h3>
-                    <p style="font-size: 0.7rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Data-driven
-                        identity initialization with real-time audit.</p>
+                        Add New Caterer</h3>
+                    <p style="font-size: 0.7rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Manually register a new caterer partner.</p>
                 </div>
             </div>
             <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);"
@@ -428,7 +427,7 @@
                     <div style="display: flex; flex-direction: column; gap: 1.25rem;">
                         <h4
                             style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: -0.25rem;">
-                            Business & Identity</h4>
+                            Business Info</h4>
 
                         <div style="display: flex; flex-direction: column; gap: 4px;">
                             <div class="dm-input-group">
@@ -477,18 +476,18 @@
 
                         <h4
                             style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: -0.25rem; margin-top: 0.5rem;">
-                            Jurisdictional Location (Official PSGC)</h4>
+                            Address Information (PSGC)</h4>
 
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                             <div class="dm-input-group">
                                 <i class="fas fa-map"></i>
-                                <select name="province" id="onboard_province" onchange="fetchMunicipalities()">
+                                <select name="province" id="onboard_province" onchange="fetchMunicipalities()" required>
                                     <option value="" disabled selected>Province</option>
                                 </select>
                             </div>
                             <div class="dm-input-group">
                                 <i class="fas fa-city"></i>
-                                <select name="municipality" id="onboard_city" onchange="fetchBarangays()" disabled>
+                                <select name="municipality" id="onboard_city" onchange="fetchBarangays()" disabled required>
                                     <option value="" disabled selected>City/Muni</option>
                                 </select>
                             </div>
@@ -497,7 +496,7 @@
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                             <div class="dm-input-group">
                                 <i class="fas fa-location-dot"></i>
-                                <select name="barangay" id="onboard_brgy" disabled>
+                                <select name="barangay" id="onboard_brgy" disabled required>
                                     <option value="" disabled selected>Barangay</option>
                                 </select>
                             </div>
@@ -513,7 +512,7 @@
                         style="display: flex; flex-direction: column; gap: 1.25rem; padding-left: 2rem; border-left: 1px solid #f1f5f9;">
                         <h4
                             style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: -0.25rem;">
-                            Operational Matrix</h4>
+                            Services Offered</h4>
 
                         <div
                             style="background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #f1f5f9;">
@@ -567,8 +566,7 @@
                                     style="color: var(--adm-primary); margin-top: 2px; font-size: 0.8rem;"></i>
                                 <p
                                     style="font-size: 0.65rem; color: var(--adm-navy); font-weight: 600; margin: 0; line-height: 1.4;">
-                                    New partners will receive a secure temporary password via email once onboarding is
-                                    finalized.</p>
+                                    New caterers will automatically receive their login password via email after registration.</p>
                             </div>
                         </div>
                     </div>
@@ -579,10 +577,9 @@
                 style="padding: 1.25rem 2rem; background: #f8fafc; border-top: 1px solid #f1f5f9; flex-shrink: 0; display: flex; justify-content: flex-end; gap: 10px;">
                 <button type="button" class="btn-clean"
                     style="background: white; border: 1px solid #e2e8f0; color: var(--adm-navy); font-size: 0.75rem;"
-                    onclick="closeAddCatererModal()">Abort</button>
+                    onclick="closeAddCatererModal()">Cancel</button>
                 <button type="submit" class="btn-clean"
-                    style="background: var(--adm-primary); color: white; padding: 0.75rem 2rem; font-weight: 800; font-size: 0.75rem;">Initialize
-                    Partner Profile</button>
+                    style="background: var(--adm-primary); color: white; padding: 0.75rem 2rem; font-weight: 800; font-size: 0.75rem;">Add New Caterer</button>
             </div>
         </form>
     </div>
@@ -759,8 +756,30 @@
     }
 
     function flagPartner(id) {
-        openReasonModal('Flag for Review', 'State the reason for compliance investigation.', (reason) => {
-            executePartnerAction(id, 'flag', reason);
+        Swal.fire({
+            title: 'Require Re-verification',
+            text: 'Select the reason for requiring re-verification:',
+            input: 'select',
+            inputOptions: {
+                'Expired Business Permit': 'Expired Business Permit',
+                'Suspicious Document Uploaded': 'Suspicious Document Uploaded',
+                'Customer Complaints / Fraud Report': 'Customer Complaints / Fraud Report',
+                'Unresponsive Contact Details': 'Unresponsive Contact Details',
+                'Other': 'Other (Please specify in audit notes later)'
+            },
+            inputPlaceholder: 'Select a reason',
+            showCancelButton: true,
+            confirmButtonText: 'Submit',
+            confirmButtonColor: '#f97316',
+            inputValidator: (value) => {
+                if (!value) {
+                    return 'You need to select a reason.';
+                }
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                executePartnerAction(id, 'flag', result.value);
+            }
         });
     }
 
@@ -1065,6 +1084,16 @@
             return Swal.fire('Audit Failure', 'Identity markers are already in use.', 'error');
         }
 
+        // Strict Phone & Name Validation
+        const phone = fd.get('phone').replace(/\D/g, '');
+        if (!phone.startsWith('09') || phone.length !== 11) {
+            return Swal.fire('Validation Error', 'Phone number must start with 09 and be exactly 11 digits.', 'error');
+        }
+        const bizName = fd.get('business_name').trim();
+        if (bizName.length < 3) {
+            return Swal.fire('Validation Error', 'Business name must be at least 3 characters long.', 'error');
+        }
+
         // Standardize full name
         const fname = fd.get('first_name');
         const lname = fd.get('last_name');
@@ -1087,6 +1116,14 @@
 
         const events = Array.from(e.target.querySelectorAll('input[name="events"]:checked')).map(i => i.value);
         const cuisines = Array.from(e.target.querySelectorAll('input[name="cuisines"]:checked')).map(i => i.value);
+        
+        if (events.length === 0) {
+            return Swal.fire('Validation Error', 'Please select at least one Event Category.', 'error');
+        }
+        if (cuisines.length === 0) {
+            return Swal.fire('Validation Error', 'Please select at least one Cuisine Specialty.', 'error');
+        }
+
         fd.append('event_types', JSON.stringify(events));
         fd.append('cuisine_types', JSON.stringify(cuisines));
 

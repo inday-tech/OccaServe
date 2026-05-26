@@ -212,7 +212,7 @@
                     <span><i class="far fa-user" style="color: var(--adm-primary);"></i> Executive: {{ c.user.first_name
                         }} {{ c.user.last_name }}</span>
                     <span><i class="far fa-clock" style="color: var(--adm-primary);"></i> Archived: {{
-                        c.updated_at.strftime('%b %d, %Y') }}</span>
+                        (c.user.updated_at or c.created_at).strftime('%b %d, %Y') if (c.user.updated_at or c.created_at) else 'N/A' }}</span>
                     <span><i class="fas fa-id-card" style="color: var(--adm-primary);"></i> ID: #CT-{{ c.id }}</span>
                 </div>
             </div>
@@ -252,7 +252,7 @@
                 <div style="font-size: 0.75rem; color: var(--adm-muted); font-weight: 700; display: flex; gap: 16px;">
                     <span><i class="far fa-envelope" style="color: var(--adm-primary);"></i> {{ u.email }}</span>
                     <span><i class="far fa-clock" style="color: var(--adm-primary);"></i> Archived: {{
-                        u.updated_at.strftime('%b %d, %Y') }}</span>
+                        (u.updated_at or u.created_at).strftime('%b %d, %Y') if (u.updated_at or u.created_at) else 'N/A' }}</span>
                 </div>
             </div>
             <div style="display: flex; gap: 10px;">
@@ -292,7 +292,7 @@
                     <span><i class="fas fa-calendar-day" style="color: var(--adm-primary);"></i> Event: {{
                         b.event_date.strftime('%b %d, %Y') }}</span>
                     <span><i class="far fa-clock" style="color: var(--adm-primary);"></i> Archived: {{
-                        b.updated_at.strftime('%b %d, %I:%M %p') }}</span>
+                        (b.updated_at or b.created_at).strftime('%b %d, %I:%M %p') if (b.updated_at or b.created_at) else 'N/A' }}</span>
                     <span><i class="fas fa-coins" style="color: var(--adm-primary);"></i> Value: ₱{{
                         "{:,.2f}".format(b.total_amount or 0) }}</span>
                 </div>
@@ -334,7 +334,7 @@
                     "{{ r.comment[:100] }}{{ '...' if r.comment|length > 100 }}"</p>
                 <div style="font-size: 0.75rem; color: var(--adm-muted); font-weight: 700; margin-top: 4px;">
                     <i class="far fa-clock" style="color: var(--adm-primary);"></i> Archived: {{
-                    r.updated_at.strftime('%b %d, %Y') }}
+                    r.created_at.strftime('%b %d, %Y') if r.created_at else 'N/A' }}
                 </div>
             </div>
             <div style="display: flex; gap: 10px;">

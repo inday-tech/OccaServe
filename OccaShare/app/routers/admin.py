@@ -526,6 +526,7 @@ async def flag_caterer(
     if caterer.user:
         caterer.user.status = "investigation"
         caterer.user.status_reason = reason
+        caterer.verification_status = "Pending"
         
         # Log Audit
         audit = models.AuditLog(
@@ -1761,13 +1762,18 @@ def verify_customer(
     db.commit()
     return RedirectResponse(url=f"/admin/customers?success_msg=Customer+{action}+successfully", status_code=status.HTTP_303_SEE_OTHER)
 
-@router.get("/verify/{user_id}", response_class=HTMLResponse)
+@router.get("/verify/{user_id_str}", response_class=HTMLResponse)
 async def review_verification(
-    user_id: int,
+    user_id_str: str,
     request: Request,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
+    if user_id_str == "None" or not user_id_str.isdigit():
+        # Handle orphaned profiles gracefully
+        return RedirectResponse(url="/admin/caterers?error_msg=This+partner+has+no+associated+identity+account", status_code=303)
+        
+    user_id = int(user_id_str)
     target_user = db.query(models.User).get(user_id)
     if not target_user:
         raise HTTPException(status_code=404, detail="User not found")
