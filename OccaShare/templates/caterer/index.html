@@ -8,15 +8,15 @@
     :root {
         --chart-profit: #10b981;
         --chart-expenses: #ef4444;
-        --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+        --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
     }
 
     /* Dashboard Layout Cleanup */
     .dashboard-main-layout {
         display: grid;
-        grid-template-columns: minmax(0, 1.8fr) 1fr;
+        grid-template-columns: repeat(2, 1fr);
         gap: 24px;
-        align-items: start;
+        align-items: stretch;
         width: 100%;
     }
 
@@ -138,11 +138,6 @@
         border: 1px solid #f1f5f9;
         padding: 1.25rem;
         border-radius: 1rem;
-        transition: transform 0.2s;
-    }
-
-    .pie-legend .roi-metric-item:hover {
-        transform: translateX(5px);
     }
 
     /* Stat Cards */
@@ -184,7 +179,7 @@
 
     @media (max-width: 768px) {
         .stats-grid-dashboard {
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(2, 1fr);
         }
 
         .chart-flex-container {
@@ -193,6 +188,12 @@
     }
 
     /* Operations Tracker Styles */
+    .roi-breakdown-card, .ops-tracker-card, .sidebar-card-dashboard {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
     .ops-tracker-card {
         background: white;
         padding: 24px;
@@ -363,21 +364,17 @@
 <!-- Quick Stats Summary -->
 <div class="stats-grid-dashboard">
     <div class="stat-card-premium c-card-premium stat-card-revenue animate-up">
-        <div class="stat-icon-bg" style="color: var(--primary-color);"><i class="fas fa-coins"></i></div>
         <div class="stat-label-dashboard">Gross Revenue</div>
         <div class="stat-value-dashboard" id="stat-revenue">₱{{ "{:,.2f}".format(total_revenue|default(0.0)) }}</div>
-        <div class="stat-hint-dashboard">Total cash collected</div>
+        <div class="stat-hint-dashboard"><i class="fas fa-coins" style="margin-right:4px;"></i> Total cash collected</div>
     </div>
 
-    <div class="stat-card-premium c-card-premium stat-card-white animate-up stat-roi-card {{ 'card-loss-warning' if net_profit and net_profit < 0 else '' }}"
-        style="border-left: 4px solid {{ '#ef4444' if net_profit and net_profit < 0 else '#10b981' }} !important;">
-        <div class="stat-icon-bg" style="color: {{ '#ef4444' if net_profit and net_profit < 0 else '#10b981' }};"><i
-                class="fas fa-chart-line"></i></div>
-        <div class="stat-label-dashboard">
-            Business ROI
-            <span class="roi-tooltip">
-                <i class="fas fa-info-circle roi-help-icon"></i>
-                <span class="tooltip-text">Calculated as: ((Revenue - Expenses) / Expenses) × 100</span>
+    <div class="stat-card-premium c-card-premium stat-card-white animate-up stat-roi-card {{ 'card-loss-warning' if net_profit and net_profit < 0 else '' }}">
+        <div class="stat-label-dashboard" style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <span>Business ROI</span>
+            <span class="roi-tooltip" style="position: absolute; top: 1.25rem; right: 1.25rem;">
+                <i class="fas fa-info-circle roi-help-icon" style="margin: 0; font-size: 1.15rem; color: #94a3b8;"></i>
+                <span class="tooltip-text" style="left: auto; right: 0; transform: none; bottom: 130%;">Calculated as: ((Revenue - Expenses) / Expenses) × 100</span>
             </span>
         </div>
         <div class="stat-value-dashboard {{ 'text-danger-pulse' if net_profit and net_profit < 0 else '' }}"
@@ -390,8 +387,6 @@
     </div>
 
     <div class="stat-card-premium c-card-premium stat-card-white animate-up">
-        <div class="stat-icon-bg" style="color: {{ '#ef4444' if net_profit and net_profit < 0 else '#059669' }};"><i
-                class="fas fa-hand-holding-usd"></i></div>
         <div class="stat-label-dashboard">Net Profit</div>
         <div class="stat-value-dashboard" id="stat-profit"
             style="color: {{ '#ef4444' if net_profit and net_profit < 0 else '#059669' }};">₱{{
@@ -400,10 +395,9 @@
     </div>
 
     <div class="stat-card-premium c-card-premium stat-card-white animate-up">
-        <div class="stat-icon-bg" style="color: var(--secondary-color);"><i class="fas fa-users"></i></div>
         <div class="stat-label-dashboard">Total Customers</div>
         <div class="stat-value-dashboard" id="stat-customers">{{ total_customers|default(0) }}</div>
-        <div class="stat-hint-dashboard">Unique client base</div>
+        <div class="stat-hint-dashboard"><i class="fas fa-users" style="margin-right:4px;"></i> Unique client base</div>
     </div>
 </div>
 
@@ -415,9 +409,14 @@
             <div class="roi-header" style="align-items: flex-start;">
                 <div>
                     <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
-                        <h3><i class="fas fa-chart-pie" style="color: var(--primary-color);"></i> Profit Efficiency</h3>
-                        <button onclick="exportToCSV('profit_efficiency')" class="export-btn-minimal"
-                            title="Export CSV"><i class="fas fa-download"></i> CSV</button>
+                        <h3 style="margin:0; font-weight: 800; color: #0f172a;">Profit Efficiency</h3>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <button onclick="exportToCSV('profit_efficiency')" class="export-btn-minimal" title="Export CSV"><i class="fas fa-download"></i> CSV</button>
+                            <span class="roi-tooltip">
+                                <i class="fas fa-info-circle roi-help-icon" style="margin: 0; font-size: 1.15rem; color: #94a3b8;"></i>
+                                <span class="tooltip-text" style="left: auto; right: 0; transform: none; bottom: 130%;">Shows the ratio of revenue earned versus expenses incurred.</span>
+                            </span>
+                        </div>
                     </div>
                     <p style="margin-top: 4px;">Profit vs. Expenses distribution</p>
                 </div>
@@ -468,11 +467,14 @@
         <!-- Bookings Volume Chart -->
         <div class="roi-breakdown-card c-card-premium animate-up">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h3 style="margin:0; font-weight: 800; color: var(--secondary-color); font-size: 1rem;"><i
-                        class="fas fa-calendar-check" style="margin-right: 0.5rem; color: var(--primary-color);"></i>
-                    Bookings Volume</h3>
-                <button onclick="exportToCSV('bookings')" class="export-btn-minimal" title="Export CSV"><i
-                        class="fas fa-download"></i> CSV</button>
+                <h3 style="margin:0; font-weight: 800; color: #0f172a; font-size: 1rem;">Bookings Volume</h3>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button onclick="exportToCSV('bookings')" class="export-btn-minimal" title="Export CSV"><i class="fas fa-download"></i> CSV</button>
+                    <span class="roi-tooltip">
+                        <i class="fas fa-info-circle roi-help-icon" style="margin: 0; font-size: 1.15rem; color: #94a3b8;"></i>
+                        <span class="tooltip-text" style="left: auto; right: 0; transform: none; bottom: 130%;">Monitor the volume of completed versus pending bookings.</span>
+                    </span>
+                </div>
             </div>
             <div class="chart-container" style="height: 250px;">
                 <canvas id="bookingsChart"></canvas>
@@ -486,11 +488,14 @@
         <!-- Revenue by Event Type -->
         <div class="roi-breakdown-card c-card-premium animate-up" style="margin-top: 24px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <h3 style="margin:0; font-weight: 800; color: var(--secondary-color); font-size: 1rem;"><i
-                        class="fas fa-glass-cheers" style="margin-right: 0.5rem; color: var(--primary-color);"></i>
-                    Revenue by Event</h3>
-                <button onclick="exportToCSV('event_revenue')" class="export-btn-minimal" title="Export CSV"><i
-                        class="fas fa-download"></i> CSV</button>
+                <h3 style="margin:0; font-weight: 800; color: #0f172a; font-size: 1rem;">Revenue by Event</h3>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button onclick="exportToCSV('event_revenue')" class="export-btn-minimal" title="Export CSV"><i class="fas fa-download"></i> CSV</button>
+                    <span class="roi-tooltip">
+                        <i class="fas fa-info-circle roi-help-icon" style="margin: 0; font-size: 1.15rem; color: #94a3b8;"></i>
+                        <span class="tooltip-text" style="left: auto; right: 0; transform: none; bottom: 130%;">Identify which event types generate the highest revenue.</span>
+                    </span>
+                </div>
             </div>
             <div id="revenue-event-list">
                 {% if revenue_by_event %}
@@ -514,10 +519,15 @@
     <div class="dashboard-sidebar-area">
         <!-- Live Operations Tracker -->
         <div class="ops-tracker-card c-card-premium animate-up">
-            <div class="ops-header">
-                <h3><i class="fas fa-tasks" style="color: var(--primary-color); margin-right: 8px;"></i> Operations
-                    Tracker</h3>
-                <span class="ops-live-tag">Live</span>
+            <div class="ops-header" style="align-items: center;">
+                <h3 style="margin:0; font-weight: 800; color: #0f172a;">Operations Tracker</h3>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span class="ops-live-tag">Live</span>
+                    <span class="roi-tooltip">
+                        <i class="fas fa-info-circle roi-help-icon" style="margin: 0; font-size: 1.15rem; color: #94a3b8;"></i>
+                        <span class="tooltip-text" style="left: auto; right: 0; transform: none; bottom: 130%;">Track the progress of upcoming events based on active tasks.</span>
+                    </span>
+                </div>
             </div>
             <div id="ops-tracker-list">
                 {% if upcoming_events %}
@@ -552,7 +562,7 @@
 
         <!-- Upcoming Events -->
         <div class="sidebar-card-dashboard c-card-premium animate-up">
-            <h3 class="sidebar-card-title"><i class="fas fa-calendar-alt"></i> Upcoming Events</h3>
+            <h3 class="sidebar-card-title">Upcoming Events</h3>
             {% if upcoming_events %}
             <div class="event-list-dashboard" id="upcoming-events-container">
                 {% for event in upcoming_events %}
@@ -584,8 +594,7 @@
         <!-- Package Efficiency -->
         <div class="sidebar-card-dashboard c-card-premium animate-up">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
-                <h3 class="sidebar-card-title" style="margin: 0;"><i class="fas fa-fire"
-                        style="color: var(--primary-color);"></i> Package Efficiency</h3>
+                <h3 class="sidebar-card-title" style="margin: 0;">Package Efficiency</h3>
                 <button onclick="exportToCSV('packages')" class="export-btn-minimal" title="Export CSV"><i
                         class="fas fa-download"></i></button>
             </div>
@@ -618,8 +627,7 @@
         <!-- Top Customers / Loyal Clients -->
         <div class="sidebar-card-dashboard c-card-premium animate-up" style="margin-top: 24px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
-                <h3 class="sidebar-card-title" style="margin: 0;"><i class="fas fa-crown"
-                        style="color: var(--primary-color);"></i> Top Clients</h3>
+                <h3 class="sidebar-card-title" style="margin: 0;">Top Clients</h3>
                 <button onclick="exportToCSV('top_clients')" class="export-btn-minimal" title="Export CSV"><i
                         class="fas fa-download"></i></button>
             </div>
@@ -661,8 +669,7 @@
     <div
         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
         <div>
-            <h3 style="margin:0; font-weight: 800; color: var(--secondary-color); font-size: 1.25rem;"><i
-                    class="fas fa-history" style="margin-right: 0.75rem; color: var(--primary-color);"></i> Recent
+            <h3 style="margin:0; font-weight: 800; color: var(--secondary-color); font-size: 1.25rem;">Recent
                 Orders</h3>
             <p style="margin: 4px 0 0; color: #64748b; font-size: 0.85rem;">Latest transactions and event bookings</p>
         </div>

@@ -102,13 +102,8 @@
 .roi-header h3 {
     margin: 0;
     font-weight: 800;
-    color: var(--secondary-color);
+    color: #0f172a;
     font-size: var(--text-lg);
-}
-
-.roi-header h3 i {
-    margin-right: var(--space-sm);
-    color: var(--primary-color);
 }
 
 .roi-header p {
@@ -270,7 +265,7 @@
 
 .profitability-row > div:first-child > div:first-child {
     font-weight: 700;
-    color: var(--secondary-color);
+    color: #0f172a;
     font-size: var(--text-sm);
 }
 
@@ -326,7 +321,7 @@
     font-size: var(--text-lg);
     font-weight: 800;
     margin-bottom: var(--space-md);
-    color: var(--secondary-color);
+    color: #0f172a;
 }
 
 /* ─── Upcoming Events ─── */
@@ -497,8 +492,8 @@
 }
 
 .ro-name {
-    font-weight: 700;
-    color: var(--secondary-color);
+    font-weight: 800;
+    color: #0f172a;
     font-size: var(--text-sm);
     margin-bottom: 2px;
     white-space: nowrap;
