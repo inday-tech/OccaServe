@@ -278,42 +278,59 @@
 
     <div class="adjudication-sidebar">
         <div class="audit-card-premium" style="position: sticky; top: 2rem; border-top: 6px solid var(--adm-primary);">
-            <div class="section-title-clean" style="font-size: 1rem; margin-bottom: 1.5rem;"><i class="fas fa-gavel"></i> Final Adjudication</div>
+            <div class="section-title-clean" style="font-size: 1rem; margin-bottom: 1.5rem;"><i class="fas fa-gavel"></i> Final Decision</div>
             
+            {% set is_fully_approved = false %}
+            {% if status == 'APPROVED' or status == 'VERIFIED' %}
+                {% if target_user.role == 'caterer' %}
+                    {% if target_user.caterer_profile and target_user.caterer_profile.verification_status == 'Verified' %}
+                        {% set is_fully_approved = true %}
+                    {% endif %}
+                {% else %}
+                    {% set is_fully_approved = true %}
+                {% endif %}
+            {% endif %}
+
+            {% if is_fully_approved %}
+            <div style="background: #f0fdf4; border: 1px solid #dcfce7; padding: 1.5rem; border-radius: 16px; margin-top: 1rem; text-align: center;">
+                <i class="fas fa-certificate" style="color: #16a34a; font-size: 2rem; margin-bottom: 1rem;"></i>
+                <div style="font-weight: 800; color: #166534;">Identity Fully Approved</div>
+                <div style="font-size: 0.7rem; color: #15803d; margin-top: 4px;">This account is currently active.</div>
+            </div>
+            {% else %}
             <form id="kycActionForm" action="/admin/kyc/user/{{ target_user.id }}/action" method="POST">
-                <label style="font-size: 0.7rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 10px; display: block;">Auditor Memorandum</label>
-                <textarea name="notes" class="decision-textarea" style="min-height: 140px; margin-bottom: 1.5rem;" placeholder="Justify your decision based on the evidence..." required></textarea>
+                <label style="font-size: 0.7rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 10px; display: block;">Admin Notes</label>
+                <textarea name="notes" class="decision-textarea" style="min-height: 140px; margin-bottom: 1.5rem;" placeholder="Write your reason for approval or rejection here..." required></textarea>
                 
                 <div style="margin-top: 0.5rem;">
-                    <span style="font-size: 0.7rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 10px; display: block;">Audit Command Templates</span>
-                    <button type="button" class="btn-template" data-template="IDENTITY VERIFIED: 1:1 match between artifacts and registry. No fraud signals detected.">
-                        <i class="fas fa-check-circle" style="color: #10b981;"></i> Perfect Alignment
+                    <span style="font-size: 0.7rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 10px; display: block;">Quick Responses</span>
+                    <button type="button" class="btn-template" data-template="Identity Verified: ID and Selfie match perfectly. Approved.">
+                        <i class="fas fa-check-circle" style="color: #10b981;"></i> Perfect Match
                     </button>
-                    <button type="button" class="btn-template" data-template="REJECTION: Duplicate asset detected. ID and Selfie are identical. Possible fraud attempt.">
-                        <i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i> Asset Cloning
+                    <button type="button" class="btn-template" data-template="Rejection: ID and Selfie are the exact same image. Please upload a real selfie.">
+                        <i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i> Fake Selfie Image
                     </button>
-                    <button type="button" class="btn-template" data-template="REJECTION: OCR failure. Document is illegible or obstructed.">
-                        <i class="fas fa-image" style="color: #f97316;"></i> Low Fidelity
+                    <button type="button" class="btn-template" data-template="Rejection: ID is blurry and cannot be read. Please upload a clear photo.">
+                        <i class="fas fa-image" style="color: #f97316;"></i> Blurry ID
                     </button>
                 </div>
 
-                {% if status != 'APPROVED' and status != 'VERIFIED' %}
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 2rem;">
-                    <button type="button" class="btn-action-primary" onclick="confirmAdjudication('approve')">Authorize</button>
-                    <button type="button" class="btn-action-secondary" onclick="confirmAdjudication('reject')">Terminate</button>
-                </div>
-                {% else %}
-                <div style="background: #f0fdf4; border: 1px solid #dcfce7; padding: 1.5rem; border-radius: 16px; margin-top: 2rem; text-align: center;">
-                    <i class="fas fa-certificate" style="color: #16a34a; font-size: 2rem; margin-bottom: 1rem;"></i>
-                    <div style="font-weight: 800; color: #166534;">Identity Sanctioned</div>
-                    <div style="font-size: 0.7rem; color: #15803d; margin-top: 4px;">Account controls are locked.</div>
+                {% if status == 'APPROVED' or status == 'VERIFIED' %}
+                <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 1rem; border-radius: 12px; margin-top: 1.5rem; text-align: center; font-size: 0.8rem; color: #92400e; font-weight: 600;">
+                    <i class="fas fa-exclamation-circle"></i> Identity was previously approved, but is now in Re-verification mode.
                 </div>
                 {% endif %}
 
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 2rem;">
+                    <button type="button" class="btn-action-primary" onclick="confirmAdjudication('approve')">Approve User</button>
+                    <button type="button" class="btn-action-secondary" onclick="confirmAdjudication('reject')">Reject User</button>
+                </div>
+
                 <button type="button" id="rescanBtn" class="btn-template" style="margin-top: 1rem; border-style: dashed; justify-content: center;">
-                    <i class="fas fa-sync-alt"></i> Force AI Re-scan
+                    <i class="fas fa-sync-alt"></i> Try Scanning ID Again
                 </button>
             </form>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -331,20 +348,20 @@
     });
 
     window.confirmAdjudication = (action) => {
-        const title = action === 'approve' ? 'AUTHORIZE USER?' : 'TERMINATE APPLICATION?';
+        const title = action === 'approve' ? 'APPROVE USER?' : 'REJECT USER?';
         const notes = document.querySelector('textarea[name="notes"]').value;
         
         if (!notes.trim()) {
-            Swal.fire('Input Required', 'Please provide a justification in the memorandum.', 'warning');
+            Swal.fire('Reason Required', 'Please provide a reason in the Admin Notes.', 'warning');
             return;
         }
 
         Swal.fire({
             title: title,
-            text: action === 'approve' ? "This will grant platform access." : "This will suspend the user account.",
+            text: action === 'approve' ? "This user will be approved to use the platform." : "This user will be rejected and cannot login until they fix the issue.",
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'Yes, Process'
+            confirmButtonText: 'Yes, Submit'
         }).then((result) => {
             if (result.isConfirmed) {
                 const form = document.getElementById('kycActionForm');
