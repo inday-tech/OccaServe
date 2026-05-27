@@ -1,60 +1,50 @@
 {% extends "caterer/layout.html" %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/customers.css') }}?v=10.1">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/customers.css') }}?v=10.5">
 {% endblock %}
 
 {% block content %}
-<div class="customers-page-container">
+<div class="container-premium">
     <!-- Header Section matching standard layout -->
-    <div class="page-header-premium">
-        <div class="header-left-pro">
-            <h1 class="page-title-pro">Client Intelligence Hub</h1>
-            <p class="page-subtitle-pro">Manage your client relationships and analytics.</p>
+    <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
+        <div class="header-title-group">
+            <h1>Manage Clients</h1>
+            <p>Review, track, and manage all your customer profiles and history in one place.</p>
         </div>
-        <div class="header-actions-pro">
-            <button class="btn-primary" onclick="window.openModal('addCustomerModal')" style="padding: 0.75rem 1.5rem; font-weight: 600;">
-                <i class="fas fa-plus"></i> Register New Client
-            </button>
-        </div>
+        <button class="btn-primary" onclick="window.openModal('addCustomerModal')" style="padding: 0.75rem 1.5rem; font-weight: 600;">
+            <i class="fas fa-plus"></i> Register New Client
+        </button>
     </div>
 
-    <!-- Stats Grid using Standard Dashboard Cards -->
-    <div class="stats-grid-pro">
-        <div class="dashboard-card stats-card">
-            <div class="stat-icon-box bg-primary-light">
-                <i class="fas fa-users" style="color: var(--primary-color);"></i>
-            </div>
-            <div class="stat-info-pro">
-                <span class="stat-label-pro">Total Portfolio</span>
-                <h2 class="stat-value-pro" id="statTotalClients">{{ stats.total }}</h2>
+    <!-- Stats Grid using Standard KPI Cards (Matching Bookings) -->
+    <div class="kpi-grid-clean" style="margin-bottom: var(--space-lg);">
+        <div class="kpi-card-clean">
+            <div class="kpi-info">
+                <h4 style="color: var(--primary-color);">Total Portfolio</h4>
+                <span class="kpi-value" style="color: #0f172a;" id="statTotalClients">{{ stats.total }}</span>
+                <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">All registered accounts</span>
             </div>
         </div>
-        <div class="dashboard-card stats-card">
-            <div class="stat-icon-box" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
-                <i class="fas fa-crown"></i>
-            </div>
-            <div class="stat-info-pro">
-                <span class="stat-label-pro">VIP Accounts</span>
-                <h2 class="stat-value-pro" id="statVipClients">{{ stats.vip }}</h2>
+        <div class="kpi-card-clean">
+            <div class="kpi-info">
+                <h4 style="color: var(--primary-color);">VIP Accounts</h4>
+                <span class="kpi-value" style="color: #10b981;" id="statVipClients">{{ stats.vip }}</span>
+                <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">High-value clients</span>
             </div>
         </div>
-        <div class="dashboard-card stats-card">
-            <div class="stat-icon-box" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
-                <i class="fas fa-chart-line"></i>
-            </div>
-            <div class="stat-info-pro">
-                <span class="stat-label-pro">Monthly Acquisition</span>
-                <h2 class="stat-value-pro" id="statGrowthClients">{{ stats.new }}</h2>
+        <div class="kpi-card-clean">
+            <div class="kpi-info">
+                <h4 style="color: var(--primary-color);">Monthly Acquisition</h4>
+                <span class="kpi-value" style="color: #f59e0b;" id="statGrowthClients">{{ stats.new }}</span>
+                <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">New accounts this month</span>
             </div>
         </div>
-        <div class="dashboard-card stats-card">
-            <div class="stat-icon-box" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">
-                <i class="fas fa-repeat"></i>
-            </div>
-            <div class="stat-info-pro">
-                <span class="stat-label-pro">Repeat Rate</span>
-                <h2 class="stat-value-pro" id="statRepeatClients">{{ stats.repeat }}</h2>
+        <div class="kpi-card-clean">
+            <div class="kpi-info">
+                <h4 style="color: var(--primary-color);">Repeat Rate</h4>
+                <span class="kpi-value" style="color: #ef4444;" id="statRepeatClients">{{ stats.repeat }}</span>
+                <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Returning customers</span>
             </div>
         </div>
     </div>
@@ -272,7 +262,7 @@
     <div class="occ-modal-box sz-lg flex-col-modal">
         <div class="occ-modal-header colored-header">
             <div>
-                <h3 id="profName" class="occ-modal-title"><i class="fas fa-user-circle"></i> Analyzing...</h3>
+                <h3 id="profName" class="occ-modal-title">Analyzing...</h3>
                 <div id="profStatus" class="occ-modal-subtitle status-pill-indicator">Connecting to intelligence stream...</div>
             </div>
             <button type="button" class="occ-modal-close" onclick="window.closeModal('customerProfileModal')">
@@ -282,16 +272,16 @@
 
         <div class="tab-header-container bg-primary-dark">
             <button class="tab-btn-pro active" data-tab="overview" onclick="switchIntelTab('overview', this)">
-                <i class="fas fa-fingerprint"></i> Identity
+                Identity
             </button>
             <button class="tab-btn-pro" data-tab="edit" onclick="switchIntelTab('edit', this)">
-                <i class="fas fa-sticky-note"></i> CRM Notes
+                CRM Notes
             </button>
             <button class="tab-btn-pro" data-tab="history" onclick="switchIntelTab('history', this)">
-                <i class="fas fa-history"></i> Ledger
+                Ledger
             </button>
             <button class="tab-btn-pro" data-tab="risk" onclick="switchIntelTab('risk', this)">
-                <i class="fas fa-shield-alt"></i> Security
+                Security
             </button>
         </div>
 
@@ -301,60 +291,60 @@
                 
                 <!-- Identity & Location Section -->
                 <div class="dashboard-card p-4 mb-4 border-subtle">
-                    <h4 class="text-sm font-bold text-dark mb-3" style="text-transform: uppercase; font-family: 'Poppins', sans-serif;"><i class="fas fa-id-card text-primary" style="margin-right: 0.5rem;"></i> Identity & Location</h4>
+                    <h4 class="text-xs font-bold text-muted mb-3" style="text-transform: uppercase;">Identity & Location</h4>
                     <div class="grid-2-col" style="gap: 1.5rem;">
                         <div>
-                            <label class="text-xs font-bold text-muted block mb-1" style="text-transform: uppercase;">Full Legal Name</label>
-                            <p class="font-bold text-base text-dark m-0" id="profFullName" style="font-family: 'Poppins', sans-serif;">--</p>
+                            <label class="text-xs font-semibold text-muted block mb-1" style="text-transform: uppercase;">Full Legal Name</label>
+                            <p class="font-semibold text-sm text-dark m-0" id="profFullName">--</p>
                         </div>
                         <div>
-                            <label class="text-xs font-bold text-muted block mb-1" style="text-transform: uppercase;">Registered Address</label>
-                            <p class="font-bold text-base text-dark m-0" id="profAddress" style="font-family: 'Poppins', sans-serif;">--</p>
+                            <label class="text-xs font-semibold text-muted block mb-1" style="text-transform: uppercase;">Registered Address</label>
+                            <p class="font-semibold text-sm text-dark m-0" id="profAddress">--</p>
                         </div>
                     </div>
                 </div>
 
                 <div class="grid-2-col mb-4">
-                    <div class="dashboard-card p-3 border-subtle">
-                        <label class="text-xs font-bold text-muted block mb-1">Registered Email</label>
-                        <p class="font-bold text-sm text-dark m-0" id="profEmail" style="font-family: 'Poppins', sans-serif;">--</p>
+                    <div class="dashboard-card p-4 border-subtle">
+                        <label class="text-xs font-semibold text-muted block mb-1">Registered Email</label>
+                        <p class="font-semibold text-sm text-dark m-0" id="profEmail">--</p>
                     </div>
-                    <div class="dashboard-card p-3 border-subtle">
-                        <label class="text-xs font-bold text-muted block mb-1">Contact Number</label>
-                        <p class="font-bold text-sm text-dark m-0" id="profPhone" style="font-family: 'Poppins', sans-serif;">--</p>
+                    <div class="dashboard-card p-4 border-subtle">
+                        <label class="text-xs font-semibold text-muted block mb-1">Contact Number</label>
+                        <p class="font-semibold text-sm text-dark m-0" id="profPhone">--</p>
                     </div>
                 </div>
 
                 <div class="grid-2-col mb-4">
                     <div class="dashboard-card p-4">
-                        <label class="text-xs font-bold text-muted text-uppercase mb-1 block">Lifetime Value (LTV)</label>
-                        <div class="text-2xl font-black text-primary" id="profLTV" style="font-family: 'Poppins', sans-serif;">₱0.00</div>
+                        <label class="text-xs font-semibold text-muted text-uppercase mb-1 block">Lifetime Value (LTV)</label>
+                        <div class="text-lg font-bold text-primary" id="profLTV">₱0.00</div>
                     </div>
                     <div class="dashboard-card p-4">
-                        <label class="text-xs font-bold text-muted text-uppercase mb-1 block">Total Engagements</label>
-                        <div class="text-2xl font-black text-dark" id="profEvents" style="font-family: 'Poppins', sans-serif;">0</div>
+                        <label class="text-xs font-semibold text-muted text-uppercase mb-1 block">Total Engagements</label>
+                        <div class="text-lg font-bold text-dark" id="profEvents">0</div>
                     </div>
                 </div>
 
                 <div class="dashboard-card p-4 bg-warning-light border-warning-subtle">
-                    <label class="text-xs font-bold text-warning-dark block mb-2">Internal Operations Log</label>
-                    <div class="text-sm text-warning-dark whitespace-pre-wrap" id="profNotes" style="font-family: 'Poppins', sans-serif;">--</div>
+                    <label class="text-xs font-semibold text-warning-dark block mb-2">Internal Operations Log</label>
+                    <div class="text-sm text-warning-dark whitespace-pre-wrap" id="profNotes">--</div>
                 </div>
             </div>
 
             <!-- Edit Tab -->
-            <div id="intel-edit" class="intel-content" style="display: none;">
-                <form id="editCustomerForm" onsubmit="window.updateCustomerProfile(event)">
-                    <div class="form-grid-2">
+            <div id="intel-edit" class="intel-content" style="display: none; height: 100%;">
+                <form id="editCustomerForm" onsubmit="window.updateCustomerProfile(event)" style="display: flex; flex-direction: column; height: 100%;">
+                    <div class="form-grid-2" style="flex: 1;">
                         <div class="form-group-pro col-span-2">
                             <label class="form-label">Internal Operations Notes</label>
                             <textarea id="editNotes" name="notes" class="form-control" rows="8" placeholder="Add specific preferences, allergies, or past experiences with this client..."></textarea>
                             <span class="field-hint" style="color:#64748b; font-size: 0.75rem;">Clients cannot view these internal CRM notes. Personal identity fields are locked for security and compliance.</span>
                         </div>
                     </div>
-                    <div class="mt-4 text-right">
+                    <div style="margin-top: auto; text-align: right; padding-top: 1rem;">
                         <button type="submit" class="btn-primary" id="btnUpdateCustomer">
-                            <i class="fas fa-save"></i> Commit Changes
+                            Commit Changes
                         </button>
                     </div>
                 </form>
@@ -368,19 +358,20 @@
             </div>
 
             <!-- Risk Tab -->
-            <div id="intel-risk" class="intel-content" style="display: none;">
-                <div class="dashboard-card p-4 bg-danger-light border-danger-subtle d-flex align-items-center gap-4 flex-wrap-mobile">
-                    <div class="text-4xl text-danger"><i class="fas fa-exclamation-triangle"></i></div>
+            <div id="intel-risk" class="intel-content" style="display: none; height: 100%;">
+                <div class="dashboard-card p-4 bg-danger-light border-danger-subtle d-flex" style="flex-direction: column; height: 100%;">
                     <div class="flex-1">
-                        <h4 class="text-danger-dark font-bold mb-2">Account Restriction</h4>
+                        <h4 class="text-danger-dark font-semibold mb-2"><i class="fas fa-exclamation-triangle" style="margin-right: 0.5rem;"></i> Account Restriction</h4>
                         <p class="text-sm text-danger-dark m-0">Placing an account on the blacklist prevents them from submitting future booking requests. Use this protocol for fraudulent activity or severe policy violations.</p>
                         
                         <div class="form-group-pro" style="margin-top: 1rem; margin-bottom: 0;">
                             <label class="form-label text-danger-dark">Reason for Restriction / Restoration <span class="text-danger">*</span></label>
-                            <textarea id="blacklistReason" class="form-control" rows="2" placeholder="e.g. Cancelled 3 times without notice..." style="border-color: #fca5a5;"></textarea>
+                            <textarea id="blacklistReason" class="form-control" rows="3" placeholder="e.g. Cancelled 3 times without notice..." style="border-color: #fca5a5;"></textarea>
                         </div>
                     </div>
-                    <button type="button" class="btn-primary bg-danger border-none" id="blacklistBtn" onclick="window.toggleBlacklist()">Execute Block</button>
+                    <div style="margin-top: auto; text-align: right; padding-top: 1.5rem;">
+                        <button type="button" class="btn-primary bg-danger border-none" id="blacklistBtn" onclick="window.toggleBlacklist()">Execute Block</button>
+                    </div>
                 </div>
             </div>
         </div>

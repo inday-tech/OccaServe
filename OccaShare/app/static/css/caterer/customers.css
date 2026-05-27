@@ -8,80 +8,17 @@ body, input, select, textarea, button, h1, h2, h3, h4, p, span {
     font-family: var(--font-family, inherit);
 }
 
-.customers-page-container {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 1.5rem;
+
+
+
+
+.stat-info-pro {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    width: 100%;
 }
 
-/* Page Header overrides to match standard */
-.page-header-premium {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    margin-bottom: 2rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #e2e8f0;
-}
-.page-title-pro {
-    font-size: 2rem;
-    font-weight: 800;
-    color: #0f172a;
-    margin-bottom: 0.25rem;
-}
-.page-subtitle-pro {
-    color: #64748b;
-    font-size: 0.95rem;
-    margin: 0;
-}
-
-/* Stats Grid - Matching Admin Dashboard Diamond Standard */
-.stats-grid-pro {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 2.5rem;
-}
-.stats-card {
-    display: flex;
-    align-items: center;
-    gap: 1.25rem;
-    padding: 1.5rem;
-    transition: transform 0.2s, box-shadow 0.2s;
-    border: 1px solid #e2e8f0;
-}
-.stats-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05);
-}
-.stat-icon-box {
-    width: 56px;
-    height: 56px;
-    border-radius: calc(var(--border-radius) * 0.8);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    flex-shrink: 0;
-}
-.bg-primary-light {
-    background: rgba(var(--primary-color-rgb), 0.1);
-}
-.stat-label-pro {
-    display: block;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    font-weight: 700;
-    color: #64748b;
-    margin-bottom: 4px;
-}
-.stat-value-pro {
-    font-size: 1.75rem;
-    font-weight: 800;
-    color: #0f172a;
-    margin: 0;
-    line-height: 1;
-}
 
 /* Table Container */
 .table-card-container {
@@ -402,7 +339,6 @@ textarea.form-control {
 }
 @media (max-width: 768px) {
     .customers-page-container { padding: 1rem; }
-    .page-header-premium { flex-direction: column; align-items: flex-start; gap: 1rem; }
     .card-header-flex { flex-direction: column; align-items: stretch; gap: 1rem; }
     .card-actions-flex { flex-direction: column; align-items: stretch; }
 }

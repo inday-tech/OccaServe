@@ -246,10 +246,10 @@ window.openCustomerProfile = async function(id) {
                     <div style="position: absolute; left: -6px; top: 20px; width: 10px; height: 10px; border-radius: 50%; background: var(--primary-color);"></div>
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
-                            <span style="font-size: 0.75rem; font-weight: 700; color: #64748b;">${new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                            <div style="font-weight: 800; font-size: 1rem; color: #0f172a; margin-top: 2px;">${item.package_name}</div>
+                            <span style="font-size: 0.75rem; font-weight: 600; color: #64748b;">${new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                            <div style="font-weight: 600; font-size: 1rem; color: #0f172a; margin-top: 2px;">${item.package_name}</div>
                         </div>
-                        <div style="font-weight: 900; color: var(--primary-color);">₱${item.amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                        <div style="font-weight: 700; color: var(--primary-color);">₱${item.amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
                     </div>
                 </div>
             `).join('');
