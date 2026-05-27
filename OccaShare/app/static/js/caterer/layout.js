@@ -609,7 +609,7 @@ window.apiAction = async function(url, options = {}, btn = null) {
 
         const data = await response.json();
         if (response.ok) {
-            if (window.showToast) window.showToast(data.message || "Action completed", "success");
+            if (window.showToast && !options.muteToast) window.showToast(data.message || "Action completed", "success");
             return data;
         } else {
             let errorMsg = "Request failed";

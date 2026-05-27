@@ -59,7 +59,7 @@ function showNotification(title, message, type = 'info') {
     const notification = document.createElement('div');
     notification.style.cssText = `
         position: fixed;
-        bottom: 20px;
+        bottom: 40px;
         right: 20px;
         padding: 1rem 1.5rem;
         border-radius: 8px;
@@ -99,37 +99,41 @@ document.addEventListener('DOMContentLoaded', function () {
     initWebSocket();
     const calendarEl = document.getElementById('calendar');
     if (calendarEl) {
-        const initialView = window.innerWidth <= 768 ? 'listMonth' : 'dayGridMonth';
+        const initialView = 'dayGridMonth';
 
         const calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: initialView,
-            height: 'auto',
-            contentHeight: 'auto',
+            height: window.innerWidth <= 768 ? 450 : 700,
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',
                 right: 'dayGridMonth,timeGridWeek,listMonth'
+            },
+            datesSet: function (info) {
+                const titleEl = document.querySelector('.fc-toolbar-title');
+                if (titleEl) {
+                    const d = info.view.currentStart;
+                    const year = d.getFullYear();
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const currentMonth = `${year}-${month}`;
+                    
+                    titleEl.innerHTML = `
+                        <input type="month" id="calMonthPicker" value="${currentMonth}" 
+                            style="border: none; background: transparent; font-size: inherit; font-weight: inherit; color: inherit; cursor: pointer; outline: none; font-family: inherit; width: 100%;"
+                            onchange="if(window.fullCalendarInstance) window.fullCalendarInstance.gotoDate(this.value + '-01')">
+                    `;
+                }
             },
             themeSystem: 'standard',
             events: '/caterer/api/events',
             editable: false,
             selectable: true,
             selectConstraint: 'businessHours',
+            dayMaxEvents: 3,
             selectAllow: function (selectInfo) {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 return selectInfo.start >= today;
-            },
-            eventContent: function (arg) {
-                const props = arg.event.extendedProps;
-                const isBlocked = props.type === 'BLOCKED';
-                const iconClass = isBlocked ? 'fas fa-ban' : 'fas fa-utensils';
-                return {
-                    html: `<div class="custom-calendar-event" style="background-color: ${arg.event.backgroundColor}; color: ${arg.event.textColor || '#fff'};" title="${arg.event.title}">
-                            <i class="${iconClass}" style="font-size: 0.7rem;"></i>
-                            <span>${arg.event.title}</span>
-                        </div>`
-                };
             },
             eventClick: function (info) {
                 const today = new Date();
@@ -163,8 +167,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 openManualBookingModal();
             },
-            height: 'auto',
-            dayMaxEvents: 3,
             eventDidMount: function (info) {
                 info.el.setAttribute('role', 'button');
                 info.el.setAttribute('tabindex', '0');
@@ -789,7 +791,8 @@ async function submitManualEvent(e) {
 
         const res = await window.apiAction('/caterer/api/bookings/manual', {
             method: 'POST',
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            muteToast: true
         }, btn);
 
         if (res) {
@@ -1222,7 +1225,8 @@ async function updateCapacitySettings() {
             body: JSON.stringify({
                 max_bookings_per_day: parseInt(maxBookings),
                 auto_block_enabled: autoBlock
-            })
+            }),
+            muteToast: true
         });
         if (res) {
             showNotification("Success", "Capacity settings updated successfully.", "success");
@@ -1237,7 +1241,8 @@ async function setReminder() {
 
     if (window.apiAction) {
         const res = await window.apiAction(`/caterer/api/bookings/${bookingId}/reminders`, {
-            method: 'POST'
+            method: 'POST',
+            muteToast: true
         });
         if (res) {
             showNotification("Success", "Reminder alert has been set for this booking.", "success");

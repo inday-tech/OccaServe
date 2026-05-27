@@ -777,7 +777,7 @@
                 box-shadow: 20px 0 25px -5px rgba(0,0,0,0.1);
             }
             .content-wrapper { margin-left: 0 !important; }
-            .sidebar-collapse-btn { display: none !important; }
+            .sidebar-collapse-btn { display: flex !important; right: 10px; }
             
             .sidebar-overlay {
                 position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5);
@@ -813,7 +813,7 @@
 
         /* SIDEBAR FOOTER & LOGOUT */
         .sidebar-footer {
-            padding: 1rem 0.75rem;
+            padding: 1rem 0.75rem 2rem 0.75rem; /* Added extra bottom padding */
             border-top: 1px solid #f1f5f9;
             flex-shrink: 0;
             background: #fff;
@@ -857,7 +857,7 @@
                     <span class="brand-name"><span style="color: #1e293b;">Occa</span><span style="color: #FF7B54;">Serve</span></span>
                     <span class="brand-tagline">Business Dashboard</span>
                 </div>
-                <button class="sidebar-collapse-btn" id="sidebarToggle" onclick="toggleSidebar()" aria-label="Toggle Sidebar">
+                <button class="sidebar-collapse-btn" id="sidebarToggle" onclick="toggleSidebar()" aria-label="Toggle Sidebar" style="background: transparent; color: #64748b; font-size: 0.9rem;">
                     <i class="fas fa-chevron-left"></i>
                 </button>
             </div>
@@ -1180,7 +1180,7 @@
             userId: {{ user.id if user else 'null' }}
         };
     </script>
-    <script src="{{ url_for('static', path='/js/caterer/layout.js') }}?v=1.8"></script>
+    <script src="{{ url_for('static', path='/js/caterer/layout.js') }}?v={{ range(1, 10000) | random }}"></script>
     <script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v=1.5"></script>
 
     <script>
