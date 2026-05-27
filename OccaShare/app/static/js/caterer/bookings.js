@@ -1,6 +1,5 @@
 let currentBookingId = null;
 let currentEventDate = null;
-let currentEventDate = null;
 let currentPage = 1;
 const ROWS_PER_PAGE = 5;
 let filteredRows = [];
@@ -337,7 +336,7 @@ function filterBookings() {
     filteredRows = allRows.filter(function(row) {
         const rawStatus = row.dataset.status || '';
         const payStatus = row.dataset.paymentStatus || '';
-        const rowText = row.innerText.toLowerCase();
+        const rowText = row.textContent.toLowerCase();
         
         const matchesSearch = rowText.indexOf(searchInput) > -1;
         
@@ -919,7 +918,6 @@ function showBookingDetails(btn) {
     var pLabels = { 'paid': 'Fully Paid', 'deposit_paid': 'Downpayment Paid', 'proof_submitted': 'Proof Sent', 'balance_proof_submitted': 'Balance Proof Sent', 'pending': 'Payment Pending' };
     if (pStatusEl) {
         pStatusEl.innerText = pLabels[data.paymentStatus] || data.paymentStatus;
-        else pStatusEl.classList.add('ps-badge-cancelled');
     }
 
     // Handle Checklist Display Logic

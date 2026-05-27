@@ -102,6 +102,56 @@
 
     .mtab-pane-pro { display: none; }
     .mtab-pane-pro.active { display: block; }
+
+    /* Responsive Overrides for Bookings Page */
+    .b-table-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .header-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+    }
+    .process-legend-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        align-items: center;
+    }
+    
+    @media (max-width: 768px) {
+        .b-table-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .header-controls {
+            width: 100%;
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .header-controls .filter-wrapper, 
+        .header-controls select, 
+        .header-controls .action-dropdown-container,
+        .header-controls button {
+            width: 100%;
+            justify-content: center;
+        }
+        .process-legend-container {
+            gap: 0.75rem !important;
+            justify-content: flex-start;
+        }
+        .process-legend-container > div {
+            flex: 1 1 100%;
+            border-right: none !important;
+            padding-right: 0 !important;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -113,6 +163,17 @@
         <p>Review, track, and manage all your customer event reservations in one place.</p>
     </div>
 </div>
+
+<!-- Diagnostics Error Catcher -->
+<script>
+    window.addEventListener('error', function(e) {
+        if (e.filename && e.filename.includes('bookings.js')) {
+            alert('BOOKINGS.JS ERROR: ' + e.message + ' at line ' + e.lineno);
+        } else if (e.message && e.message.includes('toggleBookingExportMenu')) {
+            alert('ACTION ERROR: Function not found. Bookings.js likely failed to load.');
+        }
+    });
+</script>
 
 <div class="kpi-grid-clean" style="margin-bottom: var(--space-lg);">
     <div class="kpi-card-clean">
@@ -223,7 +284,7 @@
 
 
 <!-- Process Legend -->
-<div class="process-legend-container animate-up delay-2" style="display: flex; gap: 1.5rem; margin-bottom: 1.5rem; padding: 1rem; background: #f8fafc; border-radius: var(--border-radius); border: 1px solid #e2e8f0; align-items: center;">
+<div class="process-legend-container animate-up delay-2" style="margin-bottom: 1.5rem; padding: 1rem; background: #f8fafc; border-radius: var(--border-radius); border: 1px solid #e2e8f0;">
     <div style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; border-right: 2px solid #e2e8f0; padding-right: 1.5rem;">Process Guide</div>
     <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #475569;">
         <div style="width: 12px; height: 12px; background: #ef4444; border-radius: 50%; box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2); animation: pulse 2s infinite;"></div>
@@ -253,14 +314,14 @@
                 <select class="filter-select-pro" id="statusFilter" onchange="filterBookings()">
                     <option value="">All Status</option>
                     <option value="action_required" style="font-weight:800; color:var(--primary-color);">🔥 Action Required</option>
-                    <option value="pending">Pending Review</option>
-                    <option value="pending_quotation">Draft Quotation</option>
-                    <option value="awaiting_caterer">Needs Signature</option>
-                    <option value="awaiting_payment">Awaiting Payment</option>
+                    <option value="pending_quotation">Draft</option>
+                    <option value="awaiting_caterer">To Sign</option>
+                    <option value="pending">Pending Pay</option>
+                    <option value="awaiting_payment">Pending Payment</option>
                     <option value="confirmed">Confirmed</option>
                     <option value="preparing">Preparation</option>
-                    <option value="on_the_way">In Transit</option>
-                    <option value="in_progress">Ongoing / Setup</option>
+                    <option value="on_the_way">Ready For Delivery</option>
+                    <option value="in_progress">In Progress</option>
                     <option value="completed">Completed</option>
                     <option value="cancelled">Cancelled</option>
                 </select>
@@ -1247,5 +1308,5 @@
 
 {% block extra_js %}
 <script src="{{ url_for('static', path='/js/auth/location_data.js') }}"></script>
-<script src="{{ url_for('static', path='/js/caterer/bookings.js') }}?v=3.4"></script>
+<script src="{{ url_for('static', path='/js/caterer/bookings.js') }}?v={{ range(10000, 99999) | random }}"></script>
 {% endblock %}
