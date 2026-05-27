@@ -898,9 +898,7 @@ async function archivePackage(id) {
     };
 
     if (window.showConfirm) {
-        window.showConfirm('Are you sure you want to archive this package? It will be hidden from your offerings.', doArchive, 'Archive Package?');
-    } else {
-        if (confirm('Archive this package?')) doArchive();
+        window.showArchiveConfirm('this package', 'Linked bookings will retain their records, but it will be hidden from your active offerings.', doArchive);
     }
 }
 

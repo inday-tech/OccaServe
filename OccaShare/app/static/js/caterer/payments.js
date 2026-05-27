@@ -525,32 +525,38 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     
     window.archivePayment = function(bookingId) {
-        const row = allRows.find(r => r.querySelector('.bk-id').textContent.trim() === `BK-${bookingId}`);
-        const displayId = row ? row.querySelector('.payment-id').textContent.trim() : `PAY-${bookingId}`;
-        
-        window.showConfirm(`Archive payment <strong>${displayId}</strong>?<br><br>This will move the payment record to archives. You can still view it in the Archives section.`, function() {
+        const row = document.getElementById('payment-row-' + bookingId);
+        const displayId = 'BK-' + bookingId;
+
+        window.showArchiveConfirm('Payment ' + displayId, 'This will move the payment record to archives. You can still view it in the Archives section.', function() {
             if (window.apiAction) {
                 window.apiAction(`/caterer/bookings/${bookingId}/archive`, { method: "POST" })
                 .then(res => {
-                    if (res.status === 'success' && row) {
-                        refreshPaymentSummary(); // Immediate refresh
-                        row.classList.add('fade-out-archive');
-                        setTimeout(() => {
-                            row.remove();
-                            const total = document.getElementById('totalEntries');
-                            if (total) total.innerText = parseInt(total.innerText) - 1;
-                        }, 500);
+                    if (res.status === 'success' || res.success) {
+                        if (row) {
+                            if (typeof refreshPaymentSummary === 'function') refreshPaymentSummary();
+                            row.classList.add('fade-out-archive');
+                            setTimeout(() => { 
+                                row.remove(); 
+                                const total = document.getElementById('totalEntries');
+                                if (total) total.innerText = parseInt(total.innerText) - 1;
+                            }, 400);
+                        } else {
+                            location.reload();
+                        }
+                    } else {
+                        if (window.showError) window.showError(res.error || 'Failed to archive payment');
                     }
                 })
                 .catch(err => console.error("Payment Archival Error:", err));
             } else {
-                const f = document.createElement('form'); 
-                f.method = 'POST'; 
+                const f = document.createElement('form');
+                f.method = 'POST';
                 f.action = `/caterer/bookings/${bookingId}/archive?next=/caterer/payments`; 
-                document.body.appendChild(f); 
+                document.body.appendChild(f);
                 f.submit();
             }
-        }, "Archive Payment", "Yes, Archive");
+        });
     };
 
     // Real-time Summary Polling

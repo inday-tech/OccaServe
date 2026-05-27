@@ -1181,7 +1181,7 @@
         };
     </script>
     <script src="{{ url_for('static', path='/js/caterer/layout.js') }}?v={{ range(1, 10000) | random }}"></script>
-    <script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v=1.5"></script>
+    <script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v={{ range(1, 10000) | random }}"></script>
 
     <script>
         function toggleSidebar() {
@@ -1281,6 +1281,53 @@
     {% endif %}
 
     {% block extra_body %}{% endblock %}
+    <script>
+        // Global Elite Archive Modal
+        window.showArchiveConfirm = function(itemName, subtitle, onConfirm) {
+            let overlay = document.getElementById('globalArchiveModalOverlay');
+            if (overlay) { overlay.remove(); }
+
+            const html = `
+            <div id="globalArchiveModalOverlay" class="occ-modal-overlay active" style="z-index: 9999; animation: fadeIn 0.2s ease-out;">
+                <div class="occ-modal-box sz-sm occ-content-pop" style="font-family: 'Poppins', sans-serif; border-radius: 12px; overflow: hidden; max-width: 450px; width: 100%; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);">
+                    <div class="occ-modal-header" style="background: #ef4444; padding: 1.5rem; color: white !important; display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <h3 class="occ-modal-title" style="margin: 0; font-size: 1.25rem; font-weight: 700; color: white !important;">Archive Item</h3>
+                            <div class="occ-modal-subtitle" style="font-size: 0.85rem; opacity: 0.9; margin-top: 0.25rem; color: white !important;">Confirming database removal.</div>
+                        </div>
+                        <button onclick="document.getElementById('globalArchiveModalOverlay').remove()" class="occ-modal-close" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="compact-body" style="padding: 1.5rem; background: white;">
+                        <div style="display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1rem; padding: 1rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;">
+                            <div style="color: #ef4444; font-size: 1.5rem;"><i class="fas fa-exclamation-triangle"></i></div>
+                            <div>
+                                <p style="margin: 0; color: #7f1d1d; font-size: 0.9rem;">
+                                    Archive <strong id="globalArchiveItemName"></strong>? It will no longer appear in your active listings.
+                                </p>
+                            </div>
+                        </div>
+                        <p id="globalArchiveSubtitle" style="font-size: 0.8rem; color: #64748b; line-height: 1.5; margin: 0;"></p>
+                    </div>
+                    <div class="occ-modal-footer" style="padding: 1.25rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
+                        <button type="button" class="btn-secondary" onclick="document.getElementById('globalArchiveModalOverlay').remove()" style="background: #e2e8f0; color: #475569; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 700; cursor: pointer; font-family: 'Poppins', sans-serif;">Cancel</button>
+                        <button type="button" class="btn-primary" id="globalArchiveConfirmBtn" style="background: #ef4444; border-color: #ef4444; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 700; font-family: 'Poppins', sans-serif;">Archive Now</button>
+                    </div>
+                </div>
+            </div>`;
+            document.body.insertAdjacentHTML('beforeend', html);
+            let newOverlay = document.getElementById('globalArchiveModalOverlay');
+
+            document.getElementById('globalArchiveItemName').innerHTML = itemName;
+            document.getElementById('globalArchiveSubtitle').innerHTML = subtitle;
+
+            document.getElementById('globalArchiveConfirmBtn').onclick = function() {
+                newOverlay.remove();
+                if (onConfirm) onConfirm();
+            };
+        };
+    </script>
     {% block extra_js %}{% endblock %}
 
     <script>

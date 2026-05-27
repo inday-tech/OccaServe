@@ -588,14 +588,22 @@ function closeExpenseTracker() {
 
 function addExpenseRow() {
     var container = document.getElementById('actualExpenseRows');
-    var row = document.createElement('div');
-    row.className = 'd-flex gap-2 mb-2 expense-item-row align-items-center';
-    row.style.background = '#fff';
-    row.style.padding = '0.5rem';
-    row.style.borderRadius = '0.5rem';
-    row.style.border = '1px solid #f1f5f9';
-    row.style.boxShadow = '0 1px 2px rgba(0,0,0,0.02)';
-    row.innerHTML = '<input type="text" class="form-control form-control-sm exp-name" placeholder="Item (e.g. Labor)" style="flex:2; border:none; background:transparent; font-weight:600; color:#334155;"><input type="number" class="form-control form-control-sm exp-amount" placeholder="0.00" min="0" oninput="calculateActualExpenses()" style="flex:1; border:none; background:transparent; font-weight:700; color:#0f172a; text-align:right;"><button type="button" class="btn btn-sm text-danger" onclick="this.parentElement.remove();calculateActualExpenses()" style="background:transparent; border:none;"><i class="fas fa-times"></i></button>';
+    var row = document.createElement('tr');
+    row.className = 'expense-item-row';
+    row.style.borderBottom = '1px solid #f1f5f9';
+    row.innerHTML = `
+        <td style="padding: 0.5rem 1rem;">
+            <input type="text" class="form-control form-control-sm exp-name" placeholder="Item (e.g. Labor)" style="width: 100%; border: none; background: transparent; font-weight: 600; color: #334155; padding: 0.25rem 0; box-shadow: none;">
+        </td>
+        <td style="padding: 0.5rem 1rem;">
+            <input type="number" class="form-control form-control-sm exp-amount" placeholder="0.00" min="0" oninput="calculateActualExpenses()" style="width: 100%; border: none; background: transparent; font-weight: 700; color: #0f172a; text-align: right; padding: 0.25rem 0; box-shadow: none;">
+        </td>
+        <td style="padding: 0.5rem; text-align: center;">
+            <button type="button" class="btn btn-sm text-danger" onclick="this.closest('tr').remove(); calculateActualExpenses()" style="background: transparent; border: none; padding: 0.25rem 0.5rem;">
+                <i class="fas fa-times"></i>
+            </button>
+        </td>
+    `;
     container.appendChild(row);
 }
 
@@ -1514,10 +1522,56 @@ function requestNewProof(bookingId) {
     );
 }
 
+if (typeof window.showArchiveConfirm !== 'function') {
+    window.showArchiveConfirm = function(itemName, subtitle, onConfirm) {
+        let overlay = document.getElementById('globalArchiveModalOverlay');
+        if (overlay) { overlay.remove(); }
+
+        const html = `
+        <div id="globalArchiveModalOverlay" class="occ-modal-overlay active" style="z-index: 9999; animation: fadeIn 0.2s ease-out;">
+            <div class="occ-modal-box sz-sm occ-content-pop" style="font-family: 'Poppins', sans-serif; border-radius: 12px; overflow: hidden; max-width: 450px; width: 100%; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);">
+                <div class="occ-modal-header" style="background: #ef4444; padding: 1.5rem; color: white !important; display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <h3 class="occ-modal-title" style="margin: 0; font-size: 1.25rem; font-weight: 700; color: white !important;">Archive Item</h3>
+                        <div class="occ-modal-subtitle" style="font-size: 0.85rem; opacity: 0.9; margin-top: 0.25rem; color: white !important;">Confirming database removal.</div>
+                    </div>
+                    <button onclick="document.getElementById('globalArchiveModalOverlay').remove()" class="occ-modal-close" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="compact-body" style="padding: 1.5rem; background: white;">
+                    <div style="display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1rem; padding: 1rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;">
+                        <div style="color: #ef4444; font-size: 1.5rem;"><i class="fas fa-exclamation-triangle"></i></div>
+                        <div>
+                            <p style="margin: 0; color: #7f1d1d; font-size: 0.9rem;">
+                                Archive <strong id="globalArchiveItemName"></strong>? It will no longer appear in your active listings.
+                            </p>
+                        </div>
+                    </div>
+                    <p id="globalArchiveSubtitle" style="font-size: 0.8rem; color: #64748b; line-height: 1.5; margin: 0;"></p>
+                </div>
+                <div class="occ-modal-footer" style="padding: 1.25rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
+                    <button type="button" class="btn-secondary" onclick="document.getElementById('globalArchiveModalOverlay').remove()" style="background: #e2e8f0; color: #475569; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 700; cursor: pointer; font-family: 'Poppins', sans-serif;">Cancel</button>
+                    <button type="button" class="btn-primary" id="globalArchiveConfirmBtn" style="background: #ef4444; border-color: #ef4444; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 700; font-family: 'Poppins', sans-serif;">Archive Now</button>
+                </div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+        let newOverlay = document.getElementById('globalArchiveModalOverlay');
+
+        document.getElementById('globalArchiveItemName').innerHTML = itemName;
+        document.getElementById('globalArchiveSubtitle').innerHTML = subtitle;
+
+        document.getElementById('globalArchiveConfirmBtn').onclick = function() {
+            newOverlay.remove();
+            if (onConfirm) onConfirm();
+        };
+    };
+}
+
 function confirmArchiveBooking(bookingId) {
-    window.showConfirm('Are you sure you want to archive this booking?',
-        async function() { await window.apiAction('/caterer/bookings/' + bookingId + '/archive', { method: 'POST' }); },
-        'Archive Booking?', 'Yes, Archive'
+    window.showArchiveConfirm('Booking #' + bookingId, 'This booking will be moved to the archives and can no longer be modified.',
+        async function() { await window.apiAction('/caterer/bookings/' + bookingId + '/archive', { method: 'POST' }); }
     );
 }
 
