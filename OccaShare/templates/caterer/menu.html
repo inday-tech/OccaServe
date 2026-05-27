@@ -4,7 +4,7 @@
 {% block title %}Menu Library - OccaShare Caterer{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/menu.css') }}?v=2.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/menu.css') }}?v={{ range(1, 10000) | random }}">
 {% endblock %}
 
 {% block content %}
@@ -43,7 +43,7 @@
     <div class="menu-item-card-premium" data-category="{{ item.category }}" data-name="{{ item.name|lower }}">
         <div class="item-visual-pro">
             {% if item.image_url %}
-                <img src="{{ item.image_url }}" alt="{{ item.name }}" class="item-img-pro">
+                <img src="{{ item.image_url }}" alt="{{ item.name }}" class="item-img-pro" onerror="this.outerHTML='<div class=\'item-img-placeholder\'><i class=\'fas fa-utensils\'></i></div>'">
             {% else %}
                 <div class="item-img-placeholder"><i class="fas fa-utensils"></i></div>
             {% endif %}
