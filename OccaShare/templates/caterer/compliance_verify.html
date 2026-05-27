@@ -3,11 +3,11 @@
 {% block title %}Audit Terminal: {{ target_user.first_name }} - OccaServe{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/compliance_verify.css') }}?v=1.2">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/compliance_verify.css') }}?v={{ range(10000000, 99999999) | random }}">
 {% endblock %}
 
 {% block content %}
-<div class="verify-audit-container">
+<div class="container-premium">
     <header class="verify-audit-header">
         <div class="header-main">
             <div class="breadcrumb-text">KYC & Compliance / Identity Audit</div>

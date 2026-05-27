@@ -365,55 +365,6 @@
     .kyc-section-header {
         padding: var(--space-md);
     }
-
-    /* Table → Card Layout */
-    .audit-review-table {
-        min-width: unset;
-    }
-
-    .audit-review-table thead {
-        display: none;
-    }
-
-    .audit-review-table tbody tr {
-        display: flex;
-        flex-direction: column;
-        padding: var(--space-md);
-        border-bottom: 1px solid var(--color-neutral-100);
-        gap: var(--space-sm);
-    }
-
-    .audit-review-table tbody tr:last-child {
-        border-bottom: none;
-    }
-
-    .audit-review-table td {
-        padding: 0;
-        border-bottom: none;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .kyc-card-label {
-        display: block;
-    }
-
-    /* Customer name larger on mobile card */
-    .kyc-user-name {
-        font-size: var(--text-base);
-    }
-
-    .kyc-user-email {
-        font-size: var(--text-sm);
-    }
-
-    /* Full-width action button on mobile */
-    .btn-review-kyc {
-        width: 100%;
-        justify-content: center;
-        margin-top: var(--space-sm);
-    }
 }
 
 /* ─── Small Mobile (≤480px) ─── */

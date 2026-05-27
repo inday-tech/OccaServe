@@ -3667,11 +3667,13 @@ async def view_compliance_queue(
     user: models.User = Depends(caterer_only)
 ):
     profile = user.caterer_profile
-    # Fetch all customers who have booked with this caterer
-    customers = db.query(models.User).join(models.Booking).filter(
+    # Fetch all customers who have booked with this caterer and have a pending KYC
+    customers = db.query(models.User).join(models.Booking).join(models.IdentityVerification).filter(
         models.Booking.caterer_id == profile.id,
         models.User.role == "customer",
-        models.User.is_archived == False
+        models.User.is_archived == False,
+        models.IdentityVerification.verification_status == "pending",
+        models.IdentityVerification.is_archived == False
     ).distinct().all()
 
     # KYC records & Bookings mapping
