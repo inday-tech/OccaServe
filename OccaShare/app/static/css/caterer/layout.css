@@ -1973,3 +1973,15 @@
         font-weight: 500;
         margin: 0;
     }
+
+    /* Mobile Header Dropdown Fix */
+    @media (max-width: 768px) {
+        .header-dropdown-wrapper .profile-dropdown {
+            position: fixed !important;
+            top: 70px !important; /* Position just below the header */
+            right: 10px !important;
+            width: calc(100vw - 20px) !important;
+            max-width: 360px !important;
+            z-index: 9999 !important;
+        }
+    }
