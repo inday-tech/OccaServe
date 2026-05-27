@@ -3,7 +3,7 @@
 {% block title %}Reviews - Caterer Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/reviews.css') }}?v=1.1">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/reviews.css') }}?v={{ range(10000000, 99999999) | random }}">
 {% endblock %}
 
 {% block content %}
@@ -61,45 +61,65 @@
         </div>
     </div>
 
-    <!-- Review Cards List -->
-    <div id="reviewsList" class="reviews-feed-vertical animate-up delay-4">
-        {% if reviews %}
-            {% for r in reviews %}
-            <div class="review-card-pro animate-up" data-id="{{ r.id }}">
-                <div class="reviewer-profile">
-                    <div class="reviewer-meta">
-                        <div class="reviewer-avatar">
-                            {{ r.user.first_name[0] }}{{ r.user.last_name[0] }}
-                        </div>
-                        <div class="reviewer-info-text">
-                            <h4 class="reviewer-name">{{ r.user.first_name }} {{ r.user.last_name }}</h4>
-                            <span class="review-date-badge"><i class="far fa-clock"></i> {{ r.created_at.strftime('%B %d, %Y') }}</span>
-                        </div>
-                    </div>
-                    <div class="verified-badge">
-                        <i class="fas fa-check-circle"></i> Verified Booking
-                    </div>
-                </div>
-
-                <div class="review-body-section">
-                    <div class="review-stars-row">
-                        <div class="stars-container">
-                            {% for _ in range(r.rating) %}<i class="fas fa-star"></i>{% endfor %}
-                            {% for _ in range(5 - r.rating) %}<i class="far fa-star"></i>{% endfor %}
-                        </div>
-                        <span class="rating-score-text">{{ r.rating }}.0 / 5.0</span>
-                    </div>
-                    <p class="review-comment-text">"{{ r.comment }}"</p>
-                </div>
-            </div>
-            {% endfor %}
-        {% else %}
-            <div class="empty-state-card">
-                <i class="fas fa-comment-slash"></i>
-                <h3>No Reviews Yet</h3>
-                <p>Build your reputation by completing bookings and inviting customers to share their experience.</p>
-            </div>
-        {% endif %}
+    <!-- Reviews Table -->
+    <div class="reviews-table-wrapper animate-up delay-4">
+        <table class="table-premium" id="reviewsTable">
+            <thead>
+                <tr>
+                    <th>Customer Details</th>
+                    <th>Rating Score</th>
+                    <th>Review Comment</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="reviewsList">
+                {% if reviews %}
+                    {% for r in reviews %}
+                    <tr class="review-row-pro animate-up" data-id="{{ r.id }}">
+                        <td>
+                            <div class="reviewer-meta">
+                                <div class="reviewer-avatar-sm">
+                                    {{ r.user.first_name[0] }}{{ r.user.last_name[0] }}
+                                </div>
+                                <div class="reviewer-info-text">
+                                    <h4 class="reviewer-name">{{ r.user.first_name }} {{ r.user.last_name }}</h4>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="stars-container-sm">
+                                {% for _ in range(r.rating) %}<i class="fas fa-star"></i>{% endfor %}
+                                {% for _ in range(5 - r.rating) %}<i class="far fa-star"></i>{% endfor %}
+                            </div>
+                            <span class="rating-score-text">{{ r.rating }}.0 / 5.0</span>
+                        </td>
+                        <td style="max-width: 400px;">
+                            <p class="review-comment-text-sm">"{{ r.comment }}"</p>
+                        </td>
+                        <td>
+                            <span class="review-date-badge">{{ r.created_at.strftime('%b %d, %Y') }}</span>
+                        </td>
+                        <td>
+                            <div class="verified-badge-sm">
+                                <i class="fas fa-check-circle"></i> Verified
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="5">
+                            <div class="empty-state-card">
+                                <i class="fas fa-comment-slash"></i>
+                                <h3>No Reviews Yet</h3>
+                                <p>Build your reputation by completing bookings and inviting customers to share their experience.</p>
+                            </div>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
     </div>
 
     <!-- Pagination (KYC Style) -->
@@ -124,7 +144,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let filteredItems = [];
     
     const reviewsList = document.getElementById('reviewsList');
-    const allItems = Array.from(reviewsList.querySelectorAll('.review-card-pro'));
+    const allItems = Array.from(reviewsList.querySelectorAll('.review-row-pro'));
     const searchInput = document.getElementById('reviewSearch');
     
     function updateDisplay() {
@@ -135,7 +155,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const currentItems = filteredItems.slice(start, end);
         currentItems.forEach(item => {
-            item.style.display = 'block';
+            item.style.display = 'table-row';
             item.classList.add('animate-up');
         });
         
@@ -169,7 +189,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const query = searchInput.value.toLowerCase();
         filteredItems = allItems.filter(item => {
             const name = item.querySelector('.reviewer-name').textContent.toLowerCase();
-            const text = item.querySelector('.review-comment').textContent.toLowerCase();
+            const text = item.querySelector('.review-comment-text-sm').textContent.toLowerCase();
             return name.includes(query) || text.includes(query);
         });
         
