@@ -59,6 +59,7 @@ def master_migration():
         # Users Table
         user_cols = [
             ("middle_name", "VARCHAR(255)"),
+            ("dob", "DATE"),
             ("is_kyc_complete", "BOOLEAN DEFAULT FALSE"),
             ("kyc_attempts", "INTEGER DEFAULT 0"),
             ("must_change_password", "BOOLEAN DEFAULT FALSE"),

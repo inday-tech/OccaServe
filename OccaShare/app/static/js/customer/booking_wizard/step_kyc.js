@@ -457,14 +457,32 @@ document.addEventListener('DOMContentLoaded', function () {
         ]
     };
 
+    // Normalize various ID type labels (server/frontend may use slightly different strings)
+    function normalizeIdType(rawType, data) {
+        let t = rawType || (data && (data.document_type_detected || data.id_type)) || '';
+        t = String(t).trim().toLowerCase();
+        if (!t) return 'PhilSys / PhilID';
+
+        if (t.includes('phil') || t.includes('philsys') || t.includes('philid') || t.includes('national id')) return 'PhilSys / PhilID';
+        if (t.includes('driver') || t.includes("driver's")) return "Driver's License";
+        if (t.includes('passport')) return 'Passport';
+        if (t.includes('umid')) return 'UMID';
+        // Fallback: return original casing if it matches a config key, else default to PhilSys
+        for (const key in ID_TYPE_CONFIG) {
+            if (key.toLowerCase() === t) return key;
+        }
+        return 'PhilSys / PhilID';
+    }
+
     function showOcrModal(data) {
         document.getElementById('ocr-loading').style.display = 'none';
 
         // Populate fields from extracted data
         const fields = data.fields || data || {};
         
-        // Detect ID Type
-        const idType = document.getElementById('id_type').value || data.document_type_detected || "PhilID (National ID)";
+        // Detect and normalize ID Type so it matches `ID_TYPE_CONFIG` keys
+        const rawIdType = (document.getElementById('id_type') && document.getElementById('id_type').value) || data.document_type_detected || data.id_type || '';
+        const idType = normalizeIdType(rawIdType, data);
         const configFields = ID_TYPE_CONFIG[idType] || ID_TYPE_CONFIG["PhilSys / PhilID"];
 
         // Set confidence bar
@@ -544,7 +562,8 @@ document.addEventListener('DOMContentLoaded', function () {
         setTimeout(() => { modal.style.display = 'none'; }, 350);
 
         // Get reviewed/edited values from dynamic modal inputs
-        const idType = document.getElementById('id_type').value || "PhilID (National ID)";
+        const rawIdType = document.getElementById('id_type').value || '';
+        const idType = normalizeIdType(rawIdType, window._ocrExtractedData);
         const configFields = ID_TYPE_CONFIG[idType] || ID_TYPE_CONFIG["PhilSys / PhilID"];
         
         let extracted = {};
@@ -807,6 +826,9 @@ document.addEventListener('DOMContentLoaded', function () {
     window.submitLiveness = async function () {
         document.getElementById('liveness-review').style.display = 'none';
         document.getElementById('step-processing').style.display = 'block';
+        document.getElementById('status-text').innerText = 'Verifying Biometrics...';
+        document.getElementById('status-text').style.color = '';
+        document.getElementById('status-subtext').innerText = 'Analyzing your face against the ID. This may take a few seconds.';
         updateStatusTracker(4);
 
         const formData = new FormData();
@@ -815,14 +837,9 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             const res = await fetch(`/api/bookings/${bookingId}/verify-full`, { method: 'POST', body: formData });
             if (res.ok) {
-                // Success: Switch to Waiting Screen
-                document.getElementById('step-processing').style.display = 'none';
-                document.getElementById('kyc-waiting-approval').style.display = 'block';
-
-                // Start Real-time listener
+                // Stay on the processing screen — polling will decide what to show next
+                // (liveness failure → retry banner, or passed → waiting for caterer)
                 initKycWebSocket();
-
-                // Fallback polling
                 startPolling();
             } else {
                 const data = await res.json();
@@ -848,7 +865,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     stopPolling();
                     if (ws) ws.close();
                     handleApproval(data);
-                } else if (data.status === 'rejected' || data.status === 'liveliness_failed') {
+                } else if (data.status === 'liveliness_failed') {
+                    stopPolling();
+                    if (ws) ws.close();
+                    handleLivenessFailure(data.reason || "Liveness check failed. Please try again.");
+                } else if (data.status === 'rejected') {
                     stopPolling();
                     if (ws) ws.close();
                     handleRejection(data.reason || "Verification rejected by caterer");
@@ -878,16 +899,33 @@ document.addEventListener('DOMContentLoaded', function () {
                     stopPolling();
                     handleApproval(data);
                 } else if (data.status === 'manual_review' || data.status === 'pending_manual_review') {
-                    // Stay in polling/waiting mode, but update UI
-                    document.getElementById('status-text').innerText = "Pending Review";
-                    document.getElementById('status-text').style.color = "#f59e0b";
-                    document.getElementById('status-subtext').innerText = "The caterer needs to perform a quick manual check of your identity documents.";
-
-                    // Initialize WebSocket if not already connected
+                    // Liveness passed — now show the waiting screen for caterer review
+                    stopPolling();
+                    document.getElementById('step-processing').style.display = 'none';
+                    document.getElementById('kyc-waiting-approval').style.display = 'block';
+                    // Keep WebSocket alive for real-time caterer approval notification
                     if (!ws) {
-                        initWebSocket(data.user_id);
+                        initKycWebSocket();
                     }
-                } else if (data.status === 'rejected' || data.status === 'blocked' || data.status === 'liveliness_failed') {
+                    // Resume polling at a slower rate just to catch approval/rejection
+                    pollingInterval = setInterval(async () => {
+                        try {
+                            const r2 = await fetch(`/api/bookings/${bookingId}/status`);
+                            const d2 = await r2.json();
+                            if (d2.status === 'approved' || d2.status === 'verified') {
+                                stopPolling();
+                                handleApproval(d2);
+                            } else if (d2.status === 'rejected' || d2.status === 'blocked') {
+                                stopPolling();
+                                handleRejection(d2.reason || "Verification rejected by caterer");
+                            }
+                        } catch (e) { console.error("Polling error (phase 2)", e); }
+                    }, 5000);
+                } else if (data.status === 'liveliness_failed') {
+                    // Liveness failed — show error immediately during liveness step
+                    stopPolling();
+                    handleLivenessFailure(data.reason || "Liveness check failed. Please try again.");
+                } else if (data.status === 'rejected' || data.status === 'blocked') {
                     stopPolling();
                     handleRejection(data.reason || "Verification failed");
                 }
@@ -924,16 +962,60 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function handleRejection(msg) {
-        document.getElementById('status-text').innerText = "Failed";
+        document.getElementById('kyc-waiting-approval').style.display = 'none';
+        document.getElementById('step-processing').style.display = 'block';
+        document.getElementById('status-text').innerText = "Verification Rejected";
         document.getElementById('status-text').style.color = "#ef4444";
         document.getElementById('status-subtext').innerText = msg;
 
+        // Clear any existing buttons inside step-processing to avoid duplicates on fast polling
+        const existingBtn = document.getElementById('step-processing').querySelector('.btn-retry-kyc');
+        if (existingBtn) existingBtn.remove();
+
         const btn = document.createElement('button');
-        btn.className = 'btn btn-primary';
+        btn.className = 'btn btn-primary btn-retry-kyc';
         btn.style.marginTop = '1rem';
-        btn.innerText = 'Retry';
+        btn.innerText = 'Retry Verification';
         btn.onclick = () => window.location.reload();
         document.getElementById('step-processing').appendChild(btn);
+    }
+
+    function handleLivenessFailure(msg) {
+        // Liveness failed: return user to selfie step so they can retry without losing ID data
+        document.getElementById('kyc-waiting-approval').style.display = 'none';
+        document.getElementById('step-processing').style.display = 'none';
+
+        // Show a friendly error banner inside the liveness review / scanner area
+        const livenessRetryBanner = document.getElementById('liveness-retry-banner');
+        if (livenessRetryBanner) {
+            livenessRetryBanner.style.display = 'block';
+            const msgEl = document.getElementById('liveness-retry-message');
+            if (msgEl) msgEl.innerText = msg;
+        } else {
+            // Fallback: show error modal and return to selfie step
+            if (window.showError) {
+                window.showError(msg, 'Liveness Check Failed');
+            } else {
+                alert('Liveness check failed: ' + msg);
+            }
+        }
+
+        // Reset KYC status back to pending_liveliness so the next submit works
+        fetch('/api/bookings/kyc/reset-liveness', { method: 'POST' }).catch(() => {});
+
+        // Return user to the selfie capture screen (not a full reload)
+        selfieFrames = [];
+        const gallery = document.getElementById('selfie-gallery');
+        if (gallery) gallery.innerHTML = '';
+        document.getElementById('liveness-review').style.display = 'none';
+        document.getElementById('scanner-container').style.display = 'block';
+        const startBtn = document.getElementById('btn-start-camera');
+        const beginBtn = document.getElementById('btn-begin-capture');
+        if (startBtn) startBtn.style.display = 'inline-block';
+        if (beginBtn) beginBtn.style.display = 'none';
+        const feedbackEl = document.getElementById('scan-feedback');
+        if (feedbackEl) feedbackEl.innerText = "Tap 'Start Camera' to begin";
+        updateStatusTracker(3);
     }
 
     let idStream = null;

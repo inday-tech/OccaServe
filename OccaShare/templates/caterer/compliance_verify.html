@@ -3,7 +3,7 @@
 {% block title %}Audit Terminal: {{ target_user.first_name }} - OccaServe{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/compliance_verify.css') }}?v=1.1">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/compliance_verify.css') }}?v=1.2">
 {% endblock %}
 
 {% block content %}
@@ -136,7 +136,7 @@
 
                             {% set id_type = verification.ocr_data.id_type or verification.verification_type %}
                             {% set config_keys = [] %}
-                            {% if id_type == 'PhilID (National ID)' %}
+                            {% if id_type in ['PhilID (National ID)', 'PhilSys / PhilID', 'philsys'] %}
                                 {% set config_keys = ['id_number', 'last_name', 'given_names', 'middle_name', 'date_of_birth', 'address'] %}
                             {% elif id_type == "Driver's License" %}
                                 {% set config_keys = ['last_name', 'first_name', 'middle_name', 'nationality', 'sex', 'date_of_birth', 'weight', 'height', 'address', 'license_number', 'expiration_date', 'agency_code', 'blood_type', 'eyes_color', 'restrictions', 'conditions'] %}
@@ -268,40 +268,40 @@
                 <div class="card-header-sm">
                     <i class="fas fa-gavel"></i> Auditor Action
                 </div>
-                
-                {% if verification.verification_status in ['pending', 'pending_manual_review'] %}
+
+                <!-- Current status context -->
+                <div style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--color-neutral-100);">
+                    <span style="font-size:0.7rem; font-weight:700; color:var(--color-neutral-500); text-transform:uppercase;">Current Status</span>
+                    <div style="margin-top:4px;">
+                        {% set vs = verification.verification_status|lower %}
+                        {% if vs in ['verified', 'approved'] %}
+                            <span style="background:#d1fae5;color:#065f46;padding:3px 10px;border-radius:20px;font-size:0.75rem;font-weight:800;">✅ {{ verification.verification_status|upper }}</span>
+                        {% elif vs in ['rejected', 'blocked'] %}
+                            <span style="background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:20px;font-size:0.75rem;font-weight:800;">❌ {{ verification.verification_status|upper }}</span>
+                        {% elif vs in ['liveliness_failed', 'failed'] %}
+                            <span style="background:#fff7ed;color:#c2410c;padding:3px 10px;border-radius:20px;font-size:0.75rem;font-weight:800;">⚠️ {{ verification.verification_status|upper }}</span>
+                        {% else %}
+                            <span style="background:#fef9c3;color:#854d0e;padding:3px 10px;border-radius:20px;font-size:0.75rem;font-weight:800;">🕐 {{ verification.verification_status|upper }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+
                 <form id="auditDecisionForm" action="/caterer/compliance/{{ target_user.id }}/verify" method="POST">
                     <div class="form-group-pro">
                         <label>Auditor's Notes</label>
-                        <textarea name="reason" id="auditNotes" placeholder="State the reason for approval or rejection..."></textarea>
+                        <textarea name="reason" id="auditNotes" placeholder="State the reason for approval or rejection...">{% if verification.failure_reason %}{{ verification.failure_reason }}{% endif %}</textarea>
                     </div>
 
                     <div class="decision-buttons">
                         <button type="button" class="btn-approve-pro" onclick="handleAudit('approve')">
-                            <i class="fas fa-check-circle"></i> Approve Customer
+                            <i class="fas fa-check-circle"></i> Verified
                         </button>
                         <button type="button" class="btn-reject-pro" onclick="handleAudit('reject')">
-                            <i class="fas fa-times-circle"></i> Reject Identity
+                            <i class="fas fa-times-circle"></i> Rejected
                         </button>
                     </div>
                     <input type="hidden" name="action" id="auditActionInput">
                 </form>
-                {% else %}
-                <div class="audit-status-result status-{{ verification.verification_status|lower }}">
-                    <div class="status-icon">
-                        <i class="fas {{ 'fa-check-circle' if verification.verification_status in ['approved', 'verified'] else 'fa-times-circle' }}"></i>
-                    </div>
-                    <div class="status-info">
-                        <h3>Identity {{ verification.verification_status|upper }}</h3>
-                        <p>Action completed on {{ verification.updated_at.strftime('%b %d, %Y') if verification.updated_at else 'Recently' }}</p>
-                        {% if verification.failure_reason %}
-                        <div class="reject-reason-box">
-                            <strong>Reason:</strong> {{ verification.failure_reason }}
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-                {% endif %}
             </div>
         </div>
     </div>
@@ -311,16 +311,16 @@
 {% block extra_js %}
 <script>
     function handleAudit(action) {
-        const title = action === 'approve' ? 'Approve Identity?' : 'Reject Identity?';
+        const title = action === 'approve' ? 'Mark as Verified?' : 'Mark as Rejected?';
         const msg = action === 'approve' 
-            ? `Are you sure you want to <strong>APPROVE</strong> this customer? This will allow them to proceed with their bookings.`
-            : `Are you sure you want to <strong>REJECT</strong> this identity? The customer will be notified and may need to resubmit documents.`;
+            ? `Are you sure you want to mark this customer as <strong>VERIFIED</strong>? This will allow them to proceed with their bookings.`
+            : `Are you sure you want to mark this identity as <strong>REJECTED</strong>? The customer will be notified and may need to resubmit documents.`;
         
         window.showConfirm(msg, () => {
             const form = document.getElementById('auditDecisionForm');
             document.getElementById('auditActionInput').value = action;
             form.submit();
-        }, title, action === 'approve' ? 'Yes, Approve' : 'Yes, Reject');
+        }, title, action === 'approve' ? 'Yes, Verified' : 'Yes, Rejected');
     }
 </script>
 {% endblock %}

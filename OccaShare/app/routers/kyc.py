@@ -290,13 +290,15 @@ async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, ful
         
         print(f"[KYC BACKGROUND] Verification Service result: {result.get('status')}")
         
-        # Set status based on verify_identity_v2 output
-        if result["status"] == "liveliness_failed":
+        # Route based on result:
+        # - liveliness_failed → set status back to 'liveliness_failed' so customer can retry
+        # - anything else (matched / rejected by OCR) → pending_manual_review for caterer audit
+        if result.get("status") == "liveliness_failed":
             kyc_record.verification_status = "liveliness_failed"
+            print(f"[KYC BACKGROUND] Liveness failed. Setting status to 'liveliness_failed' so customer can retry.")
         else:
             kyc_record.verification_status = "pending_manual_review"
-
-        print(f"[KYC BACKGROUND] AI result was '{result.get('status')}', setting status to '{kyc_record.verification_status}' for caterer decision.")
+            print(f"[KYC BACKGROUND] Liveness passed. Setting status to 'pending_manual_review' for caterer review.")
 
         kyc_record.fraud_score = result["fraud_score"]
         kyc_record.match_score = result.get("face_match_confidence", 0.0)
@@ -349,6 +351,21 @@ async def reset_kyc_status(
     if kyc_record:
         kyc_record.verification_status = "pending"
         kyc_record.failure_reason = None
+        db.commit()
+    return {"success": True}
+
+@router.post("/kyc/reset-liveness")
+async def reset_liveness_status(
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """Resets KYC status back to pending_liveliness so the customer can retake selfies.
+    Called automatically by the frontend when liveness fails, before showing the retry UI."""
+    kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).first()
+    if kyc_record and kyc_record.verification_status == "liveliness_failed":
+        kyc_record.verification_status = "pending_liveliness"
+        kyc_record.failure_reason = None
+        kyc_record.liveness_status = None
         db.commit()
     return {"success": True}
 

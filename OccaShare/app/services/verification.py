@@ -443,23 +443,51 @@ class VerificationService:
         
         # Helper to get line after a keyword (more lenient)
         def get_after(keywords, lines_list, max_lines=2, fallback_to_any=False):
+            # All metadata keywords across different ID cards to prevent swallowing other fields
+            all_kws = [
+                "APELYIDO", "SURNAME", "LAST NAME", "LASTNAME", 
+                "MGA PANGALAN", "GIVEN NAMES", "FIRST NAME", "GIVEN NAME", "FIRSTNAME", "GIVEN",
+                "GITNANG APELYIDO", "MIDDLE NAME", "MID NAME", "MIDNAME", "MIDDLE",
+                "KAPANGANAKAN", "DATE OF BIRTH", "DATE OT BINTH", "DATE OF DOB", "BIRTH", "DOB",
+                "TRAHAN", "ADDRESS", "TIRAHAN", "ADDRES",
+                "SEX", "KASARIAN", "NATIONALITY", "CITIZENSHIP", 
+                "LICENSE", "PASSPORT", "UMID", "SSS"
+            ]
             for i, line in enumerate(lines_list):
                 if any(kw in line for kw in keywords):
                     for kw in keywords:
                         if kw in line:
                             rest = line.split(kw, 1)[1].strip()
                             if len(rest) > 2: 
-                                return rest
+                                # Truncate at the earliest occurrence of any OTHER metadata keyword
+                                other_kws = [k for k in all_kws if not any(x in k or k in x for x in keywords)]
+                                earliest_idx = len(rest)
+                                for okw in other_kws:
+                                    if okw in rest:
+                                        idx = rest.index(okw)
+                                        if idx < earliest_idx:
+                                            earliest_idx = idx
+                                rest = rest[:earliest_idx].strip()
+                                
+                                # Remove trailing/leading punctuation
+                                rest = re.sub(r'^[.:,\s"\'/-]+', '', rest)
+                                rest = re.sub(r'[.:,\s"\'/-]+$', '', rest)
+                                
+                                # Remove self-labels to get clean names/values
+                                rest = re.sub(r'(?i)MIDDLE\s*NAME|MIDDLE\s*NANIE|MIDNAME|GITNANG\s*APELYIDO|NAMTIES|NAMES|GIVEN|MGA|PANGALAN|FIRST|LAST|SURNAME|APELYIDO', '', rest).strip()
+                                
+                                if len(rest) > 2:
+                                    return rest
                     for j in range(1, max_lines + 1):
                         if i + j < len(lines_list):
                             val = lines_list[i+j].strip()
-                            if len(val) > 2 and not any(meta_kw in val for meta_kw in ["DATE", "VALID", "THRU", "EXPIR"]):
+                            if len(val) > 2 and not any(meta_kw in val for meta_kw in all_kws):
                                 return val
             
             # Fallback: Extract any substantial line if not found
             if fallback_to_any:
                 for line in lines_list:
-                    if len(line.strip()) > 3 and line.strip() not in keywords:
+                    if len(line.strip()) > 3 and not any(meta_kw in line.upper() for meta_kw in all_kws):
                         return line.strip()
             return ""
 
@@ -491,15 +519,25 @@ class VerificationService:
         lines = [l.strip() for l in clean.split('\n') if l.strip()]
         result = {"id_type": id_type, "full_name": "", "id_number": "", "date_of_birth": "", "address": "", "sex": ""}
         
-        if id_type == "PhilID (National ID)" or id_type == "philsys":
+        if id_type in ["PhilID (National ID)", "philsys", "PhilSys / PhilID", "PhilID"]:
             raw_id = get_match(r'(\d{4}-\d{4}-\d{4}-\d{4})', clean)
             if not raw_id:
                 raw_id = get_match(r'(\d{4}\s*\d{4}\s*\d{4}\s*\d{4})', clean)
             
             # Improved name extraction with aggressive fallbacks
             raw_last = get_after(["APELYIDO", "SURNAME", "LAST NAME"], lines, 1)
-            raw_given = get_after(["MGA PANGALAN", "GIVEN NAMES", "FIRST NAME", "GIVEN NAME"], lines, 1)
+            raw_given = get_after(["MGA PANGALAN", "GIVEN NAMES", "FIRST NAME", "GIVEN NAME", "GIVEN", "PANGALAN"], lines, 1)
             raw_mid = get_after(["GITNANG APELYIDO", "MIDDLE NAME", "MID NAME"], lines, 1)
+            
+            # Smart fallback for raw_last if it was misread as "L Name" or next to ID number
+            if not raw_last and raw_id:
+                id_idx = clean.find(raw_id)
+                if id_idx != -1:
+                    after_id = clean[id_idx + len(raw_id):].strip()
+                    # Skip noise and check first uppercase word immediately after ID number
+                    first_word_match = re.match(r'^([A-Z]{3,20})', re.sub(r'^[.:,\s"\'/-]+', '', after_id))
+                    if first_word_match:
+                        raw_last = first_word_match.group(1)
             
             # Aggressive fallback: extract names from text chunks
             text_chunks = extract_text_chunks(clean)
@@ -531,7 +569,7 @@ class VerificationService:
             raw_addr = get_after(["ADDRESS", "TIRAHAN", "ADDRES"], lines, 5)
             
             result.update({
-                "id_type": "philsys",
+                "id_type": "PhilSys / PhilID",
                 "id_number": self._calculate_field_confidence(raw_id, word_data),
                 "last_name": self._calculate_field_confidence(raw_last, word_data),
                 "given_names": self._calculate_field_confidence(raw_given, word_data),
@@ -1159,15 +1197,13 @@ class VerificationService:
                     elapsed = time.time() - start_time
                     print(f"[KYC DEBUG] Gemini OCR Succeeded in {elapsed:.2f}s")
                     
-                    # Clean up markdown formatting if Gemini ignored the JSON config
-                    clean_text = text.strip()
-                    if clean_text.startswith("```json"):
-                        clean_text = clean_text[7:]
-                    elif clean_text.startswith("```"):
-                        clean_text = clean_text[3:]
-                    if clean_text.endswith("```"):
-                        clean_text = clean_text[:-3]
-                    clean_text = clean_text.strip()
+                    # Robust JSON extraction using regex
+                    text = text.strip()
+                    match = re.search(r'\{.*\}', text, re.DOTALL)
+                    if match:
+                        clean_text = match.group(0)
+                    else:
+                        clean_text = text
                     
                     try:
                         return json.loads(clean_text)
@@ -1197,48 +1233,102 @@ class VerificationService:
         "PhilSys / PhilID": {
             "fields": ["last_name", "given_names", "middle_name", "id_number", "date_of_birth", "sex", "address", "blood_type", "nationality"],
             "prompt": (
-                "This is a Philippine National ID (PhilSys/PhilID). Extract ALL of the following fields. "
-                "Return a JSON object with these exact keys: "
-                "'document_type_detected', 'last_name', 'given_names', 'middle_name', 'id_number' (PhilSys Card Number or PCN, format: XXXX-XXXX-XXXX-XXXX), "
-                "'date_of_birth', 'sex', 'address', 'blood_type', 'nationality', "
-                "'face_visible' (boolean), 'confidence_score' (0-1). "
-                "If a field is not visible or unreadable, set its value to null."
+                "You are an expert OCR bot extracting data from a Philippine National ID (PhilSys/PhilID card). "
+                "CRITICAL RULES:\n"
+                "1. The PhilID card prints Tagalog/Filipino field labels alongside the actual values. "
+                "You MUST extract ONLY the actual data values, NOT the label text itself.\n"
+                "2. Tagalog labels to IGNORE (do NOT include in output): "
+                "'Apelyido', 'Last Name', 'Mga Pangalan', 'Given Names', 'Gitnang Apelyido', 'Middle Name', "
+                "'Petsa ng Kapanganakan', 'Date of Birth', 'Tirahan', 'Address', 'Kasarian', 'Sex', "
+                "'Dugo', 'Blood Type', 'Nasyonalidad', 'Nationality', 'Lugar ng Kapanganakan', "
+                "'NG KAPANGANAKAN', 'MGA PANGALAN', 'GITNANG APELYIDO', 'APELYIDO'.\n"
+                "3. The ID number (PCN) is a 16-digit number formatted as: XXXX-XXXX-XXXX-XXXX.\n"
+                "4. Date of birth format on the card is: Month DD YYYY (e.g. 'October 01 2003' or 'OCT 01 2003').\n"
+                "5. The address will contain a barangay, municipality/city, province, and 'PHILIPPINES' with a 4-digit postal code.\n"
+                "6. Extract ONLY the person's actual name parts — do NOT include any label words.\n\n"
+                "Return a FLAT JSON object with EXACTLY these keys:\n"
+                "\"document_type_detected\": \"PhilSys / PhilID\",\n"
+                "\"last_name\": \"surname only, e.g. CARAGAY\",\n"
+                "\"given_names\": \"first and other given names only, e.g. NAOMI\",\n"
+                "\"middle_name\": \"mother's maiden surname only, e.g. TRILLANA\",\n"
+                "\"id_number\": \"16-digit PCN formatted as XXXX-XXXX-XXXX-XXXX\",\n"
+                "\"date_of_birth\": \"MM/DD/YYYY format\",\n"
+                "\"sex\": \"MALE or FEMALE\",\n"
+                "\"address\": \"full residential address as printed\",\n"
+                "\"blood_type\": \"e.g. O+\",\n"
+                "\"nationality\": \"e.g. FILIPINO\",\n"
+                "\"face_visible\": true or false,\n"
+                "\"confidence_score\": 0.0 to 1.0\n"
+                "Set any field to null if genuinely not visible. Return ONLY the JSON object, no other text."
             )
         },
         "Driver's License": {
             "fields": ["last_name", "first_name", "middle_name", "nationality", "sex", "date_of_birth", "weight", "height", "address", "license_number", "expiration_date", "agency_code", "blood_type", "eyes_color", "restrictions", "conditions"],
             "prompt": (
-                "This is a Philippine Driver's License issued by LTO. Extract ALL of the following fields. "
-                "Return a JSON object with these exact keys: "
-                "'document_type_detected', 'last_name', 'first_name', 'middle_name', 'nationality', 'sex', "
-                "'date_of_birth', 'weight' (include kg), 'height' (include m), 'address', "
-                "'license_number' (format: X00-00-000000), 'expiration_date', 'agency_code', "
-                "'blood_type', 'eyes_color', 'restrictions', 'conditions', "
-                "'face_visible' (boolean), 'confidence_score' (0-1). "
-                "If a field is not visible or unreadable, set its value to null."
+                "You are an ID extraction bot. Extract details from this Philippine Driver's License. "
+                "Return a FLAT JSON object with EXACTLY these keys (do not add explanations to the keys, do not nest the JSON):\n"
+                "\"document_type_detected\": \"Driver's License\",\n"
+                "\"last_name\": \"...\",\n"
+                "\"first_name\": \"...\",\n"
+                "\"middle_name\": \"...\",\n"
+                "\"nationality\": \"...\",\n"
+                "\"sex\": \"...\",\n"
+                "\"date_of_birth\": \"...\",\n"
+                "\"weight\": \"...\",\n"
+                "\"height\": \"...\",\n"
+                "\"address\": \"...\",\n"
+                "\"license_number\": \"...\",\n"
+                "\"expiration_date\": \"...\",\n"
+                "\"agency_code\": \"...\",\n"
+                "\"blood_type\": \"...\",\n"
+                "\"eyes_color\": \"...\",\n"
+                "\"restrictions\": \"...\",\n"
+                "\"conditions\": \"...\",\n"
+                "\"face_visible\": true/false,\n"
+                "\"confidence_score\": 0.9\n"
+                "Set to null if not found. Only return the JSON object."
             )
         },
         "Passport": {
             "fields": ["type", "country_code", "passport_number", "last_name", "given_names", "middle_name", "date_of_birth", "nationality", "sex", "place_of_birth", "date_issued", "visa_until", "issuing_authority"],
             "prompt": (
-                "This is a Philippine Passport. Extract ALL of the following fields. "
-                "Return a JSON object with these exact keys: "
-                "'document_type_detected', 'type', 'country_code', 'passport_number', "
-                "'last_name', 'given_names', 'middle_name', 'date_of_birth', 'nationality', 'sex', "
-                "'place_of_birth', 'date_issued', 'visa_until', 'issuing_authority', "
-                "'face_visible' (boolean), 'confidence_score' (0-1). "
-                "If a field is not visible or unreadable, set its value to null."
+                "You are an ID extraction bot. Extract details from this Philippine Passport. "
+                "Return a FLAT JSON object with EXACTLY these keys (do not add explanations to the keys, do not nest the JSON):\n"
+                "\"document_type_detected\": \"Passport\",\n"
+                "\"type\": \"...\",\n"
+                "\"country_code\": \"...\",\n"
+                "\"passport_number\": \"...\",\n"
+                "\"last_name\": \"...\",\n"
+                "\"given_names\": \"...\",\n"
+                "\"middle_name\": \"...\",\n"
+                "\"date_of_birth\": \"...\",\n"
+                "\"nationality\": \"...\",\n"
+                "\"sex\": \"...\",\n"
+                "\"place_of_birth\": \"...\",\n"
+                "\"date_issued\": \"...\",\n"
+                "\"visa_until\": \"...\",\n"
+                "\"issuing_authority\": \"...\",\n"
+                "\"face_visible\": true/false,\n"
+                "\"confidence_score\": 0.9\n"
+                "Set to null if not found. Only return the JSON object."
             )
         },
         "UMID": {
             "fields": ["last_name", "given_names", "middle_name", "crn_number", "date_of_birth", "sex", "address"],
             "prompt": (
-                "This is a Philippine Unified Multi-Purpose ID (UMID). Extract ALL of the following fields. "
-                "Return a JSON object with these exact keys: "
-                "'document_type_detected', 'last_name', 'given_names', 'middle_name', 'crn_number' (Common Reference Number, format: XXXX-XXXXXXX-X), "
-                "'date_of_birth', 'sex', 'address', "
-                "'face_visible' (boolean), 'confidence_score' (0-1). "
-                "If a field is not visible or unreadable, set its value to null."
+                "You are an ID extraction bot. Extract details from this Philippine UMID. "
+                "Return a FLAT JSON object with EXACTLY these keys (do not add explanations to the keys, do not nest the JSON):\n"
+                "\"document_type_detected\": \"UMID\",\n"
+                "\"last_name\": \"...\",\n"
+                "\"given_names\": \"...\",\n"
+                "\"middle_name\": \"...\",\n"
+                "\"crn_number\": \"...\",\n"
+                "\"date_of_birth\": \"...\",\n"
+                "\"sex\": \"...\",\n"
+                "\"address\": \"...\",\n"
+                "\"face_visible\": true/false,\n"
+                "\"confidence_score\": 0.9\n"
+                "Set to null if not found. Only return the JSON object."
             )
         }
     }
@@ -1246,11 +1336,11 @@ class VerificationService:
     # Default prompt for any ID type not in the specific list
     DEFAULT_OCR_PROMPT = (
         "Extract data from this Philippine government ID image. "
-        "Return a JSON object with these keys: "
-        "'document_type_detected', 'last_name', 'given_names', 'middle_name', 'id_number', 'date_of_birth', "
-        "'sex', 'address', 'expiry_date', 'nationality', "
-        "'face_visible' (boolean), 'confidence_score' (0-1). "
-        "If a field is not visible or unreadable, set its value to null."
+        "Return a FLAT JSON object with these EXACT keys: "
+        "\"document_type_detected\", \"last_name\", \"given_names\", \"middle_name\", \"id_number\", \"date_of_birth\", "
+        "\"sex\", \"address\", \"expiry_date\", \"nationality\", "
+        "\"face_visible\" (boolean), \"confidence_score\" (number). "
+        "Set to null if not found. Do not nest the JSON."
     )
 
     def _get_id_type_ocr_prompt(self, id_type: str) -> str:
@@ -1267,6 +1357,101 @@ class VerificationService:
             return config["fields"]
         return ["full_name", "id_number", "date_of_birth", "sex", "address"]
 
+    # Tagalog labels that should NEVER appear in extracted name/value fields
+    PHILID_LABEL_NOISE = [
+        "APELYIDO", "LAST NAME", "MGA PANGALAN", "GIVEN NAMES", "GITNANG APELYIDO",
+        "MIDDLE NAME", "PETSA NG KAPANGANAKAN", "DATE OF BIRTH", "TIRAHAN", "ADDRESS",
+        "KASARIAN", "SEX", "DUGO", "BLOOD TYPE", "NASYONALIDAD", "NATIONALITY",
+        "LUGAR NG KAPANGANAKAN", "NG KAPANGANAKAN", "MGR PRNGALAN", "GINANG APELYITO",
+        "NG KANANGANAKAN", "DETE OF EIRTH", "PRNGALAN",
+    ]
+
+    def _strip_philid_label_noise(self, value: str) -> str:
+        """Remove any accidentally-included Tagalog label text from an extracted value."""
+        if not value or not isinstance(value, str):
+            return value
+        clean = value.upper()
+        for label in self.PHILID_LABEL_NOISE:
+            clean = clean.replace(label, "").strip()
+        # Also strip lone connector words left behind
+        for noise in ["NG ", " NG", "SA ", " SA"]:
+            if clean == noise.strip():
+                clean = ""
+        return clean.strip(" ,/-")
+
+    def _parse_philid_from_ocr_text(self, text: str) -> Dict[str, str]:
+        """Extracts fields from PhilSys / PhilID raw OCR text using label anchors."""
+        if not text:
+            return {}
+        
+        clean = " ".join(text.upper().split())
+        
+        # 1. Extract ID number (PCN)
+        id_number = ""
+        pcn_match = re.search(r'(\d{4}[-\s]\d{4}[-\s]\d{4}[-\s]\d{4})', clean)
+        if pcn_match:
+            id_number = pcn_match.group(1)
+        else:
+            mangled_pcn = re.search(r'(\d{4}[-\s]+\d{4}[-\s]*[-\s]+[-\s]*\d{2,4}[-\s]+\d{4})', clean)
+            if mangled_pcn:
+                id_number = mangled_pcn.group(1)
+            else:
+                digits_seq = re.search(r'(\d[\s-]*){12,16}', clean)
+                if digits_seq:
+                    id_number = digits_seq.group(0)
+
+        if id_number:
+            digits = re.sub(r'\D', '', id_number)
+            if len(digits) == 16:
+                id_number = f"{digits[0:4]}-{digits[4:8]}-{digits[8:12]}-{digits[12:16]}"
+            elif len(digits) >= 12:
+                parts = [digits[i:i+4] for i in range(0, len(digits), 4)]
+                id_number = "-".join(parts)
+                
+        # 2. Extract Fields using Anchor Sequences
+        last_name_anchors = r'(?:APELYIDO|APLEVIDC|APELYITO|SURNAME|LAST\s*NAME)'
+        given_names_anchors = r'(?:MGA\s*PANGALAN|MGR?\s*PRNGALAN|PRNGALAN|GIVEN\s*NAMES?|GIVEN)'
+        middle_name_anchors = r'(?:GITNANG\s*APELYIDO|GINANG\s*APELYITO|MIDDLE\s*NAMES?|MID\s*NAME)'
+        dob_anchors = r'(?:PETSA\s*NG\s*KAPANGANAKAN|NG\s*KANANGANAKAN|DATE\s*OF\s*BIRTH|DETE\s*OF\s*EIRTH|EIRTH|BIRTH)'
+        address_anchors = r'(?:TIRAHAN|ADDRESS)'
+        
+        parsed = {}
+        
+        # Last Name
+        last_name_match = re.search(last_name_anchors + r'\s*[:/.-]*\s*(.*?)\s*(?:' + given_names_anchors + '|' + middle_name_anchors + ')', clean)
+        if last_name_match:
+            parsed["last_name"] = self._strip_philid_label_noise(last_name_match.group(1).strip())
+            
+        # Given Names
+        given_names_match = re.search(given_names_anchors + r'\s*[:/.-]*\s*(.*?)\s*(?:' + middle_name_anchors + '|' + dob_anchors + ')', clean)
+        if given_names_match:
+            parsed["given_names"] = self._strip_philid_label_noise(given_names_match.group(1).strip())
+            parsed["first_name"] = parsed["given_names"]
+            
+        # Middle Name
+        middle_name_match = re.search(middle_name_anchors + r'\s*[:/.-]*\s*(.*?)\s*(?:' + dob_anchors + '|' + address_anchors + ')', clean)
+        if middle_name_match:
+            parsed["middle_name"] = self._strip_philid_label_noise(middle_name_match.group(1).strip())
+            
+        # Date of Birth
+        dob_match = re.search(dob_anchors + r'\s*[:/.-]*\s*(.*?)\s*(?:' + address_anchors + '|SEX|KASARIAN|DUGO|BLOOD)', clean)
+        if dob_match:
+            raw_dob = dob_match.group(1).strip()
+            raw_dob = re.sub(r'\b\d{3}\s+PHL\b', '', raw_dob).strip()
+            raw_dob = re.sub(r'\bPHL\b', '', raw_dob).strip()
+            parsed["date_of_birth"] = self._strip_philid_label_noise(raw_dob)
+            
+        # Address
+        address_match = re.search(address_anchors + r'\s*[:/.-]*\s*(.*)', clean)
+        if address_match:
+            parsed["address"] = self._strip_philid_label_noise(address_match.group(1).strip())
+            
+        if id_number:
+            parsed["id_number"] = id_number
+            
+        return parsed
+
+
     def _build_structured_ocr_data(self, gemini_data: dict, id_type: str, method: str = "gemini") -> dict:
         """Builds a structured ocr_data dict from Gemini/Tesseract results."""
         expected_fields = self._get_id_type_fields(id_type)
@@ -1279,15 +1464,29 @@ class VerificationService:
         for key, val in gemini_data.items():
             if key not in skip_keys and key not in fields:
                 fields[key] = val
-        
-        # Build the full_name for passport (surname + given + middle)
-        if id_type == "Passport" and not fields.get("full_name"):
-            name_parts = []
-            for k in ["given_name", "middle_name", "surname"]:
-                if fields.get(k):
-                    name_parts.append(fields[k])
-            if name_parts:
-                fields["full_name"] = " ".join(name_parts)
+
+        # For PhilID / UMID — strip any Tagalog label noise from name fields
+        is_philid = id_type in ("PhilSys / PhilID", "UMID")
+        if is_philid:
+            for name_field in ("last_name", "given_names", "middle_name", "first_name"):
+                if fields.get(name_field):
+                    fields[name_field] = self._strip_philid_label_noise(fields[name_field])
+
+        # Build full_name from parts if not directly present
+        if not fields.get("full_name"):
+            if id_type == "Passport":
+                name_parts = [fields.get(k) for k in ("given_names", "middle_name", "last_name") if fields.get(k)]
+                if name_parts:
+                    fields["full_name"] = " ".join(name_parts)
+            elif is_philid:
+                # PhilID: Given Names + Last Name (middle name is mother's maiden surname — not part of display name)
+                name_parts = [fields.get(k) for k in ("given_names", "last_name") if fields.get(k)]
+                if name_parts:
+                    fields["full_name"] = " ".join(name_parts)
+            elif id_type == "Driver's License":
+                name_parts = [fields.get(k) for k in ("first_name", "middle_name", "last_name") if fields.get(k)]
+                if name_parts:
+                    fields["full_name"] = " ".join(name_parts)
         
         return {
             "id_type": id_type,
@@ -1345,15 +1544,27 @@ class VerificationService:
                 return {"status": "mismatched", "ocr_match": False, "pattern_valid": pattern_valid,
                         "failure_reason": quality_check["reason"]}
             
-            # 4. Perform OCR via unified EasyOCR -> Tesseract pipeline
-            ocr_text, parsed, word_data = self._run_ocr_pipeline(id_img, id_type)
-            
-            # Fallback to Gemini if OCR pipeline failed completely and Gemini key is available
+            # 4. Perform OCR via Gemini (Primary) or unified EasyOCR -> Tesseract pipeline (Fallback)
             gemini_data = None
-            if (not ocr_text or not ocr_text.strip() or self._is_ocr_garbage(ocr_text)) and os.getenv("GEMINI_API_KEY"):
-                print("[KYC DEBUG] EasyOCR/Tesseract failed or produced noise. Falling back to Gemini...")
+            ocr_text = None
+            parsed = None
+            word_data = None
+            
+            if os.getenv("GEMINI_API_KEY"):
+                print("[KYC DEBUG] Calling Gemini API as primary OCR engine for document verification...")
                 gemini_prompt = self._get_id_type_ocr_prompt(id_type)
                 gemini_data = await self._call_gemini_ocr(id_path, gemini_prompt)
+            
+            if not gemini_data:
+                print("[KYC WARNING] Gemini API unavailable or failed. Using EasyOCR/Tesseract pipeline...")
+                ocr_text, parsed, word_data = self._run_ocr_pipeline(id_img, id_type)
+                
+                # For PhilID: apply a layout-aware parser that uses Tagalog label anchors as field separators
+                if id_type in ("PhilSys / PhilID", "UMID") and ocr_text:
+                    philid_parsed = self._parse_philid_from_ocr_text(ocr_text)
+                    if philid_parsed:
+                        parsed.update(philid_parsed)
+
             
             structured_ocr = None
             
@@ -1462,6 +1673,26 @@ class VerificationService:
                     mrz = self._extract_mrz_from_text(ocr_text)
                     fields.update(mrz)
                 
+                # For PhilID / UMID — strip Tagalog label noise from name fields (EasyOCR picks up labels)
+                if id_type in ("PhilSys / PhilID", "UMID"):
+                    for name_field in ("last_name", "given_names", "middle_name", "first_name", "full_name"):
+                        if fields.get(name_field) and isinstance(fields[name_field], str):
+                            fields[name_field] = self._strip_philid_label_noise(fields[name_field])
+                    # Rebuild full_name cleanly
+                    name_parts = [fields.get(k) for k in ("given_names", "last_name") if fields.get(k)]
+                    if name_parts:
+                        fields["full_name"] = " ".join(name_parts)
+                    
+                    # Update rich_data for consistency in matching
+                    rich_data["full_name"] = fields["full_name"]
+                    rich_data["last_name"] = fields["last_name"]
+                    rich_data["given_names"] = fields["given_names"]
+                    rich_data["first_name"] = fields["first_name"]
+                    rich_data["middle_name"] = fields["middle_name"]
+                    rich_data["id_number"] = fields["id_number"]
+                    rich_data["extracted_dob"] = fields["date_of_birth"]
+                    rich_data["extracted_address"] = fields["address"]
+                
                 method = "easyocr" if EASYOCR_AVAILABLE else "tesseract"
                 
                 structured_ocr = {
@@ -1476,6 +1707,7 @@ class VerificationService:
                     "birth_date": fields.get("date_of_birth", ""),
                     "address": fields.get("address", "")
                 }
+
 
             
             # 6. Specific ID Type Keyword Check (NEW & STRICT)
@@ -1674,7 +1906,7 @@ class VerificationService:
             return {"status": "error", "failure_reason": f"System Error during ID scan: {str(e)}"}
 
     async def extract_id_data(self, id_path: str, id_type: str) -> Dict[str, Any]:
-        """Extracts text from ID using EasyOCR + OpenCV pipeline with validations."""
+        """Extracts text from ID using Gemini API (with EasyOCR + Tesseract fallback)."""
         try:
             id_img = self._prepare_image(id_path)
             
@@ -1687,8 +1919,26 @@ class VerificationService:
             if self._is_image_cropped(id_img):
                 return {"success": False, "error": "Please capture the entire ID card."}
             
-            # Run unified OCR pipeline (EasyOCR primary → Tesseract fallback)
+            gemini_data = None
+            if os.getenv("GEMINI_API_KEY"):
+                print("[KYC DEBUG] Calling Gemini API as primary OCR engine for ID extraction...")
+                gemini_prompt = self._get_id_type_ocr_prompt(id_type)
+                gemini_data = await self._call_gemini_ocr(id_path, gemini_prompt)
+                
+            if gemini_data and isinstance(gemini_data, dict) and any(gemini_data.values()):
+                print(f"[KYC DEBUG] Gemini OCR Succeeded for ID type: {id_type}")
+                structured_ocr = self._build_structured_ocr_data(gemini_data, id_type, "gemini")
+                return {"success": True, "data": structured_ocr, "quality": quality_check}
+                
+            # Fallback to EasyOCR/Tesseract if Gemini not available or failed
+            print("[KYC WARNING] Gemini API unavailable or failed. Using EasyOCR/Tesseract fallback pipeline...")
             text, parsed, word_data = self._run_ocr_pipeline(id_img, id_type)
+
+            # For PhilID: apply a layout-aware parser that uses Tagalog label anchors as field separators
+            if id_type in ("PhilSys / PhilID", "UMID") and text:
+                philid_parsed = self._parse_philid_from_ocr_text(text)
+                if philid_parsed:
+                    parsed.update(philid_parsed)
             
             clean_ocr_upper = text.upper()
             id_faces = self._detect_faces_detailed(id_img)
@@ -1729,6 +1979,16 @@ class VerificationService:
             
             # Build structured output compatible with frontend
             fields = {k: v for k, v in parsed.items() if k != "_all_not_detected"}
+
+            # For PhilID / UMID — strip Tagalog label noise from name fields (EasyOCR picks up labels)
+            if id_type in ("PhilSys / PhilID", "UMID"):
+                for name_field in ("last_name", "given_names", "middle_name", "first_name", "full_name"):
+                    if fields.get(name_field) and isinstance(fields[name_field], str):
+                        fields[name_field] = self._strip_philid_label_noise(fields[name_field])
+                # Always rebuild full_name for PhilID/UMID from the clean name components
+                name_parts = [fields.get(k) for k in ("given_names", "last_name") if fields.get(k)]
+                if name_parts:
+                    fields["full_name"] = " ".join(name_parts)
             
             # Determine extraction method used
             method = "easyocr" if EASYOCR_AVAILABLE else "tesseract"
@@ -1741,11 +2001,12 @@ class VerificationService:
                 "face_visible": has_face,
                 "fields": fields,
                 # Backward-compatible flat keys
-                "full_name": parsed.get("full_name", ""),
-                "id_number": parsed.get("id_number") or parsed.get("license_number") or parsed.get("passport_number") or "",
-                "birth_date": parsed.get("date_of_birth", ""),
-                "address": parsed.get("address", "")
+                "full_name": fields.get("full_name", ""),
+                "id_number": fields.get("id_number") or parsed.get("id_number") or parsed.get("license_number") or parsed.get("passport_number") or "",
+                "birth_date": fields.get("date_of_birth") or parsed.get("date_of_birth") or "",
+                "address": fields.get("address") or parsed.get("address") or ""
             }
+
             
             return {"success": True, "data": structured_ocr, "quality": quality_check}
         except Exception as e:
@@ -1790,12 +2051,27 @@ class VerificationService:
                 liveness_failure = "No face detected. Please face the camera clearly."
             
             # 2. Multiple Faces Check
+            # Use MediaPipe face_count (already computed, more reliable than Haar Cascade).
+            # Haar Cascade produces too many false positives on backgrounds/photos on walls.
+            # If MediaPipe already confirmed exactly 1 face, skip Haar Cascade entirely.
             if not liveness_failure:
-                for img in selfie_imgs:
-                    faces = self._detect_faces_detailed(img)
-                    if len(faces) > 1:
-                        liveness_failure = "Multiple faces detected. Only one person is allowed."
-                        break
+                if face_count > 1:
+                    # MediaPipe itself detected multiple real faces
+                    liveness_failure = "Multiple faces detected. Only one person is allowed."
+                elif face_count <= 1 and CV2_AVAILABLE:
+                    # Secondary Haar Cascade check — only flag if there are SIGNIFICANT faces
+                    # (area > 3% of image) to ignore tiny background detections.
+                    for img in selfie_imgs:
+                        raw_faces = self._detect_faces_detailed(img)
+                        if len(raw_faces) > 1:
+                            img_area = img.shape[0] * img.shape[1]
+                            significant_faces = [
+                                f for f in raw_faces
+                                if (f[2] * f[3]) >= img_area * 0.03  # face occupies ≥3% of frame
+                            ]
+                            if len(significant_faces) > 1:
+                                liveness_failure = "Multiple faces detected. Only one person is allowed."
+                                break
             
             # 3. Face Too Dark Check
             if not liveness_failure:

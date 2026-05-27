@@ -1,7 +1,6 @@
 import sys
 import os
 from datetime import date, timedelta
-from sqlalchemy import create_all
 from sqlalchemy.orm import Session
 
 # Add project root to sys.path

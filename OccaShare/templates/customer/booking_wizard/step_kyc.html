@@ -733,17 +733,17 @@
         {% set kyc_status = user.identity_verification.verification_status if user.identity_verification else 'pending'
         %}
         <div class="kyc-stepper-minimal">
-            <div class="step-node {% if kyc_status in ['pending', 'rejected', 'failed', 'liveliness_failed'] %}active{% elif user.identity_verification and user.identity_verification.document_url %}completed{% endif %}"
+            <div class="step-node {% if kyc_status in ['pending', 'pending_confirmation', 'rejected', 'failed'] %}active{% elif user.identity_verification and user.identity_verification.document_url and kyc_status != 'pending_confirmation' %}completed{% endif %}"
                 id="node-1">
                 <div class="node-icon"><i class="fas fa-id-card"></i></div>
                 <span class="node-label">ID Details</span>
             </div>
-            <div class="step-node {% if kyc_status == 'pending_confirmation' %}active{% elif kyc_status in ['pending_liveliness', 'processing', 'pending_manual_review', 'manual_review', 'verified', 'approved'] %}completed{% endif %}"
+            <div class="step-node {% if kyc_status in ['pending_liveliness', 'processing', 'pending_manual_review', 'manual_review', 'verified', 'approved', 'liveliness_failed'] %}completed{% endif %}"
                 id="node-2">
                 <div class="node-icon"><i class="fas fa-magic"></i></div>
                 <span class="node-label">Extraction</span>
             </div>
-            <div class="step-node {% if kyc_status == 'pending_liveliness' %}active{% elif kyc_status in ['processing', 'pending_manual_review', 'manual_review', 'verified', 'approved'] %}completed{% endif %}"
+            <div class="step-node {% if kyc_status in ['pending_liveliness', 'liveliness_failed'] %}active{% elif kyc_status in ['processing', 'pending_manual_review', 'manual_review', 'verified', 'approved'] %}completed{% endif %}"
                 id="node-3">
                 <div class="node-icon"><i class="fas fa-face-smile"></i></div>
                 <span class="node-label">Biometrics</span>
@@ -786,8 +786,8 @@
             {% set kyc_status = user.identity_verification.verification_status if user.identity_verification else
             'pending' %}
             <div id="step-id-form"
-                class="kyc-substep {% if kyc_status in ['pending', 'failed', 'rejected', 'liveliness_failed'] %}active{% endif %}"
-                style="display: {% if kyc_status in ['pending', 'failed', 'rejected', 'liveliness_failed'] %}block{% else %}none{% endif %};">
+                class="kyc-substep {% if kyc_status in ['pending', 'pending_confirmation', 'failed', 'rejected'] %}active{% endif %}"
+                style="display: {% if kyc_status in ['pending', 'pending_confirmation', 'failed', 'rejected'] %}block{% else %}none{% endif %};">
 
                 <!-- Identity fields removed per user request: OCR will handle extraction -->
 
@@ -961,10 +961,29 @@
             <!-- ═══════════════════════════════════════════ -->
             <!--  PREMIUM LIVENESS DETECTION                 -->
             <!-- ═══════════════════════════════════════════ -->
-            <div id="scanner-container" style="display: none;">
+            <div id="scanner-container" style="display: {% if kyc_status in ['pending_liveliness', 'liveliness_failed'] %}block{% else %}none{% endif %};">
                 <div class="liveness-premium-container" style="text-align: center;">
                     <h3 style="font-weight: 800; font-size: 1.2rem; color: #1e293b; margin-bottom: 0.5rem;">AI Face Verification</h3>
                     <p style="color: #94a3b8; font-size: 0.85rem; font-weight: 600; margin-bottom: 1.5rem;">Position your face within the circle for biometric comparison</p>
+
+                    <!-- Liveness Retry Banner (shown when liveness check fails) -->
+                    <div id="liveness-retry-banner" style="display: {% if kyc_status == 'liveliness_failed' %}block{% else %}none{% endif %}; background: #fff5f5; border: 1.5px solid #fca5a5; border-radius: 1rem; padding: 1rem 1.25rem; margin-bottom: 1.25rem; text-align: left;">
+                        <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
+                            <div style="width: 36px; height: 36px; background: #fee2e2; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <i class="fas fa-exclamation-triangle" style="color: #ef4444; font-size: 0.9rem;"></i>
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 800; font-size: 0.9rem; color: #b91c1c; margin-bottom: 0.25rem;">Liveness Check Failed — Please Retry</div>
+                                <div id="liveness-retry-message" style="font-size: 0.82rem; color: #7f1d1d; font-weight: 600; margin-bottom: 0.6rem;">{% if user.identity_verification and user.identity_verification.failure_reason %}{{ user.identity_verification.failure_reason }}{% endif %}</div>
+                                <ul style="font-size: 0.78rem; color: #991b1b; font-weight: 600; padding-left: 1rem; margin: 0; line-height: 1.8;">
+                                    <li>Make sure you are <strong>alone</strong> in the frame</li>
+                                    <li>Use a <strong>plain background</strong> (no posters or photos behind you)</li>
+                                    <li>Ensure <strong>good lighting</strong> on your face</li>
+                                    <li>Look <strong>directly at the camera</strong></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
 
                     <div class="face-circle-frame">
                         <video id="webcam" autoplay playsinline></video>
@@ -976,10 +995,15 @@
                         <span id="scan-feedback">Tap 'Start Camera' to begin</span>
                     </div>
 
-                    <div class="face-compare-row" id="face-compare-row" style="display: none;">
+                    <div class="face-compare-row" id="face-compare-row" style="display: {% if kyc_status == 'pending_liveliness' %}flex{% else %}none{% endif %};">
                         <div class="face-compare-item">
+                            {% if user.identity_verification and user.identity_verification.document_url %}
+                            <img id="id-photo-thumb" src="{{ user.identity_verification.document_url }}" alt="ID Photo" style="display: block;">
+                            <div class="placeholder-face" id="id-photo-placeholder" style="display: none;"><i class="fas fa-id-badge"></i></div>
+                            {% else %}
                             <img id="id-photo-thumb" src="" alt="ID Photo" style="display:none;">
                             <div class="placeholder-face" id="id-photo-placeholder"><i class="fas fa-id-badge"></i></div>
+                            {% endif %}
                             <span>ID Photo</span>
                         </div>
                         <div class="compare-arrow"><i class="fas fa-exchange-alt"></i></div>
@@ -1051,8 +1075,8 @@
             <!-- Final Process -->
             <div id="step-processing" style="display: none; text-align: center; padding: 2rem 0;">
                 <div class="ocr-loader"></div>
-                <h3 id="status-text">Verifying</h3>
-                <p id="status-subtext" class="card-desc">Finalizing your identity check...</p>
+                <h3 id="status-text">Verifying Biometrics...</h3>
+                <p id="status-subtext" class="card-desc">Analyzing your face against the ID. This may take a few seconds.</p>
             </div>
         </div>
     </div>
