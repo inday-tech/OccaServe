@@ -711,4 +711,16 @@
         grid-template-columns: 1fr !important;
         gap: 0.75rem !important;
     }
+
+    .occ-modal-footer {
+        flex-direction: row;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    .occ-modal-footer button {
+        flex: 1;
+        justify-content: center;
+        padding: 0.75rem;
+    }
 }

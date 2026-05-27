@@ -103,6 +103,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: initialView,
+            height: 'auto',
+            contentHeight: 'auto',
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',
