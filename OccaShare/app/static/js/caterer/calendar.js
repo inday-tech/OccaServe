@@ -17,20 +17,20 @@ function initWebSocket() {
 
     wsConnection = new WebSocket(url);
 
-    wsConnection.onopen = function() {
+    wsConnection.onopen = function () {
         console.log('✓ Calendar WebSocket Connected');
     };
 
-    wsConnection.onmessage = function(event) {
+    wsConnection.onmessage = function (event) {
         const data = JSON.parse(event.data);
         handleRealtimeUpdate(data);
     };
 
-    wsConnection.onerror = function(error) {
+    wsConnection.onerror = function (error) {
         console.error('✗ WebSocket error:', error);
     };
 
-    wsConnection.onclose = function() {
+    wsConnection.onclose = function () {
         console.log('↻ WebSocket disconnected, will retry...');
         wsConnection = null;
         setTimeout(initWebSocket, 5000);
@@ -40,7 +40,7 @@ function initWebSocket() {
 function handleRealtimeUpdate(data) {
     if (!window.fullCalendarInstance) return;
 
-    switch(data.type) {
+    switch (data.type) {
         case 'booking_added':
         case 'booking_updated':
             window.fullCalendarInstance.refetchEvents();
@@ -59,7 +59,7 @@ function showNotification(title, message, type = 'info') {
     const notification = document.createElement('div');
     notification.style.cssText = `
         position: fixed;
-        top: 20px;
+        bottom: 20px;
         right: 20px;
         padding: 1rem 1.5rem;
         border-radius: 8px;
@@ -113,12 +113,12 @@ document.addEventListener('DOMContentLoaded', function () {
             editable: false,
             selectable: true,
             selectConstraint: 'businessHours',
-            selectAllow: function(selectInfo) {
+            selectAllow: function (selectInfo) {
                 const today = new Date();
-                today.setHours(0,0,0,0);
+                today.setHours(0, 0, 0, 0);
                 return selectInfo.start >= today;
             },
-            eventContent: function(arg) {
+            eventContent: function (arg) {
                 const props = arg.event.extendedProps;
                 const isBlocked = props.type === 'BLOCKED';
                 const iconClass = isBlocked ? 'fas fa-ban' : 'fas fa-utensils';
@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             eventClick: function (info) {
                 const today = new Date();
-                today.setHours(0,0,0,0);
+                today.setHours(0, 0, 0, 0);
                 if (info.event.start < today) {
                     showNotification('Archive Notice', 'Past event details are not editable', 'info');
                     return;
@@ -142,9 +142,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     showEventDetails(info.event);
                 }
             },
-            dateClick: function(info) {
+            dateClick: function (info) {
                 const today = new Date();
-                today.setHours(0,0,0,0);
+                today.setHours(0, 0, 0, 0);
                 const clickedDate = new Date(info.dateStr);
 
                 if (clickedDate < today) {
@@ -163,11 +163,11 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             height: 'auto',
             dayMaxEvents: 3,
-            eventDidMount: function(info) {
+            eventDidMount: function (info) {
                 info.el.setAttribute('role', 'button');
                 info.el.setAttribute('tabindex', '0');
             },
-            windowResize: function(arg) {
+            windowResize: function (arg) {
                 if (window.innerWidth <= 768) {
                     calendar.changeView('listMonth');
                 } else {
@@ -178,7 +178,7 @@ document.addEventListener('DOMContentLoaded', function () {
         calendar.render();
         window.fullCalendarInstance = calendar;
 
-        window.addEventListener('resize', function() {
+        window.addEventListener('resize', function () {
             clearTimeout(calendarRefreshTimer);
             calendarRefreshTimer = setTimeout(() => {
                 calendar.updateSize();
@@ -211,11 +211,11 @@ document.addEventListener('DOMContentLoaded', function () {
     attachInputRestrictions();
 });
 
-window.updateVisibleCapacity = function(start, end) {
+window.updateVisibleCapacity = function (start, end) {
     // Safely do nothing to prevent ReferenceErrors
 };
 
-window.updateCapacityDisplay = function(data) {
+window.updateCapacityDisplay = function (data) {
     // Safely do nothing to prevent ReferenceErrors
 };
 
@@ -495,7 +495,7 @@ function validatePackage() {
 function attachInputRestrictions() {
     const contactInput = document.getElementById('manCustContact');
     if (contactInput) {
-        contactInput.addEventListener('input', function(e) {
+        contactInput.addEventListener('input', function (e) {
             // Only allow numbers
             this.value = this.value.replace(/[^0-9]/g, '');
             // Must start with 09 logic check (will show error in validate)
@@ -509,7 +509,7 @@ function attachInputRestrictions() {
 
     const guestsInput = document.getElementById('manGuests');
     const packageSelect = document.getElementById('manPackage');
-    
+
     const validateGuests = () => {
         if (!guestsInput || !packageSelect) return;
         const val = parseInt(guestsInput.value) || 0;
@@ -527,7 +527,7 @@ function attachInputRestrictions() {
             window.clearFieldError('manGuests');
         }
     };
-    
+
     if (guestsInput) guestsInput.addEventListener('input', validateGuests);
     if (packageSelect) packageSelect.addEventListener('change', validateGuests);
     const fNameInput = document.getElementById('manFirstName');
@@ -537,7 +537,7 @@ function attachInputRestrictions() {
         const f = (fNameInput ? fNameInput.value.trim().toLowerCase() : "");
         const m = (document.getElementById('manMiddleName') ? document.getElementById('manMiddleName').value.trim().toLowerCase() : "");
         const l = (lNameInput ? lNameInput.value.trim().toLowerCase() : "");
-        
+
         if (f && l && f === l) {
             window.setFieldError('manFirstName', 'First and Last name cannot be identical.');
             window.setFieldError('manLastName', 'First and Last name cannot be identical.');
@@ -554,14 +554,14 @@ function attachInputRestrictions() {
             return true;
         }
     };
-    
+
     if (fNameInput) fNameInput.addEventListener('input', validateNameFields);
     if (lNameInput) lNameInput.addEventListener('input', validateNameFields);
     if (document.getElementById('manMiddleName')) document.getElementById('manMiddleName').addEventListener('input', validateNameFields);
 
     const emailInput = document.getElementById('manCustEmail');
     if (emailInput) {
-        emailInput.addEventListener('input', function() {
+        emailInput.addEventListener('input', function () {
             validateSmartEmail(this.value);
         });
     }
@@ -584,7 +584,7 @@ function validateSmartEmail(val) {
 
 function validateSmartContact(val) {
     if (!val) { window.clearFieldError('manCustContact'); return false; }
-    
+
     // Check start
     if (!val.startsWith('09')) {
         window.setFieldError('manCustContact', 'Must start with 09');
@@ -617,7 +617,7 @@ function initCustomerDetection() {
     const lNameInput = document.getElementById('manLastName');
     const contactInput = document.getElementById('manCustContact');
     const badge = document.getElementById('userDetectionBadge');
-    
+
     if (!emailInput || !badge) return;
 
     const runDetection = () => {
@@ -658,7 +658,7 @@ function initCustomerDetection() {
             try {
                 const resp = await fetch(`/caterer/api/customers/check_duplicate?email=${encodeURIComponent(email)}&contact=${encodeURIComponent(contact)}`);
                 const data = await resp.json();
-                
+
                 if (data.exists) {
                     badge.style.borderLeftColor = '#0ea5e9';
                     badge.style.background = '#f0f9ff';
@@ -792,13 +792,13 @@ async function submitManualEvent(e) {
 
         if (res) {
             closeModal('manualBookingModal');
-            window.showSuccess("Booking successfully recorded to your system.");
-            
+            showNotification("Success", "Booking successfully recorded to your system.", "success");
+
             // Real-Time Update: FullCalendar
             if (window.fullCalendarInstance) {
                 window.fullCalendarInstance.refetchEvents();
             }
-            
+
             // Real-Time Update: Prepend to Sidebar list
             injectBookingToSidebar({
                 id: res.booking_id || 'NEW',
@@ -812,11 +812,11 @@ async function submitManualEvent(e) {
                 guests: guests,
                 packageText: document.getElementById('manPackage').options[document.getElementById('manPackage').selectedIndex].text
             });
-            
+
             document.getElementById('manualBookingForm').reset();
             document.getElementById('displayTotal').innerText = '₱0.00';
             const badge = document.getElementById('userDetectionBadge');
-            if(badge) badge.style.display = 'none';
+            if (badge) badge.style.display = 'none';
         }
     }
 }
@@ -836,17 +836,17 @@ function toggleOtherEventType() {
 function injectBookingToSidebar(data) {
     const list = document.querySelector('.cal-tracker-list');
     if (!list) return;
-    
+
     // Remove "No events" placeholder if it exists
     if (list.innerHTML.includes('No events scheduled')) {
         list.innerHTML = '';
     }
-    
+
     const d = data.dateFull;
     const typeClass = data.type ? data.type.toLowerCase().split(' ')[0] : 'other';
     const month = d.toLocaleDateString('en-US', { month: 'short' });
     const day = d.toLocaleDateString('en-US', { day: '2-digit' });
-    
+
     let timeFormatted = 'TBD';
     if (data.time) {
         const [h, m] = data.time.split(':');
@@ -866,7 +866,7 @@ function injectBookingToSidebar(data) {
     newEl.dataset.venue = data.venue;
     newEl.dataset.package = `${data.guests} Guests - ${data.packageText}`;
     newEl.setAttribute('onclick', 'openSidebarEventModal(this)');
-    
+
     newEl.innerHTML = `
         <div class="weekly-event-date">
             <span>${month}</span>
@@ -877,7 +877,7 @@ function injectBookingToSidebar(data) {
             <div class="event-status-badge status-upcoming">New Booking</div>
         </div>
     `;
-    
+
     // Add glowing effect to highlight new entry
     newEl.style.boxShadow = "0 0 15px rgba(16, 185, 129, 0.4)";
     list.prepend(newEl);
@@ -891,6 +891,8 @@ async function checkAvailabilityStatus(dateStr) {
     const text = document.getElementById('availabilityStatusText');
     const btnBlock = document.getElementById('btnBlockDate');
     const btnOpen = document.getElementById('btnOpenDate');
+    const blockReasonDiv = document.getElementById('blockReasonDiv');
+    const blockReasonInput = document.getElementById('blockReason');
 
     if (!box) return;
 
@@ -901,13 +903,15 @@ async function checkAvailabilityStatus(dateStr) {
     text.textContent = 'Checking status...';
     btnBlock.style.display = 'none';
     btnOpen.style.display = 'none';
+    if(blockReasonDiv) blockReasonDiv.style.display = 'none';
+    if(blockReasonInput) blockReasonInput.value = '';
 
     try {
         const resp = await fetch(`/caterer/api/availability/check?date=${dateStr}`);
         const data = await resp.json();
-        
+
         const countStr = ` (${data.booking_count || 0}/${data.max_capacity || 1} slots booked)`;
-        
+
         if (data.is_available) {
             box.style.background = '#ecfdf5';
             box.style.color = '#059669';
@@ -915,6 +919,7 @@ async function checkAvailabilityStatus(dateStr) {
             icon.className = 'fas fa-check-circle';
             text.innerHTML = `<strong>Status: Available</strong><br><small style="opacity:0.8">${countStr}</small>`;
             btnBlock.style.display = 'block';
+            if(blockReasonDiv) blockReasonDiv.style.display = 'block';
         } else {
             if (data.is_manual_block) {
                 box.style.background = '#fef2f2';
@@ -945,7 +950,7 @@ async function checkDateConflict(dateStr) {
     try {
         const resp = await fetch(`/caterer/api/availability/check?date=${dateStr}`);
         const data = await resp.json();
-        
+
         if (!data.is_available && data.is_manual_block) {
             window.setFieldError('manDate', `Date unavailable: ${data.reason}`);
         } else if (!data.is_available && !data.is_manual_block) {
@@ -953,7 +958,7 @@ async function checkDateConflict(dateStr) {
         } else {
             window.clearFieldError('manDate');
         }
-        
+
         return {
             available: data.is_available,
             reason: data.reason,
@@ -973,7 +978,7 @@ function attachPricingListeners() {
     const pkgSelect = document.getElementById('manPackage');
     const guestInput = document.getElementById('manGuests');
     const dateInput = document.getElementById('manDate');
-    
+
     if (!pkgSelect || !guestInput || !dateInput) return;
 
     pkgSelect.addEventListener('change', recalculateTotal);
@@ -988,7 +993,7 @@ function recalculateTotal() {
     const guestInput = document.getElementById('manGuests');
     const displayTotal = document.getElementById('displayTotal');
     const manAmount = document.getElementById('manAmount');
-    
+
     if (!pkgSelect || !guestInput || !displayTotal) return;
 
     const guests = parseInt(guestInput.value) || 0;
@@ -1006,7 +1011,7 @@ function recalculateTotal() {
 
     displayTotal.innerText = `₱${total.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
     manAmount.value = total.toFixed(2);
-    
+
     if (pkgSelect.value && guests < minGuests) {
         // Auto-fill to minimum if it's too low
         guestInput.value = minGuests;
@@ -1107,15 +1112,15 @@ function showEventDetails(event) {
     }) + ' at ' + (props.time || 'TBD');
     document.getElementById('detVenue').textContent = props.venue || '---';
     document.getElementById('detPackage').textContent = (props.guests || '0') + ' Guests - ' + (props.package || '---');
-    
+
     // New Fields
     const paymentMap = { 'pending': 'Unpaid', 'deposit_paid': 'Deposit Paid', 'paid': 'Fully Paid' };
     const paymentStatusEl = document.getElementById('detPayment');
     if (paymentStatusEl) paymentStatusEl.textContent = paymentMap[props.payment_status] || props.payment_status || '---';
-    
+
     const specialEl = document.getElementById('detSpecial');
     if (specialEl) specialEl.textContent = props.special_requests || 'None';
-    
+
     document.getElementById('evModalBookingId').value = event.id;
     if (window.openModal) window.openModal('eventModal');
     else document.getElementById('eventModal').style.display = 'flex';
@@ -1123,7 +1128,7 @@ function showEventDetails(event) {
 
 function showBlockedDetails(event) {
     const props = event.extendedProps;
-    window.showError(`Date Blocked: ${props.reason || 'Capacity reached or manually blocked'}`);
+    showNotification("Error", `Date Blocked: ${props.reason || 'Capacity reached or manually blocked'}`, "error");
 }
 
 window.showEventDetails = showEventDetails;
@@ -1139,23 +1144,23 @@ async function initPSGC() {
         const provinces = await res.json();
         const sel = document.getElementById('manProvince');
         if (!sel) return;
-        
+
         provinces.sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
             const opt = document.createElement('option');
             opt.value = p.code;
             opt.textContent = p.name;
             sel.appendChild(opt);
         });
-        
-        sel.addEventListener('change', async function() {
+
+        sel.addEventListener('change', async function () {
             // Get text, not code, to store in input if needed, but for now value is code.
             // Actually, we should store text in a hidden input if backend expects text.
             document.getElementById('manProvinceText').value = this.options[this.selectedIndex].text;
-            
+
             const citySel = document.getElementById('manMunicipality');
             citySel.innerHTML = '<option value="" disabled selected>Municipality / City</option>';
             document.getElementById('manBarangay').innerHTML = '<option value="" disabled selected>Barangay</option>';
-            
+
             if (!this.value) return;
             const res = await fetch(`${PSGC_BASE}/provinces/${this.value}/cities-municipalities/`);
             const cities = await res.json();
@@ -1166,10 +1171,10 @@ async function initPSGC() {
                 citySel.appendChild(opt);
             });
         });
-        
-        document.getElementById('manMunicipality').addEventListener('change', async function() {
+
+        document.getElementById('manMunicipality').addEventListener('change', async function () {
             document.getElementById('manMunicipalityText').value = this.options[this.selectedIndex].text;
-            
+
             const brgySel = document.getElementById('manBarangay');
             brgySel.innerHTML = '<option value="" disabled selected>Barangay</option>';
             if (!this.value) return;
@@ -1182,8 +1187,8 @@ async function initPSGC() {
                 brgySel.appendChild(opt);
             });
         });
-        
-        document.getElementById('manBarangay').addEventListener('change', function() {
+
+        document.getElementById('manBarangay').addEventListener('change', function () {
             document.getElementById('manBarangayText').value = this.options[this.selectedIndex].text;
         });
 
@@ -1208,7 +1213,7 @@ window.setReminder = setReminder;
 async function updateCapacitySettings() {
     const maxBookings = document.getElementById('capMaxBookings').value;
     const autoBlock = document.getElementById('capAutoBlock').checked;
-    
+
     if (window.apiAction) {
         const res = await window.apiAction('/caterer/api/calendar/capacity-settings', {
             method: 'POST',
@@ -1218,7 +1223,7 @@ async function updateCapacitySettings() {
             })
         });
         if (res) {
-            window.showSuccess("Capacity settings updated successfully.");
+            showNotification("Success", "Capacity settings updated successfully.", "success");
             setTimeout(() => location.reload(), 1500); // Reload to reflect max capacity correctly on calendar
         }
     }
@@ -1227,13 +1232,13 @@ async function updateCapacitySettings() {
 async function setReminder() {
     const bookingId = document.getElementById('evModalBookingId').value;
     if (!bookingId) return;
-    
+
     if (window.apiAction) {
         const res = await window.apiAction(`/caterer/api/bookings/${bookingId}/reminders`, {
             method: 'POST'
         });
         if (res) {
-            window.showSuccess("Reminder alert has been set for this booking.");
+            showNotification("Success", "Reminder alert has been set for this booking.", "success");
             closeModal('eventDetailsModal');
         }
     }
@@ -1248,12 +1253,12 @@ async function getQuickQuotation() {
     try {
         const resp = await fetch(`/caterer/api/quick-quotation/${pkgId}?pax=${pax}`);
         const data = await resp.json();
-        
+
         document.getElementById('roiBreakdownSubtitle').innerText = `Package: ${data.package_name} (${pax} Pax)`;
         document.getElementById('breakdownTotalCost').innerText = `₱${data.total_cost.toLocaleString()}`;
         document.getElementById('breakdownRoi').innerText = `₱${data.roi.toLocaleString()}`;
         document.getElementById('breakdownTotalPrice').innerText = `₱${data.total_price.toLocaleString()}`;
-        
+
         const list = document.getElementById('breakdownList');
         list.innerHTML = data.breakdown.map(item => `
             <div style="background: white; padding: 1rem; border-radius: 12px; border: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
@@ -1281,15 +1286,27 @@ function closeRoiBreakdown() {
  */
 async function toggleDateAvailability(isAvailable) {
     const dateInput = document.getElementById("blockDate");
+    const blockReasonInput = document.getElementById("blockReason");
+
     if (!dateInput || !dateInput.value) {
-        window.showError("Please select a target date first.");
+        showNotification("Error", "Please select a target date first.", "error");
         return;
     }
 
-    const payload = { 
-        date: dateInput.value, 
-        is_available: isAvailable, 
-        reason: isAvailable ? "" : "Manual Block via Calendar" 
+    let reasonText = "";
+    if (!isAvailable) {
+        reasonText = blockReasonInput ? blockReasonInput.value.trim() : "";
+        if (!reasonText) {
+            showNotification("Error", "Please provide a reason for blocking this date.", "error");
+            if (blockReasonInput) blockReasonInput.focus();
+            return;
+        }
+    }
+
+    const payload = {
+        date: dateInput.value,
+        is_available: isAvailable,
+        reason: isAvailable ? "" : reasonText
     };
 
     try {
@@ -1300,13 +1317,13 @@ async function toggleDateAvailability(isAvailable) {
         });
 
         if (response.ok) {
-            window.showSuccess(`Date successfully ${isAvailable ? "opened" : "blocked"}!`);
+            showNotification("Success", `Date successfully ${isAvailable ? "opened" : "blocked"}!`, "success");
             if (window.fullCalendarInstance) {
                 window.fullCalendarInstance.refetchEvents();
             }
             document.getElementById('availabilityForm').reset();
         } else {
-            window.showError("Failed to update availability.");
+            showNotification("Error", "Failed to update availability.", "error");
         }
     } catch (error) {
         console.error("Error:", error);
@@ -1317,7 +1334,7 @@ async function unblockSelectedDate() {
     const date = document.getElementById("detBlockedDate").textContent; // This needs to be set when opening the modal
     // Actually we should store it in a global variable
     if (!window.currentBlockedDate) return;
-    
+
     try {
         const response = await fetch("/caterer/api/availability/toggle", {
             method: "POST",
@@ -1328,10 +1345,10 @@ async function unblockSelectedDate() {
             if (window.fullCalendarInstance) {
                 window.fullCalendarInstance.refetchEvents();
             }
-            window.showSuccess("Date unblocked successfully.");
+            showNotification("Success", "Date unblocked successfully.", "success");
             closeModal('blockedDateModal');
         } else {
-            window.showError("Failed to unblock date.");
+            showNotification("Error", "Failed to unblock date.", "error");
         }
     } catch (error) {
         console.error("Error:", error);
@@ -1344,12 +1361,12 @@ function showBlockedDetails(event) {
     document.getElementById("detBlockedDate").textContent = event.start.toLocaleDateString("en-US", {
         weekday: "long", year: "numeric", month: "long", day: "numeric"
     });
-    
+
     window.currentBlockedDate = event.startStr.split("T")[0];
     if (window.openModal) window.openModal("blockedDateModal");
 }
 
-window.openSidebarEventModal = function(elem) {
+window.openSidebarEventModal = function (elem) {
     const ds = elem.dataset;
     document.getElementById("detCustomer").textContent = ds.customer || "---";
     document.getElementById("detType").textContent = ds.type || "---";
