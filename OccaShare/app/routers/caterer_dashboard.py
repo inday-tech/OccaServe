@@ -769,7 +769,7 @@ async def check_urgent_bookings(
     
     for b in profile.bookings:
         caterer_action_needed = False
-        if b.status in ['pending', 'pending_quotation']:
+        if b.status == 'pending':
             caterer_action_needed = True
         if b.payment_status in ['proof_submitted', 'balance_proof_submitted']:
             caterer_action_needed = True
@@ -788,7 +788,7 @@ async def caterer_dashboard(
     user: models.User = Depends(caterer_only)
 ):
     profile = user.caterer_profile
-    bookings = [b for b in profile.bookings if b.status != 'draft' and not b.is_archived]
+    bookings = [b for b in profile.bookings if b.status not in ['draft', 'pending_quotation'] and not b.is_archived]
     
     timeframe = request.query_params.get('timeframe', 'month')
     stats = _get_caterer_stats(profile, bookings, timeframe=timeframe)
@@ -810,7 +810,7 @@ async def dashboard_overview_api(
 ):
     from fastapi.responses import JSONResponse
     profile = user.caterer_profile
-    bookings = [b for b in profile.bookings if b.status != 'draft' and not b.is_archived]
+    bookings = [b for b in profile.bookings if b.status not in ['draft', 'pending_quotation'] and not b.is_archived]
     
     timeframe = request.query_params.get('timeframe', 'month')
     start_date = request.query_params.get('start_date')
@@ -882,12 +882,12 @@ async def manage_bookings(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    all_bookings = [b for b in user.caterer_profile.bookings if b.status != 'draft' and not b.is_archived]
+    all_bookings = [b for b in user.caterer_profile.bookings if b.status not in ['draft', 'pending_quotation'] and not b.is_archived]
     all_bookings.sort(key=lambda x: x.id, reverse=True)
     
     total_bookings = len(all_bookings)
     confirmed_count = sum(1 for b in all_bookings if b.status in ['confirmed', 'completed'])
-    pending_count = sum(1 for b in all_bookings if b.status in ['pending', 'pending_quotation', 'awaiting_caterer', 'awaiting_payment'])
+    pending_count = sum(1 for b in all_bookings if b.status in ['pending', 'awaiting_caterer', 'awaiting_payment'])
     cancelled_count = sum(1 for b in all_bookings if b.status == 'cancelled')
     
     packages = db.query(models.CateringPackage).filter(

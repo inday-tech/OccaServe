@@ -1,4 +1,6 @@
 let currentBookingId = null;
+let currentEventDate = null;
+let currentEventDate = null;
 let currentPage = 1;
 const ROWS_PER_PAGE = 5;
 let filteredRows = [];
@@ -712,6 +714,7 @@ async function submitExpenses(e) {
 function showBookingDetails(btn) {
     var data = btn.dataset;
     currentBookingId = data.id;
+    currentEventDate = data.eventDate;
 
     document.getElementById('modalBookingId').innerText = 'Booking #' + data.id;
     
@@ -730,20 +733,25 @@ function showBookingDetails(btn) {
 
     var statusEl = document.getElementById('modalStatus');
     statusEl.innerText = data.status.replace(/_/g, ' ').toUpperCase();
-    statusEl.className = 'premium-status-badge';
+    statusEl.className = 'badge-status';
     var statusMap = {
-        'pending': 'ps-badge-pending',
-        'pending_quotation': 'ps-badge-draft',
-        'awaiting_caterer': 'ps-badge-pending',
-        'awaiting_payment': 'ps-badge-payment',
-        'confirmed': 'ps-badge-confirmed',
-        'preparing': 'ps-badge-preparing',
-        'on_the_way': 'ps-badge-transit',
-        'in_progress': 'ps-badge-ongoing',
-        'completed': 'ps-badge-completed',
-        'cancelled': 'ps-badge-cancelled'
+        'pending': 'badge-pending',
+        'pending_quotation': 'badge-draft',
+        'pending_payment': 'badge-payment',
+        'awaiting_caterer': 'badge-awaiting_caterer',
+        'awaiting_payment': 'badge-payment',
+        'confirmed': 'badge-confirmed',
+        'preparing': 'badge-preparing',
+        'on_the_way': 'badge-active',
+        'ready_for_delivery': 'badge-active',
+        'ready_for_pickup': 'badge-active',
+        'arrived': 'badge-active',
+        'in_progress': 'badge-in_progress',
+        'setup_ongoing': 'badge-in_progress',
+        'completed': 'badge-completed',
+        'cancelled': 'badge-cancelled'
     };
-    statusEl.classList.add(statusMap[data.status] || 'ps-badge-draft');
+    statusEl.classList.add(statusMap[data.status] || 'badge-draft');
 
     var menuSource = document.getElementById('booking-items-' + data.id);
     var menuTarget = document.getElementById('modalMenuItems');
@@ -882,7 +890,8 @@ function showBookingDetails(btn) {
     const modalDueDate = document.getElementById('modalDueDate');
     const badgeContainer = document.getElementById('dueDateBadgeContainer');
     
-    if (data.paymentPlan === 'full' || data.paymentStatus === 'paid') {
+    const isEarlyStage = ['pending', 'pending_quotation', 'awaiting_caterer', 'awaiting_payment', 'pending_payment'].includes(data.status);
+    if (data.paymentPlan === 'full' || data.paymentStatus === 'paid' || isEarlyStage) {
         if (dueDateCard) dueDateCard.style.display = 'none';
     } else {
         if (dueDateCard) dueDateCard.style.display = 'block';
@@ -910,9 +919,6 @@ function showBookingDetails(btn) {
     var pLabels = { 'paid': 'Fully Paid', 'deposit_paid': 'Downpayment Paid', 'proof_submitted': 'Proof Sent', 'balance_proof_submitted': 'Balance Proof Sent', 'pending': 'Payment Pending' };
     if (pStatusEl) {
         pStatusEl.innerText = pLabels[data.paymentStatus] || data.paymentStatus;
-        pStatusEl.className = 'premium-status-badge';
-        if (data.paymentStatus === 'paid' || data.paymentStatus === 'deposit_paid') pStatusEl.classList.add('ps-badge-confirmed');
-        else if (data.paymentStatus === 'proof_submitted' || data.paymentStatus === 'balance_proof_submitted') pStatusEl.classList.add('ps-badge-payment');
         else pStatusEl.classList.add('ps-badge-cancelled');
     }
 
@@ -1129,8 +1135,9 @@ function toggleDueDateEdit() {
 async function saveDueDate() {
     var newDate = document.getElementById('balanceDueDateInput').value;
     if (!newDate) { window.showError('Please select a valid date.'); return; }
-    var today = new Date().toISOString().split('T')[0];
-    if (newDate < today) { window.showError('Please select a current or future date.'); return; }
+    var todayStr = new Date().toISOString().split('T')[0];
+    if (newDate <= todayStr) { window.showError('Deadline must be set to a future date (at least tomorrow).'); return; }
+    if (currentEventDate && newDate > currentEventDate) { window.showError('Deadline cannot be after the event date. It must be settled before or on the event day.'); return; }
     try {
         var response = await fetch('/caterer/api/bookings/' + currentBookingId + '/set-due-date', {
             method: 'POST',

@@ -3,7 +3,7 @@
 {% block title %}Overview - Caterer Dashboard{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/index.css') }}?v=2.2">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/index.css') }}?v=6.1">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <style>
     :root {
@@ -11,7 +11,7 @@
         --chart-expenses: #ef4444;
         --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
     }
-    
+
     /* Flatpickr Professional Overrides */
     .flatpickr-calendar {
         font-family: 'Poppins', sans-serif !important;
@@ -19,7 +19,7 @@
         border: 1px solid #f1f5f9 !important;
         border-radius: 12px !important;
     }
-    
+
     .flatpickr-day.selected,
     .flatpickr-day.startRange,
     .flatpickr-day.endRange,
@@ -43,15 +43,18 @@
     }
 
     .flatpickr-current-month {
-        font-size: 1rem !important; /* Elegant month/year header */
+        font-size: 1rem !important;
+        /* Elegant month/year header */
     }
 
     .flatpickr-day {
-        font-size: 0.85rem !important; /* Smaller numbers */
+        font-size: 0.85rem !important;
+        /* Smaller numbers */
     }
 
     .flatpickr-weekday {
-        font-size: 0.75rem !important; /* Smaller weekdays */
+        font-size: 0.75rem !important;
+        /* Smaller weekdays */
     }
 
     #dashboard-date-range:focus,
@@ -238,7 +241,9 @@
     }
 
     /* Operations Tracker Styles */
-    .roi-breakdown-card, .ops-tracker-card, .sidebar-card-dashboard {
+    .roi-breakdown-card,
+    .ops-tracker-card,
+    .sidebar-card-dashboard {
         display: flex;
         flex-direction: column;
         height: 100%;
@@ -364,51 +369,51 @@
     </div>
 
     <div class="header-action-section">
-        <div style="display: flex; align-items: center; background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 10px 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); cursor: pointer;" id="flatpickr-container" onclick="const fp = document.getElementById('dashboard-date-range')._flatpickr; if(fp) fp.open();">
-            <i class="fas fa-calendar-day" style="color: var(--primary-color); margin-right: 12px; font-size: 1.1rem;"></i>
-            <input type="text" id="dashboard-date-range" placeholder="Select date range..." style="border: none; outline: none; background: transparent; font-family: 'Poppins', sans-serif !important; font-weight: 700; color: #0f172a; width: 230px; cursor: pointer; font-size: 0.9rem;" readonly>
+        <div style="display: flex; align-items: center; background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 10px 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); cursor: pointer;"
+            id="flatpickr-container"
+            onclick="const fp = document.getElementById('dashboard-date-range')._flatpickr; if(fp) fp.open();">
+            <i class="fas fa-calendar-day"
+                style="color: var(--primary-color); margin-right: 12px; font-size: 1.1rem;"></i>
+            <input type="text" id="dashboard-date-range" placeholder="Select date range..."
+                style="border: none; outline: none; background: transparent; font-family: 'Poppins', sans-serif !important; font-weight: 700; color: #0f172a; width: 230px; cursor: pointer; font-size: 0.9rem;"
+                readonly>
             <i class="fas fa-chevron-down" style="color: #94a3b8; font-size: 0.8rem; margin-left: 10px;"></i>
         </div>
     </div>
 </div>
 
 <!-- Quick Stats Summary -->
-<div class="stats-grid-dashboard">
-    <div class="stat-card-premium c-card-premium stat-card-revenue animate-up">
-        <div class="stat-label-dashboard">Gross Revenue</div>
-        <div class="stat-value-dashboard" id="stat-revenue">₱{{ "{:,.2f}".format(total_revenue|default(0.0)) }}</div>
-        <div class="stat-hint-dashboard"><i class="fas fa-coins" style="margin-right:4px;"></i> Total cash collected</div>
-    </div>
-
-    <div class="stat-card-premium c-card-premium stat-card-white animate-up stat-roi-card {{ 'card-loss-warning' if net_profit and net_profit < 0 else '' }}">
-        <div class="stat-label-dashboard" style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <span>Business ROI</span>
-            <span class="roi-tooltip" style="position: absolute; top: 1.25rem; right: 1.25rem;">
-                <i class="fas fa-info-circle roi-help-icon" style="margin: 0; font-size: 1.15rem; color: #94a3b8;"></i>
-                <span class="tooltip-text" style="left: auto; right: 0; transform: none; bottom: 130%;">Calculated as: ((Revenue - Expenses) / Expenses) × 100</span>
-            </span>
-        </div>
-        <div class="stat-value-dashboard {{ 'text-danger-pulse' if net_profit and net_profit < 0 else '' }}"
-            id="stat-roi" style="color: {{ '#ef4444' if net_profit and net_profit < 0 else '#10b981' }};">{{
-            roi_percentage|default(0) }}%</div>
-        <div class="stat-hint-dashboard">
-            <span id="stat-margin-text">{{ ((net_profit / total_revenue * 100)|round if total_revenue and total_revenue
-                > 0 else 0)|int }}% Net Margin</span>
+<div class="kpi-grid-clean">
+    <div class="kpi-card-clean">
+        <div class="kpi-info">
+            <h4>Gross Revenue</h4>
+            <span class="kpi-value" id="stat-revenue">₱{{ "{:,.2f}".format(total_revenue|default(0.0)) }}</span>
+            <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Total cash collected</span>
         </div>
     </div>
 
-    <div class="stat-card-premium c-card-premium stat-card-white animate-up">
-        <div class="stat-label-dashboard">Net Profit</div>
-        <div class="stat-value-dashboard" id="stat-profit"
-            style="color: {{ '#ef4444' if net_profit and net_profit < 0 else '#059669' }};">₱{{
-            "{:,.2f}".format(net_profit|default(0.0)) }}</div>
-        <div class="stat-hint-dashboard">Earnings after costs</div>
+    <div class="kpi-card-clean">
+        <div class="kpi-info">
+            <h4 style="display: flex; justify-content: space-between; align-items: center;">Business ROI</h4>
+            <span class="kpi-value" id="stat-roi" style="color: {{ '#ef4444' if net_profit and net_profit < 0 else '#10b981' }};">{{ roi_percentage|default(0) }}%</span>
+            <span class="trend-badge" id="stat-margin-text" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">{{ ((net_profit / total_revenue * 100)|round if total_revenue and total_revenue > 0 else 0)|int }}% Net Margin</span>
+        </div>
     </div>
 
-    <div class="stat-card-premium c-card-premium stat-card-white animate-up">
-        <div class="stat-label-dashboard">Total Customers</div>
-        <div class="stat-value-dashboard" id="stat-customers">{{ total_customers|default(0) }}</div>
-        <div class="stat-hint-dashboard"><i class="fas fa-users" style="margin-right:4px;"></i> Unique client base</div>
+    <div class="kpi-card-clean">
+        <div class="kpi-info">
+            <h4>Net Profit</h4>
+            <span class="kpi-value" id="stat-profit" style="color: {{ '#ef4444' if net_profit and net_profit < 0 else '#059669' }};">₱{{ "{:,.2f}".format(net_profit|default(0.0)) }}</span>
+            <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Earnings after costs</span>
+        </div>
+    </div>
+
+    <div class="kpi-card-clean">
+        <div class="kpi-info">
+            <h4>Total Customers</h4>
+            <span class="kpi-value" id="stat-customers">{{ total_customers|default(0) }}</span>
+            <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Unique client base</span>
+        </div>
     </div>
 </div>
 
@@ -422,10 +427,14 @@
                     <div style="display: flex; align-items: center; gap: 15px;">
                         <h3 style="margin:0; font-weight: 800; color: #0f172a;">Profit Efficiency</h3>
                         <div style="display: flex; align-items: center; gap: 6px;">
-                            <button onclick="exportToCSV('profit_efficiency')" class="export-btn-minimal" title="Export CSV"><i class="fas fa-download"></i> CSV</button>
+                            <button onclick="exportToCSV('profit_efficiency')" class="export-btn-minimal"
+                                title="Export CSV"><i class="fas fa-download"></i> CSV</button>
                             <span class="roi-tooltip">
-                                <i class="fas fa-info-circle roi-help-icon" style="margin: 0; font-size: 1.15rem; color: #94a3b8;"></i>
-                                <span class="tooltip-text" style="left: auto; right: 0; transform: none; bottom: 130%;">Shows how much you earn compared to your expenses.</span>
+                                <i class="fas fa-info-circle roi-help-icon"
+                                    style="margin: 0; font-size: 1.15rem; color: #94a3b8;"></i>
+                                <span class="tooltip-text"
+                                    style="left: auto; right: 0; transform: none; bottom: 130%;">Shows how much you earn
+                                    compared to your expenses.</span>
                             </span>
                         </div>
                     </div>
@@ -435,7 +444,8 @@
                     <div id="roi-status-badge" class="roi-badge-premium"
                         style="{% if net_profit and net_profit < 0 %}background:#ef4444; color:white;{% elif roi_percentage and roi_percentage < 15 %}background:rgba(245, 158, 11, 0.1); color:#f59e0b;{% else %}background:rgba(16, 185, 129, 0.1); color:#10b981;{% endif %}">
                         {% if net_profit and net_profit < 0 %} <i class="fas fa-exclamation-triangle"></i> LOSS
-                            {% elif roi_percentage and roi_percentage < 15 %} <i class="fas fa-info-circle"></i> LOW MARGIN
+                            {% elif roi_percentage and roi_percentage < 15 %} <i class="fas fa-info-circle"></i> LOW
+                                MARGIN
                                 {% else %}
                                 <i class="fas fa-check-circle"></i> PROFITABLE
                                 {% endif %}
@@ -482,10 +492,13 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <h3 style="margin:0; font-weight: 800; color: #0f172a; font-size: 1rem;">Bookings Volume</h3>
                 <div style="display: flex; align-items: center; gap: 6px;">
-                    <button onclick="exportToCSV('bookings')" class="export-btn-minimal" title="Export CSV"><i class="fas fa-download"></i> CSV</button>
+                    <button onclick="exportToCSV('bookings')" class="export-btn-minimal" title="Export CSV"><i
+                            class="fas fa-download"></i> CSV</button>
                     <span class="roi-tooltip">
-                        <i class="fas fa-info-circle roi-help-icon" style="margin: 0; font-size: 1.15rem; color: #94a3b8;"></i>
-                        <span class="tooltip-text" style="left: auto; right: 0; transform: none; bottom: 130%;">Shows your completed and pending bookings.</span>
+                        <i class="fas fa-info-circle roi-help-icon"
+                            style="margin: 0; font-size: 1.15rem; color: #94a3b8;"></i>
+                        <span class="tooltip-text" style="left: auto; right: 0; transform: none; bottom: 130%;">Shows
+                            your completed and pending bookings.</span>
                     </span>
                 </div>
             </div>
@@ -503,10 +516,13 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                 <h3 style="margin:0; font-weight: 800; color: #0f172a; font-size: 1rem;">Revenue by Event</h3>
                 <div style="display: flex; align-items: center; gap: 6px;">
-                    <button onclick="exportToCSV('event_revenue')" class="export-btn-minimal" title="Export CSV"><i class="fas fa-download"></i> CSV</button>
+                    <button onclick="exportToCSV('event_revenue')" class="export-btn-minimal" title="Export CSV"><i
+                            class="fas fa-download"></i> CSV</button>
                     <span class="roi-tooltip">
-                        <i class="fas fa-info-circle roi-help-icon" style="margin: 0; font-size: 1.15rem; color: #94a3b8;"></i>
-                        <span class="tooltip-text" style="left: auto; right: 0; transform: none; bottom: 130%;">Shows which events bring in the most money.</span>
+                        <i class="fas fa-info-circle roi-help-icon"
+                            style="margin: 0; font-size: 1.15rem; color: #94a3b8;"></i>
+                        <span class="tooltip-text" style="left: auto; right: 0; transform: none; bottom: 130%;">Shows
+                            which events bring in the most money.</span>
                     </span>
                 </div>
             </div>
@@ -537,8 +553,10 @@
                 <div style="display: flex; align-items: center; gap: 6px;">
                     <span class="ops-live-tag">Live</span>
                     <span class="roi-tooltip">
-                        <i class="fas fa-info-circle roi-help-icon" style="margin: 0; font-size: 1.15rem; color: #94a3b8;"></i>
-                        <span class="tooltip-text" style="left: auto; right: 0; transform: none; bottom: 130%;">Shows the progress of your upcoming events.</span>
+                        <i class="fas fa-info-circle roi-help-icon"
+                            style="margin: 0; font-size: 1.15rem; color: #94a3b8;"></i>
+                        <span class="tooltip-text" style="left: auto; right: 0; transform: none; bottom: 130%;">Shows
+                            the progress of your upcoming events.</span>
                     </span>
                 </div>
             </div>
@@ -575,7 +593,9 @@
 
         <!-- Upcoming Events -->
         <div class="sidebar-card-dashboard c-card-premium animate-up">
-            <h3 class="sidebar-card-title" style="margin: 0; margin-bottom: 15px; font-family: 'Poppins', sans-serif !important; font-weight: 800; font-size: 1.1rem; color: #0f172a;">Upcoming Events</h3>
+            <h3 class="sidebar-card-title"
+                style="margin: 0; margin-bottom: 15px; font-family: 'Poppins', sans-serif !important; font-weight: 800; font-size: 1.1rem; color: #0f172a;">
+                Upcoming Events</h3>
             {% if upcoming_events %}
             <div class="event-list-dashboard" id="upcoming-events-container">
                 {% for event in upcoming_events %}
@@ -607,7 +627,9 @@
         <!-- Package Efficiency -->
         <div class="sidebar-card-dashboard c-card-premium animate-up">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
-                <h3 class="sidebar-card-title" style="margin: 0; font-family: 'Poppins', sans-serif !important; font-weight: 800; font-size: 1.1rem; color: #0f172a;">Top Packages</h3>
+                <h3 class="sidebar-card-title"
+                    style="margin: 0; font-family: 'Poppins', sans-serif !important; font-weight: 800; font-size: 1.1rem; color: #0f172a;">
+                    Top Packages</h3>
                 <button onclick="exportToCSV('packages')" class="export-btn-minimal" title="Export CSV"><i
                         class="fas fa-download"></i></button>
             </div>
@@ -640,7 +662,9 @@
         <!-- Top Customers / Loyal Clients -->
         <div class="sidebar-card-dashboard c-card-premium animate-up" style="margin-top: 24px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
-                <h3 class="sidebar-card-title" style="margin: 0; font-family: 'Poppins', sans-serif !important; font-weight: 800; font-size: 1.1rem; color: #0f172a;">Top Clients</h3>
+                <h3 class="sidebar-card-title"
+                    style="margin: 0; font-family: 'Poppins', sans-serif !important; font-weight: 800; font-size: 1.1rem; color: #0f172a;">
+                    Top Clients</h3>
                 <button onclick="exportToCSV('top_clients')" class="export-btn-minimal" title="Export CSV"><i
                         class="fas fa-download"></i></button>
             </div>
@@ -706,7 +730,8 @@
                     {% else %}WI{% endif %}
                 </div>
                 <div class="ro-details">
-                    <div class="ro-name" style="font-family: 'Poppins', sans-serif !important; font-size: 1rem; font-weight: 700; color: #0f172a;">
+                    <div class="ro-name"
+                        style="font-family: 'Poppins', sans-serif !important; font-size: 1rem; font-weight: 700; color: #0f172a;">
                         {% if booking.user %}{{ booking.user.first_name }} {{ booking.user.last_name }}{% else %}Walk-in
                         Customer{% endif %}
                     </div>
@@ -715,15 +740,57 @@
                         booking.event_type }} • {{ booking.package.name if booking.package else 'Custom Menu' }}</div>
                 </div>
                 <div class="ro-price-date" style="text-align: right;">
-                    <div class="ro-amount" style="font-family: 'Poppins', sans-serif !important; font-size: 1.1rem; font-weight: 800; color: #0f172a;">
+                    <div class="ro-amount"
+                        style="font-family: 'Poppins', sans-serif !important; font-size: 1.1rem; font-weight: 800; color: #0f172a;">
                         ₱{{ "{:,.2f}".format(booking.total_amount) if booking.total_amount else '0.00' }}</div>
-                    <div class="ro-date" style="font-family: 'Poppins', sans-serif !important; font-weight: 600; font-size: 0.85rem; color: #94a3b8;">{{
+                    <div class="ro-date"
+                        style="font-family: 'Poppins', sans-serif !important; font-weight: 600; font-size: 0.85rem; color: #94a3b8;">
+                        {{
                         booking.event_date.strftime('%b %d, %Y') if booking.event_date else '' }}</div>
                 </div>
                 <div class="ro-status" style="text-align: right;">
-                    <span class="ro-badge ro-status-{{ booking.status }}"
-                        style="font-weight: 800; letter-spacing: 0.5px; font-size: 0.75rem;">{{
-                        booking.status|replace('_', ' ')|capitalize }}</span>
+                    {% set badge_class = 'badge-draft' %}
+                    {% set status_label = booking.status.replace('_', ' ').title() if booking.status else 'Unknown' %}
+                    {% if booking.status == 'pending' %}
+                        {% if booking.payment_status == 'proof_submitted' %}
+                            {% set badge_class = 'badge-payment pulse-update' %}
+                            {% set status_label = 'Verify Payment' %}
+                        {% else %}
+                            {% set badge_class = 'badge-pending' %}
+                            {% set status_label = 'Pending Pay' %}
+                        {% endif %}
+                    {% elif booking.status == 'confirmed' %}
+                        {% if booking.payment_status == 'balance_proof_submitted' %}
+                            {% set badge_class = 'badge-payment pulse-update' %}
+                            {% set status_label = 'Verify Balance' %}
+                        {% else %}
+                            {% set badge_class = 'badge-confirmed' %}
+                            {% set status_label = 'Confirmed' %}
+                        {% endif %}
+                    {% elif booking.status == 'pending_quotation' %}
+                        {% set badge_class = 'badge-draft' %}
+                        {% set status_label = 'Draft' %}
+                    {% elif booking.status == 'awaiting_caterer' %}
+                        {% set badge_class = 'badge-pending' %}
+                        {% set status_label = 'To Sign' %}
+                    {% elif booking.status in ['awaiting_payment', 'pending_payment'] %}
+                        {% set badge_class = 'badge-payment' %}
+                    {% elif booking.status == 'preparing' %}
+                        {% set badge_class = 'badge-preparing' %}
+                    {% elif booking.status in ['on_the_way', 'ready_for_delivery', 'ready_for_pickup', 'arrived'] %}
+                        {% set badge_class = 'badge-active' %}
+                    {% elif booking.status in ['in_progress', 'setup_ongoing'] %}
+                        {% set badge_class = 'badge-in_progress' %}
+                    {% elif booking.status == 'completed' %}
+                        {% set badge_class = 'badge-completed' %}
+                    {% elif booking.status == 'cancelled' %}
+                        {% set badge_class = 'badge-cancelled' %}
+                    {% endif %}
+                    {% if booking.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
+                        {% set badge_class = 'badge-reupload' %}
+                        {% set status_label = 'Re-upload' %}
+                    {% endif %}
+                    <span class="badge-status {{ badge_class }}">{{ status_label }}</span>
                 </div>
             </div>
             {% endfor %}
@@ -752,7 +819,7 @@
     let customStartStr = '';
     let customEndStr = '';
 
-    document.addEventListener("DOMContentLoaded", function() {
+    document.addEventListener("DOMContentLoaded", function () {
         const dateInput = document.getElementById('dashboard-date-range');
         if (dateInput) {
             flatpickr(dateInput, {
@@ -762,7 +829,7 @@
                     new Date(new Date().getFullYear(), new Date().getMonth(), 1),
                     new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
                 ],
-                onChange: function(selectedDates, dateStr, instance) {
+                onChange: function (selectedDates, dateStr, instance) {
                     if (selectedDates.length === 2) {
                         isCustomRange = true;
                         customStartStr = instance.formatDate(selectedDates[0], "Y-m-d");
@@ -771,14 +838,14 @@
                     }
                 }
             });
-            
+
             // Set initial state
             const now = new Date();
-            customStartStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
-            customEndStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${new Date(now.getFullYear(), now.getMonth()+1, 0).getDate()}`;
+            customStartStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+            customEndStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()}`;
             isCustomRange = true;
         }
-        
+
         // Wait for charts to initialize before fetching data
         setTimeout(() => {
             refreshDashboardData('custom');
@@ -1041,7 +1108,7 @@
         let dataStr = "";
         let filename = `${section}_export_${new Date().toISOString().split('T')[0]}.csv`;
         let data = window._latestDashboardData;
-        
+
         if (!data) {
             try {
                 const res = await fetch(`/caterer/api/dashboard-overview?timeframe=${currentTimeframe}`);
@@ -1158,6 +1225,27 @@
         }
     }
 
+    function getBadgeClass(status) {
+        const map = {
+            'pending': 'badge-pending',
+            'pending_quotation': 'badge-draft',
+            'pending_payment': 'badge-payment',
+            'awaiting_caterer': 'badge-pending',
+            'awaiting_payment': 'badge-payment',
+            'confirmed': 'badge-confirmed',
+            'preparing': 'badge-preparing',
+            'on_the_way': 'badge-active',
+            'ready_for_delivery': 'badge-active',
+            'ready_for_pickup': 'badge-active',
+            'arrived': 'badge-active',
+            'in_progress': 'badge-in_progress',
+            'setup_ongoing': 'badge-in_progress',
+            'completed': 'badge-completed',
+            'cancelled': 'badge-cancelled'
+        };
+        return map[status] || 'badge-draft';
+    }
+
     function updateRecentOrders(orders) {
         const container = document.getElementById('recent-orders-container');
         if (!container) return;
@@ -1177,7 +1265,7 @@
                     <div class="ro-date" style="font-family: 'Poppins', sans-serif !important; font-weight: 600; font-size: 0.85rem; color: #94a3b8;">${order.event_date}</div>
                 </div>
                 <div class="ro-status" style="text-align: right;">
-                    <span class="ro-badge ro-status-${order.status || 'pending'}" style="font-weight: 800; letter-spacing: 0.5px; font-size: 0.75rem; padding: 0.5rem 1rem; border-radius: 2rem;">${(order.status || 'pending').split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}</span>
+                    <span class="badge-status ${getBadgeClass(order.status || 'pending')}">${(order.status || 'pending').split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}</span>
                 </div>
             </div>
         `).join('');
@@ -1187,9 +1275,10 @@
     document.addEventListener('DOMContentLoaded', function () {
         // Initial Data from Template (Fallback charts)
         const initialData = {
-            roi_trend_data: {{ roi_trend_data | tojson if roi_trend_data is defined else '[]' }},
-            chart_data: {{ chart_data | tojson if chart_data is defined else '[]' }},
-            bookings_chart_data: {{ bookings_chart_data | tojson if bookings_chart_data is defined else '[]' }}
+            roi_trend_data: {{ roi_trend_data | tojson if roi_trend_data is defined else '[]'
+    }},
+        chart_data: {{ chart_data | tojson if chart_data is defined else '[]' }},
+    bookings_chart_data: {{ bookings_chart_data | tojson if bookings_chart_data is defined else '[]' }}
         };
 
     initCharts(initialData);
