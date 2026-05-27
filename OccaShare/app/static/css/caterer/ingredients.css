@@ -37,6 +37,26 @@
     margin-bottom: 2.5rem;
 }
 
+@media (max-width: 768px) {
+    .stats-grid-dashboard {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.75rem !important;
+        margin-bottom: 1.5rem;
+    }
+    
+    .stat-card-premium.p-4 {
+        padding: 1rem !important;
+    }
+
+    .stat-label-dashboard {
+        font-size: 0.6rem !important;
+    }
+
+    .stat-value-dashboard {
+        font-size: 1.25rem !important;
+    }
+}
+
 .stat-card-premium {
     background: white;
     padding: 1.75rem;
@@ -100,12 +120,13 @@
     color: #64748b;
     border-bottom: 1px solid #f1f5f9;
     letter-spacing: 0.05em;
+    white-space: nowrap;
 }
 
-.premium-table td { padding: 1.5rem; border-bottom: 1px solid #f8fafc; vertical-align: middle; transition: all 0.2s; }
+.premium-table td { padding: 1.5rem; border-bottom: 1px solid #f8fafc; vertical-align: middle; transition: all 0.2s; white-space: nowrap; }
 .premium-row { transition: all 0.2s; }
 .premium-row:hover { background: #f8fafc; }
-.premium-row:hover td { color: var(--primary-color); }
+.premium-row:hover td { color: #1e293b; }
 
 .ing-name-box { display: flex; align-items: center; gap: 14px; }
 .ing-icon-mini { 
@@ -120,7 +141,7 @@
     transition: all 0.3s;
 }
 
-.premium-row:hover .ing-icon-mini { background: var(--primary-light); color: var(--primary-color); transform: rotate(-5deg); }
+.premium-row:hover .ing-icon-mini { background: #e2e8f0; color: #1e293b; transform: rotate(-5deg); }
 
 .ing-price { font-size: 1.1rem; font-weight: 800; color: #0f172a; }
 .unit-badge { 
@@ -133,21 +154,6 @@
     text-transform: lowercase;
     border: 1px solid #e2e8f0;
 }
-
-
-.btn-action-pro {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-    background: white;
-    color: #64748b;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.btn-action-pro:hover { border-color: var(--primary-color); color: var(--primary-color); background: var(--primary-light); }
-.btn-action-pro.delete:hover { border-color: #fca5a5; color: #ef4444; background: #fef2f2; }
 
 /* --- ELITE COLORED MODAL SYSTEM --- */
 .occ-modal-header.colored-header {
