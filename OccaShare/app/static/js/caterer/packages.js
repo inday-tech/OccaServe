@@ -33,6 +33,8 @@ const safeCloseModal = (id) => {
     }
 };
 
+window.closePackageModal = () => safeCloseModal('packageModal');
+
 function getActivePackageId() {
     const form = document.getElementById('packageForm');
     if (!form) return null;
@@ -88,7 +90,7 @@ async function openAddPackageModal() {
         loadPkgMenuLibrary();
         
         if (typeof window.reactivelyValidateForm === 'function') {
-            window.reactivelyValidateForm();
+            window.reactivelyValidateForm(true);
         }
         
         safeOpenModal('packageModal');
@@ -168,7 +170,7 @@ async function editPackage(pkgId) {
         loadPkgMenuLibrary();
 
         if (typeof window.reactivelyValidateForm === 'function') {
-            window.reactivelyValidateForm();
+            window.reactivelyValidateForm(true);
         }
 
         safeOpenModal('packageModal');
@@ -303,11 +305,59 @@ function validateTab(tabName, silent = false) {
         const nameVal = form.name.value.trim();
         if (!nameVal) {
             addError(form.name, "Package Name is required.");
+        } else {
+            // Check for duplication
+            const currentPkgId = getActivePackageId();
+            const cards = document.querySelectorAll('.package-card-pro');
+            let isDuplicate = false;
+            cards.forEach(card => {
+                const cardId = card.id.replace('package-', '');
+                if (currentPkgId && cardId === currentPkgId) return; // Skip self
+                
+                const titleEl = card.querySelector('.package-name-pro');
+                if (titleEl && titleEl.innerText.trim().toLowerCase() === nameVal.toLowerCase()) {
+                    isDuplicate = true;
+                }
+            });
+            
+            if (isDuplicate) {
+                addError(form.name, "A package with this name already exists in your library.");
+            }
+        }
+        
+        const serviceTypeVal = form.service_type.value.trim();
+        if (!serviceTypeVal) {
+            addError(form.service_type, "Please select a Service Type.");
         }
         
         const leadTimeVal = parseInt(form.booking_lead_time.value);
         if (isNaN(leadTimeVal) || leadTimeVal < 3) {
             addError(form.booking_lead_time, "Lead time must be at least 3 days.");
+        }
+
+        const descVal = form.description.value.trim();
+        if (!descVal || descVal.length < 10) {
+            addError(form.description, "Please provide a short description (min 10 characters).");
+        }
+    }
+    
+    if (tabName === 'perks') {
+        const checkedInclusions = document.querySelectorAll('input[name="inclusions"]:checked').length;
+        if (checkedInclusions === 0) {
+            isValid = false;
+            if (!silent) {
+                const matrix = document.getElementById('inclusionMatrix');
+                if (matrix) {
+                    matrix.style.border = '2px dashed #ef4444';
+                    setTimeout(() => matrix.style.border = 'none', 3000);
+                    
+                    const badge = document.createElement('div');
+                    badge.className = 'inline-error-badge text-center py-2';
+                    badge.style = 'color: #ef4444; font-size: 11px; font-weight: 800; margin-top: 8px;';
+                    badge.innerText = "Please select at least 1 inclusion or amenity.";
+                    matrix.parentNode.appendChild(badge);
+                }
+            }
         }
     }
     
@@ -364,20 +414,31 @@ function validateTab(tabName, silent = false) {
         }
 
         // Validate overhead costs
-        if (form.labor_cost && (form.labor_cost.value === '' || parseFloat(form.labor_cost.value) < 0)) addError(form.labor_cost, "Cannot be empty");
-        if (form.utility_cost && (form.utility_cost.value === '' || parseFloat(form.utility_cost.value) < 0)) addError(form.utility_cost, "Cannot be empty");
-        if (form.equipment_cost && (form.equipment_cost.value === '' || parseFloat(form.equipment_cost.value) < 0)) addError(form.equipment_cost, "Cannot be empty");
-        if (form.base_pax && (form.base_pax.value === '' || parseInt(form.base_pax.value) < 1)) addError(form.base_pax, "Required");
+        if (form.labor_cost && (form.labor_cost.value === '' || parseFloat(form.labor_cost.value) < 0)) addError(form.labor_cost, "Cannot be empty or negative.");
+        if (form.utility_cost && (form.utility_cost.value === '' || parseFloat(form.utility_cost.value) < 0)) addError(form.utility_cost, "Cannot be empty or negative.");
+        if (form.equipment_cost && (form.equipment_cost.value === '' || parseFloat(form.equipment_cost.value) < 0)) addError(form.equipment_cost, "Cannot be empty or negative.");
+        if (form.base_pax && (form.base_pax.value === '' || parseInt(form.base_pax.value) < 1)) addError(form.base_pax, "Must be at least 1.");
+        
+        const rawMinContract = form.min_contract_amount.value.replace(/,/g, '');
+        if (rawMinContract) {
+            const minContract = parseFloat(rawMinContract);
+            if (isNaN(minContract) || minContract < 0) {
+                addError(form.min_contract_amount, "Invalid amount.");
+            }
+        }
     }
     
     return isValid;
 }
 
-window.reactivelyValidateForm = function() {
-    const isBasicValid = validateTab('basic', true);
-    const isPerksValid = validateTab('perks', true);
-    const isMenuValid = validateTab('menu', true);
-    const isPricingValid = validateTab('pricing', true);
+window.reactivelyValidateForm = function(isInitialLoad = false) {
+    const activeTabEl = document.querySelector('#packageModal .tab-pane-pro.active');
+    const activeTabId = activeTabEl ? activeTabEl.id.replace('tab-', '') : null;
+
+    const isBasicValid = validateTab('basic', isInitialLoad ? true : activeTabId !== 'basic');
+    const isPerksValid = validateTab('perks', isInitialLoad ? true : activeTabId !== 'perks');
+    const isMenuValid = validateTab('menu', isInitialLoad ? true : activeTabId !== 'menu');
+    const isPricingValid = validateTab('pricing', isInitialLoad ? true : activeTabId !== 'pricing');
     
     const isAllValid = isBasicValid && isPerksValid && isMenuValid && isPricingValid;
     
@@ -388,10 +449,16 @@ window.reactivelyValidateForm = function() {
             saveBtn.style.opacity = '1';
             saveBtn.style.background = 'var(--primary-color)';
             saveBtn.innerHTML = '<i class="fas fa-check-circle"></i> Save Package';
+            saveBtn.disabled = false;
+            saveBtn.style.cursor = 'pointer';
+            saveBtn.style.pointerEvents = 'auto';
         } else {
-            saveBtn.style.opacity = '0.7'; // Make it more visible even if incomplete
+            saveBtn.style.opacity = '0.7'; 
             saveBtn.style.background = '#94a3b8';
             saveBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Form Incomplete';
+            saveBtn.disabled = true;
+            saveBtn.style.cursor = 'not-allowed';
+            saveBtn.style.pointerEvents = 'none';
         }
     }
     
@@ -508,7 +575,7 @@ function switchPackageTab(el, tabName) {
     // Footer is now static (Cancel & Save) in the HTML for the sidebar layout
     
     if (typeof window.reactivelyValidateForm === 'function') {
-        window.reactivelyValidateForm();
+        window.reactivelyValidateForm(true);
     }
 }
 
@@ -586,7 +653,7 @@ function toggleLibItemSelectCard(card, id) {
     updateSelectionRulesBuilder();
     
     if (typeof window.reactivelyValidateForm === 'function') {
-        window.reactivelyValidateForm();
+        window.reactivelyValidateForm(false);
     }
 }
 
@@ -951,12 +1018,12 @@ document.addEventListener('DOMContentLoaded', () => {
         pkgForm.addEventListener('input', () => {
             calculateCosts();
             if (typeof window.reactivelyValidateForm === 'function') {
-                window.reactivelyValidateForm();
+                window.reactivelyValidateForm(false);
             }
         });
         pkgForm.addEventListener('change', () => {
             if (typeof window.reactivelyValidateForm === 'function') {
-                window.reactivelyValidateForm();
+                window.reactivelyValidateForm(false);
             }
         });
         
@@ -1102,7 +1169,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (!(isBasicValid && isPerksValid && isMenuValid && isPricingValid)) {
                 e.preventDefault();
-                alert("Form is incomplete. Please check all tabs for errors.");
                 
                 // Focus on the first tab that has an error
                 if (!isBasicValid) {
