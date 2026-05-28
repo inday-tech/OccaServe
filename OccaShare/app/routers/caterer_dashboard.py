@@ -2956,7 +2956,8 @@ async def get_calendar_events(
         "Wedding": "#6366f1", # Indigo
         "Birthday": "#0ea5e9", # Cerulean
         "Corporate": "#0f172a", # Charcoal
-        "Private Party": "#10b981" # Emerald
+        "Private Party": "#10b981", # Emerald
+        "Ala Carte": "#f59e0b" # Amber/Orange
     }
     
     # Check if we should show full details (only for the caterer owner)
@@ -2984,11 +2985,19 @@ async def get_calendar_events(
         date_key = str(b.event_date)
         date_booking_counts[date_key] = date_booking_counts.get(date_key, 0) + 1
             
+        # Normalize event type for color mapping
+        raw_type = (b.event_type or "Wedding").strip()
+        ev_type = raw_type.title()
+        if ev_type.lower() in ['ala carte', 'alacarte', 'a la carte']:
+            ev_type = "Ala Carte"
+            
         event_data = {
-            "id": b.id,
-            "start": start_dt,
-            "backgroundColor": colors.get(b.event_type, "#6366f1"),
-            "borderColor": colors.get(b.event_type, "#6366f1"),
+            "id": str(b.id),
+            "start": str(b.event_date),
+            "allDay": True,
+            "backgroundColor": colors.get(ev_type, "#6366f1"),
+            "borderColor": colors.get(ev_type, "#6366f1"),
+            "textColor": "#ffffff",
         }
 
         if is_owner:

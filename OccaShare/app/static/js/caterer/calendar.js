@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', function () {
             editable: false,
             selectable: true,
             selectConstraint: 'businessHours',
-            dayMaxEvents: 3,
+            dayMaxEvents: false, // Ensure all events are visible, row will expand
             selectAllow: function (selectInfo) {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
@@ -170,6 +170,19 @@ document.addEventListener('DOMContentLoaded', function () {
             eventDidMount: function (info) {
                 info.el.setAttribute('role', 'button');
                 info.el.setAttribute('tabindex', '0');
+                
+                // Professional Tooltip implementation using native title
+                if (info.event.extendedProps && info.event.extendedProps.type && info.event.extendedProps.type !== 'BLOCKED') {
+                    const props = info.event.extendedProps;
+                    let tooltip = `Event: ${info.event.title}\n`;
+                    if (props.customer) tooltip += `Customer: ${props.customer}\n`;
+                    if (props.guests) tooltip += `Guests: ${props.guests} pax\n`;
+                    if (props.time && props.time !== 'TBD') tooltip += `Time: ${props.time}\n`;
+                    if (props.venue && props.venue !== 'TBD') tooltip += `Venue: ${props.venue}`;
+                    info.el.setAttribute('title', tooltip);
+                } else if (info.event.title === 'BLOCKED') {
+                    info.el.setAttribute('title', 'Blocked Date\nNot accepting bookings');
+                }
             },
             windowResize: function (arg) {
                 if (window.innerWidth <= 768) {
@@ -181,6 +194,29 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         calendar.render();
         window.fullCalendarInstance = calendar;
+
+        // Global Search Integration
+        window.addEventListener('globalSearch', function (e) {
+            const query = e.detail.value.toLowerCase();
+            const events = window.fullCalendarInstance.getEvents();
+            
+            events.forEach(event => {
+                let match = false;
+                if (!query) {
+                    match = true;
+                } else {
+                    const titleMatch = event.title && event.title.toLowerCase().includes(query);
+                    const customerMatch = event.extendedProps && event.extendedProps.customer && event.extendedProps.customer.toLowerCase().includes(query);
+                    const typeMatch = event.extendedProps && event.extendedProps.type && event.extendedProps.type.toLowerCase().includes(query);
+                    const idMatch = event.extendedProps && event.extendedProps.booking_id && String(event.extendedProps.booking_id).includes(query);
+                    
+                    match = titleMatch || customerMatch || typeMatch || idMatch;
+                }
+                
+                // Ensure we restore to 'auto' so FullCalendar natively handles the allDay block rendering
+                event.setProp('display', match ? 'auto' : 'none');
+            });
+        });
 
         window.addEventListener('resize', function () {
             clearTimeout(calendarRefreshTimer);
