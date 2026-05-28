@@ -102,6 +102,131 @@
     .fc .fc-daygrid-day {
         border: 1px solid #e5e7eb;
     }
+
+    /* Responsive Financial Summary */
+    .financial-summary-box {
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid var(--caterer-primary);
+        border-left: 4px solid var(--caterer-primary);
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
+        margin-top: 1.25rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    }
+
+    .fs-left {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .fs-right {
+        text-align: right;
+    }
+
+    .fs-amount-text {
+        font-size: 1.5rem;
+        font-weight: 900;
+        color: var(--caterer-primary);
+        line-height: 1.2;
+    }
+
+    .roi-preview-pill {
+        display: inline-flex !important;
+        align-items: center;
+        gap: 6px;
+        background: rgba(59, 130, 246, 0.08);
+        color: var(--caterer-primary);
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        width: max-content;
+        border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+    
+    .roi-preview-pill[style*="display: none"] {
+        display: none !important;
+    }
+
+    .cal-roi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 576px) {
+        .financial-summary-box {
+            flex-direction: column;
+            align-items: stretch;
+            padding: 1rem;
+        }
+        .fs-right {
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 0.75rem;
+            margin-bottom: 0.25rem;
+        }
+        .fs-left {
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .fs-amount-text {
+            font-size: 1.35rem;
+        }
+        .occ-form-grid {
+            grid-template-columns: 1fr !important;
+        }
+        .occ-form-grid .form-group-pro {
+            grid-column: span 1 !important;
+        }
+        .roi-footer-layout {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 1rem;
+        }
+        .roi-footer-total {
+            text-align: center;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 0.75rem;
+        }
+        .roi-footer-btn {
+            width: 100%;
+        }
+    }
+
+    .roi-footer-layout {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+    }
+    .roi-footer-label {
+        color: #6b7280;
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        display: block;
+    }
+    .roi-footer-amount {
+        font-size: 1.75rem;
+        font-weight: 900;
+        color: var(--caterer-primary);
+        line-height: 1.2;
+    }
+    .roi-footer-btn {
+        min-width: 120px;
+    }
 </style>
 {% endblock %}
 
@@ -395,6 +520,15 @@
                                 onblur="validateContact()">
                             <div class="field-error-msg" id="error-manCustContact"></div>
                         </div>
+                        <div class="form-group-pro">
+                            <label>Booking Source <span style="color: #ef4444;">*</span></label>
+                            <select id="manBookingSource" name="booking_source" class="control-pro" required>
+                                <option value="Walk-in">Walk-in</option>
+                                <option value="Facebook" selected>Facebook</option>
+                                <option value="Phone Call">Phone Call</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -545,27 +679,22 @@
                     </div>
 
                     <!-- Financial Summary -->
-                    <div
-                        style="background: linear-gradient(135deg, var(--caterer-primary-light) 0%, transparent 100%); border: 1px solid var(--caterer-primary); border-radius: 12px; padding: 1.5rem; margin-top: 1.5rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <div id="roiPreviewLabel" class="roi-preview-pill"
-                                    style="display: none; background: rgba(59, 130, 246, 0.1); color: var(--caterer-primary);">
-                                    <i class="fas fa-chart-line"></i> Profit: <strong id="profitAmount">---</strong>
-                                </div>
-                                <button type="button" id="btnQuickQuote" onclick="getQuickQuotation()"
-                                    class="btn-secondary-pro" style="display: none; margin-top: 0.5rem;">
-                                    <i class="fas fa-eye"></i> View Cost Breakdown
-                                </button>
+                    <div class="financial-summary-box">
+                        <div class="fs-right">
+                            <small style="color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem;">Contract Amount</small>
+                            <div class="fs-amount-text">
+                                <span id="displayTotal">₱0.00</span>
                             </div>
-                            <div style="text-align: right;">
-                                <small style="color: #6b7280; font-weight: 600; text-transform: uppercase;">Contract
-                                    Amount</small>
-                                <div style="font-size: 2rem; font-weight: 900; color: var(--caterer-primary);">
-                                    <span id="displayTotal">₱0.00</span>
-                                </div>
-                                <input type="hidden" id="manAmount" name="total_amount">
+                            <input type="hidden" id="manAmount" name="total_amount">
+                        </div>
+                        <div class="fs-left">
+                            <div id="roiPreviewLabel" class="roi-preview-pill" style="display: none;">
+                                <i class="fas fa-chart-line"></i> Profit: <strong id="profitAmount">---</strong>
                             </div>
+                            <button type="button" id="btnQuickQuote" onclick="getQuickQuotation()"
+                                class="btn-secondary-pro" style="display: none; padding: 6px 12px; font-size: 0.8rem; width: max-content;">
+                                <i class="fas fa-eye"></i> View Cost Breakdown
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -594,18 +723,14 @@
             <button onclick="closeRoiBreakdown()" class="occ-modal-close"><i class="fas fa-times"></i></button>
         </div>
         <div class="compact-body">
-            <div class="cal-roi-grid"
-                style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
-                <div style="background: #dbeafe; padding: 1.25rem; border-radius: 12px; border: 1px solid #bfdbfe;">
-                    <span style="font-size: 0.7rem; font-weight: 800; color: #1e40af; text-transform: uppercase;">Total
-                        Food Cost</span>
-                    <div id="breakdownTotalCost" style="font-size: 1.5rem; font-weight: 900; color: #1e40af;">₱0.00
-                    </div>
+            <div class="cal-roi-grid">
+                <div style="background: #eff6ff; padding: 1.25rem; border-radius: 12px; border: 1px solid #bfdbfe;">
+                    <span style="font-size: 0.75rem; font-weight: 800; color: #1e40af; text-transform: uppercase; letter-spacing: 0.05em;">Total Food Cost</span>
+                    <div id="breakdownTotalCost" style="font-size: 1.75rem; font-weight: 900; color: #1e40af; margin-top: 8px;">₱0.00</div>
                 </div>
-                <div style="background: #dcfce7; padding: 1.25rem; border-radius: 12px; border: 1px solid #bbf7d0;">
-                    <span style="font-size: 0.7rem; font-weight: 800; color: #15803d; text-transform: uppercase;">Net
-                        Profit</span>
-                    <div id="breakdownRoi" style="font-size: 1.5rem; font-weight: 900; color: #15803d;">₱0.00</div>
+                <div style="background: #ecfdf5; padding: 1.25rem; border-radius: 12px; border: 1px solid #bbf7d0;">
+                    <span style="font-size: 0.75rem; font-weight: 800; color: #15803d; text-transform: uppercase; letter-spacing: 0.05em;">Net Profit</span>
+                    <div id="breakdownRoi" style="font-size: 1.75rem; font-weight: 900; color: #15803d; margin-top: 8px;">₱0.00</div>
                 </div>
             </div>
 
@@ -616,15 +741,13 @@
                 <!-- Injected via JS -->
             </div>
         </div>
-        <div class="occ-modal-footer" style="background: #f9fafb; padding: 1.5rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                <div>
-                    <span style="color: #6b7280; font-size: 0.7rem; font-weight: 800; text-transform: uppercase;">Total
-                        Contract Price</span>
-                    <div id="breakdownTotalPrice"
-                        style="font-size: 1.75rem; font-weight: 900; color: var(--caterer-primary);">₱0.00</div>
+        <div class="occ-modal-footer" style="background: #f8fafc; padding: 1.25rem;">
+            <div class="roi-footer-layout">
+                <div class="roi-footer-total">
+                    <span class="roi-footer-label">Total Contract Price</span>
+                    <div id="breakdownTotalPrice" class="roi-footer-amount">₱0.00</div>
                 </div>
-                <button onclick="closeRoiBreakdown()" class="btn-primary-pro">Close</button>
+                <button onclick="closeRoiBreakdown()" class="btn-primary-pro roi-footer-btn">Close</button>
             </div>
         </div>
     </div>

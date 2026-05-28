@@ -171,6 +171,7 @@ class CatererProfile(Base):
     menu_items = relationship("MenuItem", back_populates="caterer", cascade="all, delete-orphan")
     social_posts = relationship("SocialPost", back_populates="caterer", cascade="all, delete-orphan")
     ingredients = relationship("Ingredient", back_populates="caterer", cascade="all, delete-orphan")
+    business_expenses = relationship("BusinessExpense", back_populates="caterer", cascade="all, delete-orphan")
 
 class Ingredient(Base):
     __tablename__ = "ingredients"
@@ -353,6 +354,7 @@ class Booking(Base):
     special_requests = Column(Text)
     caterer_notes = Column(Text, nullable=True)
     is_archived = Column(Boolean, default=False)
+    booking_source = Column(String, default="OccaServe") # OccaServe, Facebook, Walk-in, Other
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -372,6 +374,7 @@ class Booking(Base):
     fraud_flags = relationship("FraudFlag", back_populates="booking", cascade="all, delete-orphan")
     selected_items = relationship("BookingMenuItem", back_populates="booking", cascade="all, delete-orphan")
     payout = relationship("Payout", back_populates="bookings")
+    expenses = relationship("BookingExpense", back_populates="booking", cascade="all, delete-orphan")
 
 class BookingMenuItem(Base):
     __tablename__ = "booking_menu_items"
@@ -730,4 +733,30 @@ class BookingTask(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     booking = relationship("Booking", back_populates="tasks")
+
+class BookingExpense(Base):
+    __tablename__ = "booking_expenses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    booking_id = Column(Integer, ForeignKey("bookings.id"))
+    category = Column(String) # Ingredients, Labor, Transport, Other
+    description = Column(String)
+    amount = Column(Float, default=0.0)
+    date_incurred = Column(Date, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    booking = relationship("Booking", back_populates="expenses")
+
+class BusinessExpense(Base):
+    __tablename__ = "business_expenses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    caterer_id = Column(Integer, ForeignKey("caterer_profiles.id"))
+    category = Column(String) # Rent, Utilities, Marketing, Payroll, Other
+    description = Column(String)
+    amount = Column(Float, default=0.0)
+    date_incurred = Column(Date, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    caterer = relationship("CatererProfile", back_populates="business_expenses")
 

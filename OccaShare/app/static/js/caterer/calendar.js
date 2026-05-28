@@ -786,6 +786,7 @@ async function submitManualEvent(e) {
             special_notes: document.getElementById('manSpecialNotes') ? document.getElementById('manSpecialNotes').value.trim() : "",
             payment_method: document.getElementById('manPaymentMethod') ? document.getElementById('manPaymentMethod').value : "Cash",
             payment_status: document.getElementById('manPaymentStatus') ? document.getElementById('manPaymentStatus').value : "paid",
+            booking_source: document.getElementById('manBookingSource') ? document.getElementById('manBookingSource').value : "Facebook",
             force_override: forceOverride
         };
 

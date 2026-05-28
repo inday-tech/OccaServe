@@ -344,7 +344,8 @@ async def create_manual_booking(
             status="confirmed", 
             payment_status=payment_status, 
             payment_method=payment_method,
-            special_requests=special_requests
+            special_requests=special_requests,
+            booking_source=data.get("booking_source", "OccaServe")
         )
         db.add(new_booking)
         db.flush()
