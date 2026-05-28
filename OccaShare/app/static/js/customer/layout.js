@@ -38,8 +38,12 @@ function initSidebar() {
 
     if (toggleBtn) {
         toggleBtn.addEventListener('click', () => {
-            const collapsed = html.classList.toggle('sidebar-icons-only');
-            localStorage.setItem('customerSidebarCollapsed', collapsed);
+            if (window.innerWidth <= 1024) {
+                window.closeSidebar();
+            } else {
+                const collapsed = html.classList.toggle('sidebar-icons-only');
+                localStorage.setItem('customerSidebarCollapsed', collapsed);
+            }
         });
     }
 }

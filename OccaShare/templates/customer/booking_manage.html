@@ -59,6 +59,11 @@
     .detail-item:last-child { border-bottom: none; }
     .detail-label { font-size: 0.8rem; font-weight: 700; color: var(--dm-slate-400); text-transform: uppercase; letter-spacing: 0.04em; }
     .detail-value { font-size: 0.95rem; font-weight: 750; color: var(--up-slate-900); text-align: right; }
+    
+    @media (max-width: 768px) {
+        .detail-item { flex-direction: column; align-items: flex-start; gap: 0.25rem; }
+        .detail-value { text-align: left; }
+    }
 
     /* ── FINANCIAL TERMINAL ── */
     .financial-card { background: var(--up-slate-900); color: white; border-radius: 1.5rem; padding: 1.75rem; margin-bottom: 1.25rem; position: relative; overflow: hidden; }
@@ -127,12 +132,12 @@
     </div>
 </div>
 
-<div class="manage-grid" style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 1.25rem;">
+<div class="manage-grid">
     <!-- LEFT COLUMN: LOGISTICS -->
     <div class="left-col">
         <div class="panel">
             <div class="panel-header">
-                <h3>Logistics & Venue Details</h3>
+                <h3>Event Details</h3>
                 <i class="fas fa-map-location-dot" style="color: var(--dm-slate-400);"></i>
             </div>
             <div class="panel-body">
@@ -145,8 +150,8 @@
                     <span class="detail-value">{{ booking.venue_address or 'Venue TBD' }}</span>
                 </div>
                 <div class="detail-item">
-                    <span class="detail-label">Guest Logistics</span>
-                    <span class="detail-value">{{ booking.guest_count }} PAX Commitment</span>
+                    <span class="detail-label">Number of Guests</span>
+                    <span class="detail-value">{{ booking.guest_count }} Guests</span>
                 </div>
                 <div class="detail-item">
                     <span class="detail-label">Service Type</span>
@@ -157,18 +162,18 @@
 
         <div class="panel">
             <div class="panel-header">
-                <h3>Menu Selection Registry</h3>
+                <h3>Selected Menu</h3>
                 <i class="fas fa-utensils" style="color: var(--dm-slate-400);"></i>
             </div>
             <div class="panel-body">
                 <div style="background: var(--dm-slate-50); padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
                     <div>
                         <b style="font-size: 0.9rem; color: var(--up-slate-900);">{{ booking.package.name if booking.package else 'Custom Menu' }}</b>
-                        <p style="font-size: 0.75rem; color: var(--dm-slate-400); margin: 2px 0 0; font-weight: 600;">Official Contractual Selection</p>
+                        <p style="font-size: 0.75rem; color: var(--dm-slate-400); margin: 2px 0 0; font-weight: 600;">Your Selected Items</p>
                     </div>
                     <span style="background: white; border: 1px solid var(--dm-slate-100); padding: 4px 12px; border-radius: 20px; font-size: 0.65rem; font-weight: 800; color: var(--up-slate-900);">VERIFIED</span>
                 </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                <div class="menu-items-grid">
                     {% for b_item in booking.selected_items %}
                     <div style="background: #fff; border: 1px solid var(--dm-slate-100); padding: 0.75rem; border-radius: 12px; display: flex; align-items: center; gap: 10px;">
                         <i class="fas fa-check-circle" style="color: var(--up-emerald); font-size: 0.8rem;"></i>
@@ -190,11 +195,11 @@
             
             <div class="fin-grid">
                 <div>
-                    <span class="fin-label">Contract Total</span>
+                    <span class="fin-label">Total Amount</span>
                     <b style="font-size: 0.95rem;">₱{{ "{:,.2f}".format(booking.total_amount or 0) }}</b>
                 </div>
                 <div style="text-align: right;">
-                    <span class="fin-label">Settled Amount</span>
+                    <span class="fin-label">Amount Paid</span>
                     <b style="font-size: 0.95rem; color: var(--up-emerald);">₱{{ "{:,.2f}".format(booking.reservation_fee if booking.payment_status in ['paid', 'deposit_paid'] else 0) }}</b>
                 </div>
             </div>
@@ -203,7 +208,7 @@
         <!-- ACTION CENTER -->
         <div class="panel">
             <div class="panel-header">
-                <h3>Intelligence Actions</h3>
+                <h3>Actions</h3>
             </div>
             <div class="panel-body" style="display: flex; flex-direction: column; gap: 0.75rem;">
                 {% if booking.status in ['pending_payment', 'awaiting_payment'] %}
@@ -229,7 +234,7 @@
         <!-- DOCUMENTS REPOSITORY (PATCHING HOLE) -->
         <div class="panel">
             <div class="panel-header">
-                <h3>Official Archive</h3>
+                <h3>Your Documents</h3>
                 <i class="fas fa-box-archive" style="color: var(--dm-slate-400);"></i>
             </div>
             <div class="panel-body">
@@ -242,7 +247,7 @@
                     </div>
                     <div style="flex: 1;">
                         <b style="font-size: 0.85rem; color: var(--up-slate-900); display: block;">Service Agreement</b>
-                        <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 600;">Signed Legal Commitment</span>
+                        <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 600;">View Service Agreement</span>
                     </div>
                     <i class="fas fa-chevron-right" style="font-size: 0.75rem; color: var(--dm-slate-400);"></i>
                 </a>
@@ -252,7 +257,7 @@
         <!-- TRANSACTION LOGS (PATCHING HOLE) -->
         <div class="panel">
             <div class="panel-header">
-                <h3>Transaction History</h3>
+                <h3>Payment History</h3>
                 <i class="fas fa-history" style="color: var(--dm-slate-400);"></i>
             </div>
             <div class="panel-body" style="padding-top: 0.5rem;">
@@ -264,7 +269,7 @@
                     </div>
                 </div>
                 <p style="font-size: 0.65rem; color: var(--dm-slate-400); font-weight: 600; text-align: center; margin-top: 1rem;">
-                    <i class="fas fa-lock"></i> Secured by Paymongo Compliance
+                    <i class="fas fa-lock"></i> Secured by PayMongo
                 </p>
             </div>
         </div>

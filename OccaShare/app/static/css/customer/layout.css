@@ -491,7 +491,7 @@ html, body {
         box-shadow: 20px 0 25px -5px rgba(0,0,0,0.1);
     }
     .customer-main-wrapper { margin-left: 0 !important; }
-    .sidebar-collapse-btn { display: none !important; }
+    .sidebar-collapse-btn { display: flex !important; background: transparent; border: none; color: var(--dm-slate-400); font-size: 1.1rem; }
     .mobile-menu-btn {
         display: flex;
     }
