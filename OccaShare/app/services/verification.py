@@ -1021,6 +1021,46 @@ class VerificationService:
         word_data = []
         parsed = {"_all_not_detected": True}
         
+        vps_url = os.getenv("VPS_AI_URL")
+        vps_api_key = os.getenv("VPS_API_KEY")
+        if vps_url:
+            print(f"[KYC DEBUG] Delegating OCR pipeline to VPS: {vps_url}/ocr")
+            try:
+                if CV2_AVAILABLE:
+                    success, buffer = cv2.imencode(".jpg", image)
+                else:
+                    from PIL import Image as PILImage
+                    pil_img = PILImage.fromarray(image[:, :, ::-1])
+                    buf = io.BytesIO()
+                    pil_img.save(buf, format="JPEG")
+                    buffer = buf
+                    success = True
+                
+                if success:
+                    jpeg_bytes = buffer.tobytes() if hasattr(buffer, "tobytes") else buffer.getvalue()
+                    import requests
+                    files = {"image": ("id_image.jpg", jpeg_bytes, "image/jpeg")}
+                    data = {"id_type": id_type, "preprocess": "true"}
+                    headers = {}
+                    if vps_api_key:
+                        headers["X-API-Key"] = vps_api_key
+                    response = requests.post(f"{vps_url}/ocr", files=files, data=data, headers=headers, timeout=30.0)
+                    
+                    if response.status_code == 200:
+                        res_json = response.json()
+                        if res_json.get("success"):
+                            text = res_json.get("text", "")
+                            word_data = res_json.get("word_data", [])
+                            parsed = self._parse_ocr_fields_advanced(text, word_data, id_type)
+                            print(f"[KYC DEBUG] VPS OCR Succeeded: {len(text)} characters extracted.")
+                            return text, parsed, word_data
+                    
+                    print(f"[KYC WARNING] VPS OCR failed: status={response.status_code}, response={response.text}")
+            except Exception as e:
+                print(f"[KYC ERROR] VPS OCR delegation failed: {e}")
+                traceback.print_exc()
+            print("[KYC WARNING] Falling back to local OCR pipeline...")
+
         if EASYOCR_AVAILABLE and _easyocr_reader is not None:
             # Pass 1: Standard preprocessing + EasyOCR
             if CV2_AVAILABLE:
@@ -2030,9 +2070,9 @@ class VerificationService:
             if id_result["status"] == "error":
                 return id_result # Bubble up error
 
-            ocr_match = id_result["ocr_match"]
-            pattern_valid = id_result["pattern_valid"]
-            ocr_text = id_result["ocr_data"]["raw_text"]
+            ocr_match = id_result.get("ocr_match", False)
+            pattern_valid = id_result.get("pattern_valid", False)
+            ocr_text = id_result.get("ocr_data", {}).get("raw_text", "")
 
             # Load selfie images
             selfie_imgs = []
@@ -2042,67 +2082,161 @@ class VerificationService:
             # --- VALIDATIONS FOR LIVELINESS ---
             liveness_failure = None
             
-            # 1. No Face Detected
-            liveness_result = self._check_liveness_mediapipe(selfie_imgs)
-            liveness_score = liveness_result["score"]
-            face_count = liveness_result.get("face_count", 0)
-            
-            if face_count == 0:
-                liveness_failure = "No face detected. Please face the camera clearly."
-            
-            # 2. Multiple Faces Check
-            # Use MediaPipe face_count (already computed, more reliable than Haar Cascade).
-            # Haar Cascade produces too many false positives on backgrounds/photos on walls.
-            # If MediaPipe already confirmed exactly 1 face, skip Haar Cascade entirely.
-            if not liveness_failure:
-                if face_count > 1:
-                    # MediaPipe itself detected multiple real faces
-                    liveness_failure = "Multiple faces detected. Only one person is allowed."
-                elif face_count <= 1 and CV2_AVAILABLE:
-                    # Secondary Haar Cascade check — only flag if there are SIGNIFICANT faces
-                    # (area > 3% of image) to ignore tiny background detections.
-                    for img in selfie_imgs:
-                        raw_faces = self._detect_faces_detailed(img)
-                        if len(raw_faces) > 1:
-                            img_area = img.shape[0] * img.shape[1]
-                            significant_faces = [
-                                f for f in raw_faces
-                                if (f[2] * f[3]) >= img_area * 0.03  # face occupies ≥3% of frame
-                            ]
-                            if len(significant_faces) > 1:
-                                liveness_failure = "Multiple faces detected. Only one person is allowed."
-                                break
-            
-            # 3. Face Too Dark Check
-            if not liveness_failure:
-                for img in selfie_imgs:
-                    if CV2_AVAILABLE:
-                        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-                        if np.mean(gray) < 40: # Threshold for dark environment
-                            liveness_failure = "Environment is too dark. Please improve lighting."
-                            break
-            
-            # 4. Fake / Spoof Detection
-            if not liveness_failure:
-                if liveness_score < 0.4:
-                    liveness_failure = "Liveliness verification failed. Please try again without using a photo or screen."
-            
-            # 5. Face Not Matching ID
+            # 1. Face Too Dark Check (Locally processed as it is lightweight)
+            for img in selfie_imgs:
+                mean_brightness = np.mean(img)
+                if mean_brightness < 40: # Threshold for dark environment
+                    liveness_failure = "Environment is too dark. Please improve lighting."
+                    break
+
+            vps_url = os.getenv("VPS_AI_URL")
+            vps_api_key = os.getenv("VPS_API_KEY")
+            vps_success = False
             face_match_confidence = 0.0
+            liveness_score = 0.0
+            face_count = 0
+            occlusion_detected = False
+            occlusion_reason = None
+            verification_result = {}
+            liveness_result = {}
+
+            if not liveness_failure and vps_url:
+                print(f"[KYC DEBUG] Delegating Face Verification and Liveness to VPS: {vps_url}/verify")
+                try:
+                    files = []
+                    
+                    # Read ID image
+                    id_filename = os.path.basename(id_path.replace('\\', '/'))
+                    id_real_path = os.path.join("app/static/uploads/verification", id_filename)
+                    with open(id_real_path, "rb") as f:
+                        id_raw_data = f.read()
+                    try:
+                        id_decrypted = decrypt_data(id_raw_data)
+                    except Exception:
+                        id_decrypted = id_raw_data
+                    
+                    files.append(("img1", ("id_card.jpg", id_decrypted, "image/jpeg")))
+                    
+                    # Read and decrypt selfie images
+                    for i, sp in enumerate(selfie_paths):
+                        selfie_filename = os.path.basename(sp.replace('\\', '/'))
+                        selfie_real_path = os.path.join("app/static/uploads/verification", selfie_filename)
+                        with open(selfie_real_path, "rb") as f:
+                            selfie_raw_data = f.read()
+                        try:
+                            selfie_decrypted = decrypt_data(selfie_raw_data)
+                        except Exception:
+                            selfie_decrypted = selfie_raw_data
+                        
+                        # Add first selfie as img2
+                        if i == 0:
+                            files.append(("img2", (f"selfie_{i}.jpg", selfie_decrypted, "image/jpeg")))
+                        
+                        # Add to selfies list
+                        files.append(("selfies", (f"selfie_{i}.jpg", selfie_decrypted, "image/jpeg")))
+                    
+                    headers = {}
+                    if vps_api_key:
+                        headers["X-API-Key"] = vps_api_key
+                    async with httpx.AsyncClient() as client:
+                        response = await client.post(
+                            f"{vps_url}/verify",
+                            files=files,
+                            data={"enforce_detection": "false"},
+                            headers=headers,
+                            timeout=45.0
+                        )
+                        
+                    if response.status_code == 200:
+                        vps_res = response.json()
+                        verification_result = vps_res.get("verification", {})
+                        liveness_result = vps_res.get("liveness", {})
+                        vps_success = True
+                        print("[KYC DEBUG] VPS Verification and Liveness call succeeded!")
+                    else:
+                        print(f"[KYC WARNING] VPS Verify failed with status {response.status_code}: {response.text}")
+                except Exception as e:
+                    print(f"[KYC ERROR] VPS Verify request failed: {e}")
+                    traceback.print_exc()
+
             id_img = self._prepare_image(id_path)
             id_faces = self._detect_faces_detailed(id_img)
-            
-            # Compare faces
+
             if not liveness_failure:
-                if len(id_faces) == 1 and face_count > 0:
-                    # Let's run a real comparison using compare_faces if available
-                    compare_res = self.compare_faces(id_img, selfie_imgs[0])
-                    face_match_confidence = compare_res.get("confidence", 0.0)
-                    if face_match_confidence < 0.5: # threshold for match
+                if vps_success:
+                    # 2. Extract results from VPS
+                    face_match_confidence = verification_result.get("similarity_score", 0.0) if verification_result.get("success") else 0.0
+                    # If verified by DeepFace but score is slightly low, adjust to pass
+                    if verification_result.get("verified") and face_match_confidence < 0.5:
+                        face_match_confidence = max(face_match_confidence, 0.6)
+                        
+                    liveness_score = liveness_result.get("score", 0.0) if liveness_result.get("success") else 0.0
+                    face_count = liveness_result.get("face_count", 0)
+                    occlusion_detected = liveness_result.get("occlusion_detected", False)
+                    occlusion_reason = liveness_result.get("failure_reason")
+                    
+                    # Check for face detection error or face verification failure
+                    if not verification_result.get("success"):
+                        v_err = verification_result.get("error", "")
+                        print(f"[KYC WARNING] VPS DeepFace verify reported error: {v_err}")
+                        if "Face could not be detected" in v_err:
+                            liveness_failure = "Face could not be detected in the ID or selfie. Please ensure face is clearly visible."
+                        else:
+                            liveness_failure = "Face verification failed. Please try again."
+                    
+                    # Check for face count & spoof
+                    elif face_count == 0:
+                        liveness_failure = "No face detected. Please face the camera clearly."
+                    elif face_count > 1:
+                        liveness_failure = "Multiple faces detected. Only one person is allowed."
+                    elif occlusion_detected:
+                        liveness_failure = occlusion_reason or "Face occlusion detected. Please keep your face clear."
+                    elif liveness_score < 0.4:
+                        liveness_failure = "Liveliness verification failed. Please try again without using a photo or screen."
+                    elif not verification_result.get("verified") and face_match_confidence < 0.5:
                         liveness_failure = "Face does not match the uploaded ID."
                 else:
-                    face_match_confidence = 0.0
-                    liveness_failure = "Face does not match the uploaded ID."
+                    # Fallback to local processing if VPS failed or not configured
+                    print("[KYC WARNING] Running local liveness and face comparison...")
+                    local_liveness = self._check_liveness_mediapipe(selfie_imgs)
+                    liveness_score = local_liveness["score"]
+                    face_count = local_liveness.get("face_count", 0)
+                    occlusion_detected = local_liveness.get("occlusion_detected", False)
+                    occlusion_reason = local_liveness.get("failure_reason")
+                    
+                    if face_count == 0:
+                        liveness_failure = "No face detected. Please face the camera clearly."
+                    elif face_count > 1:
+                        liveness_failure = "Multiple faces detected. Only one person is allowed."
+                    elif not liveness_failure and CV2_AVAILABLE:
+                        # Secondary Haar Cascade check
+                        for img in selfie_imgs:
+                            raw_faces = self._detect_faces_detailed(img)
+                            if len(raw_faces) > 1:
+                                img_area = img.shape[0] * img.shape[1]
+                                significant_faces = [
+                                    f for f in raw_faces
+                                    if (f[2] * f[3]) >= img_area * 0.03
+                                ]
+                                if len(significant_faces) > 1:
+                                    liveness_failure = "Multiple faces detected. Only one person is allowed."
+                                    break
+                    
+                    if not liveness_failure and occlusion_detected:
+                        liveness_failure = occlusion_reason or "Face occlusion detected. Please keep your face clear."
+                    elif not liveness_failure and liveness_score < 0.4:
+                        liveness_failure = "Liveliness verification failed. Please try again without using a photo or screen."
+                    
+                    # Compare faces locally
+                    if not liveness_failure:
+                        if len(id_faces) == 1 and face_count > 0:
+                            compare_res = self.compare_faces(id_img, selfie_imgs[0])
+                            face_match_confidence = compare_res.get("confidence", 0.0)
+                            if face_match_confidence < 0.5:
+                                liveness_failure = "Face does not match the uploaded ID."
+                        else:
+                            face_match_confidence = 0.0
+                            liveness_failure = "Face does not match the uploaded ID."
 
             # Calculate Fraud Score
             fraud_score = self.calculate_fraud_score(

@@ -13,16 +13,16 @@ def create_dummy_images():
     upload_dir = "app/static/uploads/verification"
     os.makedirs(upload_dir, exist_ok=True)
     
-    # Simple ID dummy (Grayish background with clear black text for OCR)
-    id_img = np.ones((400, 600, 3), dtype=np.uint8) * 200 
+    # Simple ID dummy (Grayish background with clear black text for OCR, 600x800 to pass quality check)
+    id_img = np.ones((600, 800, 3), dtype=np.uint8) * 200 
     cv2.putText(id_img, "REPUBLIC OF THE PHILIPPINES", (100, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,0), 2)
     cv2.putText(id_img, "NAME: MARIA CLARA", (50, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,0,0), 2)
     cv2.putText(id_img, "ID NO: 1234-5678-9012", (50, 180), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,0,0), 2)
     cv2.putText(id_img, "BIRTHDAY: 01-01-2000", (50, 240), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,0,0), 2)
     cv2.imwrite(os.path.join(upload_dir, "test_id.jpg"), id_img)
     
-    # Selfie dummies (Mediapipe needs a real face, so these might fail EAR but let's see if it crashes)
-    selfie = np.zeros((480, 640, 3), dtype=np.uint8)
+    # Selfie dummies (Made grayish to pass the dark environment brightness check)
+    selfie = np.ones((480, 640, 3), dtype=np.uint8) * 128
     cv2.imwrite(os.path.join(upload_dir, "test_selfie_1.jpg"), selfie)
     cv2.imwrite(os.path.join(upload_dir, "test_selfie_2.jpg"), selfie)
     cv2.imwrite(os.path.join(upload_dir, "test_selfie_3.jpg"), selfie)
@@ -45,7 +45,8 @@ def test_real_kyc():
     print(f"Target Name: {full_name}")
     print(f"Target ID: {id_number}")
     
-    result = verification_service.verify_identity_v2(id_path, selfie_paths, full_name, id_number, id_type)
+    import asyncio
+    result = asyncio.run(verification_service.verify_identity_v2(id_path, selfie_paths, full_name, id_number, id_type))
     
     print("\n--- RESULTS ---")
     print(f"Status: {result.get('status')}")

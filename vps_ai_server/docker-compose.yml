@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  ai-server:
+    build: .
+    container_name: occaserve-ai-server
+    ports:
+      - "8000:8000"
+    environment:
+      - VPS_API_KEY=${VPS_API_KEY}
+    volumes:
+      - easyocr-cache:/root/.EasyOCR
+      - deepface-cache:/root/.deepface
+      - mediapipe-cache:/app/models
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  easyocr-cache:
+    driver: local
+  deepface-cache:
+    driver: local
+  mediapipe-cache:
+    driver: local
