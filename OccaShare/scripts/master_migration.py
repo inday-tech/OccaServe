@@ -43,7 +43,8 @@ def master_migration():
             ("proof_image_hash", "VARCHAR"),
             ("actual_cost_breakdown", "JSONB"),
             ("special_requests", "TEXT"),
-            ("caterer_notes", "TEXT")
+            ("caterer_notes", "TEXT"),
+            ("booking_source", "VARCHAR DEFAULT 'OccaServe'")
         ]
         
         # Reviews Table
