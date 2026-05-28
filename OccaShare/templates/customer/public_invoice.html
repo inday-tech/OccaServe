@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Invoice - {{ booking.caterer.business_name if booking.caterer else 'OccaServe' }}</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --surface: #ffffff;
+            --background: #f8fafc;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: var(--background); color: var(--text-main); line-height: 1.5; padding: 2rem 1rem; }
+        
+        .invoice-container {
+            max-width: 800px; margin: 0 auto; background: var(--surface);
+            border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); overflow: hidden;
+        }
+        
+        .invoice-header {
+            background: var(--text-main); color: white; padding: 2.5rem 2rem;
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 5px solid var(--primary);
+        }
+        
+        .invoice-header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+        .invoice-header p { color: #cbd5e1; font-size: 0.95rem; }
+        
+        .caterer-brand { display: flex; align-items: center; gap: 1rem; }
+        .caterer-logo { width: 60px; height: 60px; border-radius: 12px; background: white; object-fit: cover; }
+        
+        .invoice-body { padding: 2.5rem 2rem; }
+        
+        .info-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2.5rem;
+        }
+        
+        .info-block h3 { font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 1px; margin-bottom: 0.5rem; }
+        .info-block p { font-weight: 600; font-size: 1.1rem; }
+        .info-block .sub-text { font-weight: 400; font-size: 0.9rem; color: var(--text-muted); margin-top: 2px; }
+        
+        .invoice-table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; }
+        .invoice-table th { text-align: left; padding: 1rem; background: #f1f5f9; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; border-radius: 8px 0 0 8px; }
+        .invoice-table th:last-child { border-radius: 0 8px 8px 0; text-align: right; }
+        .invoice-table td { padding: 1.25rem 1rem; border-bottom: 1px solid var(--border); }
+        .invoice-table td:last-child { text-align: right; font-weight: 600; }
+        
+        .total-section {
+            display: flex; justify-content: flex-end; margin-bottom: 3rem;
+        }
+        .total-box {
+            background: #f8fafc; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border); min-width: 300px;
+        }
+        .total-row { display: flex; justify-content: space-between; margin-bottom: 0.75rem; font-size: 1rem; }
+        .total-row.grand-total { border-top: 2px dashed var(--border); padding-top: 1rem; margin-top: 0.5rem; margin-bottom: 0; font-size: 1.5rem; font-weight: 800; color: var(--primary); }
+        
+        /* QR Payment Section - Preview for the plan */
+        .payment-section {
+            background: #eff6ff; border: 1px dashed #93c5fd; border-radius: 12px; padding: 2rem; text-align: center;
+        }
+        .payment-section h2 { color: #1e3a8a; margin-bottom: 1rem; font-size: 1.25rem; }
+        .payment-section p { color: #3b82f6; margin-bottom: 1.5rem; font-size: 0.95rem; }
+        .qr-placeholder { width: 180px; height: 180px; background: white; border: 1px solid #bfdbfe; margin: 0 auto 1.5rem; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-direction: column; color: #60a5fa; }
+        .qr-placeholder i { font-size: 3rem; margin-bottom: 0.5rem; }
+        .btn-upload { background: var(--primary); color: white; border: none; padding: 0.875rem 2rem; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
+        .btn-upload:hover { background: #4338ca; }
+        
+        .footer { text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.85rem; border-top: 1px solid var(--border); }
+        
+        @media (max-width: 640px) {
+            .invoice-header { flex-direction: column-reverse; align-items: flex-start; gap: 1.5rem; }
+            .info-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+            .total-box { min-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="invoice-container">
+    <div class="invoice-header">
+        <div>
+            <h1>Invoice #{{ booking.id }}</h1>
+            <p>Issued on {{ booking.created_at.strftime('%B %d, %Y') if booking.created_at else 'Date TBD' }}</p>
+            <p style="margin-top: 8px; font-weight: 600; color: #38bdf8;">
+                Status: <span style="text-transform: uppercase;">{{ booking.status or 'PENDING' }}</span>
+            </p>
+        </div>
+        <div class="caterer-brand">
+            <div style="text-align: right;">
+                <div style="font-size: 1.25rem; font-weight: 700;">{{ booking.caterer.business_name if booking.caterer else 'OccaServe Caterer' }}</div>
+                <div style="font-size: 0.85rem; color: #94a3b8;">Official OccaServe Partner</div>
+            </div>
+            {% if booking.caterer and booking.caterer.user and booking.caterer.user.profile_image_url %}
+            <img src="{{ booking.caterer.user.profile_image_url }}" alt="Logo" class="caterer-logo">
+            {% else %}
+            <div class="caterer-logo" style="display: flex; align-items: center; justify-content: center; background: #e2e8f0; color: #64748b; font-size: 1.5rem;">
+                <i class="fas fa-store"></i>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="invoice-body">
+        <div class="info-grid">
+            <div class="info-block">
+                <h3>Billed To</h3>
+                <p>{{ booking.user.first_name if booking.user else 'Walk-in' }} {{ booking.user.last_name if booking.user else 'Client' }}</p>
+                <div class="sub-text">{{ booking.venue_address or 'Venue TBD' }}</div>
+            </div>
+            <div class="info-block" style="text-align: right;">
+                <h3>Event Details</h3>
+                <p>{{ booking.event_name or booking.event_type }}</p>
+                <div class="sub-text">
+                    {{ booking.event_date.strftime('%b %d, %Y') if booking.event_date else 'Date TBD' }}<br>
+                    {{ booking.guest_count or 0 }} Guests
+                </div>
+            </div>
+        </div>
+        
+        <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 2rem; overflow: hidden;">
+            <div style="padding: 1.5rem; background: #f1f5f9; border-bottom: 1px solid var(--border);">
+                <h3 style="margin: 0; color: var(--text-main); font-size: 1.1rem;">{{ booking.event_type }} Package</h3>
+                <p style="margin: 4px 0 0; color: var(--text-muted); font-size: 0.9rem;">Menu Selection for {{ booking.guest_count or 0 }} Guests</p>
+            </div>
+            <div style="padding: 0 1.5rem;">
+                {% if booking.items %}
+                    {% for item in booking.items %}
+                        {% if not item.is_add_on %}
+                        <div style="padding: 1rem 0; border-bottom: 1px dashed var(--border); display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: 600; color: var(--text-main);">{{ item.menu_item.name if item.menu_item else 'Menu Item' }}</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">{{ item.menu_item.category if item.menu_item else 'Included' }}</div>
+                            </div>
+                            <span style="color: var(--primary); font-size: 0.85rem; font-weight: 600;"><i class="fas fa-check"></i> Included</span>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <div style="padding: 1.5rem 0; text-align: center; color: var(--text-muted); font-style: italic;">
+                        Menu items not yet finalized.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% set has_addons = False %}
+        {% for item in booking.items %}
+            {% if item.is_add_on %}
+                {% set has_addons = True %}
+            {% endif %}
+        {% endfor %}
+
+        {% if has_addons %}
+        <h3 style="font-size: 1rem; color: var(--text-main); margin-bottom: 1rem;">Additional Add-ons</h3>
+        <table class="invoice-table" style="margin-bottom: 2rem;">
+            <thead>
+                <tr>
+                    <th>Item Description</th>
+                    <th style="text-align: right;">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in booking.items %}
+                    {% if item.is_add_on %}
+                    <tr>
+                        <td>
+                            <div style="font-weight: 600; color: var(--text-main);">{{ item.menu_item.name if item.menu_item else 'Add-on Item' }}</div>
+                        </td>
+                        <td style="text-align: right;">₱{{ "{:,.2f}".format(item.price or 0) }}</td>
+                    </tr>
+                    {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+        
+        <div class="total-section">
+            <div class="total-box">
+                <div class="total-row">
+                    <span style="color: var(--text-muted);">Subtotal</span>
+                    <span>₱{{ "{:,.2f}".format(booking.total_amount or 0) }}</span>
+                </div>
+                {% set reservation = booking.reservation_fee or ((booking.total_amount or 0) * 0.3) %}
+                <div class="total-row" style="color: #ea580c; font-weight: 600;">
+                    <span>Required Downpayment</span>
+                    <span>₱{{ "{:,.2f}".format(reservation) }}</span>
+                </div>
+                <div class="total-row grand-total">
+                    <span>Total Amount</span>
+                    <span>₱{{ "{:,.2f}".format(booking.total_amount or 0) }}</span>
+                </div>
+                <p style="font-size: 0.8rem; color: var(--text-muted); text-align: right; margin-top: 8px;">*You may choose to pay only the downpayment to secure the booking.</p>
+            </div>
+        </div>
+        
+        <!-- DIRECT QR PAYMENT PORTAL -->
+        <div class="payment-section" style="background: white; border: 1px solid var(--border); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+            <h2 style="color: var(--text-main);"><i class="fas fa-wallet" style="color: var(--primary);"></i> Select Payment Method</h2>
+            <p style="color: var(--text-muted); margin-bottom: 2rem;">Choose your preferred method to pay securely.</p>
+            
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 2rem;">
+                {% if booking.caterer and booking.caterer.gcash_qr_url %}
+                <button onclick="openPaymentModal('gcash')" style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 1.5rem; width: 140px; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; gap: 0.75rem;">
+                    <div style="width: 48px; height: 48px; background: #005ce6; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;"><i class="fas fa-mobile-alt"></i></div>
+                    <span style="font-weight: 700; color: #1e3a8a;">GCash</span>
+                </button>
+                {% endif %}
+                
+                {% if booking.caterer and booking.caterer.maya_qr_url %}
+                <button onclick="openPaymentModal('maya')" style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 1.5rem; width: 140px; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; gap: 0.75rem;">
+                    <div style="width: 48px; height: 48px; background: #16a34a; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;"><i class="fas fa-wallet"></i></div>
+                    <span style="font-weight: 700; color: #14532d;">Maya</span>
+                </button>
+                {% endif %}
+                
+                {% if booking.caterer and booking.caterer.bank_name %}
+                <button onclick="openPaymentModal('bank')" style="background: #fefce8; border: 1px solid #fef08a; border-radius: 12px; padding: 1.5rem; width: 140px; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; gap: 0.75rem;">
+                    <div style="width: 48px; height: 48px; background: #ca8a04; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;"><i class="fas fa-university"></i></div>
+                    <span style="font-weight: 700; color: #713f12;">Bank</span>
+                </button>
+                {% endif %}
+                
+                <button onclick="openPaymentModal('cash')" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; width: 140px; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; gap: 0.75rem;">
+                    <div style="width: 48px; height: 48px; background: #64748b; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;"><i class="fas fa-money-bill-wave"></i></div>
+                    <span style="font-weight: 700; color: #334155;">Cash / OTC</span>
+                </button>
+            </div>
+            
+            {% if booking.payment_status in ['paid', 'deposit_paid'] %}
+                <div style="background: #dcfce7; color: #166534; padding: 1rem; border-radius: 8px; font-weight: 700;">
+                    <i class="fas fa-check-circle"></i> Payment Verified by Caterer
+                </div>
+            {% elif booking.payment_status == 'proof_submitted' %}
+                <div style="background: #fef9c3; color: #854d0e; padding: 1rem; border-radius: 8px; font-weight: 700;">
+                    <i class="fas fa-clock"></i> Verifying Payment...
+                </div>
+            {% else %}
+                <p style="font-size: 0.85rem; color: #64748b; margin-top: 1rem; margin-bottom: 0;">Click on a payment method above to view details and upload your proof of payment.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="footer">
+        Powered by <strong>OccaServe</strong> - Professional Catering Platform
+    </div>
+</div>
+
+<!-- Dynamic Payment Modals -->
+<div id="paymentModalOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div style="background: white; width: 95%; max-width: 450px; border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); display: flex; flex-direction: column; max-height: 90vh;">
+        
+        <div style="background: #f8fafc; padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border);">
+            <h3 id="modalTitle" style="margin: 0; font-size: 1.25rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-wallet"></i> Payment Details
+            </h3>
+            <button onclick="closePaymentModal()" style="background: none; border: none; font-size: 1.25rem; color: var(--text-muted); cursor: pointer;"><i class="fas fa-times"></i></button>
+        </div>
+        
+        <div style="padding: 2rem; overflow-y: auto;">
+            <!-- Dynamic Content Area -->
+            <div id="modalContentGcash" style="display: none; text-align: center;">
+                <img src="{{ booking.caterer.gcash_qr_url if booking.caterer else '' }}" alt="GCash QR" style="width: 220px; height: 220px; object-fit: cover; border-radius: 16px; border: 2px solid #bfdbfe; margin-bottom: 1rem;">
+                <div style="background: #eff6ff; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                    <div style="font-size: 0.85rem; color: #3b82f6; font-weight: 600; text-transform: uppercase;">GCash Details</div>
+                    <div style="font-size: 1.25rem; font-weight: 800; color: #1e3a8a; margin-top: 4px; letter-spacing: 1px;">GCash Mobile Number</div>
+                </div>
+            </div>
+            
+            <div id="modalContentMaya" style="display: none; text-align: center;">
+                <img src="{{ booking.caterer.maya_qr_url if booking.caterer else '' }}" alt="Maya QR" style="width: 220px; height: 220px; object-fit: cover; border-radius: 16px; border: 2px solid #bbf7d0; margin-bottom: 1rem;">
+                <div style="background: #f0fdf4; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                    <div style="font-size: 0.85rem; color: #16a34a; font-weight: 600; text-transform: uppercase;">Maya Details</div>
+                    <div style="font-size: 1.25rem; font-weight: 800; color: #14532d; margin-top: 4px; letter-spacing: 1px;">{{ booking.caterer.maya_number if booking.caterer and booking.caterer.maya_number else 'Ask Caterer' }}</div>
+                </div>
+            </div>
+            
+            <div id="modalContentBank" style="display: none;">
+                <div style="background: #fefce8; padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid #fef08a;">
+                    <div style="margin-bottom: 1rem;">
+                        <div style="font-size: 0.85rem; color: #ca8a04; font-weight: 600;">Bank Name</div>
+                        <div style="font-size: 1.1rem; font-weight: 700; color: #713f12;">{{ booking.caterer.bank_name if booking.caterer else '' }}</div>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <div style="font-size: 0.85rem; color: #ca8a04; font-weight: 600;">Account Name</div>
+                        <div style="font-size: 1.1rem; font-weight: 700; color: #713f12;">{{ booking.caterer.bank_account_name if booking.caterer else '' }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.85rem; color: #ca8a04; font-weight: 600;">Account Number</div>
+                        <div style="font-size: 1.25rem; font-weight: 800; color: #713f12; letter-spacing: 1px;">{{ booking.caterer.bank_account_number if booking.caterer else '' }}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="modalContentCash" style="display: none; text-align: center;">
+                <div style="width: 80px; height: 80px; background: #f1f5f9; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: #64748b; margin: 0 auto 1.5rem;">
+                    <i class="fas fa-hand-holding-usd"></i>
+                </div>
+                <h4 style="font-size: 1.1rem; color: var(--text-main); margin-bottom: 0.5rem;">Over-the-Counter Payment</h4>
+                <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 1.5rem;">You can pay in cash at the caterer's physical address or during your initial meetup.</p>
+                <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; font-size: 0.9rem; font-weight: 600; color: var(--text-main);">
+                    {{ booking.caterer.address if booking.caterer else 'Check Caterer Profile for Address' }}
+                </div>
+            </div>
+            
+            <hr style="border: none; border-top: 1px solid var(--border); margin: 2rem 0;">
+            
+            <h4 style="font-size: 1rem; color: var(--text-main); margin-bottom: 1rem;"><i class="fas fa-cloud-upload-alt" style="color: var(--primary);"></i> Submit Proof of Payment</h4>
+        <form id="paymentUploadForm" action="/customer/booking/{{ booking.id }}/upload-proof" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="payment_method" id="inputPaymentMethod" value="">
+                
+                <div id="uploadErrorMsg" style="display: none; background: #fee2e2; color: #b91c1c; padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; margin-bottom: 1rem; font-weight: 600;"></div>
+                
+                <div style="margin-bottom: 1.25rem;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text-main);">Payment Type</label>
+                    <div style="display: flex; gap: 1rem;">
+                        <label style="flex: 1; border: 1px solid var(--border); padding: 0.75rem; border-radius: 8px; display: flex; align-items: center; gap: 8px; cursor: pointer; background: #f8fafc;">
+                            <input type="radio" name="payment_amount_type" value="downpayment" checked> 
+                            <span>Downpayment (₱{{ "{:,.2f}".format(reservation) }})</span>
+                        </label>
+                        <label style="flex: 1; border: 1px solid var(--border); padding: 0.75rem; border-radius: 8px; display: flex; align-items: center; gap: 8px; cursor: pointer; background: #f8fafc;">
+                            <input type="radio" name="payment_amount_type" value="full"> 
+                            <span>Full (₱{{ "{:,.2f}".format(booking.total_amount or 0) }})</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 1.25rem;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text-main);">Receipt Image</label>
+                    <input type="file" id="proofImageInput" name="proof_image" accept="image/png, image/jpeg, image/jpg" required style="width: 100%; padding: 0.75rem; border: 2px dashed #cbd5e1; border-radius: 8px; background: #f8fafc; cursor: pointer;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">Max 5MB. PNG or JPG only.</div>
+                </div>
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text-main);">Reference No. (Optional)</label>
+                    <input type="text" id="referenceNoInput" name="reference_no" placeholder="e.g. 10023456789" pattern="[a-zA-Z0-9]+" maxlength="30" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">Letters and numbers only. Max 30 chars.</div>
+                </div>
+                
+                <button type="submit" style="width: 100%; background: var(--primary); color: white; border: none; padding: 1rem; border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; transition: 0.2s;">
+                    Upload & Notify Caterer
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openPaymentModal(method) {
+        document.getElementById('paymentModalOverlay').style.display = 'flex';
+        
+        // Hide all content blocks
+        document.getElementById('modalContentGcash').style.display = 'none';
+        document.getElementById('modalContentMaya').style.display = 'none';
+        document.getElementById('modalContentBank').style.display = 'none';
+        document.getElementById('modalContentCash').style.display = 'none';
+        
+        // Show selected and update title
+        const titleEl = document.getElementById('modalTitle');
+        const inputMethod = document.getElementById('inputPaymentMethod');
+        
+        if (method === 'gcash') {
+            document.getElementById('modalContentGcash').style.display = 'block';
+            titleEl.innerHTML = '<i class="fas fa-mobile-alt" style="color:#005ce6;"></i> GCash Payment';
+            inputMethod.value = 'GCash';
+        } else if (method === 'maya') {
+            document.getElementById('modalContentMaya').style.display = 'block';
+            titleEl.innerHTML = '<i class="fas fa-wallet" style="color:#16a34a;"></i> Maya Payment';
+            inputMethod.value = 'Maya';
+        } else if (method === 'bank') {
+            document.getElementById('modalContentBank').style.display = 'block';
+            titleEl.innerHTML = '<i class="fas fa-university" style="color:#ca8a04;"></i> Bank Transfer';
+            inputMethod.value = 'Bank Transfer';
+        } else if (method === 'cash') {
+            document.getElementById('modalContentCash').style.display = 'block';
+            titleEl.innerHTML = '<i class="fas fa-money-bill-wave" style="color:#64748b;"></i> Cash Payment';
+            inputMethod.value = 'Cash';
+        }
+    }
+    
+    function closePaymentModal() {
+        document.getElementById('paymentModalOverlay').style.display = 'none';
+    }
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('success')) {
+            alert('Your proof of payment has been successfully uploaded! The caterer will verify it shortly.');
+            // Clean up the URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        
+        const form = document.getElementById('paymentUploadForm');
+        const errorMsg = document.getElementById('uploadErrorMsg');
+        
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                errorMsg.style.display = 'none';
+                errorMsg.innerText = '';
+                
+                const fileInput = document.getElementById('proofImageInput');
+                const refInput = document.getElementById('referenceNoInput');
+                
+                // File Validation
+                if (fileInput.files.length > 0) {
+                    const file = fileInput.files[0];
+                    const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+                    
+                    if (!validTypes.includes(file.type)) {
+                        e.preventDefault();
+                        errorMsg.innerText = 'Invalid file type. Please upload a PNG or JPG image only.';
+                        errorMsg.style.display = 'block';
+                        return;
+                    }
+                    
+                    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                        e.preventDefault();
+                        errorMsg.innerText = 'File is too large. Maximum size allowed is 5MB.';
+                        errorMsg.style.display = 'block';
+                        return;
+                    }
+                }
+                
+                // Reference Number Validation
+                if (refInput.value.trim() !== '') {
+                    // Alphanumeric only, no special characters or spaces
+                    const refRegex = /^[a-zA-Z0-9]+$/;
+                    if (!refRegex.test(refInput.value)) {
+                        e.preventDefault();
+                        errorMsg.innerText = 'Reference Number must contain letters and numbers only. No spaces or special characters allowed.';
+                        errorMsg.style.display = 'block';
+                        return;
+                    }
+                    if (refInput.value.length < 6 || refInput.value.length > 30) {
+                        e.preventDefault();
+                        errorMsg.innerText = 'Reference Number must be between 6 and 30 characters.';
+                        errorMsg.style.display = 'block';
+                        return;
+                    }
+                    
+                    // Prevent spam inputs like 11111111111
+                    const repeatingRegex = /(.)\1{5,}/;
+                    if (repeatingRegex.test(refInput.value)) {
+                        e.preventDefault();
+                        errorMsg.innerText = 'Reference number looks invalid. Please provide a real reference number.';
+                        errorMsg.style.display = 'block';
+                        return;
+                    }
+                }
+            });
+        }
+    });
+</script>
+</body>
+</html>

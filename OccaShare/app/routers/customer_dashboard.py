@@ -370,6 +370,124 @@ async def view_contract_customer(
         "active_page": "bookings"
     })
 
+@router.get("/booking/{booking_id}/invoice", response_class=HTMLResponse)
+async def view_public_invoice(
+    booking_id: int,
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: Optional[models.User] = Depends(auth.get_current_user_optional)
+):
+    """Public route for a customer to view their auto-generated invoice via a shareable link."""
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking:
+        return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
+        
+    # We will reuse the caterer's contract view or create a specific public invoice template
+    quotation = booking.quotation
+    if not quotation:
+        quotation = {
+            "total_amount": booking.total_amount,
+            "package_details": {"name": booking.event_type},
+            "addons": [],
+            "terms": "Standard terms apply."
+        }
+        
+    return templates.TemplateResponse("customer/public_invoice.html", {
+        "request": request,
+        "user": user,
+        "booking": booking,
+        "quotation": quotation
+    })
+
+@router.post("/booking/{booking_id}/upload-proof")
+async def upload_public_proof_of_payment(
+    booking_id: int,
+    request: Request,
+    proof_image: UploadFile = File(...),
+    reference_no: Optional[str] = Form(None),
+    payment_method: Optional[str] = Form(None),
+    db: Session = Depends(database.get_db)
+):
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking:
+        return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
+        
+    import os
+    import shutil
+    import uuid
+    import re
+    
+    # Validation: File Type
+    allowed_types = ["image/jpeg", "image/png", "image/jpg"]
+    if proof_image.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Invalid file type. Only JPG and PNG are allowed.")
+        
+    # Validation: File Size (Read file to check size, then seek back to 0)
+    proof_image.file.seek(0, os.SEEK_END)
+    file_size = proof_image.file.tell()
+    proof_image.file.seek(0)
+    
+    if file_size > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large. Maximum size is 5MB.")
+        
+    # Validation: Reference Number
+    if reference_no:
+        reference_no = reference_no.strip()
+        if not re.match(r"^[a-zA-Z0-9]+$", reference_no):
+            raise HTTPException(status_code=400, detail="Reference number must be alphanumeric.")
+        if len(reference_no) < 6 or len(reference_no) > 30:
+            raise HTTPException(status_code=400, detail="Reference number must be between 6 and 30 characters.")
+        if re.search(r"(.)\1{5,}", reference_no):
+            raise HTTPException(status_code=400, detail="Reference number looks invalid (excessive repeating characters).")
+    
+    # Save the uploaded proof image
+    UPLOAD_DIR = "app/static/uploads/payments"
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    
+    file_extension = os.path.splitext(proof_image.filename)[1]
+    filename = f"proof_{booking_id}_{uuid.uuid4()}{file_extension}"
+    file_path = os.path.join(UPLOAD_DIR, filename)
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(proof_image.file, buffer)
+        
+    booking.payment_proof_url = f"/static/uploads/payments/{filename}"
+    if reference_no:
+        booking.special_requests = (booking.special_requests or "") + f"\n[Payment Ref: {reference_no}]"
+    if payment_method:
+        booking.payment_method = payment_method
+        
+    booking.payment_status = 'proof_submitted'
+    if booking.status in ['pending', 'draft', 'pending_payment']:
+        booking.status = 'awaiting_payment' # To signify it's waiting for caterer verification
+        
+    db.commit()
+    
+    # Send notification to caterer
+    from ..services.realtime import manager
+    caterer_msg = f"New payment proof submitted for booking #{booking.id}"
+    
+    notif = models.Notification(
+        user_id=booking.caterer.user_id,
+        title="Payment Submitted",
+        message=caterer_msg,
+        type="Payment",
+        link=f"/caterer/dashboard?page=bookings"
+    )
+    db.add(notif)
+    db.commit()
+    
+    import asyncio
+    asyncio.create_task(manager.broadcast_to_user(booking.caterer.user_id, {
+        "type": "new_notification",
+        "title": notif.title,
+        "message": notif.message,
+        "url": notif.link
+    }))
+    
+    # Redirect back to the public invoice
+    return RedirectResponse(url=f"/customer/booking/{booking_id}/invoice?success=1", status_code=303)
+
 @router.post("/bookings/manage/{booking_id}/cancel")
 async def cancel_booking(
     booking_id: int,
@@ -685,6 +803,11 @@ async def customer_marketplace(
             "sort": sort
         }
     })
+
+@router.get("/book/{caterer_id}")
+async def legacy_booking_link_redirect(caterer_id: int):
+    """Redirects old /customer/book/{id} links sent in FB Messenger to the new /bookings/start/{id} route."""
+    return RedirectResponse(url=f"/bookings/start/{caterer_id}", status_code=301)
 
 @router.get("/marketplace/{caterer_id}", response_class=HTMLResponse)
 async def caterer_detail(

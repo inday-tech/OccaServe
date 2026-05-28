@@ -691,8 +691,11 @@ async def step_payment_submit(
     payment_method: str = Form("GCash"),
     payment_plan: str = Form("downpayment"),
     payment_proof: Optional[UploadFile] = File(None),
+    reference_no: Optional[str] = Form(None),
     db: Session = Depends(database.get_db)
 ):
+    import re
+    
     actual_booking_id = path_booking_id or booking_id
     
     if not actual_booking_id:
@@ -713,13 +716,31 @@ async def step_payment_submit(
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
+    # Validation: Reference Number
+    if reference_no:
+        reference_no = reference_no.strip()
+        if not re.match(r"^[a-zA-Z0-9]+$", reference_no):
+            raise HTTPException(status_code=400, detail="Reference number must be alphanumeric.")
+        if len(reference_no) < 6 or len(reference_no) > 30:
+            raise HTTPException(status_code=400, detail="Reference number must be between 6 and 30 characters.")
+        if re.search(r"(.)\1{5,}", reference_no):
+            raise HTTPException(status_code=400, detail="Reference number looks invalid (excessive repeating characters).")
+
     # Handle Payment Proof Upload
     proof_url = None
     if payment_proof and payment_proof.filename:
         # Validate MIME type
-        allowed_types = ["image/jpeg", "image/png", "image/webp", "application/pdf"]
+        allowed_types = ["image/jpeg", "image/png", "image/jpg", "image/webp", "application/pdf"]
         if payment_proof.content_type not in allowed_types:
             raise HTTPException(status_code=400, detail="Invalid file type. Only JPG, PNG, WEBP, and PDF are allowed.")
+            
+        # File size check
+        payment_proof.file.seek(0, os.SEEK_END)
+        file_size = payment_proof.file.tell()
+        payment_proof.file.seek(0)
+        
+        if file_size > 5 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="File too large. Maximum size is 5MB.")
             
         ext = os.path.splitext(payment_proof.filename)[1]
         filename = f"{booking.id}_{payment_plan}_{uuid.uuid4().hex}{ext}"
@@ -730,6 +751,9 @@ async def step_payment_submit(
             
         proof_url = f"/static/uploads/payment_proofs/{filename}"
         booking.payment_proof_url = proof_url
+        
+        if reference_no:
+            booking.special_requests = (booking.special_requests or "") + f"\n[Payment Ref: {reference_no}]"
 
     # Handle Cash Payment
     if payment_method == "Cash":
@@ -753,44 +777,6 @@ async def step_payment_submit(
             await NotificationService.notify_payment_received(db, booking, float(pay_amount), f"{payment_plan.capitalize()} Proof")
 
         return RedirectResponse(url=f"/bookings/success/{booking.id}", status_code=303)
-
-    # Paymongo Integration (Keep it if configured)
-    from dotenv import load_dotenv
-    load_dotenv(override=True)
-    paymongo_secret = os.getenv("PAYMONGO_SECRET_KEY")
-
-    if paymongo_secret and not proof_url: # Only use Paymongo if no manual proof uploaded
-        url = "https://api.paymongo.com/v1/links"
-        amount_cents = int((booking.reservation_fee or 0) * 100)
-        
-        if amount_cents >= 10000:
-            base_url = os.getenv("SITE_URL", "http://localhost:8000")
-            payload = {
-                "data": {
-                    "attributes": {
-                        "amount": amount_cents,
-                        "description": f"Reservation Fee for Booking #{booking.id}",
-                        "remarks": f"booking_id:{booking.id}",
-                        "redirect": {
-                            "success": f"{base_url}/bookings/success/{booking.id}",
-                            "failed": f"{base_url}/bookings/step/payment/{booking.id}?payment=failed"
-                        }
-                    }
-                }
-            }
-            
-            async with httpx.AsyncClient() as client:
-                try:
-                    response = await client.post(url, json=payload, auth=(paymongo_secret, ""))
-                    if response.status_code == 200:
-                        data = response.json()
-                        checkout_url = data["data"]["attributes"]["checkout_url"]
-                        booking.payment_method = payment_method
-                        booking.status = "pending_payment"
-                        db.commit()
-                        return RedirectResponse(url=checkout_url, status_code=303)
-                except Exception as e:
-                    print("Paymongo Error:", str(e))
 
     # Default flow: Manual transfer / Direct Payment
     booking.payment_method = payment_method

@@ -1064,6 +1064,10 @@
                     </div>
                     {% endif %}
                     <div class="header-actions">
+                        <!-- Direct Booking Link Action -->
+                        <button type="button" class="header-action-btn" title="Copy Direct Booking Link for FB" onclick="copyDirectBookingLink('{{ user.caterer_profile.id if user and user.caterer_profile else '' }}')" style="border: 1px solid #e2e8f0; cursor: pointer;">
+                            <i class="fas fa-link"></i>
+                        </button>
                         <!-- Notifications Dropdown -->
                         <div class="header-dropdown-wrapper" style="position: relative;">
                             {% set unread_count = user.notifications|selectattr('is_read', 'equalto', false)|list|count if user and user.notifications else 0 %}
@@ -1539,7 +1543,18 @@
             fetchGlobalNotifications();
             globalNotifTimer = setInterval(() => fetchGlobalNotifications(), 15000);
         });
-
+        window.copyDirectBookingLink = function(catererId) {
+            if (!catererId) {
+                showNotification('Error', 'Caterer ID not found', 'error');
+                return;
+            }
+            const url = window.location.origin + '/bookings/start/' + catererId;
+            navigator.clipboard.writeText(url).then(() => {
+                showNotification('Link Copied!', 'Direct Booking Link copied to clipboard. You can now paste this in FB Messenger.', 'success');
+            }).catch(err => {
+                showNotification('Error', 'Failed to copy link', 'error');
+            });
+        };
     </script>
 </body>
 

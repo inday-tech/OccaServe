@@ -164,7 +164,7 @@
 
 /* Completed State */
 .roadmap-step.completed .step-icon {
-    background: rgba(255, 123, 84, 0.1);
+    background: #ffffff;
     border-color: var(--up-emerald-500);
     color: var(--up-emerald-500);
     box-shadow: none;
@@ -200,6 +200,28 @@
     transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+@media (max-width: 640px) {
+    .roadmap-stepper::before, .roadmap-stepper::after {
+        top: 16px;
+        left: 16px;
+        right: 16px;
+    }
+    .roadmap-step {
+        width: auto;
+        flex: 1;
+        gap: 0.3rem;
+    }
+    .step-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 0.75rem;
+    }
+    .step-label {
+        font-size: 0.45rem;
+        word-break: break-word;
+        padding: 0 0.1rem;
+    }
+}
 
 .q-badge {
     background: rgba(255, 123, 84, 0.08);
@@ -389,8 +411,8 @@
 
 @media (max-width: 640px) {
     .up-card {
-        padding: 1.5rem;
-        border-radius: 20px;
+        padding: 1rem;
+        border-radius: 12px;
     }
 }
 
@@ -1125,6 +1147,33 @@
     .q-page-footer-actions {
         flex-direction: column-reverse;
         align-items: stretch;
+        gap: 1rem;
+        padding-top: 1.5rem;
+        margin-top: 1.5rem;
+    }
+    .btn-back-soft {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 1rem;
+        font-size: 0.85rem;
+        flex: none;
+        background: white;
+        border: 1px solid #cbd5e1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+    .btn-confirm-up-main {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 1rem;
+        font-size: 0.85rem;
+        flex: none;
+        justify-content: center;
+        display: flex;
+        align-items: center;
+        text-align: center;
     }
 }
 
@@ -1132,7 +1181,7 @@
     background: #0f172a;
     color: white;
     padding: 0.85rem 2rem;
-    border-radius: 12px;
+    border-radius: 9999px;
     font-family: 'Poppins', sans-serif;
     font-size: 0.95rem;
     font-weight: 800;
@@ -1177,23 +1226,26 @@
 }
 
 .btn-back-soft {
-    color: var(--up-slate-700);
-    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.85rem 1.5rem;
+    border-radius: 9999px;
     font-weight: 800;
     font-size: 0.9rem;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: var(--up-slate-100);
-    padding: 0.6rem 1.25rem;
-    border-radius: 8px;
+    color: var(--up-slate-700);
+    background: white;
+    border: 1px solid #cbd5e1;
+    text-decoration: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .btn-back-soft:hover {
+    background: #f8fafc;
+    transform: translateY(-2px);
     color: var(--up-slate-900);
-    background: var(--up-slate-200);
-    transform: translateX(-5px);
+    border-color: #94a3b8;
 }
 
 /* ── SIDEBAR CLEANUP (REMOVED) ── */
@@ -1326,10 +1378,5 @@
         gap: 1rem;
     }
 
-    .btn-confirm-up-main {
-        width: 100%;
-        padding: 1.25rem 2rem;
-        font-size: 1.1rem;
-        justify-content: center;
-    }
+
 }

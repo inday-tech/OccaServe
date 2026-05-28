@@ -114,67 +114,162 @@
     <!-- ── PAYMENT METHOD SELECTION ── -->
     <div class="checkout-section-header animate-up" style="animation-delay: 0.3s; margin-bottom: 1rem; margin-top: 2rem;">
         <h3 style="font-size: 0.85rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; color: var(--up-slate-900);">2. Select Secure Method</h3>
+        <p style="font-size: 0.75rem; color: var(--up-slate-500);">Choose your preferred method to settle your booking securely.</p>
     </div>
 
-    <div class="method-grid-modern animate-up" style="animation-delay: 0.35s;">
-        <!-- Paymongo (Gateway) -->
-        <div class="method-card-modern" onclick="selectMethod('Paymongo', this)">
-            <div class="method-icon-wrap"><i class="fas fa-shield-alt"></i></div>
-            <span class="method-label">Secure Gateway</span>
-            <span class="gateway-badge">Paymongo Verified</span>
-        </div>
-
-        <!-- GCash (Manual - Restricted/Emergency) -->
-        <div class="method-card-modern" onclick="selectMethod('GCash', this)">
-            <div class="method-icon-wrap"><i class="fas fa-mobile-alt"></i></div>
-            <span class="method-label">GCash Transfer</span>
-        </div>
-
-        <!-- Maya/Bank (Grouped) -->
-        <div class="method-card-modern" onclick="selectMethod('Bank/Maya', this)">
-            <div class="method-icon-wrap"><i class="fas fa-university"></i></div>
-            <span class="method-label">Bank / Maya</span>
-        </div>
+    <div class="animate-up" style="animation-delay: 0.35s; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 2rem;">
+        {% if profile.gcash_qr_url %}
+        <button type="button" onclick="openPaymentModal('GCash')" style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 1.5rem; width: 140px; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; gap: 0.75rem;">
+            <div style="width: 48px; height: 48px; background: #005ce6; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;"><i class="fas fa-mobile-alt"></i></div>
+            <span style="font-weight: 700; color: #1e3a8a;">GCash</span>
+        </button>
+        {% endif %}
+        
+        {% if profile.maya_qr_url %}
+        <button type="button" onclick="openPaymentModal('Maya')" style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 1.5rem; width: 140px; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; gap: 0.75rem;">
+            <div style="width: 48px; height: 48px; background: #16a34a; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;"><i class="fas fa-wallet"></i></div>
+            <span style="font-weight: 700; color: #14532d;">Maya</span>
+        </button>
+        {% endif %}
+        
+        {% if profile.bank_name %}
+        <button type="button" onclick="openPaymentModal('Bank')" style="background: #fefce8; border: 1px solid #fef08a; border-radius: 12px; padding: 1.5rem; width: 140px; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; gap: 0.75rem;">
+            <div style="width: 48px; height: 48px; background: #ca8a04; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;"><i class="fas fa-university"></i></div>
+            <span style="font-weight: 700; color: #713f12;">Bank Transfer</span>
+        </button>
+        {% endif %}
+        
+        <button type="button" onclick="openPaymentModal('Cash')" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; width: 140px; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; gap: 0.75rem;">
+            <div style="width: 48px; height: 48px; background: #64748b; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;"><i class="fas fa-money-bill-wave"></i></div>
+            <span style="font-weight: 700; color: #334155;">Cash / OTC</span>
+        </button>
     </div>
 
     <!-- ── SECURITY TRUST BAR ── -->
     <div class="security-trust-bar animate-up" style="animation-delay: 0.4s;">
         <div class="trust-item">
             <i class="fas fa-lock"></i>
-            <span>256-bit SSL Encrypted</span>
+            <span>Secure File Upload</span>
         </div>
         <div class="trust-item">
             <i class="fas fa-check-shield"></i>
-            <span>PCI-DSS Compliant</span>
+            <span>Verified Caterer</span>
         </div>
         <div class="trust-item">
             <i class="fas fa-bolt"></i>
-            <span>Instant Verification</span>
+            <span>Instant Notification</span>
         </div>
     </div>
 
     <!-- Actions -->
     <div class="wizard-actions animate-up" style="animation-delay: 0.5s; margin-top: 3rem; display: flex; justify-content: space-between; align-items: center;">
-        <a href="/bookings/step/quotation/{{ booking.id }}" class="btn-wizard-back" style="font-weight: 800; color: var(--up-slate-400); text-decoration: none;">
+        <a href="/bookings/step/quotation/{{ booking.id }}" class="btn-wizard-back" style="font-weight: 800; color: var(--up-slate-700); text-decoration: none; border-color: #cbd5e1;">
             <i class="fas fa-arrow-left"></i> Back to Agreement
         </a>
-        <button type="submit" class="btn-wizard-next" id="submit-payment-btn" disabled 
-            style="background: var(--up-slate-900); color: white; padding: 1rem 3rem; border-radius: 12px; font-weight: 900; border: none; cursor: pointer; opacity: 0.5;">
-            Select Method to Continue
-        </button>
+    </div>
+
+    <!-- Dynamic Payment Modal (Inside Form) -->
+    <div id="paymentModalOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+        <div style="background: white; width: 95%; max-width: 450px; border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); display: flex; flex-direction: column; max-height: 90vh;">
+            
+            <div style="background: #f8fafc; padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0;">
+                <h3 id="modalTitle" style="margin: 0; font-size: 1.25rem; color: var(--up-slate-900); display: flex; align-items: center; gap: 8px; font-weight: 800;">
+                    <i class="fas fa-wallet"></i> Payment Details
+                </h3>
+                <button type="button" onclick="closePaymentModal()" style="background: none; border: none; font-size: 1.25rem; color: var(--up-slate-400); cursor: pointer;"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div style="padding: 2rem; overflow-y: auto;">
+                <!-- Dynamic Content Area -->
+                <div id="modalContentGCash" style="display: none; text-align: center;">
+                    <img src="{{ profile.gcash_qr_url }}" alt="GCash QR" style="width: 220px; height: 220px; object-fit: cover; border-radius: 16px; border: 2px solid #bfdbfe; margin-bottom: 1rem;">
+                    <div style="background: #eff6ff; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                        <div style="font-size: 0.85rem; color: #3b82f6; font-weight: 600; text-transform: uppercase;">GCash Details</div>
+                        <div style="font-size: 1.25rem; font-weight: 800; color: #1e3a8a; margin-top: 4px; letter-spacing: 1px;">GCash Mobile Number</div>
+                    </div>
+                </div>
+                
+                <div id="modalContentMaya" style="display: none; text-align: center;">
+                    <img src="{{ profile.maya_qr_url }}" alt="Maya QR" style="width: 220px; height: 220px; object-fit: cover; border-radius: 16px; border: 2px solid #bbf7d0; margin-bottom: 1rem;">
+                    <div style="background: #f0fdf4; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                        <div style="font-size: 0.85rem; color: #16a34a; font-weight: 600; text-transform: uppercase;">Maya Details</div>
+                        <div style="font-size: 1.25rem; font-weight: 800; color: #14532d; margin-top: 4px; letter-spacing: 1px;">{{ profile.maya_number if profile.maya_number else 'Ask Caterer' }}</div>
+                    </div>
+                </div>
+                
+                <div id="modalContentBank" style="display: none;">
+                    <div style="background: #fefce8; padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid #fef08a;">
+                        <div style="margin-bottom: 1rem;">
+                            <div style="font-size: 0.85rem; color: #ca8a04; font-weight: 600;">Bank Name</div>
+                            <div style="font-size: 1.1rem; font-weight: 700; color: #713f12;">{{ profile.bank_name }}</div>
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <div style="font-size: 0.85rem; color: #ca8a04; font-weight: 600;">Account Name</div>
+                            <div style="font-size: 1.1rem; font-weight: 700; color: #713f12;">{{ profile.bank_account_name }}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.85rem; color: #ca8a04; font-weight: 600;">Account Number</div>
+                            <div style="font-size: 1.25rem; font-weight: 800; color: #713f12; letter-spacing: 1px;">{{ profile.bank_account_number }}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="modalContentCash" style="display: none; text-align: center;">
+                    <div style="width: 80px; height: 80px; background: #f1f5f9; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: #64748b; margin: 0 auto 1.5rem;">
+                        <i class="fas fa-hand-holding-usd"></i>
+                    </div>
+                    <h4 style="font-size: 1.1rem; color: var(--up-slate-900); margin-bottom: 0.5rem; font-weight: 800;">Over-the-Counter Payment</h4>
+                    <p style="font-size: 0.95rem; color: var(--up-slate-500); margin-bottom: 1.5rem;">You can pay in cash at the caterer's physical address or during your initial meetup.</p>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; font-size: 0.9rem; font-weight: 600; color: var(--up-slate-900); border: 1px solid #e2e8f0;">
+                        {{ profile.address if profile.address else 'Check Caterer Profile for Address' }}
+                    </div>
+                </div>
+                
+                <hr id="uploadSeparator" style="border: none; border-top: 1px solid #e2e8f0; margin: 2rem 0;">
+                
+                <div id="uploadSection">
+                    <h4 style="font-size: 1rem; color: var(--up-slate-900); margin-bottom: 1rem; font-weight: 800;"><i class="fas fa-cloud-upload-alt" style="color: var(--up-emerald-500);"></i> Submit Proof of Payment</h4>
+                    
+                    <div id="uploadErrorMsg" style="display: none; background: #fee2e2; color: #b91c1c; padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; margin-bottom: 1rem; font-weight: 600;"></div>
+                    
+                    <div style="margin-bottom: 1.25rem;">
+                        <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 6px; color: var(--up-slate-900);">Receipt Image</label>
+                        <input type="file" id="proofImageInput" name="payment_proof" accept="image/png, image/jpeg, image/jpg" style="width: 100%; padding: 0.75rem; border: 2px dashed #cbd5e1; border-radius: 8px; background: #f8fafc; cursor: pointer;">
+                        <div style="font-size: 0.75rem; color: var(--up-slate-500); margin-top: 4px;">Max 5MB. PNG or JPG only.</div>
+                    </div>
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 6px; color: var(--up-slate-900);">Reference No. (Optional)</label>
+                        <input type="text" id="referenceNoInput" name="reference_no" placeholder="e.g. 10023456789" pattern="[a-zA-Z0-9]+" maxlength="30" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')" style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;">
+                        <div style="font-size: 0.75rem; color: var(--up-slate-500); margin-top: 4px;">Letters and numbers only. Max 30 chars.</div>
+                    </div>
+                </div>
+
+                <button type="submit" id="submit-payment-btn" style="width: 100%; background: var(--up-emerald-500); color: white; border: none; padding: 1rem; border-radius: 8px; font-weight: 800; font-size: 1rem; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);">
+                    Finish & Notify Caterer
+                </button>
+            </div>
+        </div>
     </div>
 </form>
 
 <script>
+    // Handle the visual payment plan toggle logic (Downpayment vs Full)
     function updatePaymentPlan(plan, amount, total) {
         // Update UI Classes
-        document.getElementById('plan-downpayment').classList.remove('active');
-        document.getElementById('plan-full').classList.remove('active');
-        document.getElementById('plan-' + plan).classList.add('active');
+        if (document.getElementById('plan-downpayment')) {
+            document.getElementById('plan-downpayment').classList.remove('active');
+            document.querySelector('#plan-downpayment .plan-check i').className = 'far fa-circle';
+        }
+        if (document.getElementById('plan-full')) {
+            document.getElementById('plan-full').classList.remove('active');
+            document.querySelector('#plan-full .plan-check i').className = 'far fa-circle';
+        }
 
-        // Update Icons
-        document.querySelector('#plan-downpayment .plan-check i').className = (plan === 'downpayment') ? 'fas fa-check-circle' : 'far fa-circle';
-        document.querySelector('#plan-full .plan-check i').className = (plan === 'full') ? 'fas fa-check-circle' : 'far fa-circle';
+        const selectedEl = document.getElementById('plan-' + plan);
+        if (selectedEl) {
+            selectedEl.classList.add('active');
+            document.querySelector('#plan-' + plan + ' .plan-check i').className = 'fas fa-check-circle';
+        }
 
         // Update Hidden Input
         document.getElementById('selected-plan').value = plan;
@@ -185,34 +280,122 @@
         const balanceRow = document.getElementById('balance-row');
         
         const formattedPay = '₱' + amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        toPayEl.textContent = formattedPay;
+        if(toPayEl) toPayEl.textContent = formattedPay;
 
         const balance = total - amount;
         const formattedBalance = '₱' + balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        balanceEl.textContent = formattedBalance;
+        if(balanceEl) balanceEl.textContent = formattedBalance;
 
         // Visibility of balance row
-        balanceRow.style.opacity = (balance > 0) ? '1' : '0.3';
+        if(balanceRow) {
+            balanceRow.style.opacity = (balance > 0) ? '1' : '0.3';
+        }
         
         console.log('[Payment] Plan switched to:', plan, 'Paying:', amount);
     }
 
-    function selectMethod(method, element) {
-        document.querySelectorAll('.method-card-modern').forEach(c => c.classList.remove('active'));
-        element.classList.add('active');
-
+    // Modal Logic
+    function openPaymentModal(method) {
         document.getElementById('selected-method').value = method;
-
-        const submitBtn = document.getElementById('submit-payment-btn');
-        submitBtn.disabled = false;
-        submitBtn.style.opacity = '1';
-        submitBtn.innerHTML = (method === 'Paymongo') ? 'Proceed to Secure Checkout <i class="fas fa-arrow-right"></i>' : 'Continue with ' + method;
+        document.getElementById('paymentModalOverlay').style.display = 'flex';
         
-        if (method === 'Paymongo') {
-            submitBtn.style.background = '#10b981'; // Emerald for secure gateway
-        } else {
+        // Hide all contents first
+        document.getElementById('modalContentGCash').style.display = 'none';
+        document.getElementById('modalContentMaya').style.display = 'none';
+        document.getElementById('modalContentBank').style.display = 'none';
+        document.getElementById('modalContentCash').style.display = 'none';
+        
+        // Show specific content
+        document.getElementById('modalContent' + method).style.display = 'block';
+        
+        const uploadSection = document.getElementById('uploadSection');
+        const uploadSeparator = document.getElementById('uploadSeparator');
+        const fileInput = document.getElementById('proofImageInput');
+        const submitBtn = document.getElementById('submit-payment-btn');
+        
+        if (method === 'Cash') {
+            uploadSection.style.display = 'none';
+            uploadSeparator.style.display = 'none';
+            fileInput.removeAttribute('required');
+            submitBtn.innerText = 'Commit to Pay via Cash';
             submitBtn.style.background = '#0f172a';
+            submitBtn.style.boxShadow = '0 4px 6px -1px rgba(15, 23, 42, 0.2)';
+        } else {
+            uploadSection.style.display = 'block';
+            uploadSeparator.style.display = 'block';
+            fileInput.setAttribute('required', 'required');
+            submitBtn.innerHTML = '<i class="fas fa-check-circle"></i> Upload Proof & Finish Booking';
+            submitBtn.style.background = 'var(--up-emerald-500)';
+            submitBtn.style.boxShadow = '0 4px 6px -1px rgba(16, 185, 129, 0.2)';
         }
     }
+
+    function closePaymentModal() {
+        document.getElementById('paymentModalOverlay').style.display = 'none';
+    }
+
+    // Form Validation (Spam + File Check)
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById('wizard-payment-form');
+        const errorMsg = document.getElementById('uploadErrorMsg');
+        
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                errorMsg.style.display = 'none';
+                errorMsg.innerText = '';
+                
+                const method = document.getElementById('selected-method').value;
+                if (method !== 'Cash') {
+                    const fileInput = document.getElementById('proofImageInput');
+                    const refInput = document.getElementById('referenceNoInput');
+                    
+                    // File Validation
+                    if (fileInput.files.length > 0) {
+                        const file = fileInput.files[0];
+                        const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+                        
+                        if (!validTypes.includes(file.type)) {
+                            e.preventDefault();
+                            errorMsg.innerText = 'Invalid file type. Please upload a PNG or JPG image only.';
+                            errorMsg.style.display = 'block';
+                            return;
+                        }
+                        
+                        if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                            e.preventDefault();
+                            errorMsg.innerText = 'File is too large. Maximum size allowed is 5MB.';
+                            errorMsg.style.display = 'block';
+                            return;
+                        }
+                    }
+                    
+                    // Reference Number Validation
+                    if (refInput && refInput.value.trim() !== '') {
+                        const refRegex = /^[a-zA-Z0-9]+$/;
+                        if (!refRegex.test(refInput.value)) {
+                            e.preventDefault();
+                            errorMsg.innerText = 'Reference Number must contain letters and numbers only. No spaces or special characters allowed.';
+                            errorMsg.style.display = 'block';
+                            return;
+                        }
+                        if (refInput.value.length < 6 || refInput.value.length > 30) {
+                            e.preventDefault();
+                            errorMsg.innerText = 'Reference Number must be between 6 and 30 characters.';
+                            errorMsg.style.display = 'block';
+                            return;
+                        }
+                        
+                        const repeatingRegex = /(.)\1{5,}/;
+                        if (repeatingRegex.test(refInput.value)) {
+                            e.preventDefault();
+                            errorMsg.innerText = 'Reference number looks invalid. Please provide a real reference number.';
+                            errorMsg.style.display = 'block';
+                            return;
+                        }
+                    }
+                }
+            });
+        }
+    });
 </script>
 {% endblock %}

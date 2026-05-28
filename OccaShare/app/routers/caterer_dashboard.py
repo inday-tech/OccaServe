@@ -2993,11 +2993,9 @@ async def get_calendar_events(
             
         event_data = {
             "id": str(b.id),
-            "start": str(b.event_date),
-            "allDay": True,
+            "start": start_dt,
             "backgroundColor": colors.get(ev_type, "#6366f1"),
             "borderColor": colors.get(ev_type, "#6366f1"),
-            "textColor": "#ffffff",
         }
 
         if is_owner:

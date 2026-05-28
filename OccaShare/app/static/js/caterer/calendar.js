@@ -1175,6 +1175,20 @@ function showBlockedDetails(event) {
 
 window.showEventDetails = showEventDetails;
 window.showBlockedDetails = showBlockedDetails;
+
+window.copyInvoiceLink = function() {
+    const bookingId = document.getElementById('evModalBookingId').value;
+    if (!bookingId) {
+        showNotification('Error', 'Booking ID not found', 'error');
+        return;
+    }
+    const url = window.location.origin + '/customer/booking/' + bookingId + '/invoice';
+    navigator.clipboard.writeText(url).then(() => {
+        showNotification('Invoice Link Copied!', 'You can now send this payment link/invoice to the customer via FB.', 'success');
+    }).catch(err => {
+        showNotification('Error', 'Failed to copy invoice link', 'error');
+    });
+};
 /* ==========================================================================
    PSGC ADDRESS API INTEGRATION
    ========================================================================== */
@@ -1278,12 +1292,10 @@ async function setReminder() {
 
     if (window.apiAction) {
         const res = await window.apiAction(`/caterer/api/bookings/${bookingId}/reminders`, {
-            method: 'POST',
-            muteToast: true
+            method: 'POST'
         });
         if (res) {
-            showNotification("Success", "Reminder alert has been set for this booking.", "success");
-            closeModal('eventDetailsModal');
+            closeModal('eventModal');
         }
     }
 }
