@@ -17,7 +17,7 @@
         <!-- Local search removed, using global header search -->
         <input type="hidden" id="menuSearchInput">
         <button class="btn-primary-pro" onclick="openAddMenuModal()">
-            <i class="fas fa-plus"></i> <span>Add New Dish</span>
+            <span>Add New Dish</span>
         </button>
     </div>
 </div>
@@ -114,22 +114,22 @@
     {% endfor %}
 
     <!-- No Search Results Empty State -->
-    <div id="searchEmptyState" class="empty-state animate-up delay-2 d-flex flex-column align-items-center justify-content-center text-center" style="display: none; width: 100%; grid-column: 1 / -1; padding: 4rem 1rem;">
+    <div id="searchEmptyState" class="empty-state animate-up delay-2" style="display: none; width: 100%; grid-column: 1 / -1; padding: 4rem 1rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
         <div class="empty-icon" style="color: #cbd5e1; font-size: 3rem; margin-bottom: 1rem;">
             <i class="fas fa-search"></i>
         </div>
-        <h2 style="color: #1e293b; font-size: 1.25rem; font-weight: 700;">No matches found</h2>
-        <p style="color: #64748b; font-size: 0.9rem;">Try adjusting your search or filter to find what you're looking for.</p>
+        <h2 style="color: #1e293b; font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem;">No matches found</h2>
+        <p style="color: #64748b; font-size: 0.9rem; margin-top: 0;">Try adjusting your search or filter to find what you're looking for.</p>
     </div>
 </div>
 {% else %}
-<div class="empty-state animate-up delay-2 d-flex flex-column align-items-center justify-content-center text-center">
-    <div class="empty-icon">
+<div class="empty-state animate-up delay-2" style="padding: 4rem 1rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; width: 100%;">
+    <div class="empty-icon" style="color: #cbd5e1; font-size: 4rem; margin-bottom: 1.5rem;">
         <i class="fas fa-utensils"></i>
     </div>
-    <h2>Your Library is Empty</h2>
-    <p class="mx-auto" style="max-width: 400px;">Start building your culinary collection by adding your signature dishes.</p>
-    <button class="btn-primary-pro mt-4 mx-auto" onclick="openAddMenuModal()">Add Your First Dish</button>
+    <h2 style="color: #1e293b; font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem;">Your Library is Empty</h2>
+    <p class="mx-auto" style="max-width: 400px; color: #64748b; margin-top: 0;">Start building your culinary collection by adding your signature dishes.</p>
+    <button class="btn-primary-pro mt-4 mx-auto" onclick="openAddMenuModal()" style="margin-top: 1.5rem;">Add Your First Dish</button>
 </div>
 {% endif %}
 

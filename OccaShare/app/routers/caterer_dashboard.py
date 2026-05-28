@@ -4622,8 +4622,7 @@ async def add_business_expense(
             category=data.get('category'),
             description=data.get('description'),
             amount=float(data.get('amount')),
-            date_incurred=datetime.strptime(data.get('date_incurred'), '%Y-%m-%d') if data.get('date_incurred') else datetime.now().date(),
-            receipt_url=data.get('receipt_url')
+            date_incurred=datetime.strptime(data.get('date_incurred'), '%Y-%m-%d') if data.get('date_incurred') else datetime.now().date()
         )
         db.add(new_expense)
         db.commit()

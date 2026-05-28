@@ -1733,6 +1733,66 @@
         justify-content: center;
     }
 
+    /* ─── Premium Modal Button Standardization (Applied Globally) ─── */
+    .occ-modal-footer .btn-primary,
+    .occ-modal-footer .btn-primary-pro,
+    .occ-modal-footer button[type="submit"],
+    .occ-modal-footer button:not(.btn-secondary):not(.btn-secondary-pro):not([onclick*="closeModal"]):not([onclick*="hide"]) {
+        background: var(--secondary-color) !important;
+        color: white !important;
+        padding: 0 1.75rem !important;
+        border-radius: 8px !important;
+        font-weight: 800 !important;
+        text-transform: none !important;
+        letter-spacing: 0 !important;
+        border: none !important;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15) !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        height: 44px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-family: inherit !important;
+    }
+
+    .occ-modal-footer .btn-primary:hover,
+    .occ-modal-footer .btn-primary-pro:hover,
+    .occ-modal-footer button[type="submit"]:hover,
+    .occ-modal-footer button:not(.btn-secondary):not(.btn-secondary-pro):not([onclick*="closeModal"]):not([onclick*="hide"]):hover {
+        transform: translateY(-2px) scale(1.02) !important;
+        filter: brightness(1.1) !important;
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2) !important;
+    }
+
+    .occ-modal-footer .btn-secondary,
+    .occ-modal-footer .btn-secondary-pro,
+    .occ-modal-footer button[onclick*="closeModal"],
+    .occ-modal-footer button[onclick*="hide"] {
+        background: #f8fafc !important;
+        color: var(--primary-color) !important;
+        padding: 0 1.75rem !important;
+        border-radius: 8px !important;
+        font-weight: 800 !important;
+        border: 2px solid var(--primary-color) !important;
+        text-transform: none !important;
+        letter-spacing: 0 !important;
+        box-shadow: none !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        height: 44px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-family: inherit !important;
+    }
+
+    .occ-modal-footer .btn-secondary:hover,
+    .occ-modal-footer .btn-secondary-pro:hover,
+    .occ-modal-footer button[onclick*="closeModal"]:hover,
+    .occ-modal-footer button[onclick*="hide"]:hover {
+        background: rgba(var(--primary-color-rgb, 239, 68, 68), 0.1) !important;
+        transform: translateY(-2px) scale(1.02) !important;
+    }
+
     .occ-modal-footer.modal-footer-balanced {
         justify-content: space-between;
     }

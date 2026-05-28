@@ -549,7 +549,7 @@
 
                 <div class="space-y-3">
                     <button {% if not request.query_params.get('preview') %}onclick="promptBookingAuth()"{% else %}disabled title="Preview Mode - Action Disabled" onclick="Swal.fire({icon: 'info', title: 'Preview Mode', text: 'This action is disabled while previewing your profile.', confirmButtonColor: 'var(--brand-primary)'})"{% endif %} class="btn-primary w-full text-sm py-4 {% if request.query_params.get('preview') %}opacity-80{% endif %}">
-                        <i class="fas fa-calendar-check"></i> Initiate Booking
+                        Initiate Booking
                     </button>
                     <button {% if not request.query_params.get('preview') %}onclick="promptInquiryAuth()"{% else %}disabled title="Preview Mode - Action Disabled" onclick="Swal.fire({icon: 'info', title: 'Preview Mode', text: 'This action is disabled while previewing your profile.', confirmButtonColor: 'var(--brand-primary)'})"{% endif %} class="btn-outline w-full text-sm py-4 border-2 {% if request.query_params.get('preview') %}opacity-80 bg-slate-50{% endif %}">
                         <i class="far fa-comment-dots"></i> Send Inquiry

@@ -612,7 +612,7 @@ function addExpenseRow() {
             <input type="text" class="form-control form-control-sm exp-name" placeholder="Item (e.g. Labor)" style="width: 100%; border: none; background: transparent; font-weight: 600; color: #334155; padding: 0.25rem 0; box-shadow: none;">
         </td>
         <td style="padding: 0.5rem 1rem;">
-            <input type="number" class="form-control form-control-sm exp-amount" placeholder="0.00" min="0" oninput="calculateActualExpenses()" style="width: 100%; border: none; background: transparent; font-weight: 700; color: #0f172a; text-align: right; padding: 0.25rem 0; box-shadow: none;">
+            <input type="text" class="form-control form-control-sm exp-amount js-format-comma" placeholder="0.00" oninput="if(window.applyCommaFormatting) window.applyCommaFormatting(this); calculateActualExpenses()" style="width: 100%; border: none; background: transparent; font-weight: 700; color: #0f172a; text-align: right; padding: 0.25rem 0; box-shadow: none;">
         </td>
         <td style="padding: 0.5rem; text-align: center;">
             <button type="button" class="btn btn-sm text-danger" onclick="this.closest('tr').remove(); calculateActualExpenses()" style="background: transparent; border: none; padding: 0.25rem 0.5rem;">
@@ -626,7 +626,8 @@ function addExpenseRow() {
 function calculateActualExpenses() {
     var totalExpense = 0;
     document.querySelectorAll('#actualExpenseRows .expense-item-row').forEach(function(row) {
-        totalExpense += parseFloat(row.querySelector('.exp-amount').value) || 0;
+        var rawVal = row.querySelector('.exp-amount').value || '0';
+        totalExpense += parseFloat(rawVal.replace(/,/g, '')) || 0;
     });
     
     var bookingTotal = parseFloat(document.getElementById('bookingTotalAmount').value) || 0;
@@ -683,7 +684,8 @@ async function submitExpenses(e) {
         var nameInput = row.querySelector('.exp-name');
         var name = nameInput.value.trim();
         var amountInput = row.querySelector('.exp-amount');
-        var amount = parseFloat(amountInput.value);
+        var rawAmount = amountInput.value || '0';
+        var amount = parseFloat(rawAmount.replace(/,/g, ''));
 
         if (!name) {
             nameInput.style.border = '1px solid #ef4444';
@@ -1004,7 +1006,7 @@ function showBookingDetails(btn) {
                             <input type="text" class="form-control form-control-sm exp-name" value="${exp.name}" placeholder="Item" style="width: 100%; border: none; background: transparent; font-weight: 600; color: #334155; padding: 0.25rem 0; box-shadow: none;">
                         </td>
                         <td style="padding: 0.5rem 1rem;">
-                            <input type="number" class="form-control form-control-sm exp-amount" value="${exp.amount}" min="0" oninput="calculateActualExpenses()" style="width: 100%; border: none; background: transparent; font-weight: 700; color: #0f172a; text-align: right; padding: 0.25rem 0; box-shadow: none;">
+                            <input type="text" class="form-control form-control-sm exp-amount js-format-comma" value="${Number(exp.amount).toLocaleString('en-US', {minimumFractionDigits: 2})}" oninput="if(window.applyCommaFormatting) window.applyCommaFormatting(this); calculateActualExpenses()" style="width: 100%; border: none; background: transparent; font-weight: 700; color: #0f172a; text-align: right; padding: 0.25rem 0; box-shadow: none;">
                         </td>
                         <td style="padding: 0.5rem; text-align: center;">
                             <button type="button" class="btn btn-sm text-danger" onclick="this.closest('tr').remove(); calculateActualExpenses()" style="background: transparent; border: none; padding: 0.25rem 0.5rem;">

@@ -179,7 +179,31 @@
             input.addEventListener('input', function() {
                 window.applyCommaFormatting(this);
             });
+            // Initial formatting on load
+            if (input.value) {
+                window.applyCommaFormatting(input);
+            }
         });
+
+        // Global capture-phase submit listener to strip commas before any FormData is built
+        if (!window.__commaStripBound) {
+            window.__commaStripBound = true;
+            document.addEventListener('submit', function(e) {
+                if (e.target && e.target.tagName === 'FORM') {
+                    e.target.querySelectorAll('.js-format-comma').forEach(input => {
+                        // Strip commas right before submit logic
+                        input.dataset.tempFormat = input.value;
+                        input.value = input.value.replace(/,/g, '');
+                        // Restore immediately after submit event loop
+                        setTimeout(() => {
+                            if (input.dataset.tempFormat !== undefined) {
+                                input.value = input.dataset.tempFormat;
+                            }
+                        }, 50);
+                    });
+                }
+            }, true);
+        }
 
         // Real-time Barangay Validation (clears error on selection)
         barangaySelects.forEach(select => {

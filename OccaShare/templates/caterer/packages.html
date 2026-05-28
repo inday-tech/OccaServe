@@ -16,7 +16,7 @@
     <div class="pkg-header-actions" style="display: flex; align-items: center; gap: 1rem;">
         <input type="hidden" id="packageSearchInput">
         <button class="btn-primary-pro" onclick="window.openAddPackageModal()">
-            <i class="fas fa-plus"></i> <span>CREATE NEW PACKAGE</span>
+            <span>CREATE NEW PACKAGE</span>
         </button>
     </div>
 </div>
@@ -215,7 +215,7 @@
                     
                     <div class="custom-add-box" style="display:flex; gap:0.5rem; background:#f8fafc; padding:0.75rem; border-radius:var(--border-radius); border:1px dashed #cbd5e1; margin-top: 1rem;">
                         <input type="text" id="customInclusionInput" class="control-pro" style="height:38px; font-size:0.85rem;">
-                        <button type="button" onclick="window.addCustomInclusion()" class="btn-primary-pro" style="height:38px; padding:0 1rem; font-size:0.8rem; min-width:80px;"><i class="fas fa-plus"></i> Add</button>
+                        <button type="button" onclick="window.addCustomInclusion()" class="btn-primary-pro" style="height:38px; padding:0 1rem; font-size:0.8rem; min-width:80px;">Add</button>
                     </div>
                 </div>
 
@@ -320,7 +320,7 @@
             <div class="occ-modal-footer" id="pkgWizardFooter" style="padding: 1.25rem 2rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
                 <button type="button" class="btn-secondary-pro" onclick="window.closePackageModal()">Cancel</button>
                 <button type="submit" class="btn-primary-pro" id="pkgSaveBtn" disabled style="opacity: 0.7; background: #94a3b8; cursor: not-allowed; pointer-events: none;">
-                    <i class="fas fa-exclamation-triangle"></i> Form Incomplete
+                    Form Incomplete
                 </button>
             </div>
         </form>
