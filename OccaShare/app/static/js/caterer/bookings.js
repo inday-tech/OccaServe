@@ -533,6 +533,7 @@ async function submitWalkinBooking(e) {
 // ─── MODAL: EXPENSE TRACKER ──────────────────────────────────────────────────
 
 function openExpenseTracker(bookingId, btn) {
+    // Populate expense form
     document.getElementById('expenseBookingId').value = bookingId;
     
     // Set Total Budget from data attribute
@@ -545,7 +546,21 @@ function openExpenseTracker(bookingId, btn) {
     var modalTotal = document.getElementById('modalBookingTotal');
     if (modalTotal) modalTotal.innerText = '₱' + totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    bk_openModal('expenseTrackerModal');
+    // Open the booking detail modal by triggering the view details button (to populate everything)
+    if (btn) {
+        var dropdownMenu = btn.closest('.action-dropdown-menu');
+        if (dropdownMenu) {
+            var viewBtn = dropdownMenu.querySelector('.view-details');
+            if (viewBtn) {
+                showBookingDetails(viewBtn);
+            }
+        }
+    }
+    
+    // Switch to expenses tab
+    var expTabBtn = document.querySelector('.mtab-btn-pro[onclick*="expenses"]');
+    if (expTabBtn) switchBookingTab('expenses', expTabBtn);
+    
     var container = document.getElementById('actualExpenseRows');
     if (!container) return;
     container.innerHTML = '';
@@ -581,7 +596,8 @@ function openExpenseTracker(bookingId, btn) {
 }
 
 function closeExpenseTracker() {
-    bk_closeModal('expenseTrackerModal');
+    // Now it's just closing the booking detail modal
+    bk_closeModal('bookingDetailModal');
     var form = document.getElementById('expenseTrackerForm');
     if (form) form.reset();
 }
@@ -703,7 +719,7 @@ async function submitExpenses(e) {
         });
         if (res.ok) {
             window.showSuccess('Actual expenses saved.');
-            closeExpenseTracker();
+            // Re-render expense rows to reflect saved state or keep them as is
             if (window.refreshBookingsTable) window.refreshBookingsTable();
         } else {
             window.showError('Failed to save expenses');
@@ -805,6 +821,7 @@ function showBookingDetails(btn) {
     const isPackage = data.isPackage === 'true' || data.isPackage === true;
 
     if (actionsEl) {
+        actionsEl.style.display = 'flex';
         actionsEl.innerHTML = '';
         
         // --- KYC WARNING BANNER ---
@@ -950,18 +967,92 @@ function showBookingDetails(btn) {
     
     // Update Stepper
     updateBookingStepper(data.status, isPackage);
+    
+    // Always default to overview tab
+    var ovTabBtn = document.querySelector('.mtab-btn-pro[onclick*="overview"]');
+    if (ovTabBtn) switchBookingTab('overview', ovTabBtn);
+    
+    // Populate the expense tab automatically so it's ready
+    var expenseBtn = btn.closest('.action-dropdown-menu')?.querySelector('button[onclick*="openExpenseTracker"]');
+    if (expenseBtn) {
+        document.getElementById('expenseBookingId').value = data.id;
+        var totalAmount = parseFloat(expenseBtn.getAttribute('data-total-amount')) || 0;
+        document.getElementById('bookingTotalAmount').value = totalAmount;
+        var modalTotal = document.getElementById('modalBookingTotal');
+        if (modalTotal) modalTotal.innerText = '₱' + totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        
+        var container = document.getElementById('actualExpenseRows');
+        if (container) {
+            container.innerHTML = '';
+            var breakdown = [];
+            try {
+                var breakdownStr = expenseBtn.getAttribute('data-breakdown');
+                if (breakdownStr) {
+                    var unescaped = breakdownStr.replace(/&quot;/g, '"');
+                    breakdown = JSON.parse(unescaped);
+                    if (typeof breakdown === 'string') breakdown = JSON.parse(breakdown);
+                }
+            } catch (e) {}
+            
+            if (breakdown && breakdown.length > 0) {
+                breakdown.forEach(function(exp) {
+                    var row = document.createElement('tr');
+                    row.className = 'expense-item-row';
+                    row.style.borderBottom = '1px solid #f1f5f9';
+                    row.innerHTML = `
+                        <td style="padding: 0.5rem 1rem;">
+                            <input type="text" class="form-control form-control-sm exp-name" value="${exp.name}" placeholder="Item" style="width: 100%; border: none; background: transparent; font-weight: 600; color: #334155; padding: 0.25rem 0; box-shadow: none;">
+                        </td>
+                        <td style="padding: 0.5rem 1rem;">
+                            <input type="number" class="form-control form-control-sm exp-amount" value="${exp.amount}" min="0" oninput="calculateActualExpenses()" style="width: 100%; border: none; background: transparent; font-weight: 700; color: #0f172a; text-align: right; padding: 0.25rem 0; box-shadow: none;">
+                        </td>
+                        <td style="padding: 0.5rem; text-align: center;">
+                            <button type="button" class="btn btn-sm text-danger" onclick="this.closest('tr').remove(); calculateActualExpenses()" style="background: transparent; border: none; padding: 0.25rem 0.5rem;">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </td>
+                    `;
+                    container.appendChild(row);
+                });
+            } else {
+                addExpenseRow();
+            }
+            calculateActualExpenses();
+        }
+    }
 
     bk_openModal('bookingDetailModal');
 }
 
-function bk_closeBookingDetailModal() { bk_closeModal('bookingDetailModal'); }
+function bk_closeBookingDetailModal() { 
+    bk_closeModal('bookingDetailModal'); 
+}
 
-function switchBookingTab(tabId) {
+function switchBookingTab(tabId, targetEl) {
     document.querySelectorAll('.mtab-pane-pro').forEach(function(p) { p.classList.remove('active'); });
-    document.querySelectorAll('.mtab-btn-pro').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelectorAll('.mtab-btn-pro').forEach(function(b) { 
+        b.classList.remove('active');
+        b.style.borderBottomColor = 'transparent';
+        b.style.color = '#64748b';
+    });
     var pane = document.getElementById('btab-' + tabId);
     if (pane) pane.classList.add('active');
-    if (event && event.currentTarget) event.currentTarget.classList.add('active');
+    
+    var activeBtn = targetEl || event?.currentTarget;
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+        activeBtn.style.borderBottomColor = 'var(--primary-color)';
+        activeBtn.style.color = 'var(--primary-color)';
+    }
+
+    var saveBtn = document.getElementById('saveExpenseBtn');
+    if (saveBtn) {
+        if (tabId === 'expenses') {
+            saveBtn.style.display = 'flex';
+        } else {
+            saveBtn.style.display = 'none';
+        }
+    }
 }
 
 function resetBookingTabs() {

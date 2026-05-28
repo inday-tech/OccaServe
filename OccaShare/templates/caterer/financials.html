@@ -1,0 +1,303 @@
+{% extends "caterer/layout.html" %}
+
+{% block title %}Financials & Overhead - OccaServe{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/bookings.css') }}?v=2.3">
+{% endblock %}
+
+{% block content %}
+<div class="container-premium">
+    <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
+        <div class="header-title-group">
+            <h1>Financial Dashboard</h1>
+            <p>Monitor and manage your business overhead expenses</p>
+        </div>
+        <div class="header-actions">
+            <button onclick="openExpenseModal()" class="btn-primary-pro" style="padding: 0.75rem 1.5rem; display: flex; align-items: center; gap: 0.5rem; border-radius: 8px;">
+                <i class="fas fa-plus-circle"></i> Log Business Expense
+            </button>
+        </div>
+    </div>
+
+    <!-- Financial Stats -->
+    <div class="kpi-grid-clean" style="margin-bottom: var(--space-lg);">
+        <div class="kpi-card-clean">
+            <div class="kpi-info">
+                <h4>Total Overhead</h4>
+                <span class="kpi-value" style="color: #0f172a;">₱{{ "{:,.2f}".format(total_overhead) }}</span>
+                <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">All time</span>
+            </div>
+        </div>
+        <div class="kpi-card-clean">
+            <div class="kpi-info">
+                <h4>This Month's Overhead</h4>
+                <span class="kpi-value" style="color: #f59e0b;">₱{{ "{:,.2f}".format(monthly_overhead) }}</span>
+                <span class="trend-badge" style="color: #94a3b8; background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Current month</span>
+            </div>
+        </div>
+        <div class="kpi-card-clean" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+            <div class="kpi-info">
+                <h4 style="color: rgba(255,255,255,0.8);">Net Profit (Estimate)</h4>
+                <span class="kpi-value" style="color: white; font-size: 1.5rem; display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-lock" style="font-size: 1rem; opacity: 0.7;"></i> Auto-calculated</span>
+                <span class="trend-badge" style="color: rgba(255,255,255,0.9); background: transparent; padding: 0; font-size: 0.65rem; font-weight: 500; margin-top: 6px;">Total Rev - (Event Costs + Overhead)</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Expenses Table -->
+    <div class="b-table-container c-card-premium" style="margin-top: 0;">
+        <div class="b-table-header">
+            <h3>Business Expenses Log</h3>
+        </div>
+
+        {% if expenses %}
+        <div class="bookings-table-scroll-wrapper" style="overflow-x: auto; width: 100%;">
+            <table class="b-table bookings-list-table" style="width: 100%; border-collapse: collapse; min-width: 800px;">
+                <thead>
+                    <tr style="border-bottom: 2px solid #f1f5f9;">
+                        <th style="padding: 1.5rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Date</th>
+                        <th style="padding: 1.5rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Category</th>
+                        <th style="padding: 1.5rem; text-align: left; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Description</th>
+                        <th style="padding: 1.5rem; text-align: right; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Amount (₱)</th>
+                        <th style="padding: 1.5rem; text-align: center; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for exp in expenses %}
+                    <tr style="border-bottom: 1px solid #f8fafc; transition: all 0.2s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                        <td style="padding: 1.5rem; font-weight: 800; color: #64748b; font-size: 0.85rem; letter-spacing: 0.05em;">{{ exp.date_incurred.strftime('%b %d, %Y') if exp.date_incurred else 'N/A' }}</td>
+                        <td style="padding: 1.5rem;">
+                            <span style="background: #f1f5f9; color: #475569; padding: 0.25rem 0.75rem; border-radius: 50px; font-size: 0.75rem; font-weight: 700;">{{ exp.category }}</span>
+                        </td>
+                        <td style="padding: 1.5rem; font-size: 0.85rem; color: #475569; font-weight: 600;">{{ exp.description }}</td>
+                        <td style="padding: 1.5rem; font-size: 1rem; font-weight: 800; color: #0f172a; text-align: right;">{{ "{:,.2f}".format(exp.amount) }}</td>
+                        <td style="padding: 1.5rem; text-align: center;">
+                            <button onclick="deleteExpense({{ exp.id }})" style="background: #fee2e2; color: #ef4444; border: 1px solid #fecaca; border-radius: 6px; width: 32px; height: 32px; cursor: pointer; transition: all 0.2s;" title="Delete Expense">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 3rem 1rem;">
+            <div style="font-size: 3rem; color: #cbd5e1; margin-bottom: 1rem;"><i class="fas fa-receipt"></i></div>
+            <h3 style="font-size: 1.1rem; font-weight: 700; color: #334155; margin-bottom: 0.5rem;">No Expenses Logged</h3>
+            <p style="font-size: 0.85rem; color: #64748b;">Start tracking your business overhead like rent, utilities, and marketing.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal: Add Expense -->
+<div id="addExpenseModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-md occ-content-zoom-in">
+        <div class="occ-modal-header" style="background: white; border-bottom: 1px solid #f1f5f9; padding: 1.5rem;">
+            <div>
+                <h2 class="occ-modal-title" style="color: #0f172a; font-weight: 800; font-size: 1.25rem;"><i class="fas fa-plus-circle text-primary me-2"></i> Log Business Expense</h2>
+                <div class="occ-modal-subtitle">Add general overhead costs (e.g. Rent, Ads)</div>
+            </div>
+            <button type="button" onclick="closeExpenseModal()" class="occ-modal-close" style="color: #94a3b8; background: transparent; border: none; font-size: 1.25rem;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="occ-modal-body" style="padding: 1.5rem;">
+            <form id="addExpenseForm" onsubmit="submitBusinessExpense(event)" novalidate>
+                <div class="occ-form-grid" style="gap: 1rem;">
+                    <div class="occ-form-group">
+                        <label class="occ-form-label">Date Incurred *</label>
+                        <input type="date" id="expDate" name="date_incurred" class="occ-form-input" required>
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    <div class="occ-form-group">
+                        <label class="occ-form-label">Category *</label>
+                        <select id="expCategory" name="category" class="filter-select-pro" required onchange="toggleOtherCategory()">
+                            <option value="">Select Category...</option>
+                            <option value="Rent/Lease">Rent / Lease</option>
+                            <option value="Utilities">Utilities (Water, Elec, Internet)</option>
+                            <option value="Salaries">Salaries & Wages (Regular)</option>
+                            <option value="Marketing">Marketing / FB Ads</option>
+                            <option value="Maintenance">Repairs & Maintenance</option>
+                            <option value="Supplies">General Supplies</option>
+                            <option value="Taxes/Licenses">Taxes & Licenses</option>
+                            <option value="Other">Other Overhead</option>
+                        </select>
+                        <div class="invalid-feedback"></div>
+                    </div>
+                </div>
+
+                <div class="occ-form-group" id="otherCategoryGroup" style="display: none; margin-top: 1rem;">
+                    <label class="occ-form-label">Specific Category *</label>
+                    <input type="text" id="expOtherCategory" name="other_category" class="occ-form-input" placeholder="e.g. Legal Fees, Software Subscription">
+                    <div class="invalid-feedback"></div>
+                </div>
+
+                <div class="occ-form-group" style="margin-top: 1rem;">
+                    <label class="occ-form-label">Description *</label>
+                    <input type="text" id="expDesc" name="description" class="occ-form-input" required placeholder="e.g. Meralco Bill for May">
+                    <div class="invalid-feedback"></div>
+                </div>
+
+                <div class="occ-form-group" style="margin-top: 1rem;">
+                    <label class="occ-form-label">Amount (₱) *</label>
+                    <input type="number" step="0.01" min="0" id="expAmount" name="amount" class="occ-form-input" required placeholder="0.00">
+                    <div class="invalid-feedback"></div>
+                </div>
+                
+                <div class="occ-form-group" style="margin-top: 1rem;">
+                    <label class="occ-form-label">Receipt / Reference (Optional)</label>
+                    <input type="text" id="expReceipt" name="receipt_url" class="occ-form-input" placeholder="URL or Reference Number">
+                    <div class="invalid-feedback"></div>
+                </div>
+            </form>
+        </div>
+
+        <div class="occ-modal-footer">
+            <button type="button" onclick="closeExpenseModal()" class="btn-secondary-pro">Cancel</button>
+            <button type="submit" form="addExpenseForm" id="saveBusinessExpBtn" class="btn-primary-pro" style="background:#1e293b !important;">
+                <i class="fas fa-save me-1"></i> Save Expense
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set default date to today
+        var today = new Date().toISOString().split('T')[0];
+        var dateInput = document.getElementById('expDate');
+        if (dateInput) dateInput.value = today;
+
+        if (typeof window.ValidationManager !== 'undefined') {
+            window.ValidationManager.attach(document.getElementById('addExpenseForm'));
+        }
+    });
+
+    function toggleOtherCategory() {
+        var cat = document.getElementById('expCategory').value;
+        var group = document.getElementById('otherCategoryGroup');
+        var input = document.getElementById('expOtherCategory');
+        if (cat === 'Other') {
+            group.style.display = 'block';
+            input.setAttribute('required', 'true');
+        } else {
+            group.style.display = 'none';
+            input.removeAttribute('required');
+            input.value = '';
+            // Clear validation error if any
+            input.classList.remove('is-invalid');
+            var feedback = input.nextElementSibling;
+            if (feedback && feedback.classList.contains('invalid-feedback')) {
+                feedback.innerText = '';
+            }
+        }
+    }
+
+    function openExpenseModal() {
+        var el = document.getElementById('addExpenseModal');
+        if (el) {
+            el.classList.add('active');
+            el.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function closeExpenseModal() {
+        var el = document.getElementById('addExpenseModal');
+        if (el) {
+            el.classList.remove('active');
+            setTimeout(() => { if (!el.classList.contains('active')) el.style.display = 'none'; }, 300);
+            document.body.style.overflow = '';
+        }
+        var form = document.getElementById('addExpenseForm');
+        if (form) {
+            form.reset();
+            form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+            form.querySelectorAll('.invalid-feedback').forEach(el => el.innerText = '');
+        }
+        toggleOtherCategory();
+        
+        // Reset date
+        var today = new Date().toISOString().split('T')[0];
+        var dateInput = document.getElementById('expDate');
+        if (dateInput) dateInput.value = today;
+    }
+
+    async function submitBusinessExpense(e) {
+        e.preventDefault();
+        const form = document.getElementById('addExpenseForm');
+
+        if (form.querySelectorAll('.is-invalid').length > 0) {
+            if (window.showError) window.showError('Please fix the errors highlighted in red before submitting.');
+            return;
+        }
+
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        const btn = document.getElementById('saveBusinessExpBtn');
+        const originalContent = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+
+        if (data.category === 'Other') {
+            data.category = data.other_category || 'Other';
+        }
+        delete data.other_category;
+
+        try {
+            const res = await fetch('/caterer/api/financials/expense', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            
+            if (res.ok && result.status === 'success') {
+                if (window.showToast) window.showToast('Expense logged successfully!', 'success');
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                if (window.showError) window.showError(result.message || 'Failed to log expense');
+            }
+        } catch (err) {
+            console.error(err);
+            if (window.showError) window.showError('An error occurred.');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalContent;
+        }
+    }
+
+    async function deleteExpense(id) {
+        if (!confirm('Are you sure you want to delete this expense record?')) return;
+        
+        try {
+            const res = await fetch('/caterer/api/financials/expense/' + id, {
+                method: 'DELETE'
+            });
+            const result = await res.json();
+            
+            if (res.ok && result.status === 'success') {
+                if (window.showToast) window.showToast('Expense deleted', 'success');
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                if (window.showError) window.showError(result.message || 'Failed to delete expense');
+            }
+        } catch (err) {
+            console.error(err);
+            if (window.showError) window.showError('An error occurred.');
+        }
+    }
+</script>
+{% endblock %}

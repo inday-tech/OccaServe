@@ -752,7 +752,7 @@ class BusinessExpense(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     caterer_id = Column(Integer, ForeignKey("caterer_profiles.id"))
-    category = Column(String) # Rent, Utilities, Marketing, Payroll, Other
+    category = Column("expense_category", String) # Rent, Utilities, Marketing, Payroll, Other
     description = Column(String)
     amount = Column(Float, default=0.0)
     date_incurred = Column(Date, nullable=True)

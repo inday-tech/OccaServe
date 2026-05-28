@@ -4574,3 +4574,79 @@ async def reset_brand_defaults(
     profile.show_platform_logo = True
     db.commit()
     return {"status": "success", "message": "Brand settings reset to OccaServe defaults."}
+
+# ──────────────────────────────────────────────────────
+# FINANCIALS & OVERHEAD EXPENSES
+# ──────────────────────────────────────────────────────
+@router.get("/financials", response_class=HTMLResponse)
+async def financials_page(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    profile = user.caterer_profile
+    
+    # Get all business expenses for this caterer
+    expenses = db.query(models.BusinessExpense).filter(
+        models.BusinessExpense.caterer_id == profile.id
+    ).order_by(models.BusinessExpense.date_incurred.desc()).all()
+    
+    # Calculate some basic stats
+    current_month = datetime.now().month
+    current_year = datetime.now().year
+    
+    monthly_expenses = sum(e.amount for e in expenses if e.date_incurred and e.date_incurred.month == current_month and e.date_incurred.year == current_year)
+    total_expenses = sum(e.amount for e in expenses)
+    
+    return templates.TemplateResponse("caterer/financials.html", {
+        "request": request,
+        "user": user,
+        "active_page": "financials",
+        "expenses": expenses,
+        "monthly_overhead": monthly_expenses,
+        "total_overhead": total_expenses
+    })
+
+@router.post("/api/financials/expense")
+async def add_business_expense(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    data = await request.json()
+    profile = user.caterer_profile
+    
+    try:
+        new_expense = models.BusinessExpense(
+            caterer_id=profile.id,
+            category=data.get('category'),
+            description=data.get('description'),
+            amount=float(data.get('amount')),
+            date_incurred=datetime.strptime(data.get('date_incurred'), '%Y-%m-%d') if data.get('date_incurred') else datetime.now().date(),
+            receipt_url=data.get('receipt_url')
+        )
+        db.add(new_expense)
+        db.commit()
+        db.refresh(new_expense)
+        return {"status": "success", "message": "Expense logged successfully"}
+    except Exception as e:
+        db.rollback()
+        return {"status": "error", "message": str(e)}
+
+@router.delete("/api/financials/expense/{expense_id}")
+async def delete_business_expense(
+    expense_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    expense = db.query(models.BusinessExpense).filter(
+        models.BusinessExpense.id == expense_id,
+        models.BusinessExpense.caterer_id == user.caterer_profile.id
+    ).first()
+    
+    if not expense:
+        raise HTTPException(status_code=404, detail="Expense not found")
+        
+    db.delete(expense)
+    db.commit()
+    return {"status": "success", "message": "Expense deleted"}
