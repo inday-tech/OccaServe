@@ -29,6 +29,15 @@ def force_sync():
                 print("Added middle_name")
             else:
                 print("middle_name already exists")
+
+            # Check for booking_source in bookings
+            res = conn.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name = 'bookings' AND column_name = 'booking_source'"))
+            if not res.fetchone():
+                print("booking_source missing from bookings table, adding...")
+                conn.execute(text("ALTER TABLE bookings ADD COLUMN booking_source VARCHAR(255) DEFAULT 'OccaServe'"))
+                print("Added booking_source")
+            else:
+                print("booking_source already exists")
                 
             print("Sync complete.")
     except Exception as e:
