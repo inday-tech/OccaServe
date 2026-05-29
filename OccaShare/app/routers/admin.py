@@ -105,14 +105,44 @@ async def omni_search(
         
     return {"success": True, "results": results}
 
+@router.get("/notifications", response_class=HTMLResponse)
+async def admin_notifications(
+    request: Request, 
+    page: int = 1,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(admin_only)
+):
+    per_page = 10
+    page = max(1, page)
+    
+    base_query = db.query(models.Notification).filter(
+        models.Notification.user_id == user.id
+    )
+    
+    total_notifications = base_query.count()
+    total_pages = (total_notifications + per_page - 1) // per_page if total_notifications > 0 else 1
+    
+    notifications = base_query.order_by(
+        models.Notification.created_at.desc()
+    ).offset((page - 1) * per_page).limit(per_page).all()
+    
+    return templates.TemplateResponse("admin/notifications.html", {
+        "request": request,
+        "user": user,
+        "notifications": notifications,
+        "active_page": "notifications",
+        "current_page": page,
+        "total_pages": total_pages,
+        "total_notifications": total_notifications
+    })
+
 @router.get("/api/notifications/recent")
 async def get_recent_notifications(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
     notifs = db.query(models.Notification).filter(
-        models.Notification.user_id == user.id,
-        models.Notification.is_archived == False
+        models.Notification.user_id == user.id
     ).order_by(models.Notification.created_at.desc()).limit(8).all()
     
     return {
@@ -381,9 +411,19 @@ async def admin_dashboard(
         models.Booking.is_archived == False,
         models.Booking.status == 'completed'
     ).count()
+    cancelled_bookings_count = db.query(models.Booking).filter(
+        models.Booking.is_archived == False,
+        models.Booking.status == 'cancelled'
+    ).count()
+
+    from sqlalchemy.orm import joinedload
+    pending_settlements = db.query(models.Payout).options(
+        joinedload(models.Payout.caterer)
+    ).filter(
+        models.Payout.status == 'pending'
+    ).order_by(models.Payout.created_at.desc()).limit(5).all()
 
     # --- Recent Revenue Audit Yields (Last 10 Paid Bookings) ---
-    from sqlalchemy.orm import joinedload
     recent_yields = db.query(models.Booking).options(
         joinedload(models.Booking.caterer)
     ).filter(
@@ -413,8 +453,10 @@ async def admin_dashboard(
         "pending_bookings_count": pending_bookings_count,
         "confirmed_bookings_count": confirmed_bookings_count,
         "completed_bookings_count": completed_bookings_count,
+        "cancelled_bookings_count": cancelled_bookings_count,
         "pending_customers": pending_customers,
-        "recent_yields": recent_yields
+        "recent_yields": recent_yields,
+        "pending_settlements": pending_settlements
     })
 
 @router.get("/caterers", response_class=HTMLResponse)

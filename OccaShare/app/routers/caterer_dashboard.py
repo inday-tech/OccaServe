@@ -4634,6 +4634,19 @@ async def settle_dues_api(
         notes=f"Submitted proof for {billing_period} commission settlement. Awaiting admin verification."
     )
     db.add(audit)
+    db.flush()
+    
+    # Notify admins
+    admins = db.query(models.User).filter(models.User.role == 'admin').all()
+    for admin in admins:
+        new_notif = models.Notification(
+            user_id=admin.id,
+            title="Commission Settlement Pending",
+            message=f"{profile.business_name} has submitted a proof of payment for {billing_period}.",
+            link="/admin/payouts",
+            type="info"
+        )
+        db.add(new_notif)
     
     db.commit()
     

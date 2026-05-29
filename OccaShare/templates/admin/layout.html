@@ -17,7 +17,6 @@
     <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/alert_modal.css') }}?v=1.5">
     <script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v=1.4"></script>
     <script src="{{ url_for('static', path='/js/main.js') }}?v=4.2"></script>
-    <script src="{{ url_for('static', path='/js/admin/layout.js') }}?v=3.0"></script>
 
 
     {% if wconfig and wconfig.favicon_url %}
@@ -252,27 +251,36 @@
                 </div>
 
                 <!-- Notifications Center -->
-                <div class="header-dropdown-wrapper">
-                    <button class="header-icon-btn" title="Notifications"
+                <div class="header-dropdown-wrapper" id="notifWrapper">
+                    <button class="hdr-btn" id="notifBtn" title="Notifications"
                         onclick="toggleHeaderDropdown('notificationsDropdown', this)">
                         <i class="fas fa-bell"></i>
-                        <span class="header-badge" id="headerNotifDot" style="display:none;"></span>
+                        {% set unread_count = user.notifications|selectattr('is_read', 'equalto', false)|list|count if user and user.notifications else 0 %}
+                        {% if unread_count > 0 %}
+                        <span class="hdr-badge" id="headerNotifDot">{{ unread_count if unread_count < 10 else '9+' }}</span>
+                        {% else %}
+                        <span class="hdr-badge" id="headerNotifDot" style="display:none;"></span>
+                        {% endif %}
                     </button>
-                    <div class="premium-dropdown notifications-dropdown" id="notificationsDropdown">
-                        <div class="dropdown-header">
-                            <span>Notifications</span>
-                            <button class="mark-read-all" onclick="markAllNotificationsRead()">Mark all as read</button>
+                    <div class="hdr-dropdown" id="notificationsDropdown">
+                        <div class="hdr-dropdown-head">
+                            <div>
+                                <span class="hdr-dropdown-title">Notifications</span>
+                                <span class="hdr-dropdown-sub" id="notifUnreadLabel">{% if unread_count > 0 %}{{ unread_count }} unread{% endif %}</span>
+                            </div>
+                            <button class="hdr-mark-read" onclick="markAllNotificationsRead()" title="Mark all as read">
+                                <i class="fas fa-check-double"></i> Mark all read
+                            </button>
                         </div>
-                        <div class="dropdown-body" id="headerNotifBody">
-                            <div class="empty-notif">
+                        <div class="hdr-dropdown-body" id="headerNotifBody">
+                            <div class="hdr-empty">
                                 <i class="fas fa-bell-slash"></i>
-                                <p>No new alerts</p>
+                                <p>You're all caught up!</p>
                             </div>
                         </div>
-                        <div class="dropdown-footer">
-                            <a href="/admin/notifications">See All Notifications <i
-                                    class="fas fa-chevron-right"></i></a>
-                        </div>
+                        <a href="/admin/notifications" class="hdr-dropdown-footer">
+                            View all notifications <i class="fas fa-arrow-right"></i>
+                        </a>
                     </div>
                 </div>
 
@@ -417,7 +425,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v=1.4"></script>
     <script src="{{ url_for('static', path='/js/main.js') }}?v=4.2"></script>
-    <script src="{{ url_for('static', path='/js/admin/layout.js') }}?v=3.0"></script>
+    <script src="{{ url_for('static', path='/js/admin/layout.js') }}?v=4.1"></script>
 
     <script>
         // --- Diamond Standard Global Modal Controllers ---

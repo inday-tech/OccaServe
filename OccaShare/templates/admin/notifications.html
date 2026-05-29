@@ -1,277 +1,402 @@
+{% set active_page = 'notifications' %}
 {% extends "admin/layout.html" %}
 
-{% block title %}System Notifications - OccaServe Admin{% endblock %}
+{% block title %}Notifications - OccaShare Admin{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ range(1, 1000) | random }}">
-<style>
-    .notif-card-premium {
-        background: white;
-        border-radius: 16px;
-        border: 1px solid #f1f5f9;
-        padding: 1.5rem;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        display: flex;
-        align-items: flex-start;
-        gap: 1.5rem;
-        margin-bottom: 1.25rem;
-        position: relative;
-        overflow: hidden;
-        text-decoration: none;
-    }
-
-    .notif-card-premium:hover {
-        transform: translateX(8px);
-        border-color: var(--adm-primary-light);
-        background: #fcfcfc;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-    }
-
-    .notif-card-premium.unread {
-        border-left: 5px solid var(--adm-primary);
-        background: #fff7ed;
-    }
-
-    .notif-icon-node {
-        width: 48px;
-        height: 48px;
-        border-radius: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.2rem;
-        flex-shrink: 0;
-    }
-
-    .type-warning {
-        background: #fee2e2;
-        color: #ef4444;
-    }
-
-    .type-reminder {
-        background: #fef3c7;
-        color: #d97706;
-    }
-
-    .type-info {
-        background: #eff6ff;
-        color: #3b82f6;
-    }
-
-    .type-success {
-        background: #dcfce7;
-        color: #16a34a;
-    }
-
-    .time-divider {
-        font-size: 0.7rem;
-        font-weight: 800;
-        color: var(--adm-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        margin: 2.5rem 0 1.25rem 0;
-        display: flex;
-        align-items: center;
-        gap: 1.5rem;
-    }
-
-    .time-divider::after {
-        content: '';
-        flex: 1;
-        height: 1.5px;
-        background: #f1f5f9;
-    }
-
-    .notif-title {
-        font-family: 'Poppins', sans-serif;
-        font-weight: 800;
-        color: var(--adm-navy);
-        font-size: 0.95rem;
-        margin: 0 0 6px 0;
-    }
-
-    .notif-msg {
-        font-family: 'Poppins', sans-serif;
-        font-size: 0.85rem;
-        color: #475569;
-        line-height: 1.6;
-        font-weight: 500;
-        margin: 0;
-    }
-
-    .unread-dot {
-        width: 12px;
-        height: 12px;
-        background: var(--adm-primary);
-        border-radius: 50%;
-        box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.1);
-    }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/notifications.css') }}?v=2.0">
 {% endblock %}
 
 {% block content %}
-<div class="dashboard-header-clean">
-    <div class="header-title-area">
-        <h1 style="display: flex; align-items: center; gap: 15px; font-family: 'Poppins', sans-serif;">
-            System Notification Center
-        </h1>
-        <p style="font-family: 'Poppins', sans-serif;">Real-time operational alerts and administrative feedback loops.
-        </p>
-    </div>
-    <div class="header-actions">
-        <button class="btn-clean" id="markAllRead"
-            style="font-size: 0.75rem; padding: 12px 20px; font-weight: 800; background: var(--adm-navy); color: white; border-radius: 12px;">
-            <i class="fas fa-check-double"></i> Mark All as Resolved
-        </button>
-    </div>
-</div>
-
-<div class="table-card-clean" style="padding: 2.5rem;">
-    <div style="display: flex; gap: 2rem; margin-bottom: 2.5rem; border-bottom: 2px solid #f1f5f9;">
-        <button class="tab-btn active" onclick="switchTab('all', this)"
-            style="font-size: 0.8rem; font-weight: 800; border: none; background: none; border-bottom: 2px solid var(--adm-primary); border-radius: 0; padding-bottom: 12px; color: var(--adm-navy); cursor: pointer; transition: all 0.3s;">
-            All Intelligence <span
-                style="background: #f1f5f9; padding: 2px 8px; border-radius: 6px; margin-left: 6px;">{{
-                notifications|length }}</span>
-        </button>
-        <button class="tab-btn" onclick="switchTab('unresolved', this)"
-            style="font-size: 0.8rem; font-weight: 800; border: none; background: none; border-radius: 0; padding-bottom: 12px; color: var(--adm-muted); cursor: pointer; transition: all 0.3s;">
-            Unresolved Actions
-        </button>
-    </div>
-
-    <div class="notifications-feed">
-        {% set today = None %}
-        {% for n in notifications %}
-        {% set n_date = n.created_at.strftime('%Y-%m-%d') %}
-        {% if today != n_date %}
-        <div class="time-divider">
-            {% if n_date == now.strftime('%Y-%m-%d') %}
-            TODAY'S OPERATIONS
-            {% else %}
-            {{ n.created_at.strftime('%b %d, %Y')|upper }}
-            {% endif %}
+<div class="notif-page">
+    <!-- Header -->
+    <div class="page-header">
+        <div>
+            <h1>Notifications</h1>
+            <p>Stay updated with your bookings and activities</p>
         </div>
-        {% set today = n_date %}
-        {% endif %}
+        <div class="notif-header-actions">
+            <button class="notif-btn-action" onclick="markAllAsRead()" title="Mark all as read">
+                <i class="fas fa-check-double"></i> Mark all as read
+            </button>
+        </div>
+    </div>
 
-        <div class="notif-card-premium {% if not n.is_read %}unread{% endif %}" data-id="{{ n.id }}"
-            style="cursor: pointer;">
-            <div class="notif-icon-node type-{{ n.type }}">
-                {% if n.type == 'warning' %}
-                <i class="fas fa-exclamation-triangle"></i>
-                {% elif n.type == 'reminder' %}
-                <i class="fas fa-clock"></i>
-                {% elif n.type == 'success' %}
-                <i class="fas fa-check-circle"></i>
-                {% else %}
-                <i class="fas fa-info-circle"></i>
-                {% endif %}
-            </div>
-            <div style="flex: 1;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <h3 class="notif-title">{{ n.title }}</h3>
-                    <span
-                        style="font-size: 0.7rem; color: var(--adm-muted); font-weight: 700; background: #f8fafc; padding: 4px 10px; border-radius: 8px;">
-                        <i class="far fa-clock"></i> {{ n.created_at.strftime('%I:%M %p') }}
-                    </span>
+    <!-- Filter Tabs -->
+    <div class="notif-filter-bar">
+        <div class="notif-tabs">
+            <button class="notif-tab active" data-filter="all" onclick="filterNotifications('all', this)">
+                All <span class="notif-tab-count">{{ total_notifications }}</span>
+            </button>
+            <button class="notif-tab" data-filter="unread" onclick="filterNotifications('unread', this)">
+                Unread <span class="notif-tab-count">{{ notifications|selectattr('is_read', 'false')|list|length
+                    }}</span>
+            </button>
+            <button class="notif-tab" data-filter="Booking" onclick="filterNotifications('Booking', this)">
+                Bookings
+            </button>
+            <button class="notif-tab" data-filter="Payment" onclick="filterNotifications('Payment', this)">
+                Payments
+            </button>
+            <button class="notif-tab" data-filter="Review" onclick="filterNotifications('Review', this)">
+                Reviews
+            </button>
+        </div>
+    </div>
+
+    <!-- Notifications List -->
+    {% if notifications %}
+    <div class="notif-list-card c-card-premium" style="padding: 0 !important;">
+        <div class="notif-section-label"
+            style="padding: 1.25rem 2rem 0.75rem; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">
+            All Notifications</div>
+
+        <div class="notif-list" id="notifList">
+            {% for notif in notifications %}
+            <div class="notif-item {{ 'notif-unread' if not notif.is_read }}" id="notif-{{ notif.id }}"
+                data-type="{{ notif.type }}" data-read="{{ 'true' if notif.is_read else 'false' }}"
+                onclick="handleNotificationClick({{ notif.id }}, '{{ notif.link or '' }}')">
+
+                <!-- Icon -->
+                <div class="notif-icon
+                    {% if notif.type == 'Booking' %}notif-icon-booking
+                    {% elif notif.type == 'Payment' %}notif-icon-payment
+                    {% elif notif.type == 'Review' %}notif-icon-review
+                    {% elif notif.type == 'Verification' %}notif-icon-verification
+                    {% elif notif.type == 'Customer' %}notif-icon-customer
+                    {% elif notif.type == 'Message' %}notif-icon-message
+                    {% else %}notif-icon-default{% endif %}">
+                    {% if notif.type == 'Booking' %}<i class="fas fa-calendar-check"></i>
+                    {% elif notif.type == 'Payment' %}<i class="fas fa-wallet"></i>
+                    {% elif notif.type == 'Review' %}<i class="fas fa-star"></i>
+                    {% elif notif.type == 'Verification' %}<i class="fas fa-user-shield"></i>
+                    {% elif notif.type == 'Customer' %}<i class="fas fa-user-plus"></i>
+                    {% elif notif.type == 'Message' %}<i class="fas fa-comment-dots"></i>
+                    {% else %}<i class="fas fa-bell"></i>{% endif %}
                 </div>
-                <p class="notif-msg">{{ n.message }}</p>
-                {% if n.link %}
-                <a href="{{ n.link }}"
-                    style="display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 0.7rem; font-weight: 800; color: var(--adm-primary); text-decoration: none; background: var(--adm-primary-soft); padding: 6px 12px; border-radius: 8px; transition: all 0.2s;">
-                    <i class="fas fa-external-link-alt"></i> EXECUTE REQUIRED ACTION
-                </a>
+
+                <!-- Content -->
+                <div class="notif-content">
+                    <div class="notif-title">{{ notif.title }}</div>
+                    <div class="notif-message">{{ notif.message }}</div>
+                    <div class="notif-time"><i class="far fa-clock"></i> {{ notif.created_at.strftime('%b %d, %Y • %I:%M
+                        %p') }}</div>
+                </div>
+
+                <!-- Unread dot -->
+                {% if not notif.is_read %}
+                <div class="notif-unread-dot" title="Unread"></div>
                 {% endif %}
+
+                <!-- Actions -->
+                <div class="notif-actions" onclick="event.stopPropagation();">
+                    {% if not notif.is_read %}
+                    <button class="notif-action-btn notif-btn-read" onclick="markAsRead({{ notif.id }})"
+                        title="Mark as read">
+                        <i class="fas fa-check"></i>
+                    </button>
+                    {% endif %}
+                    <button class="notif-action-btn notif-btn-delete" onclick="confirmDelete({{ notif.id }})"
+                        title="Delete">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
             </div>
-            <div style="padding-left: 1rem; align-self: center;">
-                {% if not n.is_read %}
-                <div class="unread-dot"></div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination Controls -->
+        {% if total_pages > 1 %}
+        <div class="notif-pagination">
+            {% if current_page > 1 %}
+            <a href="?page={{ current_page - 1 }}" class="pagination-btn"><i class="fas fa-chevron-left"></i></a>
+            {% else %}
+            <span class="pagination-btn disabled"><i class="fas fa-chevron-left"></i></span>
+            {% endif %}
+
+            <div class="pagination-numbers">
+                {% for p in range(1, total_pages + 1) %}
+                {% if p == current_page %}
+                <span class="pagination-num active">{{ p }}</span>
+                {% elif p == 1 or p == total_pages or (p >= current_page - 2 and p <= current_page + 2) %} <a
+                    href="?page={{ p }}" class="pagination-num">{{ p }}</a>
+                    {% elif p == current_page - 3 or p == current_page + 3 %}
+                    <span class="pagination-ellipsis">...</span>
+                    {% endif %}
+                    {% endfor %}
+            </div>
+
+            {% if current_page < total_pages %} <a href="?page={{ current_page + 1 }}" class="pagination-btn"><i
+                    class="fas fa-chevron-right"></i></a>
+                {% else %}
+                <span class="pagination-btn disabled"><i class="fas fa-chevron-right"></i></span>
                 {% endif %}
-            </div>
         </div>
-        {% else %}
-        <div style="text-align: center; padding: 6rem 2rem;">
-            <div
-                style="width: 100px; height: 100px; background: #f8fafc; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 2rem; color: #cbd5e1; font-size: 3rem;">
-                <i class="fas fa-bell-slash"></i>
-            </div>
-            <h2 style="color: var(--adm-navy); font-weight: 800;">Nerve Center Idle</h2>
-            <p style="color: var(--adm-muted); font-weight: 600;">No operational alerts detected in the current horizon.
-            </p>
-        </div>
-        {% endfor %}
+        {% endif %}
     </div>
+    {% else %}
+    <div class="notif-empty-state c-card-premium">
+        <div class="notif-empty-icon"><i class="fas fa-bell-slash"></i></div>
+        <h2>All Caught Up!</h2>
+        <p>No new notifications at the moment. We'll let you know when something important happens.</p>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    // Tab Switching Logic
-    function switchTab(mode, btn) {
-        document.querySelectorAll('.tab-btn').forEach(b => {
-            b.classList.remove('active');
-            b.style.borderBottom = 'none';
-            b.style.color = 'var(--adm-muted)';
-        });
-        btn.classList.add('active');
-        btn.style.borderBottom = '2px solid var(--adm-primary)';
-        btn.style.color = 'var(--adm-navy)';
+    let currentFilter = 'all';
+    let knownIds = new Set();
 
-        const cards = document.querySelectorAll('.notif-card-premium');
-        cards.forEach(card => {
-            if (mode === 'all') {
-                card.style.display = 'flex';
-            } else {
-                card.style.display = card.classList.contains('unread') ? 'flex' : 'none';
-            }
-        });
+    // Initialize known IDs from server-rendered list
+    document.querySelectorAll('.notif-item').forEach(item => {
+        knownIds.add(item.id.replace('notif-', ''));
+    });
+
+    // ── Real-time polling ──
+    let pollInterval;
+    function startPolling() {
+        pollInterval = setInterval(pollNewNotifications, 15000); // 15 seconds
     }
 
-    // Mark as read when clicked
-    document.querySelectorAll('.notif-card-premium').forEach(card => {
-        card.addEventListener('click', async (e) => {
-            const notifId = card.dataset.id;
-            if (notifId && card.classList.contains('unread')) {
-                const res = await fetch(`/admin/api/notifications/${notifId}/mark-read`, { method: 'POST' });
-                const data = await res.json();
-                if (data.success) {
-                    card.classList.remove('unread');
-                    const dot = card.querySelector('.unread-dot');
-                    if (dot) dot.style.display = 'none';
+    async function pollNewNotifications() {
+        try {
+            const response = await fetch('/api/notifications?limit=20');
+            const data = await response.json();
+
+            // Update header badge
+            const badge = document.getElementById('headerNotifDot');
+            if (badge) {
+                if (data.unread_count > 0) {
+                    badge.style.display = 'flex';
+                    badge.textContent = data.unread_count > 99 ? '99+' : data.unread_count;
+                } else {
+                    badge.style.display = 'none';
                 }
             }
-        });
-    });
 
-    document.getElementById('markAllRead').addEventListener('click', async () => {
-        openConfirmModal(
-            'Resolve All Intelligence?',
-            'This will archive all pending alerts and mark them as resolved in the system logs. This action is recorded for audit purposes.',
-            async () => {
-                const res = await fetch('/admin/api/notifications/mark-all-read', { method: 'POST' });
-                const data = await res.json();
-                if (data.success) {
-                    Swal.fire({
-                        title: 'Success',
-                        text: data.message,
-                        icon: 'success',
-                        confirmButtonColor: 'var(--adm-primary)'
-                    }).then(() => window.location.reload());
+            // Check for new notifications not already in the DOM
+            const list = document.getElementById('notifList');
+            if (!list) return;
+
+            data.notifications.forEach(notif => {
+                const idStr = String(notif.id);
+                if (!knownIds.has(idStr)) {
+                    knownIds.add(idStr);
+                    const newItem = createNotifElement(notif);
+                    list.prepend(newItem);
+
+                    // Animate in
+                    newItem.style.opacity = '0';
+                    newItem.style.transform = 'translateY(-10px)';
+                    requestAnimationFrame(() => {
+                        newItem.style.transition = 'all 0.3s ease';
+                        newItem.style.opacity = '1';
+                        newItem.style.transform = 'translateY(0)';
+                    });
+
+                    // Apply current filter
+                    applyFilterToItem(newItem);
                 }
-            }
-        );
-    });
+            });
 
-    window.addEventListener('system_update', (e) => {
-        if (e.detail.type === 'new_notification') {
-            if (typeof showToast === 'function') {
-                showToast("New operational alert received.");
-            } else {
-                window.location.reload();
+            updateTabCounts();
+        } catch (e) {
+            console.error('Polling error:', e);
+        }
+    }
+
+    // Build a notification DOM element from API data
+    function createNotifElement(notif) {
+        const div = document.createElement('div');
+        div.className = `notif-item ${notif.is_read ? '' : 'notif-unread'}`;
+        div.id = `notif-${notif.id}`;
+        div.dataset.type = notif.type || 'info';
+        div.dataset.read = notif.is_read ? 'true' : 'false';
+        div.onclick = () => handleNotificationClick(notif.id, notif.link || '');
+
+        const iconMap = {
+            'Booking': { icon: 'fa-calendar-check', cls: 'notif-icon-booking' },
+            'Payment': { icon: 'fa-wallet', cls: 'notif-icon-payment' },
+            'Review': { icon: 'fa-star', cls: 'notif-icon-review' },
+            'Verification': { icon: 'fa-user-shield', cls: 'notif-icon-verification' },
+            'Customer': { icon: 'fa-user-plus', cls: 'notif-icon-customer' },
+            'Message': { icon: 'fa-comment-dots', cls: 'notif-icon-message' },
+        };
+        const iconInfo = iconMap[notif.type] || { icon: 'fa-bell', cls: 'notif-icon-default' };
+
+        const timeStr = notif.created_at ? new Date(notif.created_at).toLocaleString('en-US', {
+            month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true
+        }) : '';
+
+        div.innerHTML = `
+            <div class="notif-icon ${iconInfo.cls}"><i class="fas ${iconInfo.icon}"></i></div>
+            <div class="notif-content">
+                <div class="notif-title">${notif.title || ''}</div>
+                <div class="notif-message">${notif.message || ''}</div>
+                <div class="notif-time"><i class="far fa-clock"></i> ${timeStr}</div>
+            </div>
+            ${!notif.is_read ? '<div class="notif-unread-dot" title="Unread"></div>' : ''}
+            <div class="notif-actions" onclick="event.stopPropagation();">
+                ${!notif.is_read ? `<button class="notif-action-btn notif-btn-read" onclick="markAsRead(${notif.id})" title="Mark as read"><i class="fas fa-check"></i></button>` : ''}
+                <button class="notif-action-btn notif-btn-delete" onclick="confirmDelete(${notif.id})" title="Delete"><i class="fas fa-trash-alt"></i></button>
+            </div>
+        `;
+        return div;
+    }
+
+    // ── Filter tabs ──
+    function filterNotifications(filter, btn) {
+        currentFilter = filter;
+        document.querySelectorAll('.notif-tab').forEach(t => t.classList.remove('active'));
+        btn.classList.add('active');
+
+        document.querySelectorAll('.notif-item').forEach(item => applyFilterToItem(item));
+    }
+
+    function applyFilterToItem(item) {
+        if (currentFilter === 'all') {
+            item.style.display = '';
+        } else if (currentFilter === 'unread') {
+            item.style.display = item.dataset.read === 'false' ? '' : 'none';
+        } else {
+            item.style.display = item.dataset.type === currentFilter ? '' : 'none';
+        }
+    }
+
+    // ── Update tab counts ──
+    function updateTabCounts() {
+        const items = document.querySelectorAll('.notif-item');
+        const total = items.length;
+        let unread = 0;
+        items.forEach(i => { if (i.dataset.read === 'false') unread++; });
+
+        const allCount = document.querySelector('[data-filter="all"] .notif-tab-count');
+        const unreadCount = document.querySelector('[data-filter="unread"] .notif-tab-count');
+        if (allCount) allCount.textContent = total;
+        if (unreadCount) unreadCount.textContent = unread;
+    }
+
+    // ── Mark single as read ──
+    async function markAsRead(id) {
+        try {
+            const response = await fetch(`/api/notifications/${id}/read`, { method: 'POST' });
+            if (response.ok) {
+                const card = document.getElementById(`notif-${id}`);
+                if (!card) return;
+                card.classList.remove('notif-unread');
+                card.dataset.read = 'true';
+                const dot = card.querySelector('.notif-unread-dot');
+                if (dot) dot.remove();
+                const btnRead = card.querySelector('.notif-btn-read');
+                if (btnRead) btnRead.remove();
+                updateTabCounts();
+                if (typeof fetchNotifications === 'function') fetchNotifications(true);
+                return true;
+            }
+        } catch (e) {
+            console.error('Failed to mark as read', e);
+        }
+        return false;
+    }
+
+    // ── Mark all as read ──
+    async function markAllAsRead() {
+        if (typeof window.showConfirm === 'function') {
+            window.showConfirm('Mark all notifications as read?', markAllAsReadApi, 'Mark All Read?', 'Yes, Mark All');
+        } else {
+            if (confirm('Mark all notifications as read?')) {
+                markAllAsReadApi();
             }
         }
-    });
+    }
+
+    async function markAllAsReadApi() {
+        try {
+            const response = await fetch('/api/notifications/read-all', { method: 'POST' });
+            if (response.ok) {
+                document.querySelectorAll('.notif-item.notif-unread').forEach(item => {
+                    item.classList.remove('notif-unread');
+                    item.dataset.read = 'true';
+                    const dot = item.querySelector('.notif-unread-dot');
+                    if (dot) dot.remove();
+                    const btnRead = item.querySelector('.notif-btn-read');
+                    if (btnRead) btnRead.remove();
+                });
+                updateTabCounts();
+                if (typeof window.showSuccess === 'function') {
+                    window.showSuccess('All notifications marked as read.');
+                }
+                if (typeof fetchNotifications === 'function') fetchNotifications(true);
+            }
+        } catch (e) {
+            console.error('Failed to mark all as read', e);
+        }
+    }
+
+    // ── Delete with confirmation ──
+    function confirmDelete(id) {
+        if (typeof window.showConfirm === 'function') {
+            window.showConfirm(
+                'Are you sure you want to delete this notification? This action cannot be undone.',
+                () => deleteNotification(id),
+                'Delete Notification?',
+                'Yes, Delete'
+            );
+        } else {
+            if (confirm('Are you sure you want to delete this notification?')) {
+                deleteNotification(id);
+            }
+        }
+    }
+
+    async function deleteNotification(id) {
+        try {
+            const response = await fetch(`/api/notifications/${id}/delete`, { method: 'POST' });
+            if (response.ok) {
+                const card = document.getElementById(`notif-${id}`);
+                if (card) {
+                    card.style.transition = 'all 0.3s ease';
+                    card.style.transform = 'translateX(100%)';
+                    card.style.opacity = '0';
+                    card.style.maxHeight = card.offsetHeight + 'px';
+                    setTimeout(() => {
+                        card.style.maxHeight = '0';
+                        card.style.padding = '0';
+                        card.style.margin = '0';
+                        card.style.borderWidth = '0';
+                    }, 200);
+                    setTimeout(() => {
+                        card.remove();
+                        knownIds.delete(String(id));
+                        updateTabCounts();
+                    }, 400);
+                }
+                if (typeof fetchNotifications === 'function') fetchNotifications(true);
+                if (typeof window.showSuccess === 'function') {
+                    window.showSuccess('Notification deleted.');
+                }
+            }
+        } catch (e) {
+            console.error('Failed to delete notification', e);
+        }
+    }
+
+    // ── Handle click → mark read + navigate ──
+    async function handleNotificationClick(id, link) {
+        const card = document.getElementById(`notif-${id}`);
+        if (card && card.classList.contains('notif-unread')) {
+            await markAsRead(id);
+        }
+        if (link) {
+            window.location.href = link;
+        }
+    }
+
+    // Start polling on page load
+    startPolling();
+    // Initial count sync
+    updateTabCounts();
 </script>
 {% endblock %}

@@ -1,6 +1,6 @@
 {% extends "admin/layout.html" %}
 
-{% block title %}Admin Intelligence Terminal{% endblock %}
+{% block title %}Admin Dashboard Overview{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ range(1, 1000) | random }}">
@@ -18,7 +18,6 @@
         background: #f0fdf4; color: #166534;
     }
     
-    /* Action Dropdown Diamond Standard */
     .actions-dropdown { position: relative; display: inline-block; }
     .dropdown-trigger {
         width: 32px; height: 32px; border-radius: 8px;
@@ -29,7 +28,7 @@
     .dropdown-trigger:hover { background: #fff; border-color: var(--adm-primary); color: var(--adm-primary); }
     
     .dropdown-menu-dm {
-        position: absolute; top: 100%; right: 0; width: 200px;
+        position: absolute; top: 100%; right: 0; width: 160px;
         background: white; border-radius: 12px; border: 1px solid #e2e8f0;
         box-shadow: var(--adm-shadow); display: none; z-index: 1000;
         padding: 0.5rem; margin-top: 8px;
@@ -43,132 +42,163 @@
         text-align: left; transition: all 0.2s;
     }
     .dm-dropdown-item:hover { background: var(--adm-primary-soft); color: var(--adm-primary); }
+
+    .chart-container-flex { display: flex; gap: 20px; flex-wrap: wrap; }
+    .chart-box { flex: 1; min-width: 300px; background: #fff; border-radius: 16px; border: 1px solid #e2e8f0; padding: 1.5rem; position: relative; }
+    .export-btn-group { position: absolute; top: 1.5rem; right: 1.5rem; display: flex; gap: 8px; }
+    .btn-export { 
+        background: white; border: 1px solid #cbd5e1; color: #475569; 
+        padding: 4px 10px; font-size: 0.7rem; font-weight: 700; border-radius: 6px; 
+        cursor: pointer; transition: all 0.2s;
+    }
+    .btn-export:hover { background: #f8fafc; color: var(--adm-primary); border-color: var(--adm-primary); }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="dashboard-header-clean">
     <div class="header-title-area">
-        <h1>Dashboard Intelligence</h1>
-        <p>Real-time operational matrix and platform performance audit.</p>
+        <h1>Dashboard Overview</h1>
+        <p>Monitor your platform's performance and activities.</p>
     </div>
 </div>
 
 <!-- KPI Matrix -->
 <div class="kpi-grid-clean">
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #eff6ff; color: #1d4ed8;"><i class="fas fa-vault"></i></div>
         <div class="kpi-info">
             <h4>Net Earnings</h4>
             <span class="kpi-value">₱{{ "{:,.0f}".format(metrics.platform_earnings) }}</span>
-            <span class="trend-badge trend-up"><i class="fas fa-arrow-up"></i> 12.4%</span>
+            <span class="trend-badge trend-up"><i class="fas fa-arrow-up"></i> Revenue</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #fffbeb; color: #92400e;"><i class="fas fa-calendar-check"></i></div>
         <div class="kpi-info">
-            <h4>Bookings</h4>
+            <h4>Total Bookings</h4>
             <span class="kpi-value">{{ metrics.booking_count }}</span>
-            <span class="trend-badge trend-up"><i class="fas fa-arrow-up"></i> 8.2%</span>
+            <span class="trend-badge trend-up"><i class="fas fa-calendar"></i> Platform</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #f0fdf4; color: #166534;"><i class="fas fa-handshake"></i></div>
         <div class="kpi-info">
-            <h4>Partners</h4>
+            <h4>Approved Partners</h4>
             <span class="kpi-value">{{ metrics.approved_caterers_count }}</span>
-            <span class="trend-badge trend-up"><i class="fas fa-plus"></i> {{ pending_caterers|length }} new</span>
+            <span class="trend-badge trend-up"><i class="fas fa-plus"></i> {{ pending_caterers|length }} Pending</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #fdf2f2; color: #991b1b;"><i class="fas fa-users"></i></div>
         <div class="kpi-info">
             <h4>Active Users</h4>
             <span class="kpi-value">{{ metrics.user_count }}</span>
-            <span class="trend-badge trend-up"><i class="fas fa-arrow-up"></i> 5.1%</span>
+            <span class="trend-badge trend-up"><i class="fas fa-users"></i> Customers</span>
         </div>
     </div>
 </div>
 
 <!-- Analytics Split -->
-<div class="analytics-split-clean">
-    <div class="card-clean">
-        <div class="card-title-clean"><i class="fas fa-chart-area"></i> Financial Velocity Trends</div>
-        <div class="chart-container-clean"><canvas id="revenueChart"></canvas></div>
+<div class="chart-container-flex" style="margin-bottom: 1.5rem;">
+    <div class="chart-box" style="flex: 2;">
+        <div class="export-btn-group">
+            <button class="btn-export" onclick="exportChartToPDF('revenueChart', 'Earnings_Trend')">PDF</button>
+            <button class="btn-export" onclick="exportChartToCSV('revenueChart', 'Earnings_Trend')">CSV</button>
+        </div>
+        <div class="card-title-clean" style="margin-bottom:1rem;">Earnings & Sales Trend</div>
+        <div class="chart-container-clean" style="height: 300px;"><canvas id="revenueChart"></canvas></div>
     </div>
 
-    <!-- NEW: Strategic Growth Analytics -->
-    <div class="card-clean">
-        <div class="card-title-clean"><i class="fas fa-crown"></i> Elite Partner Performance</div>
-        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
-            {% for c in approved_caterers[:4] %}
-            <div class="top-partner-item">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div class="avatar-sm" style="width: 32px; height: 32px; font-size: 0.75rem; background: var(--adm-primary-soft); color: var(--adm-primary);">{{ c.business_name[0] }}</div>
-                    <div style="display: flex; flex-direction: column;">
-                        <span style="font-size: 0.8rem; font-weight: 700; color: var(--adm-navy);">{{ c.business_name }}</span>
-                        <span style="font-size: 0.65rem; color: var(--adm-muted);">{{ c.city }}</span>
-                    </div>
-                </div>
-                <div class="growth-chip">TOP TIER</div>
-            </div>
-            {% endfor %}
-            <a href="/admin/caterers" style="text-align: center; font-size: 0.7rem; font-weight: 800; color: var(--adm-primary); margin-top: 5px; text-decoration: none;">VIEW ALL DIRECTORY <i class="fas fa-arrow-right"></i></a>
+    <div class="chart-box" style="flex: 1;">
+        <div class="export-btn-group">
+            <button class="btn-export" onclick="exportChartToPDF('statusChart', 'Booking_Status')">PDF</button>
         </div>
+        <div class="card-title-clean" style="margin-bottom:1rem;">Booking Status</div>
+        <div class="chart-container-clean" style="height: 300px;"><canvas id="statusChart"></canvas></div>
     </div>
 </div>
 
-<!-- Compliance Adjudication Registry -->
-<div class="table-card-clean">
-    <div class="card-title-clean" style="padding: 1.5rem; border-bottom: 1px solid #f1f5f9;">
-        <i class="fas fa-shield-halved"></i> Compliance Adjudication Registry
+<div class="analytics-split-clean">
+    <!-- Operations Queue -->
+    <div class="card-clean">
+        <div class="card-title-clean" style="display: flex; justify-content: space-between; align-items: center;">
+            Pending Commission Settlements
+            <button class="btn-export" onclick="exportTableToCSV('settlementsTable', 'Pending_Settlements')">CSV</button>
+        </div>
+        <div style="overflow-x: auto; margin-top: 10px;">
+            <table class="clean-table" id="settlementsTable">
+                <thead>
+                    <tr>
+                        <th>Caterer</th>
+                        <th>Amount</th>
+                        <th style="text-align: right;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if pending_settlements %}
+                    {% for p in pending_settlements %}
+                    <tr>
+                        <td>
+                            <span style="font-weight: 700; color: var(--adm-navy);">{{ p.caterer.business_name }}</span>
+                        </td>
+                        <td>₱{{ "{:,.2f}".format(p.amount) }}</td>
+                        <td style="text-align: right;">
+                            <a href="/admin/payouts" class="btn-export" style="text-decoration:none;">Review</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr><td colspan="3" style="text-align: center; padding: 2rem; color: var(--adm-muted);">No pending settlements.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
     </div>
-    <div style="overflow-x: auto;">
-        <table class="clean-table">
-            <thead>
-                <tr>
-                    <th>Partner Identity</th>
-                    <th>Audit Status</th>
-                    <th>Risk Factor</th>
-                    <th style="text-align: right;">Operations Hub</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% if pending_caterers %}
-                {% for c in pending_caterers %}
-                <tr class="cust-row">
-                    <td>
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <div class="avatar-sm" style="background: var(--adm-primary-soft); color: var(--adm-primary);">{{ c.business_name[0] }}</div>
-                            <div style="display: flex; flex-direction: column;">
-                                <span style="font-weight: 800; color: var(--adm-navy); font-size: 0.85rem;">{{ c.business_name }}</span>
-                                <span style="font-size: 0.7rem; color: var(--adm-muted);">{{ c.user.email }}</span>
+
+    <!-- Adjudication Registry -->
+    <div class="card-clean">
+        <div class="card-title-clean" style="display: flex; justify-content: space-between; align-items: center;">
+            Pending Caterer Approvals
+            <button class="btn-export" onclick="exportTableToCSV('approvalsTable', 'Pending_Approvals')">CSV</button>
+        </div>
+        <div style="overflow-x: auto; margin-top: 10px;">
+            <table class="clean-table" id="approvalsTable">
+                <thead>
+                    <tr>
+                        <th>Caterer Name</th>
+                        <th>Status</th>
+                        <th style="text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if pending_caterers %}
+                    {% for c in pending_caterers %}
+                    <tr>
+                        <td>
+                            <span style="font-weight: 700; color: var(--adm-navy);">{{ c.business_name }}</span>
+                        </td>
+                        <td><span class="badge-clean badge-pending">PENDING</span></td>
+                        <td style="text-align: right;">
+                            <div class="actions-dropdown">
+                                <button class="dropdown-trigger" onclick="toggleActionDropdown(this, event)"><i class="fas fa-ellipsis-v"></i></button>
+                                <div class="dropdown-menu-dm">
+                                    <a href="/admin/verify/{{ c.user_id }}" class="dm-dropdown-item">Review Documents</a>
+                                </div>
                             </div>
-                        </div>
-                    </td>
-                    <td><span class="badge-clean badge-pending">PENDING REVIEW</span></td>
-                    <td><span style="font-size: 0.75rem; font-weight: 700; color: #f59e0b;"><i class="fas fa-triangle-exclamation"></i> MEDIUM</span></td>
-                    <td style="text-align: right;">
-                        <div class="actions-dropdown">
-                            <button class="dropdown-trigger" onclick="toggleActionDropdown(this, event)"><i class="fas fa-ellipsis-v"></i></button>
-                            <div class="dropdown-menu-dm">
-                                <a href="/admin/verify/{{ c.user_id }}" class="dm-dropdown-item"><i class="fas fa-shield-check"></i> Run Audit</a>
-                                <button class="dm-dropdown-item" onclick="flagPartner({{ c.id }})"><i class="fas fa-flag"></i> Flag for Audit</button>
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-                {% else %}
-                <tr><td colspan="4" style="text-align: center; padding: 4rem; color: var(--adm-muted);">Queue Empty</td></tr>
-                {% endif %}
-            </tbody>
-        </table>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr><td colspan="3" style="text-align: center; padding: 2rem; color: var(--adm-muted);">No pending approvals.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
+<!-- Include html2pdf.js for exporting charts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
 <script>
     function toggleActionDropdown(btn, event) {
         event.stopPropagation();
@@ -177,71 +207,76 @@
     }
     window.onclick = () => document.querySelectorAll('.dropdown-menu-dm.show').forEach(m => m.classList.remove('show'));
 
-    // Real Administrative Logic for Dashboard
-    async function executePartnerAction(id, action, reason = null) {
-        const formData = new FormData();
-        if (reason) formData.append('reason', reason);
-
-        try {
-            const res = await fetch(`/admin/api/caterers/${id}/${action}`, {
-                method: 'POST',
-                body: formData
-            });
-            const data = await res.json();
-            if (data.success) {
-                Swal.fire({ title: 'Success', text: data.message, icon: 'success', timer: 2000, showConfirmButton: false });
-                setTimeout(() => window.location.reload(), 1500);
-            } else {
-                Swal.fire('Error', data.message, 'error');
-            }
-        } catch (err) {
-            Swal.fire('System Error', 'Service Unreachable', 'error');
-        }
-    }
-
-    function flagPartner(id) {
-        Swal.fire({
-            title: 'Require Re-verification',
-            text: 'Select the reason for requiring re-verification:',
-            input: 'select',
-            inputOptions: {
-                'Expired Business Permit': 'Expired Business Permit',
-                'Suspicious Document Uploaded': 'Suspicious Document Uploaded',
-                'Customer Complaints / Fraud Report': 'Customer Complaints / Fraud Report',
-                'Unresponsive Contact Details': 'Unresponsive Contact Details',
-                'Other': 'Other (Please specify in audit notes later)'
-            },
-            inputPlaceholder: 'Select a reason',
-            showCancelButton: true,
-            confirmButtonText: 'Submit',
-            confirmButtonColor: '#f97316',
-            inputValidator: (value) => {
-                if (!value) {
-                    return 'You need to select a reason.';
-                }
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                executePartnerAction(id, 'flag', result.value);
-            }
-        });
-    }
-
-    function openReasonModal(title, desc, callback) {
-        const modal = document.getElementById('reasonModal');
-        document.getElementById('reasonModalTitle').innerText = title;
-        document.getElementById('reasonModalDesc').innerText = desc;
-        document.getElementById('actionReason').value = '';
-        modal.classList.add('active');
-        document.getElementById('reasonSubmitBtn').onclick = () => {
-            const reason = document.getElementById('actionReason').value.trim();
-            if (!reason) return Swal.fire('Field Required', 'Reason is mandatory for adjudication.', 'warning');
-            modal.classList.remove('active');
-            callback(reason);
+    // --- Export Functions ---
+    function exportChartToPDF(canvasId, filename) {
+        const element = document.getElementById(canvasId);
+        if(!element) return;
+        const opt = {
+            margin: 10,
+            filename: filename + '.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
         };
+        // Temporarily wrap the canvas with a white background for PDF
+        const wrap = document.createElement('div');
+        wrap.style.background = 'white';
+        wrap.style.padding = '20px';
+        const img = new Image();
+        img.src = element.toDataURL('image/png', 1.0);
+        wrap.appendChild(img);
+        html2pdf().set(opt).from(wrap).save();
+    }
+
+    function exportChartToCSV(canvasId, filename) {
+        // Since we know the chart instance, we extract data from Chart.js registry
+        const chart = Chart.getChart(canvasId);
+        if(!chart) return;
+        
+        let csv = 'Label';
+        chart.data.datasets.forEach(ds => csv += ',' + ds.label);
+        csv += '\n';
+        
+        for(let i = 0; i < chart.data.labels.length; i++) {
+            csv += chart.data.labels[i];
+            chart.data.datasets.forEach(ds => {
+                csv += ',' + (ds.data[i] || 0);
+            });
+            csv += '\n';
+        }
+
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.setAttribute('href', url);
+        a.setAttribute('download', filename + '.csv');
+        a.click();
+    }
+
+    function exportTableToCSV(tableId, filename) {
+        const table = document.getElementById(tableId);
+        if(!table) return;
+        let csv = [];
+        for (let row of table.rows) {
+            let cols = [];
+            for (let cell of row.cells) {
+                // Ignore action columns
+                if(cell.innerText.includes('Action') || cell.querySelector('.dropdown-trigger')) continue;
+                cols.push('"' + cell.innerText.trim().replace(/"/g, '""') + '"');
+            }
+            if(cols.length > 0) csv.push(cols.join(','));
+        }
+        
+        const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.setAttribute('href', url);
+        a.setAttribute('download', filename + '.csv');
+        a.click();
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+        // --- Revenue Line Chart ---
         const ctxRev = document.getElementById('revenueChart').getContext('2d');
         const realLabels = {{ chart_data.months | tojson }};
         const realSales = {{ chart_data.sales | tojson }};
@@ -252,13 +287,13 @@
             data: {
                 labels: realLabels,
                 datasets: [{
-                    label: 'Platform Yield (Earnings)',
+                    label: 'Platform Commission',
                     data: realEarnings,
                     borderColor: '#f97316',
                     backgroundColor: 'rgba(249, 115, 22, 0.1)',
                     fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4, pointBackgroundColor: '#f97316'
                 }, {
-                    label: 'Gross Throughput',
+                    label: 'Total Caterer Sales',
                     data: realSales,
                     borderColor: '#94a3b8',
                     backgroundColor: 'transparent',
@@ -276,6 +311,28 @@
                     y: { grid: { color: '#f1f5f9' }, ticks: { font: { family: 'Poppins', size: 10 } } }, 
                     x: { grid: { display: false }, ticks: { font: { family: 'Poppins', size: 10 } } } 
                 } 
+            }
+        });
+
+        // --- Booking Status Pie Chart ---
+        const ctxStat = document.getElementById('statusChart').getContext('2d');
+        new Chart(ctxStat, {
+            type: 'doughnut',
+            data: {
+                labels: ['Completed', 'Pending', 'Cancelled'],
+                datasets: [{
+                    data: [{{ completed_bookings_count }}, {{ pending_bookings_count }}, {{ cancelled_bookings_count }}],
+                    backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { font: { family: 'Poppins', size: 11, weight: 600 } } }
+                },
+                cutout: '70%'
             }
         });
     });
