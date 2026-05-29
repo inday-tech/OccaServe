@@ -44,7 +44,8 @@ def master_migration():
             ("actual_cost_breakdown", "JSONB"),
             ("special_requests", "TEXT"),
             ("caterer_notes", "TEXT"),
-            ("booking_source", "VARCHAR DEFAULT 'OccaServe'")
+            ("booking_source", "VARCHAR DEFAULT 'OccaServe'"),
+            ("commission_calculated", "BOOLEAN DEFAULT FALSE")
         ]
         
         # Reviews Table
@@ -130,7 +131,9 @@ def master_migration():
             ("deactivation_reason", "TEXT"),
             ("deactivated_at", "TIMESTAMP WITH TIME ZONE"),
             ("max_bookings_per_day", "INTEGER DEFAULT 1"),
-            ("auto_block_enabled", "BOOLEAN DEFAULT TRUE")
+            ("auto_block_enabled", "BOOLEAN DEFAULT TRUE"),
+            ("outstanding_balance", "FLOAT DEFAULT 0.0"),
+            ("commission_rate", "FLOAT DEFAULT 0.05")
         ]
         
         # Menu Items
