@@ -520,11 +520,11 @@ document.addEventListener('DOMContentLoaded', function () {
             if (finalVal === 'NOT DETECTED') finalVal = '';
 
             const html = `
-                <div class="ocr-field-row" style="border: none; padding: 0.5rem; background: #f8fafc; border-radius: 1rem;">
+                <div class="ocr-field-row" style="border: none; padding: 0.5rem; background: #f8fafc; border-radius: 1rem; display: flex; align-items: center; gap: 1rem;">
                     <div class="ocr-field-icon"><i class="fas ${field.icon}"></i></div>
                     <div class="ocr-field-content">
                         <label>${field.label}</label>
-                        <input type="text" id="ocr-dynamic-${field.key}" value="${finalVal}" placeholder="${finalVal ? '' : '-'}" readonly class="${finalVal ? '' : 'not-detected'}" style="border: none; background: transparent; padding: 0; box-shadow: none; margin-top: 0.2rem;">
+                        <input type="text" id="ocr-dynamic-${field.key}" value="${finalVal}" placeholder="Enter ${field.label}" class="${finalVal ? '' : 'not-detected'}" oninput="this.classList.remove('not-detected')">
                     </div>
                 </div>
             `;

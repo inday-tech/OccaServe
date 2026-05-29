@@ -338,7 +338,7 @@ async def ocr(
                 raw_word_data.append({
                     "word": clean_text,
                     "conf": int(conf * 100),
-                    "bbox": bbox
+                    "bbox": [[int(coord) for coord in pt] for pt in bbox]
                 })
         raw_text = " ".join(raw_text_parts)
 
@@ -357,7 +357,7 @@ async def ocr(
                     preproc_word_data.append({
                         "word": clean_text,
                         "conf": int(conf * 100),
-                        "bbox": bbox
+                        "bbox": [[int(coord) for coord in pt] for pt in bbox]
                     })
             preproc_text = " ".join(preproc_text_parts)
             if len(preproc_text) > len(final_text) and len(raw_text) < 40:
