@@ -227,46 +227,37 @@
 {% block content %}
 <div class="dashboard-header-clean">
     <div class="header-title-area">
-        <h1>Customer Registry</h1>
-        <p>Strategic oversight of platform participants, transaction integrity, and identity lifecycle.</p>
+        <h1>Customer Directory</h1>
+        <p>Monitor and manage all customer accounts on the platform.</p>
     </div>
 </div>
 
 <!-- Elite KPI Matrix -->
 <div class="kpi-grid-clean">
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #eff6ff; color: #1d4ed8;"><i class="fas fa-fingerprint"></i></div>
         <div class="kpi-info">
-            <h4>Total Registered</h4>
+            <h4>Total Customers</h4>
             <span class="kpi-value">{{ metrics.total_customers }}</span>
-            <span class="trend-badge trend-up">PLATFORM POPULATION</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #ecfdf4; color: #166534;"><i class="fas fa-shield-check"></i></div>
         <div class="kpi-info">
-            <h4>Verified Accounts</h4>
+            <h4>Verified Customers</h4>
             <span class="kpi-value">{{ metrics.active_customers }}</span>
-            <span class="trend-badge trend-up"><i class="fas fa-check"></i> TRUSTED</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #fffbeb; color: #92400e;"><i class="fas fa-user-shield"></i></div>
         <div class="kpi-info">
-            <h4>Risk Oversight</h4>
+            <h4>Flagged for Audit</h4>
             <span class="kpi-value">0</span>
-            <span class="trend-badge" style="background: #fef3c7; color: #92400e;">FLAGGED FOR AUDIT</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: var(--adm-primary-soft); color: var(--adm-primary);"><i
-                class="fas fa-chart-line"></i></div>
         <div class="kpi-info">
-            <h4>Engagement LTV</h4>
+            <h4>Total Bookings Amount</h4>
             <span class="kpi-value">₱{{ "{:,.0f}".format(customers | map(attribute='bookings') | map('list') |
                 sum(start=[]) | selectattr('status', 'equalto', 'completed') | map(attribute='total_amount') | sum if
                 customers else 0) }}</span>
-            <span class="trend-badge" style="background: #f1f5f9; color: #475569;">GROSS VOLUME</span>
         </div>
     </div>
 </div>
@@ -276,16 +267,11 @@
     <div class="terminal-filter-strip"
         style="display: flex; justify-content: space-between; align-items: center; padding: 1.75rem 2rem; background: #fff; border-top-left-radius: 24px; border-top-right-radius: 24px;">
         <div style="display: flex; align-items: center; gap: 16px;">
-            <div
-                style="background: linear-gradient(135deg, var(--adm-primary), #6366f1); color: white; width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; box-shadow: 0 8px 16px -4px rgba(79, 70, 229, 0.4);">
-                <i class="fas fa-fingerprint"></i>
-            </div>
             <div>
                 <h3
                     style="font-size: 1rem; font-weight: 800; color: var(--adm-navy); margin: 0; text-transform: uppercase; letter-spacing: 0.02em;">
-                    Participant Registry</h3>
-                <p style="font-size: 0.75rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Managed Identity
-                    Lifecycle & Compliance</p>
+                    Customer List</h3>
+                <p style="font-size: 0.75rem; color: var(--adm-muted); margin: 0; font-weight: 600;">View and manage customer activities</p>
             </div>
         </div>
 
@@ -293,30 +279,30 @@
             <div style="position: relative;">
                 <select id="statusFilter" onchange="filterRegistry()" class="btn-clean"
                     style="padding: 12px 18px; font-size: 0.8rem; font-weight: 700; background: #fff; border-radius: 12px; min-width: 240px; border: 1.5px solid #e2e8f0; color: var(--adm-navy); cursor: pointer; transition: all 0.2s;">
-                    <option value="all">Governance: All States</option>
-                    <option value="verified">State: Verified Only</option>
-                    <option value="pending">State: Pending KYC</option>
-                    <option value="suspended">State: Suspended Only</option>
+                    <option value="all">All Customers</option>
+                    <option value="verified">Verified Only</option>
+                    <option value="pending">Pending KYC</option>
+                    <option value="suspended">Suspended Only</option>
                 </select>
             </div>
 
             <button class="btn-clean"
                 style="padding: 12px; background: #fff; width: 48px; height: 48px; border-radius: 12px; border: 1.5px solid #e2e8f0; color: #64748b; transition: all 0.2s;"
-                title="Export Intelligence">
+                title="Export List">
                 <i class="fas fa-download"></i>
             </button>
         </div>
     </div>
 
-    <div style="overflow: visible; padding: 0 0 5rem 0;">
+    <div style="overflow: visible; padding: 0 0 5rem 0; position: relative; z-index: 10;">
         <table class="clean-table" id="registryTable" style="width: 100%; border-collapse: collapse;">
             <thead>
                 <tr>
-                    <th style="padding-left: 2rem; width: 30%;">Participant Identity</th>
-                    <th style="width: 25%;">Governance & Compliance</th>
-                    <th style="width: 15%;">LTV Engagement</th>
-                    <th style="width: 15%;">Join Date</th>
-                    <th style="text-align: right; padding-right: 2rem; width: 15%;">Registry Actions</th>
+                    <th style="padding-left: 2rem; width: 30%;">Customer Name</th>
+                    <th style="width: 25%;">Account Status</th>
+                    <th style="width: 15%;">Total Bookings</th>
+                    <th style="width: 15%;">Date Joined</th>
+                    <th style="text-align: right; padding-right: 2rem; width: 15%;">Actions</th>
                 </tr>
             </thead>
             <tbody id="registryBody">
@@ -333,7 +319,7 @@
                                     style="font-weight: 800; color: var(--adm-navy); font-size: 0.9rem; display: block; line-height: 1.2; margin-bottom: 2px;">{{
                                     customer.first_name }} {{ customer.last_name }}</span>
                                 <span
-                                    style="font-size: 0.7rem; color: #64748b; font-weight: 700; letter-spacing: 0.02em; line-height: 1;">IDENTITY
+                                    style="font-size: 0.7rem; color: #64748b; font-weight: 700; letter-spacing: 0.02em; line-height: 1;">CUSTOMER ID
                                     #{{ "%05d"|format(customer.id) }}</span>
                             </div>
                         </div>
@@ -344,7 +330,7 @@
                                 class="status-badge-dm {% if customer.is_verified %}status-active{% else %}status-flagged{% endif %}">
                                 <i
                                     class="fas {% if customer.is_verified %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %}"></i>
-                                {{ 'VERIFIED IDENTITY' if customer.is_verified else 'PENDING KYC' }}
+                                {{ 'VERIFIED' if customer.is_verified else 'PENDING KYC' }}
                             </span>
                             <div
                                 style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #64748b; font-weight: 600;">
@@ -356,7 +342,7 @@
                     <td>
                         <div class="ltv-value">₱{{ "{:,.2f}".format(customer.bookings | selectattr('status', 'equalto',
                             'completed') | map(attribute='total_amount') | sum) }}</div>
-                        <div class="ltv-label">Lifetime Value</div>
+                        <div class="ltv-label">Total Amount</div>
                     </td>
                     <td>
                         <div style="font-weight: 800; color: var(--adm-navy); font-size: 0.85rem; margin-bottom: 2px;">
@@ -371,35 +357,23 @@
                                 <i class="fas fa-ellipsis-h"></i>
                             </div>
                             <div class="dropdown-menu-dm">
-                                <button class="dropdown-item-dm" onclick="openEditModal(this)"
-                                    data-id="{{ customer.id }}"
-                                    data-fname="{{ customer.first_name }}"
-                                    data-lname="{{ customer.last_name }}"
-                                    data-email="{{ customer.email }}"
-                                    data-phone="{{ customer.phone_number }}"
-                                    data-address="{{ customer.address }}">
-                                    <i class="fas fa-user-edit"></i> Edit Profile
-                                </button>
                                 <button class="dropdown-item-dm" onclick="auditCustomer('{{ customer.id }}')">
-                                    <i class="fas fa-search-plus"></i> Intelligence Audit
+                                    <i class="fas fa-id-card"></i> View Account Details
                                 </button>
                                 <button class="dropdown-item-dm" onclick="viewLedger('{{ customer.id }}')">
-                                    <i class="fas fa-receipt"></i> Transaction Ledger
+                                    <i class="fas fa-history"></i> View Booking History
                                 </button>
                                 <button class="dropdown-item-dm" onclick="sendAlert('{{ customer.id }}')">
-                                    <i class="fas fa-bell"></i> Dispatch Alert
+                                    <i class="fas fa-envelope"></i> Send Notification
                                 </button>
                                 <div class="dropdown-divider"></div>
-                                <button class="dropdown-item-dm danger" onclick="flagAccount('{{ customer.id }}')">
-                                    <i class="fas fa-flag"></i> Flag Account
-                                </button>
                                 <button class="dropdown-item-dm danger" onclick="suspendAccount('{{ customer.id }}')">
-                                    <i class="fas fa-user-slash"></i> Suspend Access
+                                    <i class="fas fa-ban"></i> Suspend Account
                                 </button>
                                 <div class="dropdown-divider"></div>
                                 <button class="dropdown-item-dm" onclick="archiveItem('customers', '{{ customer.id }}')"
                                     style="color: #64748b;">
-                                    <i class="fas fa-archive"></i> Archive Participant
+                                    <i class="fas fa-archive"></i> Archive Account
                                 </button>
                             </div>
                         </div>
@@ -437,10 +411,8 @@
                     <i class="fas fa-fingerprint"></i>
                 </div>
                 <div>
-                    <h3 style="font-size: 0.95rem; font-weight: 800; text-transform: uppercase; margin: 0;">Identity
-                        Adjudication</h3>
-                    <p style="font-size: 0.7rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Strategic
-                        profile overview and compliance check.</p>
+                    <h3 style="font-size: 0.95rem; font-weight: 800; text-transform: uppercase; margin: 0;">Account Details</h3>
+                    <p style="font-size: 0.7rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Customer profile overview.</p>
                 </div>
             </div>
             <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);"
@@ -456,53 +428,7 @@
     </div>
 </div>
 
-<!-- Edit Customer Modal -->
-<div id="editCustomerModal" class="admin-modal-overlay">
-    <div class="admin-modal-card" style="max-width: 500px;">
-        <div class="modal-header-clean">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="background: var(--adm-primary-soft); color: var(--adm-primary); width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-user-edit"></i>
-                </div>
-                <div>
-                    <h3 style="font-size: 0.95rem; font-weight: 800; text-transform: uppercase; margin: 0;">Edit Participant Profile</h3>
-                    <p style="font-size: 0.7rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Update core identity and contact parameters.</p>
-                </div>
-            </div>
-            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);" onclick="closeEditModal()">&times;</button>
-        </div>
-        <form id="editCustomerForm">
-            <input type="hidden" id="edit_customer_id" name="customer_id">
-            <div class="modal-body-clean" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div class="dm-input-group" style="position: relative; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0 12px; display: flex; align-items: center; gap: 10px;">
-                        <i class="fas fa-user" style="color: #94a3b8; font-size: 0.8rem;"></i>
-                        <input type="text" name="first_name" id="edit_fname" placeholder="First Name" required style="border: none; padding: 12px 0; font-size: 0.85rem; font-weight: 600; width: 100%; outline: none; background: transparent;">
-                    </div>
-                    <div class="dm-input-group" style="position: relative; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0 12px; display: flex; align-items: center; gap: 10px;">
-                        <input type="text" name="last_name" id="edit_lname" placeholder="Last Name" required style="border: none; padding: 12px 0; font-size: 0.85rem; font-weight: 600; width: 100%; outline: none; background: transparent;">
-                    </div>
-                </div>
-                <div class="dm-input-group" style="position: relative; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0 12px; display: flex; align-items: center; gap: 10px;">
-                    <i class="fas fa-envelope" style="color: #94a3b8; font-size: 0.8rem;"></i>
-                    <input type="email" name="email" id="edit_email" placeholder="Email Address" required style="border: none; padding: 12px 0; font-size: 0.85rem; font-weight: 600; width: 100%; outline: none; background: transparent;">
-                </div>
-                <div class="dm-input-group" style="position: relative; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0 12px; display: flex; align-items: center; gap: 10px;">
-                    <i class="fas fa-phone" style="color: #94a3b8; font-size: 0.8rem;"></i>
-                    <input type="tel" name="phone" id="edit_phone" placeholder="Phone Number" style="border: none; padding: 12px 0; font-size: 0.85rem; font-weight: 600; width: 100%; outline: none; background: transparent;">
-                </div>
-                <div class="dm-input-group" style="position: relative; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0 12px; display: flex; align-items: center; gap: 10px;">
-                    <i class="fas fa-map-marker-alt" style="color: #94a3b8; font-size: 0.8rem;"></i>
-                    <input type="text" name="address" id="edit_address" placeholder="Address" style="border: none; padding: 12px 0; font-size: 0.85rem; font-weight: 600; width: 100%; outline: none; background: transparent;">
-                </div>
-            </div>
-            <div class="modal-footer-clean" style="padding: 1.25rem; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 12px;">
-                <button type="button" class="btn-clean" style="background: white; color: var(--adm-navy); border: 1px solid #e2e8f0;" onclick="closeEditModal()">Cancel</button>
-                <button type="submit" class="btn-clean" style="background: var(--adm-primary); color: white; font-weight: 800;">Commit Changes</button>
-            </div>
-        </form>
-    </div>
-</div>
+
 
 {% endblock %}
 
@@ -587,8 +513,8 @@
 
     async function auditCustomer(id) {
         Swal.fire({
-            title: 'Initializing Audit',
-            text: 'Loading intelligence profile for participant #' + id,
+            title: 'Loading Details',
+            text: 'Fetching customer profile...',
             allowOutsideClick: false,
             didOpen: () => Swal.showLoading()
         });
@@ -627,17 +553,17 @@
 
                         <div style="padding: 0 1.5rem 1.5rem;">
                             <div style="background: #eff6ff; padding: 1rem; border-radius: 12px; border: 1px solid #dbeafe; margin-bottom: 1rem;">
-                                <div style="font-size: 0.65rem; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 8px;">Governance Data</div>
+                                <div style="font-size: 0.65rem; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 8px;">Account Overview</div>
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.75rem; font-weight: 700; color: #1e40af;">
                                     <div>Total Bookings: ${d.total_bookings}</div>
                                     <div>Cancellations: ${d.cancellations}</div>
-                                    <div>Established: ${d.join_date}</div>
-                                    <div>Identity: ${d.is_verified ? 'SECURED' : 'UNVERIFIED'}</div>
+                                    <div>Date Joined: ${d.join_date}</div>
+                                    <div>Status: ${d.is_verified ? 'VERIFIED' : 'UNVERIFIED'}</div>
                                 </div>
                             </div>
                             
                             <div style="background: #fff7ed; padding: 1rem; border-radius: 12px; border: 1px solid #ffedd5;">
-                                <div style="font-size: 0.65rem; font-weight: 800; color: #9a3412; text-transform: uppercase; margin-bottom: 4px;">Investigation Notes</div>
+                                <div style="font-size: 0.65rem; font-weight: 800; color: #9a3412; text-transform: uppercase; margin-bottom: 4px;">Admin Notes</div>
                                 <div style="font-size: 0.75rem; color: #c2410c; font-weight: 600; line-height: 1.5;">${d.investigation_notes}</div>
                             </div>
                         </div>
@@ -646,49 +572,37 @@
                 Swal.close();
                 document.getElementById('intelligenceModal').classList.add('active');
             } else {
-                Swal.fire('Audit Failure', result.message, 'error');
+                Swal.fire('Fetch Failure', result.message, 'error');
             }
         } catch (e) {
-            Swal.fire('Critical Error', 'Adjudication server unreachable.', 'error');
+            Swal.fire('Error', 'Server unreachable.', 'error');
         }
     }
 
     function suspendAccount(id) {
-        openReasonModal('Immediate Suspension?', 'Provide a mandatory reason for the audit trail. The participant will lose platform access.', (reason) => {
-            Swal.fire({ title: 'Locking Identity', didOpen: () => Swal.showLoading() });
+        openReasonModal('Suspend Account?', 'Provide a reason for the suspension. The customer will lose platform access.', (reason) => {
+            Swal.fire({ title: 'Suspending...', didOpen: () => Swal.showLoading() });
             const fd = new FormData();
             fd.append('reason', reason);
             fetch(`/admin/api/customers/${id}/suspend`, { method: 'POST', body: fd })
                 .then(res => res.json())
                 .then(data => {
-                    if (data.success) Swal.fire('Account Locked', data.message, 'success').then(() => location.reload());
+                    if (data.success) Swal.fire('Suspended', data.message, 'success').then(() => location.reload());
                     else Swal.fire('Error', data.message, 'error');
                 })
                 .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
         }, { variant: 'danger' });
     }
 
-    function flagAccount(id) {
-        openConfirmModal('Flag for Review?', 'This will elevate the risk profile of this participant for manual investigation.', () => {
-            fetch(`/admin/api/customers/${id}/flag`, { method: 'POST' })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) Swal.fire('Identity Flagged', data.message, 'success').then(() => location.reload());
-                    else Swal.fire('Error', data.message, 'error');
-                })
-                .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
-        }, { variant: 'warning' });
-    }
-
     function sendAlert(id) {
-        openReasonModal('Dispatch System Alert', "This message will be sent directly to the customer's notification hub.", (message) => {
-            Swal.fire({ title: 'Dispatching...', didOpen: () => Swal.showLoading() });
+        openReasonModal('Send Notification', "This message will be sent directly to the customer.", (message) => {
+            Swal.fire({ title: 'Sending...', didOpen: () => Swal.showLoading() });
             const fd = new FormData();
             fd.append('message', message);
             fetch(`/admin/api/customers/${id}/send-alert`, { method: 'POST', body: fd })
                 .then(res => res.json())
                 .then(data => {
-                    if (data.success) Swal.fire('Dispatched', data.message, 'success');
+                    if (data.success) Swal.fire('Sent', data.message, 'success');
                     else Swal.fire('Error', data.message, 'error');
                 })
                 .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
@@ -696,53 +610,17 @@
     }
 
     function viewLedger(id) {
-        Swal.fire('Transaction Ledger', 'Feature coming soon: Direct view of all booking entries and financial history for this customer.', 'info');
+        Swal.fire('Booking History', 'Feature coming soon: Direct view of all booking entries and history for this customer.', 'info');
     }
 
     function closeIntelligenceModal() {
         document.getElementById('intelligenceModal').classList.remove('active');
     }
 
-    // --- Edit Participant Suite ---
-    function openEditModal(btn) {
-        document.getElementById('edit_customer_id').value = btn.getAttribute('data-id');
-        document.getElementById('edit_fname').value = btn.getAttribute('data-fname');
-        document.getElementById('edit_lname').value = btn.getAttribute('data-lname');
-        document.getElementById('edit_email').value = btn.getAttribute('data-email');
-        document.getElementById('edit_phone').value = btn.getAttribute('data-phone') || '';
-        document.getElementById('edit_address').value = btn.getAttribute('data-address') || '';
-        document.getElementById('editCustomerModal').classList.add('active');
-    }
 
-    function closeEditModal() {
-        document.getElementById('editCustomerModal').classList.remove('active');
-    }
-
-    document.getElementById('editCustomerForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const id = document.getElementById('edit_customer_id').value;
-        const fd = new FormData(e.target);
-
-        Swal.fire({ title: 'Updating Participant...', didOpen: () => Swal.showLoading() });
-
-        try {
-            const res = await fetch(`/admin/api/customers/${id}/edit`, {
-                method: 'POST',
-                body: fd
-            });
-            const data = await res.json();
-            if (data.success) {
-                Swal.fire('Updated', data.message, 'success').then(() => location.reload());
-            } else {
-                Swal.fire('Error', data.message, 'error');
-            }
-        } catch (e) {
-            Swal.fire('Error', 'Communication failure.', 'error');
-        }
-    });
 
     function archiveItem(type, id) {
-        openConfirmModal('Archive Participant?', 'This will move the participant to archives for 30 days. You can restore them if needed.', () => {
+        openConfirmModal('Archive Account?', 'This will move the customer to archives. You can restore them if needed.', () => {
             Swal.fire({ title: 'Archiving...', didOpen: () => Swal.showLoading() });
             fetch(`/admin/api/archives/${type}/${id}/archive`, { method: 'POST' })
                 .then(res => res.json())

@@ -408,30 +408,30 @@
 {% block content %}
 <div class="page-header-clean">
     <div class="header-title-area">
-        <h1>Platform Configuration</h1>
-        <p>Calibrate system behaviors, visual identifiers, and financial parameters.</p>
+        <h1>Site Settings</h1>
+        <p>Manage the platform's core behaviors, logo, social links, and security.</p>
     </div>
 </div>
 
 <div class="terminal-container">
     <aside class="terminal-nav">
         <div class="nav-header">
-            <h4>System Nodes</h4>
+            <h4>System Settings</h4>
         </div>
         <button class="terminal-btn active" onclick="switchTab('general', this)">
-            <i class="fas fa-sliders"></i> General Intelligence
+            <i class="fas fa-sliders"></i> General Settings
         </button>
         <button class="terminal-btn" onclick="switchTab('appearance', this)">
-            <i class="fas fa-palette"></i> Visual Branding
+            <i class="fas fa-palette"></i> Appearance & Logo
         </button>
         <button class="terminal-btn" onclick="switchTab('social', this)">
-            <i class="fas fa-share-nodes"></i> Connectivity
+            <i class="fas fa-share-nodes"></i> Social Media Links
         </button>
         <button class="terminal-btn" onclick="switchTab('maintenance', this)">
-            <i class="fas fa-screwdriver-wrench"></i> Operational Shield
+            <i class="fas fa-screwdriver-wrench"></i> Maintenance Mode
         </button>
         <button class="terminal-btn" onclick="switchTab('security', this)">
-            <i class="fas fa-shield-halved"></i> Credential Layer
+            <i class="fas fa-shield-halved"></i> Security & Password
         </button>
         <button class="terminal-btn" onclick="switchTab('audit', this)" style="border-top: 1px solid var(--dm-border); margin-top: 1rem; padding-top: 1.5rem;">
             <i class="fas fa-clock-rotate-left"></i> Change History
@@ -443,8 +443,8 @@
             <!-- General Panel -->
             <div id="general" class="terminal-panel active">
                 <div class="display-header">
-                    <h2>General Intelligence</h2>
-                    <p>Core platform identity and standard operational rates.</p>
+                    <h2>General Settings</h2>
+                    <p>Basic site info and financial rates.</p>
                 </div>
                 <div class="display-body">
                     <div class="intel-grid">
@@ -477,8 +477,8 @@
             <!-- Appearance Panel -->
             <div id="appearance" class="terminal-panel">
                 <div class="display-header">
-                    <h2>Visual Branding</h2>
-                    <p>Manage the platform's public identifiers and browser assets.</p>
+                    <h2>Appearance & Logo</h2>
+                    <p>Manage logos and browser icons.</p>
                 </div>
                 <div class="display-body">
                     <div class="input-wrapper">
@@ -513,8 +513,8 @@
             <!-- Social Panel -->
             <div id="social" class="terminal-panel">
                 <div class="display-header">
-                    <h2>Connectivity</h2>
-                    <p>Sync your platform with official social media channels.</p>
+                    <h2>Social Media Links</h2>
+                    <p>Connect your platform to official social media channels.</p>
                 </div>
                 <div class="display-body">
                     <div class="input-wrapper">
@@ -535,8 +535,8 @@
             <!-- Maintenance Panel -->
             <div id="maintenance" class="terminal-panel">
                 <div class="display-header">
-                    <h2>Operational Shield</h2>
-                    <p>Throttle public access during critical system maintenance.</p>
+                    <h2>Maintenance Mode</h2>
+                    <p>Restrict public access during system updates.</p>
                 </div>
                 <div class="display-body">
                     <div class="maint-terminal">
@@ -558,8 +558,8 @@
             <!-- Security Panel -->
             <div id="security" class="terminal-panel">
                 <div class="display-header">
-                    <h2>Credential Layer</h2>
-                    <p>Update your administrative key to maintain system integrity.</p>
+                    <h2>Security & Password</h2>
+                    <p>Update your admin password securely.</p>
                 </div>
                 <div class="display-body">
                     <div style="background: white; border-radius: 2rem; padding: 3rem; border: 1px solid var(--dm-border); text-align: center;">
@@ -582,7 +582,7 @@
                 <div class="display-body">
                     <div class="audit-list">
                         {% for log in audit_logs %}
-                        <div class="audit-item">
+                        <div class="audit-item pagination-item">
                             <div class="audit-icon">
                                 <i class="fas fa-{{ 'shield-halved' if 'SECURITY' in log.action else 'gear' }}"></i>
                             </div>
@@ -604,6 +604,7 @@
                         </div>
                         {% endfor %}
                     </div>
+                    <div id="audit-pagination" style="display:flex; justify-content:center; gap:0.5rem; margin-top:1.5rem;"></div>
                 </div>
             </div>
 
@@ -820,5 +821,47 @@
             btn.innerHTML = original;
         }
     }
+
+    // Pagination Logic for Audit History
+    let currentPage = 1;
+    const itemsPerPage = 5;
+
+    function renderPagination() {
+        const items = document.querySelectorAll('.pagination-item');
+        if(items.length === 0) return;
+        
+        const totalPages = Math.ceil(items.length / itemsPerPage);
+        const paginationContainer = document.getElementById('audit-pagination');
+        
+        if(totalPages <= 1) {
+            paginationContainer.style.display = 'none';
+            return;
+        }
+
+        // Show/hide items
+        items.forEach((item, index) => {
+            const isVisible = index >= (currentPage - 1) * itemsPerPage && index < currentPage * itemsPerPage;
+            item.style.display = isVisible ? 'flex' : 'none';
+        });
+
+        // Render buttons
+        let buttonsHTML = '';
+        for(let i = 1; i <= totalPages; i++) {
+            const activeClass = i === currentPage ? 'background: var(--dm-primary); color: white; border: none;' : 'background: white; border: 1px solid var(--dm-border); color: var(--dm-secondary);';
+            buttonsHTML += `<button type="button" onclick="goToPage(${i})" style="padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; font-weight: 600; ${activeClass}">${i}</button>`;
+        }
+        paginationContainer.innerHTML = buttonsHTML;
+    }
+
+    function goToPage(page) {
+        currentPage = page;
+        renderPagination();
+    }
+
+    // Call once on load
+    document.addEventListener('DOMContentLoaded', () => {
+        renderPagination();
+    });
 </script>
+
 {% endblock %}

@@ -39,6 +39,10 @@
     }
 
     /* Booking Specific Badges */
+    .cust-row.active-dropdown {
+        position: relative;
+        z-index: 50;
+    }
     .status-badge-dm {
         padding: 5px 12px;
         border-radius: 10px;
@@ -171,6 +175,41 @@
         background: #f1f5f9;
         margin: 4px 0;
     }
+
+    /* Pagination Elite */
+    .pagination-terminal {
+        padding: 1.25rem 2rem;
+        background: #f8fafc;
+        border-top: 1px solid #f1f5f9;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .pag-btn {
+        padding: 8px 16px;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        background: white;
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--adm-navy);
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .pag-btn:hover:not(:disabled) {
+        border-color: var(--adm-primary);
+        color: var(--adm-primary);
+    }
+
+    .pag-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
 </style>
 {% endblock %}
 
@@ -178,48 +217,33 @@
 <div class="dashboard-header-clean">
     <div class="header-title-area">
         <h1>Platform Bookings</h1>
-        <p>Comprehensive oversight of platform transactions, fulfillment flows, and dispute governance.</p>
+        <p>View and manage all customer bookings across all caterers.</p>
     </div>
 </div>
 
-<!-- Intelligence KPI Matrix -->
 <div class="kpi-grid-clean">
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: linear-gradient(135deg, #eff6ff, #dbeafe); color: #1d4ed8;"><i
-                class="fas fa-calendar-check"></i></div>
         <div class="kpi-info">
-            <h4>Total Registry</h4>
+            <h4>Total Bookings</h4>
             <span class="kpi-value">{{ metrics.total_bookings }}</span>
-            <span class="trend-badge trend-up">LIVE FLOW</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: linear-gradient(135deg, #fffbeb, #fef3c7); color: #92400e;"><i
-                class="fas fa-hourglass-half"></i></div>
         <div class="kpi-info">
-            <h4>Pending Audit</h4>
+            <h4>Pending Bookings</h4>
             <span class="kpi-value">{{ metrics.pending_bookings }}</span>
-            <span class="trend-badge" style="background: #fef3c7; color: #92400e;">ACTION REQ</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box"
-            style="background: linear-gradient(135deg, var(--adm-primary-soft), #e0e7ff); color: var(--adm-primary);"><i
-                class="fas fa-coins"></i></div>
         <div class="kpi-info">
-            <h4>Realized Yield</h4>
+            <h4>Completed Revenue</h4>
             <span class="kpi-value">₱{{ "{:,.0f}".format(metrics.realized_revenue) }}</span>
-            <span class="trend-badge trend-up">VERIFIED</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: linear-gradient(135deg, #f1f5f9, #e2e8f0); color: #64748b;"><i
-                class="fas fa-chart-line"></i></div>
         <div class="kpi-info">
-            <h4>Projection</h4>
-            <span class="kpi-value" style="font-size: 1.1rem; color: #64748b;">₱{{
-                "{:,.0f}".format(metrics.projected_revenue) }}</span>
-            <span class="trend-badge" style="background: #e2e8f0; color: #64748b;">UNCERTAIN</span>
+            <h4>Projected Revenue</h4>
+            <span class="kpi-value">₱{{ "{:,.0f}".format(metrics.projected_revenue) }}</span>
         </div>
     </div>
 </div>
@@ -229,47 +253,42 @@
     <div class="terminal-filter-strip"
         style="display: flex; justify-content: space-between; align-items: center; padding: 1.75rem 2rem; background: #fff; border-top-left-radius: 24px; border-top-right-radius: 24px;">
         <div style="display: flex; align-items: center; gap: 16px;">
-            <div
-                style="background: linear-gradient(135deg, var(--adm-primary), #6366f1); color: white; width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; box-shadow: 0 8px 16px -4px rgba(79, 70, 229, 0.4);">
-                <i class="fas fa-layer-group"></i>
-            </div>
             <div>
                 <h3
                     style="font-size: 1rem; font-weight: 800; color: var(--adm-navy); margin: 0; text-transform: uppercase; letter-spacing: 0.02em;">
-                    Booking Registry</h3>
-                <p style="font-size: 0.75rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Managed Transaction
-                    Integrity & Fulfillment</p>
+                    Booking List</h3>
+                <p style="font-size: 0.75rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Monitor all transactions and statuses</p>
             </div>
         </div>
 
         <div style="display: flex; gap: 12px; align-items: center;">
             <select id="statusFilter" onchange="filterBookings()" class="btn-clean"
                 style="padding: 12px 18px; font-size: 0.8rem; font-weight: 700; background: #fff; border-radius: 12px; min-width: 240px; border: 1.5px solid #e2e8f0; color: var(--adm-navy); cursor: pointer; transition: all 0.2s;">
-                <option value="all">Governance: All Status</option>
-                <option value="pending">Status: Pending Only</option>
-                <option value="confirmed">Status: Confirmed Only</option>
-                <option value="completed">Status: Completed Only</option>
-                <option value="cancelled">Status: Cancelled Only</option>
+                <option value="all">All Bookings</option>
+                <option value="pending">Pending Only</option>
+                <option value="confirmed">Confirmed Only</option>
+                <option value="completed">Completed Only</option>
+                <option value="cancelled">Cancelled Only</option>
             </select>
 
             <button class="btn-clean"
                 style="padding: 12px; background: #fff; width: 48px; height: 48px; border-radius: 12px; border: 1.5px solid #e2e8f0; color: #64748b; transition: all 0.2s;"
-                title="Export Registry">
+                title="Export List">
                 <i class="fas fa-download"></i>
             </button>
         </div>
     </div>
 
-    <div style="overflow: visible; padding: 0 0 5rem 0;">
+    <div style="overflow: visible; padding: 0 0 5rem 0; position: relative; z-index: 10;">
         <table class="clean-table" id="bookingsTable" style="width: 100%; border-collapse: collapse;">
             <thead>
                 <tr>
                     <th style="padding-left: 2rem; width: 20%;">Reference & Date</th>
-                    <th style="width: 20%;">Customer Identity</th>
-                    <th style="width: 20%;">Partner Entity</th>
-                    <th style="width: 15%;">Financial Value</th>
+                    <th style="width: 20%;">Customer</th>
+                    <th style="width: 20%;">Caterer</th>
+                    <th style="width: 15%;">Total Amount</th>
                     <th style="width: 15%;">Status</th>
-                    <th style="text-align: right; padding-right: 2rem; width: 10%;">Operations</th>
+                    <th style="text-align: right; padding-right: 2rem; width: 10%;">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -330,24 +349,23 @@
                             </div>
                             <div class="dropdown-menu-dm">
                                 <button class="dropdown-item-dm" onclick="viewBookingDetails({{ booking.id }})">
-                                    <i class="fas fa-search-plus"></i> Intelligence Audit
+                                    <i class="fas fa-list-alt"></i> View Booking Details
                                 </button>
-                                <button class="dropdown-item-dm" onclick="reconcilePayment({{ booking.id }})">
-                                    <i class="fas fa-hand-holding-dollar"></i> Governance Reconciliation
-                                </button>
-                                <button class="dropdown-item-dm" onclick="forceComplete({{ booking.id }})">
-                                    <i class="fas fa-check-double"></i> Force Completion
-                                </button>
+                                
                                 <button class="dropdown-item-dm" onclick="dispatchAlert({{ booking.id }})">
-                                    <i class="fas fa-bell"></i> Dispatch Alert
+                                    <i class="fas fa-bell"></i> Send Notification
                                 </button>
+
+                                {% if booking.status not in ['completed', 'cancelled'] %}
                                 <div class="dropdown-divider"></div>
                                 <button class="dropdown-item-dm danger" onclick="cancelBooking({{ booking.id }})">
-                                    <i class="fas fa-ban"></i> Governance Cancellation
+                                    <i class="fas fa-ban"></i> Cancel Booking (Override)
                                 </button>
                                 <button class="dropdown-item-dm danger" onclick="flagDispute({{ booking.id }})">
-                                    <i class="fas fa-flag"></i> Flag Dispute
+                                    <i class="fas fa-flag"></i> Flag for Dispute
                                 </button>
+                                {% endif %}
+                                
                                 <div class="dropdown-divider"></div>
                                 <button class="dropdown-item-dm" onclick="archiveItem('bookings', {{ booking.id }})"
                                     style="color: #64748b;">
@@ -360,6 +378,21 @@
                 {% endfor %}
             </tbody>
         </table>
+    </div>
+
+    <!-- Elite Pagination Control -->
+    <div class="pagination-terminal">
+        <div style="font-size: 0.75rem; color: var(--adm-muted); font-weight: 700;">
+            Showing <span id="entryStart">1</span> to <span id="entryEnd">10</span> of <span id="totalEntries">{{ bookings|length }}</span> bookings
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button class="pag-btn" id="prevBtn" onclick="changePage(-1)" disabled>
+                <i class="fas fa-chevron-left"></i> Previous
+            </button>
+            <button class="pag-btn" id="nextBtn" onclick="changePage(1)">
+                Next <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
     </div>
 </div>
 
@@ -374,9 +407,8 @@
                 </div>
                 <div>
                     <h3 style="font-size: 0.95rem; font-weight: 800; text-transform: uppercase; margin: 0;"><span
-                            id="detailBookingId">#BK-000</span> Intelligence</h3>
-                    <p style="font-size: 0.7rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Strategic
-                        transaction audit and fulfillment log.</p>
+                            id="detailBookingId">#BK-000</span> Details</h3>
+                    <p style="font-size: 0.7rem; color: var(--adm-muted); margin: 0; font-weight: 600;">View complete booking information.</p>
                 </div>
             </div>
             <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);"
@@ -385,9 +417,8 @@
         <div class="modal-body-clean" id="modalBody"></div>
         <div class="modal-footer-clean">
             <button class="btn-clean" style="background: #f1f5f9; color: var(--adm-navy); font-weight: 800;"
-                onclick="closeModal('bookingDetailModal')">Dismiss Audit</button>
-            <button class="btn-clean" style="background: var(--adm-primary); color: white; font-weight: 800;">Download
-                Audit Log</button>
+                onclick="closeModal('bookingDetailModal')">Close</button>
+            <button class="btn-clean" style="background: var(--adm-primary); color: white; font-weight: 800;">Download Log</button>
         </div>
     </div>
 </div>
@@ -399,23 +430,82 @@
     function toggleActionMenu(btn, event) {
         event.stopPropagation();
         const menu = btn.nextElementSibling;
+        
+        // Remove active class from all rows
+        document.querySelectorAll('.cust-row').forEach(r => r.classList.remove('active-dropdown'));
+        
         document.querySelectorAll('.dropdown-menu-dm').forEach(m => {
             if (m !== menu) m.classList.remove('show');
         });
-        menu.classList.toggle('show');
+        
+        if (menu.classList.contains('show')) {
+            menu.classList.remove('show');
+        } else {
+            menu.classList.add('show');
+            btn.closest('.cust-row').classList.add('active-dropdown');
+        }
     }
 
     window.onclick = () => {
         document.querySelectorAll('.dropdown-menu-dm').forEach(m => m.classList.remove('show'));
+        document.querySelectorAll('.cust-row').forEach(r => r.classList.remove('active-dropdown'));
     };
+
+    // --- State & Pagination Engine ---
+    let currentPage = 1;
+    const entriesPerPage = 10;
+    let rows = Array.from(document.querySelectorAll('.cust-row'));
+
+    function updatePagination() {
+        const visibleRows = rows.filter(r => !r.classList.contains('filtered-out'));
+        const totalEntries = visibleRows.length;
+        const totalPages = Math.ceil(totalEntries / entriesPerPage) || 1;
+        
+        if (currentPage > totalPages) currentPage = totalPages;
+
+        const startIdx = (currentPage - 1) * entriesPerPage;
+        const endIdx = Math.min(startIdx + entriesPerPage, totalEntries);
+
+        visibleRows.forEach((row, index) => {
+            if (index >= startIdx && index < endIdx) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        document.getElementById('entryStart').innerText = totalEntries === 0 ? 0 : startIdx + 1;
+        document.getElementById('entryEnd').innerText = endIdx;
+        document.getElementById('totalEntries').innerText = totalEntries;
+
+        document.getElementById('prevBtn').disabled = currentPage === 1;
+        document.getElementById('nextBtn').disabled = currentPage === totalPages;
+    }
+
+    function changePage(direction) {
+        currentPage += direction;
+        updatePagination();
+    }
 
     function filterBookings() {
         const s = document.getElementById('statusFilter').value.toLowerCase();
-        document.querySelectorAll('.cust-row').forEach(r => {
+        rows.forEach(r => {
             const stat = r.querySelector('.status-badge-dm')?.innerText.toLowerCase() || '';
-            r.style.display = (s === 'all' || stat.includes(s.replace('status: ', '').replace(' only', ''))) ? '' : 'none';
+            if (s === 'all' || stat.includes(s.replace('status: ', '').replace(' only', ''))) {
+                r.classList.remove('filtered-out');
+            } else {
+                r.classList.add('filtered-out');
+                r.style.display = 'none';
+            }
         });
+        currentPage = 1;
+        updatePagination();
     }
+
+    // Initialize pagination on load
+    document.addEventListener('DOMContentLoaded', () => {
+        updatePagination();
+    });
 
     async function viewBookingDetails(id) {
         const modal = document.getElementById('bookingDetailModal');
@@ -434,11 +524,11 @@
 
                 body.innerHTML = `
                     <div style="background: white; border: 1px solid #e2e8f0; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-                        <!-- Fraud Intelligence Header -->
+                        <!-- Booking Analysis Header -->
                         <div style="background: ${riskColor}10; padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid ${riskColor}20;">
                             <div style="display: flex; align-items: center; gap: 10px;">
-                                <i class="fas fa-shield-virus" style="color: ${riskColor}; font-size: 1.2rem;"></i>
-                                <span style="font-weight: 800; color: ${riskColor}; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Fraud Intelligence Score: ${ri.level}</span>
+                                <i class="fas fa-shield-alt" style="color: ${riskColor}; font-size: 1.2rem;"></i>
+                                <span style="font-weight: 800; color: ${riskColor}; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Risk Score: ${ri.level}</span>
                             </div>
                             <div style="font-weight: 900; color: ${riskColor}; font-size: 1.2rem;">${ri.score}%</div>
                         </div>
@@ -448,7 +538,7 @@
                                 ${(b.customer_name || 'U').charAt(0)}${(b.customer_name || ' ').split(' ').pop().charAt(0)}
                             </div>
                             <div>
-                                <div style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase;">Primary Participant</div>
+                                <div style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase;">Customer</div>
                                 <div style="font-weight: 800; color: var(--adm-navy); font-size: 1.1rem;">${b.customer_name}</div>
                             </div>
                         </div>
@@ -466,11 +556,11 @@
                             </div>
                         </div>
 
-                        <!-- Risk Anomalies -->
+                        <!-- System Notes -->
                         <div style="padding: 0 1.5rem 1.5rem;">
                             <div style="background: #fff; border: 1.5px solid ${ri.score > 0 ? riskColor + '40' : '#e2e8f0'}; border-radius: 14px; padding: 1rem;">
                                 <div style="font-size: 0.65rem; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
-                                    <i class="fas fa-microchip"></i> Automated Anomaly Scanner
+                                    <i class="fas fa-info-circle"></i> System Alerts
                                 </div>
                                 <div style="display: flex; flex-direction: column; gap: 8px;">
                                     ${ri.indicators.length > 0 ?
@@ -481,7 +571,7 @@
                                             </div>
                                         `).join('') :
                         `<div style="font-size: 0.75rem; color: #10b981; font-weight: 700; text-align: center; padding: 10px;">
-                                            <i class="fas fa-check-circle"></i> No digital anomalies detected in this transaction.
+                                            <i class="fas fa-check-circle"></i> No issues detected.
                                         </div>`
                     }
                                 </div>
@@ -498,39 +588,11 @@
         } catch (err) { body.innerHTML = '<div style="color: #ef4444; padding: 2rem; text-align: center;">Error loading record.</div>'; }
     }
 
-    function reconcilePayment(id) {
-        openReasonModal('Governance Reconciliation', 'Mandatory: Provide an audit justification for this manual payment verification.', (notes) => {
-            Swal.fire({ title: 'Processing...', didOpen: () => Swal.showLoading() });
-            const fd = new FormData();
-            fd.append('notes', notes);
-            fetch(`/admin/api/bookings/${id}/reconcile`, { method: 'POST', body: fd })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) Swal.fire('Reconciled', data.message, 'success').then(() => location.reload());
-                    else Swal.fire('Error', data.message, 'error');
-                })
-                .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
-        });
-    }
 
-    function forceComplete(id) {
-        openReasonModal('Force Completion', 'Mandatory: Justify the manual completion of this booking flow.', (notes) => {
-            Swal.fire({ title: 'Overriding State...', didOpen: () => Swal.showLoading() });
-            const fd = new FormData();
-            fd.append('notes', notes);
-            fetch(`/admin/api/bookings/${id}/force-complete`, { method: 'POST', body: fd })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) Swal.fire('Flow Completed', data.message, 'success').then(() => location.reload());
-                    else Swal.fire('Error', data.message, 'error');
-                })
-                .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
-        });
-    }
 
     function cancelBooking(id) {
-        openReasonModal('Governance Cancellation', 'Provide a clear justification for terminating this transaction. Irreversible.', (reason) => {
-            Swal.fire({ title: 'Terminating Flow...', didOpen: () => Swal.showLoading() });
+        openReasonModal('Cancel Booking', 'Provide a clear reason for cancelling this booking.', (reason) => {
+            Swal.fire({ title: 'Cancelling...', didOpen: () => Swal.showLoading() });
             const fd = new FormData();
             fd.append('reason', reason);
             fetch(`/admin/api/bookings/${id}/cancel`, { method: 'POST', body: fd })
@@ -565,14 +627,14 @@
     }
 
     function dispatchAlert(id) {
-        openReasonModal('Dispatch System Alert', "This message will be sent directly to the customer's notification hub.", (message) => {
-            Swal.fire({ title: 'Dispatching...', didOpen: () => Swal.showLoading() });
+        openReasonModal('Send Notification', "This message will be sent directly to the customer or caterer.", (message) => {
+            Swal.fire({ title: 'Sending...', didOpen: () => Swal.showLoading() });
             const fd = new FormData();
             fd.append('message', message);
             fetch(`/admin/api/bookings/${id}/send-alert`, { method: 'POST', body: fd })
                 .then(res => res.json())
                 .then(data => {
-                    if (data.success) Swal.fire('Dispatched', data.message, 'success');
+                    if (data.success) Swal.fire('Sent', data.message, 'success');
                     else Swal.fire('Error', data.message, 'error');
                 })
                 .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
@@ -580,7 +642,7 @@
     }
 
     function archiveItem(type, id) {
-        openConfirmModal('Archive Booking?', 'This transaction will be moved to archives for 30 days. You can restore it if needed.', () => {
+        openConfirmModal('Archive Booking?', 'This booking will be moved to archives. You can restore it if needed.', () => {
             Swal.fire({ title: 'Archiving...', didOpen: () => Swal.showLoading() });
             fetch(`/admin/api/archives/${type}/${id}/archive`, { method: 'POST' })
                 .then(res => res.json())

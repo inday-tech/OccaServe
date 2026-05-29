@@ -1759,7 +1759,7 @@ async def review_verification(
         "user": user,
         "target_user": target_user,
         "verification": verification,
-        "active_page": "compliance"
+        "active_page": "kyc"
     })
 
 @router.get("/kyc")

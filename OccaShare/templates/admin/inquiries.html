@@ -5,28 +5,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ range(1, 1000) | random }}">
 <style>
-    /* Engagement Specific Diamond Styling */
-    .intensity-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        display: inline-block;
-    }
-
-    .intensity-low {
-        background: #10b981;
-        box-shadow: 0 0 8px #10b981;
-    }
-
-    .intensity-med {
-        background: #f59e0b;
-        box-shadow: 0 0 8px #f59e0b;
-    }
-
-    .intensity-high {
-        background: #ef4444;
-        box-shadow: 0 0 8px #ef4444;
-    }
+    /* Source Badges */
 
     .source-badge {
         padding: 4px 8px;
@@ -92,51 +71,40 @@
 {% block content %}
 <div class="dashboard-header-clean">
     <div class="header-title-area">
-        <h1 style="display: flex; align-items: center;">
-            <i class="fas fa-comments-alt" style="color: var(--adm-primary);"></i>
-            Visitor Inquiries Terminal
-        </h1>
-        <p>Omni-channel Engagement Monitoring & Communication Node.</p>
+        <h1>Visitor Inquiries</h1>
+        <p>View messages from site visitors.</p>
     </div>
 </div>
 
 <div class="kpi-grid-clean">
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #eff6ff; color: #3b82f6;"><i class="fas fa-envelope-open-text"></i>
-        </div>
         <div class="kpi-info">
-            <h4>Total Interactions</h4>
+            <h4>Total Messages</h4>
             <span class="kpi-value">{{ senders|length }}</span>
-            <span class="trend-badge" style="background: #dbeafe; color: #1e40af;">LIVE FEED</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #fff7ed; color: #ea580c;"><i class="fas fa-bolt"></i></div>
         <div class="kpi-info">
-            <h4>Support Resolution</h4>
+            <h4>Resolved Inquiries</h4>
             {% set resolved = senders|selectattr('status', 'equalto', 'responded')|list|length %}
             {% set rate = (resolved / senders|length * 100)|round(1) if senders|length > 0 else 0 %}
             <span class="kpi-value">{{ rate }}%</span>
-            <span class="trend-badge" style="background: #ffedd5; color: #9a3412;">AVG. RESPONSE: 14m</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #f0fdf4; color: #16a34a;"><i class="fas fa-funnel-dollar"></i>
-        </div>
         <div class="kpi-info">
-            <h4>Caterer Leads</h4>
+            <h4>Caterer Inquiries</h4>
             <span class="kpi-value">{{ senders|selectattr('is_caterer_lead', 'equalto', True)|list|length }}</span>
-            <span class="trend-badge trend-up">HIGH CONVERSION</span>
         </div>
     </div>
 </div>
 
 <div class="table-card-clean">
     <div
-        style="padding: 1.5rem 2rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+        style="padding: 1.5rem 2rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
         <h3
             style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy); margin: 0; display: flex; align-items: center; gap: 10px;">
-            <i class="fas fa-inbox" style="color: var(--adm-primary);"></i> Message Registry
+            Messages
         </h3>
         <div style="display: flex; gap: 1rem; align-items: center;">
             <select class="btn-clean" style="font-size: 0.75rem; padding: 8px 12px;" id="statusFilter"
@@ -158,12 +126,12 @@
         <table class="clean-table" id="inquiriesTable">
             <thead>
                 <tr>
-                    <th>Potential Client</th>
-                    <th>Source Attribution</th>
-                    <th>Latest Intelligence</th>
-                    <th>Engagement</th>
+                    <th>Sender</th>
+                    <th>Source</th>
+                    <th>Message Preview</th>
+                    <th>Total Messages</th>
                     <th>Status</th>
-                    <th style="text-align: right;">Operations</th>
+                    <th style="text-align: right;">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -175,11 +143,9 @@
                     </td>
                     <td>
                         {% if s.is_caterer_lead %}
-                        <span class="source-badge source-lead"><i class="fas fa-utensils"></i> {{ s.target_caterer
-                            }}</span>
+                        <span class="source-badge source-lead">{{ s.target_caterer }}</span>
                         {% else %}
-                        <span class="source-badge source-general"><i class="fas fa-info-circle"></i> General
-                            Support</span>
+                        <span class="source-badge source-general">General Support</span>
                         {% endif %}
                     </td>
                     <td>
@@ -194,8 +160,6 @@
                     <td>
                         <div style="display: flex; align-items: center; gap: 8px;">
                             {% set count = s.messages|length %}
-                            <span
-                                class="intensity-dot {% if count < 2 %}intensity-low{% elif count < 4 %}intensity-med{% else %}intensity-high{% endif %}"></span>
                             <span style="font-weight: 700; color: var(--adm-navy); font-size: 0.8rem;">{{ count }}
                                 msg(s)</span>
                         </div>
@@ -209,16 +173,16 @@
                     </td>
                     <td style="text-align: right;">
                         <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                            <button class="btn-clean" style="padding: 6px 10px;" title="Audit Conversation"
+                            <button class="btn-clean" style="padding: 6px 10px; font-size: 0.65rem;" title="View Conversation"
                                 onclick="openThread('{{ s.email }}')">
-                                <i class="fas fa-comments"></i>
+                                View
                             </button>
                             {% if s.status == 'new' %}
                             <form action="/admin/inquiries/thread/{{ s.email }}/status?status=responded" method="POST"
                                 style="display: contents;">
-                                <button type="submit" class="btn-clean" style="padding: 6px 10px; color: #10b981;"
+                                <button type="submit" class="btn-clean" style="padding: 6px 10px; font-size: 0.65rem; background: #f1f5f9; color: #10b981; border: 1px solid #d1fae5;"
                                     title="Mark Resolved">
-                                    <i class="fas fa-check-double"></i>
+                                    Mark Resolved
                                 </button>
                             </form>
                             {% endif %}
@@ -249,24 +213,23 @@
             </div>
 
             <div class="engagement-memo">
-                <i class="fas fa-lightbulb" style="color: #3b82f6; font-size: 1.25rem;"></i>
+                <i class="fas fa-info-circle" style="color: #3b82f6; font-size: 1.25rem;"></i>
                 <div>
                     <div
                         style="font-size: 0.65rem; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 4px;">
-                        Strategic Memo</div>
+                        Note</div>
                     <p style="font-size: 0.8rem; color: #1e3a8a; line-height: 1.5; margin: 0;">
-                        This inquiry originated from an unauthenticated visitor. High-priority response via official
-                        email is recommended to secure the lead.
+                        This inquiry is from a site visitor. Click the button below to reply via your email client.
                     </p>
                 </div>
             </div>
         </div>
         <div class="modal-footer-clean">
             <button onclick="closeThread()" class="btn-clean"
-                style="background: #f1f5f9; border: none;">Dismiss</button>
+                style="background: #f1f5f9; color: var(--adm-navy); border: none;">Dismiss</button>
             <a id="replyBtn" href="#" class="btn-clean"
                 style="background: var(--adm-primary); color: white; border: none; text-decoration: none;">
-                <i class="fas fa-paper-plane" style="margin-right: 8px;"></i> Initiate Email Response
+                Reply via Email
             </a>
         </div>
     </div>

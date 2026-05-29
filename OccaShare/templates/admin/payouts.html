@@ -89,33 +89,23 @@
         <p>Review and verify caterer commission payments.</p>
     </div>
     <div class="header-actions">
-        <a href="#" class="btn-clean" onclick="location.reload()"><i class="fas fa-sync-alt"></i> Refresh Data</a>
+        <a href="#" class="btn-clean" onclick="location.reload()">Refresh Data</a>
     </div>
 </div>
 
 <div class="kpi-grid-clean">
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box kpi-icon-req">
-            <i class="fas fa-file-invoice-dollar"></i>
-        </div>
         <div class="kpi-info">
-            <h4>Pending Verifications</h4>
+            <h4>Pending Approvals</h4>
             <span class="kpi-value">₱{{ "{:,.2f}".format(pending_total) }}</span>
-            <div class="trend-badge trend-down">
-                <i class="fas fa-clock"></i> {{ pending_invoices|length }} pending proofs
-            </div>
+            <div style="font-size: 0.7rem; font-weight: 700; color: var(--adm-muted); margin-top: 5px;">{{ pending_invoices|length }} pending proofs</div>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #ecfdf5; color: #10b981;">
-            <i class="fas fa-check-double"></i>
-        </div>
         <div class="kpi-info">
             <h4>Recently Settled</h4>
             <span class="kpi-value">₱{{ "{:,.2f}".format(paid_total) }}</span>
-            <div class="trend-badge trend-up">
-                <i class="fas fa-shield-check"></i> 15 latest verified
-            </div>
+            <div style="font-size: 0.7rem; font-weight: 700; color: var(--adm-muted); margin-top: 5px;">Latest verified</div>
         </div>
     </div>
 </div>
@@ -123,7 +113,7 @@
 <div class="table-card-clean" style="margin-bottom: 2rem;">
     <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
         <h3 style="font-size: 0.95rem; font-weight: 800; color: var(--adm-navy); margin: 0; display: flex; align-items: center; gap: 10px;">
-            <i class="fas fa-money-bill-transfer" style="color: var(--adm-primary);"></i> Pending Settlement Proofs
+            Pending Approvals
         </h3>
         <span class="badge-clean" style="background: var(--adm-primary-soft); color: var(--adm-primary);">ACTION REQUIRED</span>
     </div>
@@ -133,11 +123,11 @@
         <thead>
             <tr>
                 <th>Invoice ID</th>
-                <th>Caterer Identity</th>
+                <th>Caterer</th>
                 <th>Billing Period</th>
                 <th>Amount Due</th>
                 <th>Payment Proof</th>
-                <th style="text-align: right;">Operations</th>
+                <th style="text-align: right;">Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -186,7 +176,7 @@
 <div class="table-card-clean" style="opacity: 0.8;">
     <div style="padding: 1rem 1.5rem; border-bottom: 1px solid #f1f5f9;">
         <h3 style="font-size: 0.85rem; font-weight: 800; color: var(--adm-muted); margin: 0;">
-            <i class="fas fa-history"></i> RECENTLY SETTLED
+            RECENTLY SETTLED
         </h3>
     </div>
     <table class="clean-table">

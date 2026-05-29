@@ -28,10 +28,18 @@ body, h1, h2, h3, h4, h5, h6, p, span, div, a, input, button, select, textarea {
 .dashboard-header-clean { 
     margin-bottom: 1.5rem; 
     display: flex !important;
-    flex-direction: row !important;
-    justify-content: space-between !important;
-    align-items: center !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 1rem !important;
     text-align: left !important;
+}
+
+@media (min-width: 768px) {
+    .dashboard-header-clean {
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+    }
 }
 
 .dashboard-header-clean .header-title-area {

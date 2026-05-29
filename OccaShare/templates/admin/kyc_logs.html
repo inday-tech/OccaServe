@@ -130,38 +130,28 @@
 {% block content %}
 <div class="dashboard-header-clean">
     <div class="header-title-area">
-        <h1 style="display: flex; align-items: center;">
-            <i class="fas fa-shield-check" style="color: var(--adm-primary);"></i>
-            KYC Compliance Terminal
-        </h1>
-        <p>Identity Integrity Audit & Anti-Fraud Monitoring Node.</p>
+        <h1>User Verifications</h1>
+        <p>Review and approve caterer and customer identity documents.</p>
     </div>
 </div>
 
 <div class="kpi-grid-clean">
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #fff7ed; color: var(--adm-primary);"><i
-                class="fas fa-user-clock"></i></div>
         <div class="kpi-info">
             <h4>Pending Reviews</h4>
             <span class="kpi-value">{{ pending_caterers|length + pending_customers|length }}</span>
-            <span class="trend-badge" style="background: #ffedd5; color: #9a3412;">ACTION REQUIRED</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #fef2f2; color: #dc2626;"><i class="fas fa-biohazard"></i></div>
         <div class="kpi-info">
-            <h4>Risk Flagged</h4>
+            <h4>Flagged Accounts</h4>
             <span class="kpi-value">0</span>
-            <span class="trend-badge trend-up" style="background: #f0fdf4; color: #16a34a;">SYSTEM SECURE</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #eff6ff; color: #1d4ed8;"><i class="fas fa-robot"></i></div>
         <div class="kpi-info">
-            <h4>Automation Yield</h4>
-            <span class="kpi-value">94.8%</span>
-            <span class="trend-badge" style="background: #dbeafe; color: #1e40af;">OCR POWERED</span>
+            <h4>Verified Users</h4>
+            <span class="kpi-value">---</span>
         </div>
     </div>
 </div>
@@ -175,13 +165,12 @@
     </div>
 </div>
 
-<!-- Pending Queue -->
 <div id="queue-pending">
     <div class="table-card-clean" style="margin-bottom: 2rem;">
         <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;">
             <h3
                 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy); margin: 0; display: flex; align-items: center; gap: 10px;">
-                <i class="fas fa-store" style="color: var(--adm-primary);"></i> Pending Caterer Entities
+                Pending Caterers
             </h3>
         </div>
         <div style="overflow-x: auto;">
@@ -189,11 +178,11 @@
             <table class="clean-table">
                 <thead>
                     <tr>
-                        <th>Business Entity</th>
-                        <th>Managing Partner</th>
-                        <th>Security Signals</th>
-                        <th>Submission Aging</th>
-                        <th style="text-align: right;">Operations</th>
+                        <th>Business Name</th>
+                        <th>Owner</th>
+                        <th>Status</th>
+                        <th>Date Submitted</th>
+                        <th style="text-align: right;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -216,20 +205,18 @@
                             <div style="font-size: 0.7rem; color: var(--adm-muted);">{{ caterer.user.email }}</div>
                         </td>
                         <td>
-                            <div class="intelligence-badge">
-                                <div class="intel-pulse"></div>
-                                OCR_READY
+                            <div style="font-weight: 700; color: var(--adm-navy); font-size: 0.8rem;">
+                                Awaiting Review
                             </div>
                         </td>
                         <td>
                             <div class="aging-badge">
-                                <i class="fas fa-clock"></i>
                                 {{ caterer.created_at.strftime('%b %d, %Y') }}
                             </div>
                         </td>
                         <td style="text-align: right;">
                             <a href="/admin/verify/{{ caterer.user_id }}" class="btn-clean"
-                                style="font-size: 0.65rem;">Initialize Audit</a>
+                                style="font-size: 0.65rem;">Review</a>
                         </td>
                     </tr>
                     {% endfor %}
@@ -248,7 +235,7 @@
         <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;">
             <h3
                 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy); margin: 0; display: flex; align-items: center; gap: 10px;">
-                <i class="fas fa-user-shield" style="color: #3b82f6;"></i> Pending Customer Audits
+                Pending Customers
             </h3>
         </div>
         <div style="overflow-x: auto;">
@@ -256,11 +243,11 @@
             <table class="clean-table">
                 <thead>
                     <tr>
-                        <th>Subject Name</th>
-                        <th>Registry Email</th>
-                        <th>Risk Analysis</th>
+                        <th>Customer Name</th>
+                        <th>Email</th>
+                        <th>Risk Level</th>
                         <th>Status</th>
-                        <th style="text-align: right;">Operations</th>
+                        <th style="text-align: right;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -279,12 +266,12 @@
                         </td>
                         <td><span style="font-weight: 600; color: var(--adm-muted);">{{ customer.email }}</span></td>
                         <td>
-                            <span class="risk-chip risk-low"><i class="fas fa-shield-check"></i> Low Risk</span>
+                            <span class="risk-chip risk-low">Low Risk</span>
                         </td>
                         <td><span class="badge-clean badge-pending">Awaiting Review</span></td>
                         <td style="text-align: right;">
                             <a href="/admin/verify/{{ customer.id }}" class="btn-clean"
-                                style="font-size: 0.65rem;">Review Audit</a>
+                                style="font-size: 0.65rem;">Review</a>
                         </td>
                     </tr>
                     {% endfor %}
@@ -306,7 +293,7 @@
     <div class="table-card-clean">
         <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9;">
             <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy); margin: 0;">
-                <i class="fas fa-history"></i> Verification Adjudication History
+                Verification History
             </h3>
         </div>
         <div style="overflow-x: auto;">
@@ -314,11 +301,11 @@
             <table class="clean-table">
                 <thead>
                     <tr>
-                        <th>Subject</th>
+                        <th>Name</th>
                         <th>Decision</th>
-                        <th>Audit Score</th>
-                        <th>Timestamp</th>
-                        <th style="text-align: right;">Record</th>
+                        <th>Match Score</th>
+                        <th>Date</th>
+                        <th style="text-align: right;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -339,14 +326,14 @@
                         </td>
                         <td>
                             <div class="intelligence-badge">
-                                {{ (audit.match_score * 100)|round(1) }}% MATCH
+                                {{ (audit.match_score * 100)|round(1) }}% Match
                             </div>
                         </td>
                         <td><span style="font-weight: 600; color: var(--adm-muted);">{{ audit.created_at.strftime('%b
-                                %d, %I:%M %p') }}</span></td>
+                                %d, %Y') }}</span></td>
                         <td style="text-align: right;">
                             <a href="/admin/verify/{{ audit.user_id }}" class="btn-clean"
-                                style="font-size: 0.65rem;">View Artifact</a>
+                                style="font-size: 0.65rem;">View</a>
                         </td>
                     </tr>
                     {% endfor %}

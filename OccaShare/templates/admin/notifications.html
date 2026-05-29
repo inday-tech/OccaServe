@@ -4,19 +4,36 @@
 {% block title %}Notifications - OccaShare Admin{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ range(1, 1000) | random }}">
 <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/notifications.css') }}?v=2.0">
+<style>
+    /* Map Caterer CSS variables to Admin Diamond CSS variables */
+    .notif-page {
+        --primary-color: var(--adm-primary);
+        --secondary-color: var(--adm-navy);
+        --text-sm: 0.85rem;
+        --text-xs: 0.75rem;
+        --text-base: 1rem;
+        --text-xl: 1.25rem;
+        --text-muted: var(--adm-muted);
+    }
+    
+    .notif-filter-bar {
+        margin-bottom: 2rem;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="notif-page">
     <!-- Header -->
-    <div class="page-header">
-        <div>
+    <div class="dashboard-header-clean">
+        <div class="header-title-area">
             <h1>Notifications</h1>
-            <p>Stay updated with your bookings and activities</p>
+            <p>Stay updated with your platform activities.</p>
         </div>
-        <div class="notif-header-actions">
-            <button class="notif-btn-action" onclick="markAllAsRead()" title="Mark all as read">
+        <div class="header-actions">
+            <button class="btn-clean" onclick="markAllAsRead()">
                 <i class="fas fa-check-double"></i> Mark all as read
             </button>
         </div>
@@ -46,7 +63,7 @@
 
     <!-- Notifications List -->
     {% if notifications %}
-    <div class="notif-list-card c-card-premium" style="padding: 0 !important;">
+    <div class="notif-list-card table-card-clean" style="padding: 0 !important; border: 1px solid #f1f5f9;">
         <div class="notif-section-label"
             style="padding: 1.25rem 2rem 0.75rem; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">
             All Notifications</div>
@@ -135,7 +152,7 @@
         {% endif %}
     </div>
     {% else %}
-    <div class="notif-empty-state c-card-premium">
+    <div class="notif-empty-state table-card-clean">
         <div class="notif-empty-icon"><i class="fas fa-bell-slash"></i></div>
         <h2>All Caught Up!</h2>
         <p>No new notifications at the moment. We'll let you know when something important happens.</p>
