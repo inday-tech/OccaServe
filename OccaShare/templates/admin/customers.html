@@ -216,6 +216,11 @@
         opacity: 0.5;
         cursor: not-allowed;
     }
+
+    /* Local Table Search Override */
+    #omniSearchResults {
+        display: none !important;
+    }
 </style>
 {% endblock %}
 
@@ -511,15 +516,21 @@
 
     function filterRegistry() {
         const status = document.getElementById('statusFilter').value;
+        const globalSearch = document.getElementById('globalSearchInput');
+        const query = globalSearch ? globalSearch.value.toLowerCase().trim() : '';
 
         const filteredRows = rows.filter(row => {
             const badge = row.querySelector('.status-badge-dm').innerText.toLowerCase();
+            const textContent = row.innerText.toLowerCase();
+            
             const matchesStatus = (status === 'all') ||
                 (status === 'verified' && badge.includes('verified')) ||
                 (status === 'pending' && badge.includes('pending')) ||
                 (status === 'suspended' && badge.includes('suspended'));
+                
+            const matchesQuery = query === '' || textContent.includes(query);
 
-            return matchesStatus;
+            return matchesStatus && matchesQuery;
         });
 
         updatePagination(filteredRows);
@@ -548,6 +559,16 @@
     function changePage(delta) {
         currentPage += delta;
         filterRegistry();
+    }
+
+    // Hook Global Header Search to Table
+    const gSearch = document.getElementById('globalSearchInput');
+    if (gSearch) {
+        gSearch.placeholder = "Search customers by name, email...";
+        gSearch.addEventListener('input', () => {
+            currentPage = 1;
+            filterRegistry();
+        });
     }
 
     // --- Interaction Logic (Diamond v6) ---

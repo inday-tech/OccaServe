@@ -1220,10 +1220,24 @@ async def audit_identity(
         lname_clean = last_name.strip().lower()
         mn_clean = middle_name.strip().lower() if middle_name else ""
         
+        # Broaden the search to catch partial matches (e.g. if DB has "Andresito" and "b bonifacio jr")
+        from sqlalchemy import or_, and_
         q = db.query(models.User).filter(
-            func.lower(func.trim(models.User.first_name)) == fname_clean,
-            func.lower(func.trim(models.User.last_name)) == lname_clean,
-            models.User.is_archived == False
+            models.User.is_archived == False,
+            or_(
+                # Exact match
+                and_(
+                    func.lower(func.trim(models.User.first_name)) == fname_clean,
+                    func.lower(func.trim(models.User.last_name)) == lname_clean
+                ),
+                # Fuzzy match for names that might have extra suffixes/initials in the DB
+                and_(
+                    func.lower(func.trim(models.User.first_name)).contains(fname_clean),
+                    func.lower(func.trim(models.User.last_name)).contains(lname_clean)
+                ),
+                # Check if the DB first_name somehow contains the entire full name
+                func.lower(func.trim(models.User.first_name)).contains(f"{fname_clean} {lname_clean}")
+            )
         )
         if mn_clean:
             # Check middle_name specifically if provided
@@ -1245,7 +1259,9 @@ async def add_caterer(
     background_tasks: BackgroundTasks,
     business_name: str = Form(...),
     email: str = Form(...),
-    full_name: str = Form(...),
+    first_name: str = Form(...),
+    last_name: str = Form(...),
+    middle_initial: str = Form(""),
     phone: str = Form(...),
     province: str = Form(...),
     municipality: str = Form(...),
@@ -1309,12 +1325,9 @@ async def add_caterer(
         parsed_cuisines = []
 
 
-    # Split full_name into first and last
-    parts = full_name.strip().split(None, 1)
-    if len(parts) > 1:
-        first_name, last_name = parts[0], parts[1]
-    else:
-        first_name, last_name = parts[0], ""
+    # Name formatting
+    final_first_name = f"{first_name.strip()} {middle_initial.strip()}".strip()
+    final_last_name = last_name.strip()
 
     # password logic
     alphabet = string.ascii_letters + string.digits
@@ -1327,8 +1340,8 @@ async def add_caterer(
             email=email,
             password_hash=hashed_password,
             role="caterer",
-            first_name=first_name,
-            last_name=last_name,
+            first_name=final_first_name,
+            last_name=final_last_name,
             phone_number=phone,
             status="active",
             is_verified=True,

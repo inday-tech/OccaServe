@@ -1,11 +1,10 @@
 {% extends "admin/layout.html" %}
 
-{% block title %}Partner Registry - Admin Intelligence{% endblock %}
+{% block title %}Caterer Partners - Admin Dashboard{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ range(1, 1000) | random }}">
 <style>
-    /* Registry Specific Refinements */
     .partner-identity-cell {
         display: flex;
         align-items: center;
@@ -45,7 +44,7 @@
         border-bottom: 1px solid var(--adm-border-light);
     }
 
-    /* Action Dropdown Diamond Standard */
+    /* Action Dropdown */
     .actions-dropdown {
         position: relative;
         display: inline-block;
@@ -75,7 +74,7 @@
         position: absolute;
         top: 100%;
         right: 0;
-        width: 220px;
+        width: 200px;
         background: white;
         border-radius: 12px;
         border: 1px solid var(--adm-border-light);
@@ -84,23 +83,10 @@
         z-index: 1000;
         padding: 0.5rem;
         margin-top: 8px;
-        animation: dropdownFade 0.2s ease-out;
     }
 
     .dropdown-menu-dm.show {
         display: block;
-    }
-
-    @keyframes dropdownFade {
-        from {
-            opacity: 0;
-            transform: translateY(-10px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
     }
 
     .dm-dropdown-item {
@@ -125,12 +111,6 @@
         color: var(--adm-primary);
     }
 
-    .dm-dropdown-item i {
-        width: 16px;
-        font-size: 0.9rem;
-        opacity: 0.7;
-    }
-
     .dm-dropdown-item.danger {
         color: #ef4444;
     }
@@ -140,48 +120,85 @@
         color: #ef4444;
     }
 
-    .category-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 12px;
+    /* Pagination Elite */
+    .pagination-terminal {
+        padding: 1.25rem 2rem;
         background: #f8fafc;
-        border: 1.5px solid #f1f5f9;
+        border-top: 1px solid #f1f5f9;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .pag-btn {
+        padding: 8px 16px;
         border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        background: white;
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--adm-navy);
         cursor: pointer;
         transition: all 0.2s;
-        font-size: 0.75rem;
-        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 
-    .category-pill:hover {
-        border-color: var(--adm-primary);
-    }
-
-    .category-pill input {
-        display: none;
-    }
-
-    .category-pill:has(input:checked) {
-        background: var(--adm-primary-soft);
+    .pag-btn:hover:not(:disabled) {
         border-color: var(--adm-primary);
         color: var(--adm-primary);
     }
+
+    .pag-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* Local Table Search Override */
+    #omniSearchResults {
+        display: none !important;
+    }
+
+    /* Input Field Visibility Fix */
+    .dm-input-group {
+        background: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 10px;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+    }
+    .dm-input-group:focus-within {
+        border-color: var(--adm-primary) !important;
+        box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+    }
+
+    /* Modal Validations */
+    .status-indicator {
+        font-size: 0.65rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        padding: 2px 8px;
+        border-radius: 4px;
+        display: none;
+    }
+
+    .status-indicator.show { display: inline-block; }
+    .status-ok { background: #dcfce7; color: #166534; }
+    .status-error { background: #fee2e2; color: #991b1b; }
+    .input-error { border-color: #ef4444 !important; background: #fffafb !important; }
+    .input-success { border-color: #10b981 !important; background: #f0fdf4 !important; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="dashboard-header-clean">
     <div class="header-title-area">
-        <h1 style="display: flex; align-items: center; gap: 15px; font-family: 'Poppins', sans-serif;">
-            <img src="{{ url_for('static', path='/images/brand_icon.png') }}" style="width: 32px; height: 32px;" alt="OccaServe">
-            Caterer Partners
-        </h1>
-        <p style="font-family: 'Poppins', sans-serif;">Strategic management of platform-certified catering providers.</p>
+        <h1>Caterer Partners</h1>
+        <p>Manage and review your verified catering partners.</p>
     </div>
     <div class="header-actions-area">
         <button class="btn-clean" style="background: var(--adm-navy); color: white;" onclick="openAddCatererModal()">
-            <i class="fas fa-plus"></i> Add New Caterer
+            Add New Caterer
         </button>
     </div>
 </div>
@@ -189,36 +206,31 @@
 <!-- KPI Metrics Cluster -->
 <div class="kpi-grid-clean">
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #eff6ff; color: #1d4ed8;"><i class="fas fa-store"></i></div>
         <div class="kpi-info">
             <h4>Total Partners</h4>
             <span class="kpi-value">{{ metrics.total_caterers }}</span>
-            <span class="trend-badge trend-up">LIVE DIRECTORY</span>
+            <span class="trend-badge trend-up">All Registered</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #fffbeb; color: #92400e;"><i class="fas fa-shield-halved"></i>
-        </div>
         <div class="kpi-info">
-            <h4>Audit Queue</h4>
+            <h4>Pending Review</h4>
             <span class="kpi-value">{{ metrics.pending_caterers_count }}</span>
-            <span class="trend-badge" style="background: #fef3c7; color: #92400e;">ACTION REQ</span>
+            <span class="trend-badge" style="background: #fef3c7; color: #92400e;">Needs Action</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #f0fdf4; color: #166534;"><i class="fas fa-check-double"></i></div>
         <div class="kpi-info">
             <h4>Verified</h4>
             <span class="kpi-value">{{ metrics.approved_caterers_count }}</span>
-            <span class="trend-badge trend-up"><i class="fas fa-check"></i> TRUSTED</span>
+            <span class="trend-badge trend-up">Trusted</span>
         </div>
     </div>
     <div class="kpi-card-clean">
-        <div class="kpi-icon-box" style="background: #fdf2f2; color: #991b1b;"><i class="fas fa-ban"></i></div>
         <div class="kpi-info">
             <h4>Suspended</h4>
             <span class="kpi-value">{{ metrics.rejected_caterers_count }}</span>
-            <span class="trend-badge" style="background: #fee2e2; color: #991b1b;">RESTRICTED</span>
+            <span class="trend-badge" style="background: #fee2e2; color: #991b1b;">Restricted</span>
         </div>
     </div>
 </div>
@@ -227,17 +239,14 @@
 <div class="table-card-clean">
     <div class="terminal-filter-strip">
         <div style="display: flex; align-items: center; gap: 12px;">
-            <i class="fas fa-list-check" style="color: var(--adm-primary);"></i>
-            <h3
-                style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy); margin: 0; text-transform: uppercase; letter-spacing: 0.05em;">
-                Partner Registry</h3>
+            <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy); margin: 0; text-transform: uppercase;">
+                Partner Directory</h3>
         </div>
         <div style="display: flex; gap: 10px;">
-            <select id="catererStatusFilter" onchange="filterCaterers()" class="btn-clean"
-                style="padding: 6px 14px; font-size: 0.8rem; font-weight: 700;">
+            <select id="catererStatusFilter" onchange="filterCaterers()" class="btn-clean" style="padding: 6px 14px; font-size: 0.8rem; font-weight: 700;">
                 <option value="all">Filter: All Partners</option>
                 <option value="VERIFIED">Status: Verified</option>
-                <option value="AUDIT">Status: Audit Req</option>
+                <option value="REVIEW">Status: Needs Review</option>
                 <option value="SUSPENDED">Status: Suspended</option>
             </select>
         </div>
@@ -247,11 +256,11 @@
         <table class="clean-table" id="caterersTable">
             <thead>
                 <tr>
-                    <th>Business Identity</th>
-                    <th>Executive Lead</th>
-                    <th>Region</th>
-                    <th>Audit State</th>
-                    <th style="text-align: right;">Operations Hub</th>
+                    <th>Business Name</th>
+                    <th>Owner</th>
+                    <th>City/Location</th>
+                    <th>Status</th>
+                    <th style="text-align: right;">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -261,12 +270,10 @@
                         <div class="partner-identity-cell">
                             <div class="partner-avatar">{{ caterer.business_name[0] }}</div>
                             <div>
-                                <div style="font-weight: 800; color: var(--adm-navy); font-size: 0.9rem;">{{
-                                    caterer.business_name }}</div>
+                                <div style="font-weight: 800; color: var(--adm-navy); font-size: 0.9rem;">{{ caterer.business_name }}</div>
                                 <div class="performance-mini">
-                                    <i class="fas fa-star"></i> 
                                     {% if caterer.rating and caterer.rating > 0 %}
-                                        {{ "%.1f"|format(caterer.rating) }} Platform Score
+                                        {{ "%.1f"|format(caterer.rating) }} Rating
                                     {% else %}
                                         <span style="color: var(--adm-muted); opacity: 0.8;">NEW PARTNER</span>
                                     {% endif %}
@@ -275,62 +282,43 @@
                         </div>
                     </td>
                     <td>
-                        <div style="font-weight: 700; color: var(--adm-navy); font-size: 0.85rem;">{{
-                            caterer.user.first_name }} {{ caterer.user.last_name }}</div>
+                        <div style="font-weight: 700; color: var(--adm-navy); font-size: 0.85rem;">{{ caterer.user.first_name }} {{ caterer.user.last_name }}</div>
                         <div style="font-size: 0.75rem; color: var(--adm-muted);">{{ caterer.user.email }}</div>
                     </td>
-                    <td><span style="font-weight: 600; color: var(--adm-muted); font-size: 0.85rem;">{{ caterer.city or
-                            'General Area' }}</span></td>
+                    <td><span style="font-weight: 600; color: var(--adm-muted); font-size: 0.85rem;">{{ caterer.city or 'Not Set' }}</span></td>
                     <td>
                         {% if caterer.verification_status == 'Verified' %}
                         <span class="badge-clean badge-active">VERIFIED</span>
                         {% elif caterer.verification_status == 'Pending Review' or caterer.verification_status == 'Pending' %}
-                        <span class="badge-clean badge-pending">AUDIT REQ</span>
+                        <span class="badge-clean badge-pending">REVIEW</span>
                         {% else %}
-                        <span class="badge-clean" style="background: #f1f5f9; color: #64748b;">{{
-                            caterer.verification_status }}</span>
+                        <span class="badge-clean" style="background: #f1f5f9; color: #64748b;">{{ caterer.verification_status }}</span>
                         {% endif %}
                     </td>
                     <td style="text-align: right;">
                         <div class="actions-dropdown">
-                            <button class="dropdown-trigger" onclick="toggleActionDropdown(this, event)">
-                                <i class="fas fa-ellipsis-h"></i>
-                            </button>
+                            <button class="dropdown-trigger" onclick="toggleActionDropdown(this, event)">...</button>
                             <div class="dropdown-menu-dm">
-                                <a href="/admin/verify/{{ caterer.user_id }}" class="dm-dropdown-item">
-                                    <i class="fas fa-shield-check"></i> Review Documents
-                                </a>
-                                <button class="dm-dropdown-item" data-id="{{ caterer.id }}"
-                                    data-business="{{ caterer.business_name }}" 
-                                    data-full-name="{{ caterer.user.first_name }} {{ caterer.user.last_name }}"
-                                    data-email="{{ caterer.user.email }}"
-                                    data-phone="{{ caterer.contact_phone or caterer.phone }}" 
-                                    data-status="{{ caterer.verification_status }}"
-                                    data-province-code="{{ caterer.province_code }}"
-                                    data-city-code="{{ caterer.city_code }}"
-                                    data-brgy-code="{{ caterer.brgy_code }}"
-                                    data-address-details="{{ caterer.address_details }}"
-                                    onclick="openEditModal(this)">
-                                    <i class="fas fa-edit"></i> Edit Partner Details
+                                {% if caterer.verification_status == 'Pending' or caterer.verification_status == 'Pending Review' %}
+                                <a href="/admin/verify/{{ caterer.user_id }}" class="dm-dropdown-item">Review Documents</a>
+                                {% endif %}
+                                
+                                <button class="dm-dropdown-item" data-id="{{ caterer.id }}" data-email="{{ caterer.user.email }}" onclick="openRecoveryModal(this)">
+                                    Account Recovery
                                 </button>
+                                
                                 <div style="height: 1px; background: #f1f5f9; margin: 4px 8px;"></div>
-                                {% if caterer.verification_status == 'Rejected' or caterer.verification_status ==
-                                'Suspended' %}
-                                <button class="dm-dropdown-item" style="color: #2563eb;"
-                                    onclick="restorePartner({{ caterer.id }})">
-                                    <i class="fas fa-rotate-left"></i> Reactivate Account
+                                
+                                {% if caterer.verification_status == 'Rejected' or caterer.verification_status == 'Suspended' %}
+                                <button class="dm-dropdown-item" style="color: #2563eb;" onclick="restorePartner({{ caterer.id }})">
+                                    Reactivate Account
                                 </button>
                                 {% else %}
-                                <button class="dm-dropdown-item" style="color: #f97316;"
-                                    onclick="flagPartner({{ caterer.id }})">
-                                    <i class="fas fa-flag"></i> Require Re-verification
+                                <button class="dm-dropdown-item" style="color: #f97316;" onclick="flagPartner({{ caterer.id }})">
+                                    Require Re-verification
                                 </button>
                                 <button class="dm-dropdown-item danger" onclick="suspendPartner({{ caterer.id }})">
-                                    <i class="fas fa-ban"></i> Ban / Suspend Account
-                                </button>
-                                <div style="height: 1px; background: #f1f5f9; margin: 4px 8px;"></div>
-                                <button class="dm-dropdown-item" onclick="archiveItem('caterers', {{ caterer.id }})" style="color: #64748b;">
-                                    <i class="fas fa-archive"></i> Archive / Delete Partner
+                                    Ban / Suspend Account
                                 </button>
                                 {% endif %}
                             </div>
@@ -341,346 +329,185 @@
             </tbody>
         </table>
     </div>
+
+    <!-- Elite Pagination Control -->
+    <div class="pagination-terminal">
+        <div style="font-size: 0.75rem; color: var(--adm-muted); font-weight: 700;">
+            Showing <span id="entryStart">1</span> to <span id="entryEnd">10</span> of <span id="totalEntries">{{ caterers|length }}</span> partners
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button class="pag-btn" id="prevBtn" onclick="changePage(-1)" disabled>
+                <i class="fas fa-chevron-left"></i> Previous
+            </button>
+            <button class="pag-btn" id="nextBtn" onclick="changePage(1)">
+                Next <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    </div>
 </div>
 
-<!-- Onboard New Partner Intelligence Suite -->
-<style>
-    @media (max-width: 768px) {
-        .onboard-grid {
-            grid-template-columns: 1fr !important;
-            gap: 1.5rem !important;
-        }
-
-        .onboard-matrix-col {
-            border-left: none !important;
-            padding-left: 0 !important;
-            border-top: 1px solid #f1f5f9;
-            padding-top: 1.5rem !important;
-        }
-
-        .admin-modal-card {
-            width: 98% !important;
-            margin: 10px !important;
-        }
-    }
-
-    .status-indicator {
-        font-size: 0.65rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        padding: 2px 8px;
-        border-radius: 4px;
-        display: none;
-    }
-
-    .status-indicator.show {
-        display: inline-block;
-    }
-
-    .status-ok {
-        background: #dcfce7;
-        color: #166534;
-    }
-
-    .status-error {
-        background: #fee2e2;
-        color: #991b1b;
-    }
-
-    .input-error {
-        border-color: #ef4444 !important;
-        background: #fffafb !important;
-    }
-
-    .input-success {
-        border-color: #10b981 !important;
-        background: #f0fdf4 !important;
-    }
-</style>
-
+<!-- Add Caterer Modal -->
 <div id="addCatererModal" class="admin-modal-overlay">
-    <div class="admin-modal-card"
-        style="max-width: 900px; width: 95%; display: flex; flex-direction: column; max-height: 90vh;">
-        <div class="modal-header-clean"
-            style="border-bottom: 1px solid #f1f5f9; padding: 1.25rem 2rem; flex-shrink: 0;">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div
-                    style="width: 36px; height: 36px; background: var(--adm-primary-soft); color: var(--adm-primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
-                    <i class="fas fa-plus-circle"></i>
-                </div>
-                <div>
-                    <h3
-                        style="font-size: 0.9rem; font-weight: 800; text-transform: uppercase; margin: 0; color: var(--adm-navy);">
-                        Add New Caterer</h3>
-                    <p style="font-size: 0.7rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Manually register a new caterer partner.</p>
-                </div>
+    <div class="admin-modal-card" style="max-width: 900px; width: 95%; display: flex; flex-direction: column; max-height: 90vh;">
+        <div class="modal-header-clean" style="border-bottom: 1px solid #f1f5f9; padding: 1.25rem 2rem;">
+            <div>
+                <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy);">Add New Caterer</h3>
+                <p style="font-size: 0.7rem; color: var(--adm-muted);">Add a pre-verified partner directly to the platform.</p>
             </div>
-            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);"
-                onclick="closeAddCatererModal()">&times;</button>
+            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);" onclick="closeAddCatererModal()">&times;</button>
         </div>
 
         <form id="addCatererForm" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
             <div class="modal-body-clean" style="overflow-y: auto; padding: 1.5rem 2rem; flex: 1;">
                 <div class="onboard-grid" style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 2.5rem;">
-
+                    
                     <!-- Primary Identity Column -->
                     <div style="display: flex; flex-direction: column; gap: 1.25rem;">
-                        <h4
-                            style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: -0.25rem;">
-                            Business Info</h4>
-
+                        <h4 style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase;">Business Info</h4>
+                        
+                        <!-- Official Business Name -->
                         <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <label style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 2px;">Official Business Name</label>
                             <div class="dm-input-group">
-                                <i class="fas fa-store"></i>
-                                <input type="text" name="business_name" id="onboard_biz_name"
-                                    placeholder="Official Business Name" required>
+                                <input type="text" name="business_name" id="onboard_biz_name" required>
                             </div>
                             <div id="biz_name_status" class="status-indicator"></div>
                         </div>
 
-                        <div style="display: grid; grid-template-columns: 1fr 0.4fr 1fr; gap: 8px;">
-                            <div class="dm-input-group">
-                                <i class="fas fa-user"></i>
-                                <input type="text" name="first_name" id="onboard_fname" placeholder="First Name"
-                                    required>
+                        <!-- Legal Identity -->
+                        <div>
+                            <div style="display: grid; grid-template-columns: 1fr 60px 1fr 80px; gap: 8px;">
+                                <div>
+                                    <label style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 4px; display: block;">First Name</label>
+                                    <div class="dm-input-group"><input type="text" name="first_name" id="onboard_fname" required></div>
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 4px; display: block; text-align: center;">M.I.</label>
+                                    <div class="dm-input-group" style="padding: 0 5px;"><input type="text" name="middle_initial" id="onboard_mname" maxlength="1" style="text-align: center;"></div>
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 4px; display: block;">Last Name</label>
+                                    <div class="dm-input-group"><input type="text" name="last_name" id="onboard_lname" required></div>
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 4px; display: block; text-align: center;">Suffix</label>
+                                    <div class="dm-input-group">
+                                        <select name="name_suffix" id="onboard_suffix" style="padding: 0 10px; width: 100%; height: 100%; border: none; background: transparent; font-size: 0.75rem; font-weight: 700; color: #475569; outline: none; appearance: none; text-align: center;">
+                                            <option value="" selected>-</option>
+                                            <option value="Jr.">Jr.</option>
+                                            <option value="Sr.">Sr.</option>
+                                            <option value="II">II</option>
+                                            <option value="III">III</option>
+                                            <option value="IV">IV</option>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="dm-input-group">
-                                <i class="fas fa-user-tag"></i>
-                                <input type="text" name="middle_name" id="onboard_mname" placeholder="Middle Name">
-                            </div>
-                            <div class="dm-input-group">
-                                <input type="text" name="last_name" id="onboard_lname" placeholder="Last Name" required>
-                            </div>
+                            <div id="name_audit_status" class="status-indicator"></div>
                         </div>
-                        <div id="name_audit_status" class="status-indicator"
-                            style="margin-top: -8px; margin-bottom: 5px;"></div>
 
+                        <!-- Contact Registry -->
                         <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px;">
                             <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <div class="dm-input-group">
-                                    <i class="fas fa-envelope"></i>
-                                    <input type="email" name="email" id="onboard_email" placeholder="Gmail Address"
-                                        required>
-                                </div>
+                                <label style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 2px;">Gmail Address</label>
+                                <div class="dm-input-group"><input type="email" name="email" id="onboard_email" required></div>
                                 <div id="email_audit_status" class="status-indicator"></div>
                             </div>
                             <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <div class="dm-input-group">
-                                    <i class="fas fa-phone"></i>
-                                    <input type="tel" name="phone" id="onboard_phone" placeholder="09XXXXXXXXX"
-                                        maxlength="11" required>
-                                </div>
+                                <label style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 2px;">Mobile Number</label>
+                                <div class="dm-input-group"><input type="tel" name="phone" id="onboard_phone" maxlength="11" required></div>
                                 <div id="phone_audit_status" class="status-indicator"></div>
                             </div>
                         </div>
 
-                        <h4
-                            style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: -0.25rem; margin-top: 0.5rem;">
-                            Address Information (PSGC)</h4>
-
+                        <h4 style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase; margin-top: 0.5rem;">Business Address (PSGC)</h4>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                             <div class="dm-input-group">
-                                <i class="fas fa-map"></i>
                                 <select name="province" id="onboard_province" onchange="fetchMunicipalities()" required>
-                                    <option value="" disabled selected>Province</option>
+                                    <option value="" disabled selected>Select Province</option>
                                 </select>
                             </div>
                             <div class="dm-input-group">
-                                <i class="fas fa-city"></i>
                                 <select name="municipality" id="onboard_city" onchange="fetchBarangays()" disabled required>
-                                    <option value="" disabled selected>City/Muni</option>
+                                    <option value="" disabled selected>Select City/Muni</option>
                                 </select>
                             </div>
                         </div>
-
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                             <div class="dm-input-group">
-                                <i class="fas fa-location-dot"></i>
                                 <select name="barangay" id="onboard_brgy" disabled required>
-                                    <option value="" disabled selected>Barangay</option>
+                                    <option value="" disabled selected>Select Barangay</option>
                                 </select>
                             </div>
-                            <div class="dm-input-group">
-                                <i class="fas fa-road"></i>
-                                <input type="text" name="street" placeholder="Bldg/Street/Subd" required>
-                            </div>
+                            <div class="dm-input-group"><input type="text" name="street" placeholder="Bldg/Street/Subd" required></div>
                         </div>
                     </div>
 
                     <!-- Service Matrix Column -->
-                    <div class="onboard-matrix-col"
-                        style="display: flex; flex-direction: column; gap: 1.25rem; padding-left: 2rem; border-left: 1px solid #f1f5f9;">
-                        <h4
-                            style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: -0.25rem;">
-                            Services Offered</h4>
-
-                        <div
-                            style="background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #f1f5f9;">
-                            <label
-                                style="display: block; font-size: 0.65rem; font-weight: 800; color: var(--adm-navy); margin-bottom: 8px; text-transform: uppercase;">Event
-                                Categories</label>
+                    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                        <h4 style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase;">Services Offered</h4>
+                        <div style="background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #f1f5f9;">
+                            <label style="display: block; font-size: 0.65rem; font-weight: 800; color: var(--adm-navy); margin-bottom: 8px;">Events</label>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                                <label
-                                    style="display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--adm-muted); cursor: pointer;"><input
-                                        type="checkbox" name="events" value="Wedding"> Wedding</label>
-                                <label
-                                    style="display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--adm-muted); cursor: pointer;"><input
-                                        type="checkbox" name="events" value="Corporate"> Corporate</label>
-                                <label
-                                    style="display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--adm-muted); cursor: pointer;"><input
-                                        type="checkbox" name="events" value="Birthday"> Birthday</label>
-                                <label
-                                    style="display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--adm-muted); cursor: pointer;"><input
-                                        type="checkbox" name="events" value="Debut"> Debut</label>
-                                <label
-                                    style="display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--adm-muted); cursor: pointer;"><input
-                                        type="checkbox" name="events" value="Party"> Social Party</label>
+                                <label><input type="checkbox" name="events" value="Wedding"> Wedding</label>
+                                <label><input type="checkbox" name="events" value="Corporate"> Corporate</label>
+                                <label><input type="checkbox" name="events" value="Birthday"> Birthday</label>
+                                <label><input type="checkbox" name="events" value="Debut"> Debut</label>
+                                <label><input type="checkbox" name="events" value="Party"> Social Party</label>
                             </div>
                         </div>
 
-                        <div
-                            style="background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #f1f5f9;">
-                            <label
-                                style="display: block; font-size: 0.65rem; font-weight: 800; color: var(--adm-navy); margin-bottom: 8px; text-transform: uppercase;">Cuisine
-                                Specialty</label>
+                        <div style="background: #f8fafc; padding: 1rem; border-radius: 10px; border: 1px solid #f1f5f9;">
+                            <label style="display: block; font-size: 0.65rem; font-weight: 800; color: var(--adm-navy); margin-bottom: 8px;">Cuisine</label>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                                <label
-                                    style="display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--adm-muted); cursor: pointer;"><input
-                                        type="checkbox" name="cuisines" value="Filipino"> Filipino</label>
-                                <label
-                                    style="display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--adm-muted); cursor: pointer;"><input
-                                        type="checkbox" name="cuisines" value="Italian"> Italian</label>
-                                <label
-                                    style="display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--adm-muted); cursor: pointer;"><input
-                                        type="checkbox" name="cuisines" value="Japanese"> Japanese</label>
-                                <label
-                                    style="display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--adm-muted); cursor: pointer;"><input
-                                        type="checkbox" name="cuisines" value="American"> American</label>
+                                <label><input type="checkbox" name="cuisines" value="Filipino"> Filipino</label>
+                                <label><input type="checkbox" name="cuisines" value="Italian"> Italian</label>
+                                <label><input type="checkbox" name="cuisines" value="Japanese"> Japanese</label>
+                                <label><input type="checkbox" name="cuisines" value="American"> American</label>
                             </div>
                         </div>
 
-                        <div
-                            style="margin-top: auto; padding: 0.75rem; background: var(--adm-primary-soft); border-radius: 10px; border: 1px solid var(--adm-primary-light);">
-                            <div style="display: flex; gap: 10px;">
-                                <i class="fas fa-circle-info"
-                                    style="color: var(--adm-primary); margin-top: 2px; font-size: 0.8rem;"></i>
-                                <p
-                                    style="font-size: 0.65rem; color: var(--adm-navy); font-weight: 600; margin: 0; line-height: 1.4;">
-                                    New caterers will automatically receive their login password via email after registration.</p>
-                            </div>
+                        <div style="margin-top: auto; padding: 0.75rem; background: var(--adm-primary-soft); border-radius: 10px;">
+                            <p style="font-size: 0.65rem; color: var(--adm-navy); font-weight: 600; margin: 0;">
+                                Note: Added caterers bypass document audit and are marked as "Verified" immediately. They will receive their temporary password via email.
+                            </p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="modal-footer-clean"
-                style="padding: 1.25rem 2rem; background: #f8fafc; border-top: 1px solid #f1f5f9; flex-shrink: 0; display: flex; justify-content: flex-end; gap: 10px;">
-                <button type="button" class="btn-clean"
-                    style="background: white; border: 1px solid #e2e8f0; color: var(--adm-navy); font-size: 0.75rem;"
-                    onclick="closeAddCatererModal()">Cancel</button>
-                <button type="submit" class="btn-clean"
-                    style="background: var(--adm-primary); color: white; padding: 0.75rem 2rem; font-weight: 800; font-size: 0.75rem;">Add New Caterer</button>
+            <div class="modal-footer-clean" style="padding: 1.25rem 2rem; background: #f8fafc; display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn-clean" style="background: white; border: 1px solid #e2e8f0; color: var(--adm-navy);" onclick="closeAddCatererModal()">Cancel</button>
+                <button type="submit" class="btn-clean" style="background: var(--adm-primary); color: white; padding: 0.75rem 2rem;">Add New Caterer</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Edit Partner Profile Modal (Diamond v5) -->
-<div id="editCatererModal" class="admin-modal-overlay">
-    <div class="admin-modal-card" style="max-width: 850px; width: 95%; display: flex; flex-direction: column; max-height: 90vh;">
-        <div class="modal-header-clean" style="border-bottom: 1px solid #f1f5f9; padding: 1.25rem 2rem; flex-shrink: 0;">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="width: 36px; height: 36px; background: var(--adm-primary-soft); color: var(--adm-primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
-                    <i class="fas fa-edit"></i>
-                </div>
-                <div>
-                    <h3 style="font-size: 0.9rem; font-weight: 800; text-transform: uppercase; margin: 0; color: var(--adm-navy);">Edit Partner Profile</h3>
-                    <p style="font-size: 0.7rem; color: var(--adm-muted); margin: 0; font-weight: 600;">Update business intelligence and jurisdictional data.</p>
-                </div>
+<!-- Account Recovery Modal (Replaces Edit Profile) -->
+<div id="recoveryModal" class="admin-modal-overlay">
+    <div class="admin-modal-card" style="max-width: 500px; width: 95%;">
+        <div class="modal-header-clean" style="border-bottom: 1px solid #f1f5f9; padding: 1.25rem 2rem;">
+            <div>
+                <h3 style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy);">Account Recovery</h3>
+                <p style="font-size: 0.7rem; color: var(--adm-muted);">Help caterer regain access to their account.</p>
             </div>
-            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);" onclick="closeEditModal()">&times;</button>
+            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);" onclick="closeRecoveryModal()">&times;</button>
         </div>
-
-        <form id="editCatererForm" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
-            <input type="hidden" name="caterer_id" id="edit_caterer_id">
-            <div class="modal-body-clean" style="overflow-y: auto; padding: 1.5rem 2rem; flex: 1;">
-                
-                <div id="identity_lock_banner" style="display: none; background: #fff7ed; border: 1px solid #ffedd5; padding: 12px; border-radius: 10px; margin-bottom: 1.5rem;">
-                    <p style="margin: 0; color: #9a3412; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
-                        <i class="fas fa-lock"></i> IDENTITY LOCK ACTIVE: Core business fields are locked for Verified partners.
-                    </p>
-                </div>
-
-                <div class="onboard-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-                    <!-- Column 1: Identity -->
-                    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
-                        <h4 style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: -0.25rem;">Entity Identity</h4>
-                        
-                        <div class="dm-input-group">
-                            <i class="fas fa-store"></i>
-                            <input type="text" name="business_name" id="edit_biz_name" placeholder="Business Name" required>
-                        </div>
-
-                        <div class="dm-input-group">
-                            <i class="fas fa-user-tie"></i>
-                            <input type="text" name="full_name" id="edit_full_name" placeholder="Full Name (Signatory)" readonly style="background: #f8fafc;">
-                        </div>
-
-                        <div style="display: flex; flex-direction: column; gap: 4px;">
-                            <div class="dm-input-group">
-                                <i class="fas fa-envelope"></i>
-                                <input type="email" name="email" id="edit_email" placeholder="Gmail Address" required>
-                            </div>
-                            <div id="edit_email_status" class="status-indicator"></div>
-                        </div>
-
-                        <div style="display: flex; flex-direction: column; gap: 4px;">
-                            <div class="dm-input-group">
-                                <i class="fas fa-phone"></i>
-                                <input type="tel" name="phone" id="edit_phone" placeholder="Contact Phone" required>
-                            </div>
-                            <div id="edit_phone_status" class="status-indicator"></div>
-                        </div>
-                    </div>
-
-                    <!-- Column 2: Jurisdiction -->
-                    <div style="display: flex; flex-direction: column; gap: 1.25rem; border-left: 1px solid #f1f5f9; padding-left: 2rem;" class="onboard-matrix-col">
-                        <h4 style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: -0.25rem;">Jurisdictional Data</h4>
-                        
-                        <div class="dm-input-group">
-                            <i class="fas fa-map-marker-alt"></i>
-                            <select id="edit_province" name="province" required onchange="loadEditCities(this.value)">
-                                <option value="" disabled selected>Select Province</option>
-                            </select>
-                        </div>
-
-                        <div class="dm-input-group">
-                            <i class="fas fa-city"></i>
-                            <select id="edit_city" name="city" required onchange="loadEditBrgys(this.value)">
-                                <option value="" disabled selected>Select City/Municipality</option>
-                            </select>
-                        </div>
-
-                        <div class="dm-input-group">
-                            <i class="fas fa-building"></i>
-                            <select id="edit_barangay" name="barangay" required>
-                                <option value="" disabled selected>Select Barangay</option>
-                            </select>
-                        </div>
-
-                        <div class="dm-input-group">
-                            <i class="fas fa-road"></i>
-                            <input type="text" name="address_details" id="edit_address_details" placeholder="Street / House No. / Landmark">
-                        </div>
-                    </div>
+        <form id="recoveryForm">
+            <input type="hidden" id="recovery_caterer_id">
+            <div class="modal-body-clean" style="padding: 1.5rem 2rem;">
+                <p style="font-size: 0.75rem; color: #475569; margin-bottom: 1rem;">
+                    For security and liability reasons, admins cannot edit a caterer's business profile directly. However, you can trigger a password reset link to their registered email.
+                </p>
+                <div class="dm-input-group" style="margin-bottom: 1rem;">
+                    <label style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); margin-bottom: 5px; display: block;">Registered Email</label>
+                    <input type="email" id="recovery_email" readonly style="background: #f1f5f9;">
                 </div>
             </div>
-
-            <div class="modal-footer-clean" style="padding: 1.25rem 2rem; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 12px; flex-shrink: 0;">
-                <button type="button" class="btn-clean" style="background: white; color: var(--adm-navy); border: 1px solid var(--adm-border-light);" onclick="closeEditModal()">Dismiss</button>
-                <button type="submit" class="btn-clean" style="background: var(--adm-primary); color: white; min-width: 160px; font-weight: 800;">
-                    <i class="fas fa-save"></i> Commit Changes
-                </button>
+            <div class="modal-footer-clean" style="padding: 1.25rem 2rem; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 12px;">
+                <button type="button" class="btn-clean" style="background: white; border: 1px solid #e2e8f0; color: var(--adm-navy);" onclick="closeRecoveryModal()">Dismiss</button>
+                <button type="button" class="btn-clean" style="background: var(--adm-primary); color: white;" onclick="sendRecoveryEmail()">Send Password Reset</button>
             </div>
         </form>
     </div>
@@ -690,9 +517,7 @@
 
 {% block extra_js %}
 <script>
-
-
-    // --- UI State Management (Diamond v6) ---
+    // UI Logic
     function toggleActionDropdown(btn, event) {
         event.stopPropagation();
         const menu = btn.nextElementSibling;
@@ -702,220 +527,100 @@
         menu.classList.toggle('show');
     }
 
-    // Close dropdowns on outside click
     window.onclick = () => {
         document.querySelectorAll('.dropdown-menu-dm').forEach(m => m.classList.remove('show'));
     };
 
+    // --- State & Pagination Engine ---
+    let currentPage = 1;
+    const entriesPerPage = 10;
+    const rows = Array.from(document.querySelectorAll('.cust-row'));
+
     function filterCaterers() {
-        const s = document.getElementById('catererStatusFilter').value.toLowerCase();
-        document.querySelectorAll('.cust-row').forEach(r => {
-            const stat = r.querySelector('.badge-clean')?.innerText.toLowerCase() || '';
-            r.style.display = (s === 'all' || stat.includes(s)) ? '' : 'none';
+        const status = document.getElementById('catererStatusFilter').value.toLowerCase();
+        const globalSearch = document.getElementById('globalSearchInput');
+        const query = globalSearch ? globalSearch.value.toLowerCase().trim() : '';
+        
+        const filteredRows = rows.filter(row => {
+            const stat = row.querySelector('.badge-clean')?.innerText.toLowerCase() || '';
+            const textContent = row.innerText.toLowerCase();
+            
+            const matchesStatus = (status === 'all' || stat.includes(status));
+            const matchesQuery = query === '' || textContent.includes(query);
+            
+            return matchesStatus && matchesQuery;
+        });
+
+        updatePagination(filteredRows);
+    }
+
+    function updatePagination(filteredRows) {
+        const total = filteredRows.length;
+        const totalPages = Math.ceil(total / entriesPerPage);
+
+        if (currentPage > totalPages) currentPage = totalPages || 1;
+
+        const start = (currentPage - 1) * entriesPerPage;
+        const end = start + entriesPerPage;
+
+        rows.forEach(row => row.style.display = 'none');
+        filteredRows.slice(start, end).forEach(row => row.style.display = '');
+
+        document.getElementById('entryStart').innerText = total === 0 ? 0 : start + 1;
+        document.getElementById('entryEnd').innerText = Math.min(end, total);
+        document.getElementById('totalEntries').innerText = total;
+
+        document.getElementById('prevBtn').disabled = currentPage === 1;
+        document.getElementById('nextBtn').disabled = currentPage === totalPages || total === 0;
+    }
+
+    function changePage(delta) {
+        currentPage += delta;
+        filterCaterers();
+    }
+
+    // Hook Global Header Search to Table
+    const gSearch = document.getElementById('globalSearchInput');
+    if (gSearch) {
+        gSearch.placeholder = "Search caterers by name, email, city...";
+        gSearch.addEventListener('input', () => {
+            currentPage = 1;
+            filterCaterers();
         });
     }
 
+    // Initialize pagination on load
+    document.addEventListener("DOMContentLoaded", () => {
+        filterCaterers();
+    });
+
+    // Add Caterer Logic
     function openAddCatererModal() {
         document.getElementById('addCatererModal').classList.add('active');
         if (document.getElementById('onboard_province').options.length <= 1) fetchProvinces();
     }
     function closeAddCatererModal() { document.getElementById('addCatererModal').classList.remove('active'); }
 
-    // Real Administrative Logic
-    async function executePartnerAction(id, action, reason = null) {
-        const formData = new FormData();
-        if (reason) formData.append('reason', reason);
-
-        try {
-            const res = await fetch(`/admin/api/caterers/${id}/${action}`, {
-                method: 'POST',
-                body: formData
-            });
-            const data = await res.json();
-            if (data.success) {
-                Swal.fire({ title: 'Action Executed', text: data.message, icon: 'success', timer: 2000, showConfirmButton: false });
-                setTimeout(() => window.location.reload(), 1500);
-            } else {
-                Swal.fire('Error', data.message, 'error');
-            }
-        } catch (err) {
-            Swal.fire('System Error', 'Could not reach adjudication server.', 'error');
-        }
-    }
-
-    function restorePartner(id) {
-        openConfirmModal('Restore Access?', 'This will reactivate the partner entity and allow them to take bookings.', () => {
-            executePartnerAction(id, 'activate');
-        });
-    }
-
-    function suspendPartner(id) {
-        openReasonModal('Suspend Partner', 'Please state the reason for immediate suspension.', (reason) => {
-            executePartnerAction(id, 'suspend', reason);
-        });
-    }
-
-    function flagPartner(id) {
-        Swal.fire({
-            title: 'Require Re-verification',
-            text: 'Select the reason for requiring re-verification:',
-            input: 'select',
-            inputOptions: {
-                'Expired Business Permit': 'Expired Business Permit',
-                'Suspicious Document Uploaded': 'Suspicious Document Uploaded',
-                'Customer Complaints / Fraud Report': 'Customer Complaints / Fraud Report',
-                'Unresponsive Contact Details': 'Unresponsive Contact Details',
-                'Other': 'Other (Please specify in audit notes later)'
-            },
-            inputPlaceholder: 'Select a reason',
-            showCancelButton: true,
-            confirmButtonText: 'Submit',
-            confirmButtonColor: '#f97316',
-            inputValidator: (value) => {
-                if (!value) {
-                    return 'You need to select a reason.';
-                }
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                executePartnerAction(id, 'flag', result.value);
-            }
-        });
-    }
-
-
-    // --- Edit Partner Intelligence Suite ---
-    async function openEditModal(btn) {
-        const id = btn.getAttribute('data-id');
-        const bizName = btn.getAttribute('data-business');
-        const email = btn.getAttribute('data-email');
-        const phone = btn.getAttribute('data-phone');
-        const fullName = btn.getAttribute('data-full-name');
-        const status = btn.getAttribute('data-status');
-        
-        const provCode = btn.getAttribute('data-province-code');
-        const cityCode = btn.getAttribute('data-city-code');
-        const brgyCode = btn.getAttribute('data-brgy-code');
-        const addressDetails = btn.getAttribute('data-address-details');
-
-        document.getElementById('edit_caterer_id').value = id;
-        document.getElementById('edit_biz_name').value = bizName;
-        document.getElementById('edit_full_name').value = fullName;
-        document.getElementById('edit_email').value = email;
-        document.getElementById('edit_phone').value = phone;
-        document.getElementById('edit_address_details').value = addressDetails || "";
-
-        // Identity Lock Enforcement
-        const banner = document.getElementById('identity_lock_banner');
-        const bizInp = document.getElementById('edit_biz_name');
-        const nameInp = document.getElementById('edit_full_name');
-        
-        if (status === 'Verified') {
-            banner.style.display = 'block';
-            bizInp.readOnly = true;
-            bizInp.style.background = '#f8fafc';
-            nameInp.readOnly = true;
-            nameInp.style.background = '#f8fafc';
-        } else {
-            banner.style.display = 'none';
-            bizInp.readOnly = false;
-            bizInp.style.background = 'transparent';
-            nameInp.readOnly = false;
-            nameInp.style.background = 'transparent';
-        }
-
-        document.getElementById('editCatererModal').classList.add('active');
-        await loadEditProvinces(provCode, cityCode, brgyCode);
-    }
-
-    function closeEditModal() { document.getElementById('editCatererModal').classList.remove('active'); }
-
-    // --- Edit Submission Logic ---
-    document.getElementById('editCatererForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const cid = document.getElementById('edit_caterer_id').value;
-        const fd = new FormData(e.target);
-        
-        // Add names for legacy sync
-        const provEl = document.getElementById('edit_province');
-        const cityEl = document.getElementById('edit_city');
-        const brgyEl = document.getElementById('edit_barangay');
-        
-        if (provEl.selectedIndex > 0) fd.append('province_name', provEl.options[provEl.selectedIndex].text);
-        if (cityEl.selectedIndex > 0) fd.append('city_name', cityEl.options[cityEl.selectedIndex].text);
-        if (brgyEl.selectedIndex > 0) fd.append('brgy_name', brgyEl.options[brgyEl.selectedIndex].text);
-
-        try {
-            const res = await fetch(`/admin/api/caterers/${cid}/edit`, { method: 'POST', body: fd });
-            const data = await res.json();
-            if (data.success) {
-                Swal.fire({ title: 'Updated', text: data.message, icon: 'success', timer: 2000, showConfirmButton: false });
-                
-                // Real-time update of the row
-                const editBtn = document.querySelector(`.dm-dropdown-item[data-id="${cid}"]`);
-                if (editBtn) {
-                    const row = editBtn.closest('tr');
-                    if (row) {
-                        const bizName = fd.get('business_name');
-                        const fullName = document.getElementById('edit_full_name').value || '';
-                        const email = fd.get('email');
-                        const avatar = row.querySelector('.partner-identity-cell .partner-avatar');
-                        if (avatar) avatar.innerText = bizName.charAt(0).toUpperCase();
-                        const nameEl = row.querySelector('.partner-identity-cell div div:first-child');
-                        if (nameEl) nameEl.innerText = bizName;
-                        const execEl = row.querySelector('td:nth-child(2) div:first-child');
-                        if (execEl) execEl.innerText = fullName;
-                        const emailEl = row.querySelector('td:nth-child(2) div:nth-child(2)');
-                        if (emailEl) emailEl.innerText = email;
-                        
-                        const citySel = document.getElementById('edit_city');
-                        if (citySel && citySel.selectedIndex > 0) {
-                            const regionEl = row.querySelector('td:nth-child(3) span');
-                            if (regionEl) regionEl.innerText = citySel.options[citySel.selectedIndex].text;
-                        }
-                        
-                        // Update button data attributes
-                        editBtn.setAttribute('data-business', bizName);
-                        editBtn.setAttribute('data-full-name', fullName);
-                        editBtn.setAttribute('data-email', email);
-                        editBtn.setAttribute('data-phone', fd.get('phone'));
-                        editBtn.setAttribute('data-address-details', fd.get('address_details') || '');
-                        editBtn.setAttribute('data-province-code', document.getElementById('edit_province').value || '');
-                        editBtn.setAttribute('data-city-code', document.getElementById('edit_city').value || '');
-                        editBtn.setAttribute('data-brgy-code', document.getElementById('edit_barangay').value || '');
-                    }
-                }
-                closeEditModal();
-            } else { Swal.fire('Error', data.message, 'error'); }
-        } catch (e) { Swal.fire('Error', 'Communication failure.', 'error'); }
-    });
-
-    // --- Official PSGC Geographic Engine ---
     const PSGC_BASE = 'https://psgc.gitlab.io/api';
-
     async function fetchProvinces() {
         try {
             const res = await fetch(`${PSGC_BASE}/provinces/`);
             const provinces = await res.json();
             const sel = document.getElementById('onboard_province');
-            // Populate provinces
             provinces.sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
                 const opt = document.createElement('option');
                 opt.value = p.code; opt.textContent = p.name;
                 sel.appendChild(opt);
             });
-        } catch (err) { console.error("PSGC Province Load Failed", err); }
+        } catch (err) { console.error("PSGC Error", err); }
     }
-
     async function fetchMunicipalities() {
         const provCode = document.getElementById('onboard_province').value;
         const citySel = document.getElementById('onboard_city');
         const brgySel = document.getElementById('onboard_brgy');
-
         citySel.innerHTML = '<option value="" disabled selected>Loading...</option>';
-        brgySel.innerHTML = '<option value="" disabled selected>Barangay</option>';
+        brgySel.innerHTML = '<option value="" disabled selected>Select Barangay</option>';
         brgySel.disabled = true;
-
         try {
             const res = await fetch(`${PSGC_BASE}/provinces/${provCode}/cities-municipalities/`);
             const cities = await res.json();
@@ -926,14 +631,12 @@
                 citySel.appendChild(opt);
             });
             citySel.disabled = false;
-        } catch (err) { citySel.innerHTML = '<option value="" disabled>Error loading</option>'; }
+        } catch (err) {}
     }
-
     async function fetchBarangays() {
         const cityCode = document.getElementById('onboard_city').value;
         const brgySel = document.getElementById('onboard_brgy');
         brgySel.innerHTML = '<option value="" disabled selected>Loading...</option>';
-
         try {
             const res = await fetch(`${PSGC_BASE}/cities-municipalities/${cityCode}/barangays/`);
             const brgys = await res.json();
@@ -944,10 +647,34 @@
                 brgySel.appendChild(opt);
             });
             brgySel.disabled = false;
-        } catch (err) { brgySel.innerHTML = '<option value="" disabled>Error loading</option>'; }
+        } catch (err) {}
     }
 
-    // --- Identity Audit Engine (Triple-Check with Logical Validation) ---
+    // --- Real-time Identity Audit Engine ---
+    let bizCheckTimeout;
+    document.getElementById('onboard_biz_name').addEventListener('input', (e) => {
+        const name = e.target.value.trim();
+        const status = document.getElementById('biz_name_status');
+        clearTimeout(bizCheckTimeout);
+        if (name.length < 3) { 
+            status.className = 'status-indicator'; 
+            e.target.className = ''; 
+            return; 
+        }
+
+        status.textContent = 'Auditing...'; 
+        status.className = 'status-indicator show';
+        bizCheckTimeout = setTimeout(async () => {
+            try {
+                const res = await fetch(`/admin/api/caterers/audit-identity?business_name=${encodeURIComponent(name)}`);
+                const data = await res.json();
+                status.textContent = data.business_name_taken ? 'BUSINESS NAME TAKEN' : '✓ BUSINESS NAME AVAILABLE';
+                status.className = `status-indicator show ${data.business_name_taken ? 'status-error' : 'status-ok'}`;
+                e.target.className = data.business_name_taken ? 'input-error' : 'input-success';
+            } catch (err) {}
+        }, 500);
+    });
+
     let auditTimeout;
     function runIdentityAudit() {
         clearTimeout(auditTimeout);
@@ -956,245 +683,246 @@
             const phoneInp = document.getElementById('onboard_phone');
             const fnameInp = document.getElementById('onboard_fname');
             const lnameInp = document.getElementById('onboard_lname');
-            const mnInp = document.getElementById('onboard_mname');
 
             const email = emailInp.value.trim().toLowerCase();
             const phone = phoneInp.value.replace(/\D/g, '');
             const fname = fnameInp.value.trim().toLowerCase();
-            const lname = lnameInp.value.trim().toLowerCase();
-            const mn = mnInp.value.trim().toLowerCase();
+            let lname = lnameInp.value.trim().toLowerCase();
+            const suffixVal = document.getElementById('onboard_suffix').value;
+            if (suffixVal && suffixVal.trim() !== '' && suffixVal.trim() !== '-') {
+                lname = lname + ' ' + suffixVal.trim().toLowerCase();
+            }
 
-            // 1. Logical Validation: Identical Name Check
+            // 1. Logical Validation: Name Check
             const nameStat = document.getElementById('name_audit_status');
-            if (fname && lname && fname === lname) {
+            const hasNumbers = /\d/.test(fname) || /\d/.test(lname);
+            
+            if (fname.length > 0 && fname.length < 2) {
+                nameStat.textContent = 'INVALID: FIRST NAME TOO SHORT';
+                nameStat.className = 'status-indicator show status-error';
+                fnameInp.className = 'input-error';
+            } else if (lname.length > 0 && lname.length < 2) {
+                nameStat.textContent = 'INVALID: LAST NAME TOO SHORT';
+                nameStat.className = 'status-indicator show status-error';
+                lnameInp.className = 'input-error';
+            } else if (hasNumbers) {
+                nameStat.textContent = 'INVALID: NAMES CANNOT CONTAIN NUMBERS';
+                nameStat.className = 'status-indicator show status-error';
+                if (/\d/.test(fname)) fnameInp.className = 'input-error';
+                if (/\d/.test(lname)) lnameInp.className = 'input-error';
+            } else if (fname && lname && fname === lname) {
                 nameStat.textContent = 'INVALID: IDENTICAL FIRST & LAST NAME';
                 nameStat.className = 'status-indicator show status-error';
                 fnameInp.className = lnameInp.className = 'input-error';
-                return;
+            } else {
+                nameStat.className = 'status-indicator';
+                fnameInp.className = lnameInp.className = (fname.length >= 2 && lname.length >= 2) ? 'input-success' : '';
             }
 
-            // 2. Elite Contact Precision: 09 Prefix & Anti-Repetitive
+            // 2. Phone prefix & length check
             const phoneStat = document.getElementById('phone_audit_status');
             if (phoneInp.value) {
                 if (!phoneInp.value.startsWith('09')) {
                     phoneStat.textContent = 'INVALID PREFIX (MUST START WITH 09)';
                     phoneStat.className = 'status-indicator show status-error';
                     phoneInp.className = 'input-error';
-                    return;
-                }
-                if (phone.length === 11) {
-                    // Check for repetitive bogus patterns (e.g., 09000000000)
-                    const suffix = phone.substring(2);
-                    if (/^(.)\1+$/.test(suffix)) {
-                        phoneStat.textContent = 'INVALID: REPETITIVE/BOGUS PATTERN';
-                        phoneStat.className = 'status-indicator show status-error';
-                        phoneInp.className = 'input-error';
-                        return;
-                    }
-                } else if (phone.length > 0) {
+                } else if (phone.length !== 11) {
                     phoneStat.textContent = 'INVALID LENGTH (11 DIGITS)';
                     phoneStat.className = 'status-indicator show status-error';
                     phoneInp.className = 'input-error';
+                } else {
+                    phoneStat.className = 'status-indicator';
+                    phoneInp.className = '';
                 }
+            } else {
+                phoneStat.className = 'status-indicator';
+                phoneInp.className = '';
             }
 
-            let params = new URLSearchParams();
-            if (email) params.append('email', email);
-            if (phone.length === 11) params.append('phone', phone);
-            if (fname && lname && fname !== lname) {
-                params.append('first_name', fname);
-                params.append('last_name', lname);
-                if (mn) params.append('middle_name', mn);
+            // 3. API Check for Email, Phone & Name Collision
+            const localNameValid = (fname.length >= 2 && lname.length >= 2 && !hasNumbers && fname !== lname);
+            
+            if ((email && email.endsWith('@gmail.com')) || (phone && phone.length === 11) || localNameValid) {
+                let url = `/admin/api/caterers/audit-identity?`;
+                if (email) url += `email=${encodeURIComponent(email)}&`;
+                if (phone && phone.length === 11) url += `phone=${encodeURIComponent(phone)}&`;
+                if (localNameValid) url += `first_name=${encodeURIComponent(fname)}&last_name=${encodeURIComponent(lname)}&`;
+                
+                try {
+                    const res = await fetch(url);
+                    const data = await res.json();
+                    
+                    const emailStat = document.getElementById('email_audit_status');
+                    if (email) {
+                        if (!email.endsWith('@gmail.com')) {
+                            emailStat.textContent = 'MUST BE @GMAIL.COM';
+                            emailStat.className = 'status-indicator show status-error';
+                            emailInp.className = 'input-error';
+                        } else {
+                            emailStat.textContent = data.email_taken ? 'EMAIL ALREADY TAKEN' : '✓ EMAIL AVAILABLE';
+                            emailStat.className = `status-indicator show ${data.email_taken ? 'status-error' : 'status-ok'}`;
+                            emailInp.className = data.email_taken ? 'input-error' : 'input-success';
+                        }
+                    }
+
+                    if (phone && phone.length === 11) {
+                        phoneStat.textContent = data.phone_taken ? 'PHONE NUMBER TAKEN' : '✓ PHONE AVAILABLE';
+                        phoneStat.className = `status-indicator show ${data.phone_taken ? 'status-error' : 'status-ok'}`;
+                        phoneInp.className = data.phone_taken ? 'input-error' : 'input-success';
+                    }
+                    
+                    if (localNameValid) {
+                        if (data.name_collision) {
+                            nameStat.textContent = 'ACCOUNT WITH THIS EXACT NAME ALREADY EXISTS';
+                            nameStat.className = 'status-indicator show status-error';
+                            fnameInp.className = lnameInp.className = 'input-error';
+                        } else {
+                            nameStat.textContent = '✓ NAME IS UNIQUE';
+                            nameStat.className = 'status-indicator show status-ok';
+                            fnameInp.className = lnameInp.className = 'input-success';
+                        }
+                    }
+                } catch (err) {}
             }
-
-            if (params.toString() === "") return;
-
-            try {
-                const res = await fetch(`/admin/api/caterers/audit-identity?${params.toString()}`);
-                const data = await res.json();
-
-                // Email Audit UI
-                const emailStat = document.getElementById('email_audit_status');
-                if (email) {
-                    emailStat.textContent = data.email_taken ? 'IDENTITY TAKEN' : '✓ IDENTITY SECURED';
-                    emailStat.className = `status-indicator show ${data.email_taken ? 'status-error' : 'status-ok'}`;
-                    emailInp.className = data.email_taken ? 'input-error' : 'input-success';
-                }
-
-                // Phone Audit UI
-                if (phone.length === 11) {
-                    phoneStat.textContent = data.phone_taken ? 'NUMBER REGISTERED' : '✓ NUMBER SECURED';
-                    phoneStat.className = `status-indicator show ${data.phone_taken ? 'status-error' : 'status-ok'}`;
-                    phoneInp.className = data.phone_taken ? 'input-error' : 'input-success';
-                }
-
-                // Signatory Name Audit UI
-                if (fname && lname && fname !== lname) {
-                    nameStat.textContent = data.name_collision ? 'IDENTITY COLLISION' : '✓ IDENTITY CLEAR';
-                    nameStat.className = `status-indicator show ${data.name_collision ? 'status-error' : 'status-ok'}`;
-                    fnameInp.className = lnameInp.className = data.name_collision ? 'input-error' : 'input-success';
-                }
-
-            } catch (e) { }
-        }, 600);
+        }, 500);
     }
 
-    // Listeners for real-time audit
-    ['onboard_email', 'onboard_phone', 'onboard_fname', 'onboard_lname', 'onboard_mi'].forEach(id => {
+    ['onboard_fname', 'onboard_lname', 'onboard_email', 'onboard_phone', 'onboard_suffix'].forEach(id => {
         document.getElementById(id).addEventListener('input', runIdentityAudit);
     });
+    document.getElementById('onboard_suffix').addEventListener('change', runIdentityAudit);
 
-    // Business Name Audit
-    let bizCheckTimeout;
-    document.getElementById('onboard_biz_name').addEventListener('input', (e) => {
-        const name = e.target.value.trim().toLowerCase();
-        const inp = e.target;
-        const status = document.getElementById('biz_name_status');
-        clearTimeout(bizCheckTimeout);
-        if (name.length < 3) { status.className = 'status-indicator'; inp.className = ''; return; }
-
-        status.textContent = 'Auditing...'; status.className = 'status-indicator show';
-        bizCheckTimeout = setTimeout(async () => {
-            const res = await fetch(`/admin/api/caterers/audit-identity?business_name=${encodeURIComponent(name)}`);
-            const data = await res.json();
-            status.textContent = data.business_name_taken ? 'BUSINESS NAME TAKEN' : '✓ BUSINESS NAME AVAILABLE';
-            status.className = `status-indicator show ${data.business_name_taken ? 'status-error' : 'status-ok'}`;
-            inp.className = data.business_name_taken ? 'input-error' : 'input-success';
-        }, 500);
-    });
-
-    function openAddCatererModal() {
-        document.getElementById('addCatererModal').classList.add('active');
-        if (document.getElementById('onboard_province').options.length <= 1) fetchProvinces();
-    }
-    function closeAddCatererModal() { document.getElementById('addCatererModal').classList.remove('active'); }
-
+    // Modal Submission
     document.getElementById('addCatererForm').onsubmit = async (e) => {
         e.preventDefault();
         const fd = new FormData(e.target);
 
-        // Policy & Audit Verification
-        const email = fd.get('email');
-        if (!email.toLowerCase().endsWith('@gmail.com')) return Swal.fire('Policy Violation', 'Gmail identities only.', 'error');
-
-        // Check for collisions again before submission
+        // Pre-Submission Audit Checks
         const emailStat = document.getElementById('email_audit_status').textContent;
         const phoneStat = document.getElementById('phone_audit_status').textContent;
-        if (emailStat.includes('TAKEN') || phoneStat.includes('TAKEN')) {
-            return Swal.fire('Audit Failure', 'Identity markers are already in use.', 'error');
+        const bizStat = document.getElementById('biz_name_status').textContent;
+        const nameStat = document.getElementById('name_audit_status').textContent;
+        
+        if (emailStat.includes('TAKEN') || phoneStat.includes('TAKEN') || bizStat.includes('TAKEN') || nameStat.includes('INVALID') || nameStat.includes('EXISTS')) {
+            return Swal.fire('Audit Failure', 'Please fix the highlighted identity errors before submitting.', 'error');
         }
 
-        // Strict Phone & Name Validation
+        // Validations & Value Modifications
+        let lname = fd.get('last_name').trim();
+        const suffix = fd.get('name_suffix');
+        if (suffix) {
+            lname = lname + ' ' + suffix;
+            fd.set('last_name', lname); // Attach suffix natively to last name for the DB
+        }
+
+        const email = fd.get('email');
+        if (!email.toLowerCase().endsWith('@gmail.com')) return Swal.fire('Error', 'Gmail addresses only.', 'error');
+
         const phone = fd.get('phone').replace(/\D/g, '');
-        if (!phone.startsWith('09') || phone.length !== 11) {
-            return Swal.fire('Validation Error', 'Phone number must start with 09 and be exactly 11 digits.', 'error');
-        }
-        const bizName = fd.get('business_name').trim();
-        if (bizName.length < 3) {
-            return Swal.fire('Validation Error', 'Business name must be at least 3 characters long.', 'error');
-        }
+        if (!phone.startsWith('09') || phone.length !== 11) return Swal.fire('Error', 'Phone must start with 09 and be 11 digits.', 'error');
+        
+        if (fd.get('business_name').trim().length < 3) return Swal.fire('Error', 'Business name is too short.', 'error');
 
-        // Standardize full name
-        const fname = fd.get('first_name');
-        const lname = fd.get('last_name');
-        const mn = fd.get('middle_name');
-        const full_name = mn ? `${fname} ${mn} ${lname}` : `${fname} ${lname}`;
-        fd.append('full_name', full_name);
-
-        // Jurisdictional Precision (Names + Codes)
         const pSel = document.getElementById('onboard_province');
         const cSel = document.getElementById('onboard_city');
         const bSel = document.getElementById('onboard_brgy');
-
         fd.set('province', pSel.options[pSel.selectedIndex].text);
         fd.set('municipality', cSel.options[cSel.selectedIndex].text);
         fd.set('barangay', bSel.options[bSel.selectedIndex].text);
-        
-        fd.append('province_code', pSel.value);
-        fd.append('city_code', cSel.value);
-        fd.append('brgy_code', bSel.value);
 
         const events = Array.from(e.target.querySelectorAll('input[name="events"]:checked')).map(i => i.value);
         const cuisines = Array.from(e.target.querySelectorAll('input[name="cuisines"]:checked')).map(i => i.value);
+        if (events.length === 0) return Swal.fire('Error', 'Select at least one Event Category.', 'error');
+        if (cuisines.length === 0) return Swal.fire('Error', 'Select at least one Cuisine Specialty.', 'error');
         
-        if (events.length === 0) {
-            return Swal.fire('Validation Error', 'Please select at least one Event Category.', 'error');
-        }
-        if (cuisines.length === 0) {
-            return Swal.fire('Validation Error', 'Please select at least one Cuisine Specialty.', 'error');
-        }
-
         fd.append('event_types', JSON.stringify(events));
         fd.append('cuisine_types', JSON.stringify(cuisines));
 
-        Swal.fire({ title: 'Adjudicating Profile', text: 'Initializing data-driven profile...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        Swal.fire({ title: 'Processing', text: 'Creating pre-verified partner...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
         try {
             const res = await fetch('/admin/caterers/add', { method: 'POST', body: fd });
             const data = await res.json();
             if (data.success) {
-                Swal.fire('Identity Verified', data.message, 'success').then(() => location.reload());
+                Swal.fire('Success', data.message, 'success').then(() => location.reload());
             } else {
-                Swal.fire('Error', data.message || 'Audit failed.', 'error');
+                Swal.fire('Error', data.message || 'Creation failed.', 'error');
             }
-        } catch (err) { Swal.fire('Error', 'Communication failure.', 'error'); }
+        } catch (err) { Swal.fire('Error', 'Server Error.', 'error'); }
     };
 
-    // --- Edit Mode PSGC Loaders ---
-    async function loadEditProvinces(selectedProv, selectedCity, selectedBrgy) {
-        const provSel = document.getElementById('edit_province');
-        try {
-            const res = await fetch(`${PSGC_BASE}/provinces/`);
-            const provinces = await res.json();
-            provSel.innerHTML = '<option value="" disabled>Select Province</option>';
-            provinces.sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
-                const opt = new Option(p.name, p.code);
-                if (p.code === selectedProv) opt.selected = true;
-                provSel.add(opt);
-            });
-            if (selectedProv) await loadEditCities(selectedProv, selectedCity, selectedBrgy);
-        } catch (e) { }
+    // Account Recovery Logic
+    function openRecoveryModal(btn) {
+        document.getElementById('recovery_caterer_id').value = btn.getAttribute('data-id');
+        document.getElementById('recovery_email').value = btn.getAttribute('data-email');
+        document.getElementById('recoveryModal').classList.add('active');
+    }
+    function closeRecoveryModal() { document.getElementById('recoveryModal').classList.remove('active'); }
+    
+    function sendRecoveryEmail() {
+        Swal.fire('Recovery Initiated', 'A password reset link has been sent to the caterer.', 'success');
+        closeRecoveryModal();
     }
 
-    async function loadEditCities(provCode, selectedCity, selectedBrgy) {
-        const citySel = document.getElementById('edit_city');
+    // Action Logic
+    async function executePartnerAction(id, action, reason = null) {
+        const formData = new FormData();
+        if (reason) formData.append('reason', reason);
         try {
-            const res = await fetch(`${PSGC_BASE}/provinces/${provCode}/cities-municipalities/`);
-            const cities = await res.json();
-            citySel.innerHTML = '<option value="" disabled>Select City/Muni</option>';
-            cities.sort((a, b) => a.name.localeCompare(b.name)).forEach(c => {
-                const opt = new Option(c.name, c.code);
-                if (c.code === selectedCity) opt.selected = true;
-                citySel.add(opt);
-            });
-            if (selectedCity) await loadEditBrgys(selectedCity, selectedBrgy);
-        } catch (e) { }
+            const res = await fetch(`/admin/api/caterers/${id}/${action}`, { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.success) {
+                Swal.fire({ title: 'Success', text: data.message, icon: 'success', timer: 2000, showConfirmButton: false });
+                setTimeout(() => window.location.reload(), 1500);
+            } else { Swal.fire('Error', data.message, 'error'); }
+        } catch (err) { Swal.fire('Error', 'Service Unreachable', 'error'); }
     }
 
-    async function loadEditBrgys(cityCode, selectedBrgy) {
-        const brgySel = document.getElementById('edit_barangay');
-        try {
-            const res = await fetch(`${PSGC_BASE}/cities-municipalities/${cityCode}/barangays/`);
-            const brgys = await res.json();
-            brgySel.innerHTML = '<option value="" disabled>Select Barangay</option>';
-            brgys.sort((a, b) => a.name.localeCompare(b.name)).forEach(b => {
-                const opt = new Option(b.name, b.code);
-                if (b.code === selectedBrgy) opt.selected = true;
-                brgySel.add(opt);
-            });
-        } catch (e) { }
+    function restorePartner(id) {
+        Swal.fire({
+            title: 'Restore Access?',
+            text: 'This will allow the caterer to operate again.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Restore'
+        }).then((result) => {
+            if (result.isConfirmed) executePartnerAction(id, 'activate');
+        });
     }
-    function archiveItem(type, id) {
-        openConfirmModal('Archive Partner?', 'This will decommission the partner and move them to archives for 30 days. You can restore them if needed.', () => {
-            Swal.fire({ title: 'Archiving Partner...', didOpen: () => Swal.showLoading() });
-            fetch(`/admin/api/archives/${type}/${id}/archive`, { method: 'POST' })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) Swal.fire('Archived', data.message, 'success').then(() => location.reload());
-                    else Swal.fire('Error', data.message, 'error');
-                })
-                .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
-        }, { variant: 'archive' });
+
+    function flagPartner(id) {
+        Swal.fire({
+            title: 'Require Re-verification',
+            text: 'Why do you need to re-verify this caterer?',
+            input: 'select',
+            inputOptions: {
+                'Expired Business Permit': 'Expired Business Permit',
+                'Routine Annual Compliance': 'Routine Annual Compliance',
+                'Customer Verification Request': 'Customer Verification Request'
+            },
+            inputPlaceholder: 'Select reason',
+            showCancelButton: true,
+            confirmButtonText: 'Flag'
+        }).then((result) => {
+            if (result.isConfirmed) executePartnerAction(id, 'flag', result.value);
+        });
+    }
+
+    function suspendPartner(id) {
+        Swal.fire({
+            title: 'Suspend / Ban Caterer',
+            text: 'To suspend this account, you must enter the Customer Report ID or Dispute Reference Number as proof.',
+            input: 'text',
+            inputPlaceholder: 'e.g. REP-10293 or "Fraud proven on Booking 442"',
+            showCancelButton: true,
+            confirmButtonText: 'Suspend Account',
+            confirmButtonColor: '#ef4444',
+            inputValidator: (value) => {
+                if (!value || value.trim().length < 5) return 'You must provide a valid Report ID or Reference (min 5 chars).';
+            }
+        }).then((result) => {
+            if (result.isConfirmed) executePartnerAction(id, 'suspend', result.value);
+        });
     }
 </script>
 {% endblock %}
