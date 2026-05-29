@@ -211,15 +211,20 @@
 {% set urgent_events = [] %}
 
 {% for b in bookings %}
-    {% set caterer_action_needed = b.status in ['pending', 'awaiting_caterer'] or b.payment_status in ['proof_submitted', 'balance_proof_submitted'] %}
+    {% set is_early_stage = b.status in ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment'] %}
+    {% set caterer_action_needed = b.status in ['pending', 'awaiting_caterer'] or (b.payment_status == 'proof_submitted' and is_early_stage) %}
+    {% if b.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
+        {% set caterer_action_needed = False %}
+    {% endif %}
     {% set is_urgent = (b.event_date - today).days <= 2 and caterer_action_needed %}
     {% if is_urgent %}
         {% set _ = urgent_events.append(b) %}
     {% else %}
-        {% if b.payment_status in ['proof_submitted', 'balance_proof_submitted'] %}
+        {% set is_early_stage = b.status in ['draft', 'pending', 'pending_quotation', 'awaiting_caterer', 'awaiting_payment', 'pending_payment'] %}
+        {% if b.payment_status == 'balance_proof_submitted' or (b.payment_status == 'proof_submitted' and is_early_stage) %}
             {% set _ = payments_to_verify.append(b) %}
         {% endif %}
-        {% if b.status in ['pending_quotation', 'awaiting_caterer'] %}
+        {% if b.status in ['awaiting_caterer'] %}
             {% set _ = contracts_to_sign.append(b) %}
         {% endif %}
     {% endif %}
@@ -375,7 +380,11 @@
             </thead>
             <tbody>
                 {% for booking in bookings %}
-                {% set caterer_action_needed = booking.status in ['pending', 'awaiting_caterer'] or booking.payment_status in ['proof_submitted', 'balance_proof_submitted'] %}
+                {% set is_early_stage = booking.status in ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment'] %}
+                {% set caterer_action_needed = booking.status in ['pending', 'awaiting_caterer'] or (booking.payment_status == 'proof_submitted' and is_early_stage) %}
+                {% if booking.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
+                    {% set caterer_action_needed = False %}
+                {% endif %}
                 {% set row_is_urgent = (booking.event_date - today).days <= 2 and caterer_action_needed %}
                 <tr id="booking-row-{{ booking.id }}" class="booking-row-item {% if row_is_urgent %}urgent-booking-row{% endif %}" 
                     data-status="{{ booking.status }}" 
@@ -436,7 +445,11 @@
                     <!-- DATE -->
                     <td class="booking-cell-first" style="padding: 1.5rem;">
                         <div class="flex-column">
-                            {% set caterer_action_needed_cell = booking.status in ['pending', 'awaiting_caterer'] or booking.payment_status in ['proof_submitted', 'balance_proof_submitted'] %}
+                            {% set is_early_stage = booking.status in ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment'] %}
+                            {% set caterer_action_needed_cell = booking.status in ['pending', 'awaiting_caterer'] or (booking.payment_status == 'proof_submitted' and is_early_stage) %}
+                            {% if booking.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
+                                {% set caterer_action_needed_cell = False %}
+                            {% endif %}
                             {% set cell_is_urgent = (booking.event_date - today).days <= 2 and caterer_action_needed_cell %}
                             <div class="event-date-main">
                                 {% if cell_is_urgent %}
@@ -519,7 +532,10 @@
                                 data-event-date="{{ booking.event_date.isoformat() }}"
                                 data-event-type="{{ booking.event_type or 'N/A' }}"
                                 data-venue="{{ booking.venue_address or 'TBD' }}"
-                                data-requests="{{ booking.special_requests or 'None' }}" {% if booking.user %}
+                                data-requests="{{ booking.special_requests or 'None' }}" 
+                                data-payment-ref="{{ booking.payment_reference or '' }}"
+                                data-caterer-notes="{{ booking.caterer_notes or '' }}"
+                                {% if booking.user %}
                                 data-customer="{{ booking.user.first_name }} {{ booking.user.last_name }}"
                                 data-email="{{ booking.user.email }}" {% else %} data-customer="Walk-in Customer"
                                 data-email="N/A" {% endif %}
@@ -1080,18 +1096,16 @@
                         <span style="font-weight:700; color:#475569;">Total Actual Expenses</span>
                         <span id="totalActualExpenseDisplay" style="font-size:1.25rem; font-weight:800; color:#ef4444;">₱0.00</span>
                     </div>
+                    
+                    <!-- Expense Action Buttons -->
+                    <div style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem; flex-wrap: wrap;">
+                        <button type="button" onclick="bk_closeBookingDetailModal()" class="btn-secondary-pro" style="min-width: 100px;">Close Details</button>
+                        <button type="submit" form="expenseTrackerForm" id="saveExpenseBtn" class="btn-primary-pro" style="padding: 0 1.5rem; height: 44px; display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-save"></i> Save Expenses
+                        </button>
+                    </div>
                 </form>
             </div>
-        </div>
-
-        <!-- Footer -->
-        <div class="occ-modal-footer" style="padding: 1.25rem 2rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; align-items: center; gap: 1rem; flex-wrap: wrap;">
-            <div id="bookingModalActions" style="display: none; margin-right: auto; flex-wrap: wrap; gap: 0.5rem;"></div>
-            
-            <button type="submit" form="expenseTrackerForm" id="saveExpenseBtn" class="btn-primary" style="display: none; padding: 0.6rem 1.25rem; border-radius: 8px; font-weight: 700; font-family: 'Poppins', sans-serif; align-items: center; gap: 0.5rem; background: #1e293b; color: white; border: none; cursor: pointer;">
-                Save Expenses
-            </button>
-            <button onclick="bk_closeBookingDetailModal()" class="btn-outline" style="border-radius: 8px; font-weight: 700; padding: 0.6rem 1.25rem; border: 1px solid var(--primary-color, #f97316); color: var(--primary-color, #f97316);">Close Details</button>
         </div>
     </div>
 </div>

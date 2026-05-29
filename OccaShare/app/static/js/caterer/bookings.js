@@ -260,8 +260,9 @@ async function refreshActionAlerts() {
             const payStatus = row.dataset.paymentStatus || '';
             const isUrgent = row.dataset.isUrgent === 'true';
 
-            if (['proof_submitted', 'balance_proof_submitted'].includes(payStatus)) payAlerts++;
-            if (['pending_quotation', 'awaiting_caterer'].includes(rawStatus)) contractAlerts++;
+            const isEarlyStage = ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment'].includes(rawStatus);
+            if (payStatus === 'balance_proof_submitted' || (payStatus === 'proof_submitted' && isEarlyStage)) payAlerts++;
+            if (['awaiting_caterer'].includes(rawStatus)) contractAlerts++;
             if (isUrgent && !['completed', 'cancelled'].includes(rawStatus)) urgentAlerts++;
         });
 
@@ -909,6 +910,15 @@ function showBookingDetails(btn) {
 
     document.getElementById('modalBookedOn').innerText = data.bookedOn;
     document.getElementById('modalPaymentMethod').innerText = `Method: ${data.paymentMethod} (${(data.paymentPlan || 'downpayment').toUpperCase()})`;
+    const payRefEl = document.getElementById('modalPaymentRef');
+    if (payRefEl) {
+        if (data.paymentRef && data.paymentRef.trim() !== '') {
+            payRefEl.innerText = `Ref: ${data.paymentRef}`;
+            payRefEl.style.display = 'block';
+        } else {
+            payRefEl.style.display = 'none';
+        }
+    }
     document.getElementById('modalTotalAmount').innerText = data.amount;
     document.getElementById('modalGuestCount').innerText = data.guestCount + ' Guests';
     // Handle Due Date section display logic

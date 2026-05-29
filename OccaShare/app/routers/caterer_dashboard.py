@@ -770,9 +770,18 @@ async def check_urgent_bookings(
     
     for b in profile.bookings:
         caterer_action_needed = False
-        if b.status == 'pending':
+        
+        is_early_stage = b.status in ['draft', 'pending', 'awaiting_caterer', 'awaiting_payment', 'pending_payment']
+        
+        if b.status in ['pending', 'awaiting_caterer']:
             caterer_action_needed = True
-        if b.payment_status in ['proof_submitted', 'balance_proof_submitted']:
+            
+        # If waiting for customer to re-upload, it is NOT urgent for the caterer
+        if b.payment_status in ['reupload_requested', 'balance_reupload_requested']:
+            caterer_action_needed = False
+            
+        # If customer submitted initial proof and it's still in early stages, caterer MUST act
+        if b.payment_status == 'proof_submitted' and is_early_stage:
             caterer_action_needed = True
             
         if not b.is_archived and caterer_action_needed and b.event_date:
