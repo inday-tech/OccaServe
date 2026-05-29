@@ -85,82 +85,82 @@
 </div>
 
 <div class="pay-dashboard-container" style="padding: 0 5px;">
-    <!-- Withdraw Panel (Main Payout Tool) -->
-    <div class="pay-withdraw-panel">
+    <!-- Platform Dues Panel -->
+    <div class="pay-withdraw-panel" style="background: linear-gradient(135deg, #7f1d1d, #991b1b) !important;">
         <div class="pay-withdraw-info">
-            <h2 style="color: white; margin-bottom: 5px;">Ready for Payout</h2>
-            <p style="color: rgba(255,255,255,0.85); font-size: 0.9rem;">These are your earnings ready to be transferred to your selected bank account or e-wallet.</p>
+            <h2 style="color: white; margin-bottom: 5px;">Outstanding Platform Dues</h2>
+            <p style="color: rgba(255,255,255,0.85); font-size: 0.9rem;">This is your accumulated commission owed to the platform for successful bookings.</p>
         </div>
-        <div class="pay-withdraw-action">
+        <div class="pay-withdraw-action" style="background: rgba(0, 0, 0, 0.2) !important;">
             <div class="pay-withdrawable-amount">
-                <div class="label" style="font-size: 0.7rem; color: rgba(255,255,255,0.6); text-transform: uppercase; font-weight: 700;">Available Funds</div>
-                <div class="value" style="font-size: 2rem; font-weight: 900; color: white;">₱{{ "{:,.2f}".format(ready_total) }}</div>
+                <div class="label" style="font-size: 0.7rem; color: rgba(255,255,255,0.6); text-transform: uppercase; font-weight: 700;">Amount Due</div>
+                <div class="value" style="font-size: 2rem; font-weight: 900; color: white;">₱{{ "{:,.2f}".format(outstanding_balance) }}</div>
             </div>
-            <button class="btn-withdraw" id="btnWithdraw" {% if ready_total <= 0 %}disabled{% endif %} onclick="openPayoutModal()">
-                <i class="fas fa-wallet"></i> Withdraw Funds
+            <button class="btn-withdraw" id="btnSettleDues" {% if outstanding_balance <= 0 %}disabled{% endif %} onclick="openSettleModal()" style="color: #991b1b !important;">
+                <i class="fas fa-file-invoice-dollar"></i> Settle Dues
             </button>
         </div>
     </div>
 
-    <!-- Payout Process Intelligence Guide -->
+    <!-- Post-Paid Process Guide -->
     <div class="pay-process-guide" style="margin-bottom: 2.5rem; background: white; border-radius: 20px; border: 1px solid var(--color-neutral-100); padding: 1.5rem; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; box-shadow: 0 4px 20px rgba(0,0,0,0.03);">
         <div class="guide-step" style="display: flex; gap: 1rem;">
-            <div style="width: 40px; height: 40px; background: rgba(var(--primary-color-rgb), 0.1); color: var(--primary-color); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><i class="fas fa-lock"></i></div>
+            <div style="width: 40px; height: 40px; background: rgba(var(--primary-color-rgb), 0.1); color: var(--primary-color); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><i class="fas fa-hand-holding-usd"></i></div>
             <div>
-                <h4 style="margin: 0 0 4px 0; font-size: 0.9rem; font-weight: 800; color: var(--color-neutral-900);">1. Funds in Escrow</h4>
-                <p style="margin: 0; font-size: 0.75rem; color: var(--color-neutral-500); line-height: 1.4;">Payments are securely held while your event is ongoing or pending completion.</p>
+                <h4 style="margin: 0 0 4px 0; font-size: 0.9rem; font-weight: 800; color: var(--color-neutral-900);">1. Receive 100% Payment</h4>
+                <p style="margin: 0; font-size: 0.75rem; color: var(--color-neutral-500); line-height: 1.4;">Customers pay directly to your GCash/Bank account. The platform holds ₱0.00.</p>
             </div>
         </div>
         <div class="guide-step" style="display: flex; gap: 1rem;">
-            <div style="width: 40px; height: 40px; background: #ecfdf5; color: #10b981; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><i class="fas fa-check-double"></i></div>
+            <div style="width: 40px; height: 40px; background: #fffbeb; color: #d97706; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><i class="fas fa-chart-line"></i></div>
             <div>
-                <h4 style="margin: 0 0 4px 0; font-size: 0.9rem; font-weight: 800; color: var(--color-neutral-900);">2. Released to 'Ready'</h4>
-                <p style="margin: 0; font-size: 0.75rem; color: var(--color-neutral-500); line-height: 1.4;">Once the event is marked as 'Completed', funds move to your withdrawable balance.</p>
+                <h4 style="margin: 0 0 4px 0; font-size: 0.9rem; font-weight: 800; color: var(--color-neutral-900);">2. Accumulate Commissions</h4>
+                <p style="margin: 0; font-size: 0.75rem; color: var(--color-neutral-500); line-height: 1.4;">When a booking is marked 'Completed', the platform fee is added to your Dues.</p>
             </div>
         </div>
         <div class="guide-step" style="display: flex; gap: 1rem;">
-            <div style="width: 40px; height: 40px; background: #fdf2f8; color: #db2777; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><i class="fas fa-paper-plane"></i></div>
+            <div style="width: 40px; height: 40px; background: #ecfdf5; color: #10b981; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><i class="fas fa-qrcode"></i></div>
             <div>
-                <h4 style="margin: 0 0 4px 0; font-size: 0.9rem; font-weight: 800; color: var(--color-neutral-900);">3. Request Withdrawal</h4>
-                <p style="margin: 0; font-size: 0.75rem; color: var(--color-neutral-500); line-height: 1.4;">Click 'Withdraw Funds' to request a transfer. Processing typically takes 1-3 business days.</p>
+                <h4 style="margin: 0 0 4px 0; font-size: 0.9rem; font-weight: 800; color: var(--color-neutral-900);">3. Settle Platform Dues</h4>
+                <p style="margin: 0; font-size: 0.75rem; color: var(--color-neutral-500); line-height: 1.4;">Click 'Settle Dues' to pay your outstanding balance to the Admin via GCash.</p>
             </div>
         </div>
     </div>
 
     <div class="pay-stats-grid">
-    <div class="pay-stat-card pay-stat-released">
-        <div class="pay-stat-icon pay-icon-green"><i class="fas fa-coins"></i></div>
-        <div class="pay-stat-info">
-            <div class="pay-stat-label">Total Earnings</div>
-            <div class="pay-stat-value">₱{{ "{:,.2f}".format(released_total) }}</div>
-            <div class="pay-stat-hint">Net funds already collected</div>
+        <div class="pay-stat-card pay-stat-released">
+            <div class="pay-stat-icon pay-icon-green"><i class="fas fa-coins"></i></div>
+            <div class="pay-stat-info">
+                <div class="pay-stat-label">Lifetime Revenue</div>
+                <div class="pay-stat-value">₱{{ "{:,.2f}".format(lifetime_revenue) }}</div>
+                <div class="pay-stat-hint">Gross sales on OccaServe</div>
+            </div>
+        </div>
+        <div class="pay-stat-card pay-stat-escrow">
+            <div class="pay-stat-icon pay-icon-amber"><i class="fas fa-file-invoice-dollar"></i></div>
+            <div class="pay-stat-info">
+                <div class="pay-stat-label">Commissions Paid</div>
+                <div class="pay-stat-value">₱{{ "{:,.2f}".format(total_commission_paid) }}</div>
+                <div class="pay-stat-hint">Total dues settled to platform</div>
+            </div>
+        </div>
+        <div class="pay-stat-card pay-stat-active">
+            <div class="pay-stat-icon pay-icon-gray"><i class="fas fa-calendar-check"></i></div>
+            <div class="pay-stat-info">
+                <div class="pay-stat-label">Active Bookings</div>
+                <div class="pay-stat-value">{{ active_count }}</div>
+                <div class="pay-stat-hint">Ongoing event contracts</div>
+            </div>
+        </div>
+        <div class="pay-stat-card pay-stat-payout">
+            <div class="pay-stat-icon pay-icon-purple"><i class="fas fa-clock"></i></div>
+            <div class="pay-stat-info">
+                <div class="pay-stat-label">Billing Cycle</div>
+                <div class="pay-stat-value" style="font-size: 1rem; color: #475569;">End of Month</div>
+                <div class="pay-stat-hint">Platform fee settlement</div>
+            </div>
         </div>
     </div>
-    <div class="pay-stat-card pay-stat-escrow">
-        <div class="pay-stat-icon pay-icon-amber"><i class="fas fa-shield-alt"></i></div>
-        <div class="pay-stat-info">
-            <div class="pay-stat-label">Funds in Escrow</div>
-            <div class="pay-stat-value">₱{{ "{:,.2f}".format(escrow_total) }}</div>
-            <div class="pay-stat-hint">Held until event completion</div>
-        </div>
-    </div>
-    <div class="pay-stat-card pay-stat-active">
-        <div class="pay-stat-icon pay-icon-gray"><i class="fas fa-calendar-check"></i></div>
-        <div class="pay-stat-info">
-            <div class="pay-stat-label">Active Bookings</div>
-            <div class="pay-stat-value">{{ active_count }}</div>
-            <div class="pay-stat-hint">Ongoing event contracts</div>
-        </div>
-    </div>
-    <div class="pay-stat-card pay-stat-payout">
-        <div class="pay-stat-icon pay-icon-purple"><i class="fas fa-history"></i></div>
-        <div class="pay-stat-info">
-            <div class="pay-stat-label">Next Payout Cycle</div>
-            <div class="pay-stat-value" style="font-size: 1rem; color: #475569;">Every Tuesday</div>
-            <div class="pay-stat-hint">Standard processing schedule</div>
-        </div>
-    </div>
-</div>
 
 <!-- Main Table Card -->
 <div class="pay-card">
@@ -285,49 +285,51 @@
     </div>
 </div>
 
-<!-- Withdrawal History Card -->
+<!-- Billing & Statements Card -->
 <div class="pay-card" style="margin-top: 2.5rem;">
     <div class="pay-section-header">
         <div class="pay-header-left">
-            <i class="fas fa-money-bill-transfer" style="color: var(--secondary-color);"></i>
-            <h3>Withdrawal History</h3>
+            <i class="fas fa-file-invoice" style="color: var(--secondary-color);"></i>
+            <h3>Billing & Statements</h3>
         </div>
         <div class="pay-toolbar-actions">
-            <span style="font-size: 0.75rem; color: var(--color-neutral-400); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Your payout logs</span>
+            <span style="font-size: 0.75rem; color: var(--color-neutral-400); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Commission Invoices</span>
         </div>
     </div>
 
-    {% if payouts %}
+    {% if invoices %}
     <div class="pay-table-scroll">
         <table class="pay-table">
             <thead>
                 <tr>
-                    <th>Payout ID</th>
+                    <th>Invoice ID</th>
+                    <th>Billing Period</th>
                     <th>Amount</th>
-                    <th>Requested On</th>
+                    <th>Due Date</th>
                     <th>Status</th>
-                    <th>Reference</th>
-                    <th class="pay-th-right">Notes</th>
+                    <th class="pay-th-right">Receipt</th>
                 </tr>
             </thead>
             <tbody>
-                {% for p in payouts %}
+                {% for inv in invoices %}
                 <tr>
-                    <td><span class="pay-id" style="background: var(--color-neutral-100); color: var(--color-neutral-700);">{{ p.payout_reference or 'TRX-' ~ "%04d"|format(p.id) }}</span></td>
-                    <td><span class="pay-amount" style="font-weight: 800; color: var(--color-neutral-900);">₱{{ "{:,.2f}".format(p.total_amount or p.amount) }}</span></td>
-                    <td><span class="pay-date">{{ p.requested_at.strftime('%b %d, %Y %H:%M') if p.requested_at else p.created_at.strftime('%b %d, %Y') }}</span></td>
+                    <td><span class="pay-id" style="background: var(--color-neutral-100); color: var(--color-neutral-700);">INV-{{ "%04d"|format(inv.id) }}</span></td>
+                    <td><span style="font-weight: 700; color: var(--color-neutral-800);">{{ inv.billing_period }}</span></td>
+                    <td><span class="pay-amount" style="font-weight: 800; color: var(--color-neutral-900);">₱{{ "{:,.2f}".format(inv.amount) }}</span></td>
+                    <td><span class="pay-date">{{ inv.due_date.strftime('%b %d, %Y') if inv.due_date else '---' }}</span></td>
                     <td>
-                        {% if p.status == 'completed' %}
-                            <span class="pay-status-badge" style="background: #ecfdf5; color: #059669; border-color: #10b981;">Completed</span>
-                        {% elif p.status == 'processing' %}
-                            <span class="pay-status-badge" style="background: #eff6ff; color: #2563eb; border-color: #3b82f6;">Processing</span>
+                        {% if inv.status == 'paid' %}
+                            <span class="pay-status-badge" style="background: #ecfdf5; color: #059669; border-color: #10b981;">Paid</span>
                         {% else %}
                             <span class="pay-status-badge" style="background: #fffbeb; color: #d97706; border-color: #f59e0b;">Pending</span>
                         {% endif %}
                     </td>
-                    <td><span style="font-family: monospace; font-size: 0.8rem; color: var(--color-neutral-500);">{{ p.reference_number or '---' }}</span></td>
                     <td class="pay-th-right">
-                        <span style="font-size: 0.75rem; color: var(--color-neutral-400); font-style: italic;">{{ p.notes or 'No additional notes' }}</span>
+                        {% if inv.payment_proof_url %}
+                            <button class="btn-sm-outline" onclick="showProof('{{ inv.payment_proof_url }}', 'Invoice Proof')">View Receipt</button>
+                        {% else %}
+                            <span style="font-size: 0.75rem; color: var(--color-neutral-400); font-style: italic;">No receipt uploaded</span>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
@@ -337,10 +339,10 @@
     {% else %}
     <div style="text-align: center; padding: 4rem 2rem;">
         <div style="width: 64px; height: 64px; background: var(--color-neutral-50); color: var(--color-neutral-300); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
-            <i class="fas fa-receipt fa-2x"></i>
+            <i class="fas fa-file-invoice fa-2x"></i>
         </div>
-        <h4 style="margin: 0; color: var(--color-neutral-600); font-weight: 700;">No withdrawals yet</h4>
-        <p style="margin: 4px 0 0; font-size: 0.85rem; color: var(--color-neutral-400);">Your requested payouts will appear here once you initiate them.</p>
+        <h4 style="margin: 0; color: var(--color-neutral-600); font-weight: 700;">No invoices yet</h4>
+        <p style="margin: 4px 0 0; font-size: 0.85rem; color: var(--color-neutral-400);">Your platform commission statements will appear here.</p>
     </div>
     {% endif %}
 </div>
@@ -367,57 +369,46 @@
     </div>
 </div>
 
-<!-- Payout Modal -->
-<div id="payoutModal" class="occ-modal-overlay">
+<!-- Settle Dues Modal -->
+<div id="settleModal" class="occ-modal-overlay">
     <div class="occ-modal-box sz-md">
         <div class="occ-modal-header">
-            <div class="occ-modal-header-icon" style="background: #eef2ff; color: #6366f1;">
-                <i class="fas fa-money-check-alt"></i>
+            <div class="occ-modal-header-icon" style="background: #fef2f2; color: #dc2626;">
+                <i class="fas fa-file-invoice-dollar"></i>
             </div>
             <div>
-                <h3 class="occ-modal-title">Withdrawal Request</h3>
-                <div class="occ-modal-subtitle">Transfer your earnings to your bank or e-wallet.</div>
+                <h3 class="occ-modal-title">Settle Platform Dues</h3>
+                <div class="occ-modal-subtitle">Upload proof of GCash transfer to the Admin.</div>
             </div>
-            <button onclick="closePayoutModal()" class="occ-modal-close"><i class="fas fa-times"></i></button>
+            <button onclick="closeSettleModal()" class="occ-modal-close"><i class="fas fa-times"></i></button>
         </div>
         <div class="occ-modal-body">
             <div class="pay-details-summary" style="margin-bottom: 1.5rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                    <span class="pay-details-label-sm" style="margin-bottom: 0;">Amount to Transfer:</span>
-                    <span class="pay-details-amount-lg" style="font-size: 1.25rem;">₱{{ "{:,.2f}".format(ready_total) }}</span>
+                    <span class="pay-details-label-sm" style="margin-bottom: 0;">Total Amount Due:</span>
+                    <span class="pay-details-amount-lg" style="font-size: 1.25rem; color: #991b1b;">₱{{ "{:,.2f}".format(outstanding_balance) }}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid var(--color-neutral-100);">
-                    <span class="pay-details-label-sm" style="margin-bottom: 0;">Payout Method:</span>
-                    <span style="font-weight: 800; font-size: 0.85rem; color: var(--color-neutral-900);">{{ user.caterer_profile.payout_method or 'NOT CONFIGURED' }}</span>
+                    <span class="pay-details-label-sm" style="margin-bottom: 0;">Admin GCash Number:</span>
+                    <span style="font-weight: 800; font-size: 1rem; color: var(--color-neutral-900);">0917-123-4567</span>
                 </div>
             </div>
-
-            {% if not user.caterer_profile.payout_method %}
-            <div class="occ-alert alert-warning" style="margin-bottom: 1.5rem; border-left: 4px solid var(--color-warning-500);">
-                <i class="fas fa-exclamation-triangle" style="font-size: 1.25rem;"></i>
-                <div style="flex: 1;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <strong>Payout Setup Required</strong>
-                        <a href="/caterer/profile" class="btn-link-pro" style="font-size: 0.7rem; color: var(--color-warning-700); text-decoration: underline; font-weight: 800;">
-                            <i class="fas fa-cog"></i> CONFIGURE
-                        </a>
-                    </div>
-                    <div style="font-size: 0.8rem; margin-top: 4px;">Please set up your Payout Method in Profile Settings before requesting a withdrawal.</div>
-                </div>
-            </div>
-            {% endif %}
 
             <div class="pay-form-group">
-                <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: var(--color-neutral-700);">Confirmation</label>
-                <p style="font-size: 0.85rem; color: var(--color-neutral-500);">Are you sure you want to request a withdrawal for the available amount?</p>
+                <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: var(--color-neutral-700);">Billing Period</label>
+                <input type="text" id="settlePeriod" class="pay-input" placeholder="e.g. May 2026" required style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--color-neutral-200); margin-bottom: 1rem;">
+            </div>
+
+            <div class="pay-form-group">
+                <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: var(--color-neutral-700);">Upload Payment Proof</label>
+                <input type="file" id="settleProofFile" class="pay-input" accept="image/*" required style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--color-neutral-200);">
+                <p style="font-size: 0.75rem; color: var(--color-neutral-500); margin-top: 0.5rem;">Please upload a screenshot of your successful GCash transfer.</p>
             </div>
         </div>
         <div class="occ-modal-footer">
-            <button type="button" class="btn-sm-outline" onclick="closePayoutModal()">Cancel</button>
-            <button type="button" class="btn-primary-pro" id="btnConfirmWithdraw" 
-                {% if ready_total <= 0 or not user.caterer_profile.payout_method %}disabled{% endif %}
-                onclick="submitPayoutRequest()">
-                Confirm Withdrawal
+            <button type="button" class="btn-sm-outline" onclick="closeSettleModal()">Cancel</button>
+            <button type="button" class="btn-primary-pro" id="btnSubmitSettle" onclick="submitSettleDues()" style="background: #991b1b;">
+                Submit Proof of Payment
             </button>
         </div>
     </div>

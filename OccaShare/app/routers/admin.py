@@ -595,166 +595,79 @@ async def manage_payouts(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
-    # 1. Fetch formal Withdrawal Requests (Grouped Payouts)
-    pending_requests = db.query(models.Payout).filter(
-        models.Payout.status == 'pending'
-    ).order_by(models.Payout.requested_at.desc()).all()
+    # Fetch pending invoices
+    pending_invoices = db.query(models.BillingInvoice).filter(
+        models.BillingInvoice.status == 'pending'
+    ).order_by(models.BillingInvoice.created_at.desc()).all()
 
-    # 2. Fetch payout items that are 'ready' but NOT yet linked to a formal request
-    # This allows admin to be proactive if needed
-    ready_items = db.query(models.PayoutItem).filter(
-        models.PayoutItem.status == 'ready',
-        models.PayoutItem.payout_id == None
-    ).order_by(models.PayoutItem.id.desc()).all()
+    # Fetch paid invoices
+    recent_paid = db.query(models.BillingInvoice).filter(
+        models.BillingInvoice.status == 'paid'
+    ).order_by(models.BillingInvoice.created_at.desc()).limit(15).all()
 
-    # 3. Fetch recently completed payouts
-    recent_completed = db.query(models.Payout).filter(
-        models.Payout.status == 'completed'
-    ).order_by(models.Payout.completed_at.desc()).limit(15).all()
-
-    # Calculate metrics
-    pending_request_total = float(sum(p.total_amount for p in pending_requests) or 0.0)
-    ready_funds_total = float(sum(p.amount for p in ready_items) or 0.0)
+    pending_total = float(sum(inv.amount for inv in pending_invoices) or 0.0)
+    paid_total = float(sum(inv.amount for inv in recent_paid) or 0.0)
 
     return templates.TemplateResponse("admin/payouts.html", {
         "request": request,
         "user": user,
-        "pending_requests": pending_requests,
-        "ready_items": ready_items,
-        "recent_completed": recent_completed,
-        "pending_request_total": pending_request_total,
-        "ready_funds_total": ready_funds_total,
+        "pending_invoices": pending_invoices,
+        "recent_paid": recent_paid,
+        "pending_total": pending_total,
+        "paid_total": paid_total,
         "active_page": "payouts"
     })
 
-@router.get("/api/payouts/{payout_id}/audit")
-async def get_payout_audit_details(
-    payout_id: int,
+@router.post("/api/invoices/{invoice_id}/approve")
+async def approve_invoice(
+    invoice_id: int,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
-    payout = db.query(models.Payout).get(payout_id)
-    if not payout:
-        return {"success": False, "message": "Payout not found"}
+    invoice = db.query(models.BillingInvoice).get(invoice_id)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+        
+    invoice.status = "paid"
     
-    items_breakdown = []
-    for item in payout.items:
-        items_breakdown.append({
-            "id": item.id,
-            "booking_id": item.booking_id,
-            "amount": item.amount,
-            "commission": item.commission_amount,
-            "status": item.status,
-            "event_name": item.booking.event_name if item.booking else "Standard Event"
-        })
-    
-    return {
-        "success": True,
-        "payout": {
-            "id": payout.id,
-            "reference": payout.payout_reference,
-            "total": payout.total_amount,
-            "caterer": payout.caterer.business_name,
-            "items": items_breakdown
-        }
-    }
-async def approve_withdrawal_request(
-    payout_id: int,
-    reference: str = Form(...),
-    db: Session = Depends(database.get_db),
-    user: models.User = Depends(admin_only)
-):
-    payout = db.query(models.Payout).get(payout_id)
-    if not payout:
-        raise HTTPException(status_code=404, detail="Withdrawal request not found")
-    
-    # ─── PANEL-PROOF GOVERNANCE CHECKS ───
-    # 1. KYC Integrity Check
-    if not payout.caterer.is_verified:
-        return RedirectResponse(
-            url=f"/admin/payouts?error_msg=Caterer+{payout.caterer.business_name}+is+NOT+KYC+Verified.+Settlement+Blocked.", 
-            status_code=303
-        )
-
-    # 2. Update Payout Status & Reference
-    payout.status = "completed"
-    payout.completed_at = datetime.now()
-    payout.reference_number = reference # Secure storage of Bank/GCash Ref
-    payout.admin_notes = f"Settled by {user.first_name} {user.last_name}."
-    
-    # 3. Update all linked items to 'released'
-    for item in payout.items:
-        item.status = "released"
-    
-    # 4. Create Financial Audit Log
-    audit_entry = models.AuditLog(
+    # Audit Log
+    audit = models.AuditLog(
         user_id=user.id,
-        action="FINANCIAL_SETTLEMENT",
-        old_status="pending",
-        new_status="completed",
-        notes=f"Payout #{payout.payout_reference} settled. Ref: {reference}. Amount: ₱{payout.total_amount:,.2f}"
+        action="INVOICE_APPROVED",
+        notes=f"Admin {user.first_name} approved settlement for Invoice ID {invoice_id}. Amount: ₱{invoice.amount:,.2f}"
     )
-    db.add(audit_entry)
-    
+    db.add(audit)
     db.commit()
-
-    # 5. Notify Caterer
-    from ..services.notification import NotificationService
     
-    asyncio.create_task(NotificationService.notify_payout_completed(payout.id, db))
+    return RedirectResponse(url="/admin/payouts?success_msg=Invoice+settlement+approved.", status_code=303)
 
-    return RedirectResponse(url="/admin/payouts?success_msg=Withdrawal+request+settled+and+verified.", status_code=303)
-
-@router.post("/payouts/{payout_id}/reject")
-async def reject_withdrawal_request(
-    payout_id: int,
+@router.post("/api/invoices/{invoice_id}/reject")
+async def reject_invoice(
+    invoice_id: int,
     reason: str = Form(...),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
-    payout = db.query(models.Payout).get(payout_id)
-    if not payout:
-        raise HTTPException(status_code=404, detail="Withdrawal request not found")
+    invoice = db.query(models.BillingInvoice).get(invoice_id)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+        
+    invoice.status = "rejected"
     
-    # 1. Update Status to Rejected
-    payout.status = "rejected"
-    payout.admin_notes = f"Rejected by {user.first_name}. Reason: {reason}"
-    
-    # 2. Release items back to 'ready' status so they can be requested again
-    for item in payout.items:
-        item.status = "ready"
-        item.payout_id = None # Unlink from this rejected payout
-    
-    # 3. Create Audit Log
-    audit_entry = models.AuditLog(
+    # Return the amount back to caterer's outstanding balance
+    caterer = invoice.caterer
+    if caterer:
+        caterer.outstanding_balance = float(caterer.outstanding_balance or 0.0) + float(invoice.amount)
+        
+    audit = models.AuditLog(
         user_id=user.id,
-        action="FINANCIAL_REJECTION",
-        old_status="pending",
-        new_status="rejected",
-        notes=f"Payout #{payout.payout_reference} rejected. Reason: {reason}"
+        action="INVOICE_REJECTED",
+        notes=f"Admin {user.first_name} rejected settlement for Invoice ID {invoice_id}. Reason: {reason}"
     )
-    db.add(audit_entry)
-    
+    db.add(audit)
     db.commit()
-
-    # 4. Notify Caterer (Optional: You can add a specific notification for rejection)
     
-    return RedirectResponse(url="/admin/payouts?success_msg=Withdrawal+request+rejected+successfully", status_code=303)
-
-@router.post("/payouts/items/{item_id}/release")
-async def release_individual_item(
-    item_id: int,
-    reference: str = Form(...),
-    db: Session = Depends(database.get_db),
-    user: models.User = Depends(admin_only)
-):
-    item = db.query(models.PayoutItem).get(item_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Payout item not found")
-    
-    item.status = "released"
-    db.commit()
-    return RedirectResponse(url="/admin/payouts?success_msg=Individual+payout+item+released", status_code=303)
+    return RedirectResponse(url="/admin/payouts?success_msg=Invoice+settlement+rejected.", status_code=303)
 
 
 @router.get("/settings", response_class=HTMLResponse)

@@ -157,6 +157,10 @@ class CatererProfile(Base):
     deactivation_reason = Column(Text, nullable=True)
     deactivated_at = Column(DateTime(timezone=True), nullable=True)
     
+    # NEW: Billing and Commission
+    outstanding_balance = Column(Float, default=0.0)
+    commission_rate = Column(Float, default=0.05) # 5% default commission
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User", back_populates="caterer_profile")
@@ -357,7 +361,9 @@ class Booking(Base):
     booking_source = Column(String, default="OccaServe") # OccaServe, Facebook, Walk-in, Other
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-
+    
+    commission_calculated = Column(Boolean, default=False)
+    
     expires_at = Column(DateTime(timezone=True), nullable=True)
     balance_due_date = Column(DateTime(timezone=True), nullable=True) 
     payment_plan = Column(String, default='downpayment') # 'downpayment' or 'full'
@@ -746,6 +752,20 @@ class BookingExpense(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     booking = relationship("Booking", back_populates="expenses")
+
+class BillingInvoice(Base):
+    __tablename__ = "billing_invoices"
+
+    id = Column(Integer, primary_key=True, index=True)
+    caterer_id = Column(Integer, ForeignKey("caterer_profiles.id"))
+    billing_period = Column(String) # e.g., "May 2026"
+    amount = Column(Float, default=0.0)
+    status = Column(String, default="pending") # pending, paid
+    due_date = Column(Date, nullable=True)
+    payment_proof_url = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    caterer = relationship("CatererProfile", backref="invoices")
 
 class BusinessExpense(Base):
     __tablename__ = "business_expenses"

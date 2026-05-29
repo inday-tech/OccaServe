@@ -621,36 +621,46 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Payout Modal Logic
-    window.openPayoutModal = function() {
-        window.openModal('payoutModal');
+    // Settle Dues Modal Logic
+    window.openSettleModal = function() {
+        window.openModal('settleModal');
     };
 
-    window.closePayoutModal = function() {
-        window.closeModal('payoutModal');
+    window.closeSettleModal = function() {
+        window.closeModal('settleModal');
     };
 
-    window.submitPayoutRequest = async function() {
-        const btn = document.getElementById('btnConfirmWithdraw');
+    window.submitSettleDues = async function() {
+        const btn = document.getElementById('btnSubmitSettle');
         const originalHtml = btn.innerHTML;
+        const period = document.getElementById('settlePeriod').value;
+        const proofFile = document.getElementById('settleProofFile').files[0];
+
+        if (!period || !proofFile) {
+            window.showError("Please provide a billing period and upload a payment proof.", "Missing Details");
+            return;
+        }
         
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
         
         try {
-            const response = await fetch('/caterer/api/payments/request-payout', {
+            const formData = new FormData();
+            formData.append("billing_period", period);
+            formData.append("proof_file", proofFile);
+
+            const response = await fetch('/caterer/api/payments/settle-dues', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                body: formData
             });
             const data = await response.json();
             
             if (response.ok && data.status === 'success') {
-                window.showSuccess("Payout request submitted successfully! Funds will be verified within 24-48 hours.", "Withdrawal Requested");
-                closePayoutModal();
-                // Refresh data
+                window.showSuccess("Proof of payment submitted successfully! The admin will verify it shortly.", "Settlement Requested");
+                closeSettleModal();
                 setTimeout(() => window.location.reload(), 2000);
             } else {
-                throw new Error(data.detail || "Unable to process withdrawal at this time.");
+                throw new Error(data.detail || "Unable to submit settlement at this time.");
             }
         } catch (err) {
             console.error(err);

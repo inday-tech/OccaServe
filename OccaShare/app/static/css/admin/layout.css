@@ -100,15 +100,6 @@ html, body {
     font-size: 0.7rem; transition: all 0.3s ease;
     z-index: 10;
 }
-@media (max-width: 1024px) {
-    .sidebar-collapse-btn {
-        right: -14px; /* Peeking out or accessible when closed */
-        background: var(--primary-color);
-        color: #fff;
-        opacity: 1 !important;
-        visibility: visible !important;
-    }
-}
 .sidebar-collapse-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
 
 /* In collapsed state, move button back to center */
@@ -551,7 +542,7 @@ html, body {
     .admin-sidebar {
         transform: translateX(-100%);
         width: var(--sidebar-width) !important;
-        overflow: visible !important;
+        overflow: hidden !important;
     }
     .admin-sidebar.active { transform: translateX(0); box-shadow: 20px 0 50px rgba(0,0,0,0.3); }
     .admin-main-wrapper { margin-left: 0 !important; }
@@ -560,25 +551,23 @@ html, body {
     
     /* MOBILE ARROW TOGGLE (sidebar-collapse-btn) */
     .sidebar-collapse-btn {
-        right: -34px !important; /* Prominent peeking */
-        top: 20px !important;
-        transform: translateY(0) rotate(180deg) !important; /* Point right when closed */
-        width: 34px !important;
-        height: 34px !important;
-        background: var(--primary-color) !important;
-        color: #fff !important;
-        border-radius: 0 10px 10px 0 !important;
-        opacity: 1 !important;
-        visibility: visible !important;
-        box-shadow: 4px 0 10px rgba(0,0,0,0.1);
-        z-index: 2000;
+        display: none !important;
     }
     
     .admin-sidebar.active .sidebar-collapse-btn {
+        display: flex !important;
         right: 12px !important;
-        top: 24px !important;
-        transform: rotate(0deg) !important; /* Point left when open */
+        top: 50% !important;
+        transform: translateY(-50%) rotate(0deg) !important;
+        width: 28px !important;
+        height: 28px !important;
+        background: transparent !important;
+        color: rgba(255,255,255,0.45) !important;
         border-radius: 8px !important;
+        box-shadow: none !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        z-index: 2000;
     }
     .live-indicator { display: none; }
     .admin-page-content { padding: 1.5rem 1.25rem; }
@@ -758,7 +747,7 @@ html, body {
     /* TABLET & MOBILE CORE: Sidebar off-canvas by default */
     .admin-sidebar {
         transform: translateX(-100%);
-        z-index: 1000;
+        z-index: 1100;
         box-shadow: 10px 0 25px -5px rgba(0,0,0,0.1);
     }
     
@@ -772,7 +761,7 @@ html, body {
         top: 0; left: 0; right: 0; bottom: 0;
         background: rgba(15, 23, 42, 0.4);
         backdrop-filter: blur(2px);
-        z-index: 999;
+        z-index: 1050;
         opacity: 0;
         transition: opacity 0.3s ease;
     }

@@ -447,21 +447,21 @@ async def update_booking_status(
     )
     db.add(history)
 
-    # SECURE PAYOUT: Release Escrowed Funds to 'Ready' status with Audit Trail
-    if new_status == "completed":
-        escrow_items = db.query(models.PayoutItem).filter(
-            models.PayoutItem.booking_id == booking.id,
-            models.PayoutItem.status == 'escrowed'
-        ).all()
-        for item in escrow_items:
-            item.status = 'ready'
-            
-        payout_audit = models.AuditLog(
+    # BILLING: Calculate Commission and Add to Outstanding Balance
+    if new_status == "completed" and not booking.commission_calculated:
+        caterer_prof = user.caterer_profile
+        commission_rate = caterer_prof.commission_rate if caterer_prof.commission_rate else 0.05
+        commission_amount = float(booking.total_amount or 0.0) * commission_rate
+        
+        caterer_prof.outstanding_balance = float(caterer_prof.outstanding_balance or 0.0) + commission_amount
+        booking.commission_calculated = True
+        
+        billing_audit = models.AuditLog(
             user_id=user.id,
-            action="ESCROW_FLAGGED_FOR_RELEASE",
-            notes=f"Escrow items for booking #{booking.id} marked as 'ready'. Subject to 24-hr platform dispute window."
+            action="COMMISSION_BILLED",
+            notes=f"Billed PHP {commission_amount:.2f} commission for completed booking #{booking.id}."
         )
-        db.add(payout_audit)
+        db.add(billing_audit)
             
     db.commit()
 
@@ -1006,82 +1006,40 @@ async def caterer_payments(
     profile = user.caterer_profile
     bookings = [b for b in profile.bookings if b.status != 'draft' and not b.is_archived]
 
-    # ── Payout-table totals (formal system values) ──────────────────────────
-    released_payout = db.query(func.sum(models.PayoutItem.amount)).join(models.Payout).filter(
-        models.Payout.caterer_id == profile.id,
-        models.PayoutItem.status == 'released'
-    ).scalar() or 0.0
-
-    ready_payout = db.query(func.sum(models.PayoutItem.amount)).join(models.Payout).filter(
-        models.Payout.caterer_id == profile.id,
-        models.PayoutItem.status == 'ready'
-    ).scalar() or 0.0
-
-    escrow_payout = db.query(func.sum(models.PayoutItem.amount)).join(models.Payout).filter(
-        models.Payout.caterer_id == profile.id,
-        models.PayoutItem.status == 'escrowed'
-    ).scalar() or 0.0
-
-    # ── Booking-based fallback (always accurate even without payout records) ─
-    # Fetch platform config for commission rates
-    config = db.query(models.WebsiteConfig).first()
-    comm_rate = config.commission_rate if config else 10.0
-
-    booking_released = 0.0
-    booking_escrow   = 0.0
-    booking_pending  = 0.0
-    active_count     = 0
+    # ── Post-Paid Commission System Variables ──────────────────────────
+    outstanding_balance = profile.outstanding_balance or 0.0
+    lifetime_revenue = 0.0
+    active_count = 0
+    total_commission_paid = 0.0
 
     for b in bookings:
         if b.status in ('cancelled', 'rejected'):
             continue
-        active_count += 1
+        if b.status not in ('completed'):
+            active_count += 1
+            
         gross_amount = float(b.total_amount or b.total_price or 0)
-        net_amount = gross_amount * (1 - (comm_rate / 100))
-
+        
         if b.payment_status == 'paid' and b.status == 'completed':
-            booking_released += net_amount
-        elif b.payment_status == 'paid':
-            booking_escrow += net_amount
-        elif b.payment_status == 'deposit_paid':
-            dp_pct = 0.20
-            if b.quotation and b.quotation.downpayment_percent:
-                dp_pct = b.quotation.downpayment_percent / 100.0
-            
-            deposit_gross = gross_amount * dp_pct
-            deposit_net = deposit_gross * (1 - (comm_rate / 100))
-            
-            booking_released += deposit_net
-            booking_escrow   += (net_amount - deposit_net)
-        else:
-            booking_pending += net_amount
+            lifetime_revenue += gross_amount
 
-    # Use payout table if it has real data, otherwise use booking-based values
-    has_payout_data = (released_payout + ready_payout + escrow_payout) > 0
-    if has_payout_data:
-        released_total = released_payout
-        ready_total    = ready_payout
-        escrow_total   = escrow_payout
-    else:
-        released_total = booking_released
-        ready_total    = booking_pending   # pending = ready-to-collect
-        escrow_total   = booking_escrow
-
-    # Fetch payout history
-    payouts = db.query(models.Payout).filter(
-        models.Payout.caterer_id == profile.id,
-        models.Payout.is_archived == False
-    ).order_by(models.Payout.created_at.desc()).all()
+    # Fetch billing invoices
+    invoices = db.query(models.BillingInvoice).filter(
+        models.BillingInvoice.caterer_id == profile.id
+    ).order_by(models.BillingInvoice.created_at.desc()).all()
+    
+    for invoice in invoices:
+        if invoice.status == 'paid':
+            total_commission_paid += float(invoice.amount)
 
     return templates.TemplateResponse("caterer/payments.html", {
         "request": request,
         "user": user,
         "bookings": bookings,
-        "payouts": payouts,
-        "released_total": released_total,
-        "ready_total": ready_total,
-        "escrow_total": escrow_total,
-        "capital_total": released_total + ready_total,
+        "invoices": invoices,
+        "outstanding_balance": outstanding_balance,
+        "lifetime_revenue": lifetime_revenue,
+        "total_commission_paid": total_commission_paid,
         "active_count": active_count,
         "active_page": "payments"
     })
@@ -1740,75 +1698,38 @@ async def payments_summary_api(
     profile = user.caterer_profile
     bookings = [b for b in profile.bookings if b.status != 'draft' and not b.is_archived]
 
-    released_payout = db.query(func.sum(models.PayoutItem.amount)).join(models.Payout).filter(
-        models.Payout.caterer_id == profile.id,
-        models.PayoutItem.status == 'released'
-    ).scalar() or 0.0
-
-    ready_payout = db.query(func.sum(models.PayoutItem.amount)).join(models.Payout).filter(
-        models.Payout.caterer_id == profile.id,
-        models.PayoutItem.status == 'ready'
-    ).scalar() or 0.0
-
-    escrow_payout = db.query(func.sum(models.PayoutItem.amount)).join(models.Payout).filter(
-        models.Payout.caterer_id == profile.id,
-        models.PayoutItem.status == 'escrowed'
-    ).scalar() or 0.0
-
-    booking_released = 0.0
-    booking_escrow   = 0.0
-    booking_pending  = 0.0
-    active_count     = 0
-
+    # Post-paid variables
+    outstanding_balance = profile.outstanding_balance or 0.0
+    lifetime_revenue = 0.0
+    active_count = 0
+    total_commission_paid = 0.0
+    
+    # Calculate lifetime_revenue and active_count
     for b in bookings:
         if b.status in ('cancelled', 'rejected'):
             continue
-        active_count += 1
-        amount = float(b.total_amount or b.total_price or 0)
-
+        if b.status != 'completed':
+            active_count += 1
+            
+        gross_amount = float(b.total_amount or b.total_price or 0)
         if b.payment_status == 'paid' and b.status == 'completed':
-            booking_released += amount
-        elif b.payment_status == 'paid':
-            booking_escrow += amount
-        elif b.payment_status == 'deposit_paid':
-            dp_pct = 0.20
-            if b.quotation and b.quotation.downpayment_percent:
-                dp_pct = b.quotation.downpayment_percent / 100.0
-            deposit = amount * dp_pct
-            booking_released += deposit
-            booking_escrow   += (amount - deposit)
-        else:
-            booking_pending += amount
-
-    has_payout_data = (released_payout + ready_payout + escrow_payout) > 0
-    if has_payout_data:
-        released_total = released_payout
-        ready_total    = ready_payout
-        escrow_total   = escrow_payout
-    else:
-        released_total = booking_released
-        ready_total    = booking_pending
-        escrow_total   = booking_escrow
-
-    # Per-booking payment status counts
-    status_counts = {"completed": 0, "partial": 0, "pending": 0}
-    for b in bookings:
-        if b.status in ('cancelled', 'rejected'):
-            continue
-        if b.payment_status == 'paid':
-            status_counts["completed"] += 1
-        elif b.payment_status == 'deposit_paid':
-            status_counts["partial"] += 1
-        else:
-            status_counts["pending"] += 1
-
+            lifetime_revenue += gross_amount
+            
+    # Calculate commission paid
+    invoices = db.query(models.BillingInvoice).filter(
+        models.BillingInvoice.caterer_id == profile.id,
+        models.BillingInvoice.status == 'paid'
+    ).all()
+    
+    for inv in invoices:
+        total_commission_paid += float(inv.amount)
+        
     return JSONResponse({
-        "released_total": round(released_total, 2),
-        "ready_total":    round(ready_total, 2),
-        "escrow_total":   round(escrow_total, 2),
-        "active_count":   active_count,
-        "status_counts":  status_counts,
-        "last_updated":   datetime.now(timezone.utc).isoformat()
+        "ready_total": round(outstanding_balance, 2), # Using ready_total key for outstanding_balance frontend
+        "released_total": round(lifetime_revenue, 2), # Using released_total key for lifetime_revenue frontend
+        "escrow_total": round(total_commission_paid, 2), # Using escrow_total key for commission_paid frontend
+        "active_count": active_count,
+        "last_updated": datetime.now(timezone.utc).isoformat()
     })
 
 @router.get("/api/roi-analytics")
@@ -4665,3 +4586,55 @@ async def delete_business_expense(
     db.delete(expense)
     db.commit()
     return {"status": "success", "message": "Expense deleted"}
+
+
+@router.post("/api/payments/settle-dues")
+async def settle_dues_api(
+    billing_period: str = Form(...),
+    proof_file: UploadFile = File(...),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    "Caterer uploads proof of payment to settle platform commission dues."
+    import shutil
+    import os
+    import time
+    
+    profile = user.caterer_profile
+    if profile.outstanding_balance <= 0:
+        raise HTTPException(status_code=400, detail="You do not have any outstanding balance to settle.")
+        
+    upload_dir = f"app/static/uploads/receipts/{profile.id}"
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    timestamp = int(time.time())
+    file_ext = proof_file.filename.split('.')[-1] if '.' in proof_file.filename else 'png'
+    filename = f"settlement_{timestamp}.{file_ext}"
+    file_path = f"{upload_dir}/{filename}"
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(proof_file.file, buffer)
+        
+    proof_url = f"/static/uploads/receipts/{profile.id}/{filename}"
+    
+    invoice = models.BillingInvoice(
+        caterer_id=profile.id,
+        billing_period=billing_period,
+        amount=profile.outstanding_balance,
+        status='pending',
+        payment_proof_url=proof_url
+    )
+    db.add(invoice)
+    
+    profile.outstanding_balance = 0.0
+    
+    audit = models.AuditLog(
+        user_id=user.id,
+        action="DUES_SETTLED_PENDING",
+        notes=f"Submitted proof for {billing_period} commission settlement. Awaiting admin verification."
+    )
+    db.add(audit)
+    
+    db.commit()
+    
+    return {"status": "success", "message": "Settlement proof submitted successfully"}
