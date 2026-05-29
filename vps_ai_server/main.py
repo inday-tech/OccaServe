@@ -185,6 +185,18 @@ def preprocess_for_ocr(image: np.ndarray, aggressive: bool = False) -> np.ndarra
         print(f"[OCR Utility] Preprocessing failed: {e}")
         return image
 
+# --- Face Detection Utilities ---
+
+def detect_faces(image: np.ndarray) -> bool:
+    try:
+        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4, minSize=(30, 30))
+        return len(faces) > 0
+    except Exception as e:
+        print(f"[OCR Utility] Face detection failed: {e}")
+        return False
+
 # --- Liveness Detection Utilities ---
 
 def calculate_ear(landmarks, eye_indices) -> float:
@@ -303,48 +315,70 @@ async def ocr(
         contents = await image.read()
         pil_img = Image.open(io.BytesIO(contents))
         pil_img = ImageOps.exif_transpose(pil_img)
-        img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+        raw_img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+        face_visible = detect_faces(raw_img)
 
-        if preprocess:
-            img = preprocess_for_ocr(img, aggressive=False)
+        preprocessed_img = preprocess_for_ocr(raw_img, aggressive=False) if preprocess else raw_img
 
-        # Run EasyOCR
         if easyocr_reader is None:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="EasyOCR is still initialising. Please retry in a moment."
             )
-        results = easyocr_reader.readtext(img, detail=1, paragraph=False)
-        results.sort(key=lambda r: (r[0][0][1], r[0][0][0]))
 
-        text_parts = []
-        word_data = []
-
-        for (bbox, text, conf) in results:
+        # First pass: EasyOCR on raw image because deep learning OCR performs best on natural color inputs.
+        raw_results = easyocr_reader.readtext(raw_img, detail=1, paragraph=False)
+        raw_results.sort(key=lambda r: (r[0][0][1], r[0][0][0]))
+        raw_text_parts = []
+        raw_word_data = []
+        for (bbox, text, conf) in raw_results:
             clean_text = text.strip()
             if clean_text and conf > 0.15:
-                text_parts.append(clean_text)
-                word_data.append({
+                raw_text_parts.append(clean_text)
+                raw_word_data.append({
                     "word": clean_text,
                     "conf": int(conf * 100),
-                    # Convert bounding box coordinates to serializable list of ints
-                    "bbox": [[int(coord[0]), int(coord[1])] for coord in bbox]
+                    "bbox": bbox
                 })
+        raw_text = " ".join(raw_text_parts)
 
-        full_text = " ".join(text_parts)
+        final_text = raw_text
+        final_word_data = raw_word_data
+
+        if preprocess:
+            preproc_results = easyocr_reader.readtext(preprocessed_img, detail=1, paragraph=False)
+            preproc_results.sort(key=lambda r: (r[0][0][1], r[0][0][0]))
+            preproc_text_parts = []
+            preproc_word_data = []
+            for (bbox, text, conf) in preproc_results:
+                clean_text = text.strip()
+                if clean_text and conf > 0.15:
+                    preproc_text_parts.append(clean_text)
+                    preproc_word_data.append({
+                        "word": clean_text,
+                        "conf": int(conf * 100),
+                        "bbox": bbox
+                    })
+            preproc_text = " ".join(preproc_text_parts)
+            if len(preproc_text) > len(final_text) and len(raw_text) < 40:
+                final_text = preproc_text
+                final_word_data = preproc_word_data
+
+        results = final_word_data
+        text_parts = final_text.split() if final_text else []
+        word_data = final_word_data
 
         return {
             "success": True,
-            "text": full_text,
+            "text": final_text,
             "word_data": word_data,
-            "id_type_hint": id_type
+            "face_visible": face_visible
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"[API OCR] Processing error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"OCR execution failed: {str(e)}"
-        )
+        print(f"[AI Server] OCR endpoint failed: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="OCR processing failed.")
 
 @app.post("/verify", dependencies=[Depends(verify_api_key)])
 async def verify(

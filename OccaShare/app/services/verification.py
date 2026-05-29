@@ -1052,6 +1052,7 @@ class VerificationService:
                             text = res_json.get("text", "")
                             word_data = res_json.get("word_data", [])
                             parsed = self._parse_ocr_fields_advanced(text, word_data, id_type)
+                            parsed["face_visible"] = bool(res_json.get("face_visible", False))
                             print(f"[KYC DEBUG] VPS OCR Succeeded: {len(text)} characters extracted.")
                             return text, parsed, word_data
                     
@@ -1657,7 +1658,9 @@ class VerificationService:
                 # Check for face
                 id_faces = self._detect_faces_detailed(id_img)
                 has_face = len(id_faces) > 0
-                
+                if not has_face and parsed:
+                    has_face = bool(parsed.get("face_visible", False))
+
                 # Check if any ID number pattern exists in text (lenient legitimacy)
                 id_pattern_found = False
                 id_patterns_check = [
@@ -1983,6 +1986,8 @@ class VerificationService:
             clean_ocr_upper = text.upper()
             id_faces = self._detect_faces_detailed(id_img)
             has_face = len(id_faces) > 0
+            if not has_face and parsed:
+                has_face = bool(parsed.get("face_visible", False))
             
             # Pattern check for ID
             id_pattern_found = False
