@@ -8,6 +8,8 @@ services:
       - "8000:8000"
     environment:
       - VPS_API_KEY=${VPS_API_KEY}
+      - PYTHONUNBUFFERED=1
+    shm_size: 1gb
     volumes:
       - easyocr-cache:/root/.EasyOCR
       - deepface-cache:/root/.deepface

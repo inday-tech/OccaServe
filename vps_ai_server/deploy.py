@@ -145,6 +145,7 @@ def main():
         print("[Deploy] Waiting 15 seconds for container services to initialize...")
         time.sleep(15)
         run_command(ssh, "docker ps", "Listing active containers")
+        run_command(ssh, "docker logs occaserve-ai-server --tail 50", "Checking container logs for errors")
         
         # 7. Setup Nginx Reverse Proxy
         nginx_config = f"""server {{

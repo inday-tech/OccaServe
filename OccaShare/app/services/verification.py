@@ -979,6 +979,39 @@ class VerificationService:
 
     # ── EasyOCR Methods ──────────────────────────────────────────────────────────
 
+    def _group_ocr_results_into_lines(self, results: List[tuple], y_tolerance: int = 15) -> str:
+        """Groups EasyOCR bounding boxes into lines based on vertical position."""
+        if not results:
+            return ""
+            
+        sorted_results = sorted(results, key=lambda r: (r[0][0][1], r[0][0][0]))
+        lines = []
+        current_line = []
+        
+        for bbox, text, conf in sorted_results:
+            clean_text = text.strip()
+            if not clean_text or conf < 0.10:
+                continue
+                
+            y_center = (bbox[0][1] + bbox[2][1]) / 2
+            
+            if not current_line:
+                current_line.append((bbox, clean_text, conf, y_center))
+            else:
+                avg_y_center = sum(item[3] for item in current_line) / len(current_line)
+                if abs(y_center - avg_y_center) <= y_tolerance:
+                    current_line.append((bbox, clean_text, conf, y_center))
+                else:
+                    current_line.sort(key=lambda item: item[0][0][0])
+                    lines.append(" ".join(item[1] for item in current_line))
+                    current_line = [(bbox, clean_text, conf, y_center)]
+                    
+        if current_line:
+            current_line.sort(key=lambda item: item[0][0][0])
+            lines.append(" ".join(item[1] for item in current_line))
+            
+        return "\n".join(lines)
+
     def _run_easyocr(self, image: np.ndarray, id_type: str = "Unknown") -> Tuple[str, List[Dict]]:
         """Run EasyOCR on an image. Returns (text, word_data) matching Tesseract format."""
         if not EASYOCR_AVAILABLE or _easyocr_reader is None:
@@ -988,15 +1021,15 @@ class VerificationService:
             # EasyOCR accepts numpy arrays directly (BGR or grayscale)
             results = _easyocr_reader.readtext(image, detail=1, paragraph=False)
             
-            # Sort by vertical position (top-to-bottom), then horizontal (left-to-right)
-            results.sort(key=lambda r: (r[0][0][1], r[0][0][0]))
-            
             text_parts = []
             word_data = []
             
-            for (bbox, text, conf) in results:
+            # Sort raw results just to extract word data securely
+            raw_sorted = sorted(results, key=lambda r: (r[0][0][1], r[0][0][0]))
+            
+            for (bbox, text, conf) in raw_sorted:
                 clean_text = text.strip()
-                if clean_text and conf > 0.15:  # Low threshold to catch faint text on IDs
+                if clean_text and conf > 0.10:  # Low threshold to catch faint text on IDs
                     text_parts.append(clean_text)
                     word_data.append({
                         "word": clean_text,
@@ -1004,7 +1037,8 @@ class VerificationService:
                         "bbox": bbox  # [[x1,y1],[x2,y2],[x3,y3],[x4,y4]]
                     })
             
-            full_text = " ".join(text_parts)
+            # Group into lines for layout-aware parsing
+            full_text = self._group_ocr_results_into_lines(results)
             print(f"[KYC DEBUG] EasyOCR: Extracted {len(full_text)} chars, {len(word_data)} words for {id_type}")
             return full_text, word_data
         except Exception as e:
@@ -1063,28 +1097,33 @@ class VerificationService:
             print("[KYC WARNING] Falling back to local OCR pipeline...")
 
         if EASYOCR_AVAILABLE and _easyocr_reader is not None:
-            # Pass 1: Standard preprocessing + EasyOCR
-            if CV2_AVAILABLE:
-                preprocessed = self._preprocess_for_ocr_advanced(image, aggressive=False)
-                text, word_data = self._run_easyocr(preprocessed, id_type)
-                parsed = self._parse_ocr_fields_advanced(text, word_data, id_type)
-                print(f"[KYC DEBUG] EasyOCR Pass 1 (preprocessed): {len(text)} chars, all_not_detected={parsed.get('_all_not_detected')}")
+            # Pass 1: Raw Image (Deep Learning OCR usually performs best on color)
+            text_raw, wd_raw = self._run_easyocr(image, id_type)
+            parsed_raw = self._parse_ocr_fields_advanced(text_raw, wd_raw, id_type)
+            print(f"[KYC DEBUG] EasyOCR Pass 1 (raw): {len(text_raw)} chars, all_not_detected={parsed_raw.get('_all_not_detected')}")
             
-            # Pass 1b: Also try on original (unprocessed) image - sometimes works better for high-res photos
-            if parsed.get("_all_not_detected", True) or len(text.strip()) < 30:
-                text_raw, wd_raw = self._run_easyocr(image, id_type)
-                parsed_raw = self._parse_ocr_fields_advanced(text_raw, wd_raw, id_type)
-                print(f"[KYC DEBUG] EasyOCR Pass 1b (raw): {len(text_raw)} chars, all_not_detected={parsed_raw.get('_all_not_detected')}")
-                if not parsed_raw.get("_all_not_detected", True) or len(text_raw) > len(text):
-                    text, word_data, parsed = text_raw, wd_raw, parsed_raw
+            text, word_data, parsed = text_raw, wd_raw, parsed_raw
             
-            # Pass 2: Aggressive preprocessing + EasyOCR (for low-quality images)
+            # Pass 2: Light Preprocessing (if Pass 1 failed or missed fields)
             if CV2_AVAILABLE and (parsed.get("_all_not_detected", True) or len(text.strip()) < 50):
-                print("[KYC DEBUG] EasyOCR Pass 1 insufficient. Retrying with aggressive preprocessing...")
+                print("[KYC DEBUG] EasyOCR Pass 1 insufficient. Retrying with preprocessed image...")
+                preprocessed = self._preprocess_for_ocr_advanced(image, aggressive=False)
+                text_pre, wd_pre = self._run_easyocr(preprocessed, id_type)
+                parsed_pre = self._parse_ocr_fields_advanced(text_pre, wd_pre, id_type)
+                print(f"[KYC DEBUG] EasyOCR Pass 2 (preprocessed): {len(text_pre)} chars, all_not_detected={parsed_pre.get('_all_not_detected')}")
+                
+                # Keep Pass 2 if it's better
+                if not parsed_pre.get("_all_not_detected", True) or len(text_pre) > len(text):
+                    text, word_data, parsed = text_pre, wd_pre, parsed_pre
+            
+            # Pass 3: Aggressive preprocessing (for really bad/low-contrast images)
+            if CV2_AVAILABLE and (parsed.get("_all_not_detected", True) or len(text.strip()) < 50):
+                print("[KYC DEBUG] EasyOCR Pass 2 insufficient. Retrying with aggressive preprocessing...")
                 preprocessed_agg = self._preprocess_for_ocr_advanced(image, aggressive=True)
                 text_agg, wd_agg = self._run_easyocr(preprocessed_agg, id_type)
                 parsed_agg = self._parse_ocr_fields_advanced(text_agg, wd_agg, id_type)
-                print(f"[KYC DEBUG] EasyOCR Pass 2 (aggressive): {len(text_agg)} chars, all_not_detected={parsed_agg.get('_all_not_detected')}")
+                print(f"[KYC DEBUG] EasyOCR Pass 3 (aggressive): {len(text_agg)} chars, all_not_detected={parsed_agg.get('_all_not_detected')}")
+                
                 if not parsed_agg.get("_all_not_detected", True) or len(text_agg) > len(text):
                     text, word_data, parsed = text_agg, wd_agg, parsed_agg
         
@@ -1449,11 +1488,11 @@ class VerificationService:
                 parts = [digits[i:i+4] for i in range(0, len(digits), 4)]
                 id_number = "-".join(parts)
                 
-        # 2. Extract Fields using Anchor Sequences
-        last_name_anchors = r'(?:APELYIDO|APLEVIDC|APELYITO|SURNAME|LAST\s*NAME)'
-        given_names_anchors = r'(?:MGA\s*PANGALAN|MGR?\s*PRNGALAN|PRNGALAN|GIVEN\s*NAMES?|GIVEN)'
-        middle_name_anchors = r'(?:GITNANG\s*APELYIDO|GINANG\s*APELYITO|MIDDLE\s*NAMES?|MID\s*NAME)'
-        dob_anchors = r'(?:PETSA\s*NG\s*KAPANGANAKAN|NG\s*KANANGANAKAN|DATE\s*OF\s*BIRTH|DETE\s*OF\s*EIRTH|EIRTH|BIRTH)'
+        # 2. Extract Fields using Anchor Sequences (tolerant of OCR garbling)
+        last_name_anchors = r'(?:APELYIDO|APLEVIDC|APELYITO|SURNAME|LAST\s*NAME|APELIIDO)'
+        given_names_anchors = r'(?:MGA\s*PANGALAN|MGR?\s*PRNGALAN|PRNGALAN|GIVEN\s*NAMES?|GIVEN|PANGALAN)'
+        middle_name_anchors = r'(?:GITNANG\s*APELYIDO|GINANG\s*APELYITO|MIDDLE\s*NAMES?|MID\s*NAME|GITAANG)'
+        dob_anchors = r'(?:PETSA\s*NG\s*KAPANGANAKAN|NG\s*KANANGANAKAN|DATE\s*OF\s*BIRTH|DETE\s*OF\s*EIRTH|EIRTH|BIRTH|KAPANGANAKAN)'
         address_anchors = r'(?:TIRAHAN|ADDRESS)'
         
         parsed = {}
@@ -1478,14 +1517,22 @@ class VerificationService:
         dob_match = re.search(dob_anchors + r'\s*[:/.-]*\s*(.*?)\s*(?:' + address_anchors + '|SEX|KASARIAN|DUGO|BLOOD)', clean)
         if dob_match:
             raw_dob = dob_match.group(1).strip()
-            raw_dob = re.sub(r'\b\d{3}\s+PHL\b', '', raw_dob).strip()
+            # Remove country/blood type artifacts that might bleed into DOB
+            raw_dob = re.sub(r'\b(?:O\+|O-|A\+|A-|B\+|B-|AB\+|AB-)\b', '', raw_dob)
+            raw_dob = re.sub(r'\b\d{3}\s*PHL\b', '', raw_dob).strip()
             raw_dob = re.sub(r'\bPHL\b', '', raw_dob).strip()
             parsed["date_of_birth"] = self._strip_philid_label_noise(raw_dob)
             
-        # Address
-        address_match = re.search(address_anchors + r'\s*[:/.-]*\s*(.*)', clean)
+        # Address - Address is typically multiple lines, so we capture the rest or until a certain keyword
+        address_match = re.search(address_anchors + r'\s*[:/.-]*\s*(.*?)(?:BLOOD|DUGO|KASARIAN|SEX|PHILIPPINES|$)', clean, re.DOTALL)
         if address_match:
-            parsed["address"] = self._strip_philid_label_noise(address_match.group(1).strip())
+            # Re-add PHILIPPINES if we matched it as the terminator, because it is part of the address
+            addr_text = self._strip_philid_label_noise(address_match.group(1).strip())
+            if "PHILIPPINES" in clean[address_match.end(1):]:
+                addr_text += " PHILIPPINES"
+            # Cleanup multiple spaces and newlines
+            addr_text = re.sub(r'\s+', ' ', addr_text).strip()
+            parsed["address"] = addr_text
             
         if id_number:
             parsed["id_number"] = id_number

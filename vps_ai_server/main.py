@@ -10,6 +10,7 @@ from typing import List, Optional
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, status, Security, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
+import traceback
 from PIL import Image, ImageOps
 
 # DeepFace import
@@ -183,7 +184,59 @@ def preprocess_for_ocr(image: np.ndarray, aggressive: bool = False) -> np.ndarra
         return thresh
     except Exception as e:
         print(f"[OCR Utility] Preprocessing failed: {e}")
+        traceback.print_exc()
         return image
+
+def group_ocr_results_into_lines(results: List[tuple], y_tolerance: int = 15) -> str:
+    """
+    Groups EasyOCR bounding boxes into lines based on their vertical position.
+    This preserves the layout of the ID card, making regex parsing much more accurate.
+    """
+    if not results:
+        return ""
+        
+    # Sort results primarily by Y-coordinate (top to bottom), then X (left to right)
+    # Bbox format: [[x1, y1], [x2, y1], [x2, y2], [x1, y2]]
+    # We use the top-left y-coordinate (r[0][0][1]) for sorting
+    sorted_results = sorted(results, key=lambda r: (r[0][0][1], r[0][0][0]))
+    
+    lines = []
+    current_line = []
+    
+    for bbox, text, conf in sorted_results:
+        clean_text = text.strip()
+        if not clean_text or conf < 0.10: # Very lenient confidence to catch faint text
+            continue
+            
+        # Get the top-left y-coordinate of the current bounding box
+        y_center = (bbox[0][1] + bbox[2][1]) / 2
+        
+        if not current_line:
+            current_line.append((bbox, clean_text, conf, y_center))
+        else:
+            # Compare with the average y-center of the current line
+            avg_y_center = sum(item[3] for item in current_line) / len(current_line)
+            
+            if abs(y_center - avg_y_center) <= y_tolerance:
+                # Still on the same line
+                current_line.append((bbox, clean_text, conf, y_center))
+            else:
+                # Start a new line
+                # Sort the completed line by X-coordinate before saving
+                current_line.sort(key=lambda item: item[0][0][0])
+                line_text = " ".join(item[1] for item in current_line)
+                lines.append(line_text)
+                
+                # Start new line
+                current_line = [(bbox, clean_text, conf, y_center)]
+                
+    # Add the last line
+    if current_line:
+        current_line.sort(key=lambda item: item[0][0][0])
+        line_text = " ".join(item[1] for item in current_line)
+        lines.append(line_text)
+        
+    return "\n".join(lines)
 
 # --- Face Detection Utilities ---
 
@@ -305,6 +358,19 @@ async def health():
         "ready": ocr_ready,
     }
 
+@app.get("/debug", dependencies=[Depends(verify_api_key)])
+async def debug_info():
+    import psutil
+    process = psutil.Process(os.getpid())
+    mem_info = process.memory_info()
+    return {
+        "status": "online",
+        "memory_mb": mem_info.rss / 1024 / 1024,
+        "easyocr_loaded": easyocr_reader is not None,
+        "mediapipe_loaded": _landmarker is not None,
+        "python_version": sys.version
+    }
+
 @app.post("/ocr", dependencies=[Depends(verify_api_key)])
 async def ocr(
     image: UploadFile = File(...),
@@ -327,40 +393,41 @@ async def ocr(
             )
 
         # First pass: EasyOCR on raw image because deep learning OCR performs best on natural color inputs.
+        print(f"[AI Server] Running OCR pass 1 (Raw Image)...")
         raw_results = easyocr_reader.readtext(raw_img, detail=1, paragraph=False)
-        raw_results.sort(key=lambda r: (r[0][0][1], r[0][0][0]))
-        raw_text_parts = []
+        
+        raw_text = group_ocr_results_into_lines(raw_results)
+        
         raw_word_data = []
         for (bbox, text, conf) in raw_results:
             clean_text = text.strip()
-            if clean_text and conf > 0.15:
-                raw_text_parts.append(clean_text)
+            if clean_text and conf > 0.10:
                 raw_word_data.append({
                     "word": clean_text,
                     "conf": int(conf * 100),
                     "bbox": [[int(coord) for coord in pt] for pt in bbox]
                 })
-        raw_text = " ".join(raw_text_parts)
 
         final_text = raw_text
         final_word_data = raw_word_data
 
-        if preprocess:
+        if preprocess and (len(final_text.strip()) < 50):
+            print(f"[AI Server] Raw text too short ({len(final_text)} chars). Running pass 2 (Preprocessed)...")
             preproc_results = easyocr_reader.readtext(preprocessed_img, detail=1, paragraph=False)
-            preproc_results.sort(key=lambda r: (r[0][0][1], r[0][0][0]))
-            preproc_text_parts = []
+            
+            preproc_text = group_ocr_results_into_lines(preproc_results)
+            
             preproc_word_data = []
             for (bbox, text, conf) in preproc_results:
                 clean_text = text.strip()
-                if clean_text and conf > 0.15:
-                    preproc_text_parts.append(clean_text)
+                if clean_text and conf > 0.10:
                     preproc_word_data.append({
                         "word": clean_text,
                         "conf": int(conf * 100),
                         "bbox": [[int(coord) for coord in pt] for pt in bbox]
                     })
-            preproc_text = " ".join(preproc_text_parts)
-            if len(preproc_text) > len(final_text) and len(raw_text) < 40:
+            
+            if len(preproc_text) > len(final_text):
                 final_text = preproc_text
                 final_word_data = preproc_word_data
 
@@ -378,7 +445,8 @@ async def ocr(
         raise
     except Exception as e:
         print(f"[AI Server] OCR endpoint failed: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="OCR processing failed.")
+        traceback.print_exc()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"OCR processing failed: {str(e)}")
 
 @app.post("/verify", dependencies=[Depends(verify_api_key)])
 async def verify(
