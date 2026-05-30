@@ -219,3 +219,133 @@ document.addEventListener('DOMContentLoaded', function() {
         window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);
     }
 });
+
+// ========================================== 
+// GLOBAL NOTIFICATION ENGINE 
+// ========================================== 
+window.knownGlobalNotifIds = new Set();
+let globalNotifTimer = null;
+
+window.fetchGlobalNotifications = async function(isForced = false) {
+    try {
+        const response = await fetch('/api/notifications?limit=20');
+        if (!response.ok) return;
+        const data = await response.json();
+
+        // 1. Update UI Badges
+        const badge = document.getElementById('nav-notif-badge');
+        const dropBadge = document.getElementById('dropdown-notif-badge');
+        if (badge) {
+            badge.style.display = data.unread_count > 0 ? 'flex' : 'none';
+            badge.textContent = data.unread_count > 99 ? '99+' : data.unread_count;
+        }
+        if (dropBadge) {
+            dropBadge.style.display = data.unread_count > 0 ? 'inline-block' : 'none';
+            dropBadge.textContent = data.unread_count > 99 ? '99+ NEW' : data.unread_count + ' NEW';
+        }
+
+        // 2. Render Dropdown Container
+        const container = document.getElementById('headerNotifContainer');
+        if (!container) return;
+
+        if (data.notifications.length === 0) {
+            container.innerHTML = `<div style="text-align: center; padding: 2.5rem 1rem;"><div style="background: #f1f5f9; width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;"><i class="fas fa-check-double" style="color: #94a3b8; font-size: 1.5rem;"></i></div><p style="margin: 0; font-size: 0.9rem; font-weight: 600; color: #1e293b;">You're all caught up!</p><p style="margin: 4px 0 0; font-size: 0.75rem; color: #64748b;">No new notifications</p></div>`;
+        } else {
+            let htmlString = '';
+            const topNotifs = data.notifications.slice(0, 5);
+            topNotifs.forEach(notif => {
+                const iconMap = {
+                    'Booking': { i: 'fa-calendar-check', c: '#10b981', bg: '#d1fae5' },
+                    'Payment': { i: 'fa-wallet', c: '#0ea5e9', bg: '#e0f2fe' },
+                    'Review': { i: 'fa-star', c: '#f59e0b', bg: '#fef3c7' },
+                    'Verification': { i: 'fa-shield-check', c: '#8b5cf6', bg: '#ede9fe' },
+                    'Customer': { i: 'fa-user-plus', c: '#ec4899', bg: '#fce7f3' }
+                };
+                const info = iconMap[notif.type] || { i: 'fa-bell', c: '#64748b', bg: '#f1f5f9' };
+                const isUnread = !notif.is_read;
+                const timeStr = new Date(notif.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+                htmlString += `<a href="javascript:void(0)" onclick="handleGlobalNotifClick(${notif.id}, '${notif.link || ''}', ${isUnread})" style="display: flex; gap: 12px; padding: 16px; text-decoration: none; border-bottom: 1px solid #e2e8f0; background: ${isUnread ? '#f8fafc' : 'white'}; transition: all 0.2s; align-items: flex-start; position: relative;"><div style="background: ${info.bg}; color: ${info.c}; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1rem; box-shadow: ${isUnread ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'};"><i class="fas ${info.i}"></i></div><div style="flex: 1; overflow: hidden; padding-top: 2px;"><p style="margin: 0 0 4px 0; font-size: 0.85rem; color: #0f172a; font-weight: ${isUnread ? '700' : '500'}; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${notif.message}</p><p style="margin: 0; font-size: 0.7rem; color: #64748b; font-weight: 600;"><i class="far fa-clock" style="margin-right: 4px;"></i>${timeStr}</p></div>${isUnread ? '<div style="width: 8px; height: 8px; background: #ef4444; border-radius: 50%; position: absolute; top: 16px; right: 16px; box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);"></div>' : ''}</a>`;
+            });
+            container.innerHTML = htmlString;
+        }
+
+        // 3. Broadcast to Notifications Page if it exists
+        if (window.syncLocalNotificationsPage) {
+            window.syncLocalNotificationsPage(data.notifications, data.unread_count);
+        }
+    } catch (err) {
+        console.error("Global Notif Error:", err);
+    }
+}
+
+window.handleGlobalNotifClick = async function(id, link, isUnread) {
+    if (isUnread) {
+        try {
+            await fetch(`/api/notifications/${id}/read`, { method: 'POST' });
+            window.fetchGlobalNotifications(true);
+        } catch(e) {}
+    }
+    if (link) window.location.href = link;
+}
+
+
+window.markAllAsReadGlobal = async function() {
+    try {
+        await fetch('/api/notifications/read-all', { method: 'POST' });
+        window.fetchGlobalNotifications(true);
+    } catch(e) {}
+}
+
+window.addEventListener('load', () => {
+    if (document.getElementById('headerNotifContainer')) {
+        window.fetchGlobalNotifications();
+        globalNotifTimer = setInterval(() => window.fetchGlobalNotifications(), 15000);
+    }
+});
+
+
+// ========================================== 
+// GLOBAL DROPDOWN TOGGLE ENGINE 
+// ========================================== 
+window.toggleHeaderDropdown = function(dropdownId, triggerEl) {
+    const dropdown = document.getElementById(dropdownId);
+    if (!dropdown) return;
+    
+    const isActive = dropdown.classList.contains('active');
+    
+    // Close all other dropdowns
+    document.querySelectorAll('.premium-dropdown, .profile-dropdown, .hdr-dropdown').forEach(d => {
+        d.classList.remove('active');
+        d.style.display = 'none';
+    });
+    document.querySelectorAll('.hdr-btn, .header-action-btn, .profile-trigger, .header-profile-chip, .hdr-profile-chip').forEach(t => {
+        t.classList.remove('active');
+    });
+
+    if (!isActive) {
+        dropdown.style.display = 'block';
+        setTimeout(() => {
+            dropdown.classList.add('active');
+            if (triggerEl) triggerEl.classList.add('active');
+        }, 10);
+        
+        if (dropdownId === 'notificationsDropdown' && window.fetchGlobalNotifications) {
+            window.fetchGlobalNotifications();
+        }
+    }
+};
+
+window.addEventListener('click', function(e) {
+    if (!e.target.closest('.header-dropdown-wrapper') && !e.target.closest('.header-profile-section')) {
+        document.querySelectorAll('.premium-dropdown, .profile-dropdown, .hdr-dropdown').forEach(d => {
+            d.classList.remove('active');
+            setTimeout(() => {
+                if (!d.classList.contains('active')) d.style.display = 'none';
+            }, 300);
+        });
+        document.querySelectorAll('.hdr-btn, .header-action-btn, .profile-trigger, .header-profile-chip, .hdr-profile-chip').forEach(t => {
+            t.classList.remove('active');
+        });
+    }
+});
+

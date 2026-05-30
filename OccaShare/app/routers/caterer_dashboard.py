@@ -471,22 +471,22 @@ async def update_booking_status(
     message = ""
     
     if new_status == "preparing":
-        title = "Preparation Started! 🍳"
+        title = "Preparation Started!"
         message = f"The caterer {user.caterer_profile.business_name} has started preparing for your food order '{booking.event_name}'."
     elif new_status == "ready_for_delivery":
-        title = "Ready for Delivery! 🍱"
+        title = "Ready for Delivery!"
         message = f"Cooking is complete! Your order is packed and ready for dispatch."
     elif new_status == "on_the_way":
-        title = "Order is in Transit! 🚚"
+        title = "Order is in Transit!"
         message = f"Our delivery team is on the way to your location for '{booking.event_name}'. Get those tables ready!"
     elif new_status == "arrived":
-        title = "Caterer has Arrived! 📍"
+        title = "Caterer has Arrived!"
         message = f"Our team has arrived at your location. Please coordinate with our staff for turnover."
     elif new_status == "setup_ongoing":
-        title = "Dining Setup Ongoing 🍽️"
+        title = "Dining Setup Ongoing"
         message = f"Your food service is currently being set up. We are almost ready to serve!"
     elif new_status == "completed":
-        title = "Transaction Completed! ✨"
+        title = "Transaction Completed!"
         message = f"Successfully delivered and served for your event '{booking.event_name}'. Thank you for choosing us!"
 
     if title and message:
@@ -1099,7 +1099,7 @@ async def _confirm_booking_logic(db: Session, booking: models.Booking, caterer_u
         # Notification to Customer
         await NotificationService.notify_status_update(
             db, booking.user_id, 
-            "Booking Confirmed! ✅", 
+            "Booking Confirmed!", 
             f"Ang iyong booking para sa '{booking.event_name}' ay CONFIRMED na! Naka-verify na ang iyong reservation.", 
             f"/customer/bookings/manage/{booking.id}"
         )
@@ -1111,7 +1111,7 @@ async def _confirm_booking_logic(db: Session, booking: models.Booking, caterer_u
         
         await NotificationService.notify_status_update(
             db, booking.user_id, 
-            "Payment Fully Verified! 💰", 
+            "Payment Fully Verified!", 
             f"Natanggap at na-verify na ang iyong full payment para sa '{booking.event_name}'. Maraming salamat!", 
             f"/customer/bookings/manage/{booking.id}"
         )
@@ -3178,7 +3178,7 @@ async def cancel_booking(
     asyncio.create_task(NotificationService.notify_status_update(
         db, 
         booking.user_id, 
-        "Booking Cancelled ❌", 
+        "Booking Cancelled", 
         f"Ang iyong booking para sa '{booking.event_name}' ay kinansela ni {user.caterer_profile.business_name}. Reason: {reason}", 
         f"/customer/bookings"
     ))
@@ -3242,7 +3242,7 @@ async def reject_booking(
     asyncio.create_task(NotificationService.notify_status_update(
         db, 
         booking.user_id, 
-        "Booking Rejected ❌", 
+        "Booking Rejected", 
         f"Pasensya na, hindi tinanggap ni {user.caterer_profile.business_name} ang iyong booking request para sa '{booking.event_name}'.", 
         f"/customer/bookings"
     ))
@@ -3278,7 +3278,7 @@ async def complete_booking(
     asyncio.create_task(NotificationService.notify_status_update(
         db, 
         booking.user_id, 
-        "Event Service Completed 🌟", 
+        "Event Service Completed", 
         f"Salamat! Ang iyong event '{booking.event_name}' ay itinalaga bilang COMPLETED ni {user.caterer_profile.business_name}. Huwag kalimutang i-rate ang kanilang serbisyo!", 
         f"/customer/reviews"
     ))

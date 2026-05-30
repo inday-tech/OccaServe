@@ -12,10 +12,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/layout.css') }}?v=5.5">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/layout.css') }}?v=5.7">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v=1.4">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}?v=5.0">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/customer_mobile.css') }}?v=2.0">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/customer_mobile.css') }}?v=2.2">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/alert_modal.css') }}?v=1.5">
 
     {% if wconfig and wconfig.favicon_url %}
@@ -220,36 +220,33 @@
                 <div class="hdr-sep"></div>
 
                 <!-- Notifications -->
-                <div class="header-dropdown-wrapper" id="notifWrapper">
-                    <button class="hdr-btn" id="notifBtn" title="Notifications"
-                        onclick="toggleHeaderDropdown('notifDropdown', this)">
+                <div class="header-dropdown-wrapper" id="notifWrapper" style="position: relative;">
+                    {% set unread_count = user.notifications|selectattr('is_read', 'equalto', false)|list|count if user and user.notifications else 0 %}
+                    <button class="hdr-btn {{ 'active' if active_page == 'notifications' }}" id="notifBtn" title="Notifications"
+                        onclick="toggleHeaderDropdown('notificationsDropdown', this)">
                         <i class="fas fa-bell"></i>
-                        {% set unread_count = user.notifications|selectattr('is_read', 'equalto', false)|list|count if user and user.notifications else 0 %}
-                        {% if unread_count > 0 %}
-                        <span class="hdr-badge" id="headerNotifBadge">{{ unread_count if unread_count < 10 else '9+' }}</span>
-                        {% else %}
-                        <span class="hdr-badge" id="headerNotifBadge" style="display:none;"></span>
-                        {% endif %}
+                        <span id="nav-notif-badge" class="action-badge" style="display: {{ 'flex' if unread_count > 0 else 'none' }};">{{ unread_count }}</span>
                     </button>
-                    <div class="hdr-dropdown" id="notifDropdown">
-                        <div class="hdr-dropdown-head">
-                            <div>
-                                <span class="hdr-dropdown-title">Notifications</span>
-                                <span class="hdr-dropdown-sub" id="notifUnreadLabel">{% if unread_count > 0 %}{{ unread_count }} unread{% endif %}</span>
+                    <div class="premium-dropdown" id="notificationsDropdown" style="width: 360px; right: -10px; cursor: default; padding: 0; overflow: hidden;">
+                        <div class="dropdown-header" style="display: flex; justify-content: space-between; align-items: center; padding: 16px; background: #fff; border-bottom: 1px solid #f1f5f9;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <p class="dropdown-user-name" style="margin: 0; font-size: 1rem; color: #0f172a; text-transform: none;">Notifications</p>
+                                <span id="dropdown-notif-badge" style="background: #ef4444; color: white; font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; font-weight: 800; display: {{ 'inline-block' if unread_count > 0 else 'none' }};">{{ unread_count }} NEW</span>
                             </div>
-                            <button class="hdr-mark-read" onclick="markAllNotificationsRead()" title="Mark all as read">
-                                <i class="fas fa-check-double"></i> Mark all read
-                            </button>
+                            <button type="button" onclick="window.markAllAsReadGlobal && window.markAllAsReadGlobal()" style="background: transparent; border: none; color: var(--primary-color); font-size: 0.75rem; font-weight: 700; cursor: pointer; padding: 0; transition: color 0.2s;">Mark all as read</button>
                         </div>
-                        <div class="hdr-dropdown-body" id="headerNotifBody">
-                            <div class="hdr-empty">
-                                <i class="fas fa-bell-slash"></i>
-                                <p>You're all caught up!</p>
+                        <div class="dropdown-body" id="headerNotifContainer" style="max-height: 360px; overflow-y: auto; background: #f8fafc;">
+                            <!-- Notifications will be injected here via Global JS -->
+                            <div style="text-align: center; padding: 2rem 1rem;">
+                                <div style="background: #f1f5f9; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;">
+                                    <i class="fas fa-circle-notch fa-spin" style="color: #cbd5e1; font-size: 1.25rem;"></i>
+                                </div>
+                                <p style="margin: 0; font-size: 0.85rem; color: #64748b; text-transform: none;">Syncing notifications...</p>
                             </div>
                         </div>
-                        <a href="/customer/notifications" class="hdr-dropdown-footer">
-                            View all notifications <i class="fas fa-arrow-right"></i>
-                        </a>
+                        <div class="dropdown-footer" style="padding: 12px; border-top: 1px solid #e2e8f0; text-align: center; background: #fff;">
+                            <a href="/customer/notifications" style="color: var(--primary-color); font-weight: 700; font-size: 0.85rem; text-decoration: none; display: block; width: 100%;">View All Notifications</a>
+                        </div>
                     </div>
                 </div>
 
@@ -347,7 +344,7 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="{{ url_for('static', path='/js/main.js') }}?v=4.1"></script>
+    <script src="{{ url_for('static', path='/js/main.js') }}?v=7414d5fc"></script>
     <script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v=1.4"></script>
     <script src="{{ url_for('static', path='/js/customer/layout.js') }}?v=3.2"></script>
 

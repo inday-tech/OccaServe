@@ -1,10 +1,10 @@
-{% set nav_page = 'notifications' %}
+{% set active_page = 'notifications' %}
 {% extends "customer/layout.html" %}
 
 {% block title %}Notifications - OccaShare Customer{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/notifications.css') }}?v=2.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/notifications.css') }}?v=90461620">
 {% endblock %}
 
 {% block content %}
@@ -29,8 +29,7 @@
                 All <span class="notif-tab-count">{{ total_notifications }}</span>
             </button>
             <button class="notif-tab" data-filter="unread" onclick="filterNotifications('unread', this)">
-                Unread <span class="notif-tab-count">{{ notifications|selectattr('is_read', 'false')|list|length
-                    }}</span>
+                Unread <span class="notif-tab-count">{{ notifications|selectattr('is_read', 'equalto', False)|list|length }}</span>
             </button>
             <button class="notif-tab" data-filter="Booking" onclick="filterNotifications('Booking', this)">
                 Bookings
@@ -38,8 +37,8 @@
             <button class="notif-tab" data-filter="Payment" onclick="filterNotifications('Payment', this)">
                 Payments
             </button>
-            <button class="notif-tab" data-filter="Review" onclick="filterNotifications('Review', this)">
-                Reviews
+            <button class="notif-tab" data-filter="System" onclick="filterNotifications('System', this)">
+                System
             </button>
         </div>
     </div>
@@ -47,15 +46,15 @@
     <!-- Notifications List -->
     {% if notifications %}
     <div class="notif-list-card c-card-premium" style="padding: 0 !important;">
-        <div class="notif-section-label"
-            style="padding: 1.25rem 2rem 0.75rem; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">
-            All Notifications</div>
+        <div class="notif-section-label" style="padding: 1.25rem 2rem 0.75rem; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">All Notifications</div>
 
         <div class="notif-list" id="notifList">
             {% for notif in notifications %}
-            <div class="notif-item {{ 'notif-unread' if not notif.is_read }}" id="notif-{{ notif.id }}"
-                data-type="{{ notif.type }}" data-read="{{ 'true' if notif.is_read else 'false' }}"
-                onclick="handleNotificationClick({{ notif.id }}, '{{ notif.link or '' }}')">
+            <div class="notif-item {{ 'notif-unread' if not notif.is_read }}"
+                 id="notif-{{ notif.id }}"
+                 data-type="{{ notif.type }}"
+                 data-read="{{ 'true' if notif.is_read else 'false' }}"
+                 onclick="handleNotificationClick({{ notif.id }}, '{{ notif.link or '' }}')">
 
                 <!-- Icon -->
                 <div class="notif-icon
@@ -79,8 +78,7 @@
                 <div class="notif-content">
                     <div class="notif-title">{{ notif.title }}</div>
                     <div class="notif-message">{{ notif.message }}</div>
-                    <div class="notif-time"><i class="far fa-clock"></i> {{ notif.created_at.strftime('%b %d, %Y • %I:%M
-                        %p') }}</div>
+                    <div class="notif-time"><i class="far fa-clock"></i> {{ notif.created_at.strftime('%b %d, %Y • %I:%M %p') }}</div>
                 </div>
 
                 <!-- Unread dot -->
@@ -91,13 +89,11 @@
                 <!-- Actions -->
                 <div class="notif-actions" onclick="event.stopPropagation();">
                     {% if not notif.is_read %}
-                    <button class="notif-action-btn notif-btn-read" onclick="markAsRead({{ notif.id }})"
-                        title="Mark as read">
+                    <button class="notif-action-btn notif-btn-read" onclick="markAsRead({{ notif.id }})" title="Mark as read">
                         <i class="fas fa-check"></i>
                     </button>
                     {% endif %}
-                    <button class="notif-action-btn notif-btn-delete" onclick="confirmDelete({{ notif.id }})"
-                        title="Delete">
+                    <button class="notif-action-btn notif-btn-delete" onclick="confirmDelete({{ notif.id }})" title="Delete">
                         <i class="fas fa-trash-alt"></i>
                     </button>
                 </div>
@@ -116,21 +112,21 @@
 
             <div class="pagination-numbers">
                 {% for p in range(1, total_pages + 1) %}
-                {% if p == current_page %}
-                <span class="pagination-num active">{{ p }}</span>
-                {% elif p == 1 or p == total_pages or (p >= current_page - 2 and p <= current_page + 2) %} <a
-                    href="?page={{ p }}" class="pagination-num">{{ p }}</a>
+                    {% if p == current_page %}
+                    <span class="pagination-num active">{{ p }}</span>
+                    {% elif p == 1 or p == total_pages or (p >= current_page - 2 and p <= current_page + 2) %}
+                    <a href="?page={{ p }}" class="pagination-num">{{ p }}</a>
                     {% elif p == current_page - 3 or p == current_page + 3 %}
                     <span class="pagination-ellipsis">...</span>
                     {% endif %}
-                    {% endfor %}
+                {% endfor %}
             </div>
 
-            {% if current_page < total_pages %} <a href="?page={{ current_page + 1 }}" class="pagination-btn"><i
-                    class="fas fa-chevron-right"></i></a>
-                {% else %}
-                <span class="pagination-btn disabled"><i class="fas fa-chevron-right"></i></span>
-                {% endif %}
+            {% if current_page < total_pages %}
+            <a href="?page={{ current_page + 1 }}" class="pagination-btn"><i class="fas fa-chevron-right"></i></a>
+            {% else %}
+            <span class="pagination-btn disabled"><i class="fas fa-chevron-right"></i></span>
+            {% endif %}
         </div>
         {% endif %}
     </div>
@@ -154,58 +150,39 @@
         knownIds.add(item.id.replace('notif-', ''));
     });
 
-    // ── Real-time polling ──
-    let pollInterval;
-    function startPolling() {
-        pollInterval = setInterval(pollNewNotifications, 15000); // 15 seconds
-    }
+    // ── Real-time Sync (Hooked to Global Engine) ──
+    window.syncLocalNotificationsPage = function(notifications, unread_count) {
+        const list = document.getElementById('notifList');
+        if (!list) return;
 
-    async function pollNewNotifications() {
-        try {
-            const response = await fetch('/api/notifications?limit=20');
-            const data = await response.json();
-
-            // Update sidebar badge
-            const badge = document.getElementById('nav-notif-badge');
-            if (badge) {
-                if (data.unread_count > 0) {
-                    badge.style.display = 'flex';
-                    badge.textContent = data.unread_count > 99 ? '99+' : data.unread_count;
-                } else {
-                    badge.style.display = 'none';
-                }
-            }
-
-            // Check for new notifications not already in the DOM
-            const list = document.getElementById('notifList');
-            if (!list) return;
-
-            data.notifications.forEach(notif => {
-                const idStr = String(notif.id);
-                if (!knownIds.has(idStr)) {
-                    knownIds.add(idStr);
-                    const newItem = createNotifElement(notif);
-                    list.prepend(newItem);
-
-                    // Animate in
-                    newItem.style.opacity = '0';
-                    newItem.style.transform = 'translateY(-10px)';
-                    requestAnimationFrame(() => {
-                        newItem.style.transition = 'all 0.3s ease';
-                        newItem.style.opacity = '1';
-                        newItem.style.transform = 'translateY(0)';
-                    });
-
-                    // Apply current filter
-                    applyFilterToItem(newItem);
-                }
-            });
-
-            updateTabCounts();
-        } catch (e) {
-            console.error('Polling error:', e);
+        // Check for empty state handling if list was empty
+        const emptyState = document.querySelector('.notif-empty-state');
+        if (notifications.length > 0 && emptyState) {
+            emptyState.style.display = 'none';
         }
-    }
+
+        notifications.forEach(notif => {
+            const idStr = String(notif.id);
+            if (!knownIds.has(idStr)) {
+                knownIds.add(idStr);
+                const newItem = createNotifElement(notif);
+                list.prepend(newItem);
+
+                // Elegant slide-in animation
+                newItem.style.opacity = '0';
+                newItem.style.transform = 'translateY(-15px) scale(0.98)';
+                requestAnimationFrame(() => {
+                    newItem.style.transition = 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
+                    newItem.style.opacity = '1';
+                    newItem.style.transform = 'translateY(0) scale(1)';
+                });
+
+                applyFilterToItem(newItem);
+            }
+        });
+
+        updateTabCounts();
+    };
 
     // Build a notification DOM element from API data
     function createNotifElement(notif) {
@@ -292,7 +269,7 @@
                 const btnRead = card.querySelector('.notif-btn-read');
                 if (btnRead) btnRead.remove();
                 updateTabCounts();
-                if (typeof fetchNotifications === 'function') fetchNotifications(true);
+                if (window.fetchGlobalNotifications) window.fetchGlobalNotifications(true);
                 return true;
             }
         } catch (e) {
@@ -303,52 +280,38 @@
 
     // ── Mark all as read ──
     async function markAllAsRead() {
-        if (typeof window.showConfirm === 'function') {
-            window.showConfirm('Mark all notifications as read?', markAllAsReadApi, 'Mark All Read?', 'Yes, Mark All');
-        } else {
-            if (confirm('Mark all notifications as read?')) {
-                markAllAsReadApi();
-            }
-        }
-    }
-
-    async function markAllAsReadApi() {
-        try {
-            const response = await fetch('/api/notifications/read-all', { method: 'POST' });
-            if (response.ok) {
-                document.querySelectorAll('.notif-item.notif-unread').forEach(item => {
-                    item.classList.remove('notif-unread');
-                    item.dataset.read = 'true';
-                    const dot = item.querySelector('.notif-unread-dot');
-                    if (dot) dot.remove();
-                    const btnRead = item.querySelector('.notif-btn-read');
-                    if (btnRead) btnRead.remove();
-                });
-                updateTabCounts();
-                if (typeof window.showSuccess === 'function') {
-                    window.showSuccess('All notifications marked as read.');
+        window.showConfirm('Mark all notifications as read?', async () => {
+            try {
+                const response = await fetch('/api/notifications/read-all', { method: 'POST' });
+                if (response.ok) {
+                    document.querySelectorAll('.notif-item.notif-unread').forEach(item => {
+                        item.classList.remove('notif-unread');
+                        item.dataset.read = 'true';
+                        const dot = item.querySelector('.notif-unread-dot');
+                        if (dot) dot.remove();
+                        const btnRead = item.querySelector('.notif-btn-read');
+                        if (btnRead) btnRead.remove();
+                    });
+                    updateTabCounts();
+                    if (typeof window.showSuccess === 'function') {
+                        window.showSuccess('All notifications marked as read.');
+                    }
+                    if (window.fetchGlobalNotifications) window.fetchGlobalNotifications(true);
                 }
-                if (typeof fetchNotifications === 'function') fetchNotifications(true);
+            } catch (e) {
+                console.error('Failed to mark all as read', e);
             }
-        } catch (e) {
-            console.error('Failed to mark all as read', e);
-        }
+        }, 'Mark All Read?', 'Yes, Mark All');
     }
 
     // ── Delete with confirmation ──
     function confirmDelete(id) {
-        if (typeof window.showConfirm === 'function') {
-            window.showConfirm(
-                'Are you sure you want to delete this notification? This action cannot be undone.',
-                () => deleteNotification(id),
-                'Delete Notification?',
-                'Yes, Delete'
-            );
-        } else {
-            if (confirm('Are you sure you want to delete this notification?')) {
-                deleteNotification(id);
-            }
-        }
+        window.showConfirm(
+            'Are you sure you want to delete this notification? This action cannot be undone.',
+            () => deleteNotification(id),
+            'Delete Notification?',
+            'Yes, Delete'
+        );
     }
 
     async function deleteNotification(id) {
@@ -373,7 +336,7 @@
                         updateTabCounts();
                     }, 400);
                 }
-                if (typeof fetchNotifications === 'function') fetchNotifications(true);
+                if (window.fetchGlobalNotifications) window.fetchGlobalNotifications(true);
                 if (typeof window.showSuccess === 'function') {
                     window.showSuccess('Notification deleted.');
                 }
@@ -394,8 +357,6 @@
         }
     }
 
-    // Start polling on page load
-    startPolling();
     // Initial count sync
     updateTabCounts();
 </script>

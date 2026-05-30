@@ -199,31 +199,12 @@ function closeSearch() { document.getElementById('omniSearchResults')?.classList
 /* ============================================================
    DROPDOWN TOGGLE (Messages / Notifications / Profile)
    ============================================================ */
-window.toggleHeaderDropdown = function (id, triggerEl) {
-    const dropdown = document.getElementById(id);
-    if (!dropdown) return;
+// window.toggleHeaderDropdown is centralized in main.js
 
-    const wasOpen = dropdown.classList.contains('active');
-    closeAllDropdowns();
-
-    if (!wasOpen) {
-        dropdown.classList.add('active');
-        if (triggerEl) triggerEl.classList.add('active');
-    }
-};
-
-function closeAllDropdowns() {
-    document.querySelectorAll('.hdr-dropdown, .premium-dropdown').forEach(d => d.classList.remove('active'));
-    document.querySelectorAll('.hdr-btn, .hdr-profile-chip, .header-icon-btn, .header-profile-chip')
-        .forEach(b => b.classList.remove('active'));
-}
+// closeAllDropdowns handled by main.js
 
 function initDropdownClose() {
-    document.addEventListener('click', e => {
-        if (!e.target.closest('.header-dropdown-wrapper') && !e.target.closest('.header-profile-section')) {
-            closeAllDropdowns();
-        }
-    });
+    // Handled by main.js
 }
 
 /* ============================================================
@@ -236,57 +217,15 @@ function initHeartbeat() {
 
 async function fetchIntelligence() {
     try {
-        const [notifRes, msgRes] = await Promise.all([
-            fetch('/customer/api/notifications/recent'),
-            fetch('/customer/api/messages/recent')
-        ]);
-        const notifs = await notifRes.json();
+        const msgRes = await fetch('/customer/api/messages/recent');
         const msgs   = await msgRes.json();
-        renderNotifications(notifs);
         renderMessages(msgs);
     } catch (e) {
-        console.warn('[Heartbeat] Could not sync:', e.message);
+        console.warn('[Heartbeat] Could not sync messages:', e.message);
     }
 }
 
-function renderNotifications(data) {
-    const body  = document.getElementById('headerNotifBody');
-    const badge = document.getElementById('headerNotifBadge');
-    const label = document.getElementById('notifUnreadLabel');
-    if (!body) return;
-
-    const unread = data.filter(n => !n.is_read).length;
-
-    // Badge
-    if (badge) {
-        if (unread > 0) {
-            badge.textContent = unread < 10 ? unread : '9+';
-            badge.style.display = 'flex';
-        } else {
-            badge.style.display = 'none';
-        }
-    }
-    if (label) label.textContent = unread > 0 ? `${unread} unread` : '';
-
-    if (!data.length) {
-        body.innerHTML = `<div class="hdr-empty"><i class="fas fa-bell-slash"></i><p>You're all caught up!</p></div>`;
-        return;
-    }
-
-    body.innerHTML = data.slice(0, 8).map(n => `
-        <a href="${n.link || '#'}" class="hdr-notif-item ${n.is_read ? '' : 'unread'}">
-            <div class="hni-icon" style="background:${getNotifBg(n.type)};color:${getNotifColor(n.type)};">
-                <i class="${getNotifIcon(n.type)}"></i>
-            </div>
-            <div style="flex:1;min-width:0;">
-                <p class="hni-title">${escHtml(n.title)}</p>
-                <p class="hni-msg">${escHtml(n.message)}</p>
-                <span class="hni-time">${n.time_ago}</span>
-            </div>
-            ${!n.is_read ? '<div class="hni-dot"></div>' : ''}
-        </a>
-    `).join('');
-}
+// renderNotifications handled by main.js
 
 function renderMessages(data) {
     const body  = document.getElementById('headerMsgBody');
@@ -326,20 +265,7 @@ function renderMessages(data) {
     `).join('');
 }
 
-window.markAllNotificationsRead = async function () {
-    try {
-        await fetch('/customer/api/notifications/mark-all-read', { method: 'POST' });
-        const badge = document.getElementById('headerNotifBadge');
-        const label = document.getElementById('notifUnreadLabel');
-        if (badge) badge.style.display = 'none';
-        if (label) label.textContent = '';
-        // Refresh body
-        document.querySelectorAll('.hdr-notif-item').forEach(el => {
-            el.classList.remove('unread');
-            el.querySelector('.hni-dot')?.remove();
-        });
-    } catch (e) { console.warn('[Notif] Mark-read failed:', e); }
-};
+// markAllNotificationsRead centralized in main.js
 
 /* ============================================================
    INACTIVITY TIMER

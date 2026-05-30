@@ -7,10 +7,10 @@
 @media (max-width: 768px) {
 
     /* ── 1. MAIN CONTENT AREA ── */
-    .main-content {
+    .customer-page-content {
         padding: 0.85rem 0.9rem 2rem !important;
         margin-left: 0 !important;
-        padding-top: 4.5rem !important; /* space for floating burger */
+        padding-top: 85px !important; /* space for header */
     }
 
     .back-navigation {
@@ -340,7 +340,7 @@
 @media (max-width: 480px) {
 
     /* ── Main Content: FAB clearance ── */
-    .main-content {
+    .customer-page-content {
         padding-bottom: 5rem !important;
     }
 
@@ -463,3 +463,4 @@
         font-size: 0.75rem !important;
     }
 }
+

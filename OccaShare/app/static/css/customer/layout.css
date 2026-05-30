@@ -175,14 +175,20 @@ html, body {
 
 /* ---- TOP HEADER ---- */
 .customer-header {
-    position: sticky; top: 0;
+    position: fixed; top: 0;
+    left: var(--sidebar-width);
+    width: calc(100% - var(--sidebar-width));
     height: var(--topbar-height);
     background: #fff;
     border-bottom: 1px solid var(--border-color);
     display: flex; align-items: center; justify-content: space-between;
     padding: 0 1.5rem;
     z-index: 1200;
-    gap: 1rem;
+    transition: left 0.3s cubic-bezier(.4,0,.2,1), width 0.3s cubic-bezier(.4,0,.2,1);
+}
+.sidebar-icons-only .customer-header {
+    left: var(--sidebar-collapsed-width);
+    width: calc(100% - var(--sidebar-collapsed-width));
 }
 
 .header-left  { display: flex; align-items: center; gap: 0.75rem; flex: 1; }
@@ -274,14 +280,14 @@ html, body {
 .hdr-btn:hover { background: #f1f5f9; color: var(--primary-color); }
 .hdr-btn.active { background: rgba(255,123,84,0.08); color: var(--primary-color); }
 
-.hdr-badge {
-    position: absolute; top: 6px; right: 6px;
+.action-badge {
+    position: absolute; top: -5px; right: -5px;
+    background: #ef4444; color: white;
+    font-size: 0.65rem; font-weight: 800;
     min-width: 18px; height: 18px;
-    background: #ef4444; color: #fff;
-    border-radius: 99px; border: 2px solid #fff;
-    font-size: 0.55rem; font-weight: 900;
+    border-radius: 9px;
     display: flex; align-items: center; justify-content: center;
-    padding: 0 3px; line-height: 1;
+    padding: 0 4px;
 }
 
 .hdr-sep { width: 1px; height: 24px; background: var(--dm-slate-100); margin: 0 0.25rem; }
@@ -421,7 +427,9 @@ html, body {
 /* DASHBOARD COMPONENTS */
 .customer-page-content { 
     flex: 1; 
-    padding: 0.75rem 1.5rem;
+    padding: 1.5rem;
+    padding-top: calc(var(--topbar-height) + 1.5rem);
+    min-width: 0;
     position: relative; z-index: 10; 
     background: var(--dashboard-bg);
 }
@@ -495,7 +503,11 @@ html, body {
     .mobile-menu-btn {
         display: flex;
     }
-    .customer-header { padding: 0 1.25rem; }
+    .customer-header { 
+        padding: 0 1.25rem; 
+        left: 0;
+        width: 100%;
+    }
     .command-search-wrap { width: 100%; }
 }
 
@@ -521,9 +533,7 @@ html, body {
     }
 
     /* Customer page content */
-    .customer-page-content {
-        padding: 0.75rem !important;
-    }
+    .customer-page-content { padding-top: 85px !important; padding-right: 0.75rem !important; padding-bottom: 0.75rem !important; padding-left: 0.75rem !important; }
 
     /* Dropdown positioning: full-width on mobile */
     .hdr-dropdown {
@@ -549,12 +559,23 @@ html, body {
         padding: 0 0.5rem !important;
         height: 56px;
     }
-    .customer-page-content {
-        padding: 0.5rem !important;
-    }
+    .customer-page-content { padding-top: 85px !important; padding-right: 0.5rem !important; padding-bottom: 0.5rem !important; padding-left: 0.5rem !important; }
     .hdr-dropdown {
         left: 2% !important;
         right: 2% !important;
         width: 96% !important;
     }
-}
+}
+/* PREMIUM DROPDOWN ADDED FOR NOTIFS */
+.premium-dropdown { position: absolute; top: calc(100% + 12px); right: 0; width: 280px; background: rgba(255,255,255,0.98); backdrop-filter: blur(20px); border: 1px solid rgba(226,232,240,0.8); border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); z-index: 1100; opacity: 0; visibility: hidden; transform: translateY(10px); transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.premium-dropdown.active { opacity: 1; visibility: visible; transform: translateY(0); }
+.dropdown-header { padding: 1rem 1.25rem; font-weight: 800; font-size: 0.85rem; color: #1e293b; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
+.dropdown-body { max-height: 360px; overflow-y: auto; background: #f8fafc; }
+.dropdown-footer { padding: 12px; border-top: 1px solid #e2e8f0; text-align: center; background: #fff; }
+
+
+@media (max-width: 480px) { .premium-dropdown { position: fixed !important; top: 62px !important; left: 2% !important; right: 2% !important; width: 96% !important; max-height: 70vh !important; overflow-y: auto !important; z-index: 9999 !important; } }
+
+
+
+

@@ -15,6 +15,12 @@ import base64
 import httpx
 from ..services.realtime import manager
 from ..services.notification import NotificationService
+from PIL import Image
+try:
+    import pytesseract
+    PYTESSERACT_AVAILABLE = True
+except ImportError:
+    PYTESSERACT_AVAILABLE = False
 
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
@@ -647,6 +653,63 @@ async def step_quotation_page(booking_id: int, request: Request, db: Session = D
     })
 
 # Phase 4: Downpayment
+async def _validate_receipt_with_gemini(filepath: str, payment_method: str) -> bool:
+    is_valid = False
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    if gemini_key:
+        import httpx, base64, json, re
+        try:
+            with open(filepath, "rb") as image_file:
+                encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+            
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_key}"
+            prompt = (
+                f"Analyze this image. Is it a legitimate payment receipt or screenshot for {payment_method}? "
+                "Look for evidence of a successful transaction, reference numbers, amounts, and dates. "
+                "Respond ONLY with a valid JSON object in this exact format: "
+                '{"is_valid": true_or_false, "reason": "short explanation"}'
+            )
+            
+            payload = {
+                "contents": [{"parts": [{"text": prompt}, {"inlineData": {"mimeType": "image/jpeg", "data": encoded_string}}]}],
+                "generationConfig": {"response_mime_type": "application/json"}
+            }
+            
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=20.0)
+                if response.status_code == 200:
+                    text = response.json()['candidates'][0]['content']['parts'][0]['text']
+                    match = re.search(r'\{.*\}', text.strip(), re.DOTALL)
+                    if match:
+                        parsed = json.loads(match.group(0))
+                        is_valid = parsed.get("is_valid", False)
+                        print(f"[GEMINI VALIDATION] Result: {is_valid}, Reason: {parsed.get('reason')}")
+                else:
+                    print(f"[GEMINI API ERROR] Status {response.status_code}: {response.text}")
+        except Exception as e:
+            print(f"[GEMINI OCR ERROR] {e}")
+            pass # fallback to False if API fails
+    else:
+        # Fallback to Tesseract if no Gemini key is set
+        if PYTESSERACT_AVAILABLE:
+            try:
+                if os.name == "nt":
+                    tess_paths = [r"C:\Program Files\Tesseract-OCR\tesseract.exe", r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe"]
+                    for p in tess_paths:
+                        if os.path.exists(p):
+                            pytesseract.pytesseract.tesseract_cmd = p
+                            break
+                img = Image.open(filepath)
+                img.thumbnail((800, 800))
+                text = pytesseract.image_to_string(img).lower()
+                keywords = ['ref', 'reference', 'no.', 'php', 'amount', 'transfer', 'gcash', 'maya', 'sent', 'success', 'date', 'pesos', 'payout']
+                match_count = sum(1 for kw in keywords if kw in text)
+                if match_count >= 2:
+                    is_valid = True
+            except Exception as e:
+                pass
+    return is_valid
+
 @router.get("/step/payment/{booking_id}", response_class=HTMLResponse)
 async def step_payment_v2_page(booking_id: int, request: Request, db: Session = Depends(database.get_db)):
     user = get_current_user_from_session(request, db)
@@ -749,38 +812,29 @@ async def step_payment_submit(
         with open(filepath, "wb") as buffer:
             shutil.copyfileobj(payment_proof.file, buffer)
             
+        # --- AI RECEIPT VALIDATION (GEMINI / OCR) ---
+        is_valid_receipt = await _validate_receipt_with_gemini(filepath, payment_method)
+
+        if not is_valid_receipt:
+            if os.path.exists(filepath):
+                os.remove(filepath)
+            # Encode URL manually for redirect since we can't use complex URL building easily
+            request.session["flash_error"] = "Invalid Receipt Detected: Our AI could not verify the Reference Number or Amount. Please ensure the screenshot is clear."
+            return RedirectResponse(url=f"/bookings/step/payment/{booking.id}?error=invalid_receipt&method={payment_method}", status_code=303)
+            
         proof_url = f"/static/uploads/payment_proofs/{filename}"
         booking.payment_proof_url = proof_url
         
         if reference_no:
             booking.special_requests = (booking.special_requests or "") + f"\n[Payment Ref: {reference_no}]"
 
-    # Handle Cash Payment
-    if payment_method == "Cash":
-        booking.payment_method = "Cash"
-        # If cash, they might not have a proof yet, or it's just a promise
-        booking.payment_status = "proof_submitted" if proof_url else "pending"
-        booking.status = "pending"
-        
-        history = models.BookingHistory(
-            booking_id=booking.id,
-            status="pending",
-            notes=f"{payment_plan.capitalize()} committed via Cash. Proof: {'Uploaded' if proof_url else 'None'}"
-        )
-        db.add(history)
-        db.commit()
-        
-        # --- Trigger Notification (In-App, Email, SMS) ---
-        await NotificationService.notify_new_booking(db, booking)
-        if proof_url:
-            pay_amount = booking.total_amount if payment_plan == 'full' else (booking.reservation_fee or 0)
-            await NotificationService.notify_payment_received(db, booking, float(pay_amount), f"{payment_plan.capitalize()} Proof")
-
-        return RedirectResponse(url=f"/bookings/success/{booking.id}", status_code=303)
+    if not proof_url:
+        request.session["flash_error"] = "Payment proof is required for online booking."
+        return RedirectResponse(url=f"/bookings/step/payment/{booking.id}?error=missing_proof", status_code=303)
 
     # Default flow: Manual transfer / Direct Payment
     booking.payment_method = payment_method
-    booking.payment_status = "proof_submitted" if proof_url else "pending"
+    booking.payment_status = "proof_submitted"
     booking.status = "pending"
     
     history = models.BookingHistory(
@@ -797,6 +851,67 @@ async def step_payment_submit(
         await NotificationService.notify_payment_received(db, booking, float(booking.reservation_fee or 0), "Downpayment Proof")
 
     return RedirectResponse(url=f"/bookings/success/{booking.id}", status_code=303)
+
+
+@router.post("/reupload-proof/{booking_id}")
+async def reupload_proof_submit(
+    booking_id: int,
+    request: Request,
+    payment_method: str = Form("Paymongo"),
+    payment_proof: UploadFile = File(...),
+    db: Session = Depends(database.get_db)
+):
+    user = get_current_user_from_session(request, db)
+    if not user: raise HTTPException(status_code=401)
+    
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking or booking.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+        
+    if booking.payment_status not in ['reupload_requested']:
+        return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?error_msg=No+re-upload+requested", status_code=303)
+
+    if not payment_proof or not payment_proof.filename:
+        return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?validation_error=Please+provide+an+image&open_reupload=1", status_code=303)
+
+    allowed_types = ["image/jpeg", "image/png", "image/webp"]
+    if payment_proof.content_type not in allowed_types:
+        return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?validation_error=Invalid+file+type&open_reupload=1", status_code=303)
+
+    ext = os.path.splitext(payment_proof.filename)[1]
+    filename = f"{booking.id}_reupload_{uuid.uuid4().hex}{ext}"
+    filepath = os.path.join(PROOF_UPLOAD_DIR, filename)
+    
+    with open(filepath, "wb") as buffer:
+        shutil.copyfileobj(payment_proof.file, buffer)
+        
+    # --- AI RECEIPT VALIDATION (GEMINI / OCR) ---
+    is_valid_receipt = await _validate_receipt_with_gemini(filepath, payment_method)
+
+    if not is_valid_receipt:
+        # Delete the invalid file
+        if os.path.exists(filepath):
+            os.remove(filepath)
+            
+        import urllib.parse
+        encoded_method = urllib.parse.quote(payment_method)
+        return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?validation_error=Invalid+Receipt+Detected:+Our+AI+could+not+verify+the+Reference+Number+or+Amount.+Please+ensure+the+screenshot+is+clear.&method={encoded_method}&open_reupload=1", status_code=303)
+
+    booking.payment_proof_url = f"/static/uploads/payment_proofs/{filename}"
+    booking.payment_method = payment_method
+    booking.payment_status = "proof_submitted"
+
+    history = models.BookingHistory(
+        booking_id=booking.id,
+        status="pending",
+        notes=f"New downpayment proof submitted via {payment_method}."
+    )
+    db.add(history)
+    
+    await NotificationService.notify_payment_received(db, booking, float(booking.reservation_fee or 0), "New Downpayment Proof")
+
+    db.commit()
+    return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?success_msg=New+proof+submitted!+Please+wait+for+verification.", status_code=303)
 
 
 @router.post("/pay-balance/{booking_id}")

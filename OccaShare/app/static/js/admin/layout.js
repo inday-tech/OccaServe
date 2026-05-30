@@ -135,35 +135,8 @@
     );
     resetInactivity();
 
-    // ─── Header Dropdown Management ───────────────────────────────────────────
-    window.toggleHeaderDropdown = function (dropdownId, triggerEl) {
-        const dropdown = document.getElementById(dropdownId);
-        if (!dropdown) return;
-
-        const isActive = dropdown.classList.contains('active');
-        closeAllHeaderDropdowns();
-
-        if (!isActive) {
-            dropdown.classList.add('active');
-            if (triggerEl) triggerEl.classList.add('active');
-            
-            // Special cases for loading data
-            if (dropdownId === 'notificationsDropdown') {
-                fetchRecentNotifications();
-            }
-        }
-    };
-
-    function closeAllHeaderDropdowns() {
-        document.querySelectorAll('.premium-dropdown.active, .hdr-dropdown.active').forEach(d => d.classList.remove('active'));
-        document.querySelectorAll('.header-icon-btn.active, .header-profile-chip.active, .hdr-btn.active').forEach(t => t.classList.remove('active'));
-    }
-
     // Close on outside click
     document.addEventListener('click', (e) => {
-        if (!e.target.closest('.header-dropdown-wrapper') && !e.target.closest('.header-profile-section')) {
-            closeAllHeaderDropdowns();
-        }
         if (searchPanel && !e.target.closest('.command-search-wrap')) {
             searchPanel.classList.remove('active');
         }
@@ -255,68 +228,7 @@
         }).join('');
     }
 
-    // ─── Notification Intelligence ────────────────────────────────────────────
-    async function fetchRecentNotifications() {
-        const body = document.getElementById('headerNotifBody');
-        if (!body) return;
-
-        try {
-            const response = await fetch('/admin/api/notifications/recent');
-            const data = await response.json();
-
-            if (data.success && data.notifications.length > 0) {
-                const getNotifBg = t => ({ info: 'rgba(59,130,246,0.1)', success: 'rgba(16,185,129,0.1)', warning: 'rgba(245,158,11,0.1)', error: 'rgba(239,68,68,0.1)' }[t] || 'var(--dm-slate-50)');
-                const getNotifColor = t => ({ info: '#3b82f6', success: '#10b981', warning: '#f59e0b', error: '#ef4444' }[t] || 'var(--dm-slate-400)');
-                
-                body.innerHTML = data.notifications.map(n => `
-                    <a href="${n.link || '#'}" class="hdr-notif-item ${n.is_read ? '' : 'unread'}">
-                        <div class="hni-icon" style="background:${getNotifBg(n.type)};color:${getNotifColor(n.type)};">
-                            <i class="${getNotifIcon(n.type)}"></i>
-                        </div>
-                        <div style="flex:1;min-width:0;">
-                            <p class="hni-title">${n.title}</p>
-                            <p class="hni-msg">${n.message}</p>
-                            <span class="hni-time">${formatTimeAgo(n.created_at)}</span>
-                        </div>
-                        ${!n.is_read ? '<div class="hni-dot"></div>' : ''}
-                    </a>
-                `).join('');
-            } else {
-                body.innerHTML = '<div class="hdr-empty"><i class="fas fa-bell-slash"></i><p>You\'re all caught up!</p></div>';
-            }
-        } catch (err) {
-            body.innerHTML = '<div class="empty-notif text-danger"><p>Failed to load</p></div>';
-        }
-    }
-
-    window.markAllNotificationsRead = async function() {
-        try {
-            await fetch('/admin/api/notifications/mark-all-read', { method: 'POST' });
-            const dot = document.getElementById('headerNotifDot');
-            if (dot) dot.style.display = 'none';
-            fetchRecentNotifications();
-        } catch (err) {
-            console.error("Failed to mark all read");
-        }
-    };
-
-    function getNotifIcon(type) {
-        const icons = { 'info': 'fas fa-info-circle', 'success': 'fas fa-check-circle', 'warning': 'fas fa-exclamation-triangle', 'error': 'fas fa-times-circle' };
-        return icons[type] || 'fas fa-bell';
-    }
-
-    function formatTimeAgo(dateString) {
-        const date = new Date(dateString);
-        const now = new Date();
-        const seconds = Math.floor((now - date) / 1000);
-        if (seconds < 60) return 'Just now';
-        const minutes = Math.floor(seconds / 60);
-        if (minutes < 60) return `${minutes}m ago`;
-        const hours = Math.floor(minutes / 60);
-        if (hours < 24) return `${hours}h ago`;
-        return date.toLocaleDateString();
-    }
-
+    // ─── Notification Intelligence Centralized in main.js ──────────────────────
     // ─── Real-Time System Intelligence ────────────────────────────────────────
     async function checkSystemHealth() {
         const heartbeat = document.querySelector('.system-heartbeat');

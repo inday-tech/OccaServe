@@ -15,6 +15,19 @@
         --dm-slate-400: #94a3b8;
     }
 
+    body, .customer-page-content { background-color: #f1f5f9 !important; }
+    body.contract-modal-open .customer-main-wrapper {
+        margin-left: 0 !important;
+        padding: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        overflow: hidden !important;
+    }
+
+    body, .btn-action-elite {
+        font-family: 'Poppins', sans-serif !important;
+    }
+
     /* ── PAGE HEADER ── */
     .dash-header { margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: flex-end; }
     .dash-header h1 {
@@ -49,7 +62,8 @@
     .step.done .step-label, .step.active .step-label { color: var(--up-slate-900); }
 
     /* ── INTELLIGENCE PANELS ── */
-    .panel { background: #fff; border-radius: 1.25rem; border: 1px solid var(--dm-slate-100); overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.04); margin-bottom: 1.25rem; }
+    .panel { background: #ffffff; border-radius: 1.25rem; border: 1px solid rgba(0,0,0,0.05); overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.06); margin-bottom: 1.5rem; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .panel:hover { box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.01); transform: translateY(-2px); }
     .panel-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--dm-slate-50); display: flex; justify-content: space-between; align-items: center; }
     .panel-header h3 { font-size: 0.95rem; font-weight: 850; color: var(--up-slate-900); margin: 0; text-transform: uppercase; letter-spacing: 0.05em; }
     .panel-body { padding: 1.5rem; }
@@ -73,11 +87,11 @@
     .fin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); }
 
     /* ── ACTION BUTTONS ── */
-    .btn-action-elite { width: 100%; padding: 1rem; border-radius: 16px; font-weight: 850; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.85rem; border: none; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.75rem; text-decoration: none; }
-    .btn-primary-orange { background: var(--up-orange); color: white; box-shadow: 0 10px 20px rgba(255, 123, 84, 0.2); }
-    .btn-primary-orange:hover { transform: translateY(-3px); box-shadow: 0 15px 30px rgba(255, 123, 84, 0.3); }
+    .btn-action-elite { width: 100%; padding: 1rem; border-radius: 50px; font-weight: 850; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.85rem; border: none; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; justify-content: center; gap: 0.75rem; text-decoration: none; }
+    .btn-primary-orange { background: var(--up-orange); color: white; box-shadow: 0 4px 14px rgba(255, 123, 84, 0.3); }
+    .btn-primary-orange:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255, 123, 84, 0.4); }
     .btn-outline-slate { background: transparent; border: 2px solid var(--dm-slate-100); color: var(--up-slate-900); }
-    .btn-outline-slate:hover { background: var(--dm-slate-50); border-color: var(--dm-slate-400); }
+    .btn-outline-slate:hover { background: var(--dm-slate-50); border-color: var(--dm-slate-400); transform: translateY(-2px); }
 
     /* ── AUDIT LOGS ── */
     .audit-log-item { display: flex; align-items: center; gap: 12px; padding: 0.75rem; background: var(--dm-slate-50); border-radius: 12px; margin-bottom: 0.5rem; }
@@ -88,22 +102,28 @@
 {% endblock %}
 
 {% block content %}
+<!-- ── BACK BUTTON ── -->
+<div style="margin-bottom: 1.5rem;">
+    <a href="/customer/bookings" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 6px 14px; background: white; border-radius: 50px; border: 1px solid var(--dm-slate-200); color: var(--up-slate-900); font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: all 0.2s;"><i class="fas fa-arrow-left"></i> Back to Registry</a>
+</div>
+
 <div class="dash-header">
     <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-        <a href="/customer/bookings" style="text-decoration: none; color: var(--dm-slate-400); font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; display: flex; align-items: center; gap: 0.5rem;">
-            <i class="fas fa-arrow-left"></i> Back to Registry
-        </a>
         <h1>{{ booking.event_name or 'Logistic Management' }}</h1>
         <p>Reference: <span style="background: var(--dm-slate-100); padding: 2px 8px; border-radius: 6px; color: var(--up-slate-900); font-weight: 800;">BK-{{ "%03d" | format(booking.id) }}</span> &bull; Verified Transaction</p>
     </div>
     <div style="display: flex; align-items: center; gap: 1rem;">
-        {% set status_cfg = {
-            'confirmed': ('Confirmed', '#ecfdf5', '#10b981'),
-            'completed': ('Completed', '#f8fafc', '#64748b'),
-            'pending': ('Reviewing', '#fff7ed', '#f59e0b'),
-            'pending_payment': ('Awaiting Settlement', '#fffbeb', '#b45309'),
-            'cancelled': ('Cancelled', '#fef2f2', '#dc2626')
-        }.get(booking.status, (booking.status|capitalize, '#f1f5f9', '#475569')) %}
+        {% if booking.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
+            {% set status_cfg = ('Action Required', '#fef2f2', '#ef4444') %}
+        {% else %}
+            {% set status_cfg = {
+                'confirmed': ('Confirmed', '#ecfdf5', '#10b981'),
+                'completed': ('Completed', '#f8fafc', '#64748b'),
+                'pending': ('Reviewing', '#fff7ed', '#f59e0b'),
+                'pending_payment': ('Awaiting Settlement', '#fffbeb', '#b45309'),
+                'cancelled': ('Cancelled', '#fef2f2', '#dc2626')
+            }.get(booking.status, (booking.status|capitalize, '#f1f5f9', '#475569')) %}
+        {% endif %}
         <span style="background: {{ status_cfg[1] }}; color: {{ status_cfg[2] }}; padding: 8px 20px; border-radius: 30px; font-size: 0.75rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; box-shadow: 0 4px 10px rgba(0,0,0,0.03);">
             {{ status_cfg[0] }}
         </span>
@@ -117,16 +137,16 @@
             <div class="step-dot"><i class="fas fa-file-signature"></i></div>
             <span class="step-label">Requested</span>
         </div>
-        <div class="step {{ 'done' if current_step_idx > 3 else ('active' if current_step_idx == 3 else '') }}">
-            <div class="step-dot"><i class="fas fa-shield-check"></i></div>
+        <div class="step {{ 'done' if current_step_idx > 2 else ('active' if current_step_idx == 2 else '') }}">
+            <div class="step-dot"><i class="fas fa-check-circle"></i></div>
             <span class="step-label">Confirmed</span>
         </div>
-        <div class="step {{ 'done' if current_step_idx > 4 else ('active' if current_step_idx == 4 else '') }}">
+        <div class="step {{ 'done' if current_step_idx >= 8 else ('active' if current_step_idx >= 3 and current_step_idx < 8 else '') }}">
             <div class="step-dot"><i class="fas fa-fire-burner"></i></div>
             <span class="step-label">Preparing</span>
         </div>
-        <div class="step {{ 'active' if current_step_idx == 6 else '' }}">
-            <div class="step-dot"><i class="fas fa-party-horn"></i></div>
+        <div class="step {{ 'done' if current_step_idx >= 8 else ('active' if current_step_idx == 8 else '') }}">
+            <div class="step-dot"><i class="fas fa-flag-checkered"></i></div>
             <span class="step-label">Success</span>
         </div>
     </div>
@@ -138,7 +158,6 @@
         <div class="panel">
             <div class="panel-header">
                 <h3>Event Details</h3>
-                <i class="fas fa-map-location-dot" style="color: var(--dm-slate-400);"></i>
             </div>
             <div class="panel-body">
                 <div class="detail-item">
@@ -163,7 +182,6 @@
         <div class="panel">
             <div class="panel-header">
                 <h3>Selected Menu</h3>
-                <i class="fas fa-utensils" style="color: var(--dm-slate-400);"></i>
             </div>
             <div class="panel-body">
                 <div style="background: var(--dm-slate-50); padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
@@ -190,7 +208,25 @@
         <!-- FINANCIAL TERMINAL -->
         <div class="financial-card">
             <span class="fin-label">Outstanding Balance</span>
-            {% set balance_val = (booking.total_amount|float) - ((booking.reservation_fee|float) if booking.payment_status in ['paid', 'deposit_paid'] and booking.reservation_fee else 0.0) %}
+            {% set total_val = booking.total_amount|float %}
+            {% set res_fee = booking.reservation_fee|float if booking.reservation_fee else 0.0 %}
+            {% set paid_amt = 0.0 %}
+            
+            {% if booking.payment_plan == 'full' %}
+                {% if booking.payment_status in ['paid', 'proof_submitted', 'reupload_requested'] %}
+                    {% set paid_amt = total_val %}
+                {% endif %}
+                {% set balance_val = total_val - paid_amt %}
+            {% else %}
+                {% if booking.payment_status == 'paid' %}
+                    {% set paid_amt = total_val %}
+                {% elif booking.payment_status in ['deposit_paid', 'balance_proof_submitted', 'balance_reupload_requested'] %}
+                    {% set paid_amt = res_fee %}
+                {% elif booking.payment_status in ['proof_submitted', 'reupload_requested'] %}
+                    {% set paid_amt = res_fee %}
+                {% endif %}
+                {% set balance_val = total_val - paid_amt %}
+            {% endif %}
             <div class="fin-value">₱{{ "{:,.2f}".format(balance_val if booking.status != 'completed' else 0) }}</div>
             
             <div class="fin-grid">
@@ -199,8 +235,14 @@
                     <b style="font-size: 0.95rem;">₱{{ "{:,.2f}".format(booking.total_amount or 0) }}</b>
                 </div>
                 <div style="text-align: right;">
-                    <span class="fin-label">Amount Paid</span>
-                    <b style="font-size: 0.95rem; color: var(--up-emerald);">₱{{ "{:,.2f}".format(booking.reservation_fee if booking.payment_status in ['paid', 'deposit_paid'] else 0) }}</b>
+                    <span class="fin-label">Amount Paid 
+                        {% if booking.payment_status in ['proof_submitted', 'balance_proof_submitted'] %}
+                        <span style="color:#f59e0b; font-size: 0.6rem;">(Pending Ver.)</span>
+                        {% elif booking.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
+                        <span style="color:#ef4444; font-size: 0.6rem;">(Unverified)</span>
+                        {% endif %}
+                    </span>
+                    <b style="font-size: 0.95rem; color: var(--up-emerald);">₱{{ "{:,.2f}".format(paid_amt) }}</b>
                 </div>
             </div>
         </div>
@@ -211,7 +253,17 @@
                 <h3>Actions</h3>
             </div>
             <div class="panel-body" style="display: flex; flex-direction: column; gap: 0.75rem;">
-                {% if booking.status in ['pending_payment', 'awaiting_payment'] %}
+                {% if booking.payment_status == 'reupload_requested' %}
+                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 1rem; margin-bottom: 0.5rem;">
+                        <div style="color: #b91c1c; font-size: 0.8rem; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-exclamation-circle"></i> Proof Rejected
+                        </div>
+                        <p style="color: #991b1b; font-size: 0.75rem; margin: 4px 0 0; font-weight: 500;">Your submitted payment proof was rejected. Please re-upload a clear and correct copy.</p>
+                    </div>
+                    <button onclick="openReuploadProofModal()" class="btn-action-elite btn-primary-orange" style="background: #ef4444; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);">
+                        Re-upload Proof of Payment <i class="fas fa-file-upload"></i>
+                    </button>
+                {% elif booking.status in ['pending_payment', 'awaiting_payment'] and booking.payment_status not in ['proof_submitted', 'reupload_requested'] %}
                 <a href="/bookings/step/payment/{{ booking.id }}" class="btn-action-elite btn-primary-orange">
                     Settle Reservation <i class="fas fa-credit-card"></i>
                 </a>
@@ -219,10 +271,20 @@
                 <a href="/bookings/continue/{{ booking.id }}" class="btn-action-elite btn-primary-orange">
                     Resume Process <i class="fas fa-play"></i>
                 </a>
+                {% elif booking.payment_status == 'balance_reupload_requested' %}
+                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 1rem; margin-bottom: 0.5rem;">
+                        <div style="color: #b91c1c; font-size: 0.8rem; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-exclamation-circle"></i> Balance Proof Rejected
+                        </div>
+                        <p style="color: #991b1b; font-size: 0.75rem; margin: 4px 0 0; font-weight: 500;">Your submitted balance payment proof was rejected. Please re-upload a clear and correct copy.</p>
+                    </div>
+                    <button onclick="openBalanceUploadModal()" class="btn-action-elite btn-primary-orange" style="background: #ef4444; box-shadow: 0 10px 20px rgba(239, 68, 68, 0.2);">
+                        Re-upload Balance Proof <i class="fas fa-file-upload"></i>
+                    </button>
                 {% elif booking.status == 'confirmed' and balance_val > 0 %}
-                <a href="/bookings/pay-balance/{{ booking.id }}" class="btn-action-elite btn-primary-orange">
+                <button onclick="openBalanceUploadModal()" class="btn-action-elite btn-primary-orange">
                     Settle Final Balance <i class="fas fa-receipt"></i>
-                </a>
+                </button>
                 {% endif %}
                 
                 <a href="/customer/messages?caterer_id={{ booking.caterer_id }}" class="btn-action-elite btn-outline-slate">
@@ -235,7 +297,6 @@
         <div class="panel">
             <div class="panel-header">
                 <h3>Your Documents</h3>
-                <i class="fas fa-box-archive" style="color: var(--dm-slate-400);"></i>
             </div>
             <div class="panel-body">
                 <a href="javascript:void(0)" onclick="openContractModal('{{ booking.id }}')" 
@@ -258,26 +319,40 @@
         <div class="panel">
             <div class="panel-header">
                 <h3>Payment History</h3>
-                <i class="fas fa-history" style="color: var(--dm-slate-400);"></i>
             </div>
-            <div class="panel-body" style="padding-top: 0.5rem;">
-                <div class="audit-log-item">
-                    <div class="audit-icon"><i class="fas fa-check"></i></div>
-                    <div class="audit-info">
-                        <b>Downpayment Verified</b>
-                        <span>Ref: PM-{{ booking.id }}882 &bull; {{ booking.created_at.strftime('%b %d, %Y') }}</span>
+            <div class="panel-body" style="padding-top: 0.5rem; max-height: 300px; overflow-y: auto;">
+                {% if booking.history %}
+                    {% for h in booking.history|sort(attribute='created_at', reverse=True) %}
+                    <div class="audit-log-item">
+                        <div class="audit-icon" style="color: {% if 'reject' in h.notes|lower or 'reupload' in h.notes|lower %}#ef4444{% else %}var(--up-emerald){% endif %};">
+                            <i class="fas {% if 'reject' in h.notes|lower or 'reupload' in h.notes|lower %}fa-times-circle{% elif h.status == 'confirmed' %}fa-check-double{% else %}fa-check{% endif %}"></i>
+                        </div>
+                        <div class="audit-info">
+                            <b>{{ h.status|capitalize }}</b>
+                            <span>{{ h.notes }} &bull; <br>{{ h.created_at.strftime('%b %d, %Y %I:%M %p') }}</span>
+                        </div>
                     </div>
-                </div>
-                <p style="font-size: 0.65rem; color: var(--dm-slate-400); font-weight: 600; text-align: center; margin-top: 1rem;">
-                    <i class="fas fa-lock"></i> Secured by PayMongo
-                </p>
+                    {% endfor %}
+                {% else %}
+                    <div style="text-align: center; padding: 1rem; color: var(--dm-slate-400); font-size: 0.8rem;">No payment history yet.</div>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
 
+
+
+
+{% endblock %}
+
+{% block modals %}
 <!-- Contract View Modal -->
-<div id="contractModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.8); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
+
+
+
+<!-- Contract Modal -->
+<div id="contractModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15,23,42,0.8); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
     <div style="background: #fff; width: 90%; max-width: 900px; height: 90vh; border-radius: 24px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
         <div style="padding: 1.25rem 2rem; border-bottom: 1px solid var(--dm-slate-100); display: flex; justify-content: space-between; align-items: center; background: #fff;">
             <div style="display: flex; align-items: center; gap: 12px;">
@@ -296,6 +371,106 @@
         </div>
     </div>
 </div>
+
+<!-- Balance Upload Modal -->
+<div id="balanceUploadModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div style="background: white; width: 95%; max-width: 400px; border-radius: 20px; padding: 2rem; position: relative;">
+        <button onclick="closeBalanceUploadModal()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.2rem; color: var(--dm-slate-400); cursor: pointer;"><i class="fas fa-times"></i></button>
+        <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--up-slate-900); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-cloud-upload-alt" style="color: var(--up-emerald);"></i> Upload Balance Proof
+        </h3>
+        <p style="font-size: 0.8rem; color: var(--dm-slate-400); margin-bottom: 1.5rem; font-weight: 500;">Provide your receipt to settle your remaining balance.</p>
+        
+        <form action="/bookings/pay-balance/{{ booking.id }}" method="POST" enctype="multipart/form-data">
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--up-slate-900); margin-bottom: 0.5rem;">Payment Method Used</label>
+                <select name="payment_method" style="width: 100%; padding: 0.75rem; border: 1px solid var(--dm-slate-100); border-radius: 8px; font-size: 0.85rem; outline: none; background: var(--dm-slate-50);">
+                    <option value="GCash">GCash</option>
+                    <option value="Maya">Maya</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                </select>
+            </div>
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--up-slate-900); margin-bottom: 0.5rem;">Proof of Payment Image</label>
+                <input type="file" name="payment_proof" required accept="image/png, image/jpeg, image/jpg" style="width: 100%; padding: 0.75rem; border: 2px dashed var(--dm-slate-100); border-radius: 8px; font-size: 0.8rem; background: var(--dm-slate-50);">
+            </div>
+            <button type="submit" class="btn-action-elite btn-primary-orange" style="background: var(--up-emerald); box-shadow: 0 4px 6px -1px rgba(16,185,129,0.2);">Submit Proof <i class="fas fa-check"></i></button>
+        </form>
+    </div>
+</div>
+
+
+
+
+
+<!-- Re-upload Downpayment Proof Modal -->
+<div id="reuploadProofModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div style="background: white; width: 95%; max-width: 400px; border-radius: 20px; padding: 2rem; position: relative;">
+        <button onclick="closeReuploadProofModal()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.2rem; color: var(--dm-slate-400); cursor: pointer; transition: color 0.2s;"><i class="fas fa-times"></i></button>
+        <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--up-slate-900); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-file-invoice-dollar" style="color: #ef4444;"></i> Re-upload Proof
+        </h3>
+        <p style="font-size: 0.8rem; color: var(--dm-slate-400); margin-bottom: 1.5rem; font-weight: 500;">Please provide a clear copy of your payment receipt.</p>
+        
+        <form action="/bookings/reupload-proof/{{ booking.id }}" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="payment_method" value="{{ booking.payment_method }}">
+            
+            <div style="margin-bottom: 1rem; background: var(--dm-slate-50); border-radius: 12px; padding: 1rem; border: 1px solid var(--dm-slate-100);">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dm-slate-400);">Payment Method</span>
+                    <span style="font-size: 0.85rem; font-weight: 800; color: var(--up-slate-900); background: white; padding: 4px 12px; border-radius: 50px; border: 1px solid var(--dm-slate-100);">{{ booking.payment_method }}</span>
+                </div>
+                
+                <div style="font-size: 0.75rem; color: var(--up-slate-900); font-weight: 600;">
+                    {% if booking.payment_method == 'GCash' %}
+                        <p style="margin: 0 0 4px 0;"><strong>Recipient:</strong> {{ booking.caterer.gcash_name or 'N/A' }}</p>
+                        <p style="margin: 0 0 8px 0;"><strong>Number:</strong> {{ booking.caterer.gcash_number or 'N/A' }}</p>
+                        <ol style="margin: 0; padding-left: 1.2rem; color: var(--dm-slate-400); font-weight: 500;">
+                            <li>Open your e-wallet app and send the exact amount.</li>
+                            <li>Take a clear screenshot of the successful transaction.</li>
+                            <li>Ensure the <strong>Reference Number</strong> and <strong>Amount</strong> are visible.</li>
+                        </ol>
+                    {% elif booking.payment_method == 'Maya' %}
+                        <p style="margin: 0 0 4px 0;"><strong>Recipient:</strong> {{ booking.caterer.maya_name or 'N/A' }}</p>
+                        <p style="margin: 0 0 8px 0;"><strong>Number:</strong> {{ booking.caterer.maya_number or 'N/A' }}</p>
+                        <ol style="margin: 0; padding-left: 1.2rem; color: var(--dm-slate-400); font-weight: 500;">
+                            <li>Open your e-wallet app and send the exact amount.</li>
+                            <li>Take a clear screenshot of the successful transaction.</li>
+                            <li>Ensure the <strong>Reference Number</strong> and <strong>Amount</strong> are visible.</li>
+                        </ol>
+                    {% elif booking.payment_method == 'Bank Transfer' %}
+                        <p style="margin: 0 0 4px 0;"><strong>Bank:</strong> {{ booking.caterer.bank_name or 'N/A' }}</p>
+                        <p style="margin: 0 0 4px 0;"><strong>Account Name:</strong> {{ booking.caterer.bank_account_name or 'N/A' }}</p>
+                        <p style="margin: 0 0 8px 0;"><strong>Account No.:</strong> {{ booking.caterer.bank_account_number or 'N/A' }}</p>
+                        <ol style="margin: 0; padding-left: 1.2rem; color: var(--dm-slate-400); font-weight: 500;">
+                            <li>Transfer the exact amount to the bank account above.</li>
+                            <li>Take a clear screenshot of the confirmation page or receipt.</li>
+                            <li>Ensure the <strong>Reference Number</strong> and <strong>Amount</strong> are visible.</li>
+                        </ol>
+                    {% else %}
+                        <p style="margin: 0;">Please follow the standard payment procedure for {{ booking.payment_method }}.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+
+
+            <div id="reuploadErrorMsg" style="display: none; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 1rem; border-radius: 12px; font-size: 0.85rem; margin-bottom: 1.25rem; font-weight: 500;"></div>
+
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--up-slate-900); margin-bottom: 0.5rem; text-transform: uppercase;">Upload New Receipt <span style="color: #ef4444;">*</span></label>
+                <input type="file" name="payment_proof" accept="image/jpeg, image/png, image/webp" required style="width: 100%; padding: 0.75rem; border: 2px dashed var(--up-orange); border-radius: 12px; font-family: 'Poppins', sans-serif; font-size: 0.8rem; color: var(--dm-slate-400); background: rgba(255,123,84,0.05);">
+                <p style="font-size: 0.65rem; color: var(--dm-slate-400); margin-top: 6px; text-align: center;"><i class="fas fa-robot"></i> Image will be verified automatically by our AI system.</p>
+            </div>
+            <button type="submit" class="btn-action-elite btn-primary-orange" style="width: 100%;">
+                Submit Document <i class="fas fa-paper-plane"></i>
+            </button>
+        </form>
+    </div>
+</div>
+
+
+{% endblock %}
 
 {% block extra_js %}
 <script>
@@ -317,6 +492,56 @@
     function closeContractModal() {
         document.getElementById('contractModal').style.display = 'none';
     }
+
+    function openBalanceUploadModal() {
+        document.getElementById('balanceUploadModal').style.display = 'flex';
+    }
+
+    function closeBalanceUploadModal() {
+        document.getElementById('balanceUploadModal').style.display = 'none';
+    }
+
+    function openReuploadProofModal() {
+        document.getElementById('reuploadProofModal').style.display = 'flex';
+    }
+    
+    function closeReuploadProofModal() {
+        document.getElementById('reuploadProofModal').style.display = 'none';
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        if (urlParams.has('validation_error')) {
+            const errorMsg = urlParams.get('validation_error');
+            
+            if (urlParams.has('open_reupload')) {
+                // Open modal and show error inside
+                const msgBox = document.getElementById('reuploadErrorMsg');
+                if (msgBox) {
+                    msgBox.innerHTML = '<i class="fas fa-exclamation-triangle"></i> <strong>AI Verification Failed:</strong> ' + errorMsg.replace(/\+/g, ' ');
+                    msgBox.style.display = 'block';
+                }
+                openReuploadProofModal();
+            } else {
+                Swal.fire({
+                    title: 'AI Verification Failed',
+                    text: errorMsg,
+                    icon: 'error',
+                    confirmButtonColor: '#ef4444'
+                });
+            }
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        
+        if (urlParams.has('success_msg')) {
+            Swal.fire({
+                title: 'Success!',
+                text: urlParams.get('success_msg'),
+                icon: 'success',
+                confirmButtonColor: 'var(--up-emerald-500)'
+            });
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    });
 </script>
-{% endblock %}
 {% endblock %}

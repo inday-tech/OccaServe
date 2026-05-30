@@ -6,6 +6,43 @@
 <link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}?v=11.0">
 <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_payment.css') }}?v=11.0">
 <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/wizard_navigation.css') }}?v=11.0">
+<style>
+    body { background-color: #f1f5f9 !important; }
+    
+    @keyframes modalFadeIn {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+    }
+    
+    .modal-instruction-step {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 12px;
+        text-align: left;
+    }
+    .modal-instruction-step .step-num {
+        background: var(--up-emerald-100);
+        color: var(--up-emerald-700);
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: 800;
+        flex-shrink: 0;
+    }
+    .modal-instruction-step .step-text {
+        font-size: 0.85rem;
+        color: var(--up-slate-700);
+        line-height: 1.4;
+    }
+    .modal-instruction-step .step-text strong {
+        color: var(--up-slate-900);
+    }
+</style>
 {% endblock %}
 
 {% block wizard_content %}
@@ -13,6 +50,8 @@
     <h2 class="wizard-title">Secure Payment Selection</h2>
     <p class="wizard-subtitle">Finalize your booking by settling the contractual deposit or full amount.</p>
 </div>
+
+
 
 <form action="/bookings/step/payment/{{ booking.id }}" method="POST" enctype="multipart/form-data" class="payment-form" id="wizard-payment-form">
     <input type="hidden" name="booking_id" value="{{ booking.id }}">
@@ -138,11 +177,6 @@
             <span style="font-weight: 700; color: #713f12;">Bank Transfer</span>
         </button>
         {% endif %}
-        
-        <button type="button" onclick="openPaymentModal('Cash')" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; width: 140px; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; gap: 0.75rem;">
-            <div style="width: 48px; height: 48px; background: #64748b; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;"><i class="fas fa-money-bill-wave"></i></div>
-            <span style="font-weight: 700; color: #334155;">Cash / OTC</span>
-        </button>
     </div>
 
     <!-- ── SECURITY TRUST BAR ── -->
@@ -168,9 +202,13 @@
         </a>
     </div>
 
-    <!-- Dynamic Payment Modal (Inside Form) -->
-    <div id="paymentModalOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
-        <div style="background: white; width: 95%; max-width: 450px; border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); display: flex; flex-direction: column; max-height: 90vh;">
+</form>
+{% endblock %}
+
+{% block wizard_modals %}
+    <!-- Dynamic Payment Modal (Outside Stacking Context) -->
+    <div id="paymentModalOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+        <div id="paymentModalCard" style="background: white; width: 95%; max-width: 450px; border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); display: flex; flex-direction: column; max-height: 90vh;">
             
             <div style="background: #f8fafc; padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0;">
                 <h3 id="modalTitle" style="margin: 0; font-size: 1.25rem; color: var(--up-slate-900); display: flex; align-items: center; gap: 8px; font-weight: 800;">
@@ -183,22 +221,46 @@
                 <!-- Dynamic Content Area -->
                 <div id="modalContentGCash" style="display: none; text-align: center;">
                     <img src="{{ profile.gcash_qr_url }}" alt="GCash QR" style="width: 220px; height: 220px; object-fit: cover; border-radius: 16px; border: 2px solid #bfdbfe; margin-bottom: 1rem;">
-                    <div style="background: #eff6ff; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
-                        <div style="font-size: 0.85rem; color: #3b82f6; font-weight: 600; text-transform: uppercase;">GCash Details</div>
-                        <div style="font-size: 1.25rem; font-weight: 800; color: #1e3a8a; margin-top: 4px; letter-spacing: 1px;">GCash Mobile Number</div>
+                    
+                    <div style="background: #eff6ff; padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; text-align: left;">
+                        <h4 style="font-size: 0.9rem; font-weight: 800; color: #1e3a8a; margin-top: 0; margin-bottom: 1rem;"><i class="fas fa-info-circle"></i> GCash Payment Steps</h4>
+                        <div class="modal-instruction-step">
+                            <div class="step-num">1</div>
+                            <div class="step-text">Open your GCash App.</div>
+                        </div>
+                        <div class="modal-instruction-step">
+                            <div class="step-num">2</div>
+                            <div class="step-text"><strong>Scan the QR Code</strong> above OR "Send Money" to <strong>{{ profile.gcash_number if profile.gcash_number else 'the Caterer\'s Number' }}</strong>.</div>
+                        </div>
+                        <div class="modal-instruction-step">
+                            <div class="step-num">3</div>
+                            <div class="step-text">Take a screenshot of the <strong>"Send Money Successful"</strong> screen.</div>
+                        </div>
                     </div>
                 </div>
                 
                 <div id="modalContentMaya" style="display: none; text-align: center;">
                     <img src="{{ profile.maya_qr_url }}" alt="Maya QR" style="width: 220px; height: 220px; object-fit: cover; border-radius: 16px; border: 2px solid #bbf7d0; margin-bottom: 1rem;">
-                    <div style="background: #f0fdf4; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
-                        <div style="font-size: 0.85rem; color: #16a34a; font-weight: 600; text-transform: uppercase;">Maya Details</div>
-                        <div style="font-size: 1.25rem; font-weight: 800; color: #14532d; margin-top: 4px; letter-spacing: 1px;">{{ profile.maya_number if profile.maya_number else 'Ask Caterer' }}</div>
+                    
+                    <div style="background: #f0fdf4; padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; text-align: left;">
+                        <h4 style="font-size: 0.9rem; font-weight: 800; color: #14532d; margin-top: 0; margin-bottom: 1rem;"><i class="fas fa-info-circle"></i> Maya Payment Steps</h4>
+                        <div class="modal-instruction-step">
+                            <div class="step-num" style="background: #dcfce7;">1</div>
+                            <div class="step-text">Open your Maya App.</div>
+                        </div>
+                        <div class="modal-instruction-step">
+                            <div class="step-num" style="background: #dcfce7;">2</div>
+                            <div class="step-text"><strong>Scan the QR Code</strong> above OR "Send Money" to <strong>{{ profile.maya_number if profile.maya_number else 'the Caterer\'s Number' }}</strong>.</div>
+                        </div>
+                        <div class="modal-instruction-step">
+                            <div class="step-num" style="background: #dcfce7;">3</div>
+                            <div class="step-text">Take a screenshot of the <strong>"Transfer Successful"</strong> screen.</div>
+                        </div>
                     </div>
                 </div>
                 
                 <div id="modalContentBank" style="display: none;">
-                    <div style="background: #fefce8; padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid #fef08a;">
+                    <div style="background: #fefce8; padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem; border: 1px solid #fef08a;">
                         <div style="margin-bottom: 1rem;">
                             <div style="font-size: 0.85rem; color: #ca8a04; font-weight: 600;">Bank Name</div>
                             <div style="font-size: 1.1rem; font-weight: 700; color: #713f12;">{{ profile.bank_name }}</div>
@@ -212,16 +274,21 @@
                             <div style="font-size: 1.25rem; font-weight: 800; color: #713f12; letter-spacing: 1px;">{{ profile.bank_account_number }}</div>
                         </div>
                     </div>
-                </div>
-                
-                <div id="modalContentCash" style="display: none; text-align: center;">
-                    <div style="width: 80px; height: 80px; background: #f1f5f9; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: #64748b; margin: 0 auto 1.5rem;">
-                        <i class="fas fa-hand-holding-usd"></i>
-                    </div>
-                    <h4 style="font-size: 1.1rem; color: var(--up-slate-900); margin-bottom: 0.5rem; font-weight: 800;">Over-the-Counter Payment</h4>
-                    <p style="font-size: 0.95rem; color: var(--up-slate-500); margin-bottom: 1.5rem;">You can pay in cash at the caterer's physical address or during your initial meetup.</p>
-                    <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; font-size: 0.9rem; font-weight: 600; color: var(--up-slate-900); border: 1px solid #e2e8f0;">
-                        {{ profile.address if profile.address else 'Check Caterer Profile for Address' }}
+                    
+                    <div style="background: #fefce8; padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid #fef08a; text-align: left;">
+                        <h4 style="font-size: 0.9rem; font-weight: 800; color: #713f12; margin-top: 0; margin-bottom: 1rem;"><i class="fas fa-info-circle"></i> Bank Transfer Steps</h4>
+                        <div class="modal-instruction-step">
+                            <div class="step-num" style="background: #fef08a; color: #854d0e;">1</div>
+                            <div class="step-text">Open your preferred Banking App (e.g. BPI, BDO, UnionBank).</div>
+                        </div>
+                        <div class="modal-instruction-step">
+                            <div class="step-num" style="background: #fef08a; color: #854d0e;">2</div>
+                            <div class="step-text">Select "Transfer via InstaPay / PESONet" and input the <strong>exact Account Details</strong> above.</div>
+                        </div>
+                        <div class="modal-instruction-step">
+                            <div class="step-num" style="background: #fef08a; color: #854d0e;">3</div>
+                            <div class="step-text">Screenshot the <strong>Transaction Successful</strong> page with the reference number visible.</div>
+                        </div>
                     </div>
                 </div>
                 
@@ -230,28 +297,35 @@
                 <div id="uploadSection">
                     <h4 style="font-size: 1rem; color: var(--up-slate-900); margin-bottom: 1rem; font-weight: 800;"><i class="fas fa-cloud-upload-alt" style="color: var(--up-emerald-500);"></i> Submit Proof of Payment</h4>
                     
-                    <div id="uploadErrorMsg" style="display: none; background: #fee2e2; color: #b91c1c; padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; margin-bottom: 1rem; font-weight: 600;"></div>
+                    
                     
                     <div style="margin-bottom: 1.25rem;">
                         <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 6px; color: var(--up-slate-900);">Receipt Image</label>
-                        <input type="file" id="proofImageInput" name="payment_proof" accept="image/png, image/jpeg, image/jpg" style="width: 100%; padding: 0.75rem; border: 2px dashed #cbd5e1; border-radius: 8px; background: #f8fafc; cursor: pointer;">
+                        <input type="file" id="proofImageInput" name="payment_proof" form="wizard-payment-form" accept="image/png, image/jpeg, image/jpg" style="width: 100%; padding: 0.75rem; border: 2px dashed #cbd5e1; border-radius: 8px; background: #f8fafc; cursor: pointer;">
                         <div style="font-size: 0.75rem; color: var(--up-slate-500); margin-top: 4px;">Max 5MB. PNG or JPG only.</div>
+
+                      <div id="uploadErrorMsg" style="display: none; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 1rem; border-radius: 12px; font-size: 0.85rem; margin-bottom: 1.25rem; font-weight: 500;"></div>
                     </div>
                     <div style="margin-bottom: 1.5rem;">
                         <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 6px; color: var(--up-slate-900);">Reference No. (Optional)</label>
-                        <input type="text" id="referenceNoInput" name="reference_no" placeholder="e.g. 10023456789" pattern="[a-zA-Z0-9]+" maxlength="30" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')" style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;">
+                        <input type="text" id="referenceNoInput" name="reference_no" form="wizard-payment-form" placeholder="e.g. 10023456789" pattern="[a-zA-Z0-9]+" maxlength="30" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')" style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 8px; outline: none;">
                         <div style="font-size: 0.75rem; color: var(--up-slate-500); margin-top: 4px;">Letters and numbers only. Max 30 chars.</div>
                     </div>
                 </div>
 
-                <button type="submit" id="submit-payment-btn" style="width: 100%; background: var(--up-emerald-500); color: white; border: none; padding: 1rem; border-radius: 8px; font-weight: 800; font-size: 1rem; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);">
+                <button type="submit" id="submit-payment-btn" form="wizard-payment-form" style="width: 100%; background: var(--up-emerald-500); color: white; border: none; padding: 1rem; border-radius: 8px; font-weight: 800; font-size: 1rem; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);">
+                    {% if booking.payment_status == 'reupload_requested' %}
+                    Submit New Proof <i class="fas fa-check"></i>
+                    {% else %}
                     Finish & Notify Caterer
+                    {% endif %}
                 </button>
             </div>
         </div>
     </div>
-</form>
+{% endblock %}
 
+{% block step_js %}
 <script>
     // Handle the visual payment plan toggle logic (Downpayment vs Full)
     function updatePaymentPlan(plan, amount, total) {
@@ -303,7 +377,6 @@
         document.getElementById('modalContentGCash').style.display = 'none';
         document.getElementById('modalContentMaya').style.display = 'none';
         document.getElementById('modalContentBank').style.display = 'none';
-        document.getElementById('modalContentCash').style.display = 'none';
         
         // Show specific content
         document.getElementById('modalContent' + method).style.display = 'block';
@@ -312,42 +385,65 @@
         const uploadSeparator = document.getElementById('uploadSeparator');
         const fileInput = document.getElementById('proofImageInput');
         const submitBtn = document.getElementById('submit-payment-btn');
+        document.getElementById('paymentModalCard').style.animation = 'modalFadeIn 0.3s ease forwards';
         
-        if (method === 'Cash') {
-            uploadSection.style.display = 'none';
-            uploadSeparator.style.display = 'none';
-            fileInput.removeAttribute('required');
-            submitBtn.innerText = 'Commit to Pay via Cash';
-            submitBtn.style.background = '#0f172a';
-            submitBtn.style.boxShadow = '0 4px 6px -1px rgba(15, 23, 42, 0.2)';
-        } else {
-            uploadSection.style.display = 'block';
-            uploadSeparator.style.display = 'block';
-            fileInput.setAttribute('required', 'required');
-            submitBtn.innerHTML = '<i class="fas fa-check-circle"></i> Upload Proof & Finish Booking';
-            submitBtn.style.background = 'var(--up-emerald-500)';
-            submitBtn.style.boxShadow = '0 4px 6px -1px rgba(16, 185, 129, 0.2)';
-        }
+        uploadSection.style.display = 'block';
+        uploadSeparator.style.display = 'block';
+        fileInput.setAttribute('required', 'required');
+        submitBtn.innerHTML = '<i class="fas fa-check-circle"></i> Upload Proof & Finish Booking';
+        submitBtn.style.background = 'var(--up-emerald-500)';
+        submitBtn.style.boxShadow = '0 4px 6px -1px rgba(16, 185, 129, 0.2)';
     }
 
     function closePaymentModal() {
         document.getElementById('paymentModalOverlay').style.display = 'none';
     }
 
-    // Form Validation (Spam + File Check)
+    // Form Validation & URL Error Handling
     document.addEventListener('DOMContentLoaded', () => {
+        // Check URL parameters for AI Validation Errors
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('error')) {
+            const errorType = urlParams.get('error');
+            const errorMethod = urlParams.get('method');
+            
+            if (errorType === 'invalid_receipt') {
+                // Auto-select method and open modal
+                if (errorMethod && errorMethod !== 'Cash') {
+                    const methodSelect = document.getElementById('selected-method');
+                    if(methodSelect) methodSelect.value = errorMethod;
+                    
+                    // Show error inside the modal
+                    const errorMsgBox = document.getElementById('uploadErrorMsg');
+                    if (errorMsgBox) {
+                        errorMsgBox.innerHTML = '<i class="fas fa-exclamation-triangle"></i> <strong>AI Verification Failed:</strong> Our AI could not verify the Reference Number, Date, or Amount. Please ensure the screenshot is clear and legitimate.';
+                        errorMsgBox.style.display = 'block';
+                    }
+                    
+                    // Open the modal automatically
+                    openPaymentModal(errorMethod);
+                }
+            } else if (errorType === 'missing_proof') {
+                Swal.fire({
+                    title: 'Missing Proof',
+                    text: 'A payment proof screenshot is required to complete the booking.',
+                    icon: 'warning',
+                    confirmButtonColor: 'var(--up-emerald-500)'
+                });
+            }
+            // Clean URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
         const form = document.getElementById('wizard-payment-form');
-        const errorMsg = document.getElementById('uploadErrorMsg');
         
         if (form) {
             form.addEventListener('submit', function(e) {
-                errorMsg.style.display = 'none';
-                errorMsg.innerText = '';
-                
                 const method = document.getElementById('selected-method').value;
                 if (method !== 'Cash') {
                     const fileInput = document.getElementById('proofImageInput');
                     const refInput = document.getElementById('referenceNoInput');
+                    const submitBtn = document.getElementById('submit-payment-btn');
                     
                     // File Validation
                     if (fileInput.files.length > 0) {
@@ -356,15 +452,13 @@
                         
                         if (!validTypes.includes(file.type)) {
                             e.preventDefault();
-                            errorMsg.innerText = 'Invalid file type. Please upload a PNG or JPG image only.';
-                            errorMsg.style.display = 'block';
+                            Swal.fire('Invalid File', 'Please upload a PNG or JPG image only.', 'error');
                             return;
                         }
                         
                         if (file.size > 5 * 1024 * 1024) { // 5MB limit
                             e.preventDefault();
-                            errorMsg.innerText = 'File is too large. Maximum size allowed is 5MB.';
-                            errorMsg.style.display = 'block';
+                            Swal.fire('File Too Large', 'Maximum size allowed is 5MB.', 'error');
                             return;
                         }
                     }
@@ -374,25 +468,27 @@
                         const refRegex = /^[a-zA-Z0-9]+$/;
                         if (!refRegex.test(refInput.value)) {
                             e.preventDefault();
-                            errorMsg.innerText = 'Reference Number must contain letters and numbers only. No spaces or special characters allowed.';
-                            errorMsg.style.display = 'block';
+                            Swal.fire('Invalid Reference', 'Reference Number must contain letters and numbers only.', 'error');
                             return;
                         }
                         if (refInput.value.length < 6 || refInput.value.length > 30) {
                             e.preventDefault();
-                            errorMsg.innerText = 'Reference Number must be between 6 and 30 characters.';
-                            errorMsg.style.display = 'block';
+                            Swal.fire('Invalid Reference', 'Reference Number must be between 6 and 30 characters.', 'error');
                             return;
                         }
                         
                         const repeatingRegex = /(.)\1{5,}/;
                         if (repeatingRegex.test(refInput.value)) {
                             e.preventDefault();
-                            errorMsg.innerText = 'Reference number looks invalid. Please provide a real reference number.';
-                            errorMsg.style.display = 'block';
+                            Swal.fire('Suspicious Reference', 'Reference number looks invalid. Please provide a real reference number.', 'warning');
                             return;
                         }
                     }
+
+                    // Disable button and show loading state
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Validating Receipt with AI...';
+                    submitBtn.style.opacity = '0.7';
                 }
             });
         }

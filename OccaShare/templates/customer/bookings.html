@@ -15,6 +15,8 @@
         --dm-slate-400: #94a3b8;
     }
 
+    body, .customer-page-content { background-color: #f1f5f9 !important; }
+
     /* ── PAGE HEADER ── */
     .dash-header { margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: flex-end; }
     .dash-header h1 {
@@ -41,10 +43,10 @@
         display: flex;
         align-items: center;
         gap: 1rem;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.04);
-        transition: all 0.3s ease;
+        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.01);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
-    .stat-card:hover { transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); }
+    .stat-card:hover { transform: translateY(-3px); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.01); }
     
     .stat-icon {
         width: 48px; height: 48px;
@@ -73,11 +75,13 @@
     .panel {
         background: #fff;
         border-radius: 1.25rem;
-        border: 1px solid var(--dm-slate-100);
+        border: 1px solid rgba(0,0,0,0.05);
         overflow: hidden;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.04);
-        margin-bottom: 1.25rem;
+        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.01);
+        margin-bottom: 1.5rem;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
+    .panel:hover { box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.01); transform: translateY(-2px); }
     .panel-header {
         padding: 1.25rem 1.5rem;
         border-bottom: 1px solid var(--dm-slate-50);
@@ -243,22 +247,30 @@
                     </td>
                     <td>
                         {% set sc = b.status %}
-                        {% set status_cfg = {
-                            'confirmed': ('tag-confirmed', 'Confirmed', ''),
-                            'completed': ('tag-confirmed', 'Completed', ''),
-                            'pending': ('tag-pending', 'Reviewing', ''),
-                            'pending_payment': ('tag-amber pulse-amber', 'Settle Now', 'fa-exclamation-circle'),
-                            'awaiting_payment': ('tag-amber pulse-amber', 'Settle Now', 'fa-exclamation-circle'),
-                            'cancelled': ('tag-slate', 'Cancelled', ''),
-                            'draft': ('tag-slate', 'Draft', '')
-                        }.get(sc, ('tag-slate', sc|capitalize, '')) %}
+                        {% if b.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
+                            {% set status_cfg = ('tag-amber pulse-amber', 'Re-upload Proof', 'fa-exclamation-triangle') %}
+                        {% else %}
+                            {% set status_cfg = {
+                                'confirmed': ('tag-confirmed', 'Confirmed', 'fa-check-circle'),
+                                'completed': ('tag-confirmed', 'Completed', 'fa-flag-checkered'),
+                                'pending': ('tag-pending', 'Reviewing', 'fa-hourglass-half'),
+                                'pending_payment': ('tag-amber pulse-amber', 'Settle Now', 'fa-exclamation-circle'),
+                                'awaiting_payment': ('tag-amber pulse-amber', 'Settle Now', 'fa-exclamation-circle'),
+                                'cancelled': ('tag-slate', 'Cancelled', 'fa-times-circle'),
+                                'draft': ('tag-slate', 'Draft', 'fa-pencil-alt')
+                            }.get(sc, ('tag-slate', sc|capitalize, '')) %}
+                        {% endif %}
                         <span class="status-tag {{ status_cfg[0] }}">
                             {% if status_cfg[2] %}<i class="fas {{ status_cfg[2] }}"></i>{% endif %}
                             {{ status_cfg[1] }}
                         </span>
                     </td>
                     <td style="text-align: right;">
-                        {% if b.status in ['pending_payment', 'awaiting_payment'] %}
+                        {% if b.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
+                        <a href="/customer/bookings/manage/{{ b.id }}" class="btn-action-soft btn-settle" style="background: #ef4444; color: white !important;">
+                            Upload Proof <i class="fas fa-file-upload"></i>
+                        </a>
+                        {% elif b.status in ['pending_payment', 'awaiting_payment'] %}
                         <a href="/bookings/step/payment/{{ b.id }}" class="btn-action-soft btn-settle">
                             Pay <i class="fas fa-credit-card"></i>
                         </a>

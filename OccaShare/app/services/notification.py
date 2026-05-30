@@ -108,6 +108,22 @@ class NotificationService:
         user = db.query(models.User).get(user_id)
         if not user: return
 
+        # Auto-detect semantic type for proper UI icons if generic type is passed
+        if notif_type in ["info", "success", "warning", "error"]:
+            lower_title = title.lower()
+            if any(k in lower_title for k in ['booking', 'event', 'reservation', 'contract', 'cancelled', 'rejected', 'completed', 'verified!', 'signed']):
+                notif_type = "Booking"
+            elif any(k in lower_title for k in ['payment', 'balance', 'deadline', 'settlement', 'downpayment', 'commission', 'proof']):
+                notif_type = "Payment"
+            elif any(k in lower_title for k in ['review', 'rate', 'feedback']):
+                notif_type = "Review"
+            elif any(k in lower_title for k in ['identity', 'verify', 'verification', 'kyc', 'alert', 'application', 'account status', 'action required']):
+                notif_type = "Verification"
+            elif any(k in lower_title for k in ['customer', 'profile']):
+                notif_type = "Customer"
+            elif any(k in lower_title for k in ['message', 'chat']):
+                notif_type = "Message"
+
         # 1. In-App
         notif = models.Notification(
             user_id=user_id,
@@ -158,7 +174,7 @@ class NotificationService:
             user_id=user.id,
             title=f"{payment_type} Received!",
             message=f"Payment of ₱{amount:,.2f} received for '{booking.event_name}'.",
-            type="success",
+            type="Payment",
             link=f"/caterer/bookings"
         )
         db.add(notif)
@@ -215,7 +231,7 @@ class NotificationService:
             user_id=booking.user_id,
             title="Action Required: Payment Proof Rejected",
             message=f"Your payment proof for '{booking.event_name}' was rejected. Reason: {reason}",
-            type="warning",
+            type="Payment",
             link=f"/bookings/step/payment/{booking.id}"
         )
         db.add(notif)
@@ -243,7 +259,7 @@ class NotificationService:
             user_id=booking.user_id,
             title="Booking Rejected",
             message=f"Your booking request for '{booking.event_name}' was rejected. Reason: {reason}",
-            type="error",
+            type="Booking",
             link="/customer/bookings"
         )
         db.add(notif)
@@ -274,7 +290,7 @@ class NotificationService:
             user_id=target_user_id,
             title="Booking Cancelled",
             message=f"The booking for '{booking.event_name}' has been cancelled by the {cancelled_by}. Reason: {reason}",
-            type="warning",
+            type="Booking",
             link="/caterer/bookings" if cancelled_by == "Customer" else "/customer/bookings"
         )
         db.add(notif)
