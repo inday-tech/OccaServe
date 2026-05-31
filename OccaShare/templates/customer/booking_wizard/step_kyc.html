@@ -843,37 +843,90 @@
             </div>
 
 
-            <!-- ID Scanner -->
+            <!-- ═══ PREMIUM FULL-SCREEN ID SCANNER (eKYC style) ═══ -->
+            <!-- Flash overlay for capture animation -->
+            <div class="ekyc-flash" id="ekyc-flash"></div>
+
             <div id="id-scanner-container" style="display: none;">
-                <div class="scanner-viewport">
-                    <video id="id-webcam" autoplay playsinline></video>
-                    <div class="scanner-overlay">
-                        <div class="id-guide-box"></div>
-                        <div id="id-scan-feedback" class="scan-feedback">Align ID within frame</div>
+                <!-- Background video (full-screen) -->
+                <video id="id-webcam" class="ekyc-video-bg" autoplay playsinline muted></video>
+
+                <!-- Top bar: title + close -->
+                <div class="ekyc-topbar">
+                    <div class="ekyc-topbar-title">
+                        <i class="fas fa-id-card" style="margin-right:0.4rem; color:var(--kyc-accent);"></i>
+                        Scan Your ID
+                    </div>
+                    <button class="ekyc-close-btn" onclick="stopIdScanner()" title="Cancel">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <!-- Front / Back progress pills -->
+                <div class="ekyc-side-pills">
+                    <div class="ekyc-side-pill active" id="pill-front">
+                        <span class="pill-num">1</span>
+                        <i class="fas fa-check-circle pill-check"></i>
+                        Front Side
+                    </div>
+                    <div class="ekyc-side-pill" id="pill-back">
+                        <span class="pill-num">2</span>
+                        <i class="fas fa-check-circle pill-check"></i>
+                        Back Side
                     </div>
                 </div>
-                <div class="mt-4"
-                    style="display: flex; flex-direction: column; align-items: center; gap: 1.5rem; width: 100%;">
-                    <div id="camera-switch-group" class="camera-toggle-pill"
-                        style="display: flex; background: #f1f5f9; border-radius: 2rem; padding: 0.25rem; gap: 0.25rem; border: 1px solid #e2e8f0; width: fit-content;">
-                        <button type="button" id="btn-cam-front" class="btn-toggle" onclick="switchCamera('user')"
-                            style="border: none; background: transparent; border-radius: 1.75rem; padding: 0.5rem 1.25rem; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; transition: all 0.3s ease; color: #64748b;">
-                            <i class="fas fa-portrait"></i> <span>Front</span>
+
+                <!-- Scan area with ID frame overlay -->
+                <div class="ekyc-scan-area">
+                    <div class="ekyc-id-frame" id="ekyc-id-frame">
+                        <!-- Corner markers -->
+                        <div class="ekyc-corner ekyc-corner--tl"></div>
+                        <div class="ekyc-corner ekyc-corner--tr"></div>
+                        <div class="ekyc-corner ekyc-corner--bl"></div>
+                        <div class="ekyc-corner ekyc-corner--br"></div>
+                        <!-- Scanning laser line -->
+                        <div class="ekyc-laser" id="ekyc-laser"></div>
+                        <!-- Instruction inside frame -->
+                        <div class="ekyc-frame-hint" id="ekyc-frame-hint">Place your ID inside the frame</div>
+                    </div>
+                </div>
+
+                <!-- Real-time feedback pill -->
+                <div class="ekyc-feedback-pill">
+                    <span id="ekyc-feedback-text">
+                        <i class="fas fa-expand-arrows-alt" style="margin-right:0.3rem;"></i>
+                        Align your ID inside the frame
+                    </span>
+                </div>
+
+                <!-- Auto-capture progress ring (shown while stabilising) -->
+                <div class="ekyc-autocapture-ring" id="ekyc-autocapture-ring">
+                    <svg viewBox="0 0 48 48">
+                        <circle class="ring-track" cx="24" cy="24" r="20"/>
+                        <circle class="ring-fill"  cx="24" cy="24" r="20" id="ekyc-ring-fill"/>
+                    </svg>
+                </div>
+
+                <!-- Bottom controls -->
+                <div class="ekyc-bottom">
+                    <!-- Camera switch (front/back) -->
+                    <div id="camera-switch-group" class="ekyc-camera-switch">
+                        <button type="button" id="btn-cam-front" class="ekyc-cam-btn" onclick="switchCamera('user')">
+                            <i class="fas fa-portrait"></i> Front
                         </button>
-                        <button type="button" id="btn-cam-back" class="btn-toggle active"
-                            onclick="switchCamera('environment')"
-                            style="border: none; background: transparent; border-radius: 1.75rem; padding: 0.5rem 1.25rem; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; transition: all 0.3s ease; color: #64748b;">
-                            <i class="fas fa-camera"></i> <span>Back</span>
+                        <button type="button" id="btn-cam-back" class="ekyc-cam-btn active" onclick="switchCamera('environment')">
+                            <i class="fas fa-camera"></i> Back
                         </button>
                     </div>
 
-                    <button type="button" class="btn-primary-kyc" onclick="captureIdFromCamera()">Capture ID
-                        Document</button>
+                    <!-- Shutter button -->
+                    <button class="ekyc-capture-btn" id="ekyc-capture-btn"
+                        onclick="captureIdFromCamera()" title="Capture ID"></button>
 
-                    <button type="button" class="btn-outline-kyc" onclick="stopIdScanner()"
-                        style="width: 100%; max-width: 300px;">
-                        <i class="fas fa-arrow-left mr-2"></i> Go Back
-                    </button>
+                    <div class="ekyc-capture-hint" id="ekyc-capture-hint">
+                        <i class="fas fa-magic" style="margin-right:0.3rem;"></i>
+                        Auto-capture when stable &middot; or tap to capture
+                    </div>
                 </div>
             </div>
 

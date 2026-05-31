@@ -45,37 +45,32 @@ document.addEventListener('DOMContentLoaded', function () {
             availableDevices = devices.filter(device => device.kind === 'videoinput');
             console.log("Available video devices:", availableDevices);
 
-            const switchGroup = document.getElementById('camera-switch-group');
-            const liveSwitchGroup = document.getElementById('liveness-camera-switch-group');
-
-            // ID Scanner Group
-            if (switchGroup) {
-                switchGroup.style.display = 'flex'; // Force show for testing
-                const frontBtn = document.getElementById('btn-cam-front');
-                const backBtn = document.getElementById('btn-cam-back');
-                if (frontBtn && backBtn) {
-                    if (currentFacingMode === "user") {
-                        frontBtn.classList.add('active');
-                        backBtn.classList.remove('active');
-                    } else {
-                        backBtn.classList.add('active');
-                        frontBtn.classList.remove('active');
-                    }
+            // ID Scanner camera switch buttons
+            const frontBtn = document.getElementById('btn-cam-front');
+            const backBtn  = document.getElementById('btn-cam-back');
+            if (frontBtn && backBtn) {
+                if (currentFacingMode === "user") {
+                    frontBtn.classList.add('active');
+                    backBtn.classList.remove('active');
+                } else {
+                    backBtn.classList.add('active');
+                    frontBtn.classList.remove('active');
                 }
             }
 
             // Liveness Scanner Group
+            const liveSwitchGroup = document.getElementById('liveness-camera-switch-group');
             if (liveSwitchGroup) {
                 liveSwitchGroup.style.display = (availableDevices.length > 1 || isMobile()) ? 'flex' : 'none';
-                const frontBtn = document.getElementById('btn-live-cam-front');
-                const backBtn = document.getElementById('btn-live-cam-back');
-                if (frontBtn && backBtn) {
+                const frontBtnL = document.getElementById('btn-live-cam-front');
+                const backBtnL  = document.getElementById('btn-live-cam-back');
+                if (frontBtnL && backBtnL) {
                     if (livenessFacingMode === "user") {
-                        frontBtn.classList.add('active');
-                        backBtn.classList.remove('active');
+                        frontBtnL.classList.add('active');
+                        backBtnL.classList.remove('active');
                     } else {
-                        backBtn.classList.add('active');
-                        frontBtn.classList.remove('active');
+                        backBtnL.classList.add('active');
+                        frontBtnL.classList.remove('active');
                     }
                 }
             }
@@ -584,16 +579,28 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('extraction-title').innerText = 'Re-scanning Your ID';
         updateStatusTracker(2);
 
+        // Reset quality indicators before re-animating
+        const indicators = ['qc-resolution', 'qc-focus', 'qc-ocr'];
+        indicators.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.style.color = '';
+                const icon = el.querySelector('i');
+                if (icon) icon.style.color = '';
+            }
+        });
+
         // Animate quality indicators
         const statusEl = document.getElementById('extraction-status');
-        const indicators = ['qc-resolution', 'qc-focus', 'qc-ocr'];
+        statusEl.innerText = 'Scanning ID for key information...';
         let indicatorIdx = 0;
         const progressTimer = setInterval(() => {
             if (indicatorIdx < indicators.length) {
                 const el = document.getElementById(indicators[indicatorIdx]);
                 if (el) {
                     el.style.color = 'var(--kyc-accent)';
-                    el.querySelector('i')?.style.color = 'var(--kyc-accent)';
+                    const icon = el.querySelector('i');
+                    if (icon) icon.style.color = 'var(--kyc-accent)';
                 }
                 indicatorIdx++;
                 if (indicatorIdx === 1) statusEl.innerText = 'Analyzing document quality...';
@@ -607,6 +614,26 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!img || !img.src) return null;
 
             const src = img.src;
+
+            // Handle base64 / data: URIs directly (fetch() fails on data: URIs in most browsers)
+            if (src.startsWith('data:')) {
+                try {
+                    const arr = src.split(',');
+                    const mimeMatch = arr[0].match(/:(.*?);/);
+                    const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+                    const bstr = atob(arr[1]);
+                    const n = bstr.length;
+                    const u8arr = new Uint8Array(n);
+                    for (let i = 0; i < n; i++) u8arr[i] = bstr.charCodeAt(i);
+                    const blob = new Blob([u8arr], { type: mime });
+                    return new File([blob], 'id_preview.jpg', { type: mime });
+                } catch (err) {
+                    console.warn('[KYC] Failed to decode base64 preview image', err);
+                    return null;
+                }
+            }
+
+            // Handle regular HTTP URLs
             try {
                 const res = await fetch(src, { cache: 'no-store' });
                 if (res.ok) {
@@ -1150,90 +1177,194 @@ document.addEventListener('DOMContentLoaded', function () {
     let currentFacingMode = "environment";
     let livenessFacingMode = "user";
 
+    // ─── eKYC Scanner helpers ───────────────────────────────────────────
+    let _ekycFeedbackTimer = null;
+    let _ekycAutoCapTimer  = null;
+    let _ekycRingProgress  = 0;
+    let _ekycRingInterval  = null;
+    let _ekycScanning      = false;
+    let _scanSide          = 'front'; // 'front' | 'back'
+
+    const EKYC_FEEDBACKS = [
+        { text: '📐  Align your ID inside the frame',   cls: '' },
+        { text: '💡  Move to a brighter area',           cls: 'warn' },
+        { text: '🔍  Move the ID closer',               cls: 'warn' },
+        { text: '✅  Hold still — detecting ID…',       cls: 'good' },
+        { text: '✅  ID detected — stabilising…',       cls: 'good' },
+    ];
+
+    function _ekycSetFeedback(text, cls = '') {
+        const el = document.getElementById('ekyc-feedback-text');
+        if (!el) return;
+        el.className = cls;
+        el.innerHTML = text;
+    }
+
+    function _ekycStartFeedbackSimulation() {
+        let step = 0;
+        const sequence = [0, 1, 2, 3, 4];
+        _ekycFeedbackTimer = setInterval(() => {
+            if (!_ekycScanning) return;
+            const fb = EKYC_FEEDBACKS[sequence[step % sequence.length]];
+            _ekycSetFeedback(fb.text, fb.cls);
+            // Once we reach 'detected' state, start the auto-capture ring
+            if (step >= 3) {
+                document.getElementById('ekyc-id-frame')?.classList.add('detected');
+                _ekycStartAutoCapture();
+                clearInterval(_ekycFeedbackTimer);
+            }
+            step++;
+        }, 2200);
+    }
+
+    function _ekycStartAutoCapture() {
+        const ring = document.getElementById('ekyc-autocapture-ring');
+        const fill = document.getElementById('ekyc-ring-fill');
+        if (!ring || !fill) return;
+        ring.classList.add('active');
+        _ekycRingProgress = 0;
+        const TOTAL = 125.6; // circumference of r=20 circle
+        _ekycRingInterval = setInterval(() => {
+            if (!_ekycScanning) { clearInterval(_ekycRingInterval); return; }
+            _ekycRingProgress += 6.28; // ~20 steps for ~2.5 s
+            fill.style.strokeDashoffset = Math.max(0, TOTAL - _ekycRingProgress);
+            if (_ekycRingProgress >= TOTAL) {
+                clearInterval(_ekycRingInterval);
+                // Auto-capture!
+                captureIdFromCamera();
+            }
+        }, 120);
+    }
+
+    function _ekycResetFeedbackState() {
+        clearInterval(_ekycFeedbackTimer);
+        clearInterval(_ekycRingInterval);
+        const ring = document.getElementById('ekyc-autocapture-ring');
+        const fill = document.getElementById('ekyc-ring-fill');
+        if (ring) ring.classList.remove('active');
+        if (fill) fill.style.strokeDashoffset = '125.6';
+        document.getElementById('ekyc-id-frame')?.classList.remove('detected');
+        _ekycSetFeedback('<i class="fas fa-expand-arrows-alt" style="margin-right:0.3rem;"></i> Align your ID inside the frame', '');
+    }
+
+    // ─── ID Scanner — open ──────────────────────────────────────────────
     window.startIdScanner = async function (deviceId = null) {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             showCameraError("Your browser does not support camera access or you are not using a secure connection (HTTPS). Please use the 'Upload File' option instead.");
             return;
         }
 
-        const idType = document.getElementById('id_type').value;
+        const idType   = document.getElementById('id_type').value;
         const idNumber = document.getElementById('id_number').value.trim();
         if (!idType || !idNumber) {
             if (window.showError) window.showError('❌ Please complete the required fields.', 'Incomplete Data');
             return;
         }
 
-        const video = document.getElementById('id-webcam');
+        const video            = document.getElementById('id-webcam');
         const scannerContainer = document.getElementById('id-scanner-container');
-        const formContainer = document.getElementById('step-id-form');
+        const formContainer    = document.getElementById('step-id-form');
 
-        if (idStream) {
-            idStream.getTracks().forEach(track => track.stop());
-        }
+        if (idStream) { idStream.getTracks().forEach(t => t.stop()); }
 
         let constraints = {
-            video: {
-                facingMode: currentFacingMode,
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-            }
+            video: { facingMode: currentFacingMode, width: { ideal: 1920 }, height: { ideal: 1080 } }
+        };
+        if (deviceId) constraints.video.deviceId = { exact: deviceId };
+
+        const tryGetMedia = async (c) => {
+            idStream = await navigator.mediaDevices.getUserMedia(c);
+            video.srcObject = idStream;
+            formContainer.style.display   = 'none';
+            scannerContainer.style.display = 'flex';
+            _ekycScanning = true;
+            _ekycResetFeedbackState();
+            setTimeout(_ekycStartFeedbackSimulation, 1200);
+            await getCameraDevices();
         };
 
-        if (deviceId) {
-            constraints.video.deviceId = { exact: deviceId };
-        }
-
         try {
-            idStream = await navigator.mediaDevices.getUserMedia(constraints);
-            video.srcObject = idStream;
-            formContainer.style.display = 'none';
-            scannerContainer.style.display = 'block';
-            await getCameraDevices();
-        } catch (err) {
-            console.warn("First camera attempt failed, trying fallback...", err);
+            await tryGetMedia(constraints);
+        } catch (e1) {
             try {
-                // Fallback 1: No specific resolution
-                idStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode } });
-                video.srcObject = idStream;
-                formContainer.style.display = 'none';
-                scannerContainer.style.display = 'block';
-                await getCameraDevices();
-            } catch (err2) {
-                console.warn("Second camera attempt failed, trying basic...", err2);
+                await tryGetMedia({ video: { facingMode: currentFacingMode } });
+            } catch (e2) {
                 try {
-                    // Fallback 2: Minimalist - just any video
-                    idStream = await navigator.mediaDevices.getUserMedia({ video: true });
-                    video.srcObject = idStream;
-                    formContainer.style.display = 'none';
-                    scannerContainer.style.display = 'block';
-                    await getCameraDevices();
-                } catch (err3) {
-                    console.error("All camera attempts failed:", err3);
+                    await tryGetMedia({ video: true });
+                } catch (e3) {
+                    console.error("All camera attempts failed:", e3);
                     showCameraError();
                 }
             }
         }
     };
 
-    window.switchCamera = function (mode = null) {
-        if (mode) {
-            currentFacingMode = mode;
-        } else {
-            // Toggle facing mode if no mode specified
-            currentFacingMode = (currentFacingMode === "environment") ? "user" : "environment";
+    // ─── ID Scanner — close ─────────────────────────────────────────────
+    window.stopIdScanner = function () {
+        _ekycScanning = false;
+        _ekycResetFeedbackState();
+        if (idStream) { idStream.getTracks().forEach(t => t.stop()); idStream = null; }
+        document.getElementById('id-scanner-container').style.display = 'none';
+        document.getElementById('step-id-form').style.display          = 'block';
+    };
+
+    // ─── ID Scanner — capture ───────────────────────────────────────────
+    window.captureIdFromCamera = function () {
+        const video = document.getElementById('id-webcam');
+        if (!video.videoWidth) {
+            if (window.showToast) window.showToast("Waiting for camera to warm up…", "info");
+            else alert("Waiting for camera to warm up…");
+            return;
         }
 
+        // Stop auto-capture cycle
+        _ekycScanning = false;
+        _ekycResetFeedbackState();
+
+        // Flash animation
+        const flash = document.getElementById('ekyc-flash');
+        if (flash) {
+            flash.classList.add('active');
+            flash.addEventListener('animationend', () => flash.classList.remove('active'), { once: true });
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width  = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+
+        canvas.toBlob((blob) => {
+            idFile = new File([blob], "id_captured.jpg", { type: "image/jpeg" });
+
+            // If scanning back side — show preview immediately and mark front done
+            if (_scanSide === 'front') {
+                const pillFront = document.getElementById('pill-front');
+                if (pillFront) { pillFront.classList.remove('active'); pillFront.classList.add('done'); }
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                // Stop camera stream
+                if (idStream) { idStream.getTracks().forEach(t => t.stop()); idStream = null; }
+                document.getElementById('id-image').src          = e.target.result;
+                document.getElementById('id-preview').style.display        = 'block';
+                document.getElementById('id-scanner-container').style.display = 'none';
+            };
+            reader.readAsDataURL(idFile);
+        }, 'image/jpeg', 0.95);
+    };
+
+    window.switchCamera = function (mode = null) {
+        currentFacingMode = mode || (currentFacingMode === "environment" ? "user" : "environment");
         console.log("[KYC] ID Camera Switching to:", currentFacingMode);
+        _ekycScanning = false;
+        _ekycResetFeedbackState();
         window.startIdScanner();
     };
 
     window.switchLivenessCamera = function (mode = null) {
-        if (mode) {
-            livenessFacingMode = mode;
-        } else {
-            livenessFacingMode = (livenessFacingMode === "user") ? "environment" : "user";
-        }
-
+        if (mode) { livenessFacingMode = mode; }
+        else { livenessFacingMode = (livenessFacingMode === "user") ? "environment" : "user"; }
         console.log("[KYC] Liveness Camera Switching to:", livenessFacingMode);
         window.startRealtimeScanner();
     };
@@ -1245,39 +1376,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (window.showError) window.showError(msg, 'Camera Access Error'); else alert(msg);
     }
-
-    window.stopIdScanner = function () {
-        if (idStream) {
-            idStream.getTracks().forEach(track => track.stop());
-            idStream = null;
-        }
-        document.getElementById('id-scanner-container').style.display = 'none';
-        document.getElementById('step-id-form').style.display = 'block';
-    };
-
-    window.captureIdFromCamera = function () {
-        const video = document.getElementById('id-webcam');
-        if (!video.videoWidth) {
-            if (window.showToast) window.showToast("Waiting for camera to warm up...", "info"); else alert("Waiting for camera to warm up...");
-            return;
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0);
-
-        canvas.toBlob((blob) => {
-            idFile = new File([blob], "id_captured.jpg", { type: "image/jpeg" });
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                document.getElementById('id-image').src = e.target.result;
-                document.getElementById('id-preview').style.display = 'block';
-                document.getElementById('id-scanner-container').style.display = 'none';
-            };
-            reader.readAsDataURL(idFile);
-            stopIdScanner();
-        }, 'image/jpeg', 0.95);
-    };
 
     window.validateIdSelection();
     initDefaultMethod();

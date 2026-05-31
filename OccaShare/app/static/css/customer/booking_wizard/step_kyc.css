@@ -1,25 +1,32 @@
-/* Identity Verification - Robust UI Fix */
+/* ═══════════════════════════════════════════════════════════════════
+   OccaServe KYC — Premium eKYC Scanner UI (GCash / Maya style)
+   ═══════════════════════════════════════════════════════════════════ */
 
 :root {
-    --kyc-accent: #FF8800;
-    --kyc-accent-soft: rgba(255, 136, 0, 0.1);
-    --kyc-slate-50: #ffffff;
-    --kyc-slate-200: #e2e8f0;
-    --kyc-slate-400: #94a3b8;
-    --kyc-slate-700: #171717;
+    --kyc-accent:      #f97316;
+    --kyc-accent-2:    #fb923c;
+    --kyc-accent-soft: rgba(249, 115, 22, 0.12);
+    --kyc-slate-50:    #f8fafc;
+    --kyc-slate-200:   #e2e8f0;
+    --kyc-slate-400:   #94a3b8;
+    --kyc-slate-700:   #1e293b;
+    --scanner-overlay: rgba(0, 0, 0, 0.72);
+    --corner-active:   #22c55e;
+    --corner-idle:     #f97316;
 }
 
+/* ── Layout container ─────────────────────────────────────────────── */
 #kyc-form-container {
     background: #ffffff !important;
     border-radius: 2rem !important;
     padding: 3rem !important;
-    box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.08) !important;
+    box-shadow: 0 20px 50px -12px rgba(0,0,0,0.08) !important;
     border: 1px solid var(--kyc-slate-200) !important;
     margin: 2rem auto !important;
     max-width: 800px !important;
 }
 
-/* TRACKER FIX */
+/* ── Status tracker (legacy) ─────────────────────────────────────── */
 .kyc-status-tracker {
     display: flex !important;
     flex-direction: row !important;
@@ -43,9 +50,7 @@
 }
 
 .status-item.active,
-.status-item.completed {
-    opacity: 1 !important;
-}
+.status-item.completed { opacity: 1 !important; }
 
 .status-icon {
     width: 40px !important;
@@ -70,7 +75,7 @@
 
 .status-item.completed .status-icon {
     background: var(--kyc-accent) !important;
-    color: #ffffff !important;
+    color: #fff !important;
 }
 
 .status-label {
@@ -82,11 +87,9 @@
     display: block !important;
 }
 
-.status-item.active .status-label {
-    color: var(--kyc-accent) !important;
-}
+.status-item.active .status-label { color: var(--kyc-accent) !important; }
 
-/* INPUTS */
+/* ── Inputs ──────────────────────────────────────────────────────── */
 .kyc-controls-grid {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
@@ -103,11 +106,11 @@
 
 .minimal-input:focus {
     border-color: var(--kyc-accent) !important;
-    background: #ffffff !important;
+    background: #fff !important;
     box-shadow: 0 0 0 4px var(--kyc-accent-soft) !important;
 }
 
-/* OPTION BOXES */
+/* ── Option boxes ────────────────────────────────────────────────── */
 #kyc-options-container {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
@@ -115,11 +118,11 @@
 }
 
 .kyc-option-box {
-    background: #ffffff !important;
+    background: #fff !important;
     border: 2px dashed var(--kyc-slate-200) !important;
     border-radius: 1.25rem !important;
     padding: 2.5rem 1.5rem !important;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition: all 0.3s cubic-bezier(0.4,0,0.2,1) !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
@@ -128,7 +131,7 @@
 .kyc-option-box:hover:not(.disabled) {
     border-color: var(--kyc-accent) !important;
     transform: translateY(-5px) !important;
-    box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.1) !important;
+    box-shadow: 0 15px 30px -10px rgba(0,0,0,0.1) !important;
 }
 
 .option-icon {
@@ -144,38 +147,360 @@
     margin-bottom: 1rem !important;
 }
 
-.option-content h3 {
-    font-size: 1.1rem !important;
-    font-weight: 700 !important;
-    margin-bottom: 0.4rem !important;
+/* ═══════════════════════════════════════════════════════════════════
+   PREMIUM eKYC FULL-SCREEN SCANNER
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* The wrapper that fills the screen like a banking app */
+#id-scanner-container {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 99999 !important;
+    background: #000 !important;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
-.option-content p {
-    font-size: 0.85rem !important;
-    color: var(--kyc-slate-400) !important;
+/* Full-screen video feed */
+#id-scanner-container .ekyc-video-bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
-/* SCANNER FIXES */
-.scanner-viewport {
-    width: 100% !important;
-    max-width: 600px !important;
-    aspect-ratio: 16/10 !important;
-    border-radius: 1.5rem !important;
-    border: 4px solid var(--kyc-slate-200) !important;
-    margin: 2rem auto !important;
-    overflow: hidden !important;
-    position: relative !important;
+/* Dark overlay that punches out the ID frame */
+#id-scanner-container .ekyc-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    /* Punch-out via box-shadow on the frame child */
 }
 
-.person-scanner {
-    width: 90% !important;
-    max-width: 350px !important;
-    aspect-ratio: 1/1 !important;
-    border-radius: 50% !important;
-    border: 6px solid var(--kyc-accent) !important;
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.05) !important;
+/* ── Top bar ───────────────────────────────────────────────────────── */
+.ekyc-topbar {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.65) 0%, transparent 100%);
 }
 
+.ekyc-topbar-title {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 0.02em;
+}
+
+.ekyc-close-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    border: none;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    backdrop-filter: blur(4px);
+}
+
+.ekyc-close-btn:hover { background: rgba(255,255,255,0.28); }
+
+/* ── Front/Back step pills ─────────────────────────────────────────── */
+.ekyc-side-pills {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 0.5rem 1rem;
+}
+
+.ekyc-side-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.9rem;
+    border-radius: 2rem;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    transition: all 0.25s ease;
+    border: 1.5px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.55);
+    background: rgba(255,255,255,0.07);
+}
+
+.ekyc-side-pill.active {
+    background: var(--kyc-accent);
+    border-color: var(--kyc-accent);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(249,115,22,0.45);
+}
+
+.ekyc-side-pill.done {
+    background: rgba(34,197,94,0.18);
+    border-color: #22c55e;
+    color: #86efac;
+}
+
+.ekyc-side-pill .pill-check {
+    display: none;
+}
+
+.ekyc-side-pill.done .pill-check { display: inline; }
+.ekyc-side-pill.done .pill-num   { display: none; }
+
+/* ── Centred scan area ─────────────────────────────────────────────── */
+.ekyc-scan-area {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 5;
+}
+
+/* The ID card frame — responsive via aspect-ratio */
+.ekyc-id-frame {
+    /* Standard CR80 card: 85.6 mm × 53.98 mm → ~1.586 */
+    width: min(88vw, 460px);
+    aspect-ratio: 1.586 / 1;
+    position: relative;
+    border-radius: 18px;
+    /* Punched-out "spotlight" effect */
+    box-shadow:
+        0 0 0 max(100vh, 100vw) var(--scanner-overlay),
+        0 0 0 2px rgba(255,255,255,0.08) inset;
+    overflow: visible;
+    transition: box-shadow 0.35s ease;
+}
+
+/* When ID is detected → green glow */
+.ekyc-id-frame.detected {
+    box-shadow:
+        0 0 0 max(100vh, 100vw) rgba(0,0,0,0.55),
+        0 0 0 3px var(--corner-active),
+        0 0 30px rgba(34,197,94,0.5);
+}
+
+/* ── Corner markers ────────────────────────────────────────────────── */
+.ekyc-corner {
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    border-color: var(--corner-idle);
+    border-style: solid;
+    transition: border-color 0.3s ease, width 0.25s, height 0.25s;
+}
+
+.ekyc-id-frame.detected .ekyc-corner { border-color: var(--corner-active); }
+
+.ekyc-corner--tl { top: -2px; left: -2px;  border-width: 3px 0 0 3px; border-radius: 6px 0 0 0; }
+.ekyc-corner--tr { top: -2px; right: -2px; border-width: 3px 3px 0 0; border-radius: 0 6px 0 0; }
+.ekyc-corner--bl { bottom: -2px; left: -2px;  border-width: 0 0 3px 3px; border-radius: 0 0 0 6px; }
+.ekyc-corner--br { bottom: -2px; right: -2px; border-width: 0 3px 3px 0; border-radius: 0 0 6px 0; }
+
+/* Scanning laser line */
+@keyframes ekyc-laser {
+    0%   { top: 6%;  opacity: 0.9; }
+    50%  { top: 88%; opacity: 0.7; }
+    100% { top: 6%;  opacity: 0.9; }
+}
+
+.ekyc-laser {
+    position: absolute;
+    left: 4%;
+    right: 4%;
+    height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, transparent, var(--kyc-accent), transparent);
+    animation: ekyc-laser 2.4s ease-in-out infinite;
+    pointer-events: none;
+    box-shadow: 0 0 8px 2px rgba(249,115,22,0.4);
+    transition: background 0.3s;
+}
+
+.ekyc-id-frame.detected .ekyc-laser {
+    background: linear-gradient(90deg, transparent, var(--corner-active), transparent);
+    box-shadow: 0 0 10px 3px rgba(34,197,94,0.5);
+}
+
+/* Instruction text inside frame */
+.ekyc-frame-hint {
+    position: absolute;
+    bottom: -42px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: rgba(255,255,255,0.9);
+    letter-spacing: 0.04em;
+    text-align: center;
+    pointer-events: none;
+}
+
+/* ── Real-time feedback pill ─────────────────────────────────────── */
+.ekyc-feedback-pill {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    padding: 0.6rem 1rem 0;
+}
+
+.ekyc-feedback-pill span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 1.2rem;
+    border-radius: 2rem;
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    color: #fff;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,0.1);
+    transition: all 0.3s ease;
+}
+
+.ekyc-feedback-pill span.good  { background: rgba(34,197,94,0.3);  border-color: rgba(34,197,94,0.5); }
+.ekyc-feedback-pill span.warn  { background: rgba(249,115,22,0.3); border-color: rgba(249,115,22,0.5); }
+.ekyc-feedback-pill span.error { background: rgba(239,68,68,0.3);  border-color: rgba(239,68,68,0.5); }
+
+/* ── Auto-capture progress ring ─────────────────────────────────── */
+.ekyc-autocapture-ring {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0.75rem;
+    min-height: 52px;
+}
+
+.ekyc-autocapture-ring svg {
+    display: none;
+    width: 48px;
+    height: 48px;
+}
+
+.ekyc-autocapture-ring.active svg { display: block; }
+
+.ekyc-autocapture-ring .ring-track { fill: none; stroke: rgba(255,255,255,0.15); stroke-width: 4; }
+.ekyc-autocapture-ring .ring-fill  { fill: none; stroke: var(--corner-active); stroke-width: 4; stroke-linecap: round;
+    stroke-dasharray: 125.6; stroke-dashoffset: 125.6;
+    transition: stroke-dashoffset 0.25s linear;
+    transform: rotate(-90deg); transform-origin: center; }
+
+/* ── Bottom controls ──────────────────────────────────────────────── */
+.ekyc-bottom {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 1.5rem 1.75rem;
+    background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%);
+}
+
+.ekyc-camera-switch {
+    display: flex;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2rem;
+    padding: 0.2rem;
+    gap: 0.2rem;
+    border: 1px solid rgba(255,255,255,0.12);
+    backdrop-filter: blur(6px);
+}
+
+.ekyc-cam-btn {
+    border: none;
+    background: transparent;
+    border-radius: 1.75rem;
+    padding: 0.4rem 1.1rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: all 0.25s ease;
+    color: rgba(255,255,255,0.6);
+    cursor: pointer;
+}
+
+.ekyc-cam-btn.active {
+    background: #fff;
+    color: var(--kyc-accent);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.ekyc-capture-btn {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    border: 4px solid rgba(255,255,255,0.6);
+    background: rgba(255,255,255,0.12);
+    backdrop-filter: blur(6px);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.22s ease;
+    position: relative;
+}
+
+.ekyc-capture-btn::after {
+    content: '';
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 0.15s ease;
+}
+
+.ekyc-capture-btn:active::after { transform: scale(0.87); }
+.ekyc-capture-btn:hover { border-color: #fff; background: rgba(255,255,255,0.2); }
+
+.ekyc-capture-hint {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: rgba(255,255,255,0.55);
+    letter-spacing: 0.04em;
+    text-align: center;
+}
+
+/* ── Flash animation on capture ──────────────────────────────────── */
+@keyframes ekyc-flash {
+    0%   { opacity: 0; }
+    20%  { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+.ekyc-flash {
+    position: fixed;
+    inset: 0;
+    background: #fff;
+    z-index: 999999;
+    pointer-events: none;
+    opacity: 0;
+}
+
+.ekyc-flash.active { animation: ekyc-flash 0.4s ease-out forwards; }
+
+/* ── Scan feedback (old) kept for liveness ───────────────────────── */
 .scan-feedback {
     margin-top: 1rem;
     width: 100%;
@@ -187,20 +512,14 @@
     padding: 0.5rem;
 }
 
+/* ── Liveness webcam ─────────────────────────────────────────────── */
 #webcam {
     width: 100% !important;
     height: 100% !important;
     object-fit: cover !important;
 }
 
-.id-guide-box {
-    width: 80% !important;
-    height: 70% !important;
-    border: 2px solid rgba(255, 255, 255, 0.4) !important;
-    border-radius: 1rem !important;
-    box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5) !important;
-}
-
+/* ── OCR loader ──────────────────────────────────────────────────── */
 .ocr-loader {
     width: 64px !important;
     height: 64px !important;
@@ -211,21 +530,21 @@
     margin: 0 auto 2rem !important;
 }
 
-@keyframes kyc-spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
+@keyframes kyc-spin { to { transform: rotate(360deg); } }
 
+/* ── Responsive ──────────────────────────────────────────────────── */
 @media (max-width: 768px) {
+    #kyc-form-container {
+        padding: 1.5rem !important;
+        margin: 0.75rem auto !important;
+    }
 
     .kyc-controls-grid,
-    #kyc-options-container {
-        grid-template-columns: 1fr !important;
-    }
+    #kyc-options-container { grid-template-columns: 1fr !important; }
 
-    .kyc-status-tracker {
-        flex-wrap: wrap !important;
-        gap: 1rem !important;
+    .kyc-status-tracker { flex-wrap: wrap !important; gap: 1rem !important; }
+
+    .ekyc-id-frame {
+        width: min(92vw, 420px);
     }
 }
