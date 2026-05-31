@@ -6,7 +6,9 @@
 {% block extra_css %}
 <style>
     /* =====================================================
-       DIAMOND STANDARD v6.1 - CATERER HUB (ELITE)
+       CATERER HUB — CLEAN RESPONSIVE CSS
+       All selectors scoped under .hub-container to prevent
+       conflicts with global layout CSS.
        ===================================================== */
 
     :root {
@@ -20,11 +22,19 @@
         --hub-radius: 14px;
     }
 
+    /* ---- BASE CONTAINER ---- */
     .hub-container {
         font-family: 'Poppins', sans-serif;
         max-width: 1300px;
         margin: 0 auto;
         padding: 0.75rem;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .hub-container *,
+    .hub-container *::before,
+    .hub-container *::after {
+        box-sizing: border-box;
     }
 
     /* ---- PREMIUM HERO BANNER ---- */
@@ -192,6 +202,8 @@
         border-radius: var(--hub-radius);
         padding: 1.75rem;
         margin-bottom: 1.5rem;
+        width: 100%;
+        min-width: 0;
     }
 
     .section-title {
@@ -275,70 +287,440 @@
     /* ---- MENU GRID (COMPACT) ---- */
     .elite-menu-grid, .pkg-grid, .dish-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-        gap: 1.5rem;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1.25rem;
+        width: 100%;
+        min-width: 0;
     }
 
-    @media (max-width: 768px) {
-        .hub-container { padding: 0.5rem; overflow: hidden; width: 100%; }
-        .intel-card { padding: 0.8rem !important; overflow: hidden; width: 100%; }
+    .elite-item-card {
+        min-width: 0;
+    }
 
-        .pkg-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    /* ---- CATEGORY CARD GRID (A-la-carte) ---- */
+    .cat-card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 1rem;
+        width: 100%;
+    }
+
+    .cat-card {
+        background: #fff;
+        border: 1.5px solid var(--hub-slate-100);
+        border-radius: 14px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+
+    .cat-card:hover {
+        border-color: var(--hub-primary);
+        transform: translateY(-4px);
+        box-shadow: 0 12px 28px rgba(255, 123, 84, 0.12);
+    }
+
+    .cat-card-img {
+        width: 100%;
+        height: 100px;
+        object-fit: cover;
+        display: block;
+        background: var(--hub-slate-50);
+    }
+
+    .cat-card-body {
+        padding: 0.75rem;
+        flex: 1;
+    }
+
+    .cat-card-name {
+        font-size: 0.88rem;
+        font-weight: 800;
+        color: var(--hub-text-dark);
+        display: block;
+        margin-bottom: 0.25rem;
+    }
+
+    .cat-card-count {
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--hub-slate-400);
+    }
+
+    .cat-card-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.5rem 0.75rem;
+        border-top: 1px solid var(--hub-slate-100);
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--hub-primary);
+        background: var(--hub-slate-50);
+    }
+
+    /* ---- DISH MODAL ---- */
+    .dish-modal-layer {
+        visibility: hidden;
+        pointer-events: none;
+        opacity: 0;
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.75);
+        backdrop-filter: blur(8px);
+        z-index: 9500;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        transition: all 0.25s ease;
+    }
+    .dish-modal-layer.active {
+        visibility: visible;
+        pointer-events: auto;
+        opacity: 1;
+    }
+    .dish-modal-box {
+        background: #fff;
+        width: 100%;
+        max-width: 560px;
+        max-height: 85vh;
+        border-radius: 20px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 25px 60px rgba(0,0,0,0.18);
+        transform: translateY(20px);
+        transition: transform 0.25s ease;
+    }
+    .dish-modal-layer.active .dish-modal-box {
+        transform: translateY(0);
+    }
+    .dish-modal-header {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--hub-slate-100);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-shrink: 0;
+    }
+    .dish-modal-title {
+        font-size: 1rem;
+        font-weight: 850;
+        color: var(--hub-text-dark);
+    }
+    .dish-modal-close {
+        background: var(--hub-slate-50);
+        border: none;
+        width: 32px; height: 32px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--hub-slate-600);
+        font-size: 0.9rem;
+        transition: background 0.2s;
+    }
+    .dish-modal-close:hover { background: var(--hub-slate-200); }
+    .dish-modal-body {
+        overflow-y: auto;
+        flex: 1;
+        padding: 1rem 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    .dish-row {
+        display: flex;
+        align-items: center;
+        gap: 0.875rem;
+        padding: 0.75rem;
+        border: 1px solid var(--hub-slate-100);
+        border-radius: 12px;
+        background: #fff;
+        transition: border-color 0.2s;
+    }
+    .dish-row:hover { border-color: var(--hub-primary); }
+    .dish-row-img {
+        width: 60px;
+        height: 60px;
+        border-radius: 10px;
+        object-fit: cover;
+        flex-shrink: 0;
+        background: var(--hub-slate-50);
+    }
+    .dish-row-info {
+        flex: 1;
+        min-width: 0;
+    }
+    .dish-row-name {
+        font-size: 0.88rem;
+        font-weight: 750;
+        color: var(--hub-text-dark);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .dish-row-price {
+        font-size: 0.88rem;
+        font-weight: 900;
+        color: var(--hub-primary);
+        margin-top: 2px;
+    }
+    .dish-row-action {
+        display: flex;
+        align-items: center;
+        border: 1.5px solid var(--hub-slate-200);
+        border-radius: 10px;
+        overflow: hidden;
+        height: 36px;
+        flex-shrink: 0;
+        transition: border-color 0.2s;
+    }
+    .dish-row-action:hover { border-color: var(--hub-primary); }
+    .dish-row-qty {
+        width: 36px;
+        border: none;
+        border-right: 1.5px solid var(--hub-slate-200);
+        background: var(--hub-slate-50);
+        text-align: center;
+        font-size: 0.8rem;
+        font-weight: 800;
+        color: var(--hub-text-dark);
+        height: 100%;
+        outline: none;
+    }
+    .dish-row-btn {
+        background: #fff;
+        border: none;
+        padding: 0 0.85rem;
+        font-size: 0.72rem;
+        font-weight: 800;
+        color: var(--hub-text-dark);
+        cursor: pointer;
+        height: 100%;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        transition: background 0.2s, color 0.2s;
+        white-space: nowrap;
+    }
+    .dish-row-btn:hover { background: var(--hub-primary); color: #fff; }
+    .dish-row-btn.selected { background: #10b981; color: #fff; }
+
+    /* ================================================================
+       MOBILE RESPONSIVE — 768px and below
+       ================================================================ */
+    @media (max-width: 768px) {
+        .cat-card-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 0.6rem !important;
+        }
+        .cat-card-img { height: 80px !important; }
+        .cat-card-name { font-size: 0.8rem !important; }
+        .dish-modal-box { max-height: 92vh; border-radius: 16px; }
+        .dish-row-img { width: 50px; height: 50px; }
+        .dish-row-name { font-size: 0.8rem; }
+        .dish-row-price { font-size: 0.8rem; }
+        .dish-row-btn { padding: 0 0.6rem; font-size: 0.65rem; }
+
+        /* --- Container & Cards: no overflow, full width --- */
+        .hub-container {
+            padding: 0.5rem !important;
+            width: 100% !important;
+            max-width: 100vw !important;
+        }
+
+        .intel-card {
+            padding: 1rem !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            border-radius: 12px !important;
+            margin-bottom: 0.75rem !important;
+        }
+
+        /* --- Tabs: scrollable, no wrap --- */
+        .hub-tabs {
+            overflow-x: auto !important;
+            scrollbar-width: none !important;
+            gap: 1rem !important;
+            padding-bottom: 0.4rem !important;
+            flex-wrap: nowrap !important;
+        }
+        .hub-tabs::-webkit-scrollbar { display: none; }
+        .tab-btn {
+            flex-shrink: 0 !important;
+            white-space: nowrap !important;
+            font-size: 0.85rem !important;
+        }
+
+        /* --- Hero: shorter on mobile --- */
+        .hub-hero {
+            height: 180px !important;
+            margin-bottom: 1rem !important;
+        }
+        .hero-title { font-size: 1.6rem !important; }
+        .hero-overlay { padding: 1.25rem !important; }
+        .hero-meta { gap: 0.4rem !important; flex-wrap: wrap !important; }
+        .meta-pill { font-size: 0.72rem !important; padding: 0.3rem 0.6rem !important; }
+
+        /* --- Main grid: single column on mobile --- */
+        .hub-main-grid {
+            grid-template-columns: 1fr !important;
+            gap: 0 !important;
+        }
+
+        /* --- Section Title --- */
+        .section-title {
+            font-size: 1rem !important;
+            margin-bottom: 1rem !important;
+        }
+
+        /* --- Stats row: 3 col compact --- */
+        .intel-stats-row {
+            grid-template-columns: repeat(3, 1fr) !important;
             gap: 0.5rem !important;
         }
-        .dish-grid {
-            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-            gap: 0.4rem !important;
+        .stat-mini-box {
+            padding: 0.75rem 0.4rem !important;
+            border-radius: 10px !important;
         }
-        
-        .pkg-grid .ei-img-box { height: 90px !important; }
-        .pkg-grid .ei-body { padding: 0.5rem !important; gap: 2px !important; }
-        .pkg-grid .ei-name { font-size: 0.75rem !important; min-height: auto !important; }
-        .pkg-grid .ei-price { font-size: 0.9rem !important; margin-top: 0.2rem !important; }
-        .pkg-grid .btn-elite-sm { padding: 0.4rem !important; font-size: 0.6rem !important; margin-top: 0.4rem !important; }
+        .smb-val { font-size: 1rem !important; }
+        .smb-lab { font-size: 0.58rem !important; }
+        .smb-icon { font-size: 1rem !important; margin-bottom: 0.3rem !important; }
 
-        .dish-grid .ei-img-box { height: 60px !important; }
-        .dish-grid .ei-body { padding: 0.3rem !important; gap: 2px !important; }
-        .dish-grid .ei-cat { font-size: 0.5rem !important; }
-        .dish-grid .ei-name { 
-            font-size: 0.65rem !important; 
-            min-height: 1.6rem !important; 
-            line-height: 1.2 !important; 
-            overflow: hidden; 
-            display: -webkit-box; 
-            -webkit-line-clamp: 2; 
-            -webkit-box-orient: vertical; 
+        /* --- Category filter chips --- */
+        .category-hub {
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            scrollbar-width: none !important;
+            padding-bottom: 0.5rem !important;
+            margin-bottom: 0.75rem !important;
+            gap: 0.5rem !important;
         }
-        .dish-grid .ei-price { font-size: 0.75rem !important; margin-top: 0.1rem !important; }
-        
-        /* Stack quantity and button vertically so it fits in 1/3 screen */
-        .add-action-box { 
-            flex-direction: column !important; 
-            height: auto !important; 
-            border: none !important; 
-            margin-top: 0.4rem !important; 
-            gap: 4px !important; 
+        .category-hub::-webkit-scrollbar { display: none; }
+        .category-chip {
+            flex-shrink: 0 !important;
+            padding: 0.45rem 0.9rem !important;
+            font-size: 0.78rem !important;
+            white-space: nowrap !important;
         }
-        .qty-box { 
-            width: 100% !important; 
-            height: 28px !important; 
-            border: 1px solid var(--hub-slate-200) !important; 
-            border-radius: 6px !important; 
+
+        /* ============ 2-COLUMN GRID FOR DISHES & PACKAGES ============ */
+        .pkg-grid,
+        .dish-grid {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 0.6rem !important;
+            width: 100% !important;
         }
-        .qty-box input { font-size: 0.75rem !important; }
-        .btn-add-order { 
-            width: 100% !important; 
-            height: 28px !important; 
-            border: 1px solid var(--hub-slate-200) !important; 
-            border-radius: 6px !important; 
-            font-size: 0.6rem !important; 
-            padding: 0 !important; 
+
+        /* Card base */
+        .elite-item-card {
+            min-width: 0 !important;
+            width: 100% !important;
+            border-radius: 10px !important;
         }
-        .btn-text { display: none !important; } /* Hide 'Add to Order' text, keep icon */
-        .btn-add-order::after { content: 'Add'; } /* Add short text instead */
+
+        /* Package card adjustments */
+        .pkg-grid .ei-img-box {
+            height: 100px !important;
+        }
+        .pkg-grid .ei-body {
+            padding: 0.6rem !important;
+            gap: 4px !important;
+        }
+        .pkg-grid .ei-name {
+            font-size: 0.78rem !important;
+            min-height: auto !important;
+            font-weight: 700 !important;
+        }
+        .pkg-grid .ei-price {
+            font-size: 0.9rem !important;
+            margin-top: 0.15rem !important;
+        }
+        .pkg-grid .btn-elite-sm {
+            padding: 0.45rem 0.5rem !important;
+            font-size: 0.68rem !important;
+            margin-top: 0.4rem !important;
+            border-radius: 8px !important;
+            gap: 4px !important;
+        }
+
+        /* Dish card adjustments */
+        .dish-grid .ei-img-box {
+            height: 95px !important;
+        }
+        .dish-grid .ei-body {
+            padding: 0.6rem !important;
+            gap: 3px !important;
+        }
+        .dish-grid .ei-cat {
+            font-size: 0.56rem !important;
+        }
+        .dish-grid .ei-name {
+            font-size: 0.75rem !important;
+            font-weight: 700 !important;
+            min-height: auto !important;
+            line-height: 1.2 !important;
+            overflow: hidden !important;
+            display: -webkit-box !important;
+            -webkit-line-clamp: 2 !important;
+            -webkit-box-orient: vertical !important;
+        }
+        .dish-grid .ei-price {
+            font-size: 0.82rem !important;
+            margin-top: 0.15rem !important;
+        }
+
+        /* Add to order action row */
+        .add-action-box {
+            height: 32px !important;
+            margin-top: 0.45rem !important;
+            border-radius: 8px !important;
+            overflow: hidden !important;
+        }
+        .qty-box {
+            width: 32px !important;
+            min-width: 32px !important;
+            flex-shrink: 0 !important;
+        }
+        .qty-box input {
+            font-size: 0.72rem !important;
+        }
+        .btn-add-order {
+            font-size: 0.62rem !important;
+            padding: 0 !important;
+            border-radius: 0 !important;
+            margin-top: 0 !important;
+        }
+        .btn-text { display: none !important; }
+        .btn-add-order::after { content: 'Add'; font-size: 0.62rem; font-weight: 700; }
         .btn-add-order.selected::after { content: 'Added'; }
         .btn-add-order i { display: none !important; }
+
+        /* --- Sidebar moves below content on mobile --- */
+        .profile-sidebar {
+            position: static !important;
+            margin-top: 0.5rem !important;
+        }
+        .elite-sidebar {
+            padding: 1rem !important;
+            border-radius: 12px !important;
+        }
+        .order-drawer {
+            padding: 1rem !important;
+            border-radius: 12px !important;
+        }
+
+        /* --- Buttons full-width on mobile --- */
+        .btn-checkout,
+        .btn-hub-main,
+        .btn-elite-sm {
+            border-radius: 10px !important;
+            font-size: 0.88rem !important;
+        }
     }
 
     .elite-item-card {
@@ -350,6 +732,8 @@
         display: flex;
         flex-direction: column;
         height: 100%;
+        min-width: 0;
+        width: 100%;
     }
 
     .elite-item-card:hover {
@@ -641,6 +1025,18 @@
             if (btn) btn.classList.add('active');
         };
 
+        window.filterMenu = function(cat, btn) {
+            document.querySelectorAll('.category-chip').forEach(c => c.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            document.querySelectorAll('.menu-item-node').forEach(item => {
+                if (cat === 'all' || item.dataset.category === cat) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        };
+
         window.openPkgDetails = function(id) {
             console.log('Hub: Opening Package', id);
             const pkg = window.hubPkgs ? window.hubPkgs[id] : null;
@@ -818,7 +1214,7 @@
             <!-- OVERVIEW TAB -->
             <div id="hub-tab-overview" class="tab-content active">
                 <div class="intel-card">
-                    <h2 class="section-title"><i class="fas fa-id-card-clip"></i> Business Story</h2>
+                    <h2 class="section-title">Business Story</h2>
                     <p style="color: var(--hub-slate-600); font-size: 1rem; line-height: 1.8; margin-bottom: 2rem;">
                         {{ caterer.description or 'A premier catering partner dedicated to delivering exceptional
                         culinary experiences for weddings, corporate events, and private celebrations.' }}
@@ -846,7 +1242,7 @@
                 <!-- EVENT HIGHLIGHTS (GALLERY STREAMLINED) -->
                 {% if gallery_items %}
                 <div class="intel-card">
-                    <h2 class="section-title"><i class="fas fa-images"></i> Event Highlights</h2>
+                    <h2 class="section-title">Event Highlights</h2>
                     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;">
                         {% for item in gallery_items[:3] %}
                         <div style="height: 140px; border-radius: 12px; overflow: hidden;">
@@ -866,7 +1262,7 @@
                 <!-- PACKAGES -->
                 {% if packages %}
                 <div class="intel-card" style="padding: 1.75rem;">
-                    <h2 class="section-title"><i class="fas fa-crown"></i> Elite Packages</h2>
+                    <h2 class="section-title">Elite Packages</h2>
                     <div class="pkg-grid">
                         {% for pkg in packages %}
                         <div class="elite-item-card pkg-item">
@@ -886,52 +1282,38 @@
                 </div>
                 {% endif %}
 
-                <!-- A LA CARTE MENU -->
+                <!-- A LA CARTE MENU — CATEGORY CARDS -->
                 <div class="intel-card" style="padding: 1.75rem;">
-                    <div
-                        style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
-                        <h2 class="section-title" style="margin-bottom: 0;"><i class="fas fa-bowl-food"></i> A-la-carte
-                            Dishes</h2>
+                    <h2 class="section-title" style="margin-bottom: 1.25rem;">A-la-carte Dishes</h2>
 
-                        <!-- CATEGORY HUB INTEGRATED -->
-                        <div class="category-hub" style="margin-bottom: 0; padding-bottom: 0; max-width: 100%; width: 100%;">
-                            <div class="category-chip active" onclick="filterMenu('all', this)">All</div>
-                            {% set categories = active_menu|map(attribute='category')|unique|list %}
-                            {% for cat in categories %}
-                            {% if cat %}
-                            <div class="category-chip" onclick="filterMenu('{{ cat|lower|replace(' ', '-') }}', this)">{{ cat }}</div>
-                            {% endif %}
-                            {% endfor %}
-                        </div>
-                    </div>
-                    <div class="dish-grid" id="menu-grid-main">
-                        {% for item in active_menu %}
-                        <div class="elite-item-card menu-item-node"
-                            data-category="{{ (item.category or 'other')|lower|replace(' ', '-') }}">
-                            <div class="ei-img-box">
-                                <img src="{{ item.image_url if item.image_url else 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=400' }}"
-                                    class="ei-img">
+                    {% if active_menu %}
+                    {% set categories = [] %}
+                    {% for item in active_menu %}
+                        {% if item.category and item.category not in categories %}
+                            {% set _ = categories.append(item.category) %}
+                        {% endif %}
+                    {% endfor %}
+
+                    <div class="cat-card-grid">
+                        {% for cat in categories %}
+                        {% set cat_items = active_menu | selectattr('category', 'equalto', cat) | list %}
+                        {% set first_img = cat_items[0].image_url if cat_items[0].image_url else 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=400' %}
+                        <div class="cat-card" onclick="window.openCategoryModal('{{ cat|e }}')">
+                            <img src="{{ first_img }}" class="cat-card-img" alt="{{ cat }}" loading="lazy">
+                            <div class="cat-card-body">
+                                <span class="cat-card-name">{{ cat }}</span>
+                                <span class="cat-card-count">{{ cat_items|length }} dish{{ 'es' if cat_items|length != 1 else '' }}</span>
                             </div>
-                            <div class="ei-body">
-                                <span class="ei-cat">{{ item.category }}</span>
-                                <span class="ei-name">{{ item.name }}</span>
-                                <span class="ei-price">₱{{ "{:,.2f}".format(item.price if item.price else 0) }}</span>
-                                <div class="add-action-box" style="display: flex; align-items: stretch; gap: 0; margin-top: 1rem; border: 1.5px solid var(--hub-slate-200); border-radius: 12px; overflow: hidden; height: 40px; transition: all 0.2s;" onmouseover="this.style.borderColor='var(--hub-primary)'" onmouseout="this.style.borderColor='var(--hub-slate-200)'">
-                                    <div class="qty-box" style="background: var(--hub-slate-50); border-right: 1.5px solid var(--hub-slate-200); display: flex; align-items: center; justify-content: center; width: 45px;">
-                                        <input type="number" id="qty-{{ item.id }}" value="1" min="1" 
-                                            style="width: 100%; border: none; background: transparent; font-size: 0.85rem; font-weight: 900; color: var(--hub-text-dark); text-align: center; outline: none; padding: 0;"
-                                            title="Quantity">
-                                    </div>
-                                    <button type="button" class="btn-add-order" id="btn-add-{{ item.id }}"
-                                        style="flex: 1; border: none; border-radius: 0; margin-top: 0; background: #fff; font-size: 0.72rem; font-weight: 850; color: var(--hub-text-dark); height: 100%; text-transform: uppercase; letter-spacing: 0.02em;"
-                                        onclick='window.toggleMenuItem("{{ item.id }}", {{ item.name|tojson }}, {{ (item.price or 0)|tojson }})'>
-                                        <i class="fas fa-plus" style="color: var(--hub-primary);"></i> <span class="btn-text">Add to Order</span>
-                                    </button>
-                                </div>
+                            <div class="cat-card-footer">
+                                <span>Browse dishes</span>
+                                <i class="fas fa-chevron-right" style="font-size: 0.65rem;"></i>
                             </div>
                         </div>
                         {% endfor %}
                     </div>
+                    {% else %}
+                    <p style="color: var(--hub-slate-400); font-size: 0.9rem;">No dishes available yet.</p>
+                    {% endif %}
                 </div>
             </div>
 
@@ -939,7 +1321,7 @@
             <div id="hub-tab-policies" class="tab-content">
                 <!-- OPERATIONAL POLICIES (Real-Time) -->
                 <div class="intel-card" style="padding: 1.75rem; margin-top: 2rem;">
-                    <h2 class="section-title"><i class="fas fa-clipboard-check"></i> Operational Policies</h2>
+                    <h2 class="section-title">Operational Policies</h2>
                     <div class="policy-grid" style="display: grid; grid-template-columns: 1fr; gap: 1rem; margin-top: 1.5rem;">
                         {% if caterer.booking_policy %}
                         <div class="meta-pill" style="background: var(--hub-slate-50); color: var(--hub-slate-600); justify-content: flex-start; padding: 1rem; border: 1px solid var(--hub-slate-100); height: auto;">
@@ -972,7 +1354,7 @@
                 </div>
 
                 <div class="intel-card">
-                    <h2 class="section-title"><i class="fas fa-star-half-stroke"></i> Client Reviews</h2>
+                    <h2 class="section-title">Client Reviews</h2>
                     {% if reviews %}
                     <div style="display: flex; flex-direction: column; gap: 1.25rem;">
                         {% for review in reviews %}
@@ -1079,6 +1461,7 @@
 {% endblock %}
 
 {% block modals %}
+    <!-- PKG MODAL -->
     <div id="pkg-modal" class="oc-modal-layer">
         <div class="m-box-elite">
             <button type="button" onclick="window.closePkgModal()"
@@ -1088,6 +1471,7 @@
         </div>
     </div>
 
+    <!-- MESSAGE MODAL -->
     <div id="message-modal" class="oc-modal-layer">
         <div class="m-box-elite">
             <button type="button" onclick="window.closeMessageModal()"
@@ -1102,4 +1486,95 @@
             </form>
         </div>
     </div>
+
+    <!-- DISH CATEGORY MODAL -->
+    <div id="dish-cat-modal" class="dish-modal-layer" onclick="if(event.target===this)window.closeDishModal()">
+        <div class="dish-modal-box">
+            <div class="dish-modal-header">
+                <span class="dish-modal-title" id="dish-modal-cat-title">Category</span>
+                <button class="dish-modal-close" onclick="window.closeDishModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="dish-modal-body" id="dish-modal-body">
+                <!-- Dish rows injected by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Embed all menu items as JS data for the modal -->
+    <script>
+        window.hubMenuItems = [
+            {% for item in active_menu %}
+            {
+                id: {{ item.id|tojson }},
+                name: {{ item.name|tojson }},
+                category: {{ (item.category or '')|tojson }},
+                price: {{ (item.price or 0)|tojson }},
+                image: {{ (item.image_url or '')|tojson }}
+            }{{ ',' if not loop.last else '' }}
+            {% endfor %}
+        ];
+
+        window.openCategoryModal = function(cat) {
+            const modal = document.getElementById('dish-cat-modal');
+            const title = document.getElementById('dish-modal-cat-title');
+            const body  = document.getElementById('dish-modal-body');
+
+            const items = window.hubMenuItems.filter(i => i.category === cat);
+            title.textContent = cat + ' (' + items.length + ' dish' + (items.length !== 1 ? 'es' : '') + ')';
+
+            body.innerHTML = items.map(item => {
+                const img = item.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=200';
+                const price = '\u20b1' + parseFloat(item.price).toLocaleString('en-PH', {minimumFractionDigits: 2});
+                const isSelected = window.selectedItems.some(s => s.id == item.id);
+                return `
+                <div class="dish-row" id="dish-row-${item.id}">
+                    <img src="${img}" class="dish-row-img" alt="${item.name}" loading="lazy"
+                         onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=200'">
+                    <div class="dish-row-info">
+                        <div class="dish-row-name">${item.name}</div>
+                        <div class="dish-row-price">${price}</div>
+                    </div>
+                    <div class="dish-row-action" id="action-${item.id}">
+                        <input type="number" class="dish-row-qty" id="mq-${item.id}" value="1" min="1"
+                               ${isSelected ? 'disabled' : ''}>
+                        <button type="button"
+                            class="dish-row-btn ${isSelected ? 'selected' : ''}"
+                            id="mbtn-${item.id}"
+                            onclick="window.toggleModalItem(${JSON.stringify(item.id)}, ${JSON.stringify(item.name)}, ${item.price})">
+                            ${isSelected ? 'Added' : 'Add'}
+                        </button>
+                    </div>
+                </div>`;
+            }).join('');
+
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        };
+
+        window.closeDishModal = function() {
+            document.getElementById('dish-cat-modal').classList.remove('active');
+            document.body.style.overflow = '';
+        };
+
+        // Mirror of toggleMenuItem but targets modal buttons
+        window.toggleModalItem = function(id, name, price) {
+            const index = window.selectedItems.findIndex(i => i.id == id);
+            const btn   = document.getElementById(`mbtn-${id}`);
+            const qty   = document.getElementById(`mq-${id}`);
+            const qtyVal = qty ? (parseInt(qty.value) || 1) : 1;
+
+            if (index === -1) {
+                window.selectedItems.push({ id, name, price, qty: qtyVal });
+                if (btn) { btn.classList.add('selected'); btn.textContent = 'Added'; }
+                if (qty) qty.disabled = true;
+            } else {
+                window.selectedItems.splice(index, 1);
+                if (btn) { btn.classList.remove('selected'); btn.textContent = 'Add'; }
+                if (qty) qty.disabled = false;
+            }
+            window.updateCartUI();
+        };
+    </script>
 {% endblock %}
