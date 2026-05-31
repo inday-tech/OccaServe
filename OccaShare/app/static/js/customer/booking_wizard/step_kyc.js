@@ -556,15 +556,20 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     window.rescanId = async function () {
-        // Validate we have a file to rescan
-        const fileToRescan = window._ocrCompressedFile || idFile;
+        const idInputFile = document.getElementById('id_document')?.files?.[0];
+        let fileToRescan = window._ocrCompressedFile || idFile || idInputFile;
         if (!fileToRescan) {
-            // Nothing to rescan — just cancel and go back to form
+            if (window.showError) window.showError('No uploaded ID file found. Please upload or capture your ID again.', 'Rescan Error');
             window.cancelOcrModal();
             return;
         }
 
-        const idType = document.getElementById('id_type').value;
+        const idType = document.getElementById('id_type')?.value || '';
+        if (!idType) {
+            if (window.showError) window.showError('Please select an ID type before rescanning.', 'Missing ID Type');
+            window.cancelOcrModal();
+            return;
+        }
 
         // 1. Close the modal smoothly
         const modal = document.getElementById('ocr-verification-modal');
@@ -588,7 +593,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const el = document.getElementById(indicators[indicatorIdx]);
                 if (el) {
                     el.style.color = 'var(--kyc-accent)';
-                    el.querySelector('i').style.color = 'var(--kyc-accent)';
+                    el.querySelector('i')?.style.color = 'var(--kyc-accent)';
                 }
                 indicatorIdx++;
                 if (indicatorIdx === 1) statusEl.innerText = 'Analyzing document quality...';
@@ -597,10 +602,56 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }, 800);
 
+        async function getFileFromPreviewImage() {
+            const img = document.getElementById('id-image');
+            if (!img || !img.src) return null;
+
+            const src = img.src;
+            try {
+                const res = await fetch(src, { cache: 'no-store' });
+                if (res.ok) {
+                    const blob = await res.blob();
+                    const extension = blob.type.split('/')[1] || 'jpg';
+                    return new File([blob], `id_preview.${extension}`, { type: blob.type || 'image/jpeg' });
+                }
+            } catch (err) {
+                console.warn('[KYC] Failed to fetch preview image source', err);
+            }
+
+            return null;
+        }
+
+        // If the compressed file isn't already stored, compress before rescanning.
+        let finalFile = fileToRescan;
+        if (!window._ocrCompressedFile && fileToRescan instanceof File) {
+            try {
+                const compressedBlob = await compressImage(fileToRescan, 1280, 0.8);
+                finalFile = new File([compressedBlob], fileToRescan.name, { type: 'image/jpeg' });
+                window._ocrCompressedFile = finalFile;
+            } catch (err) {
+                console.warn('[KYC] Rescan compression failed, sending original file', err);
+                finalFile = fileToRescan;
+            }
+        }
+
+        if (!finalFile) {
+            finalFile = await getFileFromPreviewImage();
+            if (finalFile) {
+                window._ocrCompressedFile = finalFile;
+            }
+        }
+
+        if (!finalFile) {
+            if (window.showError) window.showError('Unable to reconstruct the uploaded ID image. Please upload it again.', 'Rescan Error');
+            document.getElementById('ocr-loading').style.display = 'none';
+            document.getElementById('id-preview').style.display = 'block';
+            return;
+        }
+
         // 3. Call extract-id again with the same file
         const extractForm = new FormData();
         extractForm.append('id_type', idType);
-        extractForm.append('id_document', fileToRescan);
+        extractForm.append('id_document', finalFile);
 
         try {
             const res = await fetch('/api/bookings/extract-id', { method: 'POST', body: extractForm });
@@ -613,13 +664,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Update stored data with fresh scan results
                 window._ocrExtractedData = result.extracted_data || {};
                 window._ocrTempIdUrl = result.temp_id_url || window._ocrTempIdUrl;
+                window._ocrCompressedFile = finalFile;
 
                 // Show modal with fresh data
                 showOcrModal(result.extracted_data);
             } else {
                 const data = await res.json().catch(() => ({}));
                 if (window.showError) window.showError(data.detail || 'Rescan failed. Please try again.', 'Rescan Error');
-                // Show preview again so user can try once more
                 document.getElementById('ocr-loading').style.display = 'none';
                 document.getElementById('id-preview').style.display = 'block';
             }
