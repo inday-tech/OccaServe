@@ -3,7 +3,7 @@
 <article class="caterer-card-premium animate-up" 
     data-lat="{{ caterer.latitude or '' }}" 
     data-lon="{{ caterer.longitude or '' }}"
-    data-address="{{ caterer.contact_address or '' }}"
+    data-address="{{ caterer.address_details or caterer.contact_address or '' }}"
     data-city="{{ caterer.city or '' }}"
     data-caterer-id="{{ caterer.id }}">
     <div class="card-image-wrapper">
@@ -25,13 +25,15 @@
         </div>
 
         <p class="card-description">
-            {{ (caterer.description or "Exquisite culinary experiences tailored for your special occasions.")|truncate(90) }}
+            {{ (caterer.description or "Great food and service for your special events.")|truncate(90) }}
         </p>
 
         <div class="package-specs-minimal">
             <div class="spec-item-min">
                 <i class="fas fa-location-dot" style="color: var(--primary-color);"></i>
-                <span>{{ caterer.city or "Laguna" }}</span>
+                <span title="{{ caterer.address_details or caterer.contact_address or caterer.city or 'Location TBD' }}" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;">
+                    {{ caterer.address_details or caterer.contact_address or caterer.city or "Location TBD" }}
+                </span>
             </div>
             <div class="spec-item-min">
                 <i class="fas fa-fire-flame-curved" style="color: #f97316;"></i>
@@ -41,7 +43,7 @@
 
         <div class="package-footer-pro-new">
             <a href="/customer/marketplace/{{ caterer.id }}" class="btn-premium-explore">
-                Explore Professional <i class="fas fa-chevron-right"></i>
+                View Profile <i class="fas fa-chevron-right"></i>
             </a>
         </div>
     </div>
@@ -53,7 +55,7 @@
         <i class="fas fa-search"></i>
     </div>
     <h2 class="outfit-font">No caterers found</h2>
-    <p class="text-muted">We couldn't find any partners matching your search. Try different filters.</p>
+    <p class="text-muted">We couldn't find any caterers. Try changing your search.</p>
     <button onclick="window.location.reload()" class="btn-clear-search">Clear All Filters</button>
 </div>
 {% endif %}

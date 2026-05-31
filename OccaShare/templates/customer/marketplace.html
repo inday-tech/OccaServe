@@ -33,6 +33,36 @@
             color: #64748b !important;
         }
 
+        /* ── Elite Header: Top-Right Grid/Map Button ── */
+        .page-header-elite {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            margin-bottom: 1rem !important;
+            position: relative !important;
+        }
+        .page-title-group {
+            width: 100%;
+            padding-right: 95px; /* Prevent text overlapping with the button */
+            box-sizing: border-box;
+        }
+        .page-header-elite .header-actions {
+            position: absolute !important;
+            top: 0 !important;
+            right: 0 !important;
+            width: auto !important;
+        }
+        .page-header-elite h1 {
+            font-size: 1.35rem !important;
+        }
+        .page-header-elite p {
+            font-size: 0.75rem !important;
+            line-height: 1.2 !important;
+        }
+        .view-toggle-btn {
+            padding: 5px 10px !important;
+            font-size: 0.7rem !important;
+        }
+
         /* ── Hero Search Bar: Full width ── */
         .header-actions {
             width: 100% !important;
@@ -120,50 +150,67 @@
             background-position: right 0.875rem center !important;
         }
 
-        /* ── Caterer Grid ── */
+        /* ── Caterer Grid (Dalawahan on Mobile) ── */
         .mkt-grid-premium {
-            grid-template-columns: 1fr !important;
-            gap: 0.75rem !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 0.5rem !important;
             margin-bottom: 2rem !important;
             margin-top: 0 !important;
         }
 
         /* ── Caterer Cards ── */
         .caterer-card-premium {
-            border-radius: 0.875rem !important;
+            border-radius: 0.75rem !important;
             border: 1px solid #f0f2f5 !important;
             box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03) !important;
+            display: flex !important;
+            flex-direction: column !important;
+            height: 100% !important;
         }
         .card-image-wrapper {
-            height: 140px !important;
+            height: 100px !important;
         }
         .card-body-premium {
-            padding: 0.875rem !important;
+            padding: 0.6rem !important;
+            display: flex !important;
+            flex-direction: column !important;
+            flex: 1 !important;
         }
         .card-title {
-            font-size: 1rem !important;
+            font-size: 0.85rem !important;
+            line-height: 1.2 !important;
+            margin-bottom: 0.2rem !important;
+        }
+        .package-stats-minimal {
+            font-size: 0.65rem !important;
+            margin-bottom: 0.4rem !important;
         }
         .card-description {
-            font-size: 0.8rem !important;
-            margin-bottom: 0.75rem !important;
+            font-size: 0.65rem !important;
+            margin-bottom: 0.5rem !important;
             -webkit-line-clamp: 2 !important;
+            line-height: 1.3 !important;
         }
-        .price-pill .price-val {
-            font-size: 1.15rem !important;
+        .package-specs-minimal {
+            font-size: 0.65rem !important;
+            gap: 0.4rem !important;
+            margin-bottom: 0.5rem !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
         }
-        .card-meta-grid {
-            gap: 0.75rem !important;
-            padding-top: 0.75rem !important;
-            margin-bottom: 0.75rem !important;
+        .package-specs-minimal .spec-item-min {
+            margin-bottom: 0.2rem !important;
         }
-        .meta-item-box {
-            font-size: 0.8rem !important;
+        .package-footer-pro-new {
+            margin-top: auto !important;
         }
-        .btn-edit-full {
-            padding: 0.65rem !important;
-            font-size: 0.92rem !important;
-            border-radius: 0.625rem !important;
-            min-height: 44px !important;
+        .btn-premium-explore {
+            padding: 0.4rem !important;
+            font-size: 0.75rem !important;
+            border-radius: 0.5rem !important;
+            justify-content: center !important;
+            width: 100% !important;
+            display: flex !important;
         }
 
         /* ── MKT Body spacing ── */
@@ -268,8 +315,8 @@
 <!-- Premium Marketplace Header (Diamond Standard v5) -->
 <div class="page-header-elite" style="margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: flex-end;">
     <div class="page-title-group">
-        <h1 style="font-size: 1.6rem; font-weight: 800; color: var(--text-dark); letter-spacing: -0.03em; margin: 0;">Discover Elite Caterers</h1>
-        <p style="font-size: 0.88rem; font-weight: 500; color: var(--dm-slate-400); margin: 4px 0 0;">Hand-picked professionals for your unforgettable events.</p>
+        <h1 style="font-size: 1.6rem; font-weight: 800; color: var(--text-dark); letter-spacing: -0.03em; margin: 0;">Find the Best Caterers</h1>
+        <p style="font-size: 0.88rem; font-weight: 500; color: var(--dm-slate-400); margin: 4px 0 0;">Great food and service for your special events.</p>
     </div>
     <div class="header-actions" style="display: flex; gap: 0.75rem; align-items: center;">
         <div style="display: flex; background: #fff; border: 1px solid var(--dm-slate-200); border-radius: 12px; padding: 4px; gap: 4px;">
@@ -370,6 +417,12 @@
             if (response.ok) {
                 const html = await response.text();
                 resultsContainer.innerHTML = html;
+                
+                // Re-sort if user location is available
+                if (sessionStorage.getItem('user_lat')) {
+                    sortCaterersByProximity();
+                }
+
                 // Update map data after filter if map is visible
                 if (currentView === 'map') {
                     updateMapMarkers();
@@ -543,6 +596,7 @@
             const lng = parseFloat(card.dataset.lon);
             const address = card.dataset.address || '';
             const city = card.dataset.city || '';
+            const fullAddressToDisplay = address && city ? `${address}, ${city}` : address || city || 'Philippines';
             const businessName = card.querySelector('.card-title')?.innerText || card.querySelector('h3')?.innerText || 'Caterer';
             const cardLink = card.querySelector('.btn-premium-explore')?.getAttribute('href') || card.querySelector('a')?.getAttribute('href') || '#';
             const imgEl = card.querySelector('.card-img') || card.querySelector('img');
@@ -552,7 +606,7 @@
 
             // If valid coordinates, place marker directly
             if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
-                placeMarker({ lat, lng }, businessName, city, ratingText, cardLink, imgUrl, bounds);
+                placeMarker({ lat, lng }, businessName, fullAddressToDisplay, ratingText, cardLink, imgUrl, bounds);
                 hasCoords = true;
             } 
             // If no coordinates but has address, geocode it
@@ -560,7 +614,7 @@
                 const fullAddress = [address, city, 'Philippines'].filter(Boolean).join(', ');
                 geocodeAddress(fullAddress, (pos) => {
                     if (pos) {
-                        placeMarker(pos, businessName, city, ratingText, cardLink, imgUrl, bounds);
+                        placeMarker(pos, businessName, fullAddressToDisplay, ratingText, cardLink, imgUrl, bounds);
                         // Re-fit bounds after geocoding
                         if (mapMarkers.length > 0) {
                             const newBounds = new google.maps.LatLngBounds();
@@ -580,7 +634,7 @@
         }
     }
 
-    function placeMarker(position, businessName, city, ratingText, cardLink, imgUrl, bounds) {
+    function placeMarker(position, businessName, fullAddressText, ratingText, cardLink, imgUrl, bounds) {
         // Determine distance color if customer location available
         const custLat = parseFloat(sessionStorage.getItem('user_lat'));
         const custLng = parseFloat(sessionStorage.getItem('user_lon'));
@@ -623,7 +677,7 @@
                 <div style="padding:6px;width:200px;">
                     ${imgUrl ? `<img src="${imgUrl}" style="width:100%;height:90px;object-fit:cover;border-radius:8px;margin-bottom:8px;" onerror="this.style.display='none'">` : ''}
                     <h4 style="margin:0 0 3px;font-size:14px;font-weight:700;color:#1e293b;">${businessName}</h4>
-                    <p style="margin:0 0 2px;font-size:12px;color:#64748b;"><i class="fas fa-location-dot" style="color:#f97316;"></i> ${city || 'Philippines'}</p>
+                    <p style="margin:0 0 2px;font-size:12px;color:#64748b;"><i class="fas fa-location-dot" style="color:#f97316;"></i> ${fullAddressText}</p>
                     ${ratingText ? `<p style="margin:0 0 2px;font-size:12px;color:#f59e0b;"><i class="fas fa-star"></i> ${ratingText}</p>` : ''}
                     ${distanceHtml}
                     <a href="${cardLink}" style="display:block;background:#f97316;color:white;text-align:center;padding:8px;border-radius:8px;font-size:12px;text-decoration:none;font-weight:700;margin-top:6px;">View Profile →</a>
@@ -648,7 +702,51 @@
         return R * c;
     }
 
-    // Proximity Detection — auto-detect customer location
+    // Proximity Detection & Auto-Sorting
+    function sortCaterersByProximity() {
+        const custLat = parseFloat(sessionStorage.getItem('user_lat'));
+        const custLng = parseFloat(sessionStorage.getItem('user_lon'));
+        if (isNaN(custLat) || isNaN(custLng)) return;
+
+        const resultsContainer = document.getElementById('catererResults');
+        if (!resultsContainer) return;
+        
+        const cards = Array.from(resultsContainer.querySelectorAll('.caterer-card-premium'));
+
+        // Assign distances
+        cards.forEach(card => {
+            const lat = parseFloat(card.dataset.lat);
+            const lng = parseFloat(card.dataset.lon);
+            let dist = 99999;
+            
+            if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+                dist = haversineDistance(custLat, custLng, lat, lng);
+                
+                // Add distance badge to card visually
+                let distBadge = card.querySelector('.distance-badge-pro');
+                if (!distBadge) {
+                    const specsContainer = card.querySelector('.package-specs-minimal');
+                    if (specsContainer) {
+                        distBadge = document.createElement('div');
+                        distBadge.className = 'spec-item-min distance-badge-pro';
+                        distBadge.innerHTML = `<i class="fas fa-route" style="color: #10b981;"></i> <span>${dist.toFixed(1)} km away</span>`;
+                        // Insert after the location item
+                        specsContainer.insertBefore(distBadge, specsContainer.children[1] || null);
+                    }
+                } else {
+                    distBadge.querySelector('span').innerText = `${dist.toFixed(1)} km away`;
+                }
+            }
+            card.dataset.distance = dist;
+        });
+
+        // Sort elements by distance
+        cards.sort((a, b) => parseFloat(a.dataset.distance) - parseFloat(b.dataset.distance));
+
+        // Re-append sorted elements
+        cards.forEach(card => resultsContainer.appendChild(card));
+    }
+
     function detectUserLocation() {
         if ('geolocation' in navigator) {
             navigator.geolocation.getCurrentPosition(
@@ -657,6 +755,9 @@
                     sessionStorage.setItem('user_lat', userPos.lat);
                     sessionStorage.setItem('user_lon', userPos.lng);
                     
+                    // Automatically sort caterers by distance now that we know location
+                    sortCaterersByProximity();
+
                     if (marketplaceMap) {
                         addCustomerPin();
                         updateMapMarkers();

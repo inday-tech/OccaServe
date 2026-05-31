@@ -273,10 +273,72 @@
     }
 
     /* ---- MENU GRID (COMPACT) ---- */
-    .elite-menu-grid {
+    .elite-menu-grid, .pkg-grid, .dish-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
         gap: 1.5rem;
+    }
+
+    @media (max-width: 768px) {
+        .hub-container { padding: 0.5rem; overflow: hidden; width: 100%; }
+        .intel-card { padding: 0.8rem !important; overflow: hidden; width: 100%; }
+
+        .pkg-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 0.5rem !important;
+        }
+        .dish-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            gap: 0.4rem !important;
+        }
+        
+        .pkg-grid .ei-img-box { height: 90px !important; }
+        .pkg-grid .ei-body { padding: 0.5rem !important; gap: 2px !important; }
+        .pkg-grid .ei-name { font-size: 0.75rem !important; min-height: auto !important; }
+        .pkg-grid .ei-price { font-size: 0.9rem !important; margin-top: 0.2rem !important; }
+        .pkg-grid .btn-elite-sm { padding: 0.4rem !important; font-size: 0.6rem !important; margin-top: 0.4rem !important; }
+
+        .dish-grid .ei-img-box { height: 60px !important; }
+        .dish-grid .ei-body { padding: 0.3rem !important; gap: 2px !important; }
+        .dish-grid .ei-cat { font-size: 0.5rem !important; }
+        .dish-grid .ei-name { 
+            font-size: 0.65rem !important; 
+            min-height: 1.6rem !important; 
+            line-height: 1.2 !important; 
+            overflow: hidden; 
+            display: -webkit-box; 
+            -webkit-line-clamp: 2; 
+            -webkit-box-orient: vertical; 
+        }
+        .dish-grid .ei-price { font-size: 0.75rem !important; margin-top: 0.1rem !important; }
+        
+        /* Stack quantity and button vertically so it fits in 1/3 screen */
+        .add-action-box { 
+            flex-direction: column !important; 
+            height: auto !important; 
+            border: none !important; 
+            margin-top: 0.4rem !important; 
+            gap: 4px !important; 
+        }
+        .qty-box { 
+            width: 100% !important; 
+            height: 28px !important; 
+            border: 1px solid var(--hub-slate-200) !important; 
+            border-radius: 6px !important; 
+        }
+        .qty-box input { font-size: 0.75rem !important; }
+        .btn-add-order { 
+            width: 100% !important; 
+            height: 28px !important; 
+            border: 1px solid var(--hub-slate-200) !important; 
+            border-radius: 6px !important; 
+            font-size: 0.6rem !important; 
+            padding: 0 !important; 
+        }
+        .btn-text { display: none !important; } /* Hide 'Add to Order' text, keep icon */
+        .btn-add-order::after { content: 'Add'; } /* Add short text instead */
+        .btn-add-order.selected::after { content: 'Added'; }
+        .btn-add-order i { display: none !important; }
     }
 
     .elite-item-card {
@@ -553,7 +615,7 @@
                 </div>
 
                 <div class="hero-meta">
-                    <div class="meta-pill"><i class="fas fa-map-marker-alt"></i> <span>{{ caterer.city or 'Laguna, PH' }}</span></div>
+                    <div class="meta-pill"><i class="fas fa-map-marker-alt"></i> <span>{{ caterer.city or caterer.province_code or 'Philippines' }}</span></div>
                     <div class="meta-pill"><i class="fas fa-star"></i> <span>{{ "%.1f"|format(caterer.rating) if caterer.rating else 'New Partner' }} ({{ caterer.review_count or 0 }} Reviews)</span></div>
                     <div class="meta-pill"><i class="fas fa-eye"></i> <span>{{ caterer.profile_views or 0 }} Views</span></div>
                 </div>
@@ -597,7 +659,7 @@
 
             let inclusionsHtml = incList.length > 0 ? `
                 <div style="margin-top: 1.5rem;">
-                    <h4 style="font-size: 0.8rem; font-weight: 850; color: var(--hub-text-dark); margin-bottom: 0.75rem; text-transform: uppercase;">Inclusions:</h4>
+                    <h4 style="font-size: 0.8rem; font-weight: 850; color: var(--hub-text-dark); margin-bottom: 0.75rem; text-transform: uppercase;">Inclusions (Equipments, Services, etc):</h4>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                         ${incList.map(inc => `<div style="font-size: 0.75rem; color: var(--hub-slate-600); background: var(--hub-slate-50); padding: 8px; border-radius: 8px; border: 1px solid var(--hub-slate-100); display: flex; align-items: center; gap: 6px;"><i class="fas fa-check-circle" style="color: #10b981;"></i> ${inc}</div>`).join('')}
                     </div>
@@ -668,7 +730,11 @@
             const index = window.selectedItems.findIndex(i => i.id === id);
             const btn = document.getElementById(`btn-add-${id}`);
             const qtyInput = document.getElementById(`qty-${id}`);
-            const qty = qtyInput ? parseInt(qtyInput.value) || 1 : 1;
+            let qty = qtyInput ? parseInt(qtyInput.value) || 1 : 1;
+            if (qty < 1) {
+                qty = 1;
+                if (qtyInput) qtyInput.value = 1;
+            }
 
             if (index === -1) {
                 window.selectedItems.push({ id, name, price, qty });
@@ -758,11 +824,11 @@
                         culinary experiences for weddings, corporate events, and private celebrations.' }}
                     </p>
 
-                    <div class="intel-stats-row">
+                    <div class="intel-stats-row" style="grid-template-columns: repeat(3, 1fr);">
                         <div class="stat-mini-box">
                             <i class="far fa-clock smb-icon"></i>
-                            <span class="smb-val">{{ caterer.years_of_operation or 1 }}+</span>
-                            <span class="smb-lab">Exp. Years</span>
+                            <span class="smb-val">{{ caterer.years_of_operation or 0 }}</span>
+                            <span class="smb-lab">Experience Years</span>
                         </div>
                         <div class="stat-mini-box">
                             <i class="fas fa-utensils smb-icon"></i>
@@ -771,13 +837,8 @@
                         </div>
                         <div class="stat-mini-box">
                             <i class="fas fa-award smb-icon"></i>
-                            <span class="smb-val">100%</span>
+                            <span class="smb-val">{{ (caterer.rating * 20)|int if caterer.rating else 100 }}%</span>
                             <span class="smb-lab">Trust Score</span>
-                        </div>
-                        <div class="stat-mini-box">
-                            <i class="fas fa-users smb-icon"></i>
-                            <span class="smb-val">{{ caterer.max_guests or 500 }}</span>
-                            <span class="smb-lab">Max Guests</span>
                         </div>
                     </div>
                 </div>
@@ -806,7 +867,7 @@
                 {% if packages %}
                 <div class="intel-card" style="padding: 1.75rem;">
                     <h2 class="section-title"><i class="fas fa-crown"></i> Elite Packages</h2>
-                    <div class="elite-menu-grid">
+                    <div class="pkg-grid">
                         {% for pkg in packages %}
                         <div class="elite-item-card pkg-item">
                             <div class="ei-img-box">
@@ -833,7 +894,7 @@
                             Dishes</h2>
 
                         <!-- CATEGORY HUB INTEGRATED -->
-                        <div class="category-hub" style="margin-bottom: 0; padding-bottom: 0;">
+                        <div class="category-hub" style="margin-bottom: 0; padding-bottom: 0; max-width: 100%; width: 100%;">
                             <div class="category-chip active" onclick="filterMenu('all', this)">All</div>
                             {% set categories = active_menu|map(attribute='category')|unique|list %}
                             {% for cat in categories %}
@@ -843,7 +904,7 @@
                             {% endfor %}
                         </div>
                     </div>
-                    <div class="elite-menu-grid" id="menu-grid-main">
+                    <div class="dish-grid" id="menu-grid-main">
                         {% for item in active_menu %}
                         <div class="elite-item-card menu-item-node"
                             data-category="{{ (item.category or 'other')|lower|replace(' ', '-') }}">
@@ -855,8 +916,8 @@
                                 <span class="ei-cat">{{ item.category }}</span>
                                 <span class="ei-name">{{ item.name }}</span>
                                 <span class="ei-price">₱{{ "{:,.2f}".format(item.price if item.price else 0) }}</span>
-                                <div style="display: flex; align-items: stretch; gap: 0; margin-top: 1rem; border: 1.5px solid var(--hub-slate-200); border-radius: 12px; overflow: hidden; height: 40px; transition: all 0.2s;" onmouseover="this.style.borderColor='var(--hub-primary)'" onmouseout="this.style.borderColor='var(--hub-slate-200)'">
-                                    <div style="background: var(--hub-slate-50); border-right: 1.5px solid var(--hub-slate-200); display: flex; align-items: center; justify-content: center; width: 45px;">
+                                <div class="add-action-box" style="display: flex; align-items: stretch; gap: 0; margin-top: 1rem; border: 1.5px solid var(--hub-slate-200); border-radius: 12px; overflow: hidden; height: 40px; transition: all 0.2s;" onmouseover="this.style.borderColor='var(--hub-primary)'" onmouseout="this.style.borderColor='var(--hub-slate-200)'">
+                                    <div class="qty-box" style="background: var(--hub-slate-50); border-right: 1.5px solid var(--hub-slate-200); display: flex; align-items: center; justify-content: center; width: 45px;">
                                         <input type="number" id="qty-{{ item.id }}" value="1" min="1" 
                                             style="width: 100%; border: none; background: transparent; font-size: 0.85rem; font-weight: 900; color: var(--hub-text-dark); text-align: center; outline: none; padding: 0;"
                                             title="Quantity">
@@ -864,7 +925,7 @@
                                     <button type="button" class="btn-add-order" id="btn-add-{{ item.id }}"
                                         style="flex: 1; border: none; border-radius: 0; margin-top: 0; background: #fff; font-size: 0.72rem; font-weight: 850; color: var(--hub-text-dark); height: 100%; text-transform: uppercase; letter-spacing: 0.02em;"
                                         onclick='window.toggleMenuItem("{{ item.id }}", {{ item.name|tojson }}, {{ (item.price or 0)|tojson }})'>
-                                        <i class="fas fa-plus" style="color: var(--hub-primary);"></i> Add to Order
+                                        <i class="fas fa-plus" style="color: var(--hub-primary);"></i> <span class="btn-text">Add to Order</span>
                                     </button>
                                 </div>
                             </div>
@@ -879,37 +940,34 @@
                 <!-- OPERATIONAL POLICIES (Real-Time) -->
                 <div class="intel-card" style="padding: 1.75rem; margin-top: 2rem;">
                     <h2 class="section-title"><i class="fas fa-clipboard-check"></i> Operational Policies</h2>
-                    <div class="policy-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem;">
-                        {% set lead_time = (packages|map(attribute='booking_lead_time')|list|first) if packages else 7 %}
-                        {% set res_fee = (packages|map(attribute='reservation_fee')|list|first) if packages else 30 %}
+                    <div class="policy-grid" style="display: grid; grid-template-columns: 1fr; gap: 1rem; margin-top: 1.5rem;">
+                        {% if caterer.booking_policy %}
                         <div class="meta-pill" style="background: var(--hub-slate-50); color: var(--hub-slate-600); justify-content: flex-start; padding: 1rem; border: 1px solid var(--hub-slate-100); height: auto;">
-                            <i class="fas fa-calendar-clock"></i>
                             <div>
-                                <div style="font-size: 0.65rem; text-transform: uppercase; opacity: 0.7;">Advance Booking</div>
-                                <div style="font-weight: 850;">{{ lead_time }} Days Minimum</div>
+                                <div style="font-size: 0.65rem; text-transform: uppercase; opacity: 0.7;">Booking Policy</div>
+                                <div style="font-weight: 850;">{{ caterer.booking_policy }}</div>
                             </div>
                         </div>
+                        {% endif %}
+                        {% if caterer.payment_policy %}
                         <div class="meta-pill" style="background: var(--hub-slate-50); color: var(--hub-slate-600); justify-content: flex-start; padding: 1rem; border: 1px solid var(--hub-slate-100); height: auto;">
-                            <i class="fas fa-ban"></i>
                             <div>
-                                <div style="font-size: 0.65rem; text-transform: uppercase; opacity: 0.7;">Cancellation</div>
-                                <div style="font-weight: 850;">{{ caterer.cancellation_policy or "48h Full Refund" }}</div>
+                                <div style="font-size: 0.65rem; text-transform: uppercase; opacity: 0.7;">Payment Policy</div>
+                                <div style="font-weight: 850;">{{ caterer.payment_policy }}</div>
                             </div>
                         </div>
+                        {% endif %}
+                        {% if caterer.cancellation_policy %}
                         <div class="meta-pill" style="background: var(--hub-slate-50); color: var(--hub-slate-600); justify-content: flex-start; padding: 1rem; border: 1px solid var(--hub-slate-100); height: auto;">
-                            <i class="fas fa-credit-card"></i>
                             <div>
-                                <div style="font-size: 0.65rem; text-transform: uppercase; opacity: 0.7;">Reservation Fee</div>
-                                <div style="font-weight: 850;">{{ res_fee }}% Secure Date</div>
+                                <div style="font-size: 0.65rem; text-transform: uppercase; opacity: 0.7;">Cancellation Policy</div>
+                                <div style="font-weight: 850;">{{ caterer.cancellation_policy }}</div>
                             </div>
                         </div>
-                        <div class="meta-pill" style="background: var(--hub-slate-50); color: var(--hub-slate-600); justify-content: flex-start; padding: 1rem; border: 1px solid var(--hub-slate-100); height: auto;">
-                            <i class="fas fa-truck-fast"></i>
-                            <div>
-                                <div style="font-size: 0.65rem; text-transform: uppercase; opacity: 0.7;">Service Area</div>
-                                <div style="font-weight: 850;">{{ caterer.address_details or "NCR & Laguna" }}</div>
-                            </div>
-                        </div>
+                        {% endif %}
+                        {% if not caterer.booking_policy and not caterer.payment_policy and not caterer.cancellation_policy %}
+                        <p style="color: var(--hub-slate-400); font-size: 0.9rem;">No specific policies listed by the caterer.</p>
+                        {% endif %}
                     </div>
                 </div>
 
