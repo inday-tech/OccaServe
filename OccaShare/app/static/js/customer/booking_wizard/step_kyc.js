@@ -1328,15 +1328,49 @@ document.addEventListener('DOMContentLoaded', function () {
             flash.addEventListener('animationend', () => flash.classList.remove('active'), { once: true });
         }
 
+        // Calculate crop dimensions to only capture what is inside the ID frame
+        const frame = document.getElementById('ekyc-id-frame');
+        let cropX = 0, cropY = 0, cropW = video.videoWidth, cropH = video.videoHeight;
+        
+        if (frame) {
+            const videoRect = video.getBoundingClientRect();
+            const frameRect = frame.getBoundingClientRect();
+            
+            // Calculate ratio between video's actual resolution and its displayed CSS size
+            // Because object-fit: cover is used, we need to take the MINIMUM scale to correctly represent it.
+            const scale = Math.min(video.videoWidth / videoRect.width, video.videoHeight / videoRect.height);
+            
+            // Rendered size of video
+            const renderedW = video.videoWidth / scale;
+            const renderedH = video.videoHeight / scale;
+            
+            // Offsets of the video within its container (due to object-fit cover cropping)
+            const offsetX = (videoRect.width - renderedW) / 2;
+            const offsetY = (videoRect.height - renderedH) / 2;
+            
+            // Map frame coordinates back to original video resolution
+            cropX = (frameRect.left - videoRect.left - offsetX) * scale;
+            cropY = (frameRect.top - videoRect.top - offsetY) * scale;
+            cropW = frameRect.width * scale;
+            cropH = frameRect.height * scale;
+            
+            // Constrain to boundaries just in case
+            cropX = Math.max(0, cropX);
+            cropY = Math.max(0, cropY);
+            cropW = Math.min(cropW, video.videoWidth - cropX);
+            cropH = Math.min(cropH, video.videoHeight - cropY);
+        }
+
         const canvas = document.createElement('canvas');
-        canvas.width  = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0);
+        canvas.width  = cropW;
+        canvas.height = cropH;
+        // drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
+        canvas.getContext('2d').drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
 
         canvas.toBlob((blob) => {
             idFile = new File([blob], "id_captured.jpg", { type: "image/jpeg" });
 
-            // If scanning back side — show preview immediately and mark front done
+            // If scanning back side — mark front done
             if (_scanSide === 'front') {
                 const pillFront = document.getElementById('pill-front');
                 if (pillFront) { pillFront.classList.remove('active'); pillFront.classList.add('done'); }
@@ -1346,9 +1380,11 @@ document.addEventListener('DOMContentLoaded', function () {
             reader.onload = function (e) {
                 // Stop camera stream
                 if (idStream) { idStream.getTracks().forEach(t => t.stop()); idStream = null; }
-                document.getElementById('id-image').src          = e.target.result;
-                document.getElementById('id-preview').style.display        = 'block';
+                document.getElementById('id-image').src = e.target.result;
                 document.getElementById('id-scanner-container').style.display = 'none';
+                
+                // Trigger OCR extraction automatically instead of just showing the preview
+                finalizeIdAndProceed();
             };
             reader.readAsDataURL(idFile);
         }, 'image/jpeg', 0.95);

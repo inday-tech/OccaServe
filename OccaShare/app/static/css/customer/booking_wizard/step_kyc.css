@@ -272,8 +272,9 @@
 
 /* The ID card frame — responsive via aspect-ratio */
 .ekyc-id-frame {
-    /* Standard CR80 card: 85.6 mm × 53.98 mm → ~1.586 */
-    width: min(88vw, 460px);
+    /* Standard CR80 card ratio ~1.586. 
+       Formula ensures it fits width, max width, AND doesn't overflow vertically on short screens */
+    width: min(90vw, 460px, calc(60vh * 1.586));
     aspect-ratio: 1.586 / 1;
     position: relative;
     border-radius: 18px;
@@ -543,8 +544,4 @@
     #kyc-options-container { grid-template-columns: 1fr !important; }
 
     .kyc-status-tracker { flex-wrap: wrap !important; gap: 1rem !important; }
-
-    .ekyc-id-frame {
-        width: min(92vw, 420px);
-    }
 }
