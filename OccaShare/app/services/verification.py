@@ -761,8 +761,8 @@ class VerificationService:
         """Checks image for blur, resolution, and basic glare."""
         height, width = image.shape[:2]
         
-        # 1. Resolution Check
-        if width < 640 or height < 400:
+        # 1. Resolution Check (Lowered because the frontend now tightly crops the ID card)
+        if width < 300 or height < 180:
             return {"valid": False, "reason": f"Resolution too low ({width}x{height}). Please take a clearer photo."}
         
         # 2. Blur Detection (Laplacian Variance)
