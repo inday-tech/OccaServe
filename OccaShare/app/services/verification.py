@@ -1230,18 +1230,31 @@ class VerificationService:
             
             # Optimization: Resize to a max dimension of 1024 while maintaining aspect ratio
             max_dim = 1024
-            if max(h, w) > max_dim:
-                scale = max_dim / max(h, w)
-                img = cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
-                print(f"[KYC DEBUG] Resized image for OCR: {w}x{h} -> {int(w*scale)}x{int(h*scale)}")
-            
-            # Encode as low-quality JPEG for speed
-            success, buffer = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 80])
-            if not success:
-                print("[KYC ERROR] Failed to encode image for Gemini.")
-                return None
-            
-            raw_data = buffer.tobytes()
+            if CV2_AVAILABLE:
+                if max(h, w) > max_dim:
+                    scale = max_dim / max(h, w)
+                    img = cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+                    print(f"[KYC DEBUG] Resized image for OCR: {w}x{h} -> {int(w*scale)}x{int(h*scale)}")
+                
+                # Encode as low-quality JPEG for speed
+                success, buffer = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 80])
+                if not success:
+                    print("[KYC ERROR] Failed to encode image for Gemini.")
+                    return None
+                
+                raw_data = buffer.tobytes()
+            else:
+                from PIL import Image as PILImage
+                # img is BGR numpy array, convert to RGB for PIL
+                pil_img = PILImage.fromarray(img[:, :, ::-1])
+                if max(h, w) > max_dim:
+                    scale = max_dim / max(h, w)
+                    pil_img = pil_img.resize((int(w * scale), int(h * scale)), PILImage.Resampling.LANCZOS)
+                    print(f"[KYC DEBUG] Resized image for OCR (PIL): {w}x{h} -> {int(w*scale)}x{int(h*scale)}")
+                
+                buf = io.BytesIO()
+                pil_img.save(buf, format="JPEG", quality=80)
+                raw_data = buf.getvalue()
                 
             # Use gemini-2.0-flash for OCR - fast, multimodal, and widely available
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_key}"
