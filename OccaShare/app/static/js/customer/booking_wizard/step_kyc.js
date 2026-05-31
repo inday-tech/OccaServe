@@ -555,6 +555,83 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 350);
     };
 
+    window.rescanId = async function () {
+        // Validate we have a file to rescan
+        const fileToRescan = window._ocrCompressedFile || idFile;
+        if (!fileToRescan) {
+            // Nothing to rescan — just cancel and go back to form
+            window.cancelOcrModal();
+            return;
+        }
+
+        const idType = document.getElementById('id_type').value;
+
+        // 1. Close the modal smoothly
+        const modal = document.getElementById('ocr-verification-modal');
+        modal.classList.remove('visible');
+        setTimeout(() => { modal.style.display = 'none'; }, 350);
+
+        // 2. Show the OCR loading animation
+        await new Promise(r => setTimeout(r, 360)); // wait for modal close
+        document.getElementById('step-id-form').style.display = 'none';
+        document.getElementById('id-preview').style.display = 'none';
+        document.getElementById('ocr-loading').style.display = 'block';
+        document.getElementById('extraction-title').innerText = 'Re-scanning Your ID';
+        updateStatusTracker(2);
+
+        // Animate quality indicators
+        const statusEl = document.getElementById('extraction-status');
+        const indicators = ['qc-resolution', 'qc-focus', 'qc-ocr'];
+        let indicatorIdx = 0;
+        const progressTimer = setInterval(() => {
+            if (indicatorIdx < indicators.length) {
+                const el = document.getElementById(indicators[indicatorIdx]);
+                if (el) {
+                    el.style.color = 'var(--kyc-accent)';
+                    el.querySelector('i').style.color = 'var(--kyc-accent)';
+                }
+                indicatorIdx++;
+                if (indicatorIdx === 1) statusEl.innerText = 'Analyzing document quality...';
+                if (indicatorIdx === 2) statusEl.innerText = 'Running AI-powered OCR extraction...';
+                if (indicatorIdx === 3) statusEl.innerText = 'Finalizing data extraction...';
+            }
+        }, 800);
+
+        // 3. Call extract-id again with the same file
+        const extractForm = new FormData();
+        extractForm.append('id_type', idType);
+        extractForm.append('id_document', fileToRescan);
+
+        try {
+            const res = await fetch('/api/bookings/extract-id', { method: 'POST', body: extractForm });
+            clearInterval(progressTimer);
+
+            if (res.ok) {
+                const result = await res.json();
+                console.log('[KYC] Rescan OCR result:', result);
+
+                // Update stored data with fresh scan results
+                window._ocrExtractedData = result.extracted_data || {};
+                window._ocrTempIdUrl = result.temp_id_url || window._ocrTempIdUrl;
+
+                // Show modal with fresh data
+                showOcrModal(result.extracted_data);
+            } else {
+                const data = await res.json().catch(() => ({}));
+                if (window.showError) window.showError(data.detail || 'Rescan failed. Please try again.', 'Rescan Error');
+                // Show preview again so user can try once more
+                document.getElementById('ocr-loading').style.display = 'none';
+                document.getElementById('id-preview').style.display = 'block';
+            }
+        } catch (err) {
+            clearInterval(progressTimer);
+            console.error('[KYC] Rescan network error:', err);
+            if (window.showError) window.showError('Connection lost during rescan.', 'Network Error');
+            document.getElementById('ocr-loading').style.display = 'none';
+            document.getElementById('id-preview').style.display = 'block';
+        }
+    };
+
     // ─── SAVE & CONTINUE → COMPLIANCE → UPLOAD → LIVENESS ────────────
     window.saveOcrAndContinue = async function () {
         const modal = document.getElementById('ocr-verification-modal');
