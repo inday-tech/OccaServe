@@ -166,6 +166,131 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // --- 5. Initial Calculations ---
-    updateCalculator();
+    // --- 6. Real-time Field Validation ---
+    function validateField(input, errorId, validationFn, customErrorText = null) {
+        if (!input) return true;
+        const errSpan = document.getElementById(errorId);
+        const isValid = validationFn(input.value);
+        if (isValid) {
+            input.classList.remove('error');
+            if (errSpan) {
+                errSpan.classList.remove('show');
+            }
+        } else {
+            input.classList.add('error');
+            if (errSpan) {
+                if (customErrorText) errSpan.innerText = customErrorText;
+                errSpan.classList.add('show');
+            }
+        }
+        return isValid;
+    }
+
+    const eventName = document.getElementById('event_name');
+    if (eventName) {
+        eventName.addEventListener('input', () => validateField(eventName, 'err-name', v => v.trim().length > 0));
+        eventName.addEventListener('change', () => validateField(eventName, 'err-name', v => v.trim().length > 0));
+    }
+
+    if (eventTypeSelect) {
+        eventTypeSelect.addEventListener('change', () => validateField(eventTypeSelect, 'err-type', v => v !== ''));
+    }
+
+    const guestDisplay = document.getElementById('guest_count_display');
+    const validateGuestCount = () => {
+        if (!guestDisplay) return true;
+        const g = parseInt(guestDisplay.value.replace(/,/g, '')) || 0;
+        let valid = g >= window.minGuests;
+        if (window.maxGuests > 0) valid = valid && g <= window.maxGuests;
+        
+        let errorText = `Min: ${window.minGuests} pax.`;
+        if (window.maxGuests > 0 && g > window.maxGuests) errorText = `Max: ${window.maxGuests} pax.`;
+        
+        return validateField(guestDisplay, 'err-guests', () => valid, errorText);
+    };
+    if (guestDisplay) {
+        guestDisplay.addEventListener('input', validateGuestCount);
+        guestDisplay.addEventListener('change', validateGuestCount);
+    }
+
+    const eventDate = document.getElementById('event_date');
+    const validateEventDate = () => {
+        if (!eventDate) return true;
+        return validateField(eventDate, 'err-date', v => {
+            if (!v) return false;
+            // Parse YYYY-MM-DD locally to avoid timezone shifts
+            const parts = v.split('-');
+            if(parts.length !== 3) return false;
+            const selectedDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            
+            const minDate = new Date();
+            minDate.setDate(minDate.getDate() + 2); // At least 3 days in advance
+            minDate.setHours(0,0,0,0);
+            return selectedDate > minDate;
+        }, "Please select a date at least 3 days in advance.");
+    };
+    if (eventDate) {
+        eventDate.addEventListener('input', validateEventDate);
+        eventDate.addEventListener('change', validateEventDate);
+    }
+
+    const eventTime = document.getElementById('event_time');
+    if (eventTime) {
+        eventTime.addEventListener('input', () => validateField(eventTime, 'err-time', v => v !== ''));
+        eventTime.addEventListener('change', () => validateField(eventTime, 'err-time', v => v !== ''));
+    }
+
+    if (provinceSelect) {
+        provinceSelect.addEventListener('change', () => validateField(provinceSelect, 'err-province', v => v !== ''));
+    }
+    if (citySelect) {
+        citySelect.addEventListener('change', () => validateField(citySelect, 'err-city', v => v !== ''));
+    }
+    if (barangaySelect) {
+        barangaySelect.addEventListener('change', () => validateField(barangaySelect, 'err-barangay', v => v !== ''));
+    }
+
+    // Intercept form submit to validate all
+    const form = document.getElementById('detailsForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const results = [];
+            if (eventName) results.push(validateField(eventName, 'err-name', v => v.trim().length > 0));
+            if (eventTypeSelect) results.push(validateField(eventTypeSelect, 'err-type', v => v !== ''));
+            if (eventDate) results.push(validateEventDate());
+            if (eventTime) results.push(validateField(eventTime, 'err-time', v => v !== ''));
+            if (provinceSelect) results.push(validateField(provinceSelect, 'err-province', v => v !== ''));
+            if (citySelect) results.push(validateField(citySelect, 'err-city', v => v !== ''));
+            if (barangaySelect) results.push(validateField(barangaySelect, 'err-barangay', v => v !== ''));
+            if (guestDisplay) results.push(validateGuestCount());
+
+            const isValid = results.every(r => r === true);
+
+            if (!isValid) {
+                e.preventDefault();
+                // Scroll to first error
+                const firstError = document.querySelector('.form-input.error');
+                if (firstError) firstError.scrollIntoView({behavior: 'smooth', block: 'center'});
+            }
+        });
+    }
+
+    // --- 7. Handle Backend Validation Errors ---
+    const urlParams = new URLSearchParams(window.location.search);
+    const bookingError = urlParams.get('booking_error');
+    if (bookingError) {
+        const errDate = document.getElementById('err-date');
+        const eventDateInput = document.getElementById('event_date');
+        if (errDate && eventDateInput) {
+            errDate.innerText = decodeURIComponent(bookingError);
+            errDate.classList.add('show');
+            eventDateInput.classList.add('error');
+            eventDateInput.scrollIntoView({behavior: 'smooth', block: 'center'});
+        }
+        
+        // Clean URL so it doesn't show again on refresh
+        const url = new URL(window.location.href);
+        url.searchParams.delete('booking_error');
+        window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);
+    }
 });

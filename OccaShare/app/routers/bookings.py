@@ -477,7 +477,61 @@ async def step_details_submit(
     booking_id = int(booking_id_str) if booking_id_str and booking_id_str.strip() else None
 
     user = get_current_user_from_session(request, db)
-    if not user: return RedirectResponse(url=f"/auth/login?next=/packages/{package_id}")
+    redirect_base = f"/bookings/step/details/{booking_id}" if booking_id else "/bookings/step/details"
+    if not user: return RedirectResponse(url=f"/auth/login?next={redirect_base}")
+
+    from datetime import date as dt_date, timedelta, datetime
+    today = dt_date.today()
+    
+    # 🚨 VALIDATION 1: Strict Lead Time Validation
+    # Must be at least 3 days in the future
+    min_lead_date = today + timedelta(days=3)
+    if event_date < min_lead_date:
+        return RedirectResponse(url=f"{redirect_base}?booking_error=Event+date+must+be+at+least+3+days+in+advance+for+proper+preparation.", status_code=303)
+
+    # 🚨 VALIDATION 1.5: Sensible Operating Hours Check
+    # Restrict events to standard operating hours (6:00 AM to 9:00 PM)
+    if event_time.hour < 6 or event_time.hour > 21:
+        return RedirectResponse(url=f"{redirect_base}?booking_error=Please+select+a+time+between+6:00+AM+and+9:00+PM.", status_code=303)
+
+    # 🚨 VALIDATION 2: Anti-Spam / Duplicate Booking Check
+    existing_duplicate = db.query(models.Booking).filter(
+        models.Booking.user_id == user.id,
+        models.Booking.caterer_id == caterer_id,
+        models.Booking.event_date == event_date,
+        models.Booking.event_time == event_time,
+        models.Booking.id != (booking_id or 0),
+        models.Booking.status.notin_(['cancelled'])
+    ).first()
+    
+    if existing_duplicate:
+        return RedirectResponse(url=f"{redirect_base}?booking_error=You+already+have+a+booking+request+for+this+exact+schedule+and+caterer.", status_code=303)
+
+    # 🚨 VALIDATION 3: Caterer Overlap / Time-Gap Check
+    same_day_bookings = db.query(models.Booking).filter(
+        models.Booking.caterer_id == caterer_id,
+        models.Booking.event_date == event_date,
+        models.Booking.id != (booking_id or 0),
+        models.Booking.status.in_(['confirmed', 'preparing', 'in_progress', 'on_the_way'])
+    ).all()
+    
+    for sdb in same_day_bookings:
+        if sdb.event_time:
+            dt1 = datetime.combine(today, event_time)
+            dt2 = datetime.combine(today, sdb.event_time)
+            diff_hours = abs((dt1 - dt2).total_seconds()) / 3600.0
+            if diff_hours < 4.0:
+                return RedirectResponse(url=f"{redirect_base}?booking_error=The+caterer+has+another+confirmed+event+around+this+time.+Please+adjust+your+time+by+at+least+4+hours.", status_code=303)
+
+    # 🚨 VALIDATION 4: Guest Count Bounds
+    package = None
+    if package_id:
+        package = db.query(models.CateringPackage).get(package_id)
+        if package:
+            if package.min_guests and guest_count < package.min_guests:
+                return RedirectResponse(url=f"{redirect_base}?booking_error=Guest+count+cannot+be+less+than+the+package+minimum+of+{package.min_guests}.", status_code=303)
+            if package.max_guests and guest_count > package.max_guests:
+                return RedirectResponse(url=f"{redirect_base}?booking_error=Guest+count+exceeds+the+package+maximum+capacity+of+{package.max_guests}.", status_code=303)
 
     # 1. Check Availability (Only if date changed or new booking)
     # [Availability check logic remains same for now]
@@ -488,7 +542,7 @@ async def step_details_submit(
     ).first()
     
     if availability:
-        return RedirectResponse(url=f"/packages/{package_id}?error_msg=Date+unavailable", status_code=303)
+        return RedirectResponse(url=f"{redirect_base}?booking_error=Date+unavailable", status_code=303)
 
     # 2. Create or Update Booking
     booking = None
@@ -554,7 +608,7 @@ async def step_details_submit(
                 # Rollback draft if validation fails
                 db.delete(booking)
                 db.commit()
-                return RedirectResponse(url=f"/packages/{package_id}?error_msg=You+selected+too+many+items+in+{cat}", status_code=303)
+                return RedirectResponse(url=f"{redirect_base}?booking_error=You+selected+too+many+items+in+{cat}", status_code=303)
 
     all_items = selected_items + selected_addons
     for item_id in all_items:
@@ -653,7 +707,7 @@ async def step_quotation_page(booking_id: int, request: Request, db: Session = D
     })
 
 # Phase 4: Downpayment
-async def _validate_receipt_with_gemini(filepath: str, payment_method: str) -> bool:
+async def _validate_receipt_with_gemini(filepath: str, payment_method: str, expected_amount: float = 0.0) -> bool:
     is_valid = False
     gemini_key = os.getenv("GEMINI_API_KEY")
     if gemini_key:
@@ -666,6 +720,7 @@ async def _validate_receipt_with_gemini(filepath: str, payment_method: str) -> b
             prompt = (
                 f"Analyze this image. Is it a legitimate payment receipt or screenshot for {payment_method}? "
                 "Look for evidence of a successful transaction, reference numbers, amounts, and dates. "
+                f"CRITICAL: Check if the amount paid is at least {expected_amount:,.2f} PHP. If the amount is significantly lower or missing, mark as invalid. "
                 "Respond ONLY with a valid JSON object in this exact format: "
                 '{"is_valid": true_or_false, "reason": "short explanation"}'
             )
@@ -796,6 +851,15 @@ async def step_payment_submit(
             raise HTTPException(status_code=400, detail="Reference number must be between 6 and 30 characters.")
         if re.search(r"(.)\1{5,}", reference_no):
             raise HTTPException(status_code=400, detail="Reference number looks invalid (excessive repeating characters).")
+            
+        # Check if reference number was already used
+        existing_ref = db.query(models.Booking).filter(
+            models.Booking.special_requests.like(f"%[Payment Ref: {reference_no}]%"),
+            models.Booking.id != booking_id
+        ).first()
+        if existing_ref:
+            request.session["flash_error"] = "This Reference Number has already been used in another transaction."
+            return RedirectResponse(url=f"/bookings/step/payment/{booking.id}?error=duplicate_ref", status_code=303)
 
     # Handle Payment Proof Upload
     proof_url = None
@@ -821,7 +885,8 @@ async def step_payment_submit(
             shutil.copyfileobj(payment_proof.file, buffer)
             
         # --- AI RECEIPT VALIDATION (GEMINI / OCR) ---
-        is_valid_receipt = await _validate_receipt_with_gemini(filepath, payment_method)
+        expected_fee = float(booking.reservation_fee or 0)
+        is_valid_receipt = await _validate_receipt_with_gemini(filepath, payment_method, expected_amount=expected_fee)
 
         if not is_valid_receipt:
             if os.path.exists(filepath):
@@ -894,7 +959,8 @@ async def reupload_proof_submit(
         shutil.copyfileobj(payment_proof.file, buffer)
         
     # --- AI RECEIPT VALIDATION (GEMINI / OCR) ---
-    is_valid_receipt = await _validate_receipt_with_gemini(filepath, payment_method)
+    expected_fee = float(booking.reservation_fee or 0)
+    is_valid_receipt = await _validate_receipt_with_gemini(filepath, payment_method, expected_amount=expected_fee)
 
     if not is_valid_receipt:
         # Delete the invalid file
@@ -958,6 +1024,13 @@ async def pay_balance_submit(
         
         with open(filepath, "wb") as buffer:
             shutil.copyfileobj(payment_proof.file, buffer)
+            
+        # --- AI RECEIPT VALIDATION ---
+        is_valid_receipt = await _validate_receipt_with_gemini(filepath, payment_method, expected_amount=outstanding_balance)
+        if not is_valid_receipt:
+            if os.path.exists(filepath):
+                os.remove(filepath)
+            return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?error_msg=Invalid+Receipt+Detected.+Amount+did+not+match+or+receipt+is+illegible.", status_code=303)
             
         proof_url = f"/static/uploads/payment_proofs/{filename}"
         booking.balance_proof_url = proof_url

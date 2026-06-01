@@ -148,6 +148,19 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!dateInput || !dateInput.value) return;
 
         const date = dateInput.value;
+        const parts = date.split('-');
+        if (parts.length === 3) {
+            const selectedDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            const minDate = new Date();
+            minDate.setDate(minDate.getDate() + 2); // At least 3 days in advance
+            minDate.setHours(0,0,0,0);
+            if (selectedDate <= minDate) {
+                chip.style.display = 'none'; // Hide chip since inline validation already flags it
+                if (submitBtn) submitBtn.disabled = true;
+                return;
+            }
+        }
+
         chip.className = 'availability-chip checking';
         chip.style.display = 'inline-flex';
         chip.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
@@ -159,11 +172,11 @@ document.addEventListener('DOMContentLoaded', function () {
             if (data.available) {
                 chip.className = 'availability-chip available';
                 chip.innerHTML = '<i class="fas fa-check-circle"></i> Date Available';
-                submitBtn.disabled = false;
+                if (submitBtn) submitBtn.disabled = false;
             } else {
                 chip.className = 'availability-chip booked';
                 chip.innerHTML = '<i class="fas fa-times-circle"></i> Fully Booked';
-                submitBtn.disabled = true;
+                if (submitBtn) submitBtn.disabled = true;
             }
         } catch (error) {
             chip.innerHTML = 'Error checking date';
@@ -312,73 +325,131 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // --- 6. Form Submission Validation ---
+    // --- 6. Form Validation & Real-time Feedback ---
+    function validateField(input, errorId, validationFn, customErrorText = null) {
+        if (!input) return true;
+        const errSpan = document.getElementById(errorId);
+        const isValid = validationFn(input.value);
+        if (isValid) {
+            input.classList.remove('error');
+            if (errSpan) {
+                errSpan.classList.remove('show');
+            }
+        } else {
+            input.classList.add('error');
+            if (errSpan) {
+                if (customErrorText) errSpan.innerText = customErrorText;
+                errSpan.classList.add('show');
+            }
+        }
+        return isValid;
+    }
+
+    const eventName = document.getElementById('event_name');
+    if (eventName) {
+        eventName.addEventListener('input', () => validateField(eventName, 'err-name', v => v.trim().length > 0));
+        eventName.addEventListener('change', () => validateField(eventName, 'err-name', v => v.trim().length > 0));
+    }
+
+    if (eventTypeSelect) {
+        eventTypeSelect.addEventListener('change', () => {
+            validateField(eventTypeSelect, 'err-type', v => v !== '');
+            if (eventTypeSelect.value === 'Other') {
+                validateField(otherEventInput, 'err-other-type', v => v.trim().length > 0);
+            }
+        });
+    }
+    if (otherEventInput) {
+        otherEventInput.addEventListener('input', () => {
+            if (eventTypeSelect.value === 'Other') validateField(otherEventInput, 'err-other-type', v => v.trim().length > 0);
+        });
+    }
+
+    const validateGuestCount = () => {
+        if (!guestDisplay) return true;
+        const g = parseInt(guestDisplay.value.replace(/,/g, '')) || 0;
+        let valid = g >= window.minGuests;
+        if (window.maxGuests > 0) valid = valid && g <= window.maxGuests;
+        
+        let errorText = `Min: ${window.minGuests} pax.`;
+        if (window.maxGuests > 0 && g > window.maxGuests) errorText = `Max: ${window.maxGuests} pax.`;
+        
+        return validateField(guestDisplay, 'err-guests', () => valid, errorText);
+    };
+    if (guestDisplay) {
+        guestDisplay.addEventListener('input', validateGuestCount);
+        guestDisplay.addEventListener('change', validateGuestCount);
+    }
+
+    const validateEventDate = () => {
+        if (!dateInput) return true;
+        return validateField(dateInput, 'err-date', v => {
+            if (!v) return false;
+            const parts = v.split('-');
+            if(parts.length !== 3) return false;
+            const selectedDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            
+            const minDate = new Date();
+            minDate.setDate(minDate.getDate() + 2); // At least 3 days in advance
+            minDate.setHours(0,0,0,0);
+            return selectedDate > minDate;
+        }, "Please select a date at least 3 days in advance.");
+    };
+    if (dateInput) {
+        dateInput.addEventListener('input', validateEventDate);
+        dateInput.addEventListener('change', validateEventDate);
+    }
+
+    const validateEventTime = () => {
+        if (!timeInput) return true;
+        return validateField(timeInput, 'err-time', v => {
+            if (!v) return false;
+            const parts = v.split(':');
+            if (parts.length !== 2) return false;
+            const hour = parseInt(parts[0]);
+            
+            // Standard catering operations: 6:00 AM to 9:00 PM (21:59)
+            if (hour < 6 || hour > 21) {
+                return false;
+            }
+            return true;
+        }, "Please select a time between 6:00 AM and 9:00 PM.");
+    };
+    if (timeInput) {
+        timeInput.addEventListener('input', validateEventTime);
+        timeInput.addEventListener('change', validateEventTime);
+    }
+
+    if (provinceSelect) {
+        provinceSelect.addEventListener('change', () => validateField(provinceSelect, 'err-province', v => v !== ''));
+    }
+    if (citySelect) {
+        citySelect.addEventListener('change', () => validateField(citySelect, 'err-city', v => v !== ''));
+    }
+    if (barangaySelect) {
+        barangaySelect.addEventListener('change', () => validateField(barangaySelect, 'err-barangay', v => v !== ''));
+    }
+
     if (form) {
         form.addEventListener('submit', function (e) {
             let isValid = true;
 
-            // Reset errors
-            document.querySelectorAll('.field-error').forEach(el => el.classList.remove('show'));
-            document.querySelectorAll('.form-input').forEach(el => el.classList.remove('error'));
-
-            // Name
-            const name = form.event_name.value.trim();
-            if (!name) {
-                isValid = false;
-                document.getElementById('err-name').classList.add('show');
-                form.event_name.classList.add('error');
+            if (eventName) isValid = validateField(eventName, 'err-name', v => v.trim().length > 0) && isValid;
+            
+            if (eventTypeSelect) {
+                isValid = validateField(eventTypeSelect, 'err-type', v => v !== '') && isValid;
+                if (eventTypeSelect.value === 'Other') {
+                    isValid = validateField(otherEventInput, 'err-other-type', v => v.trim().length > 0) && isValid;
+                }
             }
 
-            // Event Type
-            if (!eventTypeSelect.value) {
-                isValid = false;
-                document.getElementById('err-type').classList.add('show');
-                eventTypeSelect.classList.add('error');
-            } else if (eventTypeSelect.value === 'Other' && !otherEventInput.value.trim()) {
-                isValid = false;
-                document.getElementById('err-other-type').classList.add('show');
-                otherEventInput.classList.add('error');
-            }
-
-            // Guests
-            const guests = parseInt(guestInput.value) || 0;
-            if (guests < minGuests || guests > 1000) {
-                isValid = false;
-                document.getElementById('err-guests').classList.add('show');
-                if (guestDisplay) guestDisplay.classList.add('error');
-            }
-
-            // Date
-            if (!dateInput.value || new Date(dateInput.value) < new Date(today)) {
-                isValid = false;
-                document.getElementById('err-date').classList.add('show');
-                dateInput.classList.add('error');
-            }
-
-            // Time (Required)
-            const time = timeInput.value;
-            if (!time) {
-                isValid = false;
-                document.getElementById('err-time').classList.add('show');
-                timeInput.classList.add('error');
-            }
-
-            // Location Validation
-            if (!provinceSelect.value) {
-                isValid = false;
-                document.getElementById('err-province').classList.add('show');
-                provinceSelect.classList.add('error');
-            }
-            if (!citySelect.value) {
-                isValid = false;
-                document.getElementById('err-city').classList.add('show');
-                citySelect.classList.add('error');
-            }
-            if (!barangaySelect.value) {
-                isValid = false;
-                document.getElementById('err-barangay').classList.add('show');
-                barangaySelect.classList.add('error');
-            }
+            if (guestDisplay) isValid = validateGuestCount() && isValid;
+            if (dateInput) isValid = validateEventDate() && isValid;
+            if (timeInput) isValid = validateEventTime() && isValid;
+            
+            if (provinceSelect) isValid = validateField(provinceSelect, 'err-province', v => v !== '') && isValid;
+            if (citySelect) isValid = validateField(citySelect, 'err-city', v => v !== '') && isValid;
+            if (barangaySelect) isValid = validateField(barangaySelect, 'err-barangay', v => v !== '') && isValid;
 
             // Selection Rules Validation
             const selectionGroups = document.querySelectorAll('.selection-group');
@@ -399,13 +470,29 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (!isValid) {
                 e.preventDefault();
-                // Scroll to first error
                 const firstError = document.querySelector('.field-error.show');
                 if (firstError) {
                     firstError.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
             }
         });
+    }
+
+    // Handle Backend Validation Errors
+    const urlParams = new URLSearchParams(window.location.search);
+    const bookingError = urlParams.get('booking_error');
+    if (bookingError) {
+        const errDate = document.getElementById('err-date');
+        if (errDate && dateInput) {
+            errDate.innerText = decodeURIComponent(bookingError);
+            errDate.classList.add('show');
+            dateInput.classList.add('error');
+            dateInput.scrollIntoView({behavior: 'smooth', block: 'center'});
+        }
+        
+        const url = new URL(window.location.href);
+        url.searchParams.delete('booking_error');
+        window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);
     }
 
     // --- 7. Menu Swapping Logic ---

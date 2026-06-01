@@ -60,43 +60,34 @@
 
                 <div class="form-group">
                     <label class="form-label">Event Name</label>
-                    <div class="input-with-icon">
-                        <i class="fas fa-signature"></i>
-                        <input type="text" name="event_name" class="form-input" placeholder="e.g., Rodriguez Wedding"
-                            value="{{ booking.event_name if booking else '' }}" required>
-                    </div>
+                    <input type="text" name="event_name" id="event_name" class="form-input"
+                        value="{{ booking.event_name if booking else '' }}" required>
                     <span class="field-error" id="err-name">Please enter a descriptive event name.</span>
                 </div>
 
                 <div class="grid-2-col">
                     <div class="form-group">
                         <label class="form-label">Event Type</label>
-                        <div class="input-with-icon">
-                            <i class="fas fa-star"></i>
-                            <select name="event_type" id="event_type_select" class="filter-select-pro" required>
-                                <option value="">-- Select Type --</option>
-                                <option value="Wedding" {% if booking and booking.event_type=='Wedding' %}selected{% endif %}>Wedding</option>
-                                <option value="Birthday" {% if booking and booking.event_type=='Birthday' %}selected{% endif %}>Birthday</option>
-                                <option value="Corporate Event" {% if booking and booking.event_type=='Corporate Event' %}selected{% endif %}>Corporate Event</option>
-                                <option value="Debut / Milestone" {% if booking and booking.event_type=='Debut / Milestone' %}selected{% endif %}>Debut / Milestone</option>
-                                <option value="Baptism / Family Event" {% if booking and booking.event_type=='Baptism / Family Event' %}selected{% endif %}>Baptism / Family Event</option>
-                                <option value="Private Party" {% if booking and booking.event_type=='Private Party' %}selected{% endif %}>Private Party</option>
-                                <option value="Other" {% if booking and (booking.event_type not in ['Wedding','Birthday','Corporate Event','Debut / Milestone','Baptism / Family Event','Private Party','Fiesta / Large Event','Holiday Celebration']) and booking.event_type %}selected{% endif %}>Other (specify below)</option>
-                            </select>
-                        </div>
+                        <select name="event_type" id="event_type_select" class="filter-select-pro form-input" required>
+                            <option value="">-- Select Type --</option>
+                            <option value="Wedding" {% if booking and booking.event_type=='Wedding' %}selected{% endif %}>Wedding</option>
+                            <option value="Birthday" {% if booking and booking.event_type=='Birthday' %}selected{% endif %}>Birthday</option>
+                            <option value="Corporate Event" {% if booking and booking.event_type=='Corporate Event' %}selected{% endif %}>Corporate Event</option>
+                            <option value="Debut / Milestone" {% if booking and booking.event_type=='Debut / Milestone' %}selected{% endif %}>Debut / Milestone</option>
+                            <option value="Baptism / Family Event" {% if booking and booking.event_type=='Baptism / Family Event' %}selected{% endif %}>Baptism / Family Event</option>
+                            <option value="Private Party" {% if booking and booking.event_type=='Private Party' %}selected{% endif %}>Private Party</option>
+                            <option value="Other" {% if booking and (booking.event_type not in ['Wedding','Birthday','Corporate Event','Debut / Milestone','Baptism / Family Event','Private Party','Fiesta / Large Event','Holiday Celebration']) and booking.event_type %}selected{% endif %}>Other (specify below)</option>
+                        </select>
                         <span class="field-error" id="err-type">Selection required.</span>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Guest Count <small>(max 1000 pax)</small></label>
-                        <div class="input-with-icon">
-                            <i class="fas fa-users"></i>
-                            <input type="text" inputmode="numeric" id="guest_count_display" class="form-input"
-                                value="{{ '{:,}'.format(booking.guest_count if booking else (caterer.min_pax or package.min_guests or 50)) }}" oninput="formatGuestCount(this); updateCalculator()"
-                                required>
-                            <input type="hidden" name="guest_count" id="guest_count"
-                                value="{{ booking.guest_count if booking else (caterer.min_pax or package.min_guests or 50) }}">
-                        </div>
+                        <label class="form-label">Guest Count <small>(max {{ package.max_guests if package and package.max_guests else 1000 }} pax)</small></label>
+                        <input type="text" inputmode="numeric" id="guest_count_display" class="form-input"
+                            value="{{ '{:,}'.format(booking.guest_count if booking else (caterer.min_pax or package.min_guests or 50)) }}" oninput="formatGuestCount(this); updateCalculator()"
+                            required>
+                        <input type="hidden" name="guest_count" id="guest_count"
+                            value="{{ booking.guest_count if booking else (caterer.min_pax or package.min_guests or 50) }}">
                         <span class="field-error" id="err-guests">Min: {{ caterer.min_pax or package.min_guests or 1 }} pax.</span>
                     </div>
                 </div>
@@ -114,36 +105,18 @@
                 <div class="grid-2-col">
                     <div class="form-group">
                         <label class="form-label">Event Date</label>
-                        <div class="input-with-icon">
-                            <i class="fas fa-calendar-day"></i>
-                            <input type="date" name="event_date" id="event_date" class="form-input"
-                                value="{{ booking.event_date.isoformat() if booking and booking.event_date else '' }}"
-                                required onchange="checkAvailability()">
-                        </div>
+                        <input type="date" name="event_date" id="event_date" class="form-input"
+                            value="{{ booking.event_date.isoformat() if booking and booking.event_date else '' }}"
+                            required onchange="checkAvailability()">
                         <div id="availability-chip" class="availability-chip"></div>
-                        <span class="field-error" id="err-date">Please select a future date.</span>
+                        <span class="field-error" id="err-date">Please select a date at least 3 days in advance.</span>
                     </div>
                     <div class="form-group">
-                        <div class="grid-2-col">
-                            <div>
-                                <label class="form-label">Start Time</label>
-                                <div class="input-with-icon">
-                                    <i class="fas fa-clock"></i>
-                                    <input type="time" name="event_time" id="event_time" class="form-input"
-                                        value="{{ booking.event_time.strftime('%H:%M') if booking and booking.event_time else '' }}"
-                                        required>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="form-label">End Time</label>
-                                <div class="input-with-icon">
-                                    <i class="fas fa-hourglass-end"></i>
-                                    <input type="time" name="event_end_time" id="event_end_time" class="form-input"
-                                        value="{{ booking.event_end_time.strftime('%H:%M') if booking and booking.event_end_time else '' }}">
-                                </div>
-                            </div>
-                        </div>
-                        <span class="field-error" id="err-time">Please select valid times.</span>
+                        <label class="form-label">Start Time</label>
+                        <input type="time" name="event_time" id="event_time" class="form-input"
+                            value="{{ booking.event_time.strftime('%H:%M') if booking and booking.event_time else '' }}"
+                            required>
+                        <span class="field-error" id="err-time">Please select a valid time.</span>
                     </div>
                 </div>
             </div>
@@ -270,17 +243,14 @@
                 <div class="grid-2-col">
                     <div class="form-group">
                         <label class="form-label">Province</label>
-                        <div class="input-with-icon">
-                            <i class="fas fa-map-pin"></i>
-                            <select name="province" id="province_select" class="filter-select-pro" required>
-                                <option value="">-- Province --</option>
-                                <option value="Batangas">Batangas</option>
-                                <option value="Cavite">Cavite</option>
-                                <option value="Laguna" selected>Laguna</option>
-                                <option value="Quezon">Quezon</option>
-                                <option value="Rizal">Rizal</option>
-                            </select>
-                        </div>
+                        <select name="province" id="province_select" class="filter-select-pro form-input" required>
+                            <option value="">-- Province --</option>
+                            <option value="Batangas">Batangas</option>
+                            <option value="Cavite">Cavite</option>
+                            <option value="Laguna" selected>Laguna</option>
+                            <option value="Quezon">Quezon</option>
+                            <option value="Rizal">Rizal</option>
+                        </select>
                         <span class="field-error" id="err-province">Province required.</span>
                     </div>
                     <div class="form-group">
@@ -303,8 +273,8 @@
                 <input type="hidden" name="venue_address" id="venue_address_hidden" value="{{ booking.venue_address if booking else '' }}">
 
                 <div class="form-group">
-                    <label class="form-label">Special Requests <small>(Optional)</small></label>
-                    <textarea name="special_requests" class="form-input" rows="3" placeholder="e.g., Dietary restrictions, specific theme colors...">{{ booking.special_requests if booking else '' }}</textarea>
+                    <label class="form-label">Special Requests & Modifications <small>(e.g. Dietary limits, ingredient swaps - subject to caterer pricing)</small></label>
+                    <textarea name="special_requests" class="form-input" rows="3" placeholder="Tell us if you want to replace beef with chicken, or if you have vegan guests...">{{ booking.special_requests if booking else '' }}</textarea>
                 </div>
             </div>
         </div>
@@ -390,7 +360,8 @@
 <script>
     window.pricePerHead = parseFloat("{{ package.price_per_head or package.price or 0 }}") || 0;
     window.catererId = "{{ caterer.id }}";
-    window.minGuests = parseInt("{{ caterer.min_pax or package.min_guests or 1 }}") || 1;
+    window.minGuests = parseInt("{{ package.min_guests or caterer.min_pax or 1 }}") || 1;
+    window.maxGuests = parseInt("{{ package.max_guests or 0 }}") || 0;
 </script>
 <script
     src="{{ url_for('static', path='/js/customer/booking_wizard/step_details.js') }}?v={{ range(1, 9999) | random }}"></script>
