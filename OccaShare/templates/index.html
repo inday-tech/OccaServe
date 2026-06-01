@@ -82,12 +82,15 @@
             max-width: 100%;
             padding: 0 1rem;
         }
+
         .unified-search-inner {
             padding: 0.75rem 1.25rem;
         }
+
         .unified-search-inner input {
             font-size: 0.95rem;
         }
+
         .search-hint {
             display: none;
         }
@@ -186,7 +189,9 @@
         position: relative;
     }
 
-    .testimonial-viewport:active { cursor: grabbing; }
+    .testimonial-viewport:active {
+        cursor: grabbing;
+    }
 
     .testimonial-track {
         display: flex;
@@ -195,7 +200,9 @@
         animation: testimonialSlide 40s linear infinite;
     }
 
-    .testimonial-track:hover { animation-play-state: paused; }
+    .testimonial-track:hover {
+        animation-play-state: paused;
+    }
 
     .testimonial-card {
         background: #fff;
@@ -214,8 +221,13 @@
     }
 
     @keyframes testimonialSlide {
-        0% { transform: translateX(0); }
-        100% { transform: translateX(-50%); }
+        0% {
+            transform: translateX(0);
+        }
+
+        100% {
+            transform: translateX(-50%);
+        }
     }
 
     .testimonial-quote {
@@ -319,7 +331,6 @@
             gap: 2rem;
         }
     }
-
 </style>
 {% endblock %}
 
@@ -330,16 +341,36 @@
     <header id="home" class="page-hero-premium-full section-clean">
         {# Background slideshow images — one per event type #}
         <div class="hero-slideshow">
-            <div class="hero-slide active" style="background-image: url('https://images.unsplash.com/photo-1519225421980-715cb0215aed?q=80&w=1920&auto=format&fit=crop');"></div>
-            <div class="hero-slide" style="background-image: url('https://images.unsplash.com/photo-1530103862676-de8c9debad1d?q=80&w=1920&auto=format&fit=crop');"></div>
-            <div class="hero-slide" style="background-image: url('https://images.unsplash.com/photo-1414235077428-338989a2e8c0?q=80&w=1920&auto=format&fit=crop');"></div>
-            <div class="hero-slide" style="background-image: url('https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=1920&auto=format&fit=crop');"></div>
-            <div class="hero-slide" style="background-image: url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1920&auto=format&fit=crop');"></div>
-            <div class="hero-slide" style="background-image: url('https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=1920&auto=format&fit=crop');"></div>
-            <div class="hero-slide" style="background-image: url('https://images.unsplash.com/photo-1482575832494-771f74bf6857?q=80&w=1920&auto=format&fit=crop');"></div>
-            <div class="hero-slide" style="background-image: url('https://images.unsplash.com/photo-1467810563316-b5476525c0f9?q=80&w=1920&auto=format&fit=crop');"></div>
-            <div class="hero-slide" style="background-image: url('https://images.unsplash.com/photo-1518199266791-5375a83190b7?q=80&w=1920&auto=format&fit=crop');"></div>
-            <div class="hero-slide" style="background-image: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1920&auto=format&fit=crop');"></div>
+            <div class="hero-slide active"
+                style="background-image: url('https://images.unsplash.com/photo-1519225421980-715cb0215aed?q=80&w=1920&auto=format&fit=crop');">
+            </div>
+            <div class="hero-slide"
+                style="background-image: url('https://images.unsplash.com/photo-1530103862676-de8c9debad1d?q=80&w=1920&auto=format&fit=crop');">
+            </div>
+            <div class="hero-slide"
+                style="background-image: url('https://images.unsplash.com/photo-1414235077428-338989a2e8c0?q=80&w=1920&auto=format&fit=crop');">
+            </div>
+            <div class="hero-slide"
+                style="background-image: url('https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=1920&auto=format&fit=crop');">
+            </div>
+            <div class="hero-slide"
+                style="background-image: url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1920&auto=format&fit=crop');">
+            </div>
+            <div class="hero-slide"
+                style="background-image: url('https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=1920&auto=format&fit=crop');">
+            </div>
+            <div class="hero-slide"
+                style="background-image: url('https://images.unsplash.com/photo-1482575832494-771f74bf6857?q=80&w=1920&auto=format&fit=crop');">
+            </div>
+            <div class="hero-slide"
+                style="background-image: url('https://images.unsplash.com/photo-1467810563316-b5476525c0f9?q=80&w=1920&auto=format&fit=crop');">
+            </div>
+            <div class="hero-slide"
+                style="background-image: url('https://images.unsplash.com/photo-1518199266791-5375a83190b7?q=80&w=1920&auto=format&fit=crop');">
+            </div>
+            <div class="hero-slide"
+                style="background-image: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1920&auto=format&fit=crop');">
+            </div>
         </div>
         <div class="hero-overlay"></div>
 
@@ -395,10 +426,8 @@
             <div class="unified-search-bar animate-on-scroll">
                 <div class="unified-search-inner">
                     <i class="fas fa-search unified-search-icon"></i>
-                    <input type="text"
-                           id="unifiedSearchInput"
-                           placeholder="Search caterers, menus, locations, event types..."
-                           autocomplete="off">
+                    <input type="text" id="unifiedSearchInput"
+                        placeholder="Search caterers, menus, locations, event types..." autocomplete="off">
                     <div class="unified-search-loader" id="searchLoader" style="display: none;">
                         <i class="fas fa-spinner fa-spin"></i>
                     </div>
@@ -526,37 +555,43 @@
             <div class="testimonial-viewport">
                 <div class="testimonial-track" id="testimonialTrack">
                     {% if highlighted_reviews %}
-                        {# We duplicate the items for seamless infinite scroll #}
-                        {% for i in range(2) %}
-                            {% for review in highlighted_reviews %}
-                                {% set full_name = ((review.user.first_name or '') ~ ' ' ~ (review.user.last_name or ''))|trim or review.user.email %}
-                                <div class="testimonial-card">
-                                    <div class="testimonial-rating" style="margin-bottom: 1.25rem;">
-                                        {% for i in range(review.rating) %}<i class="fas fa-star"></i>{% endfor %}
-                                        {% for i in range(5 - review.rating) %}<i class="far fa-star" style="color: #d1d5db;"></i>{% endfor %}
-                                    </div>
-                                    <p class="testimonial-quote">"{{ review.comment }}"</p>
-                                    <div class="testimonial-author">
-                                        {% if review.user.profile_image_url %}
-                                            <img src="{{ review.user.profile_image_url }}" class="testimonial-avatar" alt="User">
-                                        {% else %}
-                                            <img src="https://ui-avatars.com/api/?name={{ full_name|urlencode }}&background=f97316&color=fff" class="testimonial-avatar" alt="User">
-                                        {% endif %}
-                                        <div>
-                                            <span style="display: block; font-weight: 700; color: var(--lp-secondary);">{{ full_name }}</span>
-                                            <span style="font-size: 0.85rem; color: var(--lp-text-muted);">
-                                                {{ review.booking.event_type if review.booking and review.booking.event_type else 'Verified Client' }}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            {% endfor %}
-                        {% endfor %}
-                    {% else %}
-                        <div style="width: 100%; text-align: center; padding: 4rem 2rem;">
-                            <div style="font-size: 3rem; color: #fcd34d; margin-bottom: 1rem;">⭐</div>
-                            <p style="color: var(--lp-text-muted); font-size: 1.1rem; font-weight: 600;">Be the first to share your experience!</p>
+                    {# We duplicate the items for seamless infinite scroll #}
+                    {% for i in range(2) %}
+                    {% for review in highlighted_reviews %}
+                    {% set full_name = ((review.user.first_name or '') ~ ' ' ~ (review.user.last_name or ''))|trim or
+                    review.user.email %}
+                    <div class="testimonial-card">
+                        <div class="testimonial-rating" style="margin-bottom: 1.25rem;">
+                            {% for i in range(review.rating) %}<i class="fas fa-star"></i>{% endfor %}
+                            {% for i in range(5 - review.rating) %}<i class="far fa-star" style="color: #d1d5db;"></i>{%
+                            endfor %}
                         </div>
+                        <p class="testimonial-quote">"{{ review.comment }}"</p>
+                        <div class="testimonial-author">
+                            {% if review.user.profile_image_url %}
+                            <img src="{{ review.user.profile_image_url }}" class="testimonial-avatar" alt="User">
+                            {% else %}
+                            <img src="https://ui-avatars.com/api/?name={{ full_name|urlencode }}&background=f97316&color=fff"
+                                class="testimonial-avatar" alt="User">
+                            {% endif %}
+                            <div>
+                                <span style="display: block; font-weight: 700; color: var(--lp-secondary);">{{ full_name
+                                    }}</span>
+                                <span style="font-size: 0.85rem; color: var(--lp-text-muted);">
+                                    {{ review.booking.event_type if review.booking and review.booking.event_type else
+                                    'Verified Client' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% endfor %}
+                    {% else %}
+                    <div style="width: 100%; text-align: center; padding: 4rem 2rem;">
+                        <div style="font-size: 3rem; color: #fcd34d; margin-bottom: 1rem;">⭐</div>
+                        <p style="color: var(--lp-text-muted); font-size: 1.1rem; font-weight: 600;">Be the first to
+                            share your experience!</p>
+                    </div>
                     {% endif %}
                 </div>
             </div>
@@ -613,7 +648,7 @@
                             <i class="fas fa-phone-alt"></i>
                             <div>
                                 <span style="display:block; font-weight:600; color:var(--lp-text-main);">Call Us</span>
-                                09924333625
+                                09067261719
                             </div>
                         </li>
                         <li>
@@ -656,52 +691,52 @@
 </div>
 
 <script>
-/* ============================================
-   HERO SLIDESHOW — Auto-rotating Event Backgrounds
-   ============================================ */
-(function() {
-    const slides = document.querySelectorAll('.hero-slide');
-    const pill = document.getElementById('heroEventPill');
-    const label = document.getElementById('heroEventLabel');
-    if (!slides.length || !pill || !label) return;
+    /* ============================================
+       HERO SLIDESHOW — Auto-rotating Event Backgrounds
+       ============================================ */
+    (function () {
+        const slides = document.querySelectorAll('.hero-slide');
+        const pill = document.getElementById('heroEventPill');
+        const label = document.getElementById('heroEventLabel');
+        if (!slides.length || !pill || !label) return;
 
-    const events = [
-        { name: 'Weddings',           icon: 'fas fa-ring' },
-        { name: 'Birthdays',          icon: 'fas fa-birthday-cake' },
-        { name: 'Fine Dining',        icon: 'fas fa-wine-glass-alt' },
-        { name: 'Corporate Events',   icon: 'fas fa-briefcase' },
-        { name: 'Fiestas',            icon: 'fas fa-utensils' },
-        { name: 'Private Parties',    icon: 'fas fa-glass-cheers' },
-        { name: 'Christmas Parties',  icon: 'fas fa-tree' },
-        { name: 'New Year Celebrations', icon: 'fas fa-champagne-glasses' },
-        { name: 'Valentines Day',     icon: 'fas fa-heart' },
-        { name: 'Summer Events',      icon: 'fas fa-sun' },
-    ];
+        const events = [
+            { name: 'Weddings', icon: 'fas fa-ring' },
+            { name: 'Birthdays', icon: 'fas fa-birthday-cake' },
+            { name: 'Fine Dining', icon: 'fas fa-wine-glass-alt' },
+            { name: 'Corporate Events', icon: 'fas fa-briefcase' },
+            { name: 'Fiestas', icon: 'fas fa-utensils' },
+            { name: 'Private Parties', icon: 'fas fa-glass-cheers' },
+            { name: 'Christmas Parties', icon: 'fas fa-tree' },
+            { name: 'New Year Celebrations', icon: 'fas fa-champagne-glasses' },
+            { name: 'Valentines Day', icon: 'fas fa-heart' },
+            { name: 'Summer Events', icon: 'fas fa-sun' },
+        ];
 
-    let current = 0;
-    const INTERVAL = 5000; // 5 seconds per slide
+        let current = 0;
+        const INTERVAL = 5000; // 5 seconds per slide
 
-    function nextSlide() {
-        // Remove active from current
-        slides[current].classList.remove('active');
+        function nextSlide() {
+            // Remove active from current
+            slides[current].classList.remove('active');
 
-        // Move to next
-        current = (current + 1) % slides.length;
+            // Move to next
+            current = (current + 1) % slides.length;
 
-        // Activate next slide
-        slides[current].classList.add('active');
+            // Activate next slide
+            slides[current].classList.add('active');
 
-        // Animate pill label change
-        pill.classList.add('switching');
-        setTimeout(() => {
-            const ev = events[current];
-            label.textContent = ev.name;
-            pill.querySelector('i').className = ev.icon;
-            pill.classList.remove('switching');
-        }, 300);
-    }
-    setInterval(nextSlide, INTERVAL);
-})();
+            // Animate pill label change
+            pill.classList.add('switching');
+            setTimeout(() => {
+                const ev = events[current];
+                label.textContent = ev.name;
+                pill.querySelector('i').className = ev.icon;
+                pill.classList.remove('switching');
+            }, 300);
+        }
+        setInterval(nextSlide, INTERVAL);
+    })();
 
 
 </script>
