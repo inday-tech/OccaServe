@@ -42,7 +42,8 @@
                     style="height: 32px; margin-right: 8px; border-radius: 4px; object-fit: contain;"
                     onerror="this.style.display='none'">
                 {% endif %}
-                <span><span style="color: #1e293b; font-weight: 800;">Occa</span><span style="color: #FF7B54; font-weight: 800;">Serve</span></span>
+                <span><span style="color: #1e293b; font-weight: 800;">Occa</span><span
+                        style="color: #FF7B54; font-weight: 800;">Serve</span></span>
             </a>
             <div class="nav-menu">
                 <ul class="nav-links">
@@ -86,8 +87,10 @@
                     {% endif %}
                     <a href="/auth/logout" class="btn-primary">Logout</a>
                     {% else %}
-                    <a href="javascript:void(0);" onclick="openAuthModal('login')" class="btn-text" id="navLoginBtn">Login</a>
-                    <a href="javascript:void(0);" onclick="openAuthModal('signup')" class="btn-primary" id="navSignupBtn">Sign Up</a>
+                    <a href="javascript:void(0);" onclick="openAuthModal('login')" class="btn-text"
+                        id="navLoginBtn">Login</a>
+                    <a href="javascript:void(0);" onclick="openAuthModal('signup')" class="btn-primary"
+                        id="navSignupBtn">Sign Up</a>
                     {% endif %}
                 </div>
             </div>
@@ -114,21 +117,24 @@
                             style="height: 32px; margin-right: 8px; border-radius: 4px; object-fit: contain;"
                             onerror="this.style.display='none'">
                         {% endif %}
-                        <span><span style="color: #1e293b; font-weight: 800;">Occa</span><span style="color: #FF7B54; font-weight: 800;">Serve</span></span>
+                        <span><span style="color: #1e293b; font-weight: 800;">Occa</span><span
+                                style="color: #FF7B54; font-weight: 800;">Serve</span></span>
                     </a>
                     <p>Your trusted partner for discovering the Philippines' finest catering services. We bring elite
                         flavors and seamless booking to your most meaningful moments.</p>
                     <div class="social-links">
                         {% if wconfig and wconfig.facebook_link %}
-                        <a href="{{ wconfig.facebook_link }}" target="_blank" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                        <a href="{{ wconfig.facebook_link }}" target="_blank" aria-label="Facebook"><i
+                                class="fab fa-facebook-f"></i></a>
                         {% endif %}
                         {% if wconfig and wconfig.instagram_link %}
-                        <a href="{{ wconfig.instagram_link }}" target="_blank" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                        <a href="{{ wconfig.instagram_link }}" target="_blank" aria-label="Instagram"><i
+                                class="fab fa-instagram"></i></a>
                         {% endif %}
                         {% if wconfig and wconfig.twitter_link %}
-                        <a href="{{ wconfig.twitter_link }}" target="_blank" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                        <a href="{{ wconfig.twitter_link }}" target="_blank" aria-label="Twitter"><i
+                                class="fab fa-twitter"></i></a>
                         {% endif %}
-                        <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
                     </div>
                 </div>
                 <!-- Quick Links Col -->

@@ -853,6 +853,11 @@ async def caterer_detail(
         )
     ).first() is not None
 
+    # Guard: check if caterer can accept new bookings
+    caterer_unavailable = bool(
+        caterer.account_status and caterer.account_status.lower() != 'active'
+    )
+
     return templates.TemplateResponse("customer/caterer_profile_view.html", {
         "request": request, 
         "caterer": caterer,
@@ -863,6 +868,7 @@ async def caterer_detail(
         "user": user,
         "has_previous_bookings": has_previous_bookings,
         "has_previous_communication": has_previous_communication,
+        "caterer_unavailable": caterer_unavailable,
         "active_page": "marketplace",
         "nav_page": "caterers"
     })

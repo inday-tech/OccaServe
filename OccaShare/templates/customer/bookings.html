@@ -1,390 +1,504 @@
 {% extends "customer/layout.html" %}
-
 {% block title %}My Bookings - OccaServe{% endblock %}
 
 {% block extra_css %}
 <style>
-    :root {
-        --up-slate-900: #0f172a;
-        --up-orange: #FF7B54;
-        --up-emerald: #10b981;
-        --up-amber: #f59e0b;
-        --up-indigo: #6366f1;
-        --dm-slate-50: #f8fafc;
-        --dm-slate-100: #f1f5f9;
-        --dm-slate-400: #94a3b8;
-    }
+:root {
+    --bk-text:    #0f172a;
+    --bk-sub:     #64748b;
+    --bk-border:  #e2e8f0;
+    --bk-bg:      #f8fafc;
+    --bk-white:   #ffffff;
+    --bk-primary: var(--primary-color, #FF7B54);
+    --bk-radius:  14px;
+}
 
-    body, .customer-page-content { background-color: #f1f5f9 !important; }
+body, .customer-page-content { background: #f1f5f9 !important; }
 
-    /* ── PAGE HEADER ── */
-    .dash-header { margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: flex-end; }
-    .dash-header h1 {
-        font-size: 1.6rem; font-weight: 800;
-        color: var(--up-slate-900); letter-spacing: -0.03em; margin: 0;
-    }
-    .dash-header p {
-        font-size: 0.88rem; color: var(--dm-slate-400);
-        font-weight: 500; margin: 4px 0 0;
-    }
+/* ── PAGE HEADER ── */
+.bk-header { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem; }
+.bk-header h1 { font-size:1.55rem; font-weight:900; color:var(--bk-text); letter-spacing:-0.03em; margin:0; }
+.bk-header p  { font-size:0.85rem; color:var(--bk-sub); margin:4px 0 0; font-weight:500; }
+.btn-new-booking {
+    display:inline-flex; align-items:center; gap:8px;
+    background:var(--bk-primary); color:#fff !important;
+    padding:0.7rem 1.4rem; border-radius:12px; font-weight:800;
+    font-size:0.85rem; text-decoration:none; transition:opacity 0.2s;
+}
+.btn-new-booking:hover { opacity:0.88; }
 
-    /* ── STAT CARDS ── */
-    .stats-row {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 1.25rem;
-        margin-bottom: 1.25rem;
-    }
-    .stat-card {
-        background: #fff;
-        border-radius: 1.25rem;
-        border: 1px solid var(--dm-slate-100);
-        padding: 1.25rem;
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.01);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .stat-card:hover { transform: translateY(-3px); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.01); }
-    
-    .stat-icon {
-        width: 48px; height: 48px;
-        border-radius: 12px;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 1.2rem;
-        flex-shrink: 0;
-    }
-    .si-indigo { background: rgba(99, 102, 241, 0.1); color: var(--up-indigo); }
-    .si-green  { background: rgba(16, 185, 129, 0.1); color: var(--up-emerald); }
-    .si-amber  { background: rgba(245, 158, 11, 0.1); color: var(--up-amber); }
+/* ── STAT CARDS ── */
+.bk-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:1.1rem; margin-bottom:1.5rem; }
+.bk-stat {
+    background:var(--bk-white); border:1px solid var(--bk-border);
+    border-radius:var(--bk-radius); padding:1.25rem;
+    display:flex; align-items:center; gap:1rem;
+    box-shadow:0 4px 16px rgba(0,0,0,0.04);
+    transition:transform 0.2s, box-shadow 0.2s;
+}
+.bk-stat:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,0.08); }
+.bk-stat-icon {
+    width:46px; height:46px; border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:1.1rem; flex-shrink:0;
+}
+.bk-stat-icon.indigo { background:rgba(99,102,241,.1); color:#6366f1; }
+.bk-stat-icon.green  { background:rgba(16,185,129,.1); color:#10b981; }
+.bk-stat-icon.amber  { background:rgba(245,158,11,.1); color:#d97706; }
+.bk-stat-label { font-size:0.65rem; font-weight:700; color:var(--bk-sub); text-transform:uppercase; letter-spacing:.05em; margin:0 0 2px; }
+.bk-stat-val   { font-size:1.35rem; font-weight:900; color:var(--bk-text); line-height:1.1; }
 
-    .stat-body h4 {
-        font-size: 0.65rem; font-weight: 700;
-        color: var(--dm-slate-400);
-        text-transform: uppercase; letter-spacing: 0.05em;
-        margin: 0 0 2px;
-    }
-    .stat-value {
-        font-size: 1.4rem; font-weight: 800;
-        color: var(--up-slate-900);
-        line-height: 1.1;
-    }
+/* ── PANEL ── */
+.bk-panel {
+    background:var(--bk-white); border-radius:var(--bk-radius);
+    border:1px solid rgba(0,0,0,.06);
+    box-shadow:0 4px 20px rgba(0,0,0,.05); overflow:hidden;
+}
+.bk-panel-head {
+    padding:1.1rem 1.5rem; border-bottom:1px solid var(--bk-border);
+    display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.75rem;
+}
+.bk-panel-head h3 { font-size:1rem; font-weight:800; color:var(--bk-text); margin:0; }
 
-    /* ── MAIN PANEL ── */
-    .panel {
-        background: #fff;
-        border-radius: 1.25rem;
-        border: 1px solid rgba(0,0,0,0.05);
-        overflow: hidden;
-        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.01);
-        margin-bottom: 1.5rem;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .panel:hover { box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.01); transform: translateY(-2px); }
-    .panel-header {
-        padding: 1.25rem 1.5rem;
-        border-bottom: 1px solid var(--dm-slate-50);
-        display: flex; justify-content: space-between; align-items: center;
-    }
-    .panel-header h3 {
-        font-size: 1rem; font-weight: 800;
-        color: var(--up-slate-900); margin: 0;
-    }
+/* ── STATUS FILTER ── */
+.bk-filter {
+    padding:5px 14px; border:1px solid var(--bk-border); border-radius:10px;
+    background:var(--bk-bg); font-size:0.8rem; font-weight:700; color:var(--bk-text);
+    cursor:pointer; outline:none;
+}
 
-    /* ── SEARCH BOX ── */
-    .search-wrap { position: relative; width: 300px; }
-    .search-wrap i { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--dm-slate-400); font-size: 0.85rem; }
-    .search-input {
-        width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; border-radius: 12px;
-        border: 1px solid var(--dm-slate-100); background: var(--dm-slate-50);
-        font-size: 0.85rem; font-weight: 600; color: var(--up-slate-900);
-        transition: all 0.2s;
-    }
-    .search-input:focus { border-color: var(--up-orange); outline: none; background: #fff; }
+/* ── TABLE ── */
+.bk-table { width:100%; border-collapse:collapse; }
+.bk-table th {
+    text-align:left; padding:.9rem 1.25rem;
+    font-size:.65rem; font-weight:800; color:var(--bk-sub);
+    text-transform:uppercase; letter-spacing:.05em;
+    background:#fcfcfd; border-bottom:1px solid var(--bk-border);
+}
+.bk-table td { padding:.95rem 1.25rem; border-bottom:1px solid #f8fafc; font-size:.84rem; vertical-align:middle; }
+.bk-table tr:hover td { background:#fafbfd; }
+.bk-table tr:last-child td { border-bottom:none; }
 
-    /* ── DATA TABLE ── */
-    .data-table { width: 100%; border-collapse: collapse; }
-    .data-table th {
-        text-align: left; padding: 1rem 1.5rem;
-        font-size: 0.68rem; font-weight: 800;
-        color: var(--dm-slate-400); text-transform: uppercase;
-        letter-spacing: 0.05em; background: #fcfcfd;
-        border-bottom: 1px solid var(--dm-slate-100);
-    }
-    .data-table td {
-        padding: 1.1rem 1.5rem;
-        border-bottom: 1px solid var(--dm-slate-50);
-        font-size: 0.85rem;
-    }
-    .data-table tr:hover td { background: #fafbfc; }
-    .data-table tr:last-child td { border-bottom: none; }
+.cell-name   { font-weight:800; color:var(--bk-text); }
+.cell-sub    { font-size:.72rem; color:var(--bk-sub); margin-top:2px; font-weight:600; }
+.bk-id-chip  { background:#f1f5f9; padding:1px 7px; border-radius:5px; font-size:.7rem; font-weight:800; color:var(--bk-sub); margin-right:5px; }
 
-    .booking-name { font-weight: 700; color: var(--up-slate-900); }
-    .booking-sub  { font-size: 0.72rem; color: var(--dm-slate-400); margin-top: 2px; font-weight: 600; }
-    .id-tag { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: var(--up-slate-900); margin-right: 6px; }
+/* ── STATUS BADGES ── */
+.bk-badge {
+    display:inline-flex; align-items:center; gap:5px;
+    font-size:.65rem; font-weight:800; text-transform:uppercase;
+    padding:4px 10px; border-radius:100px; letter-spacing:.04em; white-space:nowrap;
+}
+.badge-pending   { background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; }
+.badge-confirmed { background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; }
+.badge-completed { background:#f0fdf4; color:#166534; border:1px solid #86efac; }
+.badge-draft     { background:#f8fafc; color:#475569; border:1px solid #e2e8f0; }
+.badge-cancelled { background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; }
+.badge-preparing { background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; }
+.badge-active    { background:#f0f9ff; color:#0369a1; border:1px solid #bae6fd; }
+.badge-pay-now   { background:#fff1f2; color:#be123c; border:1px solid #fecdd3; }
+.badge-reupload  { background:#fffbeb; color:#b45309; border:1px solid #fde68a; }
 
-    /* ── STATUS TAGS ── */
-    .status-tag {
-        font-size: 0.65rem; font-weight: 800; text-transform: uppercase;
-        padding: 4px 10px; border-radius: 8px; letter-spacing: 0.04em;
-        display: inline-flex; align-items: center; gap: 6px;
-    }
-    .tag-confirmed { background: rgba(16,185,129,0.1); color: #10b981; }
-    .tag-pending   { background: rgba(249,115,22,0.1); color: #f97316; }
-    .tag-amber     { background: rgba(245,158,11,0.1); color: #b45309; }
-    .tag-slate     { background: #f1f5f9; color: #475569; }
+@keyframes pulse-ring {
+    0%,100% { box-shadow:0 0 0 0 rgba(239,68,68,.4); }
+    50%      { box-shadow:0 0 0 5px rgba(239,68,68,0); }
+}
+.badge-pulse { animation:pulse-ring 1.8s infinite; }
 
-    /* Pulsing Amber for Payment */
-    @keyframes pulse-amber {
-        0% { transform: scale(1); opacity: 1; }
-        50% { transform: scale(1.05); opacity: 0.8; }
-        100% { transform: scale(1); opacity: 1; }
-    }
-    .pulse-amber { animation: pulse-amber 2s infinite; }
+/* ── ACTION BUTTONS ── */
+.bk-btn {
+    display:inline-flex; align-items:center; gap:6px;
+    font-size:.75rem; font-weight:800; padding:7px 14px;
+    border-radius:10px; text-decoration:none; cursor:pointer;
+    border:none; transition:all .2s;
+}
+.btn-manage  { background:var(--bk-bg); color:var(--bk-text); border:1px solid var(--bk-border); }
+.btn-manage:hover  { background:#e2e8f0; }
+.btn-pay     { background:#0f172a; color:#fff !important; }
+.btn-pay:hover     { background:#1e293b; }
+.btn-settle  { background:#ef4444; color:#fff !important; }
+.btn-settle:hover  { background:#dc2626; }
+.btn-resume  { background:var(--bk-primary); color:#fff !important; }
+.btn-resume:hover  { opacity:.88; }
+.btn-del     { background:transparent; color:#ef4444; border:1px solid #fecaca; }
+.btn-del:hover     { background:#fef2f2; }
 
-    /* ── ACTIONS ── */
-    .btn-action-soft {
-        font-size: 0.75rem; font-weight: 800; text-transform: uppercase;
-        padding: 8px 16px; border-radius: 10px; text-decoration: none;
-        transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;
-    }
-    .btn-settle { background: var(--up-slate-900); color: #fff !important; }
-    .btn-settle:hover { background: #000; transform: translateY(-2px); }
-    .btn-view { background: var(--dm-slate-50); color: var(--up-slate-900) !important; border: 1px solid var(--dm-slate-100); }
-    .btn-view:hover { background: var(--dm-slate-100); }
-    .btn-remove { background: transparent; color: #ef4444 !important; border: 1px solid #fee2e2; margin-left: 5px; }
-    .btn-remove:hover { background: #fef2f2; border-color: #fecaca; }
+/* ── EMPTY STATE ── */
+.bk-empty { padding:4rem 2rem; text-align:center; }
+.bk-empty-icon { font-size:2.5rem; color:#e2e8f0; margin-bottom:1rem; }
+.bk-empty h4   { font-size:1.1rem; font-weight:800; color:var(--bk-text); margin-bottom:.5rem; }
+.bk-empty p    { font-size:.85rem; color:var(--bk-sub); margin-bottom:1.5rem; }
 
-    /* Empty State */
-    .empty-panel { padding: 4rem 2rem; text-align: center; }
-    .empty-panel i { font-size: 2.5rem; color: var(--dm-slate-100); margin-bottom: 1rem; display: block; }
-    .empty-panel h4 { font-size: 1.1rem; font-weight: 800; color: var(--up-slate-900); margin-bottom: 0.5rem; }
-    .empty-panel p { font-size: 0.85rem; color: var(--dm-slate-400); font-weight: 500; margin-bottom: 2rem; }
+/* ── PAGINATION ── */
+.bk-pagination {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:1rem 1.5rem; border-top:1px solid var(--bk-border); background:#fcfcfd;
+    flex-wrap:wrap; gap:.75rem;
+}
+.bk-page-info { font-size:.75rem; font-weight:700; color:var(--bk-sub); }
+.bk-page-info span { color:var(--bk-text); font-weight:800; }
+.bk-page-btns { display:flex; align-items:center; gap:6px; }
+.btn-pg {
+    border:1px solid var(--bk-border); border-radius:9px; padding:6px 13px;
+    font-size:.75rem; font-weight:800; cursor:pointer; background:var(--bk-white);
+    color:var(--bk-sub); transition:all .18s; display:inline-flex; align-items:center; gap:5px;
+}
+.btn-pg:hover:not(:disabled) { background:var(--bk-bg); border-color:#cbd5e1; }
+.btn-pg:disabled { opacity:.45; cursor:not-allowed; }
+.btn-pg-num { min-width:34px; justify-content:center; }
+.btn-pg-num.active { background:var(--bk-text); color:#fff; border-color:var(--bk-text); }
 
-    @media (max-width: 1024px) {
-        .stats-row { grid-template-columns: 1fr 1fr; }
-        .dash-header { flex-direction: column; align-items: stretch; gap: 1rem; }
-        .search-wrap { width: 100%; }
-    }
+/* ── REALTIME TOAST BANNER ── */
+.bk-rt-banner {
+    display:none; align-items:center; gap:.75rem; margin-bottom:1rem;
+    background:#eff6ff; border:1px solid #bfdbfe; border-radius:12px;
+    padding:.85rem 1.25rem; font-size:.82rem; font-weight:700; color:#1d4ed8;
+}
+
+@media(max-width:900px){
+    .bk-stats { grid-template-columns:1fr 1fr; }
+    .bk-table th:nth-child(3), .bk-table td:nth-child(3) { display:none; }
+}
+@media(max-width:620px){
+    .bk-stats { grid-template-columns:1fr; }
+    .bk-header { flex-direction:column; align-items:flex-start; }
+    .bk-table th:nth-child(2), .bk-table td:nth-child(2) { display:none; }
+}
 </style>
 {% endblock %}
 
 {% block content %}
 <div>
-    <!-- Page Header -->
-    <div class="dash-header">
+    <!-- Real-time update banner -->
+    <div class="bk-rt-banner" id="rtBanner">
+        <i class="fas fa-circle-notch fa-spin"></i>
+        <span id="rtBannerMsg">Booking status updated — reloading...</span>
+    </div>
+
+    <!-- Header -->
+    <div class="bk-header">
         <div>
             <h1>My Bookings</h1>
-            <p>Historical registry and active logistic journey.</p>
+            <p>Track and manage all your catering bookings in one place.</p>
         </div>
-        <a href="/customer/marketplace" class="btn-action-primary" style="text-decoration: none; padding: 0.75rem 1.5rem; border-radius: 12px; font-weight: 800; font-size: 0.9rem;">
+        <a href="/customer/marketplace" class="btn-new-booking">
             <i class="fas fa-plus"></i> New Booking
         </a>
     </div>
 
     <!-- Stat Cards -->
-    <div class="stats-row">
-        <div class="stat-card">
-            <div class="stat-icon si-indigo"><i class="fas fa-calendar-check"></i></div>
-            <div class="stat-body">
-                <h4>Reservations</h4>
-                <div class="stat-value">{{ stats.total_reservations }}</div>
+    <div class="bk-stats">
+        <div class="bk-stat">
+            <div class="bk-stat-icon indigo"><i class="fas fa-calendar-check"></i></div>
+            <div>
+                <div class="bk-stat-label">Total Bookings</div>
+                <div class="bk-stat-val">{{ stats.total_reservations }}</div>
             </div>
         </div>
-        <div class="stat-card">
-            <div class="stat-icon si-green"><i class="fas fa-wallet"></i></div>
-            <div class="stat-body">
-                <h4>Total Spent</h4>
-                <div class="stat-value">₱{{ "{:,.0f}".format(stats.total_spent) }}</div>
+        <div class="bk-stat">
+            <div class="bk-stat-icon green"><i class="fas fa-wallet"></i></div>
+            <div>
+                <div class="bk-stat-label">Total Paid</div>
+                <div class="bk-stat-val">₱{{ "{:,.0f}".format(stats.total_spent) }}</div>
             </div>
         </div>
-        <div class="stat-card">
-            <div class="stat-icon si-amber"><i class="fas fa-receipt"></i></div>
-            <div class="stat-body">
-                <h4>Obligations</h4>
-                <div class="stat-value">₱{{ "{:,.0f}".format(stats.pending_obligations) }}</div>
+        <div class="bk-stat">
+            <div class="bk-stat-icon amber"><i class="fas fa-hourglass-half"></i></div>
+            <div>
+                <div class="bk-stat-label">Balance Due</div>
+                <div class="bk-stat-val">₱{{ "{:,.0f}".format(stats.pending_obligations) }}</div>
             </div>
         </div>
     </div>
 
     <!-- Main Panel -->
-    <div class="panel">
-        <div class="panel-header">
-            <h3>Active Registry</h3>
-            <div class="search-wrap">
-                <i class="fas fa-search"></i>
-                <input type="text" id="bookingSearchInput" class="search-input" 
-                    placeholder="Search ID or Caterer..." onkeyup="filterBookings()">
-            </div>
+    <div class="bk-panel">
+        <div class="bk-panel-head">
+            <h3>All Bookings</h3>
+            <select class="bk-filter" id="statusFilter" onchange="applyFilter()">
+                <option value="">All Status</option>
+                <option value="action">⚡ Action Needed</option>
+                <option value="pending">Pending Review</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="preparing">Preparing</option>
+                <option value="on_the_way">On the Way</option>
+                <option value="in_progress">Ongoing</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="draft">Draft</option>
+            </select>
         </div>
 
         {% if bookings %}
-        <table class="data-table">
+        <div style="overflow-x:auto;">
+        <table class="bk-table" id="bkTable">
             <thead>
                 <tr>
-                    <th>Booking Entity</th>
-                    <th>Timeline</th>
-                    <th>Financials</th>
+                    <th>Booking</th>
+                    <th>Event Date</th>
+                    <th>Amount</th>
                     <th>Status</th>
-                    <th style="text-align: right;">Audit</th>
+                    <th style="text-align:right;">Actions</th>
                 </tr>
             </thead>
-            <tbody>
-                {% for b in bookings %}
-                <tr class="booking-row-item" data-search="{{ (b.event_name or '')|lower }} {{ (b.caterer.business_name or '')|lower }} BK-{{ "%03d" | format(b.id) }}">
-                    <td>
-                        <div class="booking-name">{{ b.event_name or 'N/A' }}</div>
-                        <div class="booking-sub"><span class="id-tag">BK-{{ "%03d" | format(b.id) }}</span> {{ b.caterer.business_name }}</div>
-                    </td>
-                    <td>
-                        <div style="font-weight:700; color: var(--up-slate-900);">{{ b.event_date.strftime('%b %d, %Y') }}</div>
-                        <div class="booking-sub"><i class="far fa-clock"></i> {{ b.event_time.strftime('%I:%M %p') if b.event_time else 'TBD' }}</div>
-                    </td>
-                    <td>
-                        <div style="font-weight:800; color: var(--up-slate-900);">₱{{ "{:,.2f}".format(b.total_amount or 0) }}</div>
-                        <div class="booking-sub">{{ b.guest_count }} GUESTS</div>
-                    </td>
-                    <td>
-                        {% set sc = b.status %}
-                        {% if b.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
-                            {% set status_cfg = ('tag-amber pulse-amber', 'Re-upload Proof', 'fa-exclamation-triangle') %}
-                        {% else %}
-                            {% set status_cfg = {
-                                'confirmed': ('tag-confirmed', 'Confirmed', 'fa-check-circle'),
-                                'completed': ('tag-confirmed', 'Completed', 'fa-flag-checkered'),
-                                'pending': ('tag-pending', 'Reviewing', 'fa-hourglass-half'),
-                                'pending_payment': ('tag-amber pulse-amber', 'Settle Now', 'fa-exclamation-circle'),
-                                'awaiting_payment': ('tag-amber pulse-amber', 'Settle Now', 'fa-exclamation-circle'),
-                                'cancelled': ('tag-slate', 'Cancelled', 'fa-times-circle'),
-                                'draft': ('tag-slate', 'Draft', 'fa-pencil-alt')
-                            }.get(sc, ('tag-slate', sc|capitalize, '')) %}
-                        {% endif %}
-                        <span class="status-tag {{ status_cfg[0] }}">
-                            {% if status_cfg[2] %}<i class="fas {{ status_cfg[2] }}"></i>{% endif %}
-                            {{ status_cfg[1] }}
-                        </span>
-                    </td>
-                    <td style="text-align: right;">
-                        {% if b.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
-                        <a href="/customer/bookings/manage/{{ b.id }}" class="btn-action-soft btn-settle" style="background: #ef4444; color: white !important;">
-                            Upload Proof <i class="fas fa-file-upload"></i>
-                        </a>
-                        {% elif b.status in ['pending_payment', 'awaiting_payment'] %}
-                        <a href="/bookings/step/payment/{{ b.id }}" class="btn-action-soft btn-settle">
-                            Pay <i class="fas fa-credit-card"></i>
-                        </a>
-                        {% elif b.status == 'draft' %}
-                        <a href="/bookings/continue/{{ b.id }}" class="btn-action-soft btn-settle">
-                            Resume <i class="fas fa-play"></i>
-                        </a>
-                        <button onclick="removeBooking({{ b.id }})" class="btn-action-soft btn-remove" title="Delete Draft">
-                            <i class="fas fa-trash-alt"></i>
-                        </button>
-                        {% else %}
-                        <a href="/customer/bookings/manage/{{ b.id }}" class="btn-action-soft btn-view" title="Manage Booking">
-                            <i class="fas fa-clipboard-list"></i> Manage
-                        </a>
-                        {% endif %}
-                        {% if b.status in ['pending_payment', 'awaiting_payment'] %}
-                        <a href="/customer/bookings/manage/{{ b.id }}" class="btn-action-soft btn-view" style="margin-left: 5px;" title="Manage Booking">
-                            <i class="fas fa-clipboard-list"></i> Manage
-                        </a>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
+            <tbody id="bkTbody">
+            {% for b in bookings %}
+            {% set ps = b.payment_status or '' %}
+            {% set bs = b.status or '' %}
+            {% set needs_action = ps in ['reupload_requested','balance_reupload_requested'] or bs in ['pending_payment','awaiting_payment','draft'] %}
+            <tr class="bk-row"
+                data-status="{{ bs }}"
+                data-action="{{ 'true' if needs_action else 'false' }}"
+                data-search="{{ (b.event_name or '')|lower }} {{ (b.caterer.business_name or '')|lower }} bk-{{ '%03d'|format(b.id) }} {{ b.event_type or '' }}">
+                <td>
+                    <div class="cell-name">{{ b.event_name or b.event_type or 'Booking' }}</div>
+                    <div class="cell-sub">
+                        <span class="bk-id-chip">BK-{{ "%03d"|format(b.id) }}</span>{{ b.caterer.business_name }}
+                    </div>
+                </td>
+                <td>
+                    <div style="font-weight:700;color:var(--bk-text);">{{ b.event_date.strftime('%b %d, %Y') }}</div>
+                    <div class="cell-sub">{{ b.event_time.strftime('%I:%M %p') if b.event_time else 'TBD' }}</div>
+                </td>
+                <td>
+                    <div style="font-weight:800;color:var(--bk-text);">₱{{ "{:,.2f}".format(b.total_amount or 0) }}</div>
+                    <div class="cell-sub">{{ b.guest_count }} guests</div>
+                </td>
+                <td>
+                    {% if ps in ['reupload_requested','balance_reupload_requested'] %}
+                        <span class="bk-badge badge-reupload badge-pulse">⚠ Re-upload Proof</span>
+                    {% elif bs in ['pending_payment','awaiting_payment'] %}
+                        <span class="bk-badge badge-pay-now badge-pulse">Pay Now</span>
+                    {% elif bs == 'confirmed' %}
+                        <span class="bk-badge badge-confirmed">Confirmed</span>
+                    {% elif bs == 'completed' %}
+                        <span class="bk-badge badge-completed">Completed</span>
+                    {% elif bs == 'pending' %}
+                        <span class="bk-badge badge-pending">Under Review</span>
+                    {% elif bs == 'cancelled' %}
+                        <span class="bk-badge badge-cancelled">Cancelled</span>
+                    {% elif bs == 'draft' %}
+                        <span class="bk-badge badge-draft">Draft</span>
+                    {% elif bs == 'preparing' %}
+                        <span class="bk-badge badge-preparing">Preparing</span>
+                    {% elif bs in ['on_the_way','ready_for_delivery','arrived'] %}
+                        <span class="bk-badge badge-active">On the Way</span>
+                    {% elif bs in ['in_progress','setup_ongoing'] %}
+                        <span class="bk-badge badge-active">Ongoing</span>
+                    {% else %}
+                        <span class="bk-badge badge-draft">{{ bs|replace('_',' ')|title }}</span>
+                    {% endif %}
+                </td>
+                <td style="text-align:right;">
+                    <div style="display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+                    {% if ps in ['reupload_requested','balance_reupload_requested'] %}
+                        <a href="/customer/bookings/manage/{{ b.id }}" class="bk-btn btn-settle">Upload Proof</a>
+                    {% elif bs in ['pending_payment','awaiting_payment'] %}
+                        <a href="/bookings/step/payment/{{ b.id }}" class="bk-btn btn-pay">Pay</a>
+                        <a href="/customer/bookings/manage/{{ b.id }}" class="bk-btn btn-manage">Manage</a>
+                    {% elif bs == 'draft' %}
+                        <a href="/bookings/continue/{{ b.id }}" class="bk-btn btn-resume">Continue</a>
+                        <button onclick="removeBooking({{ b.id }})" class="bk-btn btn-del" title="Delete Draft">Delete</button>
+                    {% else %}
+                        <a href="/customer/bookings/manage/{{ b.id }}" class="bk-btn btn-manage">View Details</a>
+                    {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
             </tbody>
         </table>
+        </div>
+
+        <!-- No results row -->
+        <div id="bkNoResults" style="display:none;padding:3rem 2rem;text-align:center;">
+            <div style="font-size:2rem;color:#e2e8f0;margin-bottom:.75rem;"><i class="fas fa-search"></i></div>
+            <p style="color:var(--bk-sub);font-weight:600;font-size:.9rem;">No bookings match your filter.</p>
+        </div>
 
         <!-- Pagination -->
-        <div style="padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; background: #fcfcfd; border-top: 1px solid var(--dm-slate-50);">
-            <div style="font-size: 0.75rem; font-weight: 700; color: var(--dm-slate-400);">
-                Entry <span id="startRange" style="color: var(--up-slate-900);">0</span> - <span id="endRange" style="color: var(--up-slate-900);">0</span> of <span id="totalEntries" style="color: var(--up-slate-900);">0</span>
+        <div class="bk-pagination">
+            <div class="bk-page-info">
+                Showing <span id="pgStart">0</span>–<span id="pgEnd">0</span> of <span id="pgTotal">0</span> bookings
             </div>
-            <div id="pageNumbers" style="display: flex; gap: 6px;"></div>
+            <div class="bk-page-btns" id="pgBtns"></div>
         </div>
 
         {% else %}
-        <div class="empty-panel">
-            <i class="fas fa-calendar-xmark"></i>
-            <h4>No Bookings Found</h4>
-            <p>You haven't started your catering journey yet.</p>
-            <a href="/customer/marketplace" class="btn-action-primary" style="text-decoration: none; padding: 0.75rem 1.5rem; border-radius: 12px; font-weight: 800;">Browse Caterers</a>
+        <div class="bk-empty">
+            <div class="bk-empty-icon"><i class="fas fa-calendar-xmark"></i></div>
+            <h4>No Bookings Yet</h4>
+            <p>You haven't made any bookings. Browse caterers to get started.</p>
+            <a href="/customer/marketplace" class="btn-new-booking">Browse Caterers</a>
         </div>
         {% endif %}
     </div>
 </div>
+{% endblock %}
 
 {% block extra_js %}
 <script>
-    const ROWS_PER_PAGE = 8;
-    let currentPage = 1;
-    let filteredRows = [];
+/* ── Pagination + Filter Engine ── */
+const ROWS_PER_PAGE = 8;
+let currentPage  = 1;
+let visibleRows  = [];
 
-    document.addEventListener('DOMContentLoaded', () => {
-        const rows = Array.from(document.querySelectorAll('.booking-row-item'));
-        filteredRows = rows;
-        updatePagination();
+function getAllRows() {
+    return Array.from(document.querySelectorAll('.bk-row'));
+}
+
+function applyFilter() {
+    const filterVal = document.getElementById('statusFilter')?.value || '';
+    const allRows   = getAllRows();
+
+    visibleRows = allRows.filter(row => {
+        const status  = row.dataset.status || '';
+        const action  = row.dataset.action === 'true';
+        if (!filterVal) return true;
+        if (filterVal === 'action') return action;
+        if (filterVal === 'on_the_way') return ['on_the_way','ready_for_delivery','arrived'].includes(status);
+        if (filterVal === 'in_progress') return ['in_progress','setup_ongoing'].includes(status);
+        return status === filterVal;
     });
 
-    function updatePagination() {
-        const totalPages = Math.ceil(filteredRows.length / ROWS_PER_PAGE) || 1;
-        if (currentPage > totalPages) currentPage = totalPages;
-        if (currentPage < 1) currentPage = 1;
+    currentPage = 1;
+    renderPage();
+}
 
-        const startIdx = (currentPage - 1) * ROWS_PER_PAGE;
-        const endIdx = startIdx + ROWS_PER_PAGE;
+// Hook into header global search
+function onGlobalSearch(q) {
+    const allRows = getAllRows();
+    const term    = q.trim().toLowerCase();
+    if (!term) { visibleRows = allRows; }
+    else {
+        visibleRows = allRows.filter(r =>
+            (r.dataset.search || '').includes(term)
+        );
+    }
+    currentPage = 1;
+    renderPage();
+}
 
-        document.querySelectorAll('.booking-row-item').forEach(r => r.style.display = 'none');
-        filteredRows.slice(startIdx, endIdx).forEach(r => r.style.display = 'table-row');
-
-        document.getElementById('startRange').innerText = filteredRows.length === 0 ? 0 : startIdx + 1;
-        document.getElementById('endRange').innerText = Math.min(endIdx, filteredRows.length);
-        document.getElementById('totalEntries').innerText = filteredRows.length;
-
-        renderPaginationButtons(totalPages);
+// Patch the customer layout search to also filter this page
+document.addEventListener('DOMContentLoaded', () => {
+    const inp = document.getElementById('globalSearchInput');
+    if (inp) {
+        inp.addEventListener('input', () => {
+            const q = inp.value.toLowerCase();
+            if (q.length >= 1) onGlobalSearch(q);
+            else applyFilter(); // reset to filter-only view
+        });
     }
 
-    function renderPaginationButtons(totalPages) {
-        const container = document.getElementById('pageNumbers');
-        container.innerHTML = '';
-        if (filteredRows.length === 0) return;
+    // Initial render
+    visibleRows = getAllRows();
+    renderPage();
+});
 
-        for (let i = 1; i <= totalPages; i++) {
-            const btn = document.createElement('button');
-            btn.style = `border: 1px solid var(--dm-slate-100); padding: 6px 12px; border-radius: 8px; font-size: 0.7rem; font-weight: 800; cursor: pointer; transition: all 0.2s; ${i === currentPage ? 'background: var(--up-slate-900); color: white;' : 'background: #fff; color: var(--dm-slate-400);'}`;
-            btn.innerText = i;
-            btn.onclick = () => { currentPage = i; updatePagination(); };
-            container.appendChild(btn);
+function renderPage() {
+    const allRows  = getAllRows();
+    const total    = visibleRows.length;
+    const pages    = Math.max(1, Math.ceil(total / ROWS_PER_PAGE));
+    if (currentPage > pages) currentPage = pages;
+
+    const start = (currentPage - 1) * ROWS_PER_PAGE;
+    const end   = Math.min(start + ROWS_PER_PAGE, total);
+
+    // Show/hide rows
+    allRows.forEach(r => r.style.display = 'none');
+    visibleRows.slice(start, end).forEach(r => r.style.display = '');
+
+    // No results state
+    const noRes = document.getElementById('bkNoResults');
+    if (noRes) noRes.style.display = total === 0 ? 'block' : 'none';
+
+    // Range info
+    document.getElementById('pgStart').textContent = total === 0 ? 0 : start + 1;
+    document.getElementById('pgEnd').textContent   = end;
+    document.getElementById('pgTotal').textContent = total;
+
+    // Pagination buttons (caterer style: Prev + numbers + Next)
+    renderPagination(pages);
+}
+
+function renderPagination(total) {
+    const container = document.getElementById('pgBtns');
+    if (!container) return;
+
+    const btns = [];
+
+    // Previous
+    btns.push(`<button class="btn-pg" id="btnPrev" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}><i class="fas fa-chevron-left"></i> Previous</button>`);
+
+    // Page numbers (show up to 5 around current)
+    const range = [];
+    let lo = Math.max(1, currentPage - 2), hi = Math.min(total, currentPage + 2);
+    if (hi - lo < 4) { lo = Math.max(1, hi - 4); hi = Math.min(total, lo + 4); }
+    for (let i = lo; i <= hi; i++) range.push(i);
+
+    if (lo > 1)     { btns.push(`<button class="btn-pg btn-pg-num" onclick="goPage(1)">1</button>`); if (lo > 2) btns.push(`<span style="padding:0 4px;color:var(--bk-sub);font-size:.8rem;">…</span>`); }
+    range.forEach(i => btns.push(`<button class="btn-pg btn-pg-num ${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`));
+    if (hi < total) { if (hi < total-1) btns.push(`<span style="padding:0 4px;color:var(--bk-sub);font-size:.8rem;">…</span>`); btns.push(`<button class="btn-pg btn-pg-num" onclick="goPage(${total})">${total}</button>`); }
+
+    // Next
+    btns.push(`<button class="btn-pg" id="btnNext" onclick="goPage(${currentPage+1})" ${currentPage===total?'disabled':''}> Next <i class="fas fa-chevron-right"></i></button>`);
+
+    container.innerHTML = btns.join('');
+}
+
+function goPage(p) {
+    const total = Math.max(1, Math.ceil(visibleRows.length / ROWS_PER_PAGE));
+    if (p < 1 || p > total) return;
+    currentPage = p;
+    renderPage();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ── Remove Draft Booking ── */
+async function removeBooking(id) {
+    if (!confirm('Delete this draft booking? This cannot be undone.')) return;
+    try {
+        const res  = await fetch(`/bookings/${id}`, { method:'DELETE' });
+        const data = await res.json();
+        if (res.ok) {
+            if (window.showToast) window.showToast(data.message, 'success');
+            location.reload();
+        } else {
+            if (window.showError) window.showError(data.detail || 'Failed.', 'Error');
+            else alert(data.detail || 'Error');
         }
-    }
+    } catch { alert('Connection error. Please try again.'); }
+}
 
-    function filterBookings() {
-        const searchTerm = document.getElementById('bookingSearchInput').value.toLowerCase();
-        const allRows = Array.from(document.querySelectorAll('.booking-row-item'));
-        filteredRows = allRows.filter(row => row.getAttribute('data-search').includes(searchTerm));
-        currentPage = 1;
-        updatePagination();
-    }
+/* ── Real-time: intercept WS booking updates to show banner instead of instant reload ── */
+const _origWsHandler = window.__bkWsPatched;
+if (!_origWsPatched) {
+    window.__bkWsPatched = true;
+    const _initWs = window.initWebSocket;
 
-    async function removeBooking(bookingId) {
-        if (!confirm("Are you sure you want to remove this booking from your list?")) return;
-        
-        try {
-            const res = await fetch(`/bookings/${bookingId}`, { method: 'DELETE' });
-            const data = await res.json();
-            if (res.ok) {
-                if (window.showToast) window.showToast(data.message, 'success'); else alert(data.message);
-                location.reload();
-            } else {
-                if (window.showError) window.showError(data.detail || 'Failed to remove booking.', 'Error'); else alert(data.detail || 'Error');
-            }
-        } catch (err) {
-            console.error(err);
-            alert("Connection error.");
-        }
-    }
+    // Override the WS message for this page to show a nicer banner
+    const _patchWS = () => {
+        const proto    = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const clientId = `user_${window.customerConfig?.userId || 0}_${Math.random().toString(36).substr(2,9)}`;
+        const ws       = new WebSocket(`${proto}//${location.host}/ws/${clientId}`);
+
+        ws.onmessage = ({ data }) => {
+            try {
+                const d = JSON.parse(data);
+                if (['booking_update','payment_update','status_update'].includes(d.type)) {
+                    const banner = document.getElementById('rtBanner');
+                    const msg    = document.getElementById('rtBannerMsg');
+                    if (banner) {
+                        if (msg) msg.textContent = (d.message || 'A booking was updated') + ' — reloading...';
+                        banner.style.display = 'flex';
+                    }
+                    setTimeout(() => location.reload(), 2200);
+                }
+            } catch {}
+        };
+        ws.onclose = () => setTimeout(_patchWS, 5000);
+    };
+    _patchWS();
+}
 </script>
-{% endblock %}
 {% endblock %}
