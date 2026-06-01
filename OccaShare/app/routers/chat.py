@@ -47,6 +47,9 @@ async def get_conversations(
     conversations = {}
     for msg in all_msgs:
         peer_id = msg.receiver_id if msg.sender_id == current_user.id else msg.sender_id
+        if peer_id == current_user.id:
+            continue
+            
         if peer_id not in conversations:
             peer = db.query(models.User).get(peer_id)
             if not peer: continue
@@ -63,6 +66,7 @@ async def get_conversations(
             if peer.role == 'caterer' and peer.caterer_profile:
                 peer_info["name"] = peer.caterer_profile.business_name
                 peer_info["logo"] = peer.caterer_profile.logo_url
+                peer_info["profile_id"] = peer.caterer_profile.id
             
             peer_info["is_online"] = peer_id in manager.user_connections
                 
@@ -95,6 +99,16 @@ async def send_message(
     receiver = db.query(models.User).get(chat_msg.receiver_id)
     if not receiver:
         raise HTTPException(status_code=404, detail="Receiver not found")
+    
+    if receiver.id == current_user.id:
+        raise HTTPException(status_code=400, detail="You cannot message yourself")
+        
+    # Validation: Prevent empty and excessively long messages
+    content = (chat_msg.content or "").strip()
+    if not content and not chat_msg.file_url:
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+    if len(content) > 1000:
+        raise HTTPException(status_code=400, detail="Message is too long (max 1000 characters)")
         
     db_msg = models.ChatMessage(
         sender_id=current_user.id,
