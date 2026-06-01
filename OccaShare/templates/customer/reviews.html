@@ -18,45 +18,27 @@
         padding-bottom: 2rem;
     }
 
-    /* ── Review Insight Header ── */
-    .insight-row {
+    /* ── PREMIUM STAT CARDS (Dashboard Sync) ── */
+    .premium-stats-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 1.25rem;
-        margin-bottom: 2rem;
-    }
-
-    .insight-card {
-        background: #fff;
-        border-radius: 1.25rem;
-        border: 1px solid var(--dm-slate-100);
-        padding: 1.25rem;
-        display: flex;
-        align-items: center;
+        grid-template-columns: repeat(2, 1fr);
         gap: 1rem;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.04);
+        margin-bottom: 1.5rem;
     }
-
-    .insight-icon {
-        width: 48px; height: 48px;
-        border-radius: 12px;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 1.2rem; flex-shrink: 0;
-        background: rgba(255,123,84,0.1); color: var(--up-orange);
+    @media (min-width: 768px) {
+        .premium-stats-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
     }
-
-    .insight-body h4 {
-        font-size: 0.65rem; font-weight: 700;
-        color: var(--dm-slate-400);
-        text-transform: uppercase; letter-spacing: 0.05em;
-        margin: 0 0 2px;
+    .premium-stat-card {
+        background: #fff; border-radius: 12px; padding: 1.25rem 1.5rem;
+        border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04);
+        display: flex; flex-direction: column; justify-content: center;
+        transition: all 0.2s ease;
     }
-
-    .insight-value {
-        font-size: 1.4rem; font-weight: 800;
-        color: var(--up-slate-900);
-        line-height: 1.1;
-    }
+    .premium-stat-title { font-size: 0.75rem; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
+    .premium-stat-value { font-size: 1.4rem; font-weight: 900; line-height: 1.2; margin-bottom: 0.4rem; }
+    .premium-stat-subtitle { font-size: 0.8rem; font-weight: 500; color: #64748b; }
 
     /* ── Review Cards ── */
     .review-panel {
@@ -167,13 +149,28 @@
         line-height: 1.5;
     }
 
+    /* ── PAGINATION (Matches Bookings UI) ── */
+    .bk-pagination {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        padding: 1.5rem; border-top: 1px solid var(--dm-slate-100); background: #fcfcfd;
+        gap: 1rem; text-align: center;
+    }
+    .bk-page-info { font-size: 0.85rem; font-weight: 700; color: var(--dm-slate-400); }
+    .bk-page-info span { color: var(--text-dark); font-weight: 800; }
+    .bk-page-btns { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px; }
+    .btn-pg {
+        border: 1px solid var(--dm-slate-200); border-radius: 9px; padding: 6px 13px;
+        font-size: 0.75rem; font-weight: 800; cursor: pointer; background: #fff;
+        color: var(--dm-slate-400); transition: all 0.18s; display: inline-flex; align-items: center; gap: 5px;
+    }
+    .btn-pg:hover:not(:disabled) { background: var(--dm-slate-50); border-color: #cbd5e1; }
+    .btn-pg:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-pg-num { min-width: 34px; justify-content: center; }
+    .btn-pg-num.active { background: var(--text-dark); color: #fff; border-color: var(--text-dark); }
+
     .page-header { margin-bottom: 1.25rem; }
     .page-header h1 { font-size: 1.6rem; font-weight: 800; color: var(--up-slate-900); margin: 0; letter-spacing: -0.03em; }
     .page-header p { font-size: 0.88rem; color: var(--dm-slate-400); font-weight: 500; margin: 4px 0 0; }
-
-    @media (max-width: 768px) {
-        .insight-row { grid-template-columns: 1fr; }
-    }
 </style>
 {% endblock %}
 
@@ -192,28 +189,22 @@
         {% set avg_rating.value = avg_rating.value / total_reviews %}
     {% endif %}
 
-    <!-- Insight Stats -->
-    <div class="insight-row">
-        <div class="insight-card">
-            <div class="insight-icon"><i class="fas fa-star"></i></div>
-            <div class="insight-body">
-                <h4>Average Rating Given</h4>
-                <div class="insight-value">{{ "{:.1f}".format(avg_rating.value) }} / 5.0</div>
-            </div>
+    <!-- Stat Cards (Matches Bookings UI) -->
+    <div class="premium-stats-grid">
+        <div class="premium-stat-card">
+            <div class="premium-stat-title">Average Rating Given</div>
+            <div class="premium-stat-value" style="color: #f59e0b;"><i class="fas fa-star" style="font-size: 1.1rem;"></i> {{ "{:.1f}".format(avg_rating.value) }}</div>
+            <div class="premium-stat-subtitle">Out of 5.0</div>
         </div>
-        <div class="insight-card">
-            <div class="insight-icon" style="background: rgba(59,130,246,0.1); color: #3b82f6;"><i class="fas fa-comment-alt-lines"></i></div>
-            <div class="insight-body">
-                <h4>Total Shared</h4>
-                <div class="insight-value">{{ total_reviews }} Reviews</div>
-            </div>
+        <div class="premium-stat-card">
+            <div class="premium-stat-title">Total Shared</div>
+            <div class="premium-stat-value" style="color: #3b82f6;">{{ total_reviews }}</div>
+            <div class="premium-stat-subtitle">Reviews Published</div>
         </div>
-        <div class="insight-card">
-            <div class="insight-icon" style="background: rgba(16,185,129,0.1); color: #10b981;"><i class="fas fa-bullhorn"></i></div>
-            <div class="insight-body">
-                <h4>Feedback Impact</h4>
-                <div class="insight-value">Verified</div>
-            </div>
+        <div class="premium-stat-card">
+            <div class="premium-stat-title">Feedback Impact</div>
+            <div class="premium-stat-value" style="color: #10b981;"><i class="fas fa-check-circle" style="font-size: 1.1rem;"></i> Verified</div>
+            <div class="premium-stat-subtitle">Trusted by Community</div>
         </div>
     </div>
 
@@ -253,15 +244,12 @@
             {% endfor %}
         </div>
 
-        <!-- Pagination Dashboard Style -->
-        <div style="padding: 1.25rem 1.5rem; background: var(--dm-slate-50); border-top: 1px solid var(--dm-slate-100); display: flex; justify-content: space-between; align-items: center;">
-            <div style="font-size: 0.7rem; font-weight: 800; color: var(--dm-slate-400); text-transform: uppercase;">
+        <!-- Pagination (Matches Bookings UI) -->
+        <div class="bk-pagination">
+            <div class="bk-page-info">
                 Showing <span id="rRange">0 - 0</span> of <span id="rTotal">0</span> reviews
             </div>
-            <div style="display: flex; gap: 8px;">
-                <button id="rvPrev" style="padding: 6px 12px; border-radius: 8px; border: 1px solid var(--dm-slate-200); background: #fff; cursor: pointer;"><i class="fas fa-chevron-left" style="font-size: 0.75rem;"></i></button>
-                <button id="rvNext" style="padding: 6px 12px; border-radius: 8px; border: 1px solid var(--dm-slate-200); background: #fff; cursor: pointer;"><i class="fas fa-chevron-right" style="font-size: 0.75rem;"></i></button>
-            </div>
+            <div class="bk-page-btns" id="pgBtns"></div>
         </div>
 
         {% else %}
@@ -297,20 +285,38 @@
         rvFiltered.slice(start, end).forEach(r => r.style.display = 'block');
 
         const range = document.getElementById('rRange');
-        if (range) range.innerText = total === 0 ? '0 - 0' : `${start + 1} - ${end}`;
+        if (range) range.innerHTML = total === 0 ? '0' : `${start + 1}–${end}`;
         const totalEl = document.getElementById('rTotal');
         if (totalEl) totalEl.innerText = total;
 
-        const prev = document.getElementById('rvPrev');
-        const next = document.getElementById('rvNext');
-        if (prev) {
-            prev.disabled = rvCurrentPage === 1;
-            prev.onclick = () => { rvCurrentPage--; updatePagination(); };
-        }
-        if (next) {
-            next.disabled = rvCurrentPage === pages || total === 0;
-            next.onclick = () => { rvCurrentPage++; updatePagination(); };
-        }
+        renderPagination(pages);
+    }
+
+    function renderPagination(total) {
+        const container = document.getElementById('pgBtns');
+        if (!container) return;
+
+        const btns = [];
+        btns.push(`<button class="btn-pg" id="btnPrev" onclick="goPage(${rvCurrentPage-1})" ${rvCurrentPage===1?'disabled':''}><i class="fas fa-chevron-left"></i> Previous</button>`);
+
+        const range = [];
+        let lo = Math.max(1, rvCurrentPage - 2), hi = Math.min(total, rvCurrentPage + 2);
+        if (hi - lo < 4) { lo = Math.max(1, hi - 4); hi = Math.min(total, lo + 4); }
+        for (let i = lo; i <= hi; i++) range.push(i);
+
+        if (lo > 1) { btns.push(`<button class="btn-pg btn-pg-num" onclick="goPage(1)">1</button>`); if (lo > 2) btns.push(`<span style="padding:0 4px;color:var(--dm-slate-400);font-size:.8rem;">…</span>`); }
+        range.forEach(i => btns.push(`<button class="btn-pg btn-pg-num ${i===rvCurrentPage?'active':''}" onclick="goPage(${i})">${i}</button>`));
+        if (hi < total) { if (hi < total-1) btns.push(`<span style="padding:0 4px;color:var(--dm-slate-400);font-size:.8rem;">…</span>`); btns.push(`<button class="btn-pg btn-pg-num" onclick="goPage(${total})">${total}</button>`); }
+
+        btns.push(`<button class="btn-pg" id="btnNext" onclick="goPage(${rvCurrentPage+1})" ${rvCurrentPage===total?'disabled':''}> Next <i class="fas fa-chevron-right"></i></button>`);
+        container.innerHTML = btns.join('');
+    }
+
+    function goPage(p) {
+        const total = Math.max(1, Math.ceil(rvFiltered.length / RV_PER_PAGE));
+        if (p < 1 || p > total) return;
+        rvCurrentPage = p;
+        updatePagination();
     }
 </script>
 {% endblock %}

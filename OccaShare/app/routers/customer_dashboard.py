@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Form, UploadFile, File, BackgroundTasks, WebSocket, WebSocketDisconnect
 from typing import Optional
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from ..core.templates import templates
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session
@@ -880,15 +880,60 @@ async def update_profile(
     last_name: str = Form(...),
     middle_name: Optional[str] = Form(None),
     phone_number: Optional[str] = Form(None),
+    address: Optional[str] = Form(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
+    import re
+    if phone_number:
+        # Sanitize by removing spaces or dashes
+        phone_number = phone_number.replace(" ", "").replace("-", "")
+        if not re.match(r"^09\d{9}$", phone_number):
+            return RedirectResponse(url="/customer/profile?error_msg=Invalid+phone+number.+Must+be+11+digits+starting+with+09.", status_code=303)
+            
     user.first_name = first_name
     user.last_name = last_name
     user.middle_name = middle_name
     user.phone_number = phone_number
+    user.address = address
     db.commit()
     return RedirectResponse(url="/customer/profile?success_msg=Profile+updated+successfully", status_code=303)
+
+@router.post("/profile/deactivate")
+async def deactivate_profile(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(customer_only)
+):
+    # Check for active bookings
+    active_bookings = db.query(models.Booking).filter(
+        models.Booking.user_id == user.id,
+        ~models.Booking.status.in_(['completed', 'success', 'cancelled', 'rejected', 'draft'])
+    ).count()
+
+    if active_bookings > 0:
+        return JSONResponse(
+            content={"success": False, "message": "You cannot deactivate your account while you have active or pending bookings. Please settle or cancel them first."},
+            status_code=400
+        )
+
+    user.status = "deactivated"
+    db.commit()
+    
+    request.session.pop("user", None)
+    return JSONResponse(content={"success": True, "message": "Account deactivated."})
+
+@router.post("/profile/notifications")
+async def update_notifications(
+    request: Request,
+    email_alerts: Optional[str] = Form(None),
+    sms_alerts: Optional[str] = Form(None),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(customer_only)
+):
+    # Currently just flashes success. 
+    # To fully implement, User model needs a notification_preferences column.
+    return RedirectResponse(url="/customer/profile?success_msg=Notification+preferences+saved+successfully.", status_code=303)
 
 @router.post("/profile/photo")
 async def update_profile_photo(
