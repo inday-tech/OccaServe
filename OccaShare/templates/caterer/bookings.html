@@ -341,7 +341,7 @@
                     <button onclick="window.exportBookings('word')" style="width: 100%; text-align: left; padding: 12px 16px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 600; color: #475569;"><i class="fas fa-file-word" style="color: #3b82f6; font-size: 1.1rem; width: 20px;"></i> Word Doc</button>
                 </div>
             </div>
-            <button onclick="openWalkinModal()" class="btn-primary-pro">
+            <button onclick="window.location.href='/caterer/calendar'" class="btn-primary-pro" title="Go to Calendar to Add Walk-in Bookings">
                 <span class="btn-text">New Booking</span>
             </button>
         </div>
@@ -838,9 +838,10 @@
 
         <div class="occ-modal-body" style="padding: 0; background: #fafbfc;">
             <!-- Tabs Header -->
-            <div class="modal-tabs-pro" style="display: flex; gap: 1rem; border-bottom: 1px solid #e2e8f0; padding: 0 2rem; background: white;">
-                <button class="mtab-btn-pro active" onclick="switchBookingTab('overview', this)" style="padding: 1rem 1.5rem; background: transparent; border: none; border-bottom: 2px solid var(--primary-color); color: var(--primary-color); font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none;">Overview</button>
-                <button class="mtab-btn-pro" onclick="switchBookingTab('expenses', this)" style="padding: 1rem 1.5rem; background: transparent; border: none; border-bottom: 2px solid transparent; color: #64748b; font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none;">Event Expenses</button>
+            <div class="modal-tabs-pro" style="display: flex; gap: 0; border-bottom: 1px solid #e2e8f0; background: white;">
+                <button class="mtab-btn-pro active" onclick="switchBookingTab('overview', this)" style="padding: 1rem 1.5rem; background: transparent; border: none; border-bottom: 2px solid var(--primary-color); color: var(--primary-color); font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none; font-size: 0.85rem;"><i class="fas fa-info-circle" style="margin-right: 6px;"></i>Overview</button>
+                <button class="mtab-btn-pro" onclick="switchBookingTab('operations', this)" style="padding: 1rem 1.5rem; background: transparent; border: none; border-bottom: 2px solid transparent; color: #64748b; font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none; font-size: 0.85rem;"><i class="fas fa-tasks" style="margin-right: 6px;"></i>Ops & Notes</button>
+                <button class="mtab-btn-pro" onclick="switchBookingTab('expenses', this)" style="padding: 1rem 1.5rem; background: transparent; border: none; border-bottom: 2px solid transparent; color: #64748b; font-weight: 700; cursor: pointer; transition: all 0.2s; outline: none; font-size: 0.85rem;"><i class="fas fa-receipt" style="margin-right: 6px;"></i>Expenses</button>
             </div>
 
             <!-- Overview Tab -->
@@ -943,7 +944,7 @@
                     </div>
                 </div>
 
-                <!-- RIGHT COLUMN: Action & Operations Center -->
+                <!-- RIGHT COLUMN: Financials + Due Date + Receipts (CLEAN) -->
                 <div class="form-column-right" style="display: flex; flex-direction: column; gap: 1rem;">
                     
                     <!-- Financials Focus -->
@@ -954,7 +955,7 @@
                                 <div id="modalTotalAmount" style="color: #0f172a; font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em;">₱0.00</div>
                             </div>
                             <div style="text-align: right;">
-                                <div style="color: #64748b; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">Status</div>
+                                <div style="color: #64748b; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">Payment Status</div>
                                 <div id="modalPaymentStatus" class="premium-status-badge" style="font-size: 0.75rem; padding: 4px 12px; border-radius: 6px; font-weight: 600;"></div>
                             </div>
                         </div>
@@ -989,8 +990,8 @@
                         <!-- Dynamic Proofs -->
                         <div id="modalProofSection" style="display: none; margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid #e2e8f0;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                                <div style="font-size: 0.75rem; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 0.05em;">Receipts</div>
-                                <button id="aiVerifyBtn" onclick="runAIScan()" style="background: #f0f9ff; color: #0369a1; border: 1px solid #bae6fd; padding: 4px 10px; font-size: 0.7rem; font-weight: 700; border-radius: 6px; cursor: pointer; transition: background 0.2s;"><i class="fas fa-microchip"></i> Verify</button>
+                                <div style="font-size: 0.75rem; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 0.05em;">Payment Receipts</div>
+                                <button id="aiVerifyBtn" onclick="runAIScan()" style="background: #f0f9ff; color: #0369a1; border: 1px solid #bae6fd; padding: 4px 10px; font-size: 0.7rem; font-weight: 700; border-radius: 6px; cursor: pointer; transition: background 0.2s;"><i class="fas fa-microchip"></i> AI Verify</button>
                             </div>
                             <div id="modalProofContainer" style="background: #f8fafc; border: 1px dashed #cbd5e1; padding: 1rem; border-radius: 0.75rem; display: flex; gap: 1rem; flex-wrap: wrap;"></div>
                             
@@ -1005,34 +1006,6 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- Operational Checklist & Memo -->
-                    <div id="modalChecklistSection" style="background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                        <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid #f1f5f9;">
-                            <div style="font-size: 0.85rem; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 0.05em;">Operations Tasks</div>
-                            <button onclick="addNewCustomTask()" style="background: white; border: 1px solid #e2e8f0; color: #475569; border-radius: 50px; padding: 4px 12px; font-size: 0.7rem; font-weight: 700; cursor: pointer; transition: background 0.2s;"><i class="fas fa-plus"></i> Add Task</button>
-                        </div>
-                        
-                        <div style="background: #f8fafc; padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.25rem; border: 1px solid #f1f5f9;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                                <span style="font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Progress</span>
-                                <span id="checklistProgressText" style="font-size: 0.8rem; font-weight: 700; color: #0f172a;">0%</span>
-                            </div>
-                            <div style="height: 8px; background: #e2e8f0; border-radius: 50px; overflow: hidden;">
-                                <div id="checklistProgressBar" style="height: 100%; width: 0%; background: var(--primary-color); transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);"></div>
-                            </div>
-                        </div>
-                        
-                        <div id="bookingTasksList" style="max-height: 250px; overflow-y: auto; margin-bottom: 1.5rem; padding-right: 8px;" class="custom-scrollbar"></div>
-                        
-                        <div style="border-top: 1px solid #f1f5f9; padding-top: 1.25rem;">
-                            <div style="font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 0.75rem; letter-spacing: 0.05em;">Internal Memo</div>
-                            <textarea id="modalCatererNotes" placeholder="Write internal team notes here..." style="width: 100%; height: 80px; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 0.75rem; font-size: 0.8rem; resize: none; background: #f8fafc; outline: none; transition: border-color 0.2s;"></textarea>
-                            <div style="text-align: right; margin-top: 0.75rem;">
-                                <button onclick="saveCatererNotes()" style="background: var(--primary-color); color: white; border: none; padding: 6px 14px; font-size: 0.75rem; font-weight: 700; border-radius: 6px; cursor: pointer; transition: opacity 0.2s;">Save Memo</button>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -1040,13 +1013,44 @@
             <div style="margin-top: 1.5rem; background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
                 <details style="padding: 1.5rem;">
                     <summary style="font-size: 0.85rem; font-weight: 700; color: #0f172a; cursor: pointer; text-transform: uppercase; letter-spacing: 0.05em; outline: none; list-style-position: inside;">
-                        Audit Trail & History
+                        Audit Trail &amp; History
                     </summary>
                     <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9;">
                         <div class="audit-timeline-pro" id="modalHistoryTimeline"></div>
                     </div>
                 </details>
             </div>
+            </div>
+
+            <!-- Operations Tab -->
+            <div id="btab-operations" class="mtab-pane-pro" style="padding: 1.5rem 2rem;">
+                <!-- Operational Checklist & Memo -->
+                <div id="modalChecklistSection" style="background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                    <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid #f1f5f9;">
+                        <div style="font-size: 0.85rem; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 0.05em;">Operations Tasks</div>
+                        <button onclick="addNewCustomTask()" style="background: white; border: 1px solid #e2e8f0; color: #475569; border-radius: 50px; padding: 4px 12px; font-size: 0.7rem; font-weight: 700; cursor: pointer; transition: background 0.2s;"><i class="fas fa-plus"></i> Add Task</button>
+                    </div>
+                    
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.25rem; border: 1px solid #f1f5f9;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                            <span style="font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Progress</span>
+                            <span id="checklistProgressText" style="font-size: 0.8rem; font-weight: 700; color: #0f172a;">0%</span>
+                        </div>
+                        <div style="height: 8px; background: #e2e8f0; border-radius: 50px; overflow: hidden;">
+                            <div id="checklistProgressBar" style="height: 100%; width: 0%; background: var(--primary-color); transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);"></div>
+                        </div>
+                    </div>
+                    
+                    <div id="bookingTasksList" style="max-height: 300px; overflow-y: auto; margin-bottom: 1.5rem; padding-right: 8px;" class="custom-scrollbar"></div>
+                    
+                    <div style="border-top: 1px solid #f1f5f9; padding-top: 1.25rem;">
+                        <div style="font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 0.75rem; letter-spacing: 0.05em;">Internal Memo</div>
+                        <textarea id="modalCatererNotes" placeholder="Write internal team notes here..." style="width: 100%; height: 100px; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 0.75rem; font-size: 0.8rem; resize: none; background: #f8fafc; outline: none; transition: border-color 0.2s;"></textarea>
+                        <div style="text-align: right; margin-top: 0.75rem;">
+                            <button onclick="saveCatererNotes()" style="background: var(--primary-color); color: white; border: none; padding: 6px 14px; font-size: 0.75rem; font-weight: 700; border-radius: 6px; cursor: pointer; transition: opacity 0.2s;">Save Memo</button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Event Expenses Tab -->
@@ -1199,16 +1203,28 @@
                             <span style="font-size:0.75rem; font-weight:800; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.05em;">Customer Details</span>
                         </div>
                         
+                        <div class="occ-form-grid" style="gap: 0.85rem;">
+                            <div class="occ-form-group">
+                                <label class="occ-form-label">First Name *</label>
+                                <input type="text" id="bookCustFirstName" name="first_name" class="occ-form-input real-time-val" required>
+                                <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
+                            </div>
+                            <div class="occ-form-group">
+                                <label class="occ-form-label">Middle Name</label>
+                                <input type="text" id="bookCustMiddleName" name="middle_name" class="occ-form-input real-time-val">
+                                <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
+                            </div>
+                        </div>
                         <div class="occ-form-group">
-                            <label class="occ-form-label">Customer Name *</label>
-                            <input type="text" id="bookCustName" name="customer_name" class="occ-form-input" required placeholder="e.g. Juan Dela Cruz">
-                            <div class="invalid-feedback"></div>
+                            <label class="occ-form-label">Last Name *</label>
+                            <input type="text" id="bookCustLastName" name="last_name" class="occ-form-input real-time-val" required>
+                            <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
                         </div>
                         
                         <div class="occ-form-group">
                             <label class="occ-form-label">Email Address *</label>
-                            <input type="email" id="bookCustEmail" name="customer_email" class="occ-form-input" required placeholder="e.g. email@example.com">
-                            <div class="invalid-feedback"></div>
+                            <input type="email" id="bookCustEmail" name="customer_email" class="occ-form-input real-time-val" required>
+                            <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
                             <div id="bookUserDetectionBadge" style="display: none; align-items: center; gap: 0.35rem; font-size: 0.75rem; margin-top: 0.5rem; padding: 0.4rem 0.6rem; border-radius: 6px; width: fit-content; line-height: 1.2;">
                                 <i class="fas fa-info-circle"></i> <span id="bookUserDetectionText"></span>
                             </div>
@@ -1216,8 +1232,8 @@
 
                         <div class="occ-form-group">
                             <label class="occ-form-label">Contact Number *</label>
-                            <input type="text" id="bookCustContact" name="customer_contact" class="occ-form-input" maxlength="11" required placeholder="e.g. 09123456789">
-                            <div class="invalid-feedback"></div>
+                            <input type="text" id="bookCustContact" name="customer_contact" class="occ-form-input real-time-val" maxlength="11" required>
+                            <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
                         </div>
 
                         <div class="occ-form-group full-width" style="margin-top:1rem; margin-bottom:0.25rem; border-top:1px solid #f1f5f9; padding-top:1rem;">
@@ -1238,12 +1254,12 @@
                         <div class="occ-form-grid" style="gap: 0.85rem;">
                             <div class="occ-form-group">
                                 <label class="occ-form-label">No. of Guests *</label>
-                                <input type="number" id="bookGuests" name="guest_count" required min="1" max="100000" class="occ-form-input" placeholder="e.g. 100">
+                                <input type="number" id="bookGuests" name="guest_count" required min="1" max="100000" class="occ-form-input real-time-val">
                                 <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
                             </div>
                             <div class="occ-form-group">
                                 <label class="occ-form-label">Total Amount (₱) *</label>
-                                <input type="text" id="bookTotalAmount" name="total_amount" required class="occ-form-input" placeholder="₱ 0.00" onblur="this.value = formatCurrency(this.value)" onfocus="this.value = this.value.replace(/[₱,]/g, '')">
+                                <input type="text" id="bookTotalAmount" name="total_amount" required class="occ-form-input real-time-val" onblur="this.value = formatCurrency(this.value)" onfocus="this.value = this.value.replace(/[₱,]/g, '')">
                                 <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
                             </div>
                         </div>
@@ -1268,14 +1284,14 @@
 
                         <div class="occ-form-group">
                             <label class="occ-form-label">Event Name *</label>
-                            <input type="text" id="bookEventName" name="event_name" required class="occ-form-input" placeholder="e.g. 18th Birthday Party">
-                            <div class="invalid-feedback"></div>
+                            <input type="text" id="bookEventName" name="event_name" required class="occ-form-input real-time-val">
+                            <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
                         </div>
                         
                         <div class="occ-form-grid" style="gap: 0.85rem;">
                             <div class="occ-form-group">
                                 <label class="occ-form-label">Event Type *</label>
-                                <select name="event_type" required class="filter-select-pro">
+                                <select name="event_type" required class="filter-select-pro real-time-val">
                                     <option value="">Select Type...</option>
                                     <option value="Wedding">Wedding</option>
                                     <option value="Birthday">Birthday</option>
@@ -1283,47 +1299,48 @@
                                     <option value="Private Party">Private Party</option>
                                     <option value="Other">Other</option>
                                 </select>
-                                <div class="invalid-feedback"></div>
+                                <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
                             </div>
                             <div class="occ-form-group">
                                 <label class="occ-form-label">Event Date *</label>
-                                <input type="date" name="event_date" id="walkin_event_date" required class="occ-form-input">
-                                <div class="invalid-feedback"></div>
+                                <input type="date" name="event_date" id="walkin_event_date" required class="occ-form-input real-time-val">
+                                <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
                             </div>
                         </div>
 
                         <div class="occ-form-grid" style="gap: 0.85rem;">
                             <div class="occ-form-group">
                                 <label class="occ-form-label">Province *</label>
-                                <select id="bookProvince" name="province" required class="filter-select-pro">
+                                <select id="bookProvince" name="province" required class="filter-select-pro real-time-val">
                                     <option value="">Select Province...</option>
                                     <option value="Laguna">Laguna</option>
                                     <option value="Batangas">Batangas</option>
                                     <option value="Cavite">Cavite</option>
                                     <option value="Rizal">Rizal</option>
                                 </select>
-                                <div class="invalid-feedback"></div>
+                                <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
                             </div>
                             <div class="occ-form-group">
                                 <label class="occ-form-label">City / Town *</label>
-                                <select id="bookCity" name="city" required class="filter-select-pro">
+                                <select id="bookCity" name="city" required class="filter-select-pro real-time-val">
                                     <option value="">Select City...</option>
                                 </select>
-                                <div class="invalid-feedback"></div>
+                                <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
                             </div>
                         </div>
 
                         <div class="occ-form-group">
                             <label class="occ-form-label">Barangay *</label>
-                            <select id="bookBarangay" name="barangay" required class="filter-select-pro">
+                            <select id="bookBarangay" name="barangay" required class="filter-select-pro real-time-val">
                                 <option value="">Select Barangay...</option>
                             </select>
-                            <div class="invalid-feedback"></div>
+                            <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
                         </div>
 
                         <div class="occ-form-group full-width">
                             <label class="occ-form-label">Street Address / Landmark *</label>
-                            <textarea name="venue_address" rows="2" required class="occ-form-input" style="height:auto; min-height:60px;" placeholder="Unit #, Street, Phase, Landmark"></textarea>
+                            <textarea name="venue_address" rows="2" required class="occ-form-input real-time-val" style="height:auto; min-height:60px;" placeholder="Unit #, Street, Phase, Landmark"></textarea>
+                            <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
                         </div>
                     </div>
                 </div>

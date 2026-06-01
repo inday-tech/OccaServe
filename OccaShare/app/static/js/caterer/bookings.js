@@ -4,6 +4,19 @@ let currentPage = 1;
 const ROWS_PER_PAGE = 5;
 let filteredRows = [];
 
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+if (typeof window.showError === 'undefined') {
+    window.showError = function(msg) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({ icon: 'error', title: 'Error', text: msg });
+        } else if (window.showToast) {
+            window.showToast(msg, 'error');
+        } else {
+            alert(msg);
+        }
+    };
+}
+
 // ─── IMMEDIATE GLOBAL EXPOSURE (Fail-safe) ───────────────────────────────────
 (function exposeGlobals() {
     window.filterBookings = filterBookings;
@@ -437,7 +450,67 @@ function filterBySignature() {
 function openWalkinModal() {
     bk_openModal('walkinBookingModal');
     var form = document.getElementById('walkinBookingForm');
-    if (form) form.dispatchEvent(new Event('input', { bubbles: true }));
+    
+    // Minimum 2 Days Lead Time Enforcement
+    var dateInput = document.getElementById('walkin_event_date');
+    if (dateInput) {
+        var today = new Date();
+        today.setDate(today.getDate() + 2); // At least 2 days from today
+        dateInput.min = today.toISOString().split('T')[0];
+    }
+    
+    // Bind Real-Time Validation Triggers
+    if (form) {
+        // Auto-fill min pax when package changes
+        var pkgSelect = document.getElementById('bookPackage');
+        var guestInput = document.getElementById('bookGuests');
+        if (pkgSelect && guestInput) {
+            pkgSelect.addEventListener('change', function() {
+                if (this.value) {
+                    var option = this.options[this.selectedIndex];
+                    var minGuests = option.getAttribute('data-min') || 1;
+                    guestInput.value = minGuests;
+                    guestInput.min = minGuests;
+                    
+                    // Trigger input event to clear any existing errors
+                    guestInput.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            });
+        }
+
+        form.querySelectorAll('.real-time-val').forEach(input => {
+            // Clear error dynamically as user types
+            input.addEventListener('input', function() {
+                this.style.borderColor = '#cbd5e1';
+                var feedback = this.parentElement.querySelector('.invalid-feedback');
+                if (feedback) feedback.innerText = '';
+                
+                // Extra Name Validation Logic (John John John checker)
+                if (this.name === 'first_name' || this.name === 'last_name' || this.name === 'middle_name') {
+                    var fn = document.getElementById('bookCustFirstName').value.toLowerCase().trim();
+                    var ln = document.getElementById('bookCustLastName').value.toLowerCase().trim();
+                    var mn = document.getElementById('bookCustMiddleName').value.toLowerCase().trim();
+                    
+                    if (fn && ln && fn === ln) {
+                        this.style.borderColor = '#ef4444';
+                        if (feedback) feedback.innerText = 'First name and Last name cannot be identical.';
+                    } else if (fn && mn && fn === mn) {
+                        this.style.borderColor = '#ef4444';
+                        if (feedback) feedback.innerText = 'First name and Middle name cannot be identical.';
+                    }
+                }
+            });
+
+            // Show error immediately if field is left empty on blur
+            input.addEventListener('blur', function() {
+                if (this.hasAttribute('required') && !this.value.trim()) {
+                    this.style.borderColor = '#ef4444';
+                    var feedback = this.parentElement.querySelector('.invalid-feedback');
+                    if (feedback) feedback.innerText = 'This field is required.';
+                }
+            });
+        });
+    }
 }
 
 function closeWalkinModal() {
@@ -452,14 +525,29 @@ function closeWalkinModal() {
 async function submitWalkinBooking(e) {
     if (e && e.preventDefault) e.preventDefault();
     const form = document.getElementById('walkinBookingForm');
+    let hasError = false;
 
-    // 1. Check for ValidationManager errors
-    if (form.querySelectorAll('.is-invalid').length > 0) {
-        window.showError('Please fix the errors highlighted in red before submitting.');
+    // Real-time custom required check
+    form.querySelectorAll('.real-time-val[required]').forEach(input => {
+        if (!input.value.trim()) {
+            input.style.borderColor = '#ef4444';
+            let feedback = input.parentElement.querySelector('.invalid-feedback');
+            if (feedback) feedback.innerText = 'This field is required.';
+            hasError = true;
+        }
+    });
+
+    // Check custom JS errors from real-time events
+    form.querySelectorAll('.invalid-feedback').forEach(feedback => {
+        if (feedback.innerText.trim() !== '') hasError = true;
+    });
+
+    if (hasError) {
+        window.showError('Please complete all required fields correctly before submitting.');
         return;
     }
 
-    // 2. HTML5 Check
+    // HTML5 Fallback
     if (!form.checkValidity()) {
         form.reportValidity();
         return;
@@ -474,19 +562,14 @@ async function submitWalkinBooking(e) {
     for (let [key, value] of formData.entries()) {
         if (key === 'total_amount') {
             data[key] = parseFloat(value.replace(/[₱,]/g, '')) || 0;
-        } else if (['province', 'city', 'barangay', 'venue_address'].includes(key)) {
-            // We combine them or keep separate? Usually backend expects venue_address as a string.
-            // Let's keep separate fields if the backend supports them, or concatenate.
-            // Based on User Request 3, they want these fields 'meron laman'.
-            data[key] = value;
+        } else if (key === 'city') {
+            data['municipality'] = value;
+        } else if (key === 'venue_address') {
+            data['landmark'] = value;
         } else {
             data[key] = value;
         }
     }
-
-    // Standardize venue_address to include specific fields for the backend if it only expects one string
-    const fullAddress = `${data.venue_address}, ${data.barangay}, ${data.city}, ${data.province}`;
-    data.venue_address = fullAddress;
 
     // 4. Guest Capacity Check (Double Check)
     const pkgSelect = document.getElementById('bookPackage');

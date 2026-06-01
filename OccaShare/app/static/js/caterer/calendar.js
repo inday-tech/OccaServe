@@ -826,13 +826,56 @@ async function submitManualEvent(e) {
             force_override: forceOverride
         };
 
-        const res = await window.apiAction('/caterer/api/bookings/manual', {
-            method: 'POST',
-            body: JSON.stringify(payload),
-            muteToast: true
-        }, btn);
-
-        if (res) {
+        try {
+            const res = await fetch('/caterer/api/bookings/manual', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            const data = await res.json();
+            
+            if (!res.ok) {
+                let detailStr = data.detail || data.message || 'Failed to create booking';
+                const errBox = document.getElementById('manualBookingFormError');
+                
+                if (typeof detailStr === 'string' && detailStr.includes('|')) {
+                    const parts = detailStr.split('|');
+                    const fieldId = parts[0];
+                    const msg = parts[1];
+                    
+                    // Show text under the specific field
+                    window.setFieldError(fieldId, msg);
+                    
+                    // Scroll to the field smoothly
+                    const targetEl = document.getElementById(fieldId);
+                    if (targetEl) {
+                        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        targetEl.focus();
+                    }
+                    
+                    // Optional: Still show general banner, or clear it
+                    if (errBox) errBox.style.display = 'none';
+                } else {
+                    // Fallback to banner if no field specified
+                    if (errBox) {
+                        errBox.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${detailStr}`;
+                        errBox.style.display = 'flex';
+                    } else {
+                        showNotification("Error", detailStr, "error");
+                    }
+                }
+                
+                btn.innerHTML = 'Create Booking';
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.style.cursor = 'pointer';
+                return;
+            }
+            
+            // Clear any previous inline errors on success
+            const errBox = document.getElementById('manualBookingFormError');
+            if (errBox) errBox.style.display = 'none';
             closeModal('manualBookingModal');
             showNotification("Success", "Booking successfully recorded to your system.", "success");
 
@@ -843,7 +886,7 @@ async function submitManualEvent(e) {
 
             // Real-Time Update: Prepend to Sidebar list
             injectBookingToSidebar({
-                id: res.booking_id || 'NEW',
+                id: data.booking_id || 'NEW',
                 customer: payload.first_name + ' ' + payload.last_name,
                 type: payload.event_type === 'Other' ? document.getElementById('manOtherType').value : payload.event_type,
                 eventName: payload.event_name,
@@ -859,6 +902,11 @@ async function submitManualEvent(e) {
             document.getElementById('displayTotal').innerText = '₱0.00';
             const badge = document.getElementById('userDetectionBadge');
             if (badge) badge.style.display = 'none';
+        } catch (e) {
+            console.error(e);
+            showNotification("Error", "A network error occurred while submitting.", "error");
+            btn.innerHTML = 'Create Booking';
+            btn.disabled = false;
         }
     }
 }

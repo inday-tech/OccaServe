@@ -205,6 +205,15 @@ async def alacarte_checkout_submit(
         return {"success": False, "message": "Unauthorized"}
     
     try:
+        # Spam Limit Validation (Flow B Rule 1)
+        unpaid_spam_count = db.query(models.Booking).filter(
+            models.Booking.user_id == user.id,
+            models.Booking.status.in_(['draft', 'pending', 'pending_quotation', 'awaiting_caterer', 'awaiting_payment', 'pending_payment']),
+            models.Booking.id != (booking_id or 0)
+        ).count()
+        if unpaid_spam_count >= 2:
+            return {"success": False, "message": "Spam Protection: You have 2 or more unpaid/pending bookings. Please complete them first."}
+
         # 1. Update or Create Booking
         event_date_obj = date.fromisoformat(delivery_date)
         event_time_obj = datetime.strptime(delivery_time, "%H:%M").time()
@@ -493,6 +502,16 @@ async def step_details_submit(
     # Restrict events to standard operating hours (6:00 AM to 9:00 PM)
     if event_time.hour < 6 or event_time.hour > 21:
         return RedirectResponse(url=f"{redirect_base}?booking_error=Please+select+a+time+between+6:00+AM+and+9:00+PM.", status_code=303)
+
+    # 🚨 VALIDATION 1.8: Unpaid Booking Spam Limit (Flow B Rule 1)
+    unpaid_spam_count = db.query(models.Booking).filter(
+        models.Booking.user_id == user.id,
+        models.Booking.status.in_(['draft', 'pending', 'pending_quotation', 'awaiting_caterer', 'awaiting_payment', 'pending_payment']),
+        models.Booking.id != (booking_id or 0)
+    ).count()
+
+    if unpaid_spam_count >= 2:
+        return RedirectResponse(url=f"{redirect_base}?booking_error=Spam+Protection:+You+have+2+or+more+unpaid+or+pending+bookings.+Please+pay+the+downpayment+or+cancel+them+before+making+a+new+one.", status_code=303)
 
     # 🚨 VALIDATION 2: Anti-Spam / Duplicate Booking Check
     existing_duplicate = db.query(models.Booking).filter(

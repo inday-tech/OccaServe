@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Form, Request, UploadFile, File, Body
 from typing import Optional, List
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from pydantic import BaseModel
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from ..core.templates import templates
@@ -215,13 +215,24 @@ async def create_manual_booking(
         customer_email = data.get("customer_email", "").strip()
         customer_contact = data.get("customer_contact", "").strip()
         
+        # Security: Prevent Caterer Self-Booking
+        if customer_email.lower() == user.email.lower() or (customer_contact and customer_contact == user.phone_number):
+            raise HTTPException(status_code=400, detail="manCustEmail|Security Violation: You cannot create a booking using your own caterer email or contact number.")
+        
         first_name = data.get("first_name", "").strip()
         last_name = data.get("last_name", "").strip()
         middle_name = data.get("middle_name", "").strip()
         
         if not first_name or not last_name:
-            raise HTTPException(status_code=400, detail="First name and Last name are required")
+            raise HTTPException(status_code=400, detail="manFirstName|First name and Last name are required")
             
+        # Enterprise-Grade Name Validation (No John John John)
+        fname_lower = first_name.lower()
+        lname_lower = last_name.lower()
+        mname_lower = middle_name.lower()
+        if fname_lower == lname_lower or (middle_name and fname_lower == mname_lower):
+            raise HTTPException(status_code=400, detail="manLastName|Invalid name format: First, middle, and last names cannot be identical.")
+
         customer_name = f"{first_name} {middle_name} {last_name}".replace("  ", " ").strip()
         
         province = data.get("province", "").strip()
@@ -230,7 +241,7 @@ async def create_manual_booking(
         landmark = data.get("landmark", "").strip()
         
         if not province or not municipality or not barangay:
-            raise HTTPException(status_code=400, detail="Complete address (Province, Municipality, Barangay) is required")
+            raise HTTPException(status_code=400, detail="manProvince|Complete address (Province, Municipality, Barangay) is required")
             
         venue_address = f"{landmark + ', ' if landmark else ''}{barangay}, {municipality}, {province}"
 
@@ -239,17 +250,17 @@ async def create_manual_booking(
         if "@" in customer_email:
             # Gmail Only Policy
             if not customer_email.lower().endswith("@gmail.com"):
-                 raise HTTPException(status_code=400, detail="For security and reliability, only Gmail accounts are supported for customer records.")
+                 raise HTTPException(status_code=400, detail="manCustEmail|For security and reliability, only Gmail accounts are supported for customer records.")
             target_user = db.query(models.User).filter(models.User.email == customer_email).first()
         
         # Contact Validation
         if customer_contact:
             clean_contact = "".join(filter(str.isdigit, customer_contact))
             if not clean_contact.startswith("09") or len(clean_contact) != 11:
-                raise HTTPException(status_code=400, detail="Invalid contact number. Must be a valid 11-digit PH mobile number (09xx).")
+                raise HTTPException(status_code=400, detail="manCustContact|Invalid contact number. Must be a valid 11-digit PH mobile number (09xx).")
             # Repetitive check (e.g. 09111111111)
             if len(set(clean_contact[2:])) <= 2:
-                 raise HTTPException(status_code=400, detail="Invalid contact number pattern detected. Please use a real mobile number.")
+                 raise HTTPException(status_code=400, detail="manCustContact|Invalid contact number pattern detected. Please use a real mobile number.")
 
         if not target_user:
             # Create a shadow/guest user
@@ -268,13 +279,26 @@ async def create_manual_booking(
         # 2. Check Availability & Constraints
         event_date_str = data.get("event_date", "")[:10]
         if not event_date_str:
-            raise HTTPException(status_code=400, detail="Event date is required.")
+            raise HTTPException(status_code=400, detail="manDate|Event date is required.")
             
         event_date = datetime.strptime(event_date_str, "%Y-%m-%d").date()
         
-        # Past Date Check
-        if event_date < date.today():
-            raise HTTPException(status_code=400, detail="Cannot create a booking for a past date.")
+        # Lead Time & Past Date Check
+        today = date.today()
+        if event_date <= today + timedelta(days=1):
+            raise HTTPException(status_code=400, detail="manDate|Bookings must be made at least 2 days in advance. Bookings for today or tomorrow are not allowed.")
+
+        # Anti-Double Booking Validation (Duplicate Detection)
+        event_type = data.get("event_type", "").strip()
+        duplicate_check = db.query(models.Booking).filter(
+            models.Booking.user_id == target_user.id,
+            models.Booking.event_date == event_date,
+            models.Booking.caterer_id == user.caterer_profile.id,
+            models.Booking.status != 'cancelled'
+        ).first()
+        
+        if duplicate_check:
+            raise HTTPException(status_code=400, detail=f"manDate|Duplicate Error: The customer '{target_user.first_name}' already has an active booking registered on {event_date.strftime('%b %d, %Y')}. Double-booking the same customer on the exact same day is prohibited to prevent data redundancy.")
 
         # Package Constraint Check
         package_id = data.get("package_id")
@@ -284,7 +308,7 @@ async def create_manual_booking(
             if package:
                 min_guests = package.min_guests or 1
                 if guest_count < min_guests:
-                    raise HTTPException(status_code=400, detail=f"The selected package '{package.name}' requires a minimum of {min_guests} guests.")
+                    raise HTTPException(status_code=400, detail=f"manGuests|The selected package '{package.name}' requires a minimum of {min_guests} guests.")
 
         existing_on_date = db.query(models.Booking).filter(
             models.Booking.caterer_id == user.caterer_profile.id,
@@ -301,7 +325,7 @@ async def create_manual_booking(
         ).first()
         
         if manual_block:
-            raise HTTPException(status_code=400, detail=f"This date is manually blocked: {manual_block.reason or 'No reason provided'}. Unblock it first before adding bookings.")
+            raise HTTPException(status_code=400, detail=f"manDate|This date is manually blocked: {manual_block.reason or 'No reason provided'}. Unblock it first before adding bookings.")
         
         # Configurable capacity limit (caterer can override via force flag)
         max_cap = user.caterer_profile.max_bookings_per_day or 1
@@ -309,7 +333,7 @@ async def create_manual_booking(
         auto_block = user.caterer_profile.auto_block_enabled if user.caterer_profile.auto_block_enabled is not None else True
         
         if auto_block and existing_on_date >= max_cap and not force_override:
-            raise HTTPException(status_code=409, detail=f"Capacity Reached: You already have {existing_on_date}/{max_cap} active bookings on {event_date}. You can override this by confirming in the capacity warning dialog.")
+            raise HTTPException(status_code=409, detail=f"manDate|Capacity Reached: You already have {existing_on_date}/{max_cap} active bookings on {event_date}. You can override this by confirming in the capacity warning dialog.")
 
         # 3. Create Booking
         event_time_str = data.get("event_time")
@@ -377,6 +401,9 @@ async def create_manual_booking(
         
         db.commit()
         return {"status": "success", "booking_id": new_booking.id}
+    except HTTPException as he:
+        # Re-raise so FastAPI handles it correctly
+        raise he
     except Exception as e:
         db.rollback()
         print(f"[CATERER MANUAL BOOKING ERROR] {e}")
@@ -1320,9 +1347,21 @@ async def set_balance_due_date(
         raise HTTPException(status_code=404, detail="Booking not found")
 
     try:
-        from datetime import datetime
+        from datetime import datetime, date
         # Validate format
         new_date = datetime.strptime(req.due_date, '%Y-%m-%d').date()
+        today = date.today()
+        
+        # Validation 1: No Past Dates
+        if new_date < today:
+            raise HTTPException(status_code=400, detail="Deadline cannot be set to a past date.")
+            
+        # Validation 2: Event Date Constraint
+        if booking.event_date:
+            event_date = booking.event_date.date() if isinstance(booking.event_date, datetime) else booking.event_date
+            if new_date > event_date:
+                raise HTTPException(status_code=400, detail="Deadline cannot be set after the scheduled Event Date.")
+                
         booking.balance_due_date = new_date
         
         # Add History

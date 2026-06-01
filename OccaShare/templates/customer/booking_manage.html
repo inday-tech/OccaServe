@@ -130,6 +130,65 @@
     </div>
 </div>
 
+<!-- ── OUTSTANDING BALANCE BANNER ── -->
+{% if booking.status == 'confirmed' and booking.payment_plan != 'full' and booking.balance_due_date and booking.payment_status not in ['paid', 'proof_submitted', 'balance_reupload_requested'] %}
+    {% set total_val = booking.total_amount|float %}
+    {% set res_fee = booking.reservation_fee|float if booking.reservation_fee else 0.0 %}
+    {% set balance_val = total_val - res_fee %}
+    
+    {% if balance_val > 0 %}
+    <div style="background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border-left: 4px solid #f97316; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(249, 115, 22, 0.08);">
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <div style="width: 45px; height: 45px; background: #ffedd5; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #ea580c; font-size: 1.25rem;">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div>
+                <h3 style="margin: 0 0 4px 0; color: #9a3412; font-size: 1rem; font-weight: 800;">Action Required: Outstanding Balance</h3>
+                <p style="margin: 0; color: #c2410c; font-size: 0.85rem; font-weight: 500;">
+                    You have a remaining balance of <strong style="font-weight: 800;">₱{{ "{:,.2f}".format(balance_val) }}</strong>. 
+                    Please settle this amount on or before <strong style="font-weight: 800;">{{ booking.balance_due_date.strftime('%B %d, %Y') }}</strong>.
+                </p>
+                <div id="deadlineCountdown" style="margin-top: 6px; font-size: 0.75rem; font-weight: 800; color: #ea580c; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; background: rgba(234, 88, 12, 0.1); border-radius: 20px;">
+                    <i class="fas fa-clock"></i> Calculating time remaining...
+                </div>
+            </div>
+        </div>
+        <a href="/bookings/step/payment/{{ booking.id }}?balance=true" class="btn-action-elite btn-primary-orange" style="white-space: nowrap; padding: 0.75rem 1.5rem; font-size: 0.85rem; background: #ea580c !important; border: none; box-shadow: 0 4px 14px rgba(234, 88, 12, 0.3);">
+            Settle Balance Now <i class="fas fa-wallet"></i>
+        </a>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const dueStr = "{{ booking.balance_due_date.strftime('%Y-%m-%d') }}T23:59:59";
+            const dueDate = new Date(dueStr);
+            const today = new Date();
+            
+            const diffTime = dueDate - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            const countdownEl = document.getElementById('deadlineCountdown');
+            if (diffDays < 0) {
+                countdownEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> PAYMENT OVERDUE';
+                countdownEl.style.color = '#dc2626';
+                countdownEl.style.background = '#fef2f2';
+            } else if (diffDays === 0) {
+                countdownEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> DUE TODAY';
+                countdownEl.style.color = '#dc2626';
+                countdownEl.style.background = '#fef2f2';
+            } else if (diffDays <= 3) {
+                countdownEl.innerHTML = '<i class="fas fa-clock"></i> DUE IN ' + diffDays + ' DAY' + (diffDays > 1 ? 'S' : '');
+                countdownEl.style.color = '#ea580c';
+            } else {
+                countdownEl.innerHTML = '<i class="fas fa-calendar-check"></i> Due in ' + diffDays + ' days';
+                countdownEl.style.color = '#64748b';
+                countdownEl.style.background = '#f1f5f9';
+            }
+        });
+    </script>
+    {% endif %}
+{% endif %}
+
 <!-- ── REFINED STEPPER ── -->
 <div class="stepper-panel">
     <div class="steps-row">

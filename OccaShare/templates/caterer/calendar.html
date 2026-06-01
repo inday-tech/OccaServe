@@ -302,6 +302,16 @@
     .cal-modal-actions .btn-full {
         grid-column: span 2;
     }
+    
+    .field-error-msg {
+        font-size: 0.75rem;
+        color: #ef4444;
+        margin-top: 0.25rem;
+        display: none;
+    }
+    .field-error-msg:not(:empty) {
+        display: block;
+    }
 </style>
 {% endblock %}
 
@@ -562,6 +572,10 @@
                     <!-- Injected via JS -->
                 </div>
 
+                <!-- Inline Error Banner for Backend Errors -->
+                <div id="manualBookingFormError" style="display: none; background: #fef2f2; border: 1px solid #fecaca; color: #ef4444; padding: 12px 16px; border-radius: 8px; margin-bottom: 1.5rem; font-weight: 600; font-size: 0.9rem; align-items: center; gap: 8px;">
+                </div>
+
                 <!-- CLIENT INFORMATION SECTION -->
                 <div style="margin-bottom: 2rem;">
                     <h4
@@ -572,7 +586,7 @@
                         <div class="form-group-pro">
                             <label>First Name <span style="color: #ef4444;">*</span></label>
                             <input type="text" id="manFirstName" name="first_name" class="control-pro" required
-                                onblur="validateFirstName()">
+                                oninput="validateFirstName()">
                             <div class="field-error-msg" id="error-manFirstName"></div>
                         </div>
                         <div class="form-group-pro">
@@ -582,19 +596,19 @@
                         <div class="form-group-pro">
                             <label>Last Name <span style="color: #ef4444;">*</span></label>
                             <input type="text" id="manLastName" name="last_name" class="control-pro" required
-                                onblur="validateLastName()">
+                                oninput="validateLastName()">
                             <div class="field-error-msg" id="error-manLastName"></div>
                         </div>
                         <div class="form-group-pro" style="grid-column: span 2;">
                             <label>Email Address <span style="color: #ef4444;">*</span></label>
                             <input type="email" id="manCustEmail" name="customer_email" class="control-pro" required
-                                onblur="validateEmail()">
+                                oninput="validateEmail()">
                             <div class="field-error-msg" id="error-manCustEmail"></div>
                         </div>
                         <div class="form-group-pro">
                             <label>Contact Number (PH) <span style="color: #ef4444;">*</span></label>
                             <input type="text" id="manCustContact" name="customer_contact" class="control-pro" required
-                                onblur="validateContact()">
+                                oninput="validateContact()">
                             <div class="field-error-msg" id="error-manCustContact"></div>
                         </div>
                         <div class="form-group-pro">
@@ -619,7 +633,7 @@
                         <div class="form-group-pro" style="grid-column: span 2;">
                             <label>Event Name <span style="color: #ef4444;">*</span></label>
                             <input type="text" id="manEventName" name="event_name" class="control-pro" required
-                                onblur="validateEventName()">
+                                oninput="validateEventName()">
                             <div class="field-error-msg" id="error-manEventName"></div>
                         </div>
                         <div class="form-group-pro">
@@ -637,7 +651,7 @@
                         </div>
                         <div id="otherEventTypeDiv" class="form-group-pro" style="display: none; grid-column: span 3;">
                             <label>Specify Event Type <span style="color: #ef4444;">*</span></label>
-                            <input type="text" id="manOtherType" class="control-pro" onblur="validateOtherType()">
+                            <input type="text" id="manOtherType" class="control-pro" oninput="validateOtherType()">
                             <div class="field-error-msg" id="error-manOtherType"></div>
                         </div>
                         <div class="form-group-pro">
@@ -649,13 +663,13 @@
                         </div>
                         <div class="form-group-pro">
                             <label>Call Time <span style="color: #ef4444;">*</span></label>
-                            <input type="time" id="manTime" class="control-pro" required onblur="validateEventTime()">
+                            <input type="time" id="manTime" class="control-pro" required onchange="validateEventTime()">
                             <div class="field-error-msg" id="error-manTime"></div>
                         </div>
                         <div class="form-group-pro">
                             <label>Guest Count <span style="color: #ef4444;">*</span></label>
                             <input type="number" id="manGuests" name="guest_count" class="control-pro" required min="1"
-                                onblur="validateGuestCount()">
+                                oninput="validateGuestCount()">
                             <div class="field-error-msg" id="error-manGuests"></div>
                         </div>
                     </div>
@@ -788,6 +802,8 @@
         </form>
     </div>
 </div>
+
+
 
 <!-- SMART ROI BREAKDOWN MODAL -->
 <div id="roiBreakdownModal" class="occ-modal-overlay">
