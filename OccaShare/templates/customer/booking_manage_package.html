@@ -311,7 +311,15 @@
                     <button onclick="openReuploadProofModal()" class="btn-action-elite btn-primary-orange" style="background: #ef4444; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);">
                         Re-upload Proof of Payment <i class="fas fa-file-upload"></i>
                     </button>
-                {% elif booking.payment_status == 'pending' %}
+                {% elif booking.status in ['pending_quotation', 'awaiting_customer'] %}
+                    <a href="/bookings/step/quotation/{{ booking.id }}" class="btn-action-elite btn-primary-orange">
+                        Sign Contract <i class="fas fa-file-signature"></i>
+                    </a>
+                {% elif booking.status == 'awaiting_caterer' %}
+                    <a href="/bookings/step/quotation/{{ booking.id }}" class="btn-action-elite btn-outline-slate">
+                        View Contract <i class="fas fa-file-contract"></i>
+                    </a>
+                {% elif booking.status in ['pending_payment', 'awaiting_payment'] and booking.payment_status not in ['proof_submitted', 'reupload_requested'] %}
                     <a href="/bookings/step/payment/{{ booking.id }}" class="btn-action-elite btn-primary-orange">
                         Settle Reservation <i class="fas fa-credit-card"></i>
                     </a>

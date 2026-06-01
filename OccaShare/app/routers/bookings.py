@@ -734,6 +734,10 @@ async def step_payment_v2_page(booking_id: int, request: Request, db: Session = 
     from ..services.quotation import quotation_service
     quotation = quotation_service.get_quotation_by_booking(db, booking_id)
 
+    # STRICT GATE: Ensure both parties have signed before allowing payment
+    if not quotation or quotation.status != 'signed':
+        return RedirectResponse(url=f"/bookings/step/quotation/{booking_id}?error_msg=Both+parties+must+sign+the+contract+before+proceeding+to+payment", status_code=303)
+
     return templates.TemplateResponse("customer/booking_wizard/step_payment.html", {
         "request": request,
         "booking_id": booking_id,
@@ -771,6 +775,10 @@ async def step_payment_submit(
     booking = db.query(models.Booking).get(actual_booking_id)
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
+
+    # STRICT GATE: Ensure both parties have signed before processing payment
+    if not booking.quotation or booking.quotation.status != 'signed':
+        return RedirectResponse(url=f"/bookings/step/quotation/{actual_booking_id}?error_msg=Both+parties+must+sign+the+contract+before+proceeding+to+payment", status_code=303)
 
     # Save payment plan
     booking.payment_plan = payment_plan
