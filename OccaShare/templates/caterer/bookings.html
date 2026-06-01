@@ -574,6 +574,12 @@
                                 <i class="fas fa-receipt"></i> Track Expenses
                             </button>
                             {% endif %}
+                            
+                            <!-- Add Report Issue Button -->
+                            <button type="button" onclick="openReportModal('{{ booking.id }}')"
+                                style="width: 100%; text-align: left; padding: 0.75rem 1rem; background: none; border: none; font-size: 0.85rem; color: #ef4444; cursor: pointer; display: flex; align-items: center; gap: 0.6rem; transition: background 0.2s;">
+                                <i class="fas fa-flag"></i> Report Issue
+                            </button>
                         </div>
 
                         <!-- Hidden Menu Info for Modal -->
@@ -1382,6 +1388,49 @@
     </div>
 </div>
 
+<!-- Report Issue Modal -->
+<div id="reportIssueModal" class="occ-modal-overlay" style="z-index: 1000000;">
+    <div class="occ-modal-box sz-sm occ-content-pop">
+        <div class="occ-modal-header" style="background: #fef2f2;">
+            <div>
+                <h2 class="occ-modal-title" style="color: #991b1b;"><i class="fas fa-flag"></i> Report Issue</h2>
+                <div class="occ-modal-subtitle">File a dispute against a customer</div>
+            </div>
+            <button onclick="closeReportModal()" class="occ-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="occ-modal-body">
+            <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 1.5rem; font-weight: 500;">Please provide details of your dispute. This will be sent to the OccaServe Admin for investigation.</p>
+            
+            <form id="reportForm" onsubmit="submitReport(event)">
+                <input type="hidden" id="reportBookingId" name="booking_id">
+                <div class="occ-form-group">
+                    <label class="occ-form-label" style="font-weight: 800; color: #991b1b;">Reason *</label>
+                    <select name="reason" required class="occ-form-input">
+                        <option value="">Select a reason...</option>
+                        <option value="Customer did not show up">Customer did not show up</option>
+                        <option value="Fake payment or receipt">Fake payment or receipt</option>
+                        <option value="Bad behavior or harassment">Bad behavior or harassment</option>
+                        <option value="Customer refused to pay balance">Customer refused to pay balance</option>
+                        <option value="Other issue">Other issue</option>
+                    </select>
+                </div>
+                <div class="occ-form-group">
+                    <label class="occ-form-label" style="font-weight: 800; color: #991b1b;">Details *</label>
+                    <textarea name="details" required class="occ-form-input" style="height: 120px; resize: none; border-color: #fecaca;" placeholder="Describe what happened in detail..."></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="occ-modal-footer">
+            <button onclick="closeReportModal()" class="btn-sm-outline">Cancel</button>
+            <button type="submit" form="reportForm" class="btn-sm-danger" style="background: #dc2626; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 0.5rem; width: 100%;">
+                Submit Report <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- ═══════════════════════════════════════════════════
      TIER 1 FORCED ACTION (REMOVED MODAL, REPLACED BY BANNER)
 ════════════════════════════════════════════════════ -->
@@ -1434,4 +1483,66 @@
 {% block extra_js %}
 <script src="{{ url_for('static', path='/js/auth/location_data.js') }}"></script>
 <script src="{{ url_for('static', path='/js/caterer/bookings.js') }}?v={{ range(10000, 99999) | random }}"></script>
+
+<script>
+    function openReportModal(bookingId) {
+        document.getElementById('reportBookingId').value = bookingId;
+        if (typeof window.bk_openModal === 'function') {
+            window.bk_openModal('reportIssueModal');
+        } else {
+            const modal = document.getElementById('reportIssueModal');
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('active'), 10);
+        }
+    }
+
+    function closeReportModal() {
+        if (typeof window.bk_closeModal === 'function') {
+            window.bk_closeModal('reportIssueModal');
+        } else {
+            const modal = document.getElementById('reportIssueModal');
+            modal.classList.remove('active');
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
+        }
+        document.getElementById('reportForm').reset();
+    }
+
+    async function submitReport(event) {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+        const bookingId = formData.get('booking_id');
+        const submitBtn = form.querySelector('button[type="submit"]');
+        
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+
+        try {
+            const response = await fetch(`/api/bookings/${bookingId}/report`, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                closeReportModal();
+                Swal.fire({
+                    title: 'Report Submitted',
+                    text: data.message,
+                    icon: 'success',
+                    confirmButtonColor: '#ef4444'
+                });
+            } else {
+                Swal.fire('Error', data.message, 'error');
+            }
+        } catch (error) {
+            Swal.fire('Error', 'An unexpected error occurred. Please try again.', 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Submit Report <i class="fas fa-paper-plane"></i>';
+        }
+    }
+</script>
 {% endblock %}

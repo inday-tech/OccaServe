@@ -298,6 +298,10 @@
                 <a href="/customer/messages?caterer_id={{ booking.caterer_id }}" class="btn-action-elite btn-outline-slate">
                     Message Caterer <i class="fas fa-comments"></i>
                 </a>
+                
+                <button onclick="openReportModal()" class="btn-action-elite" style="background: transparent; border: 2px solid #fee2e2; color: #ef4444; margin-top: 0.5rem;">
+                    Report Issue <i class="fas fa-flag"></i>
+                </button>
             </div>
         </div>
 
@@ -452,6 +456,38 @@
     </div>
 </div>
 
+<!-- Report Issue Modal -->
+<div id="reportIssueModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div style="background: white; width: 95%; max-width: 450px; border-radius: 20px; padding: 2rem; position: relative;">
+        <button onclick="closeReportModal()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.2rem; color: var(--dm-slate-400); cursor: pointer;"><i class="fas fa-times"></i></button>
+        <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--up-slate-900); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-flag" style="color: #ef4444;"></i> Report Issue
+        </h3>
+        <p style="font-size: 0.8rem; color: var(--dm-slate-400); margin-bottom: 1.5rem; font-weight: 500;">Please provide details of your dispute. This will be sent to the OccaServe Admin for investigation.</p>
+        
+        <form id="reportForm" onsubmit="submitReport(event)">
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--up-slate-900); margin-bottom: 0.5rem; text-transform: uppercase;">Reason <span style="color: #ef4444;">*</span></label>
+                <select name="reason" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--dm-slate-200); border-radius: 12px; font-family: 'Poppins', sans-serif; font-size: 0.85rem; color: var(--up-slate-900); background: #fff; outline: none;">
+                    <option value="">Select a reason...</option>
+                    <option value="Caterer did not arrive">Caterer did not arrive</option>
+                    <option value="Scam or fraud">Scam or fraud</option>
+                    <option value="Bad food quality (spoiled)">Bad food quality (spoiled)</option>
+                    <option value="Bad behavior or harassment">Bad behavior or harassment</option>
+                    <option value="Other issue">Other issue</option>
+                </select>
+            </div>
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--up-slate-900); margin-bottom: 0.5rem; text-transform: uppercase;">Details <span style="color: #ef4444;">*</span></label>
+                <textarea name="details" required rows="4" placeholder="Describe what happened in detail..." style="width: 100%; padding: 0.75rem; border: 1px solid var(--dm-slate-200); border-radius: 12px; font-family: 'Poppins', sans-serif; font-size: 0.85rem; color: var(--up-slate-900); background: #fff; outline: none; resize: none;"></textarea>
+            </div>
+            <button type="submit" class="btn-action-elite btn-primary-orange" style="width: 100%; background: #ef4444; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);">
+                Submit Report <i class="fas fa-paper-plane"></i>
+            </button>
+        </form>
+    </div>
+    </div>
+</div>
 
 {% endblock %}
 
@@ -526,5 +562,49 @@
             window.history.replaceState({}, document.title, window.location.pathname);
         }
     });
+
+    function openReportModal() {
+        document.getElementById('reportIssueModal').style.display = 'flex';
+    }
+
+    function closeReportModal() {
+        document.getElementById('reportIssueModal').style.display = 'none';
+        document.getElementById('reportForm').reset();
+    }
+
+    async function submitReport(event) {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+        const submitBtn = form.querySelector('button[type="submit"]');
+        
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+
+        try {
+            const response = await fetch('/api/bookings/{{ booking.id }}/report', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                closeReportModal();
+                Swal.fire({
+                    title: 'Report Submitted',
+                    text: data.message,
+                    icon: 'success',
+                    confirmButtonColor: '#ef4444'
+                });
+            } else {
+                Swal.fire('Error', data.message, 'error');
+            }
+        } catch (error) {
+            Swal.fire('Error', 'An unexpected error occurred. Please try again.', 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Submit Report <i class="fas fa-paper-plane"></i>';
+        }
+    }
 </script>
 {% endblock %}

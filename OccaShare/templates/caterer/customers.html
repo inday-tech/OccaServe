@@ -138,11 +138,6 @@
                                     <button onclick="window.quickEditCustomer({{ customer.id }})">
                                         <i class="fas fa-pen text-warning"></i> Quick Edit
                                     </button>
-                                    <div class="dropdown-divider"></div>
-                                    <button onclick="window.quickToggleBlacklist({{ customer.id }}, '{{ customer.status }}')">
-                                        <i class="fas {{ 'fa-check text-success' if customer.status == 'Blacklisted' else 'fa-ban text-danger' }}"></i> 
-                                        {{ 'Restore Account' if customer.status == 'Blacklisted' else 'Block Account' }}
-                                    </button>
                                 </div>
                             </div>
                         </td>
@@ -280,9 +275,6 @@
             <button class="tab-btn-pro" data-tab="history" onclick="switchIntelTab('history', this)">
                 Ledger
             </button>
-            <button class="tab-btn-pro" data-tab="risk" onclick="switchIntelTab('risk', this)">
-                Security
-            </button>
         </div>
 
         <div class="occ-modal-body flex-1 overflow-y-auto modal-padding">
@@ -354,24 +346,6 @@
             <div id="intel-history" class="intel-content" style="display: none;">
                 <div class="ledger-timeline" id="profHistory">
                     <!-- Populated dynamically -->
-                </div>
-            </div>
-
-            <!-- Risk Tab -->
-            <div id="intel-risk" class="intel-content" style="display: none; height: 100%;">
-                <div class="dashboard-card p-4 bg-danger-light border-danger-subtle d-flex" style="flex-direction: column; height: 100%;">
-                    <div class="flex-1">
-                        <h4 class="text-danger-dark font-semibold mb-2"><i class="fas fa-exclamation-triangle" style="margin-right: 0.5rem;"></i> Account Restriction</h4>
-                        <p class="text-sm text-danger-dark m-0">Placing an account on the blacklist prevents them from submitting future booking requests. Use this protocol for fraudulent activity or severe policy violations.</p>
-                        
-                        <div class="form-group-pro" style="margin-top: 1rem; margin-bottom: 0;">
-                            <label class="form-label text-danger-dark">Reason for Restriction / Restoration <span class="text-danger">*</span></label>
-                            <textarea id="blacklistReason" class="form-control" rows="3" placeholder="e.g. Cancelled 3 times without notice..." style="border-color: #fca5a5;"></textarea>
-                        </div>
-                    </div>
-                    <div style="margin-top: auto; text-align: right; padding-top: 1.5rem;">
-                        <button type="button" class="btn-primary bg-danger border-none" id="blacklistBtn" onclick="window.toggleBlacklist()">Execute Block</button>
-                    </div>
                 </div>
             </div>
         </div>

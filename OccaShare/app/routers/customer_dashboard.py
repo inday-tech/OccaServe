@@ -1214,3 +1214,46 @@ async def verification_ws(
     except WebSocketDisconnect:
         manager.disconnect(client_id)
 
+
+@router.post("/api/bookings/{booking_id}/report")
+async def report_booking(
+    booking_id: int,
+    request: Request,
+    reason: str = Form(...),
+    details: str = Form(...),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(customer_only)
+):
+    import uuid
+    booking = db.query(models.Booking).filter(
+        models.Booking.id == booking_id,
+        models.Booking.user_id == user.id
+    ).first()
+
+    if not booking:
+        return JSONResponse(status_code=404, content={"success": False, "message": "Booking not found"})
+
+    # Check if a report already exists
+    existing = db.query(models.DisputeReport).filter(
+        models.DisputeReport.booking_id == booking_id,
+        models.DisputeReport.reporter_id == user.id
+    ).first()
+
+    if existing:
+        return JSONResponse(status_code=400, content={"success": False, "message": f"You already have an active report for this booking: {existing.reference_id}"})
+
+    reference_id = f"REP-{uuid.uuid4().hex[:8].upper()}"
+    
+    report = models.DisputeReport(
+        reference_id=reference_id,
+        booking_id=booking_id,
+        reporter_id=user.id,
+        reported_id=booking.caterer.user_id,
+        reason=reason,
+        details=details,
+        status="pending"
+    )
+    db.add(report)
+    db.commit()
+
+    return JSONResponse(content={"success": True, "message": f"Report submitted successfully. Reference ID: {reference_id}"})

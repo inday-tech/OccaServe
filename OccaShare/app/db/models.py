@@ -464,6 +464,26 @@ class PlatformFeedback(Base):
 
     user = relationship("User", back_populates="platform_feedback")
 
+class DisputeReport(Base):
+    __tablename__ = "dispute_reports"
+
+    id = Column(Integer, primary_key=True, index=True)
+    reference_id = Column(String, unique=True, index=True) # e.g. REP-10293
+    booking_id = Column(Integer, ForeignKey("bookings.id"), nullable=True)
+    reporter_id = Column(Integer, ForeignKey("users.id"))
+    reported_id = Column(Integer, ForeignKey("users.id"))
+    reason = Column(String)
+    details = Column(Text, nullable=True)
+    evidence_url = Column(String, nullable=True)
+    status = Column(String, default="pending") # pending, under_investigation, resolved, dismissed
+    admin_notes = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+
+    booking = relationship("Booking")
+    reporter = relationship("User", foreign_keys=[reporter_id])
+    reported = relationship("User", foreign_keys=[reported_id])
+
 class Promotion(Base):
     __tablename__ = "promotions"
 

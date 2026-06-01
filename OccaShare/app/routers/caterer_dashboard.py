@@ -4526,3 +4526,50 @@ async def settle_dues_api(
     db.commit()
     
     return {"status": "success", "message": "Settlement proof submitted successfully"}
+
+
+@router.post("/api/bookings/{booking_id}/report")
+async def caterer_report_booking(
+    booking_id: int,
+    request: Request,
+    reason: str = Form(...),
+    details: str = Form(...),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    import uuid
+    from fastapi.responses import JSONResponse
+    
+    # Verify caterer owns this booking
+    booking = db.query(models.Booking).join(models.CatererProfile).filter(
+        models.Booking.id == booking_id,
+        models.CatererProfile.user_id == user.id
+    ).first()
+
+    if not booking:
+        return JSONResponse(status_code=404, content={"success": False, "message": "Booking not found"})
+
+    # Check if a report already exists from this caterer for this booking
+    existing = db.query(models.DisputeReport).filter(
+        models.DisputeReport.booking_id == booking_id,
+        models.DisputeReport.reporter_id == user.id
+    ).first()
+
+    if existing:
+        return JSONResponse(status_code=400, content={"success": False, "message": f"You already have an active report for this booking: {existing.reference_id}"})
+
+    reference_id = f"REP-{uuid.uuid4().hex[:8].upper()}"
+    
+    report = models.DisputeReport(
+        reference_id=reference_id,
+        booking_id=booking_id,
+        reporter_id=user.id,
+        reported_id=booking.user_id, # Report the customer
+        reason=reason,
+        details=details,
+        status="pending"
+    )
+    db.add(report)
+    db.commit()
+
+    return JSONResponse(content={"success": True, "message": f"Report submitted successfully. Reference ID: {reference_id}"})

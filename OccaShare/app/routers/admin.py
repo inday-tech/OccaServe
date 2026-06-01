@@ -196,6 +196,64 @@ async def system_health(db: Session = Depends(database.get_db), user: models.Use
         "server_time": datetime.now().strftime("%I:%M:%S %p")
     }
 
+@router.get("/disputes", response_class=HTMLResponse)
+async def admin_disputes(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(admin_only)
+):
+    from sqlalchemy.orm import joinedload
+    disputes = db.query(models.DisputeReport).options(
+        joinedload(models.DisputeReport.reporter),
+        joinedload(models.DisputeReport.reported),
+        joinedload(models.DisputeReport.booking)
+    ).order_by(models.DisputeReport.created_at.desc()).all()
+
+    return templates.TemplateResponse("admin/disputes.html", {
+        "request": request,
+        "user": user,
+        "disputes": disputes,
+        "active_page": "disputes"
+    })
+
+@router.post("/api/disputes/{dispute_id}/resolve")
+async def resolve_dispute(
+    dispute_id: int,
+    action: str = Form(...), # 'dismiss' or 'suspend_reported'
+    notes: str = Form(...),
+    db: Session = Depends(database.get_db),
+    admin: models.User = Depends(admin_only)
+):
+    from fastapi.responses import JSONResponse
+    dispute = db.query(models.DisputeReport).get(dispute_id)
+    if not dispute:
+        return JSONResponse(status_code=404, content={"success": False, "message": "Dispute not found"})
+
+    dispute.admin_notes = notes
+    dispute.resolved_at = func.now()
+
+    if action == "dismiss":
+        dispute.status = "dismissed"
+        msg = "Dispute dismissed."
+    elif action == "suspend_reported":
+        dispute.status = "resolved"
+        reported_user = dispute.reported
+        if reported_user:
+            reported_user.status = "suspended"
+            reported_user.status_reason = f"Suspended due to Dispute {dispute.reference_id}: {notes}"
+            
+            # Log Audit
+            audit = models.AuditLog(
+                user_id=reported_user.id,
+                action="account_suspended",
+                new_status="suspended",
+                notes=f"Suspended by Admin via Dispute {dispute.reference_id}: {notes}"
+            )
+            db.add(audit)
+        msg = f"Reported user ({reported_user.first_name}) suspended."
+    
+    db.commit()
+    return JSONResponse(content={"success": True, "message": msg})
 
 @router.get("/audit-logs", response_class=HTMLResponse)
 async def admin_audit_logs(
