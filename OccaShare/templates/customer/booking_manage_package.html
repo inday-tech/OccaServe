@@ -330,13 +330,13 @@
                         </div>
                         <p style="color: #991b1b; font-size: 0.75rem; margin: 4px 0 0; font-weight: 500;">Your submitted balance payment proof was rejected. Please re-upload a clear and correct copy.</p>
                     </div>
-                    <button onclick="openBalanceUploadModal()" class="btn-action-elite btn-primary-orange" style="background: #ef4444; box-shadow: 0 10px 20px rgba(239, 68, 68, 0.2);">
+                    <a href="/bookings/step/payment/{{ booking.id }}?balance=true" class="btn-action-elite btn-primary-orange" style="background: #ef4444; box-shadow: 0 10px 20px rgba(239, 68, 68, 0.2);">
                         Re-upload Balance Proof <i class="fas fa-file-upload"></i>
-                    </button>
+                    </a>
                 {% elif balance_val > 0 and booking.payment_plan != 'full' %}
-                    <button onclick="openBalanceUploadModal()" class="btn-action-elite btn-primary-orange">
-                        Upload Balance Proof <i class="fas fa-file-upload"></i>
-                    </button>
+                    <a href="/bookings/step/payment/{{ booking.id }}?balance=true" class="btn-action-elite btn-primary-orange">
+                        Pay Balance <i class="fas fa-wallet"></i>
+                    </a>
                 {% endif %}
                 
                 <a href="/customer/messages?caterer_id={{ booking.caterer_id }}" class="btn-action-elite btn-outline-slate">
@@ -420,32 +420,7 @@
     </div>
 </div>
 
-<!-- Balance Upload Modal -->
-<div id="balanceUploadModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
-    <div style="background: white; width: 95%; max-width: 400px; border-radius: 20px; padding: 2rem; position: relative;">
-        <button onclick="closeBalanceUploadModal()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.2rem; color: var(--dm-slate-400); cursor: pointer;"><i class="fas fa-times"></i></button>
-        <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--up-slate-900); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 8px;">
-            <i class="fas fa-cloud-upload-alt" style="color: var(--up-emerald);"></i> Upload Balance Proof
-        </h3>
-        <p style="font-size: 0.8rem; color: var(--dm-slate-400); margin-bottom: 1.5rem; font-weight: 500;">Provide your receipt to settle your remaining balance.</p>
-        
-        <form action="/bookings/pay-balance/{{ booking.id }}" method="POST" enctype="multipart/form-data">
-            <div style="margin-bottom: 1rem;">
-                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--up-slate-900); margin-bottom: 0.5rem;">Payment Method Used</label>
-                <select name="payment_method" style="width: 100%; padding: 0.75rem; border: 1px solid var(--dm-slate-100); border-radius: 8px; font-size: 0.85rem; outline: none; background: var(--dm-slate-50);">
-                    <option value="GCash">GCash</option>
-                    <option value="Maya">Maya</option>
-                    <option value="Bank Transfer">Bank Transfer</option>
-                </select>
-            </div>
-            <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--up-slate-900); margin-bottom: 0.5rem;">Proof of Payment Image</label>
-                <input type="file" name="payment_proof" required accept="image/png, image/jpeg, image/jpg" style="width: 100%; padding: 0.75rem; border: 2px dashed var(--dm-slate-100); border-radius: 8px; font-size: 0.8rem; background: var(--dm-slate-50);">
-            </div>
-            <button type="submit" class="btn-action-elite btn-primary-orange" style="background: var(--up-emerald); box-shadow: 0 4px 6px -1px rgba(16,185,129,0.2);">Submit Proof <i class="fas fa-check"></i></button>
-        </form>
-    </div>
-</div>
+
 
 <!-- Re-upload Downpayment Proof Modal -->
 <div id="reuploadProofModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">

@@ -801,7 +801,8 @@ async def step_payment_v2_page(booking_id: int, request: Request, db: Session = 
         "profile": booking.caterer,
         "user": user,
         "current_step": 4,
-        "active_page": "bookings"
+        "active_page": "bookings",
+        "is_balance": request.query_params.get("balance") == "true"
     })
 
 @router.post("/step/payment/{path_booking_id}")
@@ -885,7 +886,7 @@ async def step_payment_submit(
             shutil.copyfileobj(payment_proof.file, buffer)
             
         # --- AI RECEIPT VALIDATION (GEMINI / OCR) ---
-        expected_fee = float(booking.reservation_fee or 0)
+        expected_fee = float(booking.total_amount or 0) - float(booking.reservation_fee or 0) if payment_plan == 'balance' else float(booking.reservation_fee or 0)
         is_valid_receipt = await _validate_receipt_with_gemini(filepath, payment_method, expected_amount=expected_fee)
 
         if not is_valid_receipt:
@@ -896,7 +897,11 @@ async def step_payment_submit(
             return RedirectResponse(url=f"/bookings/step/payment/{booking.id}?error=invalid_receipt&method={payment_method}", status_code=303)
             
         proof_url = f"/static/uploads/payment_proofs/{filename}"
-        booking.payment_proof_url = proof_url
+        
+        if payment_plan == 'balance':
+            booking.balance_proof_url = proof_url
+        else:
+            booking.payment_proof_url = proof_url
         
         if reference_no:
             booking.special_requests = (booking.special_requests or "") + f"\n[Payment Ref: {reference_no}]"
@@ -905,25 +910,34 @@ async def step_payment_submit(
         request.session["flash_error"] = "Payment proof is required for online booking."
         return RedirectResponse(url=f"/bookings/step/payment/{booking.id}?error=missing_proof", status_code=303)
 
-    # Default flow: Manual transfer / Direct Payment
     booking.payment_method = payment_method
-    booking.payment_status = "proof_submitted"
-    booking.status = "pending"
     
-    history = models.BookingHistory(
-        booking_id=booking.id,
-        status="pending",
-        notes=f"Downpayment proof submitted via {payment_method}. Awaiting caterer verification."
-    )
-    db.add(history)
-    db.commit()
-
-    # --- Trigger Notification (In-App, Email, SMS) ---
-    await NotificationService.notify_new_booking(db, booking)
-    if proof_url:
-        await NotificationService.notify_payment_received(db, booking, float(booking.reservation_fee or 0), "Downpayment Proof")
-
-    return RedirectResponse(url=f"/bookings/success/{booking.id}", status_code=303)
+    if payment_plan == 'balance':
+        booking.payment_status = "balance_proof_submitted"
+        history = models.BookingHistory(
+            booking_id=booking.id,
+            status=booking.status,
+            notes=f"Balance proof submitted via {payment_method}. Awaiting caterer verification."
+        )
+        db.add(history)
+        db.commit()
+        if proof_url:
+            await NotificationService.notify_payment_received(db, booking, expected_fee, "Balance Proof")
+        return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}", status_code=303)
+    else:
+        booking.payment_status = "proof_submitted"
+        booking.status = "pending"
+        history = models.BookingHistory(
+            booking_id=booking.id,
+            status="pending",
+            notes=f"Downpayment proof submitted via {payment_method}. Awaiting caterer verification."
+        )
+        db.add(history)
+        db.commit()
+        await NotificationService.notify_new_booking(db, booking)
+        if proof_url:
+            await NotificationService.notify_payment_received(db, booking, expected_fee, "Downpayment Proof")
+        return RedirectResponse(url=f"/bookings/success/{booking.id}", status_code=303)
 
 
 @router.post("/reupload-proof/{booking_id}")

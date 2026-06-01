@@ -47,8 +47,13 @@
 
 {% block wizard_content %}
 <div class="wizard-header-content animate-up">
+    {% if is_balance %}
+    <h2 class="wizard-title">Pay Remaining Balance</h2>
+    <p class="wizard-subtitle">Complete your payment to finalize the event.</p>
+    {% else %}
     <h2 class="wizard-title">Secure Payment Selection</h2>
     <p class="wizard-subtitle">Finalize your booking by settling the contractual deposit or full amount.</p>
+    {% endif %}
 </div>
 
 
@@ -56,7 +61,7 @@
 <form action="/bookings/step/payment/{{ booking.id }}" method="POST" enctype="multipart/form-data" class="payment-form" id="wizard-payment-form">
     <input type="hidden" name="booking_id" value="{{ booking.id }}">
     <input type="hidden" name="payment_method" id="selected-method" value="">
-    <input type="hidden" name="payment_plan" id="selected-plan" value="downpayment">
+    <input type="hidden" name="payment_plan" id="selected-plan" value="{% if is_balance %}balance{% else %}downpayment{% endif %}">
 
     <!-- ── FINANCIAL SUMMARY (DIAMOND STANDARD) ── -->
     <div class="payment-summary-premium animate-up" style="animation-delay: 0.1s;">
@@ -82,6 +87,17 @@
                 <span class="lbl">Total Contract Amount</span>
                 <span class="val">₱{{ "{:,.2f}".format(booking.total_amount or 0) }}</span>
             </div>
+            
+            {% if is_balance %}
+            <div class="s-row">
+                <span class="lbl">Amount Already Paid</span>
+                <span class="val" style="color: var(--up-emerald-600);">₱{{ "{:,.2f}".format(booking.reservation_fee or 0) }}</span>
+            </div>
+            <div class="s-row to-pay-now">
+                <span class="lbl">Balance Payable Today</span>
+                <span class="val" id="to-pay-val">₱{{ "{:,.2f}".format((booking.total_amount|float or 0.0) - (booking.reservation_fee|float or 0.0)) }}</span>
+            </div>
+            {% else %}
             <div class="s-row" id="plan-breakdown-row">
                 <span class="lbl">Contractual Deposit (Selected Tier)</span>
                 <span class="val" id="summary-tier-val">₱{{ "{:,.2f}".format(booking.reservation_fee or 0) }}</span>
@@ -96,6 +112,7 @@
                 <span class="lbl">Remaining Balance After Payment</span>
                 <span class="val" id="balance-val">₱{{ "{:,.2f}".format((booking.total_amount|float or 0.0) - (booking.reservation_fee|float or 0.0)) }}</span>
             </div>
+            {% endif %}
         </div>
 
         <div style="margin-top: 1.5rem; text-align: center;">
@@ -106,48 +123,49 @@
     </div>
 
     <!-- ── PAYMENT PLAN SELECTION (STRICT ENFORCEMENT) ── -->
-    {% if quotation and quotation.downpayment_percent == 100 %}
-    <div class="checkout-section-header animate-up" style="animation-delay: 0.2s; margin-bottom: 1rem;">
-        <h3 style="font-size: 0.85rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; color: var(--up-emerald-500);">
-            <i class="fas fa-file-signature"></i> Binding Full Payment
-        </h3>
-        <p>Based on your signed agreement, full settlement is required to finalize.</p>
-    </div>
-    <input type="hidden" name="payment_plan" id="selected-plan" value="full">
-    <div class="plan-card active animate-up" style="animation-delay: 0.25s; border-color: var(--up-emerald-500); background: #f0fdf4; cursor: default;">
-        <span class="plan-tag" style="color: var(--up-emerald-500);">Contractual Commitment</span>
-        <h4 class="plan-title">Full Contract Payment</h4>
-        <div class="plan-amount">₱{{ "{:,.2f}".format(booking.total_amount or 0) }}</div>
-        <div class="plan-check" style="color: var(--up-emerald-500);"><i class="fas fa-check-double"></i></div>
-    </div>
-    {% else %}
-    <div class="checkout-section-header animate-up" style="animation-delay: 0.2s; margin-bottom: 1rem;">
-        <h3 style="font-size: 0.85rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; color: var(--up-slate-900);">1. Confirm Payment Plan</h3>
-        <p style="font-size: 0.75rem; color: var(--up-orange); font-weight: 700;">
-            <i class="fas fa-info-circle"></i> Selection must meet or exceed your signed commitment.
-        </p>
-    </div>
-
-    <div class="payment-plan-grid animate-up" style="animation-delay: 0.25s;">
-        <!-- Downpayment Option (Binding) -->
-        <div class="plan-card active" id="plan-downpayment" onclick="updatePaymentPlan('downpayment', {{ booking.reservation_fee or 0 }}, {{ booking.total_amount or 0 }})">
-            <span class="plan-tag">Binding Minimum</span>
-            <h4 class="plan-title">Downpayment ({{ quotation.downpayment_percent if quotation else 30 }}%)</h4>
-            <p class="plan-desc">As agreed in Section 2 of Contract</p>
-            <div class="plan-amount">₱{{ "{:,.2f}".format(booking.reservation_fee or 0) }}</div>
-            <div class="plan-check"><i class="fas fa-check-circle"></i></div>
+    {% if not is_balance %}
+        {% if quotation and quotation.downpayment_percent == 100 %}
+        <div class="checkout-section-header animate-up" style="animation-delay: 0.2s; margin-bottom: 1rem;">
+            <h3 style="font-size: 0.85rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; color: var(--up-emerald-500);">
+                <i class="fas fa-file-signature"></i> Binding Full Payment
+            </h3>
+            <p>Based on your signed agreement, full settlement is required to finalize.</p>
         </div>
-
-        <!-- Full Payment Option (Voluntary Upgrade) -->
-        <div class="plan-card" id="plan-full" onclick="updatePaymentPlan('full', {{ booking.total_amount or 0 }}, {{ booking.total_amount or 0 }})">
-            <span class="plan-tag">Voluntary Settlement</span>
-            <h4 class="plan-title">Full Payment</h4>
-            <p class="plan-desc">Settle balance now (Recommended)</p>
+        <input type="hidden" name="payment_plan" id="selected-plan" value="full">
+        <div class="plan-card active animate-up" style="animation-delay: 0.25s; border-color: var(--up-emerald-500); background: #f0fdf4; cursor: default;">
+            <span class="plan-tag" style="color: var(--up-emerald-500);">Contractual Commitment</span>
+            <h4 class="plan-title">Full Contract Payment</h4>
             <div class="plan-amount">₱{{ "{:,.2f}".format(booking.total_amount or 0) }}</div>
-            <div class="plan-check"><i class="far fa-circle"></i></div>
+            <div class="plan-check" style="color: var(--up-emerald-500);"><i class="fas fa-check-double"></i></div>
         </div>
-    </div>
-    <input type="hidden" name="payment_plan" id="selected-plan" value="downpayment">
+        {% else %}
+        <div class="checkout-section-header animate-up" style="animation-delay: 0.2s; margin-bottom: 1rem;">
+            <h3 style="font-size: 0.85rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; color: var(--up-slate-900);">1. Confirm Payment Plan</h3>
+            <p style="font-size: 0.75rem; color: var(--up-orange); font-weight: 700;">
+                <i class="fas fa-info-circle"></i> Selection must meet or exceed your signed commitment.
+            </p>
+        </div>
+
+        <div class="payment-plan-grid animate-up" style="animation-delay: 0.25s;">
+            <!-- Downpayment Option (Binding) -->
+            <div class="plan-card active" id="plan-downpayment" onclick="updatePaymentPlan('downpayment', {{ booking.reservation_fee or 0 }}, {{ booking.total_amount or 0 }})">
+                <span class="plan-tag">Binding Minimum</span>
+                <h4 class="plan-title">Downpayment ({{ quotation.downpayment_percent if quotation else 30 }}%)</h4>
+                <p class="plan-desc">As agreed in Section 2 of Contract</p>
+                <div class="plan-amount">₱{{ "{:,.2f}".format(booking.reservation_fee or 0) }}</div>
+                <div class="plan-check"><i class="fas fa-check-circle"></i></div>
+            </div>
+
+            <!-- Full Payment Option (Voluntary Upgrade) -->
+            <div class="plan-card" id="plan-full" onclick="updatePaymentPlan('full', {{ booking.total_amount or 0 }}, {{ booking.total_amount or 0 }})">
+                <span class="plan-tag">Voluntary Settlement</span>
+                <h4 class="plan-title">Full Payment</h4>
+                <p class="plan-desc">Settle balance now (Recommended)</p>
+                <div class="plan-amount">₱{{ "{:,.2f}".format(booking.total_amount or 0) }}</div>
+                <div class="plan-check"><i class="far fa-circle"></i></div>
+            </div>
+        </div>
+        {% endif %}
     {% endif %}
 
     <!-- ── PAYMENT METHOD SELECTION ── -->
@@ -197,9 +215,15 @@
 
     <!-- Actions -->
     <div class="wizard-actions animate-up" style="animation-delay: 0.5s; margin-top: 3rem; display: flex; justify-content: space-between; align-items: center;">
+        {% if is_balance %}
+        <a href="/customer/bookings/manage/{{ booking.id }}" class="btn-wizard-back" style="font-weight: 800; color: var(--up-slate-700); text-decoration: none; border-color: #cbd5e1;">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+        {% else %}
         <a href="/bookings/step/quotation/{{ booking.id }}" class="btn-wizard-back" style="font-weight: 800; color: var(--up-slate-700); text-decoration: none; border-color: #cbd5e1;">
             <i class="fas fa-arrow-left"></i> Back to Agreement
         </a>
+        {% endif %}
     </div>
 
 </form>

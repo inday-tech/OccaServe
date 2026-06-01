@@ -14,87 +14,48 @@
         --dm-slate-400: #94a3b8;
     }
 
-    /* ── STAT CARDS (Dashboard Sync) ── */
-    .ledger-stats-row {
+    /* ── PREMIUM STAT CARDS (Dashboard Sync) ── */
+    .premium-stats-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 1.25rem;
-        margin-bottom: 1.25rem;
-    }
-    .ledger-stat-card {
-        background: #fff;
-        border-radius: 1.25rem;
-        border: 1px solid var(--dm-slate-100);
-        padding: 1.25rem;
-        display: flex;
-        align-items: center;
+        grid-template-columns: repeat(2, 1fr);
         gap: 1rem;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.04);
-        transition: var(--transition-standard);
+        margin-bottom: 1.5rem;
     }
-    .ledger-stat-icon {
-        width: 48px; height: 48px;
-        border-radius: 12px;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 1.2rem;
-        flex-shrink: 0;
+    @media (min-width: 768px) {
+        .premium-stats-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
     }
-    .si-blue   { background: rgba(59,130,246,0.1); color: #3b82f6; }
-    .si-green  { background: rgba(16,185,129,0.1); color: #10b981; }
-    .si-orange { background: rgba(255,123,84,0.1); color: var(--primary-color); }
-
-    .stat-body h4 {
-        font-size: 0.65rem; font-weight: 700;
-        color: var(--dm-slate-400);
-        text-transform: uppercase; letter-spacing: 0.05em;
-        margin: 0 0 2px;
+    .premium-stat-card {
+        background: #fff; border-radius: 12px; padding: 1.25rem 1.5rem;
+        border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04);
+        display: flex; flex-direction: column; justify-content: center;
+        transition: all 0.2s ease;
     }
-    .stat-value {
-        font-size: 1.4rem; font-weight: 800;
-        color: var(--text-dark);
-        line-height: 1.1;
-    }
+    .premium-stat-title { font-size: 0.75rem; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
+    .premium-stat-value { font-size: 1.4rem; font-weight: 900; line-height: 1.2; margin-bottom: 0.4rem; }
+    .premium-stat-subtitle { font-size: 0.8rem; font-weight: 500; color: #64748b; }
 
     /* ── PANEL (Dashboard Sync) ── */
     .ledger-panel {
-        background: #fff;
-        border-radius: 1.25rem;
-        border: 1px solid var(--dm-slate-100);
-        overflow: hidden;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.04);
+        background: #fff; border-radius: 1.25rem; border: 1px solid var(--dm-slate-100);
+        overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.04);
     }
     .panel-header {
-        padding: 1.25rem 1.5rem;
-        border-bottom: 1px solid var(--dm-slate-50);
+        padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--dm-slate-50);
         display: flex; justify-content: space-between; align-items: center;
     }
-    .panel-header h3 {
-        font-size: 1rem; font-weight: 800;
-        color: var(--text-dark); margin: 0;
-    }
+    .panel-header h3 { font-size: 1.05rem; font-weight: 800; color: var(--text-dark); margin: 0; }
 
-    /* ── SEARCH (Dashboard Style) ── */
-    .ledger-search-box {
-        position: relative;
-        width: 280px;
+    /* ── ALERTS ── */
+    .deadline-alert {
+        background: #fff1f2; color: #be123c; border: 1px solid #fecdd3;
+        font-size: 0.7rem; font-weight: 800; text-transform: uppercase;
+        padding: 4px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;
+        margin-top: 4px;
     }
-    .ledger-search-box i {
-        position: absolute; left: 1rem; top: 50%;
-        transform: translateY(-50%);
-        color: var(--dm-slate-400); font-size: 0.9rem;
-    }
-    .ledger-search-input {
-        width: 100%;
-        padding: 0.6rem 1rem 0.6rem 2.5rem;
-        border-radius: 10px;
-        border: 1px solid var(--dm-slate-100);
-        background: var(--dm-slate-50);
-        font-size: 0.85rem; font-weight: 600;
-        transition: all 0.2s;
-    }
-    .ledger-search-input:focus {
-        background: #fff; border-color: var(--primary-color); outline: none;
-    }
+    .deadline-urgent { animation: pulse-border 1.5s infinite; }
+    @keyframes pulse-border { 0% { box-shadow: 0 0 0 0px rgba(225,29,72,0.4); } 100% { box-shadow: 0 0 0 4px rgba(225,29,72,0); } }
 
     /* ── TABLE (Dashboard Sync) ── */
     .ledger-table { width: 100%; border-collapse: collapse; }
@@ -145,14 +106,31 @@
     }
     .btn-detalye:hover { background: #000; transform: scale(1.02); }
 
+    /* ── PAGINATION (Matches Bookings UI) ── */
+    .bk-pagination {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        padding: 1.5rem; border-top: 1px solid var(--dm-slate-100); background: #fcfcfd;
+        gap: 1rem; text-align: center;
+    }
+    .bk-page-info { font-size: 0.85rem; font-weight: 700; color: var(--dm-slate-400); }
+    .bk-page-info span { color: var(--text-dark); font-weight: 800; }
+    .bk-page-btns { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px; }
+    .btn-pg {
+        border: 1px solid var(--dm-slate-200); border-radius: 9px; padding: 6px 13px;
+        font-size: 0.75rem; font-weight: 800; cursor: pointer; background: #fff;
+        color: var(--dm-slate-400); transition: all 0.18s; display: inline-flex; align-items: center; gap: 5px;
+    }
+    .btn-pg:hover:not(:disabled) { background: var(--dm-slate-50); border-color: #cbd5e1; }
+    .btn-pg:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-pg-num { min-width: 34px; justify-content: center; }
+    .btn-pg-num.active { background: var(--text-dark); color: #fff; border-color: var(--text-dark); }
+
     .page-header { margin-bottom: 1.25rem; }
     .page-header h1 { font-size: 1.6rem; font-weight: 800; color: var(--text-dark); margin: 0; letter-spacing: -0.03em; }
     .page-header p { font-size: 0.88rem; color: var(--dm-slate-400); font-weight: 500; margin: 4px 0 0; }
 
     @media (max-width: 991px) {
-        .ledger-stats-row { grid-template-columns: 1fr; }
-        .ledger-search-box { width: 100%; margin-top: 1rem; }
-        .panel-header { flex-direction: column; align-items: flex-start; }
+        .panel-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
     }
 </style>
 {% endblock %}
@@ -185,38 +163,28 @@
     {% endif %}
 {% endfor %}
 
-<!-- Stat Cards -->
-<div class="ledger-stats-row">
-    <div class="ledger-stat-card">
-        <div class="ledger-stat-icon si-blue"><i class="fas fa-file-invoice"></i></div>
-        <div class="stat-body">
-            <h4>Total Booking Amount</h4>
-            <div class="stat-value">₱{{ "{:,.0f}".format(total_contract.value) }}</div>
-        </div>
+<!-- Stat Cards (Matches Bookings UI) -->
+<div class="premium-stats-grid">
+    <div class="premium-stat-card">
+        <div class="premium-stat-title">Total Booking Amount</div>
+        <div class="premium-stat-value" style="color: #3b82f6;">₱{{ "{:,.0f}".format(total_contract.value) }}</div>
+        <div class="premium-stat-subtitle">All active events</div>
     </div>
-    <div class="ledger-stat-card">
-        <div class="ledger-stat-icon si-green"><i class="fas fa-check-circle"></i></div>
-        <div class="stat-body">
-            <h4>Total Paid</h4>
-            <div class="stat-value">₱{{ "{:,.0f}".format(total_paid.value) }}</div>
-        </div>
+    <div class="premium-stat-card">
+        <div class="premium-stat-title">Total Paid</div>
+        <div class="premium-stat-value" style="color: #10b981;">₱{{ "{:,.0f}".format(total_paid.value) }}</div>
+        <div class="premium-stat-subtitle">Confirmed payments</div>
     </div>
-    <div class="ledger-stat-card">
-        <div class="ledger-stat-icon si-orange"><i class="fas fa-clock"></i></div>
-        <div class="stat-body">
-            <h4>Balance to Pay</h4>
-            <div class="stat-value" style="color: var(--primary-color);">₱{{ "{:,.0f}".format(total_pending.value) }}</div>
-        </div>
+    <div class="premium-stat-card">
+        <div class="premium-stat-title">Balance to Pay</div>
+        <div class="premium-stat-value" style="color: #f59e0b;">₱{{ "{:,.0f}".format(total_pending.value) }}</div>
+        <div class="premium-stat-subtitle">Pending obligations</div>
     </div>
 </div>
 
 <div class="ledger-panel">
     <div class="panel-header">
         <h3>Transaction History</h3>
-        <div class="ledger-search-box">
-            <i class="fas fa-search"></i>
-            <input type="text" id="ledgerSearch" class="ledger-search-input" placeholder="Search by event or ID..." onkeyup="filterLedger()">
-        </div>
     </div>
 
     <div style="overflow-x: auto;">
@@ -235,7 +203,10 @@
                 <tr class="ledger-row payment-row-item" data-search="{{ (booking.event_name or '')|lower }} {{ (booking.caterer.business_name or '')|lower }} BK-{{ booking.id }}">
                     <td>
                         <span class="event-name">{{ booking.event_name or 'Event' }}</span>
-                        <span class="event-sub">BK-{{ booking.id }} &bull; {{ booking.created_at.strftime('%b %d, %Y') }}</span>
+                        <span class="event-sub" style="display: inline-flex; align-items: center; gap: 5px;">
+                            <span style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-weight:800; color:#475569;">#BK-{{ booking.id }}</span> 
+                            &bull; {{ booking.created_at.strftime('%b %d, %Y') }}
+                        </span>
                     </td>
                     <td>
                         <div style="font-weight: 700; color: var(--text-dark);">
@@ -245,7 +216,20 @@
                     <td>
                         <div class="price-val">₱{{ "{:,.2f}".format(booking.total_amount|float) if booking.total_amount else 'TBD' }}</div>
                         {% if booking.payment_status in ['paid', 'deposit_paid'] and booking.reservation_fee %}
-                        <div class="price-paid">Paid: ₱{{ "{:,.2f}".format(booking.reservation_fee|float) }}</div>
+                            <div class="price-paid">Paid: ₱{{ "{:,.2f}".format(booking.reservation_fee|float) }}</div>
+                            
+                            <!-- Balance Deadline Alert -->
+                            {% if (booking.total_amount|float - booking.reservation_fee|float) > 0 %}
+                                {% if booking.balance_due_date %}
+                                    <div class="deadline-alert deadline-urgent" title="Remaining Balance Deadline">
+                                        <i class="fas fa-exclamation-triangle"></i> Due: {{ booking.balance_due_date.strftime('%b %d') }}
+                                    </div>
+                                {% else %}
+                                    <div class="deadline-alert" title="Remaining Balance Deadline" style="background:#fef3c7; color:#b45309; border-color:#fde68a;">
+                                        <i class="fas fa-clock"></i> Balance Pending
+                                    </div>
+                                {% endif %}
+                            {% endif %}
                         {% endif %}
                     </td>
                     <td>
@@ -277,14 +261,11 @@
     {% endif %}
 
     <!-- Pagination -->
-    <div style="padding: 1.25rem 1.5rem; background: var(--dm-slate-50); border-top: 1px solid var(--dm-slate-100); display: flex; justify-content: space-between; align-items: center;">
-        <div style="font-size: 0.7rem; font-weight: 800; color: var(--dm-slate-400); text-transform: uppercase;">
-            Showing <span id="pRange">0 - 0</span> of <span id="pTotal">0</span> records
+    <div class="bk-pagination">
+        <div class="bk-page-info">
+            Showing <span id="pRange">0 - 0</span> of <span id="pTotal">0</span> payments
         </div>
-        <div style="display: flex; gap: 8px;">
-            <button id="btnPrev" style="padding: 6px 12px; border-radius: 8px; border: 1px solid var(--dm-slate-200); background: #fff; cursor: pointer;"><i class="fas fa-chevron-left" style="font-size: 0.75rem;"></i></button>
-            <button id="btnNext" style="padding: 6px 12px; border-radius: 8px; border: 1px solid var(--dm-slate-200); background: #fff; cursor: pointer;"><i class="fas fa-chevron-right" style="font-size: 0.75rem;"></i></button>
-        </div>
+        <div class="bk-page-btns" id="pgBtns"></div>
     </div>
 </div>
 
@@ -308,22 +289,52 @@
         document.querySelectorAll('.payment-row-item').forEach(r => r.style.display = 'none');
         filteredRows.slice(start, end).forEach(r => r.style.display = 'table-row');
 
-        document.getElementById('pRange').innerText = total === 0 ? '0 - 0' : `${start + 1} - ${end}`;
+        document.getElementById('pRange').innerHTML = total === 0 ? '0' : `${start + 1}–${end}`;
         document.getElementById('pTotal').innerText = total;
 
-        document.getElementById('btnPrev').disabled = currentPage === 1;
-        document.getElementById('btnNext').disabled = currentPage === pages || total === 0;
-
-        document.getElementById('btnPrev').onclick = () => { currentPage--; updatePagination(); };
-        document.getElementById('btnNext').onclick = () => { currentPage++; updatePagination(); };
+        renderPagination(pages);
     }
 
-    function filterLedger() {
-        const term = document.getElementById('ledgerSearch').value.toLowerCase();
+    function renderPagination(total) {
+        const container = document.getElementById('pgBtns');
+        if (!container) return;
+
+        const btns = [];
+        btns.push(`<button class="btn-pg" id="btnPrev" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}><i class="fas fa-chevron-left"></i> Previous</button>`);
+
+        const range = [];
+        let lo = Math.max(1, currentPage - 2), hi = Math.min(total, currentPage + 2);
+        if (hi - lo < 4) { lo = Math.max(1, hi - 4); hi = Math.min(total, lo + 4); }
+        for (let i = lo; i <= hi; i++) range.push(i);
+
+        if (lo > 1) { btns.push(`<button class="btn-pg btn-pg-num" onclick="goPage(1)">1</button>`); if (lo > 2) btns.push(`<span style="padding:0 4px;color:var(--dm-slate-400);font-size:.8rem;">…</span>`); }
+        range.forEach(i => btns.push(`<button class="btn-pg btn-pg-num ${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`));
+        if (hi < total) { if (hi < total-1) btns.push(`<span style="padding:0 4px;color:var(--dm-slate-400);font-size:.8rem;">…</span>`); btns.push(`<button class="btn-pg btn-pg-num" onclick="goPage(${total})">${total}</button>`); }
+
+        btns.push(`<button class="btn-pg" id="btnNext" onclick="goPage(${currentPage+1})" ${currentPage===total?'disabled':''}> Next <i class="fas fa-chevron-right"></i></button>`);
+        container.innerHTML = btns.join('');
+    }
+
+    function goPage(p) {
+        const total = Math.max(1, Math.ceil(filteredRows.length / ROWS_PER_PAGE));
+        if (p < 1 || p > total) return;
+        currentPage = p;
+        updatePagination();
+    }
+
+    function filterLedger(term) {
+        if (!term) term = "";
         const all = Array.from(document.querySelectorAll('.payment-row-item'));
-        filteredRows = all.filter(r => r.getAttribute('data-search').includes(term));
+        filteredRows = all.filter(r => r.getAttribute('data-search').includes(term.toLowerCase()));
         currentPage = 1;
         updatePagination();
+    }
+    
+    // Connect to the Global Search Bar in the Header
+    const globalSearch = document.getElementById('globalSearchInput');
+    if (globalSearch) {
+        globalSearch.addEventListener('keyup', (e) => filterLedger(e.target.value));
+        globalSearch.placeholder = "Search payments or ID...";
     }
 </script>
 {% endblock %}
