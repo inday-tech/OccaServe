@@ -139,12 +139,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const status = document.getElementById('statusFilter').value.toLowerCase();
         
         filteredRows = allRows.filter(row => {
-            const rowId = row.querySelector('.payment-id').textContent.toLowerCase();
-            const custName = row.querySelector('.cust-name').textContent.toLowerCase();
-            const eventName = row.cells[2].textContent.toLowerCase();
+            const textContent = row.textContent.toLowerCase();
             const rowStatus = row.querySelector('.badge-status-pro').textContent.toLowerCase();
             
-            const matchesSearch = rowId.includes(query) || custName.includes(query) || eventName.includes(query);
+            const matchesSearch = textContent.includes(query);
             const matchesStatus = (status === 'all' || rowStatus === status);
             
             return matchesSearch && matchesStatus;

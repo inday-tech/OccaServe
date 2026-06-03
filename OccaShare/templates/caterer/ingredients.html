@@ -452,8 +452,8 @@
     window.addEventListener('globalSearch', (e) => {
         const query = e.detail.value.toLowerCase();
         filteredRows = allRows.filter(row => {
-            const ingName = row.querySelector('.ing-name-box strong').innerText.toLowerCase();
-            return ingName.includes(query);
+            const textContent = row.textContent.toLowerCase();
+            return textContent.includes(query);
         });
         currentPage = 1;
         renderTable();

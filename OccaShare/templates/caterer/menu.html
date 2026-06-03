@@ -680,7 +680,8 @@
         const cards = document.querySelectorAll('.menu-item-card-premium');
         let count = 0;
         cards.forEach(card => {
-            const matchQuery = card.dataset.name.includes(query);
+            const textContent = card.textContent.toLowerCase();
+            const matchQuery = textContent.includes(query);
             const matchCat = cat === 'all' || card.dataset.category === cat;
             if (matchQuery && matchCat) {
                 card.style.display = 'flex';

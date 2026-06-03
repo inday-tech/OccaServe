@@ -49,9 +49,8 @@ window.filterCustomerTable = function(searchQuery = null) {
     let visibleCount = 0;
     
     rows.forEach(row => {
-        const textMatchName = (row.dataset.name || "").includes(filterText);
-        const textMatchEmail = (row.dataset.email || "").includes(filterText);
-        const textMatch = filterText === '' || textMatchName || textMatchEmail;
+        const textContent = row.textContent.toLowerCase();
+        const textMatch = filterText === '' || textContent.includes(filterText);
         
         let statusMatch = true;
         if (statusFilter !== 'All') {

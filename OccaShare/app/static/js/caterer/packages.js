@@ -983,8 +983,8 @@ function filterPackages() {
     const query = document.getElementById('packageSearchInput')?.value.toLowerCase() || '';
     let visibleCount = 0;
     document.querySelectorAll('.package-card-pro').forEach(card => {
-        const name = card.querySelector('.package-name-pro')?.innerText.toLowerCase() || '';
-        const match = name.includes(query);
+        const textContent = card.textContent.toLowerCase();
+        const match = textContent.includes(query);
         card.style.display = match ? 'block' : 'none';
         if (match) visibleCount++;
     });
