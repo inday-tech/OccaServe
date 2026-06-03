@@ -8,7 +8,14 @@ let filteredRows = [];
 if (typeof window.showError === 'undefined') {
     window.showError = function(msg) {
         if (typeof Swal !== 'undefined') {
-            Swal.fire({ icon: 'error', title: 'Error', text: msg });
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'bottom-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+            Toast.fire({ icon: 'error', title: msg });
         } else if (window.showToast) {
             window.showToast(msg, 'error');
         } else {

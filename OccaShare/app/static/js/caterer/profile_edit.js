@@ -490,29 +490,23 @@ async function saveNotificationPrefs() {
 
 // Account Deactivation
 async function handleDeactivate() {
-    if (!window.Swal) return;
+    if (!window.showStandardConfirm) return;
 
-    const { value: reason, isConfirmed } = await Swal.fire({
+    const { value: reason, isConfirmed } = await window.showStandardConfirm({
         title: 'Deactivate Account',
-        text: 'Please provide a reason for deactivating your account (optional):',
+        message: 'Please provide a reason for deactivating your account (optional):',
         input: 'text',
         inputPlaceholder: 'e.g. Taking a break, remodeling...',
         icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
         confirmButtonText: 'Proceed to Deactivate'
     });
 
-    if (!isConfirmed) return; // User cancelled
+    if (!isConfirmed) return;
 
-    const confirmResult = await Swal.fire({
+    const confirmResult = await window.showStandardConfirm({
         title: 'Are you absolutely sure?',
-        text: 'Your business will be hidden from customers. You can reactivate anytime by logging back in and going to settings.',
+        message: 'Your business will be hidden from customers. You can reactivate anytime by logging back in and going to settings.',
         icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
         confirmButtonText: 'Yes, deactivate my account'
     });
 
@@ -539,17 +533,14 @@ async function handleDeactivate() {
 
 // Account Deletion Request
 async function handleDeleteRequest() {
-    if (!window.Swal) return;
+    if (!window.showStandardConfirm) return;
 
-    const { value: confirmed, isConfirmed } = await Swal.fire({
+    const { value: confirmed, isConfirmed } = await window.showStandardConfirm({
         title: 'Request Account Deletion',
         html: 'Permanently delete all your data. This action <b>cannot be undone</b>.<br><br>Type <strong>DELETE</strong> to confirm:',
         input: 'text',
         inputPlaceholder: 'DELETE',
         icon: 'error',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
         confirmButtonText: 'Request Deletion'
     });
 
@@ -567,19 +558,16 @@ async function handleDeleteRequest() {
 
 // Reset Brand to Defaults
 async function resetBrandDefaults() {
-    if (!window.Swal) return;
+    if (!window.showStandardConfirm) return;
 
-    const result = await Swal.fire({
+    const { isConfirmed } = await window.showStandardConfirm({
         title: 'Reset Brand Settings?',
-        text: 'This will clear all your custom colors, fonts, textures, and decorations, reverting to OccaServe defaults.',
+        message: 'This will clear all your custom colors, fonts, textures, and decorations, reverting to OccaServe defaults.',
         icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
         confirmButtonText: 'Yes, reset to defaults'
     });
 
-    if (!result.isConfirmed) return;
+    if (!isConfirmed) return;
 
     try {
         const response = await fetch('/caterer/settings/reset-brand', { method: 'POST' });

@@ -741,7 +741,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.location.href = logoutUrl;
             };
 
-            if (typeof window.showConfirm === 'function') {
+            if (typeof window.showStandardConfirm === 'function') {
+                window.showStandardConfirm({
+                    title: 'Logout',
+                    message: 'Are you sure you want to log out?',
+                    icon: 'warning',
+                    confirmButtonText: 'Yes, Logout'
+                }).then((result) => {
+                    if (result.isConfirmed) doLogout();
+                });
+            } else if (typeof window.showConfirm === 'function') {
                 window.showConfirm('Are you sure you want to log out?', doLogout, 'Logout', 'Yes, Logout');
             } else if (typeof Swal !== 'undefined') {
                 Swal.fire({
