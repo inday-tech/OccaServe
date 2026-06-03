@@ -1278,7 +1278,7 @@
 
                 <!-- A LA CARTE MENU — CATEGORY CARDS -->
                 <div class="intel-card" style="padding: 1.75rem;">
-                    <h2 class="section-title" style="margin-bottom: 1.25rem;">A-la-carte Dishes</h2>
+                    <h2 class="section-title" style="margin-bottom: 1.25rem;">A-la-carte & Rentals</h2>
 
                     {% if active_menu %}
                     {% set categories = [] %}
@@ -1650,6 +1650,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 image: {{ (item.image_url or '')|tojson }},
                 description: {{ (item.description or '')|tojson }},
                 serving_size: {{ (item.serving_size or '')|tojson }},
+                pricing_unit: {{ (item.pricing_unit or 'per_serving')|tojson }},
                 dietary_tags: {{ (item.dietary_tags or [])|tojson }},
                 allergen_info: {{ (item.allergen_info or [])|tojson }}
             }{{ ',' if not loop.last else '' }}
@@ -1664,11 +1665,16 @@ document.addEventListener('DOMContentLoaded', function() {
             title.textContent = cat + ' (' + items.length + ' dish' + (items.length !== 1 ? 'es' : '') + ')';
 
             const DIET_ICONS = { 'Vegetarian': '🌿', 'Vegan': '🌱', 'Halal': '✡️', 'Gluten-Free': '🌾' };
+            const UNIT_MAP = {
+                'per_serving': '', 'per_tray': ' / Tray', 'per_bilao': ' / Bilao',
+                'per_pax': ' / Pax', 'per_hour': ' / Hr', 'per_unit': ' / Unit', 'per_set': ' / Set'
+            };
 
             body.innerHTML = items.map(item => {
                 const img = item.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=200';
+                const unitSuffix = item.pricing_unit ? (UNIT_MAP[item.pricing_unit] || '') : '';
                 const priceDisplay = item.price > 0
-                    ? '\u20b1' + parseFloat(item.price).toLocaleString('en-PH', {minimumFractionDigits:2})
+                    ? '\u20b1' + parseFloat(item.price).toLocaleString('en-PH', {minimumFractionDigits:2}) + unitSuffix
                     : '<span style="font-size:0.78rem;font-weight:700;color:var(--hub-slate-400);">Included in Package</span>';
                 const isSelected = window.selectedItems.some(s => String(s.id) === String(item.id));
 

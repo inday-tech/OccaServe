@@ -279,7 +279,8 @@ class MenuItem(Base):
     dietary_tags = Column(ARRAY(String), nullable=True) # Vegetarian, Vegan, Halal
     allergen_info = Column(ARRAY(String), nullable=True) # Nuts, Dairy, Seafood
     
-    serving_size = Column(String, nullable=True) # "Good for 1", "Per tray"
+    serving_size = Column(String, nullable=True) # "Good for 1", "Good for 10-15"
+    pricing_unit = Column(String, default="per_serving") # "per_tray", "per_bilao", "per_pax", "per_hour", "per_item"
     is_addon = Column(Boolean, default=False)
     addon_price = Column(Float, default=0.0)
     image_url = Column(String, nullable=True)
