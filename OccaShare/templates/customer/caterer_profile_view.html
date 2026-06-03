@@ -975,6 +975,20 @@
         border-radius: 24px;
         padding: 2.5rem;
         position: relative;
+        max-height: 85vh;
+        overflow-y: auto;
+    }
+    
+    /* Custom scrollbar for elite modal to look cleaner */
+    .m-box-elite::-webkit-scrollbar {
+        width: 6px;
+    }
+    .m-box-elite::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .m-box-elite::-webkit-scrollbar-thumb {
+        background-color: var(--hub-slate-200);
+        border-radius: 10px;
     }
 </style>
 {% endblock %}
@@ -1598,26 +1612,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
 {% block modals %}
     <!-- PKG MODAL -->
-    <div id="pkg-modal" class="oc-modal-layer">
+    <div id="pkg-modal" class="oc-modal-layer" onclick="if(event.target===this)window.closePkgModal()">
         <div class="m-box-elite">
             <button type="button" onclick="window.closePkgModal()"
-                style="position: absolute; top: 1.25rem; right: 1.25rem; border: none; background: var(--hub-slate-50); width: 32px; height: 32px; border-radius: 50%; cursor: pointer;"><i
+                style="position: absolute; top: 1.25rem; right: 1.25rem; border: none; background: var(--hub-slate-50); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; z-index: 10;"><i
                     class="fas fa-times"></i></button>
             <div id="pkg-content"></div>
         </div>
     </div>
 
     <!-- MESSAGE MODAL -->
-    <div id="message-modal" class="oc-modal-layer">
+    <div id="message-modal" class="oc-modal-layer" onclick="if(event.target===this)window.closeMessageModal()">
         <div class="m-box-elite">
             <button type="button" onclick="window.closeMessageModal()"
-                style="position: absolute; top: 1.25rem; right: 1.25rem; border: none; background: var(--hub-slate-50); width: 32px; height: 32px; border-radius: 50%; cursor: pointer;"><i
+                style="position: absolute; top: 1.25rem; right: 1.25rem; border: none; background: var(--hub-slate-50); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; z-index: 10;"><i
                     class="fas fa-times"></i></button>
             <h2 style="font-size: 1.25rem; font-weight: 850; color: var(--hub-text-dark); margin-bottom: 0.5rem;">Message Professional</h2>
             <p style="color: var(--hub-slate-400); font-size: 0.85rem; margin-bottom: 1.5rem;">Ask about availability, custom menus, or other details.</p>
             <form onsubmit="window.sendHubMessage(event, '{{ caterer.user_id }}')">
                 <textarea id="hub-msg-body" required placeholder="Hi! I have a question about..."
-                    style="width: 100%; height: 120px; border: 1.5px solid var(--hub-slate-200); border-radius: 14px; padding: 1rem; font-family: 'Poppins'; margin-bottom: 1.5rem;"></textarea>
+                    style="width: 100%; height: 120px; border: 1.5px solid var(--hub-slate-200); border-radius: 14px; padding: 1rem; font-family: 'Poppins'; margin-bottom: 1.5rem; resize: vertical;"></textarea>
                 <button type="submit" id="hub-send-btn" class="btn-hub-main">Send Direct Message</button>
             </form>
         </div>
