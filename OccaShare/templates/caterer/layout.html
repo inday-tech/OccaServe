@@ -37,125 +37,36 @@
 
     <style>
         :root {
-                {
-                % if user and user.caterer_profile %
-            }
-
-            --primary-color: {
-                    {
-                    user.caterer_profile.primary_color or '#800000'
-                }
-            }
-
-            !important;
-
-            --primary-color-rgb: {
-                    {
-                    (user.caterer_profile.primary_color or '#800000') | hex_to_rgb
-                }
-            }
-
-            !important;
-
-            --secondary-color: {
-                    {
-                    user.caterer_profile.secondary_color or '#1e293b'
-                }
-            }
-
-            !important;
-
-            --secondary-color-rgb: {
-                    {
-                    (user.caterer_profile.secondary_color or '#1e293b') | hex_to_rgb
-                }
-            }
-
-            !important;
-
-            --accent-color: {
-                    {
-                    user.caterer_profile.accent_color or '#800000'
-                }
-            }
-
-            !important;
-
-            --accent-color-rgb: {
-                    {
-                    (user.caterer_profile.accent_color or '#800000') | hex_to_rgb
-                }
-            }
-
-            !important;
-
-            --highlight-color: {
-                    {
-                    user.caterer_profile.highlight_color or '#10b981'
-                }
-            }
-
-            !important;
-
-            --highlight-color-rgb: {
-                    {
-                    (user.caterer_profile.highlight_color or '#10b981') | hex_to_rgb
-                }
-            }
-
-            !important;
-
-            --font-family: {
-                    {
-                    user.caterer_profile.font_family or "'Poppins', sans-serif"
-                }
-            }
-
-            !important;
-
-            --border-radius: {
-                    {
-                    user.caterer_profile.border_radius or 12
-                }
-            }
-
-            px !important;
-
+            {% if user and user.caterer_profile %}
+            --primary-color: {{ user.caterer_profile.primary_color or '#800000' }} !important;
+            --primary-color-rgb: {{ (user.caterer_profile.primary_color or '#800000') | hex_to_rgb }} !important;
+            --secondary-color: {{ user.caterer_profile.secondary_color or '#1e293b' }} !important;
+            --secondary-color-rgb: {{ (user.caterer_profile.secondary_color or '#1e293b') | hex_to_rgb }} !important;
+            --accent-color: {{ user.caterer_profile.accent_color or '#800000' }} !important;
+            --accent-color-rgb: {{ (user.caterer_profile.accent_color or '#800000') | hex_to_rgb }} !important;
+            --highlight-color: {{ user.caterer_profile.highlight_color or '#10b981' }} !important;
+            --highlight-color-rgb: {{ (user.caterer_profile.highlight_color or '#10b981') | hex_to_rgb }} !important;
+            --font-family: {{ user.caterer_profile.font_family or "'Poppins', sans-serif" }} !important;
+            --border-radius: {{ user.caterer_profile.border_radius or 12 }}px !important;
             /* Elite Branding */
             --sidebar-bg: #ffffff !important;
             --header-bg-custom: #ffffff !important;
-            --sidebar-decor: '{{ user.caterer_profile.sidebar_decoration or ' none' }}';
-            --header-decor: '{{ user.caterer_profile.header_decoration or ' none' }}';
-
-                {
-                % else %
-            }
-
+            --sidebar-decor: '{{ user.caterer_profile.sidebar_decoration or 'none' }}';
+            --header-decor: '{{ user.caterer_profile.header_decoration or 'none' }}';
+            {% else %}
             --primary-color: #800000 !important;
-            --primary-color-rgb: 128,
-            0,
-            0 !important;
+            --primary-color-rgb: 128, 0, 0 !important;
             --secondary-color: #1e293b !important;
-            --secondary-color-rgb: 30,
-            41,
-            59 !important;
+            --secondary-color-rgb: 30, 41, 59 !important;
             --accent-color: #800000 !important;
-            --accent-color-rgb: 128,
-            0,
-            0 !important;
+            --accent-color-rgb: 128, 0, 0 !important;
             --highlight-color: #10b981 !important;
-            --highlight-color-rgb: 16,
-            185,
-            129 !important;
-            --font-family: 'Poppins',
-            sans-serif !important;
+            --highlight-color-rgb: 16, 185, 129 !important;
+            --font-family: 'Poppins', sans-serif !important;
             --border-radius: 12px !important;
             --sidebar-decor: 'none';
             --header-decor: 'none';
-
-                {
-                % endif %
-            }
+            {% endif %}
 
             --header-height: 68px;
             --header-bg: rgba(255, 255, 255, 0.85);
