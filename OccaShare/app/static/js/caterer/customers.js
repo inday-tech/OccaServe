@@ -189,11 +189,14 @@ window.switchIntelTab = function(tabId, btn) {
 window.openCustomerProfile = async function(id) {
     currentCustomerId = id;
     
-    document.getElementById('profName').innerHTML = `<i class="fas fa-user-circle"></i> Analyzing...`;
-    document.getElementById('profStatus').innerText = "Connecting to intelligence stream...";
+    const profNameEl = document.getElementById('profName');
+    if (profNameEl) profNameEl.innerHTML = `<i class="fas fa-user-circle"></i> Analyzing...`;
+    
+    const profStatusEl = document.getElementById('profStatus');
+    if (profStatusEl) profStatusEl.innerText = "Connecting to intelligence stream...";
     
     const overviewTab = document.querySelector('.tab-btn-pro[data-tab="overview"]');
-    if (overviewTab) window.switchIntelTab('overview', overviewTab);
+    if (overviewTab && typeof window.switchIntelTab === 'function') window.switchIntelTab('overview', overviewTab);
 
     if (window.openModal) window.openModal('customerProfileModal');
 
@@ -203,7 +206,7 @@ window.openCustomerProfile = async function(id) {
         const c = await res.json();
         if (c.status === "error") throw new Error(c.message);
 
-        document.getElementById('profName').innerHTML = `<i class="fas fa-user-circle"></i> ${c.first_name} ${c.last_name}`;
+        if (profNameEl) profNameEl.innerHTML = `<i class="fas fa-user-circle"></i> ${c.first_name} ${c.last_name}`;
         
         let mName = c.middle_name ? ` ${c.middle_name} ` : ' ';
         const fullNameEl = document.getElementById('profFullName');
@@ -212,28 +215,36 @@ window.openCustomerProfile = async function(id) {
         const addrEl = document.getElementById('profAddress');
         if (addrEl) addrEl.innerText = c.address || 'Location not provided';
 
-        document.getElementById('profLTV').innerText = `₱${parseFloat(c.total_spent || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}`;
-        document.getElementById('profEvents').innerText = c.total_bookings || 0;
-        document.getElementById('profEmail').innerText = c.email;
-        document.getElementById('profPhone').innerText = c.phone || 'N/A';
-        document.getElementById('profNotes').innerText = c.notes || "No operational notes recorded.";
+        const ltvEl = document.getElementById('profLTV');
+        if (ltvEl) ltvEl.innerText = `₱${parseFloat(c.total_spent || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}`;
         
-        const statusTag = document.getElementById('profStatus');
+        const eventsEl = document.getElementById('profEvents');
+        if (eventsEl) eventsEl.innerText = c.total_bookings || 0;
+        
+        const emailEl = document.getElementById('profEmail');
+        if (emailEl) emailEl.innerText = c.email;
+        
+        const phoneEl = document.getElementById('profPhone');
+        if (phoneEl) phoneEl.innerText = c.phone || 'N/A';
+        
+        const notesEl = document.getElementById('profNotes');
+        if (notesEl) notesEl.innerText = c.notes || "No operational notes recorded.";
+        
         const blacklistBtn = document.getElementById('blacklistBtn');
 
         if (c.status === 'BLACKLISTED') {
-            if (statusTag) {
-                statusTag.innerText = "Status: Blacklisted / High Risk";
-                statusTag.style.color = "#fca5a5";
+            if (profStatusEl) {
+                profStatusEl.innerText = "Status: Blacklisted / High Risk";
+                profStatusEl.style.color = "#fca5a5";
             }
             if (blacklistBtn) {
                 blacklistBtn.innerText = "Restore Account";
                 blacklistBtn.className = "btn-primary bg-success border-none";
             }
         } else {
-            if (statusTag) {
-                statusTag.innerText = c.status === 'VIP' ? "Status: VIP Elite Client" : "Status: Standard Client";
-                statusTag.style.color = "#93c5fd";
+            if (profStatusEl) {
+                profStatusEl.innerText = c.status === 'VIP' ? "Status: VIP Elite Client" : "Status: Standard Client";
+                profStatusEl.style.color = "#93c5fd";
             }
             if (blacklistBtn) {
                 blacklistBtn.innerText = "Execute Block";
@@ -244,30 +255,33 @@ window.openCustomerProfile = async function(id) {
         const blacklistReasonField = document.getElementById('blacklistReason');
         if (blacklistReasonField) blacklistReasonField.value = '';
 
-        document.getElementById('editNotes').value = (c.notes && c.notes !== "No notes added yet.") ? c.notes : '';
+        const editNotesField = document.getElementById('editNotes');
+        if (editNotesField) editNotesField.value = (c.notes && c.notes !== "No notes added yet.") ? c.notes : '';
 
         const historyContainer = document.getElementById('profHistory');
-        if (c.history && c.history.length > 0) {
-            historyContainer.innerHTML = c.history.map(item => `
-                <div style="padding: 15px; border-left: 2px solid #e2e8f0; margin-left: 10px; position: relative;">
-                    <div style="position: absolute; left: -6px; top: 20px; width: 10px; height: 10px; border-radius: 50%; background: var(--primary-color);"></div>
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <span style="font-size: 0.75rem; font-weight: 600; color: #64748b;">${new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                            <div style="font-weight: 600; font-size: 1rem; color: #0f172a; margin-top: 2px;">${item.package_name}</div>
+        if (historyContainer) {
+            if (c.history && c.history.length > 0) {
+                historyContainer.innerHTML = c.history.map(item => `
+                    <div style="padding: 15px; border-left: 2px solid #e2e8f0; margin-left: 10px; position: relative;">
+                        <div style="position: absolute; left: -6px; top: 20px; width: 10px; height: 10px; border-radius: 50%; background: var(--primary-color);"></div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <span style="font-size: 0.75rem; font-weight: 600; color: #64748b;">${new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                <div style="font-weight: 600; font-size: 1rem; color: #0f172a; margin-top: 2px;">${item.package_name}</div>
+                            </div>
+                            <div style="font-weight: 700; color: var(--primary-color);">₱${item.amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
                         </div>
-                        <div style="font-weight: 700; color: var(--primary-color);">₱${item.amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
                     </div>
-                </div>
-            `).join('');
-        } else {
-            historyContainer.innerHTML = '<div style="text-align:center; padding: 2rem; color: #64748b;"><i class="fas fa-receipt" style="font-size:2rem; margin-bottom:1rem; opacity: 0.5;"></i><p>No historical ledger data.</p></div>';
+                `).join('');
+            } else {
+                historyContainer.innerHTML = '<div style="text-align:center; padding: 2rem; color: #64748b;"><i class="fas fa-receipt" style="font-size:2rem; margin-bottom:1rem; opacity: 0.5;"></i><p>No historical ledger data.</p></div>';
+            }
         }
 
     } catch (err) {
         console.error("Sync Error:", err);
         if (window.showError) window.showError(err.message || "Failed to synchronize intelligence hub.");
-        window.closeModal('customerProfileModal');
+        if (window.closeModal) window.closeModal('customerProfileModal');
     }
 };
 
