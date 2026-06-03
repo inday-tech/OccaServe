@@ -597,18 +597,19 @@ body.modal-open {
    =================================================== */
 @media (max-width: 480px) {
     .auth-modal-overlay {
-        padding: 1rem !important;
-        align-items: center !important; 
+        padding: 1rem 0 !important;
+        align-items: flex-start !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
     }
 
     .auth-modal-container {
         width: 95% !important;
         height: auto !important;
         max-width: 95% !important;
-        max-height: 90vh !important;
-        max-height: 90dvh !important;
+        max-height: none !important;
         border-radius: 1.25rem !important;
-        margin: 0 auto !important;
+        margin: 1rem auto !important;
         transform: scale(0.95) translateY(20px) !important;
         box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
     }
@@ -619,13 +620,11 @@ body.modal-open {
 
     .auth-modal-content {
         height: auto !important;
-        max-height: 90vh !important;
-        max-height: 90dvh !important;
+        max-height: none !important;
         border-radius: 1.25rem !important;
         background: #ffffff !important;
         display: none;
-        overflow-y: auto !important;
-        -webkit-overflow-scrolling: touch;
+        overflow-y: visible !important;
     }
 
     .auth-modal-content.active {
@@ -1821,19 +1820,19 @@ body.modal-open {
 
 /* --- MOBILE (max 600px) --- */
 @media (max-width: 600px) {
-    /* Overlay becomes centered modal */
     .auth-modal-overlay {
-        padding: 1rem !important;
-        align-items: center !important;
+        padding: 1rem 0 !important;
+        align-items: flex-start !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
     }
 
-    /* Modal acts as a centered popup */
     .auth-modal-container {
         width: 95% !important;
+        height: auto !important;
         max-width: 95% !important;
-        max-height: 90dvh !important;
-        max-height: 90vh !important;
-        margin: 0 auto !important;
+        max-height: none !important;
+        margin: 1rem auto !important;
         border-radius: 1.25rem !important;
         transform: scale(0.95) translateY(20px) !important;
         box-shadow: 0 10px 40px rgba(0,0,0,0.2) !important;
@@ -1843,21 +1842,17 @@ body.modal-open {
         max-width: 95% !important;
     }
 
-    /* Entrance on mobile */
     .auth-modal-overlay.active .auth-modal-container {
         transform: scale(1) translateY(0) !important;
     }
 
     .auth-modal-content {
-        max-height: 90dvh !important;
-        max-height: 90vh !important;
-        overflow-y: auto !important;
-        -webkit-overflow-scrolling: touch;
+        height: auto !important;
+        max-height: none !important;
+        overflow-y: visible !important;
         border-radius: 1.25rem !important;
-        scroll-padding-bottom: env(safe-area-inset-bottom, 16px);
     }
 
-    /* Inner card — no nested scroll! */
     .auth-modal-content .professional-card {
         padding: 3.5rem 1.25rem 2.5rem !important;
         border-radius: 0 !important;
@@ -1865,7 +1860,6 @@ body.modal-open {
         height: auto !important;
     }
 
-    /* Close button always on top */
     .auth-modal-close {
         top: 1rem !important;
         right: 1rem !important;
@@ -1873,6 +1867,8 @@ body.modal-open {
         background: rgba(255,255,255,0.95) !important;
         box-shadow: 0 2px 8px rgba(0,0,0,0.12) !important;
     }
+    }
+}
 
     /* Progress steps — hide text labels, shrink circles */
     .progress-step .step-label {
