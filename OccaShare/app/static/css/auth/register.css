@@ -17,7 +17,7 @@ body {
 .main-content-wrap {
     padding-top: 120px;
     padding-bottom: 100px;
-    min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -229,4 +229,40 @@ body {
 
 .input-wrapper:focus-within .minimal-input:-webkit-autofill {
     -webkit-box-shadow: 0 0 0 30px #fff inset !important;
+}
+
+@media (max-width: 768px) {
+    .main-content-wrap {
+        padding-top: 60px;
+        padding-bottom: 60px;
+        align-items: flex-start;
+    }
+
+    .professional-card {
+        padding: 2.5rem 2rem;
+        border-radius: 1rem;
+    }
+
+    .brand-header h2 {
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .professional-card {
+        padding: 2rem 1.5rem;
+    }
+
+    .brand-header h2 {
+        font-size: 1.75rem;
+    }
+
+    .minimal-input {
+        padding: 0.85rem 1rem;
+    }
+
+    .btn-luxury-submit {
+        padding: 1rem;
+        font-size: 1rem;
+    }
 }
