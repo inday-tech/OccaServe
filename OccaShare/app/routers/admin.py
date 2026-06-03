@@ -858,44 +858,31 @@ async def update_website_settings(
     import time
     timestamp = int(time.time())
 
+    import base64
+
     # Handle Logo Upload
     if logo and logo.filename:
-        import shutil
-        file_ext = os.path.splitext(logo.filename)[1]
-        new_filename = f"logo_{timestamp}{file_ext}"
-        # Use an absolute path or relative to project root
-        upload_path = os.path.join("app", "static", "uploads", "website")
-        if not os.path.exists(upload_path): os.makedirs(upload_path, exist_ok=True)
-        file_dest = os.path.join(upload_path, new_filename)
-        with open(file_dest, "wb") as buffer:
-            shutil.copyfileobj(logo.file, buffer)
-            
-        if config.logo_url:
-            old_logo_path = os.path.join(upload_path, os.path.basename(config.logo_url))
-            if os.path.exists(old_logo_path):
-                try: os.remove(old_logo_path)
-                except: pass
-        config.logo_url = f"/static/uploads/website/{new_filename}"
-        changes.append("Updated Platform Logo")
+        try:
+            logo_content = await logo.read()
+            if logo_content:
+                encoded_string = base64.b64encode(logo_content).decode("utf-8")
+                mime_type = logo.content_type or "image/png"
+                config.logo_url = f"data:{mime_type};base64,{encoded_string}"
+                changes.append("Updated Platform Logo")
+        except Exception as e:
+            pass
 
     # Handle Favicon Upload
     if favicon and favicon.filename:
-        import shutil
-        file_ext = os.path.splitext(favicon.filename)[1]
-        new_filename = f"favicon_{timestamp}{file_ext}"
-        upload_path = os.path.join("app", "static", "uploads", "website")
-        if not os.path.exists(upload_path): os.makedirs(upload_path, exist_ok=True)
-        file_dest = os.path.join(upload_path, new_filename)
-        with open(file_dest, "wb") as buffer:
-            shutil.copyfileobj(favicon.file, buffer)
-            
-        if config.favicon_url:
-            old_favicon_path = os.path.join(upload_path, os.path.basename(config.favicon_url))
-            if os.path.exists(old_favicon_path):
-                try: os.remove(old_favicon_path)
-                except: pass
-        config.favicon_url = f"/static/uploads/website/{new_filename}"
-        changes.append("Updated Browser Favicon")
+        try:
+            fav_content = await favicon.read()
+            if fav_content:
+                encoded_string = base64.b64encode(fav_content).decode("utf-8")
+                mime_type = favicon.content_type or "image/x-icon"
+                config.favicon_url = f"data:{mime_type};base64,{encoded_string}"
+                changes.append("Updated Browser Favicon")
+        except Exception as e:
+            pass
 
     # 🕵️ LOG AUDIT
     if changes:
