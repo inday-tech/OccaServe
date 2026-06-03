@@ -597,27 +597,35 @@ body.modal-open {
    =================================================== */
 @media (max-width: 480px) {
     .auth-modal-overlay {
-        padding: 0 !important;
-        align-items: flex-start !important; 
+        padding: 1rem !important;
+        align-items: center !important; 
     }
 
     .auth-modal-container {
-        width: 100% !important;
-        height: 100% !important;
-        max-width: 100% !important;
-        max-height: 100vh !important;
-        border-radius: 0 !important;
-        margin: 0 !important;
-        transform: none !important;
-        box-shadow: none !important;
+        width: 95% !important;
+        height: auto !important;
+        max-width: 95% !important;
+        max-height: 90vh !important;
+        max-height: 90dvh !important;
+        border-radius: 1.25rem !important;
+        margin: 0 auto !important;
+        transform: scale(0.95) translateY(20px) !important;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
+    }
+
+    .auth-modal-overlay.active .auth-modal-container {
+        transform: scale(1) translateY(0) !important;
     }
 
     .auth-modal-content {
-        height: 100% !important;
-        max-height: 100vh !important;
-        border-radius: 0 !important;
+        height: auto !important;
+        max-height: 90vh !important;
+        max-height: 90dvh !important;
+        border-radius: 1.25rem !important;
         background: #ffffff !important;
         display: none;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
     }
 
     .auth-modal-content.active {
@@ -628,15 +636,17 @@ body.modal-open {
     }
 
     .auth-modal-content .professional-card {
-        padding: 5rem 1.5rem 3rem !important;
-        height: 100%;
-        overflow-y: auto;
+        padding: 3.5rem 1.25rem 2.5rem !important;
+        height: auto !important;
+        overflow: visible !important;
     }
 
     .auth-modal-close {
-        top: 1.25rem !important;
-        right: 1.25rem !important;
+        top: 0.75rem !important;
+        right: 0.75rem !important;
         z-index: 10001 !important;
+        background: rgba(255,255,255,0.95) !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.12) !important;
     }
 }
 
@@ -1811,47 +1821,48 @@ body.modal-open {
 
 /* --- MOBILE (max 600px) --- */
 @media (max-width: 600px) {
-    /* Overlay becomes full-screen */
+    /* Overlay becomes centered modal */
     .auth-modal-overlay {
-        padding: 0 !important;
-        align-items: flex-end !important;
+        padding: 1rem !important;
+        align-items: center !important;
     }
 
-    /* Modal slides up from bottom like a native sheet */
+    /* Modal acts as a centered popup */
     .auth-modal-container {
-        width: 100% !important;
-        max-width: 100% !important;
-        max-height: 96dvh !important;   /* dynamic viewport for mobile chrome */
-        max-height: 96vh !important;    /* fallback */
-        margin: 0 !important;
-        border-radius: 1.5rem 1.5rem 0 0 !important;
-        transform: none !important;
-        box-shadow: 0 -8px 40px rgba(0,0,0,0.18) !important;
+        width: 95% !important;
+        max-width: 95% !important;
+        max-height: 90dvh !important;
+        max-height: 90vh !important;
+        margin: 0 auto !important;
+        border-radius: 1.25rem !important;
+        transform: scale(0.95) translateY(20px) !important;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2) !important;
     }
 
     .auth-modal-container.wide {
-        max-width: 100% !important;
+        max-width: 95% !important;
     }
 
-    /* Slide-up entrance on mobile */
+    /* Entrance on mobile */
     .auth-modal-overlay.active .auth-modal-container {
-        transform: none !important;
+        transform: scale(1) translateY(0) !important;
     }
 
     .auth-modal-content {
-        max-height: 96dvh !important;
-        max-height: 96vh !important;
+        max-height: 90dvh !important;
+        max-height: 90vh !important;
         overflow-y: auto !important;
         -webkit-overflow-scrolling: touch;
-        border-radius: 1.5rem 1.5rem 0 0 !important;
+        border-radius: 1.25rem !important;
         scroll-padding-bottom: env(safe-area-inset-bottom, 16px);
     }
 
-    /* Inner card — generous scrollable padding */
+    /* Inner card — no nested scroll! */
     .auth-modal-content .professional-card {
-        padding: 4.5rem 1.25rem 2.5rem !important;
+        padding: 3.5rem 1.25rem 2.5rem !important;
         border-radius: 0 !important;
-        overflow-y: auto !important;
+        overflow: visible !important;
+        height: auto !important;
     }
 
     /* Close button always on top */
