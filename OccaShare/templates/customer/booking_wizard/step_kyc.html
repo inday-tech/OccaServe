@@ -827,108 +827,23 @@
                 </div>
 
                 <div class="kyc-action-cards">
-                    <div class="action-card disabled" id="option-scan" onclick="startIdScanner()">
+                    <div class="action-card disabled" id="option-camera" onclick="handleCameraClick()">
                         <div class="card-icon"><i class="fas fa-camera"></i></div>
-                        <h3 class="card-title">Scan Live</h3>
-                        <p class="card-desc">Quickest way to verify</p>
+                        <h3 class="card-title">Take Photo</h3>
+                        <p class="card-desc">Use device camera</p>
                     </div>
                     <div class="action-card disabled" id="option-upload" onclick="handleUploadClick()">
-                        <div class="card-icon"><i class="fas fa-upload"></i></div>
-                        <h3 class="card-title">Upload File</h3>
-                        <p class="card-desc">Use existing photo</p>
+                        <div class="card-icon"><i class="fas fa-image"></i></div>
+                        <h3 class="card-title">Upload Photo</h3>
+                        <p class="card-desc">Choose from gallery</p>
                     </div>
                 </div>
+                <input type="file" id="id_camera" style="display: none;" accept="image/*" capture="environment"
+                    onchange="handleIdUpload(this)">
                 <input type="file" id="id_document" style="display: none;" accept="image/*"
                     onchange="handleIdUpload(this)">
             </div>
 
-
-            <!-- ═══ PREMIUM FULL-SCREEN ID SCANNER (eKYC style) ═══ -->
-            <!-- Flash overlay for capture animation -->
-            <div class="ekyc-flash" id="ekyc-flash"></div>
-
-            <div id="id-scanner-container" style="display: none;">
-                <!-- Background video (full-screen) -->
-                <video id="id-webcam" class="ekyc-video-bg" autoplay playsinline muted></video>
-
-                <!-- Top bar: title + close -->
-                <div class="ekyc-topbar">
-                    <div class="ekyc-topbar-title">
-                        <i class="fas fa-id-card" style="margin-right:0.4rem; color:var(--kyc-accent);"></i>
-                        Scan Your ID
-                    </div>
-                    <button class="ekyc-close-btn" onclick="stopIdScanner()" title="Cancel">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-
-                <!-- Front / Back progress pills -->
-                <div class="ekyc-side-pills">
-                    <div class="ekyc-side-pill active" id="pill-front">
-                        <span class="pill-num">1</span>
-                        <i class="fas fa-check-circle pill-check"></i>
-                        Front Side
-                    </div>
-                    <div class="ekyc-side-pill" id="pill-back">
-                        <span class="pill-num">2</span>
-                        <i class="fas fa-check-circle pill-check"></i>
-                        Back Side
-                    </div>
-                </div>
-
-                <!-- Scan area with ID frame overlay -->
-                <div class="ekyc-scan-area">
-                    <div class="ekyc-id-frame" id="ekyc-id-frame">
-                        <!-- Corner markers -->
-                        <div class="ekyc-corner ekyc-corner--tl"></div>
-                        <div class="ekyc-corner ekyc-corner--tr"></div>
-                        <div class="ekyc-corner ekyc-corner--bl"></div>
-                        <div class="ekyc-corner ekyc-corner--br"></div>
-                        <!-- Scanning laser line -->
-                        <div class="ekyc-laser" id="ekyc-laser"></div>
-                        <!-- Instruction inside frame -->
-                        <div class="ekyc-frame-hint" id="ekyc-frame-hint">Place your ID inside the frame</div>
-                    </div>
-                </div>
-
-                <!-- Real-time feedback pill -->
-                <div class="ekyc-feedback-pill">
-                    <span id="ekyc-feedback-text">
-                        <i class="fas fa-expand-arrows-alt" style="margin-right:0.3rem;"></i>
-                        Align your ID inside the frame
-                    </span>
-                </div>
-
-                <!-- Auto-capture progress ring (shown while stabilising) -->
-                <div class="ekyc-autocapture-ring" id="ekyc-autocapture-ring">
-                    <svg viewBox="0 0 48 48">
-                        <circle class="ring-track" cx="24" cy="24" r="20"/>
-                        <circle class="ring-fill"  cx="24" cy="24" r="20" id="ekyc-ring-fill"/>
-                    </svg>
-                </div>
-
-                <!-- Bottom controls -->
-                <div class="ekyc-bottom">
-                    <!-- Camera switch (front/back) -->
-                    <div id="camera-switch-group" class="ekyc-camera-switch">
-                        <button type="button" id="btn-cam-front" class="ekyc-cam-btn" onclick="switchCamera('user')">
-                            <i class="fas fa-portrait"></i> Front
-                        </button>
-                        <button type="button" id="btn-cam-back" class="ekyc-cam-btn active" onclick="switchCamera('environment')">
-                            <i class="fas fa-camera"></i> Back
-                        </button>
-                    </div>
-
-                    <!-- Shutter button -->
-                    <button class="ekyc-capture-btn" id="ekyc-capture-btn"
-                        onclick="captureIdFromCamera()" title="Capture ID"></button>
-
-                    <div class="ekyc-capture-hint" id="ekyc-capture-hint">
-                        <i class="fas fa-magic" style="margin-right:0.3rem;"></i>
-                        Auto-capture when stable &middot; or tap to capture
-                    </div>
-                </div>
-            </div>
 
             <div id="id-preview" style="display: none; text-align: center; padding: 1rem;">
                 <img id="id-image" src=""

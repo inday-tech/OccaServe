@@ -213,15 +213,80 @@ class VerificationService:
             else:
                 # Manual RGB to BGR conversion using numpy if cv2 is missing
                 img = np.array(pil_img)[:, :, ::-1].copy()
+                
+            # Apply perspective correction if possible (Server-side auto crop and deskew)
+            img = self._correct_perspective_if_possible(img)
             return img
         except Exception as e:
             print(f"[KYC DEBUG] Fatal error preparing image {filename}: {e}")
             if CV2_AVAILABLE and raw_data:
                 try:
                     nparr = np.frombuffer(raw_data, np.uint8)
-                    return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                    img = self._correct_perspective_if_possible(img)
+                    return img
                 except: pass
             raise e
+
+    def _order_points(self, pts: np.ndarray) -> np.ndarray:
+        """Orders 4 coordinates consistently: top-left, top-right, bottom-right, bottom-left."""
+        rect = np.zeros((4, 2), dtype="float32")
+        s = pts.sum(axis=1)
+        rect[0] = pts[np.argmin(s)]
+        rect[2] = pts[np.argmax(s)]
+        diff = np.diff(pts, axis=1)
+        rect[1] = pts[np.argmin(diff)]
+        rect[3] = pts[np.argmax(diff)]
+        return rect
+
+    def _correct_perspective_if_possible(self, image: np.ndarray) -> np.ndarray:
+        """Detect corners of the ID card and apply perspective warp if possible; otherwise return original."""
+        if not CV2_AVAILABLE:
+            return image
+        try:
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            # Bilateral filter preserves edges while smoothing out background/noise texture
+            blurred = cv2.bilateralFilter(gray, 9, 75, 75)
+            # Detect edges
+            edged = cv2.Canny(blurred, 40, 150)
+            # Dilate to close contour gaps
+            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+            dilated = cv2.dilate(edged, kernel, iterations=1)
+            
+            contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            if not contours:
+                return image
+                
+            contours = sorted(contours, key=cv2.contourArea, reverse=True)[:5]
+            img_h, img_w = image.shape[:2]
+            img_area = img_h * img_w
+            
+            for c in contours:
+                area = cv2.contourArea(c)
+                # Keep if the contour represents a significant portion of the image (at least 10%)
+                if area < img_area * 0.10:
+                    continue
+                peri = cv2.arcLength(c, True)
+                approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+                # If approximated contour has 4 vertices and is convex, apply warp
+                if len(approx) == 4 and cv2.isContourConvex(approx):
+                    rect = self._order_points(approx.reshape(4, 2))
+                    # Standard credit card aspect ratio ~ 1.586
+                    dst_w = 800
+                    dst_h = 505
+                    dst = np.array([
+                        [0, 0],
+                        [dst_w - 1, 0],
+                        [dst_w - 1, dst_h - 1],
+                        [0, dst_h - 1]], dtype="float32")
+                    M = cv2.getPerspectiveTransform(rect, dst)
+                    warped = cv2.warpPerspective(image, M, (dst_w, dst_h))
+                    print("[KYC DEBUG] Successfully applied auto-perspective correction to ID image.")
+                    return warped
+            return image
+        except Exception as e:
+            print(f"[KYC WARNING] Auto perspective correction failed: {e}")
+            return image
 
     def _detect_faces_detailed(self, img: np.ndarray) -> List[Any]:
         """Detect faces using standard OpenCV Haar Cascades."""

@@ -124,7 +124,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const idType = document.getElementById('id_type').value;
         const idInput = document.getElementById('id_number');
         const validationMsg = document.getElementById('id-validation-msg');
-        const scanBox = document.getElementById('option-scan');
+        const cameraBox = document.getElementById('option-camera');
         const uploadBox = document.getElementById('option-upload');
 
         let value = idInput.value;
@@ -165,19 +165,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Only require ID Type to be selected to enable upload/scan (OCR will extract the number)
         if (idType) {
-            scanBox.classList.remove('disabled');
+            cameraBox.classList.remove('disabled');
             uploadBox.classList.remove('disabled');
 
             // Auto-focus the best method if not already selected
-            if (isMobile() && !scanBox.classList.contains('active-option')) {
-                scanBox.style.borderColor = 'var(--kyc-accent)';
-                scanBox.style.backgroundColor = 'var(--kyc-accent-soft)';
+            if (isMobile() && !cameraBox.classList.contains('active-option')) {
+                cameraBox.style.borderColor = 'var(--kyc-accent)';
+                cameraBox.style.backgroundColor = 'var(--kyc-accent-soft)';
             }
         } else {
-            scanBox.classList.add('disabled');
+            cameraBox.classList.add('disabled');
             uploadBox.classList.add('disabled');
-            scanBox.style.borderColor = '';
-            scanBox.style.backgroundColor = '';
+            cameraBox.style.borderColor = '';
+            cameraBox.style.backgroundColor = '';
         }
     };
 
@@ -277,20 +277,29 @@ document.addEventListener('DOMContentLoaded', function () {
         assembleAddress();
 
         // Manage card enablement
-        const scanBox = document.getElementById('option-scan');
+        const cameraBox = document.getElementById('option-camera');
         const uploadBox = document.getElementById('option-upload');
         const idType = document.getElementById('id_type').value;
         const idNumber = document.getElementById('id_number').value.trim();
 
         if (allValid && idType && idNumber) {
-            scanBox.classList.remove('disabled');
+            cameraBox.classList.remove('disabled');
             uploadBox.classList.remove('disabled');
         } else {
-            scanBox.classList.add('disabled');
+            cameraBox.classList.add('disabled');
             uploadBox.classList.add('disabled');
         }
 
         return allValid;
+    };
+
+    window.handleCameraClick = function () {
+        const idType = document.getElementById('id_type').value;
+        if (!idType) {
+            if (window.showError) window.showError('❌ Please select an ID type.', 'Incomplete Data'); else alert('❌ Please select an ID type.');
+            return;
+        }
+        document.getElementById('id_camera').click();
     };
 
     window.handleUploadClick = function () {
@@ -320,6 +329,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('id-preview').style.display = 'none';
         document.getElementById('step-id-form').style.display = 'block';
         document.getElementById('id_document').value = '';
+        document.getElementById('id_camera').value = '';
     };
 
     window.proceedToCamera = async function () {
@@ -1173,230 +1183,7 @@ document.addEventListener('DOMContentLoaded', function () {
         updateStatusTracker(3);
     }
 
-    let idStream = null;
-    let currentFacingMode = "environment";
     let livenessFacingMode = "user";
-
-    // ─── eKYC Scanner helpers ───────────────────────────────────────────
-    let _ekycFeedbackTimer = null;
-    let _ekycAutoCapTimer  = null;
-    let _ekycRingProgress  = 0;
-    let _ekycRingInterval  = null;
-    let _ekycScanning      = false;
-    let _scanSide          = 'front'; // 'front' | 'back'
-
-    const EKYC_FEEDBACKS = [
-        { text: '📐  Align your ID inside the frame',   cls: '' },
-        { text: '💡  Move to a brighter area',           cls: 'warn' },
-        { text: '🔍  Move the ID closer',               cls: 'warn' },
-        { text: '✅  Hold still — detecting ID…',       cls: 'good' },
-        { text: '✅  ID detected — stabilising…',       cls: 'good' },
-    ];
-
-    function _ekycSetFeedback(text, cls = '') {
-        const el = document.getElementById('ekyc-feedback-text');
-        if (!el) return;
-        el.className = cls;
-        el.innerHTML = text;
-    }
-
-    function _ekycStartFeedbackSimulation() {
-        let step = 0;
-        const sequence = [0, 1, 2, 3, 4];
-        _ekycFeedbackTimer = setInterval(() => {
-            if (!_ekycScanning) return;
-            const fb = EKYC_FEEDBACKS[sequence[step % sequence.length]];
-            _ekycSetFeedback(fb.text, fb.cls);
-            // Once we reach 'detected' state, start the auto-capture ring
-            if (step >= 3) {
-                document.getElementById('ekyc-id-frame')?.classList.add('detected');
-                _ekycStartAutoCapture();
-                clearInterval(_ekycFeedbackTimer);
-            }
-            step++;
-        }, 2200);
-    }
-
-    function _ekycStartAutoCapture() {
-        const ring = document.getElementById('ekyc-autocapture-ring');
-        const fill = document.getElementById('ekyc-ring-fill');
-        if (!ring || !fill) return;
-        ring.classList.add('active');
-        _ekycRingProgress = 0;
-        const TOTAL = 125.6; // circumference of r=20 circle
-        _ekycRingInterval = setInterval(() => {
-            if (!_ekycScanning) { clearInterval(_ekycRingInterval); return; }
-            _ekycRingProgress += 6.28; // ~20 steps for ~2.5 s
-            fill.style.strokeDashoffset = Math.max(0, TOTAL - _ekycRingProgress);
-            if (_ekycRingProgress >= TOTAL) {
-                clearInterval(_ekycRingInterval);
-                // Auto-capture!
-                captureIdFromCamera();
-            }
-        }, 120);
-    }
-
-    function _ekycResetFeedbackState() {
-        clearInterval(_ekycFeedbackTimer);
-        clearInterval(_ekycRingInterval);
-        const ring = document.getElementById('ekyc-autocapture-ring');
-        const fill = document.getElementById('ekyc-ring-fill');
-        if (ring) ring.classList.remove('active');
-        if (fill) fill.style.strokeDashoffset = '125.6';
-        document.getElementById('ekyc-id-frame')?.classList.remove('detected');
-        _ekycSetFeedback('<i class="fas fa-expand-arrows-alt" style="margin-right:0.3rem;"></i> Align your ID inside the frame', '');
-    }
-
-    // ─── ID Scanner — open ──────────────────────────────────────────────
-    window.startIdScanner = async function (deviceId = null) {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            showCameraError("Your browser does not support camera access or you are not using a secure connection (HTTPS). Please use the 'Upload File' option instead.");
-            return;
-        }
-
-        const idType   = document.getElementById('id_type').value;
-        const idNumber = document.getElementById('id_number').value.trim();
-        if (!idType || !idNumber) {
-            if (window.showError) window.showError('❌ Please complete the required fields.', 'Incomplete Data');
-            return;
-        }
-
-        const video            = document.getElementById('id-webcam');
-        const scannerContainer = document.getElementById('id-scanner-container');
-        const formContainer    = document.getElementById('step-id-form');
-
-        if (idStream) { idStream.getTracks().forEach(t => t.stop()); }
-
-        let constraints = {
-            video: { facingMode: currentFacingMode, width: { ideal: 1920 }, height: { ideal: 1080 } }
-        };
-        if (deviceId) constraints.video.deviceId = { exact: deviceId };
-
-        const tryGetMedia = async (c) => {
-            idStream = await navigator.mediaDevices.getUserMedia(c);
-            video.srcObject = idStream;
-            formContainer.style.display   = 'none';
-            scannerContainer.style.display = 'flex';
-            _ekycScanning = true;
-            _ekycResetFeedbackState();
-            setTimeout(_ekycStartFeedbackSimulation, 1200);
-            await getCameraDevices();
-        };
-
-        try {
-            await tryGetMedia(constraints);
-        } catch (e1) {
-            try {
-                await tryGetMedia({ video: { facingMode: currentFacingMode } });
-            } catch (e2) {
-                try {
-                    await tryGetMedia({ video: true });
-                } catch (e3) {
-                    console.error("All camera attempts failed:", e3);
-                    showCameraError();
-                }
-            }
-        }
-    };
-
-    // ─── ID Scanner — close ─────────────────────────────────────────────
-    window.stopIdScanner = function () {
-        _ekycScanning = false;
-        _ekycResetFeedbackState();
-        if (idStream) { idStream.getTracks().forEach(t => t.stop()); idStream = null; }
-        document.getElementById('id-scanner-container').style.display = 'none';
-        document.getElementById('step-id-form').style.display          = 'block';
-    };
-
-    // ─── ID Scanner — capture ───────────────────────────────────────────
-    window.captureIdFromCamera = function () {
-        const video = document.getElementById('id-webcam');
-        if (!video.videoWidth) {
-            if (window.showToast) window.showToast("Waiting for camera to warm up…", "info");
-            else alert("Waiting for camera to warm up…");
-            return;
-        }
-
-        // Stop auto-capture cycle
-        _ekycScanning = false;
-        _ekycResetFeedbackState();
-
-        // Flash animation
-        const flash = document.getElementById('ekyc-flash');
-        if (flash) {
-            flash.classList.add('active');
-            flash.addEventListener('animationend', () => flash.classList.remove('active'), { once: true });
-        }
-
-        // Calculate crop dimensions to only capture what is inside the ID frame
-        const frame = document.getElementById('ekyc-id-frame');
-        let cropX = 0, cropY = 0, cropW = video.videoWidth, cropH = video.videoHeight;
-        
-        if (frame) {
-            const videoRect = video.getBoundingClientRect();
-            const frameRect = frame.getBoundingClientRect();
-            
-            // Calculate ratio between video's actual resolution and its displayed CSS size
-            // Because object-fit: cover is used, we need to take the MINIMUM scale to correctly represent it.
-            const scale = Math.min(video.videoWidth / videoRect.width, video.videoHeight / videoRect.height);
-            
-            // Rendered size of video
-            const renderedW = video.videoWidth / scale;
-            const renderedH = video.videoHeight / scale;
-            
-            // Offsets of the video within its container (due to object-fit cover cropping)
-            const offsetX = (videoRect.width - renderedW) / 2;
-            const offsetY = (videoRect.height - renderedH) / 2;
-            
-            // Map frame coordinates back to original video resolution
-            cropX = (frameRect.left - videoRect.left - offsetX) * scale;
-            cropY = (frameRect.top - videoRect.top - offsetY) * scale;
-            cropW = frameRect.width * scale;
-            cropH = frameRect.height * scale;
-            
-            // Constrain to boundaries just in case
-            cropX = Math.max(0, cropX);
-            cropY = Math.max(0, cropY);
-            cropW = Math.min(cropW, video.videoWidth - cropX);
-            cropH = Math.min(cropH, video.videoHeight - cropY);
-        }
-
-        const canvas = document.createElement('canvas');
-        canvas.width  = cropW;
-        canvas.height = cropH;
-        // drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
-        canvas.getContext('2d').drawImage(video, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
-
-        canvas.toBlob((blob) => {
-            idFile = new File([blob], "id_captured.jpg", { type: "image/jpeg" });
-
-            // If scanning back side — mark front done
-            if (_scanSide === 'front') {
-                const pillFront = document.getElementById('pill-front');
-                if (pillFront) { pillFront.classList.remove('active'); pillFront.classList.add('done'); }
-            }
-
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                // Stop camera stream
-                if (idStream) { idStream.getTracks().forEach(t => t.stop()); idStream = null; }
-                document.getElementById('id-image').src = e.target.result;
-                document.getElementById('id-scanner-container').style.display = 'none';
-                
-                // Trigger OCR extraction automatically instead of just showing the preview
-                finalizeIdAndProceed();
-            };
-            reader.readAsDataURL(idFile);
-        }, 'image/jpeg', 0.95);
-    };
-
-    window.switchCamera = function (mode = null) {
-        currentFacingMode = mode || (currentFacingMode === "environment" ? "user" : "environment");
-        console.log("[KYC] ID Camera Switching to:", currentFacingMode);
-        _ekycScanning = false;
-        _ekycResetFeedbackState();
-        window.startIdScanner();
-    };
 
     window.switchLivenessCamera = function (mode = null) {
         if (mode) { livenessFacingMode = mode; }
@@ -1404,14 +1191,6 @@ document.addEventListener('DOMContentLoaded', function () {
         console.log("[KYC] Liveness Camera Switching to:", livenessFacingMode);
         window.startRealtimeScanner();
     };
-
-    function showCameraError() {
-        let msg = "Unable to access camera. Please ensure camera permissions are allowed. Alternatively, you can use the 'Upload File' option.";
-        if (!window.isSecureContext) {
-            msg = "Camera access is restricted in non-secure HTTP. Please use HTTPS or use the 'Upload File' option.";
-        }
-        if (window.showError) window.showError(msg, 'Camera Access Error'); else alert(msg);
-    }
 
     window.validateIdSelection();
     initDefaultMethod();
