@@ -582,7 +582,7 @@ html, body {
         z-index: 2000;
     }
     .live-indicator { display: none; }
-    .admin-page-content { padding: 1.5rem 1.25rem; padding-top: calc(var(--topbar-height) + 1.5rem); }
+    .admin-page-content { padding: 1.5rem 1.25rem; padding-top: calc(var(--topbar-height) + 2rem) !important; }
 }
 
 @media (max-width: 640px) {
@@ -843,7 +843,7 @@ html, body {
     
     .admin-page-content {
         padding: 1rem;
-        padding-top: calc(var(--topbar-height) + 1rem);
+        padding-top: calc(var(--topbar-height) + 2rem) !important;
     }
 
     /* Dropdown positioning: full-width on mobile */
@@ -873,7 +873,7 @@ html, body {
     
     .admin-page-content {
         padding: 0.75rem;
-        padding-top: calc(var(--topbar-height) + 0.75rem);
+        padding-top: calc(var(--topbar-height) + 1.5rem) !important;
     }
 
     .premium-dropdown {
