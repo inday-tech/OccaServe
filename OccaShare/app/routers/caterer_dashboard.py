@@ -2234,6 +2234,7 @@ async def update_profile(
     middle_name: Optional[str] = Form(None),
     personal_address: Optional[str] = Form(None),
     logo: Optional[UploadFile] = File(None),
+    logo_brand: Optional[UploadFile] = File(None),
     cover_image: Optional[UploadFile] = File(None),
     gcash_number: Optional[str] = Form(None),
     gcash_qr: Optional[UploadFile] = File(None),
@@ -2269,7 +2270,7 @@ async def update_profile(
     province_code: Optional[str] = Form(None),
     city_code: Optional[str] = Form(None),
     brgy_code: Optional[str] = Form(None),
-    gallery: Optional[List[UploadFile]] = File(None),
+    gallery: List[UploadFile] = File(default=[]),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
@@ -2339,7 +2340,8 @@ async def update_profile(
         profile.longitude = longitude
 
     # Handle Single File Uploads
-    for field_name, file_obj in [("logo", logo), ("cover_image", cover_image), ("gcash_qr", gcash_qr), ("maya_qr", maya_qr), ("bank_qr", bank_qr)]:
+    logo_file = logo if (logo and logo.filename) else logo_brand
+    for field_name, file_obj in [("logo", logo_file), ("cover_image", cover_image), ("gcash_qr", gcash_qr), ("maya_qr", maya_qr), ("bank_qr", bank_qr)]:
         if file_obj and file_obj.filename:
             ext = os.path.splitext(file_obj.filename)[1]
             filename = f"{field_name}_{uuid.uuid4()}{ext}"
