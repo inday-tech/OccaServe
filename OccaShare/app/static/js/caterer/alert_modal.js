@@ -120,16 +120,6 @@ window.showAlert = (options) => {
 // Also support simple calling for quick success/error
 window.showSuccess = (message, title = "Success!") => window.showAlert({ type: 'success', title, message });
 window.showError = (message, title = "Oops!") => window.showAlert({ type: 'error', title, message });
-window.showConfirm = function (message, onConfirm, title = "Are you sure?", confirmText = "Confirm") {
-    // Explicitly set the type as confirm to ensure double buttons and correct labels
-    PremiumAlert.show({
-        type: 'confirm',
-        title: title,
-        message: message,
-        onConfirm: onConfirm,
-        confirmText: confirmText || "Confirm"
-    });
-};
 
 window.showPrompt = (message, onConfirm, title = "Input Required", placeholder = "Enter details...") => {
     PremiumAlert.init();

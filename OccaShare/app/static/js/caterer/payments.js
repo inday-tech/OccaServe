@@ -521,16 +521,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.body.appendChild(f); 
                 f.submit();
             }
-        }, "Are you sure?", "Yes, Verify Payment");
+        }, "Are you sure?", "Yes, Verify Payment", "success");
     };
     
     window.archivePayment = function(bookingId) {
         const row = document.getElementById('payment-row-' + bookingId);
         const displayId = 'BK-' + bookingId;
 
-        window.showArchiveConfirm('Payment ' + displayId, 'This will move the payment record to archives. You can still view it in the Archives section.', function() {
-            if (window.apiAction) {
-                window.apiAction(`/caterer/bookings/${bookingId}/archive`, { method: "POST" })
+        window.showConfirm('This will move the payment record to archives. You can still view it in the Archives section.', function() {
+            window.apiAction(`/caterer/bookings/${bookingId}/archive`, { method: 'POST' })
                 .then(res => {
                     if (res.status === 'success' || res.success) {
                         if (row) {

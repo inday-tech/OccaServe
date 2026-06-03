@@ -13,18 +13,21 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Google Fonts: Premium Selection -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&family=Montserrat:wght@300;400;500;600;700;800&family=Roboto:wght@300;400;500;700&family=Playfair+Display:wght@400;600;700&display=swap"
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&family=Montserrat:wght@300;400;500;600;700;800&family=Roboto:wght@300;400;500;700&family=Playfair+Display:wght@400;600;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Design System Base -->
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/layout.css') }}?v={{ range(10000000, 99999999) | random }}">
+    <link rel="stylesheet"
+        href="{{ url_for('static', path='/css/caterer/layout.css') }}?v={{ range(10000000, 99999999) | random }}">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/shared/dashboard_premium.css') }}?v=1.0">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/alert_modal.css') }}?v=1.5">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v=1.4">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}?v=5.0">
     <!-- Google Maps API -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDB1SLholKPKD5ewgc6c6P56RqFRMcpkEI&libraries=places,geocoding"></script>
+    <script
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDB1SLholKPKD5ewgc6c6P56RqFRMcpkEI&libraries=places,geocoding"></script>
 
     {% if wconfig and wconfig.favicon_url %}
     <link rel="icon" href="{{ wconfig.favicon_url }}">
@@ -34,45 +37,130 @@
 
     <style>
         :root {
-            {% if user and user.caterer_profile %}
-            --primary-color: {{ user.caterer_profile.primary_color or '#800000' }} !important;
-            --primary-color-rgb: {{ (user.caterer_profile.primary_color or '#800000') | hex_to_rgb }} !important;
-            
-            --secondary-color: {{ user.caterer_profile.secondary_color or '#1e293b' }} !important;
-            --secondary-color-rgb: {{ (user.caterer_profile.secondary_color or '#1e293b') | hex_to_rgb }} !important;
-            
-            --accent-color: {{ user.caterer_profile.accent_color or '#800000' }} !important;
-            --accent-color-rgb: {{ (user.caterer_profile.accent_color or '#800000') | hex_to_rgb }} !important;
-            
-            --highlight-color: {{ user.caterer_profile.highlight_color or '#10b981' }} !important;
-            --highlight-color-rgb: {{ (user.caterer_profile.highlight_color or '#10b981') | hex_to_rgb }} !important;
+                {
+                % if user and user.caterer_profile %
+            }
 
-            --font-family: {{ user.caterer_profile.font_family or "'Poppins', sans-serif" }} !important;
-            --border-radius: {{ user.caterer_profile.border_radius or 12 }}px !important;
+            --primary-color: {
+                    {
+                    user.caterer_profile.primary_color or '#800000'
+                }
+            }
+
+            !important;
+
+            --primary-color-rgb: {
+                    {
+                    (user.caterer_profile.primary_color or '#800000') | hex_to_rgb
+                }
+            }
+
+            !important;
+
+            --secondary-color: {
+                    {
+                    user.caterer_profile.secondary_color or '#1e293b'
+                }
+            }
+
+            !important;
+
+            --secondary-color-rgb: {
+                    {
+                    (user.caterer_profile.secondary_color or '#1e293b') | hex_to_rgb
+                }
+            }
+
+            !important;
+
+            --accent-color: {
+                    {
+                    user.caterer_profile.accent_color or '#800000'
+                }
+            }
+
+            !important;
+
+            --accent-color-rgb: {
+                    {
+                    (user.caterer_profile.accent_color or '#800000') | hex_to_rgb
+                }
+            }
+
+            !important;
+
+            --highlight-color: {
+                    {
+                    user.caterer_profile.highlight_color or '#10b981'
+                }
+            }
+
+            !important;
+
+            --highlight-color-rgb: {
+                    {
+                    (user.caterer_profile.highlight_color or '#10b981') | hex_to_rgb
+                }
+            }
+
+            !important;
+
+            --font-family: {
+                    {
+                    user.caterer_profile.font_family or "'Poppins', sans-serif"
+                }
+            }
+
+            !important;
+
+            --border-radius: {
+                    {
+                    user.caterer_profile.border_radius or 12
+                }
+            }
+
+            px !important;
 
             /* Elite Branding */
             --sidebar-bg: #ffffff !important;
             --header-bg-custom: #ffffff !important;
-            --sidebar-decor: '{{ user.caterer_profile.sidebar_decoration or 'none' }}';
-            --header-decor: '{{ user.caterer_profile.header_decoration or 'none' }}';
-            {% else %}
+            --sidebar-decor: '{{ user.caterer_profile.sidebar_decoration or ' none' }}';
+            --header-decor: '{{ user.caterer_profile.header_decoration or ' none' }}';
+
+                {
+                % else %
+            }
+
             --primary-color: #800000 !important;
-            --primary-color-rgb: 128, 0, 0 !important;
+            --primary-color-rgb: 128,
+            0,
+            0 !important;
             --secondary-color: #1e293b !important;
-            --secondary-color-rgb: 30, 41, 59 !important;
+            --secondary-color-rgb: 30,
+            41,
+            59 !important;
             --accent-color: #800000 !important;
-            --accent-color-rgb: 128, 0, 0 !important;
+            --accent-color-rgb: 128,
+            0,
+            0 !important;
             --highlight-color: #10b981 !important;
-            --highlight-color-rgb: 16, 185, 129 !important;
-            --font-family: 'Poppins', sans-serif !important;
+            --highlight-color-rgb: 16,
+            185,
+            129 !important;
+            --font-family: 'Poppins',
+            sans-serif !important;
             --border-radius: 12px !important;
             --sidebar-decor: 'none';
             --header-decor: 'none';
-            {% endif %}
+
+                {
+                % endif %
+            }
 
             --header-height: 68px;
             --header-bg: rgba(255, 255, 255, 0.85);
-            --sidebar-width: 280px; /* Optimal width for comfortable reading */
+            --sidebar-width: 280px;
+            /* Optimal width for comfortable reading */
             --transition-speed: 0.3s;
         }
 
@@ -81,55 +169,76 @@
            Applies the Caterer's Custom Palette 
            across all dashboard elements
            ========================================= */
-        
+
         /* 1. PRIMARY COLOR - Main Actions & Active States */
-        .btn-primary, .bg-primary, .badge-primary { 
-            background-color: var(--primary-color) !important; 
-            color: #ffffff !important; 
+        .btn-primary,
+        .bg-primary,
+        .badge-primary {
+            background-color: var(--primary-color) !important;
+            color: #ffffff !important;
         }
-        .text-primary, .text-brand { 
-            color: var(--primary-color) !important; 
+
+        .text-primary,
+        .text-brand {
+            color: var(--primary-color) !important;
         }
+
         .sidebar-menu a.active {
             border-left-color: var(--primary-color) !important;
             background: rgba(var(--primary-color-rgb), 0.08) !important;
             color: var(--primary-color) !important;
         }
+
         .sidebar-menu a.active i {
             color: var(--primary-color) !important;
         }
 
         /* 2. SECONDARY COLOR - Headings, Outline Buttons */
-        .dashboard-wrapper h1, .dashboard-wrapper h2, .dashboard-wrapper h3, .dashboard-wrapper h4, .text-secondary { 
-            color: var(--secondary-color); 
+        .dashboard-wrapper h1,
+        .dashboard-wrapper h2,
+        .dashboard-wrapper h3,
+        .dashboard-wrapper h4,
+        .text-secondary {
+            color: var(--secondary-color);
         }
-        .border-secondary { 
-            border-color: var(--secondary-color) !important; 
+
+        .border-secondary {
+            border-color: var(--secondary-color) !important;
         }
-        .btn-outline, .btn-secondary {
+
+        .btn-outline,
+        .btn-secondary {
             border: 2px solid var(--secondary-color) !important;
             color: var(--secondary-color) !important;
         }
+
         .btn-outline:hover {
             background-color: rgba(var(--secondary-color-rgb), 0.05) !important;
         }
 
         /* 3. ACCENT COLOR - Notifications, Important Icons */
-        .text-accent, .action-badge, .status-badge.active, i.fa-check-circle { 
-            color: var(--accent-color); 
+        .text-accent,
+        .action-badge,
+        .status-badge.active,
+        i.fa-check-circle {
+            color: var(--accent-color);
         }
-        .bg-accent, .action-badge { 
-            background-color: var(--accent-color) !important; 
+
+        .bg-accent,
+        .action-badge {
+            background-color: var(--accent-color) !important;
             color: #ffffff !important;
         }
-        
+
         /* 4. HIGHLIGHT COLOR - Interactive Hover States */
-        .btn-primary:hover, .hover-highlight:hover { 
-            background-color: var(--highlight-color) !important; 
+        .btn-primary:hover,
+        .hover-highlight:hover {
+            background-color: var(--highlight-color) !important;
             border-color: var(--highlight-color) !important;
             color: #ffffff !important;
             box-shadow: 0 4px 12px rgba(var(--highlight-color-rgb), 0.3) !important;
         }
+
         .stat-card-premium:hover {
             border-color: rgba(var(--highlight-color-rgb), 0.3) !important;
             box-shadow: 0 8px 24px rgba(var(--highlight-color-rgb), 0.1) !important;
@@ -150,7 +259,8 @@
         }
 
         .dashboard-wrapper:not(.texture-none) {
-            background-color: #f1f5f9; /* Slightly darker base for textures to pop */
+            background-color: #f1f5f9;
+            /* Slightly darker base for textures to pop */
         }
 
         .content-wrapper {
@@ -172,23 +282,27 @@
         }
 
         @media (max-width: 1024px) {
-            .content-wrapper, .sidebar-is-mini .content-wrapper {
+
+            .content-wrapper,
+            .sidebar-is-mini .content-wrapper {
                 margin-left: 0 !important;
             }
         }
 
         .main-content {
-            padding: 1.5rem 1.5rem !important; /* Clean, professional alignment */
+            padding: 1.5rem 1.5rem !important;
+            /* Clean, professional alignment */
             flex: 1;
             min-width: 0;
             width: 100% !important;
             max-width: 100% !important;
             margin: 0 !important;
-            margin-top: var(--header-height) !important; /* Compensate for fixed header */
+            margin-top: var(--header-height) !important;
+            /* Compensate for fixed header */
         }
 
         /* Prevent children from centering away from sidebar */
-        .main-content > * {
+        .main-content>* {
             margin-left: 0 !important;
         }
 
@@ -196,7 +310,8 @@
             font-size: var(--text-sm) !important;
             font-weight: 700 !important;
             color: var(--secondary-color) !important;
-            white-space: normal !important; /* Allow wrapping */
+            white-space: normal !important;
+            /* Allow wrapping */
             overflow: visible !important;
             text-overflow: clip !important;
             display: block !important;
@@ -223,7 +338,7 @@
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03);
             transition: left var(--transition-speed) ease;
         }
-        
+
         .sidebar-is-mini .dashboard-header {
             left: 80px;
         }
@@ -275,7 +390,8 @@
             width: 38px;
             height: 38px;
             border-radius: 10px;
-            display: flex; /* Always flex now that it's in sidebar */
+            display: flex;
+            /* Always flex now that it's in sidebar */
             align-items: center;
             justify-content: center;
             cursor: pointer;
@@ -434,7 +550,7 @@
             width: 240px;
             background: white;
             border-radius: 16px;
-            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
             border: 1px solid #e2e8f0;
             padding: 8px;
             display: none;
@@ -447,8 +563,15 @@
         }
 
         @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .dropdown-header {
@@ -503,7 +626,8 @@
             width: var(--sidebar-width) !important;
             height: 100vh;
             background: #ffffff;
-            position: fixed !important; /* Hard-pin to left */
+            position: fixed !important;
+            /* Hard-pin to left */
             top: 0;
             bottom: 0;
             left: 0;
@@ -513,7 +637,8 @@
             display: flex;
             flex-direction: column;
             border-right: 1px solid #f1f5f9;
-            overflow: hidden !important; /* Lock overall sidebar scroll */
+            overflow: hidden !important;
+            /* Lock overall sidebar scroll */
         }
 
         .dashboard-wrapper:not(.texture-none) .sidebar {
@@ -527,20 +652,74 @@
             background: transparent !important;
         }
 
-        .texture-blueprint { background-color: #1e293b; background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px); background-size: 40px 40px; }
-        .texture-blueprint .sidebar-brand-area .occ-brand-name, .texture-blueprint .sidebar-section-label, .texture-blueprint .sidebar-menu a { color: rgba(255,255,255,0.8) !important; }
-        .texture-topo { background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 32c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57 70c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7z' fill='%23cbd5e1' fill-opacity='0.2' fill-rule='evenodd'/%3E%3C/svg%3E"); }
-        .texture-marble { background-image: radial-gradient(circle at 0% 0%, rgba(255,255,255,0.8) 0%, transparent 50%), radial-gradient(circle at 100% 100%, rgba(255,255,255,0.8) 0%, transparent 50%), linear-gradient(45deg, rgba(203, 213, 225, 0.1) 25%, transparent 25%, transparent 50%, rgba(203, 213, 225, 0.1) 50%, rgba(203, 213, 225, 0.1) 75%, transparent 75%, transparent); background-size: 100px 100px; }
-        .texture-circuit { background-image: radial-gradient(rgba(203, 213, 225, 0.3) 1px, transparent 0); background-size: 40px 40px; background-position: -19px -19px; }
-        
+        .texture-blueprint {
+            background-color: #1e293b;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        .texture-blueprint .sidebar-brand-area .occ-brand-name,
+        .texture-blueprint .sidebar-section-label,
+        .texture-blueprint .sidebar-menu a {
+            color: rgba(255, 255, 255, 0.8) !important;
+        }
+
+        .texture-topo {
+            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 32c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57 70c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7z' fill='%23cbd5e1' fill-opacity='0.2' fill-rule='evenodd'/%3E%3C/svg%3E");
+        }
+
+        .texture-marble {
+            background-image: radial-gradient(circle at 0% 0%, rgba(255, 255, 255, 0.8) 0%, transparent 50%), radial-gradient(circle at 100% 100%, rgba(255, 255, 255, 0.8) 0%, transparent 50%), linear-gradient(45deg, rgba(203, 213, 225, 0.1) 25%, transparent 25%, transparent 50%, rgba(203, 213, 225, 0.1) 50%, rgba(203, 213, 225, 0.1) 75%, transparent 75%, transparent);
+            background-size: 100px 100px;
+        }
+
+        .texture-circuit {
+            background-image: radial-gradient(rgba(203, 213, 225, 0.3) 1px, transparent 0);
+            background-size: 40px 40px;
+            background-position: -19px -19px;
+        }
+
         /* Catering Textures */
-        .texture-food { background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10 10c2 0 4 2 4 4s-2 4-4 4-4-2-4-4 2-4 4-4zm30 30c2 0 4 2 4 4s-2 4-4 4-4-2-4-4 2-4 4-4zM20 50c1 0 2 1 2 2s-1 2-2 2-2-1-2-2 1-2 2-2zm30-40c1 0 2 1 2 2s-1 2-2 2-2-1-2-2 1-2 2-2zM15 30c3 0 5 2 5 5s-2 5-5 5-5-2-5-5 2-5 5-5zm30 0c3 0 5 2 5 5s-2 5-5 5-5-2-5-5 2-5 5-5z' fill='%23cbd5e1' fill-opacity='0.15'/%3E%3C/svg%3E"); }
-        .texture-dining { background-image: linear-gradient(45deg, rgba(203,213,225,0.05) 25%, transparent 25%), linear-gradient(-45deg, rgba(203,213,225,0.05) 25%, transparent 25%); background-size: 60px 60px; }
-        
+        .texture-food {
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10 10c2 0 4 2 4 4s-2 4-4 4-4-2-4-4 2-4 4-4zm30 30c2 0 4 2 4 4s-2 4-4 4-4-2-4-4 2-4 4-4zM20 50c1 0 2 1 2 2s-1 2-2 2-2-1-2-2 1-2 2-2zm30-40c1 0 2 1 2 2s-1 2-2 2-2-1-2-2 1-2 2-2zM15 30c3 0 5 2 5 5s-2 5-5 5-5-2-5-5 2-5 5-5zm30 0c3 0 5 2 5 5s-2 5-5 5-5-2-5-5 2-5 5-5z' fill='%23cbd5e1' fill-opacity='0.15'/%3E%3C/svg%3E");
+        }
+
+        .texture-dining {
+            background-image: linear-gradient(45deg, rgba(203, 213, 225, 0.05) 25%, transparent 25%), linear-gradient(-45deg, rgba(203, 213, 225, 0.05) 25%, transparent 25%);
+            background-size: 60px 60px;
+        }
+
         /* Decorations & Animations */
-        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0px); } }
-        @keyframes steam { 0% { opacity: 0; transform: translateY(0) scale(1); } 50% { opacity: 0.5; } 100% { opacity: 0; transform: translateY(-20px) scale(1.5); } }
-        
+        @keyframes float {
+            0% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+
+            100% {
+                transform: translateY(0px);
+            }
+        }
+
+        @keyframes steam {
+            0% {
+                opacity: 0;
+                transform: translateY(0) scale(1);
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateY(-20px) scale(1.5);
+            }
+        }
+
         .sidebar-decor-sticker {
             position: absolute;
             font-size: 1.8rem;
@@ -550,12 +729,41 @@
             transition: all 0.3s ease;
         }
 
-        .sticker-1 { top: 10%; right: 10px; animation: float 4s ease-in-out infinite; }
-        .sticker-2 { top: 25%; left: -5px; animation: float 5s ease-in-out infinite reverse; }
-        .sticker-3 { top: 45%; right: -5px; animation: float 6s ease-in-out infinite; }
-        .sticker-4 { top: 65%; left: 5px; animation: float 4.5s ease-in-out infinite; }
-        .sticker-5 { bottom: 15%; right: 10px; animation: float 5.5s ease-in-out infinite reverse; }
-        .sticker-6 { bottom: 5%; left: 10px; animation: float 3.5s ease-in-out infinite; }
+        .sticker-1 {
+            top: 10%;
+            right: 10px;
+            animation: float 4s ease-in-out infinite;
+        }
+
+        .sticker-2 {
+            top: 25%;
+            left: -5px;
+            animation: float 5s ease-in-out infinite reverse;
+        }
+
+        .sticker-3 {
+            top: 45%;
+            right: -5px;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .sticker-4 {
+            top: 65%;
+            left: 5px;
+            animation: float 4.5s ease-in-out infinite;
+        }
+
+        .sticker-5 {
+            bottom: 15%;
+            right: 10px;
+            animation: float 5.5s ease-in-out infinite reverse;
+        }
+
+        .sticker-6 {
+            bottom: 5%;
+            left: 10px;
+            animation: float 3.5s ease-in-out infinite;
+        }
 
         .header-decor-container {
             position: absolute;
@@ -569,46 +777,144 @@
 
         .header-decor-sticker {
             position: absolute;
-            font-size: 1.2rem; /* Slightly smaller for density */
+            font-size: 1.2rem;
+            /* Slightly smaller for density */
             opacity: 0.6;
             animation: float 3s ease-in-out infinite;
         }
 
-        .h-sticker-1 { left: 5%; animation-delay: 0s; }
-        .h-sticker-2 { left: 15%; animation-delay: 0.5s; }
-        .h-sticker-3 { left: 25%; animation-delay: 1s; }
-        .h-sticker-4 { left: 40%; animation-delay: 1.5s; }
-        .h-sticker-5 { left: 55%; animation-delay: 2s; }
-        .h-sticker-6 { left: 70%; animation-delay: 2.5s; }
-        .h-sticker-7 { left: 80%; animation-delay: 3s; }
-        .h-sticker-8 { left: 95%; animation-delay: 3.5s; }
+        .h-sticker-1 {
+            left: 5%;
+            animation-delay: 0s;
+        }
+
+        .h-sticker-2 {
+            left: 15%;
+            animation-delay: 0.5s;
+        }
+
+        .h-sticker-3 {
+            left: 25%;
+            animation-delay: 1s;
+        }
+
+        .h-sticker-4 {
+            left: 40%;
+            animation-delay: 1.5s;
+        }
+
+        .h-sticker-5 {
+            left: 55%;
+            animation-delay: 2s;
+        }
+
+        .h-sticker-6 {
+            left: 70%;
+            animation-delay: 2.5s;
+        }
+
+        .h-sticker-7 {
+            left: 80%;
+            animation-delay: 3s;
+        }
+
+        .h-sticker-8 {
+            left: 95%;
+            animation-delay: 3.5s;
+        }
 
         /* Global Radius & Style Overrides */
-        .card, .container-pro, .dashboard-card, .stats-card, .menu-item-card, .profile-card,
-        .auth-card, .form-card, .booking-card, .settings-card, .notification-item, .message-bubble,
-        .modal-content, .dropdown-menu, .filter-select-pro, .form-control, .input-pro,
-        .badge-pro, .status-pill, .tag-pro, .search-bar-pro, .category-card, .stat-card-premium,
-        .c-card-premium, .b-table-container, .package-card-pro, .occ-modal-box, .occ-form-input,
-        .action-banner-premium, .modal-info-card, .payment-box-compact, .brand-settings-card,
-        .kyc-review-card-wrapper, .audit-review-table, .kyc-user-identity-box, .kyc-status-badge,
-        .control-pro, .form-group-pro, .modal-box-pro, .tab-pane-pro, .inclusion-matrix,
-        .mini-stat-card, .stat-icon-box, .popular-item-row, .recent-order-row, .event-date-box {
+        .card,
+        .container-pro,
+        .dashboard-card,
+        .stats-card,
+        .menu-item-card,
+        .profile-card,
+        .auth-card,
+        .form-card,
+        .booking-card,
+        .settings-card,
+        .notification-item,
+        .message-bubble,
+        .modal-content,
+        .dropdown-menu,
+        .filter-select-pro,
+        .form-control,
+        .input-pro,
+        .badge-pro,
+        .status-pill,
+        .tag-pro,
+        .search-bar-pro,
+        .category-card,
+        .stat-card-premium,
+        .c-card-premium,
+        .b-table-container,
+        .package-card-pro,
+        .occ-modal-box,
+        .occ-form-input,
+        .action-banner-premium,
+        .modal-info-card,
+        .payment-box-compact,
+        .brand-settings-card,
+        .kyc-review-card-wrapper,
+        .audit-review-table,
+        .kyc-user-identity-box,
+        .kyc-status-badge,
+        .control-pro,
+        .form-group-pro,
+        .modal-box-pro,
+        .tab-pane-pro,
+        .inclusion-matrix,
+        .mini-stat-card,
+        .stat-icon-box,
+        .popular-item-row,
+        .recent-order-row,
+        .event-date-box {
             border-radius: var(--border-radius) !important;
         }
 
-        .btn, .btn-primary, .btn-secondary, .btn-outline, .btn-pro, .btn-action, .btn-save, .btn-discard,
-        .btn-primary-pro, .btn-bookings-new, .btn-edit-full, .btn-menu-items, .btn-archive-pro, .btn-secondary-pro,
-        .btn-danger-pro, .btn-banner-action, .btn-details-bookings, .btn-direct-sign, .btn-review-kyc,
-        .sidebar-menu a, .header-action-btn, .pagination-btn, .tab-btn, .profile-action-btn,
-        .occ-modal-close, .btn-sm-outline, .btn-sm-confirm, .btn-sm-cancel {
-            border-radius: calc(var(--border-radius) * 0.7) !important; /* Slightly more refined for buttons */
+        .btn,
+        .btn-primary,
+        .btn-secondary,
+        .btn-outline,
+        .btn-pro,
+        .btn-action,
+        .btn-save,
+        .btn-discard,
+        .btn-primary-pro,
+        .btn-bookings-new,
+        .btn-edit-full,
+        .btn-menu-items,
+        .btn-archive-pro,
+        .btn-secondary-pro,
+        .btn-danger-pro,
+        .btn-banner-action,
+        .btn-details-bookings,
+        .btn-direct-sign,
+        .btn-review-kyc,
+        .sidebar-menu a,
+        .header-action-btn,
+        .pagination-btn,
+        .tab-btn,
+        .profile-action-btn,
+        .occ-modal-close,
+        .btn-sm-outline,
+        .btn-sm-confirm,
+        .btn-sm-cancel {
+            border-radius: calc(var(--border-radius) * 0.7) !important;
+            /* Slightly more refined for buttons */
         }
 
-        .sidebar-brand-area, .sidebar-footer, .header-search-container, .header-user-profile,
-        .profile-avatar, .caterer-avatar-box, .mini-stat-icon {
+        .sidebar-brand-area,
+        .sidebar-footer,
+        .header-search-container,
+        .header-user-profile,
+        .profile-avatar,
+        .caterer-avatar-box,
+        .mini-stat-icon {
             border-radius: calc(var(--border-radius) * 0.5) !important;
         }
-        
+
 
         /* ── New Structural Sidebar (Diamond Standard) ── */
         .sidebar {
@@ -616,7 +922,9 @@
             height: 100vh;
             background: #ffffff;
             position: fixed !important;
-            top: 0; bottom: 0; left: 0;
+            top: 0;
+            bottom: 0;
+            left: 0;
             z-index: 1050;
             padding: 0;
             transition: width var(--transition-speed) ease;
@@ -638,14 +946,33 @@
             position: relative;
             min-height: 80px;
         }
+
         .brand-info {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
         }
-        .brand-name { display: block; font-weight: 800; font-size: 1rem; color: var(--secondary-color); letter-spacing: -0.02em; line-height: 1.2; text-transform: none; }
-        .brand-tagline { display: block; font-size: 0.65rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
+
+        .brand-name {
+            display: block;
+            font-weight: 800;
+            font-size: 1rem;
+            color: var(--secondary-color);
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+            text-transform: none;
+        }
+
+        .brand-tagline {
+            display: block;
+            font-size: 0.65rem;
+            font-weight: 800;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-top: 2px;
+        }
 
         .sidebar-collapse-btn {
             position: absolute;
@@ -654,12 +981,22 @@
             transform: translateY(-50%);
             background: #f1f5f9;
             border: none;
-            width: 28px; height: 28px; border-radius: 8px;
-            color: #64748b; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 0.7rem; transition: all 0.3s ease;
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            color: #64748b;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            transition: all 0.3s ease;
         }
-        .sidebar-collapse-btn:hover { background: var(--primary-color); color: #fff; }
+
+        .sidebar-collapse-btn:hover {
+            background: var(--primary-color);
+            color: #fff;
+        }
 
         /* IDENTITY CARD */
         .sidebar-admin-card {
@@ -668,27 +1005,63 @@
             border: 1px solid #f1f5f9;
             border-radius: 12px;
             padding: 0.85rem 1rem;
-            display: flex; align-items: center; gap: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
             flex-shrink: 0;
         }
+
         .admin-avatar {
             position: relative;
-            width: 36px; height: 36px;
+            width: 36px;
+            height: 36px;
             background: var(--primary-color);
             border-radius: 10px;
-            display: flex; align-items: center; justify-content: center;
-            color: #fff; font-weight: 800; font-size: 0.85rem;
-            flex-shrink: 0; overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 800;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+            overflow: hidden;
         }
+
         .admin-status-dot {
-            position: absolute; bottom: -2px; right: -2px;
-            width: 10px; height: 10px;
-            background: #10b981; border: 2px solid #fff;
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            width: 10px;
+            height: 10px;
+            background: #10b981;
+            border: 2px solid #fff;
             border-radius: 50%;
         }
-        .admin-identity { min-width: 0; }
-        .admin-name { display: block; font-size: 0.8rem; font-weight: 800; color: var(--secondary-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .admin-rank { display: flex; align-items: center; gap: 4px; font-size: 0.62rem; font-weight: 800; color: var(--primary-color); margin-top: 2px; text-transform: uppercase; }
+
+        .admin-identity {
+            min-width: 0;
+        }
+
+        .admin-name {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 800;
+            color: var(--secondary-color);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .admin-rank {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.62rem;
+            font-weight: 800;
+            color: var(--primary-color);
+            margin-top: 2px;
+            text-transform: uppercase;
+        }
 
         /* NAVIGATION */
         .sidebar-nav {
@@ -697,8 +1070,11 @@
             padding: 0.75rem 0.75rem;
             scrollbar-width: none;
         }
-        .sidebar-nav::-webkit-scrollbar { display: none; }
-        
+
+        .sidebar-nav::-webkit-scrollbar {
+            display: none;
+        }
+
         .nav-section-label {
             display: block;
             font-size: 0.65rem;
@@ -709,11 +1085,17 @@
             padding: 1.25rem 0.75rem 0.5rem;
             opacity: 0.8;
         }
-        
-        .nav-list { list-style: none; margin: 0; padding: 0; }
-        
+
+        .nav-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
         .nav-item {
-            display: flex; align-items: center; gap: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
             padding: 0.75rem 1rem;
             border-radius: 10px;
             color: #64748b;
@@ -723,31 +1105,62 @@
             transition: all 0.2s ease;
             margin-bottom: 2px;
         }
-        .nav-item:hover { background: #f1f5f9; color: var(--secondary-color); }
+
+        .nav-item:hover {
+            background: #f1f5f9;
+            color: var(--secondary-color);
+        }
+
         .nav-item.active {
             background: var(--primary-color);
             color: #fff;
             box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.25);
         }
-        .nav-item.active .nav-icon { color: #fff; }
-        
-        .nav-icon {
-            width: 20px; height: 20px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 0.95rem; flex-shrink: 0;
+
+        .nav-item.active .nav-icon {
+            color: #fff;
         }
-        .nav-label { flex: 1; }
+
+        .nav-icon {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95rem;
+            flex-shrink: 0;
+        }
+
+        .nav-label {
+            flex: 1;
+        }
 
         /* MINI SIDEBAR STATE */
-        .sidebar-is-mini .sidebar { width: 80px !important; }
+        .sidebar-is-mini .sidebar {
+            width: 80px !important;
+        }
+
         .sidebar-is-mini .brand-text-label,
         .sidebar-is-mini .nav-label,
         .sidebar-is-mini .sidebar-admin-card,
         .sidebar-is-mini .nav-section-label,
-        .sidebar-is-mini .sidebar-footer { display: none !important; }
-        
-        .sidebar-is-mini .sidebar-brand { padding: 1.25rem 0; min-height: auto; }
-        .sidebar-is-mini .sidebar-collapse-btn { position: relative; right: auto; top: auto; transform: rotate(180deg); margin: 0 auto; }
+        .sidebar-is-mini .sidebar-footer {
+            display: none !important;
+        }
+
+        .sidebar-is-mini .sidebar-brand {
+            padding: 1.25rem 0;
+            min-height: auto;
+        }
+
+        .sidebar-is-mini .sidebar-collapse-btn {
+            position: relative;
+            right: auto;
+            top: auto;
+            transform: rotate(180deg);
+            margin: 0 auto;
+        }
+
         /* MOBILE OVERRIDES */
         .mobile-menu-btn {
             display: none;
@@ -761,6 +1174,7 @@
             transition: background 0.2s, color 0.2s;
             margin-right: 12px;
         }
+
         .mobile-menu-btn:hover {
             background: #f1f5f9;
             color: var(--primary-color);
@@ -772,26 +1186,43 @@
                 transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                 box-shadow: none;
             }
+
             .sidebar.sidebar-open {
                 transform: translateX(0);
-                box-shadow: 20px 0 25px -5px rgba(0,0,0,0.1);
+                box-shadow: 20px 0 25px -5px rgba(0, 0, 0, 0.1);
             }
-            .content-wrapper { margin-left: 0 !important; }
-            .sidebar-collapse-btn { display: flex !important; right: 10px; }
-            
+
+            .content-wrapper {
+                margin-left: 0 !important;
+            }
+
+            .sidebar-collapse-btn {
+                display: flex !important;
+                right: 10px;
+            }
+
             .sidebar-overlay {
-                position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5);
-                backdrop-filter: blur(4px); z-index: 1040;
-                opacity: 0; visibility: hidden; transition: all 0.3s ease;
+                position: fixed;
+                inset: 0;
+                background: rgba(15, 23, 42, 0.5);
+                backdrop-filter: blur(4px);
+                z-index: 1040;
+                opacity: 0;
+                visibility: hidden;
+                transition: all 0.3s ease;
             }
-            .sidebar-overlay.active { opacity: 1; visibility: visible; }
+
+            .sidebar-overlay.active {
+                opacity: 1;
+                visibility: visible;
+            }
 
             .mobile-menu-btn {
                 display: flex;
                 align-items: center;
                 justify-content: center;
             }
-            
+
             .dashboard-header {
                 left: 0;
                 width: 100%;
@@ -803,9 +1234,11 @@
             .header-search-container {
                 display: none;
             }
+
             .header-actions {
                 gap: 0.5rem;
             }
+
             .profile-meta {
                 display: none;
             }
@@ -813,20 +1246,24 @@
 
         /* SIDEBAR FOOTER & LOGOUT */
         .sidebar-footer {
-            padding: 1rem 0.75rem 2rem 0.75rem; /* Added extra bottom padding */
+            padding: 1rem 0.75rem 2rem 0.75rem;
+            /* Added extra bottom padding */
             border-top: 1px solid #f1f5f9;
             flex-shrink: 0;
             background: #fff;
         }
+
         .logout-link:hover {
             background: #ef4444 !important;
             color: #fff !important;
             border-color: #ef4444 !important;
             box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2) !important;
         }
+
         .sidebar-is-mini .sidebar-footer {
             padding: 1rem 0.5rem;
         }
+
         .sidebar-is-mini .logout-link {
             justify-content: center;
             padding: 0.85rem 0;
@@ -848,16 +1285,19 @@
     <!-- Sidebar Overlay -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
-    <div class="dashboard-wrapper texture-{{ user.caterer_profile.dashboard_texture or 'none' if user and user.caterer_profile else 'none' }}">
+    <div
+        class="dashboard-wrapper texture-{{ user.caterer_profile.dashboard_texture or 'none' if user and user.caterer_profile else 'none' }}">
         <!-- Sidebar Navigation -->
         <aside class="sidebar" id="sidebar">
             <!-- Sidebar Brand Section -->
             <div class="sidebar-brand">
                 <div class="brand-info brand-text-label">
-                    <span class="brand-name"><span style="color: #1e293b;">Occa</span><span style="color: #FF7B54;">Serve</span></span>
-                    <span class="brand-tagline">Business Dashboard</span>
+                    <span class="brand-name"><span style="color: #1e293b;">Occa</span><span
+                            style="color: #FF7B54;">Serve</span></span>
+                    <span class="brand-tagline">Caterer Panel</span>
                 </div>
-                <button class="sidebar-collapse-btn" id="sidebarToggle" onclick="toggleSidebar()" aria-label="Toggle Sidebar" style="background: transparent; color: #64748b; font-size: 0.9rem;">
+                <button class="sidebar-collapse-btn" id="sidebarToggle" onclick="toggleSidebar()"
+                    aria-label="Toggle Sidebar" style="background: transparent; color: #64748b; font-size: 0.9rem;">
                     <i class="fas fa-chevron-left"></i>
                 </button>
             </div>
@@ -866,16 +1306,17 @@
             <div class="sidebar-admin-card">
                 <div class="admin-avatar">
                     {% if user and user.caterer_profile and user.caterer_profile.logo_url %}
-                        <img src="{{ '/' ~ user.caterer_profile.logo_url if not user.caterer_profile.logo_url.startswith('http') and not user.caterer_profile.logo_url.startswith('/') else user.caterer_profile.logo_url }}" 
-                             alt="Logo" style="width: 100%; height: 100%; object-fit: cover; border-radius: 10px;"
-                             onerror="this.style.display='none'; this.parentElement.textContent='{{ user.first_name[0]|upper }}'">
+                    <img src="{{ '/' ~ user.caterer_profile.logo_url if not user.caterer_profile.logo_url.startswith('http') and not user.caterer_profile.logo_url.startswith('/') else user.caterer_profile.logo_url }}"
+                        alt="Logo" style="width: 100%; height: 100%; object-fit: cover; border-radius: 10px;"
+                        onerror="this.style.display='none'; this.parentElement.textContent='{{ user.first_name[0]|upper }}'">
                     {% else %}
-                        {{ user.first_name[0]|upper }}
+                    {{ user.first_name[0]|upper }}
                     {% endif %}
                     <div class="admin-status-dot"></div>
                 </div>
                 <div class="admin-identity">
-                    <span class="admin-name">{{ user.caterer_profile.business_name if user and user.caterer_profile else 'Business Name' }}</span>
+                    <span class="admin-name">{{ user.caterer_profile.business_name if user and user.caterer_profile else
+                        'Business Name' }}</span>
                     <span class="admin-rank"><i class="fas fa-certificate"></i> Verified Partner</span>
                 </div>
             </div>
@@ -979,41 +1420,58 @@
 
             <!-- Sidebar Footer: Unified Logout -->
             <div class="sidebar-footer">
-                <a href="/auth/logout" class="nav-item logout-link" style="margin-bottom: 0; color: #ef4444; background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.1);">
+                <a href="/auth/logout" class="nav-item logout-link"
+                    style="margin-bottom: 0; color: #ef4444; background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.1);">
                     <div class="nav-icon"><i class="fas fa-sign-out-alt"></i></div>
                     <span class="nav-label">Logout Account</span>
                 </a>
             </div>
 
             {% if user and user.caterer_profile %}
-                <div class="sidebar-stickers-container" style="position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1;">
-                    {% if user.caterer_profile.sidebar_decoration == 'chef-hat' %}
-                        <div class="sidebar-decor-sticker sticker-1" style="color: var(--primary-color);"><i class="fas fa-hat-chef"></i></div>
-                        <div class="sidebar-decor-sticker sticker-2" style="color: var(--accent-color);"><i class="fas fa-utensils"></i></div>
-                        <div class="sidebar-decor-sticker sticker-3" style="color: var(--highlight-color);"><i class="fas fa-mitten"></i></div>
-                        <div class="sidebar-decor-sticker sticker-4" style="color: var(--primary-color);"><i class="fas fa-concierge-bell"></i></div>
-                        <div class="sidebar-decor-sticker sticker-5" style="color: var(--accent-color);"><i class="fas fa-whisk"></i></div>
-                    {% elif user.caterer_profile.sidebar_decoration == 'food-pack' %}
-                        <div class="sidebar-decor-sticker sticker-1" style="color: #ed8936;"><i class="fas fa-pizza-slice"></i></div>
-                        <div class="sidebar-decor-sticker sticker-2" style="color: #ecc94b;"><i class="fas fa-hamburger"></i></div>
-                        <div class="sidebar-decor-sticker sticker-3" style="color: #f687b3;"><i class="fas fa-ice-cream"></i></div>
-                        <div class="sidebar-decor-sticker sticker-4" style="color: #ed8936;"><i class="fas fa-hotdog"></i></div>
-                        <div class="sidebar-decor-sticker sticker-5" style="color: #ecc94b;"><i class="fas fa-french-fries"></i></div>
-                        <div class="sidebar-decor-sticker sticker-6" style="color: #f687b3;"><i class="fas fa-donut"></i></div>
-                    {% elif user.caterer_profile.sidebar_decoration == 'party-pack' %}
-                        <div class="sidebar-decor-sticker sticker-1" style="color: #4299e1;"><i class="fas fa-balloons"></i></div>
-                        <div class="sidebar-decor-sticker sticker-2" style="color: #ed64a6;"><i class="fas fa-glass-cheers"></i></div>
-                        <div class="sidebar-decor-sticker sticker-3" style="color: #48bb78;"><i class="fas fa-music"></i></div>
-                        <div class="sidebar-decor-sticker sticker-4" style="color: #4299e1;"><i class="fas fa-gift"></i></div>
-                        <div class="sidebar-decor-sticker sticker-5" style="color: #ed64a6;"><i class="fas fa-birthday-cake"></i></div>
-                        <div class="sidebar-decor-sticker sticker-6" style="color: #48bb78;"><i class="fas fa-camera"></i></div>
-                    {% elif user.caterer_profile.sidebar_decoration == 'steam' %}
-                        <div class="sidebar-decor-sticker sticker-1"><i class="fas fa-mug-hot steam-icon"></i></div>
-                        <div class="sidebar-decor-sticker sticker-2" style="color: #a0aec0; top: 30%;"><i class="fas fa-coffee-bean"></i></div>
-                        <div class="sidebar-decor-sticker sticker-3" style="color: #a0aec0; top: 50%;"><i class="fas fa-cookie-bite"></i></div>
-                        <div class="sidebar-decor-sticker sticker-4"><i class="fas fa-mug-hot steam-icon" style="animation-delay: 1s;"></i></div>
-                    {% endif %}
+            <div class="sidebar-stickers-container"
+                style="position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1;">
+                {% if user.caterer_profile.sidebar_decoration == 'chef-hat' %}
+                <div class="sidebar-decor-sticker sticker-1" style="color: var(--primary-color);"><i
+                        class="fas fa-hat-chef"></i></div>
+                <div class="sidebar-decor-sticker sticker-2" style="color: var(--accent-color);"><i
+                        class="fas fa-utensils"></i></div>
+                <div class="sidebar-decor-sticker sticker-3" style="color: var(--highlight-color);"><i
+                        class="fas fa-mitten"></i></div>
+                <div class="sidebar-decor-sticker sticker-4" style="color: var(--primary-color);"><i
+                        class="fas fa-concierge-bell"></i></div>
+                <div class="sidebar-decor-sticker sticker-5" style="color: var(--accent-color);"><i
+                        class="fas fa-whisk"></i></div>
+                {% elif user.caterer_profile.sidebar_decoration == 'food-pack' %}
+                <div class="sidebar-decor-sticker sticker-1" style="color: #ed8936;"><i class="fas fa-pizza-slice"></i>
                 </div>
+                <div class="sidebar-decor-sticker sticker-2" style="color: #ecc94b;"><i class="fas fa-hamburger"></i>
+                </div>
+                <div class="sidebar-decor-sticker sticker-3" style="color: #f687b3;"><i class="fas fa-ice-cream"></i>
+                </div>
+                <div class="sidebar-decor-sticker sticker-4" style="color: #ed8936;"><i class="fas fa-hotdog"></i></div>
+                <div class="sidebar-decor-sticker sticker-5" style="color: #ecc94b;"><i class="fas fa-french-fries"></i>
+                </div>
+                <div class="sidebar-decor-sticker sticker-6" style="color: #f687b3;"><i class="fas fa-donut"></i></div>
+                {% elif user.caterer_profile.sidebar_decoration == 'party-pack' %}
+                <div class="sidebar-decor-sticker sticker-1" style="color: #4299e1;"><i class="fas fa-balloons"></i>
+                </div>
+                <div class="sidebar-decor-sticker sticker-2" style="color: #ed64a6;"><i class="fas fa-glass-cheers"></i>
+                </div>
+                <div class="sidebar-decor-sticker sticker-3" style="color: #48bb78;"><i class="fas fa-music"></i></div>
+                <div class="sidebar-decor-sticker sticker-4" style="color: #4299e1;"><i class="fas fa-gift"></i></div>
+                <div class="sidebar-decor-sticker sticker-5" style="color: #ed64a6;"><i
+                        class="fas fa-birthday-cake"></i></div>
+                <div class="sidebar-decor-sticker sticker-6" style="color: #48bb78;"><i class="fas fa-camera"></i></div>
+                {% elif user.caterer_profile.sidebar_decoration == 'steam' %}
+                <div class="sidebar-decor-sticker sticker-1"><i class="fas fa-mug-hot steam-icon"></i></div>
+                <div class="sidebar-decor-sticker sticker-2" style="color: #a0aec0; top: 30%;"><i
+                        class="fas fa-coffee-bean"></i></div>
+                <div class="sidebar-decor-sticker sticker-3" style="color: #a0aec0; top: 50%;"><i
+                        class="fas fa-cookie-bite"></i></div>
+                <div class="sidebar-decor-sticker sticker-4"><i class="fas fa-mug-hot steam-icon"
+                        style="animation-delay: 1s;"></i></div>
+                {% endif %}
+            </div>
             {% endif %}
         </aside>
 
@@ -1022,36 +1480,56 @@
             <!-- Professional Top Header -->
             <header class="dashboard-header">
                 {% if user and user.caterer_profile %}
-                    <div class="header-decor-container">
-                        {% if user.caterer_profile.header_decoration == 'utensils' %}
-                            <div class="header-decor-sticker h-sticker-1" style="color: var(--primary-color);"><i class="fas fa-utensils"></i></div>
-                            <div class="header-decor-sticker h-sticker-2" style="color: var(--accent-color);"><i class="fas fa-wine-glass"></i></div>
-                            <div class="header-decor-sticker h-sticker-3" style="color: #ecc94b;"><i class="fas fa-cheese"></i></div>
-                            <div class="header-decor-sticker h-sticker-4" style="color: var(--highlight-color);"><i class="fas fa-bread-slice"></i></div>
-                            <div class="header-decor-sticker h-sticker-5" style="color: var(--primary-color);"><i class="fas fa-pizza-slice"></i></div>
-                            <div class="header-decor-sticker h-sticker-6" style="color: var(--accent-color);"><i class="fas fa-turkey"></i></div>
-                            <div class="header-decor-sticker h-sticker-7" style="color: #ecc94b;"><i class="fas fa-birthday-cake"></i></div>
-                            <div class="header-decor-sticker h-sticker-8" style="color: var(--highlight-color);"><i class="fas fa-ice-cream"></i></div>
-                        {% elif user.caterer_profile.header_decoration == 'sparkles' %}
-                            <div class="header-decor-sticker h-sticker-1 sparkle-icon"><i class="fas fa-sparkles"></i></div>
-                            <div class="header-decor-sticker h-sticker-2 sparkle-icon" style="animation-delay: 1s;"><i class="fas fa-star"></i></div>
-                            <div class="header-decor-sticker h-sticker-3 sparkle-icon" style="animation-delay: 2s;"><i class="fas fa-shimmer"></i></div>
-                            <div class="header-decor-sticker h-sticker-4 sparkle-icon" style="animation-delay: 0.5s;"><i class="fas fa-sparkle"></i></div>
-                            <div class="header-decor-sticker h-sticker-5 sparkle-icon" style="animation-delay: 1.5s;"><i class="fas fa-star-shooting"></i></div>
-                            <div class="header-decor-sticker h-sticker-6 sparkle-icon" style="animation-delay: 2.5s;"><i class="fas fa-wand-sparkles"></i></div>
-                        {% elif user.caterer_profile.header_decoration == 'delivery' %}
-                            <div class="header-decor-sticker h-sticker-1" style="color: var(--primary-color);"><i class="fas fa-truck-container"></i></div>
-                            <div class="header-decor-sticker h-sticker-2" style="color: var(--highlight-color);"><i class="fas fa-box-check"></i></div>
-                            <div class="header-decor-sticker h-sticker-3" style="color: var(--accent-color);"><i class="fas fa-map-marker-alt"></i></div>
-                            <div class="header-decor-sticker h-sticker-4" style="color: var(--primary-color);"><i class="fas fa-shipping-fast"></i></div>
-                            <div class="header-decor-sticker h-sticker-5" style="color: var(--highlight-color);"><i class="fas fa-truck-loading"></i></div>
-                            <div class="header-decor-sticker h-sticker-6" style="color: var(--accent-color);"><i class="fas fa-clipboard-list-check"></i></div>
-                        {% endif %}
+                <div class="header-decor-container">
+                    {% if user.caterer_profile.header_decoration == 'utensils' %}
+                    <div class="header-decor-sticker h-sticker-1" style="color: var(--primary-color);"><i
+                            class="fas fa-utensils"></i></div>
+                    <div class="header-decor-sticker h-sticker-2" style="color: var(--accent-color);"><i
+                            class="fas fa-wine-glass"></i></div>
+                    <div class="header-decor-sticker h-sticker-3" style="color: #ecc94b;"><i class="fas fa-cheese"></i>
                     </div>
+                    <div class="header-decor-sticker h-sticker-4" style="color: var(--highlight-color);"><i
+                            class="fas fa-bread-slice"></i></div>
+                    <div class="header-decor-sticker h-sticker-5" style="color: var(--primary-color);"><i
+                            class="fas fa-pizza-slice"></i></div>
+                    <div class="header-decor-sticker h-sticker-6" style="color: var(--accent-color);"><i
+                            class="fas fa-turkey"></i></div>
+                    <div class="header-decor-sticker h-sticker-7" style="color: #ecc94b;"><i
+                            class="fas fa-birthday-cake"></i></div>
+                    <div class="header-decor-sticker h-sticker-8" style="color: var(--highlight-color);"><i
+                            class="fas fa-ice-cream"></i></div>
+                    {% elif user.caterer_profile.header_decoration == 'sparkles' %}
+                    <div class="header-decor-sticker h-sticker-1 sparkle-icon"><i class="fas fa-sparkles"></i></div>
+                    <div class="header-decor-sticker h-sticker-2 sparkle-icon" style="animation-delay: 1s;"><i
+                            class="fas fa-star"></i></div>
+                    <div class="header-decor-sticker h-sticker-3 sparkle-icon" style="animation-delay: 2s;"><i
+                            class="fas fa-shimmer"></i></div>
+                    <div class="header-decor-sticker h-sticker-4 sparkle-icon" style="animation-delay: 0.5s;"><i
+                            class="fas fa-sparkle"></i></div>
+                    <div class="header-decor-sticker h-sticker-5 sparkle-icon" style="animation-delay: 1.5s;"><i
+                            class="fas fa-star-shooting"></i></div>
+                    <div class="header-decor-sticker h-sticker-6 sparkle-icon" style="animation-delay: 2.5s;"><i
+                            class="fas fa-wand-sparkles"></i></div>
+                    {% elif user.caterer_profile.header_decoration == 'delivery' %}
+                    <div class="header-decor-sticker h-sticker-1" style="color: var(--primary-color);"><i
+                            class="fas fa-truck-container"></i></div>
+                    <div class="header-decor-sticker h-sticker-2" style="color: var(--highlight-color);"><i
+                            class="fas fa-box-check"></i></div>
+                    <div class="header-decor-sticker h-sticker-3" style="color: var(--accent-color);"><i
+                            class="fas fa-map-marker-alt"></i></div>
+                    <div class="header-decor-sticker h-sticker-4" style="color: var(--primary-color);"><i
+                            class="fas fa-shipping-fast"></i></div>
+                    <div class="header-decor-sticker h-sticker-5" style="color: var(--highlight-color);"><i
+                            class="fas fa-truck-loading"></i></div>
+                    <div class="header-decor-sticker h-sticker-6" style="color: var(--accent-color);"><i
+                            class="fas fa-clipboard-list-check"></i></div>
+                    {% endif %}
+                </div>
                 {% endif %}
                 <div class="header-left">
                     <!-- Mobile Burger Menu -->
-                    <button class="mobile-menu-btn" id="burgerBtn" aria-label="Toggle Sidebar" onclick="toggleSidebar()">
+                    <button class="mobile-menu-btn" id="burgerBtn" aria-label="Toggle Sidebar"
+                        onclick="toggleSidebar()">
                         <i class="fas fa-bars"></i>
                     </button>
                     <!-- Space reserved for future left-side utilities -->
@@ -1066,36 +1544,56 @@
                     <div class="header-actions">
                         <!-- Direct Booking Link Action (Only on Bookings/Calendar) -->
                         {% if active_page in ['bookings', 'calendar'] %}
-                        <button type="button" class="hdr-btn" title="Copy Direct Booking Link for FB" onclick="copyDirectBookingLink('{{ user.caterer_profile.id if user and user.caterer_profile else '' }}')">
+                        <button type="button" class="hdr-btn" title="Copy Direct Booking Link for FB"
+                            onclick="copyDirectBookingLink('{{ user.caterer_profile.id if user and user.caterer_profile else '' }}')">
                             <i class="fas fa-link"></i>
                         </button>
                         {% endif %}
                         <!-- Notifications Dropdown -->
                         <div class="header-dropdown-wrapper" style="position: relative;">
-                            {% set unread_count = user.notifications|selectattr('is_read', 'equalto', false)|list|count if user and user.notifications else 0 %}
-                            <button type="button" onclick="toggleHeaderDropdown('notificationsDropdown', this)" class="hdr-btn {{ 'active' if active_page == 'notifications' }}" title="Notifications">
+                            {% set unread_count = user.notifications|selectattr('is_read', 'equalto', false)|list|count
+                            if user and user.notifications else 0 %}
+                            <button type="button" onclick="toggleHeaderDropdown('notificationsDropdown', this)"
+                                class="hdr-btn {{ 'active' if active_page == 'notifications' }}" title="Notifications">
                                 <i class="fas fa-bell"></i>
-                                <span id="nav-notif-badge" class="action-badge" style="display: {{ 'flex' if unread_count > 0 else 'none' }};">{{ unread_count }}</span>
+                                <span id="nav-notif-badge" class="action-badge"
+                                    style="display: {{ 'flex' if unread_count > 0 else 'none' }};">{{ unread_count
+                                    }}</span>
                             </button>
-                            <div class="profile-dropdown" id="notificationsDropdown" style="width: 360px; right: -10px; cursor: default; padding: 0; overflow: hidden;">
-                                <div class="dropdown-header" style="display: flex; justify-content: space-between; align-items: center; padding: 16px; background: #fff; border-bottom: 1px solid #f1f5f9;">
+                            <div class="profile-dropdown" id="notificationsDropdown"
+                                style="width: 360px; right: -10px; cursor: default; padding: 0; overflow: hidden;">
+                                <div class="dropdown-header"
+                                    style="display: flex; justify-content: space-between; align-items: center; padding: 16px; background: #fff; border-bottom: 1px solid #f1f5f9;">
                                     <div style="display: flex; align-items: center; gap: 8px;">
-                                        <p class="dropdown-user-name" style="margin: 0; font-size: 1rem; color: #0f172a;">Notifications</p>
-                                        <span id="dropdown-notif-badge" style="background: #ef4444; color: white; font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; font-weight: 800; display: {{ 'inline-block' if unread_count > 0 else 'none' }};">{{ unread_count }} NEW</span>
+                                        <p class="dropdown-user-name"
+                                            style="margin: 0; font-size: 1rem; color: #0f172a;">Notifications</p>
+                                        <span id="dropdown-notif-badge"
+                                            style="background: #ef4444; color: white; font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; font-weight: 800; display: {{ 'inline-block' if unread_count > 0 else 'none' }};">{{
+                                            unread_count }} NEW</span>
                                     </div>
-                                    <button type="button" onclick="window.markAllAsReadGlobal && window.markAllAsReadGlobal()" style="background: transparent; border: none; color: var(--primary-color); font-size: 0.75rem; font-weight: 700; cursor: pointer; padding: 0; transition: color 0.2s;">Mark all as read</button>
+                                    <button type="button"
+                                        onclick="window.markAllAsReadGlobal && window.markAllAsReadGlobal()"
+                                        style="background: transparent; border: none; color: var(--primary-color); font-size: 0.75rem; font-weight: 700; cursor: pointer; padding: 0; transition: color 0.2s;">Mark
+                                        all as read</button>
                                 </div>
-                                <div class="dropdown-body" id="headerNotifContainer" style="max-height: 360px; overflow-y: auto; background: #f8fafc;">
+                                <div class="dropdown-body" id="headerNotifContainer"
+                                    style="max-height: 360px; overflow-y: auto; background: #f8fafc;">
                                     <!-- Notifications will be injected here via Global JS -->
                                     <div style="text-align: center; padding: 2rem 1rem;">
-                                        <div style="background: #f1f5f9; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;">
-                                            <i class="fas fa-circle-notch fa-spin" style="color: #cbd5e1; font-size: 1.25rem;"></i>
+                                        <div
+                                            style="background: #f1f5f9; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;">
+                                            <i class="fas fa-circle-notch fa-spin"
+                                                style="color: #cbd5e1; font-size: 1.25rem;"></i>
                                         </div>
-                                        <p style="margin: 0; font-size: 0.85rem; color: #64748b;">Syncing notifications...</p>
+                                        <p style="margin: 0; font-size: 0.85rem; color: #64748b;">Syncing
+                                            notifications...</p>
                                     </div>
                                 </div>
-                                <div class="dropdown-footer" style="padding: 12px; border-top: 1px solid #e2e8f0; text-align: center; background: #fff;">
-                                    <a href="/caterer/notifications" style="color: var(--primary-color); font-weight: 700; font-size: 0.85rem; text-decoration: none; display: block; width: 100%;">View All Notifications</a>
+                                <div class="dropdown-footer"
+                                    style="padding: 12px; border-top: 1px solid #e2e8f0; text-align: center; background: #fff;">
+                                    <a href="/caterer/notifications"
+                                        style="color: var(--primary-color); font-weight: 700; font-size: 0.85rem; text-decoration: none; display: block; width: 100%;">View
+                                        All Notifications</a>
                                 </div>
                             </div>
                         </div>
@@ -1103,41 +1601,52 @@
                         <!-- Messages Dropdown -->
                         <div class="header-dropdown-wrapper" style="position: relative;">
                             {% if active_page == 'messages' %}
-                            <a href="/caterer/messages" class="hdr-btn active" title="Messages" style="text-decoration: none;">
+                            <a href="/caterer/messages" class="hdr-btn active" title="Messages"
+                                style="text-decoration: none;">
                                 <i class="fas fa-comment-dots"></i>
                                 <span id="nav-chat-badge" class="action-badge" style="display: none;">0</span>
                             </a>
                             {% else %}
-                            <button type="button" onclick="toggleHeaderDropdown('messagesDropdown', this)" class="hdr-btn" title="Messages">
+                            <button type="button" onclick="toggleHeaderDropdown('messagesDropdown', this)"
+                                class="hdr-btn" title="Messages">
                                 <i class="fas fa-comment-dots"></i>
                                 <span id="nav-chat-badge" class="action-badge" style="display: none;">0</span>
                             </button>
-                            <div class="profile-dropdown" id="messagesDropdown" style="width: 320px; right: -10px; cursor: default;">
-                                <div class="dropdown-header" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px;">
+                            <div class="profile-dropdown" id="messagesDropdown"
+                                style="width: 320px; right: -10px; cursor: default;">
+                                <div class="dropdown-header"
+                                    style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px;">
                                     <p class="dropdown-user-name" style="margin: 0;">Messages</p>
                                 </div>
-                                <div class="dropdown-body" id="headerChatContainer" style="max-height: 320px; overflow-y: auto;">
+                                <div class="dropdown-body" id="headerChatContainer"
+                                    style="max-height: 320px; overflow-y: auto;">
                                     <div style="text-align: center; padding: 2rem 1rem;">
-                                        <div style="background: #f8fafc; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;">
+                                        <div
+                                            style="background: #f8fafc; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;">
                                             <i class="fas fa-comments" style="color: #cbd5e1; font-size: 1.25rem;"></i>
                                         </div>
-                                        <p style="margin: 0; font-size: 0.85rem; color: #64748b;">Loading messages...</p>
+                                        <p style="margin: 0; font-size: 0.85rem; color: #64748b;">Loading messages...
+                                        </p>
                                     </div>
                                 </div>
-                                <div class="dropdown-footer" style="padding: 10px; border-top: 1px solid #f1f5f9; text-align: center; background: #fafafa; border-radius: 0 0 16px 16px;">
-                                    <a href="/caterer/messages" style="color: var(--primary-color); font-weight: 700; font-size: 0.8rem; text-decoration: none; display: block; width: 100%;">Open Chat Center</a>
+                                <div class="dropdown-footer"
+                                    style="padding: 10px; border-top: 1px solid #f1f5f9; text-align: center; background: #fafafa; border-radius: 0 0 16px 16px;">
+                                    <a href="/caterer/messages"
+                                        style="color: var(--primary-color); font-weight: 700; font-size: 0.8rem; text-decoration: none; display: block; width: 100%;">Open
+                                        Chat Center</a>
                                 </div>
                             </div>
                             {% endif %}
                         </div>
                     </div>
-                    
+
                     <div class="header-profile-section">
                         <div class="profile-trigger" onclick="toggleProfileDropdown()">
                             <div class="profile-avatar">
                                 {% if user and user.caterer_profile and user.caterer_profile.logo_url %}
-                                <img src="{{ '/' ~ user.caterer_profile.logo_url if not user.caterer_profile.logo_url.startswith('http') and not user.caterer_profile.logo_url.startswith('/') else user.caterer_profile.logo_url }}" alt="Profile"
-                                     onerror="this.style.display='none'; var ph=document.createElement('div'); ph.className='avatar-placeholder'; ph.textContent='{{ user.first_name[0] if user else '?' }}'; this.parentElement.appendChild(ph);">
+                                <img src="{{ '/' ~ user.caterer_profile.logo_url if not user.caterer_profile.logo_url.startswith('http') and not user.caterer_profile.logo_url.startswith('/') else user.caterer_profile.logo_url }}"
+                                    alt="Profile"
+                                    onerror="this.style.display='none'; var ph=document.createElement('div'); ph.className='avatar-placeholder'; ph.textContent='{{ user.first_name[0] if user else '?' }}'; this.parentElement.appendChild(ph);">
                                 {% else %}
                                 <div class="avatar-placeholder">{{ user.first_name[0] if user else '?' }}</div>
                                 {% endif %}
@@ -1148,7 +1657,7 @@
                             </div>
                             <i class="fas fa-chevron-down profile-chevron"></i>
                         </div>
-                        
+
                         <div class="profile-dropdown" id="profileDropdown">
                             <div class="dropdown-header">
                                 <p class="dropdown-user-name">{{ user.first_name }} {{ user.last_name }}</p>
@@ -1200,11 +1709,11 @@
             const isMobile = window.innerWidth <= 1024;
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebarOverlay');
-            
+
             if (isMobile) {
                 sidebar.classList.toggle('sidebar-open');
                 overlay.classList.toggle('active');
-                
+
                 if (sidebar.classList.contains('sidebar-open')) {
                     document.body.style.overflow = 'hidden';
                 } else {
@@ -1213,7 +1722,7 @@
             } else {
                 const isMini = document.documentElement.classList.toggle('sidebar-is-mini');
                 localStorage.setItem('catererSidebarCollapsed', isMini);
-                
+
                 // Save mode to backend
                 const newMode = isMini ? 'icons' : 'full';
                 fetch('/caterer/api/sidebar-mode', {
@@ -1235,9 +1744,9 @@
                 console.error("Dropdown element not found!");
                 return;
             }
-            
+
             const isActive = dropdown.classList.contains('active');
-            
+
             // Close all first
             document.querySelectorAll('.profile-dropdown').forEach(d => {
                 d.classList.remove('active');
@@ -1266,7 +1775,7 @@
         // Global Search Dispatcher
         const globalSearchInput = document.getElementById('globalSearchInput');
         if (globalSearchInput) {
-            globalSearchInput.addEventListener('input', function(e) {
+            globalSearchInput.addEventListener('input', function (e) {
                 const query = e.target.value;
                 const searchEvent = new CustomEvent('globalSearch', { detail: { value: query } });
                 window.dispatchEvent(searchEvent);
@@ -1289,57 +1798,10 @@
     <script src="{{ url_for('static', path='/js/chat.js') }}?v=1.1"></script>
 
     {% if active_page != 'messages' %}
-        {# Removed floating chat as requested by user #}
+    {# Removed floating chat as requested by user #}
     {% endif %}
 
     {% block extra_body %}{% endblock %}
-    <script>
-        // Global Elite Archive Modal
-        window.showArchiveConfirm = function(itemName, subtitle, onConfirm) {
-            let overlay = document.getElementById('globalArchiveModalOverlay');
-            if (overlay) { overlay.remove(); }
-
-            const html = `
-            <div id="globalArchiveModalOverlay" class="occ-modal-overlay active" style="z-index: 9999; animation: fadeIn 0.2s ease-out;">
-                <div class="occ-modal-box sz-sm occ-content-pop" style="font-family: 'Poppins', sans-serif; border-radius: 12px; overflow: hidden; max-width: 450px; width: 100%; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);">
-                    <div class="occ-modal-header" style="background: #ef4444; padding: 1.5rem; color: white !important; display: flex; justify-content: space-between; align-items: flex-start;">
-                        <div>
-                            <h3 class="occ-modal-title" style="margin: 0; font-size: 1.25rem; font-weight: 700; color: white !important;">Archive Item</h3>
-                            <div class="occ-modal-subtitle" style="font-size: 0.85rem; opacity: 0.9; margin-top: 0.25rem; color: white !important;">Confirming database removal.</div>
-                        </div>
-                        <button onclick="document.getElementById('globalArchiveModalOverlay').remove()" class="occ-modal-close" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer;">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <div class="compact-body" style="padding: 1.5rem; background: white;">
-                        <div style="display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1rem; padding: 1rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;">
-                            <div style="color: #ef4444; font-size: 1.5rem;"><i class="fas fa-exclamation-triangle"></i></div>
-                            <div>
-                                <p style="margin: 0; color: #7f1d1d; font-size: 0.9rem;">
-                                    Archive <strong id="globalArchiveItemName"></strong>? It will no longer appear in your active listings.
-                                </p>
-                            </div>
-                        </div>
-                        <p id="globalArchiveSubtitle" style="font-size: 0.8rem; color: #64748b; line-height: 1.5; margin: 0;"></p>
-                    </div>
-                    <div class="occ-modal-footer" style="padding: 1.25rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
-                        <button type="button" class="btn-secondary" onclick="document.getElementById('globalArchiveModalOverlay').remove()" style="background: #e2e8f0; color: #475569; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 700; cursor: pointer; font-family: 'Poppins', sans-serif;">Cancel</button>
-                        <button type="button" class="btn-primary" id="globalArchiveConfirmBtn" style="background: #ef4444; border-color: #ef4444; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 700; font-family: 'Poppins', sans-serif;">Archive Now</button>
-                    </div>
-                </div>
-            </div>`;
-            document.body.insertAdjacentHTML('beforeend', html);
-            let newOverlay = document.getElementById('globalArchiveModalOverlay');
-
-            document.getElementById('globalArchiveItemName').innerHTML = itemName;
-            document.getElementById('globalArchiveSubtitle').innerHTML = subtitle;
-
-            document.getElementById('globalArchiveConfirmBtn').onclick = function() {
-                newOverlay.remove();
-                if (onConfirm) onConfirm();
-            };
-        };
-    </script>
     {% block extra_js %}{% endblock %}
 
     <script>
@@ -1371,14 +1833,14 @@
             }
         });
         // Global Watchdog for Urgent Bookings (Runs on every page except bookings)
-        window.addEventListener('load', async function() {
+        window.addEventListener('load', async function () {
             if (window.location.pathname.startsWith('/caterer/bookings')) return; // Handled by native Bookings UI and subpages
 
             try {
                 const res = await fetch('/caterer/api/bookings/urgent-check');
                 if (!res.ok) return;
                 const data = await res.json();
-                
+
                 if (data.has_urgent) {
                     // Create Global Lock Modal
                     const lockStyle = document.createElement('style');
@@ -1429,23 +1891,23 @@
                             </div>
                         </div>
                     `;
-                    
+
                     document.body.insertAdjacentHTML('beforeend', modalHTML);
                     document.body.classList.add('global-urgent-lock');
                     document.body.style.overflow = 'hidden';
-                    
+
                     // Simple animate-in by adding the active class
                     setTimeout(() => {
                         const modal = document.getElementById('globalUrgentModal');
                         if (modal) modal.classList.add('active');
                     }, 50);
                 }
-            } catch(e) {
+            } catch (e) {
                 console.error("Global Watchdog Error:", e);
             }
         });
 
-        window.copyDirectBookingLink = function(catererId) {
+        window.copyDirectBookingLink = function (catererId) {
             if (!catererId) {
                 showNotification('Error', 'Caterer ID not found', 'error');
                 return;

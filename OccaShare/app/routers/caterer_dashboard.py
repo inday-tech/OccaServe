@@ -409,6 +409,53 @@ async def create_manual_booking(
         print(f"[CATERER MANUAL BOOKING ERROR] {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.post("/bookings/{booking_id}/dispatch-proof")
+async def upload_dispatch_proof(
+    booking_id: int,
+    stage: str = Form(...),
+    proof_image: UploadFile = File(...),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking or booking.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    if not proof_image.filename:
+        raise HTTPException(status_code=400, detail="No file selected")
+
+    os.makedirs("app/static/uploads/dispatch_proofs", exist_ok=True)
+    ext = proof_image.filename.split(".")[-1]
+    new_filename = f"dispatch_{booking.id}_{uuid.uuid4().hex[:8]}.{ext}"
+    file_path = f"app/static/uploads/dispatch_proofs/{new_filename}"
+
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(proof_image.file, buffer)
+
+    booking.dispatch_proof_url = f"/static/uploads/dispatch_proofs/{new_filename}"
+    
+    # Update status simultaneously
+    allowed_statuses = ["ready_for_delivery", "ready_for_pickup", "on_the_way"]
+    if stage in allowed_statuses:
+        booking.status = stage
+        history = models.BookingHistory(
+            booking_id=booking.id,
+            status=stage,
+            notes=f"Order marked as {stage}. Dispatch proof uploaded."
+        )
+        db.add(history)
+
+        import asyncio
+        asyncio.create_task(manager.broadcast_to_user(booking.user_id, {
+            "type": "booking_update",
+            "message": f"Your order for {booking.event_name} is dispatching!",
+            "booking_id": booking.id,
+            "status": stage
+        }))
+
+    db.commit()
+    return {"status": "success", "message": "Dispatch proof uploaded"}
+
 class StatusUpdateSchema(BaseModel):
     status: str
 

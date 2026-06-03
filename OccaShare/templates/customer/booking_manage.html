@@ -383,6 +383,22 @@
                     </div>
                     <i class="fas fa-chevron-right" style="font-size: 0.75rem; color: var(--dm-slate-400);"></i>
                 </a>
+
+                {% if booking.dispatch_proof_url %}
+                <a href="{{ booking.dispatch_proof_url }}" target="_blank"
+                   style="display: flex; align-items: center; gap: 12px; text-decoration: none; padding: 0.85rem; background: var(--dm-slate-50); border-radius: 12px; transition: all 0.2s; border: 1px solid transparent; margin-top: 0.75rem;"
+                   onmouseover="this.style.borderColor='var(--up-emerald)'; this.style.background='#fff';" 
+                   onmouseout="this.style.borderColor='transparent'; this.style.background='var(--dm-slate-50)';">
+                    <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(16,185,129,0.1); display: flex; align-items: center; justify-content: center; color: var(--up-emerald); font-size: 1.1rem;">
+                        <i class="fas fa-camera"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <b style="font-size: 0.85rem; color: var(--up-slate-900); display: block;">Dispatch Photo</b>
+                        <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 600;">View order photo before delivery</span>
+                    </div>
+                    <i class="fas fa-chevron-right" style="font-size: 0.75rem; color: var(--dm-slate-400);"></i>
+                </a>
+                {% endif %}
             </div>
         </div>
 

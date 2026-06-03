@@ -347,6 +347,7 @@ class Booking(Base):
     payment_reference = Column(String, nullable=True)
     payment_proof_url = Column(String, nullable=True)
     balance_proof_url = Column(String, nullable=True)
+    dispatch_proof_url = Column(String, nullable=True)
     paymongo_link_id = Column(String, nullable=True)
     paymongo_link_url = Column(String, nullable=True)
     payout_id = Column(Integer, ForeignKey("payouts.id"), nullable=True)

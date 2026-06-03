@@ -598,18 +598,7 @@
         }
         window.closeReasonModal = closeReasonModal;
 
-        window.showSuccess = function (message, title = "Success") {
-            if (typeof Swal !== 'undefined') {
-                Swal.fire({ title, text: message, icon: 'success', confirmButtonColor: '#f97316', timer: 3000, timerProgressBar: true });
-            }
-        };
 
-        window.showConfirm = function (message, onConfirm, title = "Are you sure?") {
-            if (typeof Swal !== 'undefined') {
-                Swal.fire({ title, text: message, icon: 'warning', showCancelButton: true, confirmButtonColor: '#f97316', cancelButtonColor: '#64748b', confirmButtonText: 'Yes, proceed' })
-                    .then(r => { if (r.isConfirmed && onConfirm) onConfirm(); });
-            }
-        };
 
         // ===== OMNI-SEARCH =====
         (function () {

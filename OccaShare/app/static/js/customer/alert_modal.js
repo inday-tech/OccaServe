@@ -120,12 +120,3 @@ window.PremiumAlert = PremiumAlert;
 window.showAlert = (options) => PremiumAlert.show(options);
 window.showSuccess = (message, title = "Success!") => window.showAlert({ type: 'success', title, message });
 window.showError = (message, title = "Oops!") => window.showAlert({ type: 'error', title, message });
-window.showConfirm = function(message, onConfirm, title = "Are you sure?", confirmText = "Confirm") {
-    PremiumAlert.show({ 
-        type: 'confirm', 
-        title: title, 
-        message: message, 
-        onConfirm: onConfirm, 
-        confirmText: confirmText || "Confirm"
-    });
-};

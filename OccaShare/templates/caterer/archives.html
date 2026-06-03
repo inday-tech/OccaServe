@@ -503,7 +503,7 @@
     }
 
     // Standardized Action Handler
-    async function performAction(type, id, action, url, confirmMsg, confirmTitle, confirmBtn) {
+    async function performAction(type, id, action, url, confirmMsg, confirmTitle, confirmBtn, alertType = 'danger') {
         window.showConfirm(confirmMsg, async () => {
             try {
                 const response = await fetch(url, {
@@ -529,7 +529,7 @@
                 console.error(error);
                 window.showError(`An error occurred while ${action}ing the ${type}.`);
             }
-        }, confirmTitle, confirmBtn);
+        }, confirmTitle, confirmBtn, alertType);
     }
 
     // Restore Handlers
@@ -543,7 +543,7 @@
 
         performAction(type, id, 'restore', url,
             `Are you sure you want to restore this item?`,
-            'Restore Item?', 'Yes, Restore');
+            'Restore Item?', 'Yes, Restore', 'success');
     }
 
     // Delete Handlers

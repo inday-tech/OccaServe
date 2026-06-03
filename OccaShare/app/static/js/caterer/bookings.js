@@ -1532,7 +1532,7 @@ async function proceedWithAcceptance(bookingId, isPayment) {
                 if (window.refreshBookingsTable) window.refreshBookingsTable();
             }
         },
-        confirmTitle, confirmBtn
+        confirmTitle, confirmBtn, 'success'
     );
 }
 
@@ -1613,7 +1613,7 @@ function confirmCompleteBooking(bookingId) {
                 }, 500);
             }
         },
-        'Mark as Completed?', 'Yes, Event Finished'
+        'Mark as Completed?', 'Yes, Event Finished', 'success'
     );
 }
 
@@ -1641,7 +1641,7 @@ function closeDispatchProofModal() {
     bk_closeModal('dispatchProofModal');
 }
 
-window.submitDispatchProof = function(event) {
+window.submitDispatchProof = async function(event) {
     event.preventDefault();
     const fileInput = document.getElementById('dispatchProofImage');
     if (!fileInput.files || fileInput.files.length === 0) {
@@ -1649,21 +1649,46 @@ window.submitDispatchProof = function(event) {
         return;
     }
 
+    const bookingId = document.getElementById('dispatchProofBookingId').value;
+    const stage = document.getElementById('dispatchProofStage').value;
     const btn = document.getElementById('dispatchProofSubmitBtn');
+    
     const oldText = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
 
-    // Simulate upload delay for realism, then trigger actual update
-    setTimeout(() => {
+    const formData = new FormData();
+    formData.append('stage', stage);
+    formData.append('proof_image', fileInput.files[0]);
+
+    try {
+        const response = await fetch('/caterer/bookings/' + bookingId + '/dispatch-proof', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.status === 'success') {
+            closeDispatchProofModal();
+            window.showToast('Dispatch proof uploaded and status updated.', 'success');
+            if (window.refreshBookingsTable) window.refreshBookingsTable();
+            
+            setTimeout(() => {
+                const btnView = document.querySelector(`.view-details[data-id="${bookingId}"]`);
+                if (btnView && document.getElementById('bookingDetailModal').classList.contains('active')) {
+                    window.showBookingDetails(btnView);
+                }
+            }, 500);
+        } else {
+            window.showError(data.detail || 'Failed to upload dispatch proof.');
+        }
+    } catch (err) {
+        window.showError('Connection error while uploading proof.');
+    } finally {
         btn.innerHTML = oldText;
         btn.disabled = false;
-        closeDispatchProofModal();
-        
-        const bookingId = document.getElementById('dispatchProofBookingId').value;
-        const stage = document.getElementById('dispatchProofStage').value;
-        window.updateBookingStage(bookingId, stage);
-    }, 1200);
+    }
 }
 
 function updateBookingStage(bookingId, status) {
@@ -1706,7 +1731,7 @@ function updateBookingStage(bookingId, status) {
                 }, 500);
             }
         },
-        titles[status] || 'Update Status', 'Yes, Proceed'
+        titles[status] || 'Update Status', 'Yes, Proceed', 'primary'
     );
 }
 
@@ -1732,60 +1757,14 @@ function requestNewProof(bookingId) {
                 }, 500);
             }
         },
-        'Request New Proof?', 'Yes, Notify Customer'
+        'Request New Proof?', 'Yes, Notify Customer', 'warning'
     );
 }
 
-if (typeof window.showArchiveConfirm !== 'function') {
-    window.showArchiveConfirm = function(itemName, subtitle, onConfirm) {
-        let overlay = document.getElementById('globalArchiveModalOverlay');
-        if (overlay) { overlay.remove(); }
-
-        const html = `
-        <div id="globalArchiveModalOverlay" class="occ-modal-overlay active" style="z-index: 9999; animation: fadeIn 0.2s ease-out;">
-            <div class="occ-modal-box sz-sm occ-content-pop" style="font-family: 'Poppins', sans-serif; border-radius: 12px; overflow: hidden; max-width: 450px; width: 100%; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);">
-                <div class="occ-modal-header" style="background: #ef4444; padding: 1.5rem; color: white !important; display: flex; justify-content: space-between; align-items: flex-start;">
-                    <div>
-                        <h3 class="occ-modal-title" style="margin: 0; font-size: 1.25rem; font-weight: 700; color: white !important;">Archive Item</h3>
-                        <div class="occ-modal-subtitle" style="font-size: 0.85rem; opacity: 0.9; margin-top: 0.25rem; color: white !important;">Confirming database removal.</div>
-                    </div>
-                    <button onclick="document.getElementById('globalArchiveModalOverlay').remove()" class="occ-modal-close" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer;">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="compact-body" style="padding: 1.5rem; background: white;">
-                    <div style="display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1rem; padding: 1rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;">
-                        <div style="color: #ef4444; font-size: 1.5rem;"><i class="fas fa-exclamation-triangle"></i></div>
-                        <div>
-                            <p style="margin: 0; color: #7f1d1d; font-size: 0.9rem;">
-                                Archive <strong id="globalArchiveItemName"></strong>? It will no longer appear in your active listings.
-                            </p>
-                        </div>
-                    </div>
-                    <p id="globalArchiveSubtitle" style="font-size: 0.8rem; color: #64748b; line-height: 1.5; margin: 0;"></p>
-                </div>
-                <div class="occ-modal-footer" style="padding: 1.25rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
-                    <button type="button" class="btn-secondary" onclick="document.getElementById('globalArchiveModalOverlay').remove()" style="background: #e2e8f0; color: #475569; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 700; cursor: pointer; font-family: 'Poppins', sans-serif;">Cancel</button>
-                    <button type="button" class="btn-primary" id="globalArchiveConfirmBtn" style="background: #ef4444; border-color: #ef4444; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 700; font-family: 'Poppins', sans-serif;">Archive Now</button>
-                </div>
-            </div>
-        </div>`;
-        document.body.insertAdjacentHTML('beforeend', html);
-        let newOverlay = document.getElementById('globalArchiveModalOverlay');
-
-        document.getElementById('globalArchiveItemName').innerHTML = itemName;
-        document.getElementById('globalArchiveSubtitle').innerHTML = subtitle;
-
-        document.getElementById('globalArchiveConfirmBtn').onclick = function() {
-            newOverlay.remove();
-            if (onConfirm) onConfirm();
-        };
-    };
-}
-
 function confirmArchiveBooking(bookingId) {
-    window.showArchiveConfirm('Booking #' + bookingId, 'This booking will be moved to the archives and can no longer be modified.',
-        async function() { await window.apiAction('/caterer/bookings/' + bookingId + '/archive', { method: 'POST' }); }
+    window.showConfirm('This booking will be moved to the archives and can no longer be modified.',
+        async function() { await window.apiAction('/caterer/bookings/' + bookingId + '/archive', { method: 'POST' }); },
+        'Archive Booking #' + bookingId, 'Archive Now', 'danger'
     );
 }
 

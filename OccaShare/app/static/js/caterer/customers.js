@@ -656,7 +656,7 @@ window.toggleBlacklist = async function(isCurrentlyBlocked = false) {
             } catch(e) {
                 if(window.showError) window.showError("System error processing request.");
             }
-        }, action === 'Block' ? 'Warning' : 'Restore');
+        }, action === 'Block' ? 'Warning' : 'Restore', action === 'Block' ? 'Block Account' : 'Restore Account', action === 'Block' ? 'danger' : 'success');
     }
 };
 

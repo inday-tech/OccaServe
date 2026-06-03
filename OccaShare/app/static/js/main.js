@@ -133,24 +133,56 @@ window.showAlert = function(options) {
     });
 };
 
-window.showConfirm = function(message, onConfirm, title = 'Are you sure?', confirmText = 'Yes') {
-    Swal.fire({
-        title: title,
-        html: message,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#ef4444',
-        cancelButtonColor: '#64748b',
-        confirmButtonText: confirmText,
-        cancelButtonText: 'Cancel',
-        customClass: {
-            popup: 'premium-swal-popup'
-        }
-    }).then((result) => {
-        if (result.isConfirmed) {
-            onConfirm();
-        }
-    });
+window.showConfirm = function(message, onConfirm, title = 'Are you sure?', confirmText = 'Yes', type = 'danger') {
+    const theme = {
+        danger:  { bg: '#ef4444', icon: 'fa-exclamation-triangle', tint: '#fef2f2', border: '#fecaca', text: '#7f1d1d' },
+        success: { bg: '#10b981', icon: 'fa-check-circle',        tint: '#ecfdf5', border: '#a7f3d0', text: '#064e3b' },
+        warning: { bg: '#f59e0b', icon: 'fa-exclamation-circle',  tint: '#fffbeb', border: '#fde68a', text: '#78350f' },
+        primary: { bg: '#3b82f6', icon: 'fa-info-circle',         tint: '#eff6ff', border: '#bfdbfe', text: '#1e3a8a' }
+    }[type] || { bg: '#ef4444', icon: 'fa-exclamation-triangle', tint: '#fef2f2', border: '#fecaca', text: '#7f1d1d' };
+
+    let overlay = document.getElementById('globalConfirmModalOverlay');
+    if (overlay) { overlay.remove(); }
+
+    const html = `
+    <div id="globalConfirmModalOverlay" class="occ-modal-overlay active" style="z-index: 99999; animation: fadeIn 0.2s ease-out; position: fixed; inset: 0; background: rgba(15,23,42,0.6); display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+        <div class="occ-modal-box sz-sm occ-content-pop" style="font-family: 'Poppins', sans-serif; border-radius: 12px; overflow: hidden; max-width: 450px; width: 90%; background: white; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2); transform: scale(1); transition: all 0.2s;">
+            <div class="occ-modal-header" style="background: ${theme.bg}; padding: 1.5rem; color: white !important; display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <h3 class="occ-modal-title" style="margin: 0; font-size: 1.25rem; font-weight: 700; color: white !important;">${title}</h3>
+                    <div class="occ-modal-subtitle" style="font-size: 0.85rem; opacity: 0.9; margin-top: 0.25rem; color: white !important;">Please confirm this action.</div>
+                </div>
+                <button onclick="document.getElementById('globalConfirmModalOverlay').remove()" class="occ-modal-close" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="compact-body" style="padding: 1.5rem; background: white;">
+                <div style="display: flex; gap: 1rem; align-items: flex-start; padding: 1rem; background: ${theme.tint}; border: 1px solid ${theme.border}; border-radius: 8px;">
+                    <div style="color: ${theme.bg}; font-size: 1.5rem; margin-top: 2px;"><i class="fas ${theme.icon}"></i></div>
+                    <div style="flex: 1;">
+                        <p style="margin: 0; color: ${theme.text}; font-size: 0.9rem; line-height: 1.5;">
+                            ${message}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="occ-modal-footer" style="padding: 1.25rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
+                <button type="button" class="btn-secondary" onclick="document.getElementById('globalConfirmModalOverlay').remove()" style="background: #e2e8f0; color: #475569; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 700; cursor: pointer; font-family: 'Poppins', sans-serif;">Cancel</button>
+                <button type="button" class="btn-primary" id="globalConfirmConfirmBtn" style="background: ${theme.bg}; border: none; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 700; cursor: pointer; font-family: 'Poppins', sans-serif; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: transform 0.1s;">${confirmText}</button>
+            </div>
+        </div>
+    </div>`;
+    
+    document.body.insertAdjacentHTML('beforeend', html);
+    let newOverlay = document.getElementById('globalConfirmModalOverlay');
+
+    document.getElementById('globalConfirmConfirmBtn').onclick = function () {
+        this.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+            newOverlay.remove();
+            if (onConfirm) onConfirm();
+        }, 100);
+    };
 };
 
 // --- 4. Global URL Parameter Listener for Toasts ---

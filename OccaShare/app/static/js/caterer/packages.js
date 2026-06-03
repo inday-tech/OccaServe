@@ -932,7 +932,7 @@ async function linkDish(dishId) {
     };
 
     if (window.showConfirm) {
-        window.showConfirm('Link this dish to the current package?', doLink, 'Link Dish');
+        window.showConfirm('Link this dish to the current package?', doLink, 'Link Dish', 'Yes, Link It', 'success');
     } else {
         if (confirm('Link this dish?')) doLink();
     }
@@ -949,7 +949,7 @@ async function unlinkDish(dishId) {
     };
 
     if (window.showConfirm) {
-        window.showConfirm('Are you sure you want to remove this dish from the package?', doUnlink, 'Unlink Dish');
+        window.showConfirm('Are you sure you want to remove this dish from the package?', doUnlink, 'Unlink Dish', 'Yes, Unlink', 'danger');
     } else {
         if (confirm('Remove this dish from the package?')) doUnlink();
     }
@@ -965,7 +965,7 @@ async function archivePackage(id) {
     };
 
     if (window.showConfirm) {
-        window.showArchiveConfirm('this package', 'Linked bookings will retain their records, but it will be hidden from your active offerings.', doArchive);
+        window.showConfirm('Linked bookings will retain their records, but it will be hidden from your active offerings.', doArchive, 'Archive this package', 'Archive Now', 'danger');
     }
 }
 

@@ -320,7 +320,7 @@
             const form = document.getElementById('auditDecisionForm');
             document.getElementById('auditActionInput').value = action;
             form.submit();
-        }, title, action === 'approve' ? 'Yes, Verified' : 'Yes, Rejected');
+        }, title, action === 'approve' ? 'Yes, Verified' : 'Yes, Rejected', action === 'approve' ? 'success' : 'danger');
     }
 </script>
 {% endblock %}

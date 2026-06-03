@@ -54,7 +54,7 @@
         <div class="sidebar-brand">
             <div class="brand-center brand-text-label">
                 <span class="brand-name">Occa<span>Serve</span></span>
-                <span class="brand-tagline">Customer Hub</span>
+                <span class="brand-tagline">Customer Panel</span>
             </div>
             <button class="sidebar-collapse-btn" id="desktopToggleBtn" aria-label="Toggle Sidebar">
                 <i class="fas fa-chevron-left"></i>
@@ -84,13 +84,15 @@
             <span class="nav-section-label brand-text-label">Discover</span>
             <ul class="nav-list">
                 <li>
-                    <a href="/customer/dashboard" class="nav-item {{ 'active' if active_page == 'overview' }}" onclick="closeSidebar()">
+                    <a href="/customer/dashboard" class="nav-item {{ 'active' if active_page == 'overview' }}"
+                        onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-house"></i></div>
                         <span class="nav-label">Dashboard</span>
                     </a>
                 </li>
                 <li>
-                    <a href="/customer/marketplace" class="nav-item {{ 'active' if active_page == 'marketplace' }}" onclick="closeSidebar()">
+                    <a href="/customer/marketplace" class="nav-item {{ 'active' if active_page == 'marketplace' }}"
+                        onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-store"></i></div>
                         <span class="nav-label">Find Caterers</span>
                     </a>
@@ -101,7 +103,8 @@
             <span class="nav-section-label brand-text-label">My Activity</span>
             <ul class="nav-list">
                 <li>
-                    <a href="/customer/bookings" class="nav-item {{ 'active' if active_page == 'bookings' }}" onclick="closeSidebar()">
+                    <a href="/customer/bookings" class="nav-item {{ 'active' if active_page == 'bookings' }}"
+                        onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-calendar-check"></i></div>
                         <span class="nav-label">My Bookings</span>
                         {% if user and user.bookings|selectattr('status', 'equalto', 'confirmed')|list|count > 0 %}
@@ -110,7 +113,8 @@
                     </a>
                 </li>
                 <li>
-                    <a href="/customer/messages" class="nav-item {{ 'active' if active_page == 'messages' }}" onclick="closeSidebar()">
+                    <a href="/customer/messages" class="nav-item {{ 'active' if active_page == 'messages' }}"
+                        onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-comment-dots"></i></div>
                         <span class="nav-label">Messages</span>
                     </a>
@@ -121,7 +125,8 @@
             <span class="nav-section-label brand-text-label">Finances</span>
             <ul class="nav-list">
                 <li>
-                    <a href="/customer/payments" class="nav-item {{ 'active' if active_page == 'payments' }}" onclick="closeSidebar()">
+                    <a href="/customer/payments" class="nav-item {{ 'active' if active_page == 'payments' }}"
+                        onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-wallet"></i></div>
                         <span class="nav-label">Payments</span>
                     </a>
@@ -132,13 +137,15 @@
             <span class="nav-section-label brand-text-label">Account</span>
             <ul class="nav-list">
                 <li>
-                    <a href="/customer/reviews" class="nav-item {{ 'active' if active_page == 'reviews' }}" onclick="closeSidebar()">
+                    <a href="/customer/reviews" class="nav-item {{ 'active' if active_page == 'reviews' }}"
+                        onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-star"></i></div>
                         <span class="nav-label">My Reviews</span>
                     </a>
                 </li>
                 <li>
-                    <a href="/customer/profile" class="nav-item {{ 'active' if active_page == 'profile' }}" onclick="closeSidebar()">
+                    <a href="/customer/profile" class="nav-item {{ 'active' if active_page == 'profile' }}"
+                        onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-user-circle"></i></div>
                         <span class="nav-label">My Profile</span>
                     </a>
@@ -172,13 +179,8 @@
                 <div class="command-search-wrap" id="searchWrap">
                     <div class="header-search" id="headerSearchBox">
                         <i class="fas fa-magnifying-glass search-icon"></i>
-                        <input
-                            type="text"
-                            id="globalSearchInput"
-                            placeholder="Search caterers, bookings, events…"
-                            autocomplete="off"
-                            spellcheck="false"
-                        >
+                        <input type="text" id="globalSearchInput" placeholder="Search caterers, bookings, events…"
+                            autocomplete="off" spellcheck="false">
                         <kbd class="search-kbd">Ctrl K</kbd>
                     </div>
                     <!-- Live Results Panel -->
@@ -221,31 +223,48 @@
 
                 <!-- Notifications -->
                 <div class="header-dropdown-wrapper" id="notifWrapper" style="position: relative;">
-                    {% set unread_count = user.notifications|selectattr('is_read', 'equalto', false)|list|count if user and user.notifications else 0 %}
-                    <button class="hdr-btn {{ 'active' if active_page == 'notifications' }}" id="notifBtn" title="Notifications"
-                        onclick="toggleHeaderDropdown('notificationsDropdown', this)">
+                    {% set unread_count = user.notifications|selectattr('is_read', 'equalto', false)|list|count if user
+                    and user.notifications else 0 %}
+                    <button class="hdr-btn {{ 'active' if active_page == 'notifications' }}" id="notifBtn"
+                        title="Notifications" onclick="toggleHeaderDropdown('notificationsDropdown', this)">
                         <i class="fas fa-bell"></i>
-                        <span id="nav-notif-badge" class="action-badge" style="display: {{ 'flex' if unread_count > 0 else 'none' }};">{{ unread_count }}</span>
+                        <span id="nav-notif-badge" class="action-badge"
+                            style="display: {{ 'flex' if unread_count > 0 else 'none' }};">{{ unread_count }}</span>
                     </button>
-                    <div class="premium-dropdown" id="notificationsDropdown" style="width: 360px; right: -10px; cursor: default; padding: 0; overflow: hidden;">
-                        <div class="dropdown-header" style="display: flex; justify-content: space-between; align-items: center; padding: 16px; background: #fff; border-bottom: 1px solid #f1f5f9;">
+                    <div class="premium-dropdown" id="notificationsDropdown"
+                        style="width: 360px; right: -10px; cursor: default; padding: 0; overflow: hidden;">
+                        <div class="dropdown-header"
+                            style="display: flex; justify-content: space-between; align-items: center; padding: 16px; background: #fff; border-bottom: 1px solid #f1f5f9;">
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <p class="dropdown-user-name" style="margin: 0; font-size: 1rem; color: #0f172a; text-transform: none;">Notifications</p>
-                                <span id="dropdown-notif-badge" style="background: #ef4444; color: white; font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; font-weight: 800; display: {{ 'inline-block' if unread_count > 0 else 'none' }};">{{ unread_count }} NEW</span>
+                                <p class="dropdown-user-name"
+                                    style="margin: 0; font-size: 1rem; color: #0f172a; text-transform: none;">
+                                    Notifications</p>
+                                <span id="dropdown-notif-badge"
+                                    style="background: #ef4444; color: white; font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; font-weight: 800; display: {{ 'inline-block' if unread_count > 0 else 'none' }};">{{
+                                    unread_count }} NEW</span>
                             </div>
-                            <button type="button" onclick="window.markAllAsReadGlobal && window.markAllAsReadGlobal()" style="background: transparent; border: none; color: var(--primary-color); font-size: 0.75rem; font-weight: 700; cursor: pointer; padding: 0; transition: color 0.2s;">Mark all as read</button>
+                            <button type="button" onclick="window.markAllAsReadGlobal && window.markAllAsReadGlobal()"
+                                style="background: transparent; border: none; color: var(--primary-color); font-size: 0.75rem; font-weight: 700; cursor: pointer; padding: 0; transition: color 0.2s;">Mark
+                                all as read</button>
                         </div>
-                        <div class="dropdown-body" id="headerNotifContainer" style="max-height: 360px; overflow-y: auto; background: #f8fafc;">
+                        <div class="dropdown-body" id="headerNotifContainer"
+                            style="max-height: 360px; overflow-y: auto; background: #f8fafc;">
                             <!-- Notifications will be injected here via Global JS -->
                             <div style="text-align: center; padding: 2rem 1rem;">
-                                <div style="background: #f1f5f9; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;">
-                                    <i class="fas fa-circle-notch fa-spin" style="color: #cbd5e1; font-size: 1.25rem;"></i>
+                                <div
+                                    style="background: #f1f5f9; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;">
+                                    <i class="fas fa-circle-notch fa-spin"
+                                        style="color: #cbd5e1; font-size: 1.25rem;"></i>
                                 </div>
-                                <p style="margin: 0; font-size: 0.85rem; color: #64748b; text-transform: none;">Syncing notifications...</p>
+                                <p style="margin: 0; font-size: 0.85rem; color: #64748b; text-transform: none;">Syncing
+                                    notifications...</p>
                             </div>
                         </div>
-                        <div class="dropdown-footer" style="padding: 12px; border-top: 1px solid #e2e8f0; text-align: center; background: #fff;">
-                            <a href="/customer/notifications" style="color: var(--primary-color); font-weight: 700; font-size: 0.85rem; text-decoration: none; display: block; width: 100%;">View All Notifications</a>
+                        <div class="dropdown-footer"
+                            style="padding: 12px; border-top: 1px solid #e2e8f0; text-align: center; background: #fff;">
+                            <a href="/customer/notifications"
+                                style="color: var(--primary-color); font-weight: 700; font-size: 0.85rem; text-decoration: none; display: block; width: 100%;">View
+                                All Notifications</a>
                         </div>
                     </div>
                 </div>
@@ -272,8 +291,10 @@
                     <div class="hdr-dropdown hdr-dropdown-right" id="profileDropdown" style="width: 220px;">
                         <!-- Profile Header -->
                         <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--dm-slate-50);">
-                            <div style="font-weight: 800; font-size: 0.9rem; color: var(--text-dark);">{{ user.first_name }} {{ user.last_name }}</div>
-                            <div style="font-size: 0.72rem; color: var(--dm-slate-400); margin-top: 2px;">{{ user.email }}</div>
+                            <div style="font-weight: 800; font-size: 0.9rem; color: var(--text-dark);">{{
+                                user.first_name }} {{ user.last_name }}</div>
+                            <div style="font-size: 0.72rem; color: var(--dm-slate-400); margin-top: 2px;">{{ user.email
+                                }}</div>
                         </div>
                         <ul class="hdr-profile-links">
                             <li><a href="/customer/profile"><i class="fas fa-user"></i> My Profile</a></li>
@@ -282,7 +303,8 @@
                         </ul>
                         <div style="height: 1px; background: var(--dm-slate-50); margin: 0.25rem 0;"></div>
                         <ul class="hdr-profile-links">
-                            <li><a href="/auth/logout" class="link-danger" onclick="confirmLogout(event)"><i class="fas fa-right-from-bracket"></i> Sign Out</a></li>
+                            <li><a href="/auth/logout" class="link-danger" onclick="confirmLogout(event)"><i
+                                        class="fas fa-right-from-bracket"></i> Sign Out</a></li>
                         </ul>
                     </div>
                 </div>
@@ -315,27 +337,27 @@
     </div>
 
     {% if user and user.role == 'customer' and not user.platform_feedback %}
-        {% set completed_bookings = user.bookings|selectattr('status', 'equalto', 'completed')|list|count %}
-        {% set total_bookings_count = user.bookings|list|count %}
-        
-        {# Intelligence Guard: Only show if they have at least 1 completed booking OR used the platform at least twice #}
-        {% if completed_bookings >= 1 or total_bookings_count >= 2 %}
-            {% include "customer/partials/feedback_modal.html" %}
-            <script>
-                document.addEventListener('DOMContentLoaded', () => {
-                    const snooze = localStorage.getItem('feedbackNudgeSnooze');
-                    if (!snooze || Date.now() > parseInt(snooze)) {
-                        setTimeout(() => {
-                            const modal = document.getElementById('platformFeedbackModal');
-                            if (modal) {
-                                modal.style.display = 'flex';
-                                document.body.style.overflow = 'hidden';
-                            }
-                        }, 5000); // Elite delay: show after 5s of interaction
+    {% set completed_bookings = user.bookings|selectattr('status', 'equalto', 'completed')|list|count %}
+    {% set total_bookings_count = user.bookings|list|count %}
+
+    {# Intelligence Guard: Only show if they have at least 1 completed booking OR used the platform at least twice #}
+    {% if completed_bookings >= 1 or total_bookings_count >= 2 %}
+    {% include "customer/partials/feedback_modal.html" %}
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const snooze = localStorage.getItem('feedbackNudgeSnooze');
+            if (!snooze || Date.now() > parseInt(snooze)) {
+                setTimeout(() => {
+                    const modal = document.getElementById('platformFeedbackModal');
+                    if (modal) {
+                        modal.style.display = 'flex';
+                        document.body.style.overflow = 'hidden';
                     }
-                });
-            </script>
-        {% endif %}
+                }, 5000); // Elite delay: show after 5s of interaction
+            }
+        });
+    </script>
+    {% endif %}
     {% endif %}
 
 
