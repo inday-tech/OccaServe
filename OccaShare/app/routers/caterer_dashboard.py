@@ -2738,6 +2738,30 @@ async def link_menu_to_package(
     
     return {"status": "success"}
 
+@router.get("/api/menu-items/{item_id}/ingredients")
+async def get_menu_item_ingredients(
+    item_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    item = db.query(models.MenuItem).filter(
+        models.MenuItem.id == item_id,
+        models.MenuItem.caterer_id == user.caterer_profile.id
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+    
+    ingredients = []
+    for mii in item.ingredients:
+        ingredients.append({
+            "id": mii.ingredient.id,
+            "name": mii.ingredient.name,
+            "quantity": mii.quantity,
+            "unit": mii.ingredient.unit,
+            "unit_price": mii.ingredient.unit_price
+        })
+    return {"ingredients": ingredients}
+
 @router.post("/menu/{item_id}/update")
 async def update_menu_item(
     request: Request,
@@ -2756,6 +2780,9 @@ async def update_menu_item(
     dietary_tags: Optional[list[str]] = Form(None),
     allergen_info: Optional[list[str]] = Form(None),
     recipe_data: Optional[str] = Form(None),
+    is_combo: bool = Form(False),
+    max_choices: int = Form(0),
+    combo_options: Optional[str] = Form(None),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
@@ -2787,6 +2814,9 @@ async def update_menu_item(
     item.is_hidden = is_hidden
     item.dietary_tags = dietary_tags
     item.allergen_info = allergen_info
+    item.is_combo = is_combo
+    item.max_choices = max_choices
+    item.combo_options = combo_options
     
     if image and image.filename:
         ext = os.path.splitext(image.filename)[1]
