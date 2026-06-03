@@ -223,15 +223,23 @@ window.openCustomerProfile = async function(id) {
         const blacklistBtn = document.getElementById('blacklistBtn');
 
         if (c.status === 'BLACKLISTED') {
-            statusTag.innerText = "Status: Blacklisted / High Risk";
-            statusTag.style.color = "#fca5a5";
-            blacklistBtn.innerText = "Restore Account";
-            blacklistBtn.className = "btn-primary bg-success border-none";
+            if (statusTag) {
+                statusTag.innerText = "Status: Blacklisted / High Risk";
+                statusTag.style.color = "#fca5a5";
+            }
+            if (blacklistBtn) {
+                blacklistBtn.innerText = "Restore Account";
+                blacklistBtn.className = "btn-primary bg-success border-none";
+            }
         } else {
-            statusTag.innerText = c.status === 'VIP' ? "Status: VIP Elite Client" : "Status: Standard Client";
-            statusTag.style.color = "#93c5fd";
-            blacklistBtn.innerText = "Execute Block";
-            blacklistBtn.className = "btn-primary bg-danger border-none";
+            if (statusTag) {
+                statusTag.innerText = c.status === 'VIP' ? "Status: VIP Elite Client" : "Status: Standard Client";
+                statusTag.style.color = "#93c5fd";
+            }
+            if (blacklistBtn) {
+                blacklistBtn.innerText = "Execute Block";
+                blacklistBtn.className = "btn-primary bg-danger border-none";
+            }
         }
         
         const blacklistReasonField = document.getElementById('blacklistReason');
