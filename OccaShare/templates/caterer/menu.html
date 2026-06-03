@@ -22,7 +22,7 @@
     </div>
 </div>
 
-{% set categories_list = ['Appetizer', 'Soup', 'Salad', 'Main Course', 'Side Dish', 'Dessert', 'Drinks'] %}
+{% set categories_list = ['Appetizer', 'Soup', 'Salad', 'Main Course', 'Side Dish', 'Dessert', 'Drinks', 'Party Trays / Bilao', 'Rentals', 'Services', 'Other'] %}
 <div class="category-filters animate-up delay-1">
     <button class="cat-chip active" data-cat="all" onclick="filterByCategory('all')">
         All Items <span class="badge-count">{{ menu_items|length }}</span>
@@ -67,6 +67,7 @@
                         data-price="{{ item.price or 0 }}"
                         data-cost-price="{{ item.cost_price or 0 }}"
                         data-serving-size="{{ item.serving_size or '' }}"
+                        data-pricing-unit="{{ item.pricing_unit or 'per_serving' }}"
                         data-is-addon="{{ 'true' if item.is_addon else 'false' }}"
                         data-addon-price="{{ item.addon_price or 0 }}"
                         data-dietary-tags='{{ item.dietary_tags|tojson if item.dietary_tags else "[]" }}'
@@ -175,11 +176,33 @@
                                 <option value="Side Dish">Side Dish</option>
                                 <option value="Dessert">Dessert</option>
                                 <option value="Drinks">Drinks</option>
+                                <option value="Party Trays / Bilao">Party Trays / Bilao</option>
+                                <option value="Rentals">Rentals (Tables, Chairs)</option>
+                                <option value="Services">Services (Waiters, Setup)</option>
+                                <option value="Other">Other</option>
                             </select>
                         </div>
                         <div class="form-group-pro">
-                            <label>Serving Size</label>
-                            <input type="text" name="serving_size" class="control-pro" placeholder="e.g. Good for 1" maxlength="50">
+                            <label>Pricing Unit</label>
+                            <select name="pricing_unit" id="modalPricingUnit" class="control-pro" required>
+                                <option value="per_serving">Per Serving / Piece</option>
+                                <option value="per_tray">Per Tray (Half/Full)</option>
+                                <option value="per_bilao">Per Bilao</option>
+                                <option value="per_pax">Per Pax</option>
+                                <option value="per_unit">Per Unit / Item</option>
+                                <option value="per_hour">Per Hour</option>
+                                <option value="per_set">Per Set</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row-pro">
+                        <div class="form-group-pro">
+                            <label>Serving Size / Capacity</label>
+                            <input type="text" name="serving_size" class="control-pro" placeholder="e.g. Good for 10-15" maxlength="50">
+                        </div>
+                        <div class="form-group-pro">
+                            <!-- Empty spacer for layout -->
                         </div>
                     </div>
 
@@ -412,6 +435,7 @@
                 price: el.dataset.price,
                 cost_price: el.dataset.costPrice,
                 serving_size: el.dataset.servingSize,
+                pricing_unit: el.dataset.pricingUnit,
                 is_addon: el.dataset.isAddon === 'true',
                 addon_price: el.dataset.addonPrice,
                 dietary_tags: el.dataset.dietaryTags,
@@ -431,6 +455,7 @@
             form.price.value = item.price || 0;
             form.cost_price.value = item.cost_price || 0;
             form.serving_size.value = item.serving_size || '';
+            form.pricing_unit.value = item.pricing_unit || 'per_serving';
             
             const cb = document.getElementById('isAddonCheckbox');
             if (cb) cb.checked = item.is_addon;

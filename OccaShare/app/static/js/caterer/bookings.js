@@ -989,6 +989,15 @@ function showBookingDetails(btn) {
                 actionsEl.innerHTML = '<button type="button" class="btn-footer-action" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d;flex:1;" onclick="window.confirmArchiveBooking(' + data.id + ')"><i class="fas fa-archive"></i> ' + archiveLabel + '</button>';
             }
         }
+        
+        // Add Copy Payment Link Button (useful for sending to FB Walk-in customers)
+        if (!['cancelled', 'completed', 'draft'].includes(data.status)) {
+            actionsEl.innerHTML += `
+                <button type="button" class="btn-footer-action" onclick="window.copyInvoiceLink(${data.id})" style="background: white; color: #475569; border: 1px solid #cbd5e1;">
+                    <i class="fas fa-link"></i> Copy Payment Link
+                </button>
+            `;
+        }
     }
 
     document.getElementById('modalBookedOn').innerText = data.bookedOn;
@@ -1158,6 +1167,25 @@ function resetBookingTabs() {
     var firstBtn = document.querySelector('.mtab-btn-pro');
     if (firstBtn) firstBtn.classList.add('active');
 }
+
+// Global copy payment link function
+window.copyInvoiceLink = function(bookingId) {
+    const url = window.location.origin + '/customer/booking/' + bookingId + '/invoice';
+    navigator.clipboard.writeText(url).then(() => {
+        if (window.showSuccess) {
+            window.showSuccess('Payment link copied to clipboard!');
+        } else {
+            alert('Payment link copied to clipboard!');
+        }
+    }).catch(err => {
+        console.error('Could not copy text: ', err);
+        if (window.showError) {
+            window.showError('Failed to copy link.');
+        } else {
+            alert('Failed to copy link. Please manually copy: ' + url);
+        }
+    });
+};
 
 // ─── NEW: AUDIT HISTORY ──────────────────────────────────────────────────────
 

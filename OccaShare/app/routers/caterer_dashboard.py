@@ -2062,6 +2062,7 @@ async def add_menu_item(
     cost_price: float = Form(0.0),
     cost_breakdown: Optional[str] = Form(None),
     serving_size: Optional[str] = Form(None),
+    pricing_unit: str = Form("per_serving"),
     is_addon: bool = Form(False),
     addon_price: float = Form(0.0),
     is_hidden: bool = Form(False),
@@ -2100,6 +2101,7 @@ async def add_menu_item(
         cost_price=cost_price,
         cost_breakdown=cost_breakdown_data,
         serving_size=serving_size,
+        pricing_unit=pricing_unit,
         is_addon=is_addon,
         addon_price=addon_price,
         image_url=image_url,
@@ -2700,6 +2702,7 @@ async def update_menu_item(
     cost_price: float = Form(0.0),
     cost_breakdown: Optional[str] = Form(None),
     serving_size: Optional[str] = Form(None),
+    pricing_unit: str = Form("per_serving"),
     is_addon: bool = Form(False),
     addon_price: float = Form(0.0),
     is_hidden: bool = Form(False),
@@ -2731,6 +2734,7 @@ async def update_menu_item(
     elif cost_breakdown == "":
         item.cost_breakdown = None
     item.serving_size = serving_size
+    item.pricing_unit = pricing_unit
     item.is_addon = is_addon
     item.addon_price = addon_price
     item.is_hidden = is_hidden
