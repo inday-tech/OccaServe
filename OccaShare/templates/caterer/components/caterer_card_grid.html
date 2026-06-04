@@ -20,11 +20,14 @@
             {{ (caterer.description or 'Exquisite culinary experiences tailored for your special occasions.')|truncate(100) }}
         </p>
 
-        <div class="elite-card-footer">
-            <div class="elite-footer-item" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+        <div class="elite-card-footer" style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+            <div class="elite-footer-item" style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                 <i class="fas fa-map-marker-alt"></i> {{ caterer.contact_address if caterer.contact_address else (caterer.city or "Location TBD") }}
+                {% if caterer.distance_km is defined and caterer.distance_km is not none %}
+                    &bull; <span style="color: var(--brand-primary); font-weight: 700;">{{ "%.1f"|format(caterer.distance_km) }} km</span>
+                {% endif %}
             </div>
-            <div class="elite-footer-item">
+            <div class="elite-footer-item" style="flex-shrink: 0; white-space: nowrap;">
                 <i class="fas fa-eye"></i> {{ "{:,}".format(caterer.profile_views or 0) }} views
             </div>
         </div>

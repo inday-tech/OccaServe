@@ -115,7 +115,7 @@ def get_caterer_by_slug(request: Request, slug: str, db: Session = Depends(datab
 @router.get("/api/search", response_class=HTMLResponse)
 def unified_search_api(request: Request, q: str = "", lat: Optional[float] = None, lon: Optional[float] = None, db: Session = Depends(database.get_db)):
     """Unified deep search across all caterer-related fields with proximity sorting."""
-    from sqlalchemy import or_, func, distinct, text
+    from sqlalchemy import or_, func, distinct, text, literal_column
 
     # Subquery for minimum active package price per caterer
     price_sq = db.query(
@@ -182,16 +182,20 @@ def unified_search_api(request: Request, q: str = "", lat: Optional[float] = Non
             ))
         """).bindparams(lat=lat, lon=lon)
         
-        query = query.order_by(distance_query.asc())
+        query = query.add_columns(distance_query.label("distance")).order_by(text("distance ASC"))
     else:
-        query = query.order_by(models.CatererProfile.rating.desc())
+        query = query.add_columns(literal_column("NULL").label("distance")).order_by(models.CatererProfile.rating.desc())
 
     results = query.all()
 
     # Attach computed min price to each caterer object
     caterers = []
-    for profile, min_p in results:
+    for row in results:
+        profile = row[0]
+        min_p = row[1]
+        dist = row[2]
         profile.min_package_price = min_p or profile.starting_price or 0
+        profile.distance_km = dist
         caterers.append(profile)
 
     return templates.TemplateResponse("caterer/components/caterer_card_grid.html", {

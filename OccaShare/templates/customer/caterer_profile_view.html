@@ -1331,32 +1331,25 @@
                 <div class="intel-card" style="padding: 1.75rem; margin-top: 2rem;">
                     <h2 class="section-title">Operational Policies</h2>
                     <div class="policy-grid" style="display: grid; grid-template-columns: 1fr; gap: 1rem; margin-top: 1.5rem;">
-                        {% if caterer.booking_policy %}
                         <div class="meta-pill" style="background: var(--hub-slate-50); color: var(--hub-slate-600); justify-content: flex-start; padding: 1rem; border: 1px solid var(--hub-slate-100); height: auto;">
                             <div>
-                                <div style="font-size: 0.65rem; text-transform: uppercase; opacity: 0.7;">Booking Policy</div>
-                                <div style="font-weight: 850;">{{ caterer.booking_policy }}</div>
+                                <div style="font-size: 0.65rem; text-transform: uppercase; opacity: 0.7;"><i class="fas fa-calendar-alt" style="margin-right: 4px;"></i> Booking Lead Time</div>
+                                <div style="font-weight: 850; margin-top: 4px;">Must be booked at least {{ caterer.booking_lead_time if caterer.booking_lead_time else 7 }} days in advance.</div>
                             </div>
                         </div>
-                        {% endif %}
-                        {% if caterer.payment_policy %}
                         <div class="meta-pill" style="background: var(--hub-slate-50); color: var(--hub-slate-600); justify-content: flex-start; padding: 1rem; border: 1px solid var(--hub-slate-100); height: auto;">
                             <div>
-                                <div style="font-size: 0.65rem; text-transform: uppercase; opacity: 0.7;">Payment Policy</div>
-                                <div style="font-weight: 850;">{{ caterer.payment_policy }}</div>
+                                <div style="font-size: 0.65rem; text-transform: uppercase; opacity: 0.7;"><i class="fas fa-users" style="margin-right: 4px;"></i> Minimum Guests</div>
+                                <div style="font-weight: 850; margin-top: 4px;">Services start for groups of {{ caterer.min_pax if caterer.min_pax else 20 }} pax and above.</div>
                             </div>
                         </div>
-                        {% endif %}
-                        {% if caterer.cancellation_policy %}
+                        {% if caterer.terms_and_conditions %}
                         <div class="meta-pill" style="background: var(--hub-slate-50); color: var(--hub-slate-600); justify-content: flex-start; padding: 1rem; border: 1px solid var(--hub-slate-100); height: auto;">
                             <div>
-                                <div style="font-size: 0.65rem; text-transform: uppercase; opacity: 0.7;">Cancellation Policy</div>
-                                <div style="font-weight: 850;">{{ caterer.cancellation_policy }}</div>
+                                <div style="font-size: 0.65rem; text-transform: uppercase; opacity: 0.7;"><i class="fas fa-file-signature" style="margin-right: 4px;"></i> Service Guidelines & Terms</div>
+                                <div style="font-weight: 850; margin-top: 4px; white-space: pre-wrap; font-size: 0.85rem; line-height: 1.5;">{{ caterer.terms_and_conditions }}</div>
                             </div>
                         </div>
-                        {% endif %}
-                        {% if not caterer.booking_policy and not caterer.payment_policy and not caterer.cancellation_policy %}
-                        <p style="color: var(--hub-slate-400); font-size: 0.9rem;">No specific policies listed by the caterer.</p>
                         {% endif %}
                     </div>
                 </div>

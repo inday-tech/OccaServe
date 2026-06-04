@@ -431,7 +431,9 @@
                     <div class="unified-search-loader" id="searchLoader" style="display: none;">
                         <i class="fas fa-spinner fa-spin"></i>
                     </div>
-                    <kbd class="search-hint">Just start typing</kbd>
+                    <button id="locateMeBtn" onclick="triggerGeolocation()" class="bg-brand text-white hover:bg-orange-600 rounded-full px-5 py-2.5 h-full flex-shrink-0 flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg font-bold text-xs uppercase tracking-widest whitespace-nowrap" title="Find caterers near my location">
+                        <i class="fas fa-location-crosshairs animate-pulse"></i> <span>Near Me</span>
+                    </button>
                 </div>
             </div>
 

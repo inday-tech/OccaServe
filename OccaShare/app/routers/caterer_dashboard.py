@@ -2023,14 +2023,17 @@ async def add_package(
             return JSONResponse({"status": "error", "message": error_msg}, status_code=400)
         return RedirectResponse(url=f"/caterer/packages?error_msg={error_msg}", status_code=303)
 
+    import base64
     image_url = None
     if image and image.filename:
-        ext = os.path.splitext(image.filename)[1]
-        filename = f"pkg_{uuid.uuid4()}{ext}"
-        filepath = os.path.join(UPLOAD_DIR, filename)
-        with open(filepath, "wb") as buffer:
-            shutil.copyfileobj(image.file, buffer)
-        image_url = f"/static/uploads/caterer/{filename}"
+        try:
+            content_bytes = await image.read()
+            if content_bytes:
+                encoded = base64.b64encode(content_bytes).decode("utf-8")
+                mime = image.content_type or "image/jpeg"
+                image_url = f"data:{mime};base64,{encoded}"
+        except Exception:
+            pass
 
     new_pkg = models.CateringPackage(
         caterer_id=user.caterer_profile.id,
@@ -2123,14 +2126,17 @@ async def add_menu_item(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    import base64
     image_url = None
     if image and image.filename:
-        ext = os.path.splitext(image.filename)[1]
-        filename = f"menu_{uuid.uuid4()}{ext}"
-        filepath = os.path.join(UPLOAD_DIR, filename)
-        with open(filepath, "wb") as buffer:
-            shutil.copyfileobj(image.file, buffer)
-        image_url = f"/static/uploads/caterer/{filename}"
+        try:
+            content_bytes = await image.read()
+            if content_bytes:
+                encoded = base64.b64encode(content_bytes).decode("utf-8")
+                mime = image.content_type or "image/jpeg"
+                image_url = f"data:{mime};base64,{encoded}"
+        except Exception:
+            pass
 
     cost_breakdown_data = None
     if cost_breakdown:
@@ -2339,33 +2345,40 @@ async def update_profile(
     if longitude is not None:
         profile.longitude = longitude
 
+    import base64
     # Handle Single File Uploads
     logo_file = logo if (logo and logo.filename) else logo_brand
     for field_name, file_obj in [("logo", logo_file), ("cover_image", cover_image), ("gcash_qr", gcash_qr), ("maya_qr", maya_qr), ("bank_qr", bank_qr)]:
         if file_obj and file_obj.filename:
-            ext = os.path.splitext(file_obj.filename)[1]
-            filename = f"{field_name}_{uuid.uuid4()}{ext}"
-            filepath = os.path.join(UPLOAD_DIR, filename)
-            with open(filepath, "wb") as buffer:
-                shutil.copyfileobj(file_obj.file, buffer)
-            setattr(profile, f"{field_name}_url" if field_name != 'logo' else 'logo_url', f"/static/uploads/caterer/{filename}")
+            try:
+                content_bytes = await file_obj.read()
+                if content_bytes:
+                    encoded = base64.b64encode(content_bytes).decode("utf-8")
+                    mime = file_obj.content_type or "image/jpeg"
+                    data_url = f"data:{mime};base64,{encoded}"
+                    setattr(profile, f"{field_name}_url" if field_name != 'logo' else 'logo_url', data_url)
+            except Exception:
+                pass
 
     # Handle Gallery Uploads (Multiple)
     if gallery:
         for file_obj in gallery:
             if file_obj.filename:
-                ext = os.path.splitext(file_obj.filename)[1]
-                filename = f"gallery_{uuid.uuid4()}{ext}"
-                filepath = os.path.join(UPLOAD_DIR, filename)
-                with open(filepath, "wb") as buffer:
-                    shutil.copyfileobj(file_obj.file, buffer)
-                
-                new_gallery_item = models.CatererGallery(
-                    caterer_id=profile.id,
-                    media_url=f"/static/uploads/caterer/{filename}",
-                    media_type="image"
-                )
-                db.add(new_gallery_item)
+                try:
+                    content_bytes = await file_obj.read()
+                    if content_bytes:
+                        encoded = base64.b64encode(content_bytes).decode("utf-8")
+                        mime = file_obj.content_type or "image/jpeg"
+                        data_url = f"data:{mime};base64,{encoded}"
+                        
+                        new_gallery_item = models.CatererGallery(
+                            caterer_id=profile.id,
+                            media_url=data_url,
+                            media_type="image"
+                        )
+                        db.add(new_gallery_item)
+                except Exception:
+                    pass
 
     db.commit()
     return RedirectResponse(url="/caterer/profile?success_msg=Business+profile+updated+successfully", status_code=303)
@@ -2522,13 +2535,16 @@ async def update_package(
         package.menu_items = items
 
 
+    import base64
     if image and image.filename:
-        ext = os.path.splitext(image.filename)[1]
-        filename = f"pkg_{uuid.uuid4()}{ext}"
-        filepath = os.path.join(UPLOAD_DIR, filename)
-        with open(filepath, "wb") as buffer:
-            shutil.copyfileobj(image.file, buffer)
-        package.image_url = f"/static/uploads/caterer/{filename}"
+        try:
+            content_bytes = await image.read()
+            if content_bytes:
+                encoded = base64.b64encode(content_bytes).decode("utf-8")
+                mime = image.content_type or "image/jpeg"
+                package.image_url = f"data:{mime};base64,{encoded}"
+        except Exception:
+            pass
 
     db.commit()
 
@@ -2639,14 +2655,17 @@ async def add_menu_to_package(
     if not package:
         raise HTTPException(status_code=404, detail="Package not found")
 
+    import base64
     image_url = None
     if image and image.filename:
-        ext = os.path.splitext(image.filename)[1]
-        filename = f"menu_{uuid.uuid4()}{ext}"
-        filepath = os.path.join(UPLOAD_DIR, filename)
-        with open(filepath, "wb") as buffer:
-            shutil.copyfileobj(image.file, buffer)
-        image_url = f"/static/uploads/caterer/{filename}"
+        try:
+            content_bytes = await image.read()
+            if content_bytes:
+                encoded = base64.b64encode(content_bytes).decode("utf-8")
+                mime = image.content_type or "image/jpeg"
+                image_url = f"data:{mime};base64,{encoded}"
+        except Exception:
+            pass
 
     new_item = models.MenuItem(
         caterer_id=user.caterer_profile.id,
@@ -2820,13 +2839,16 @@ async def update_menu_item(
     item.max_choices = max_choices
     item.combo_options = combo_options
     
+    import base64
     if image and image.filename:
-        ext = os.path.splitext(image.filename)[1]
-        filename = f"menu_{uuid.uuid4()}{ext}"
-        filepath = os.path.join(UPLOAD_DIR, filename)
-        with open(filepath, "wb") as buffer:
-            shutil.copyfileobj(image.file, buffer)
-        item.image_url = f"/static/uploads/caterer/{filename}"
+        try:
+            content_bytes = await image.read()
+            if content_bytes:
+                encoded = base64.b64encode(content_bytes).decode("utf-8")
+                mime = image.content_type or "image/jpeg"
+                item.image_url = f"data:{mime};base64,{encoded}"
+        except Exception:
+            pass
 
     # Process Recipe
     if recipe_data:

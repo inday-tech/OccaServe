@@ -321,7 +321,7 @@
                             
                             <!-- Cover Header Image -->
                             <div class="h-40 w-full overflow-hidden relative bg-slate-100 flex-shrink-0">
-                                <img src="{{ cat_cover_image }}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="{{ cat }}">
+                                <img src="{{ cat_cover_image }}" onerror="this.src='{{ get_category_default_image(cat)|trim }}'" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="{{ cat }}">
                                 <div class="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent"></div>
                             </div>
 
@@ -388,7 +388,15 @@
                         </div>
                         <div class="p-6 flex-1 flex flex-col">
                             <h3 class="text-base font-black text-slate-800 uppercase mb-2 leading-tight">{{ pkg.name }}</h3>
-                            <div class="text-brand font-black text-xl mb-4">₱{{ "{:,.2f}".format(pkg.price if pkg.price else 0) }}</div>
+                            <div class="text-brand font-black text-xl mb-4">
+                                {% if pkg.price_per_head %}
+                                    ₱{{ "{:,.2f}".format(pkg.price_per_head) }}<span class="text-[10px] text-slate-400 font-bold ml-1">/pax</span>
+                                {% elif pkg.price_unit == 'per_guest' %}
+                                    ₱{{ "{:,.2f}".format(pkg.price if pkg.price else 0) }}<span class="text-[10px] text-slate-400 font-bold ml-1">/pax</span>
+                                {% else %}
+                                    ₱{{ "{:,.2f}".format(pkg.price if pkg.price else 0) }}<span class="text-[10px] text-slate-400 font-bold ml-1"> total</span>
+                                {% endif %}
+                            </div>
                             <p class="text-xs text-slate-500 mb-6 flex-1 line-clamp-3 leading-relaxed">{{ pkg.description }}</p>
                             
                             <button onclick="openPublicPkgDetails({{ pkg.id }})" 
@@ -458,12 +466,17 @@
                 <h2 class="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
                     <span class="w-8 h-[1px] bg-slate-200"></span> Verified Location
                 </h2>
-                <div id="map" class="rounded-2xl border border-slate-100"></div>
-                <div class="mt-5 p-4 bg-slate-50 rounded-xl flex items-center gap-3 text-xs font-semibold text-slate-600 border border-slate-100">
-                    <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-brand shadow-sm">
-                        <i class="fas fa-map-marker-alt"></i>
+                <div id="map" class="rounded-2xl border border-slate-100" style="height: 300px;"></div>
+                <div class="mt-5 flex flex-col sm:flex-row gap-4 items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <div class="flex items-center gap-3 w-full sm:w-auto">
+                        <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-brand shadow-sm flex-shrink-0">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </div>
+                        <span class="line-clamp-2 text-xs font-semibold text-slate-600">{{ caterer.contact_address or caterer.city or 'Operational HQ' }}</span>
                     </div>
-                    <span>{{ caterer.contact_address or caterer.city or 'Operational HQ' }}</span>
+                    <button onclick="calcProfileDistance()" id="profileDistBtn" class="w-full sm:w-auto bg-brand text-white hover:bg-orange-600 px-5 py-2.5 rounded-full text-xs uppercase font-black tracking-widest flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg whitespace-nowrap">
+                        <i class="fas fa-location-arrow animate-pulse"></i> <span id="profileDistText">Check Distance</span>
+                    </button>
                 </div>
             </section>
 
@@ -572,7 +585,7 @@
 <!-- All existing modals and scripts remain below, updated to use brand colors -->
 
 <!-- Authentication Choice Modal -->
-<div id="auth-choice-modal" class="fixed inset-0 z-[2000] hidden items-center justify-center p-4">
+<div id="auth-choice-modal" class="fixed inset-0 z-[3000] hidden items-center justify-center p-4">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeAuthChoice()"></div>
     <div class="relative bg-white w-full max-w-sm rounded-2xl shadow-xl p-6 animate-in zoom-in-95 duration-300 text-center">
         <button class="absolute top-4 right-4 text-slate-400 hover:text-slate-600" onclick="closeAuthChoice()">
@@ -635,7 +648,13 @@
         {% for pkg in packages %}
         "{{ pkg.id }}": {
             name: "{{ pkg.name }}",
-            price: '₱{{ "{:,.2f}".format(pkg.price if pkg.price else 0) }}',
+            {% if pkg.price_per_head %}
+            price: '₱{{ "{:,.2f}".format(pkg.price_per_head) }} <span class="text-[10px] text-slate-400 font-bold ml-1">/pax</span>',
+            {% elif pkg.price_unit == "per_guest" %}
+            price: '₱{{ "{:,.2f}".format(pkg.price if pkg.price else 0) }} <span class="text-[10px] text-slate-400 font-bold ml-1">/pax</span>',
+            {% else %}
+            price: '₱{{ "{:,.2f}".format(pkg.price if pkg.price else 0) }} <span class="text-[10px] text-slate-400 font-bold ml-1">total</span>',
+            {% endif %}
             description: `{{ pkg.description or 'Premium package.' }}`,
             inclusions: [
                 {% if pkg.menu_items %}
@@ -735,18 +754,23 @@
                 <div class="group border border-slate-100 rounded-2xl p-4 flex flex-col gap-3 transition-all hover:border-brand/30 hover:shadow-lg bg-slate-50/20 hover:bg-white overflow-hidden text-center">
                     <div class="relative overflow-hidden rounded-xl h-44 bg-slate-100 shadow-sm border border-slate-100/50">
                         ${item.image_url ? 
-                            `<img src="${item.image_url}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt="${item.name}">` : 
-                            `<div class="w-full h-full flex items-center justify-center text-slate-300"><i class="fas fa-utensils text-3xl"></i></div>`
+                            `<img src="${item.image_url}" onerror="this.src='https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=400&auto=format&fit=crop'" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt="${item.name}">` : 
+                            `<div class="w-full h-full flex flex-col items-center justify-center bg-slate-50 text-slate-300">
+                                <i class="fas fa-image text-3xl mb-2"></i>
+                                <span class="text-[9px] font-bold uppercase tracking-widest">No Image</span>
+                            </div>`
                         }
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <div class="absolute top-3 right-3">
                             <span class="bg-white/90 backdrop-blur px-2.5 py-1 rounded-full text-[9px] font-black text-brand uppercase tracking-wider shadow-sm">
                                 <i class="fas fa-users"></i> ${item.serving_size}
                             </span>
                         </div>
                     </div>
-                    <div class="px-1 flex flex-col gap-1.5 items-center">
+                    <div class="px-1 flex flex-col gap-1.5 items-center w-full">
                         <div class="text-xs font-black text-slate-800 uppercase tracking-wider line-clamp-1">${item.name}</div>
                         <div class="text-brand font-black text-sm bg-brand/5 px-3 py-1 rounded-full border border-brand/10">₱${parseFloat(item.price).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</div>
+                        <button onclick="promptBookingAuth()" class="mt-2 w-full text-[10px] font-bold text-white bg-brand rounded-full py-1.5 transition hover:bg-brand/90 shadow-sm uppercase tracking-widest"><i class="fas fa-cart-plus"></i> Order</button>
                     </div>
                 </div>
             `).join('');
@@ -839,59 +863,133 @@
         document.getElementById('public-img-modal').classList.remove('flex');
     }
 
+    function calcProfileDistance() {
+        let targetLat = {{ caterer.latitude if caterer.latitude else 0 }};
+        let targetLon = {{ caterer.longitude if caterer.longitude else 0 }};
+        
+        const btnText = document.getElementById('profileDistText');
+        const btn = document.getElementById('profileDistBtn');
+        
+        if ("geolocation" in navigator) {
+            btnText.innerHTML = 'Locating...';
+            navigator.geolocation.getCurrentPosition(function(position) {
+                const uLat = position.coords.latitude;
+                const uLon = position.coords.longitude;
+                
+                if (window.catererResolvedLat) targetLat = window.catererResolvedLat;
+                if (window.catererResolvedLon) targetLon = window.catererResolvedLon;
+
+                if (targetLat === 0) {
+                    btnText.innerHTML = 'Location unpinned';
+                    return;
+                }
+                
+                const R = 6371;
+                const dLat = (uLat - targetLat) * Math.PI / 180;
+                const dLon = (uLon - targetLon) * Math.PI / 180;
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                          Math.cos(targetLat * Math.PI / 180) * Math.cos(uLat * Math.PI / 180) *
+                          Math.sin(dLon/2) * Math.sin(dLon/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                const d = R * c;
+                
+                const distStr = d.toFixed(1) + ' km away';
+                btnText.innerHTML = distStr;
+                btn.classList.add('bg-brand');
+                btn.classList.remove('bg-secondary');
+                
+                if (window.updateMapDistance) window.updateMapDistance(distStr);
+            }, function(error) {
+                btnText.innerHTML = 'Denied';
+                alert('Please allow location permissions to calculate distance.');
+            });
+        } else {
+            alert("Geolocation is not supported by your browser.");
+        }
+    }
+
     // Initialize Google Maps for Verified Location
     document.addEventListener('DOMContentLoaded', function() {
-        const lat = {{ caterer.latitude if caterer.latitude else 14.1989 }};
-        const lon = {{ caterer.longitude if caterer.longitude else 121.4286 }};
-        const businessName = "{{ caterer.business_name }}";
+        const businessName = "{{ caterer.business_name|safe }}";
         const savedAddress = "{{ caterer.contact_address or '' }}";
         const savedCity = "{{ caterer.city or '' }}";
+        const fullAddress = [savedAddress, savedCity, 'Philippines'].filter(Boolean).join(', ');
         
-        const map = new google.maps.Map(document.getElementById('map'), {
-            center: { lat, lng: lon },
+        let cLat = {{ caterer.latitude if caterer.latitude else 0 }};
+        let cLon = {{ caterer.longitude if caterer.longitude else 0 }};
+        
+        const mapElement = document.getElementById('map');
+        if (!mapElement) return;
+
+        const map = new google.maps.Map(mapElement, {
             zoom: 16,
-            mapTypeId: 'hybrid',
+            mapTypeId: 'roadmap',
             mapTypeControl: true,
-            mapTypeControlOptions: {
-                style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
-                mapTypeIds: ['roadmap', 'satellite', 'hybrid']
-            },
             streetViewControl: false,
             fullscreenControl: true
         });
 
-        const marker = new google.maps.Marker({
-            position: { lat, lng: lon },
-            map: map,
-            animation: google.maps.Animation.DROP,
-            title: businessName
-        });
+        const infoWindow = new google.maps.InfoWindow();
 
-        const infoWindow = new google.maps.InfoWindow({
-            content: `<b>${businessName}</b><br>Verified Location`
-        });
-        infoWindow.open(map, marker);
-
-        marker.addListener('click', () => {
+        function placeMarker(loc) {
+            map.setCenter(loc);
+            const marker = new google.maps.Marker({
+                position: loc,
+                map: map,
+                animation: google.maps.Animation.DROP,
+                title: businessName
+            });
+            
+            // Format Google Maps Link
+            const googleMapsLink = `https://www.google.com/maps/search/?api=1&query=${loc.lat()},${loc.lng()}`;
+            
+            const contentString = `
+                <div style="padding: 2px 8px 4px 2px; min-width: 180px; max-width: 250px; font-family: Roboto, Arial, sans-serif; text-align: left;">
+                    <div style="font-size: 15px; color: #1e293b; font-weight: 500; margin-bottom: 8px;">
+                        ${businessName}
+                    </div>
+                    <div style="font-size: 13px; color: #475569; line-height: 1.4; margin-bottom: 8px;">
+                        ${savedAddress ? savedAddress + '<br>' : ''}
+                        ${savedCity ? savedCity + '<br>' : ''}
+                        Philippines
+                    </div>
+                    <div id="map-distance-info" style="font-size: 12px; color: #f97316; font-weight: bold; margin-bottom: 8px; display: none;"></div>
+                    <a href="${googleMapsLink}" target="_blank" style="font-size: 14px; color: #1a73e8; text-decoration: none; font-weight: 400;">
+                        View on Google Maps
+                    </a>
+                </div>
+            `;
+            
+            infoWindow.setContent(contentString);
             infoWindow.open(map, marker);
-        });
+            
+            marker.addListener('click', () => {
+                infoWindow.open(map, marker);
+            });
+            window.catererResolvedLat = loc.lat();
+            window.catererResolvedLon = loc.lng();
+        }
 
-        // If coordinates are default/missing, geocode the saved address for accuracy
-        const isDefault = (lat === 14.1989 && lon === 121.4286) || (lat === 0 && lon === 0);
-        if (isDefault && (savedAddress || savedCity)) {
-            const fullAddress = [savedAddress, savedCity, 'Philippines'].filter(Boolean).join(', ');
+        if (cLat !== 0 && cLon !== 0) {
+            placeMarker(new google.maps.LatLng(cLat, cLon));
+        } else {
             const geocoder = new google.maps.Geocoder();
             geocoder.geocode({ address: fullAddress }, (results, status) => {
                 if (status === 'OK' && results[0]) {
-                    const loc = results[0].geometry.location;
-                    map.setCenter(loc);
-                    map.setZoom(17);
-                    marker.setPosition(loc);
-                    marker.setAnimation(google.maps.Animation.DROP);
-                    infoWindow.open(map, marker);
+                    placeMarker(results[0].geometry.location);
+                } else {
+                    placeMarker(new google.maps.LatLng(14.1989, 121.4286));
                 }
             });
         }
+        
+        window.updateMapDistance = function(distanceText) {
+            const el = document.getElementById('map-distance-info');
+            if (el) {
+                el.style.display = 'block';
+                el.innerHTML = `<i class="fas fa-location-arrow"></i> ${distanceText}`;
+            }
+        };
     });
 </script>
 {% endblock %}
