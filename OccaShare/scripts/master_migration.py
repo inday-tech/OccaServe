@@ -111,6 +111,7 @@ def master_migration():
             ("sidebar_decoration", "VARCHAR DEFAULT 'none'"),
             ("header_decoration", "VARCHAR DEFAULT 'none'"),
             ("terms_and_conditions", "TEXT"),
+            ("booking_lead_time", "INTEGER DEFAULT 7"),
             ("gcash_number", "VARCHAR"),
             ("gcash_qr_url", "VARCHAR"),
             ("maya_number", "VARCHAR"),
