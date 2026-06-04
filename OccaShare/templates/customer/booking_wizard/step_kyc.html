@@ -934,6 +934,30 @@
                 </div>
             </div>
 
+            <!-- Webcam ID Capture Modal for Desktops -->
+            <div id="id-camera-modal" class="ocr-modal-overlay">
+                <div class="ocr-modal" style="max-width: 500px; display: flex; flex-direction: column; overflow: hidden; max-height: 90vh;">
+                    <div class="ocr-modal-header" style="border-bottom: 1px solid #f1f5f9; padding: 2rem 2rem 1.25rem;">
+                        <div class="modal-icon"><i class="fas fa-camera"></i></div>
+                        <h2>Capture ID Document</h2>
+                        <p>Align your ID card inside the frame and keep it steady</p>
+                    </div>
+                    <div class="ocr-modal-body" style="padding: 1.5rem 2rem; display: flex; align-items: center; justify-content: center; background: #f8fafc;">
+                        <div style="position: relative; width: 100%; aspect-ratio: 4/3; background: #0f172a; border-radius: 1rem; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                            <video id="id-webcam" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+                            <!-- Highlight Bracket Overlay -->
+                            <div style="position: absolute; inset: 0; pointer-events: none; border: 4px dashed var(--kyc-accent); border-radius: 1rem; margin: 1.5rem; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 0 200px rgba(15,23,42,0.4);">
+                                <span style="font-size: 0.75rem; font-weight: bold; background: rgba(0,0,0,0.6); color: white; padding: 0.35rem 0.75rem; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.15);">Align ID Card</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ocr-modal-footer" style="border-top: 1px solid #f1f5f9; padding: 1.25rem 2rem 2rem; display: flex; gap: 0.75rem;">
+                        <button type="button" class="btn-modal-secondary" style="flex: 1;" onclick="closeIdCameraModal()">Cancel</button>
+                        <button type="button" class="btn-modal-primary" style="flex: 1;" onclick="captureIdFromWebcam()"><i class="fas fa-camera mr-1"></i> Capture Photo</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- ═══════════════════════════════════════════ -->
             <!--  COMPLIANCE CHECKING STATE                  -->
             <!-- ═══════════════════════════════════════════ -->

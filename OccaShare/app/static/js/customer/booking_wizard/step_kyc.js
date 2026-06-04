@@ -293,13 +293,90 @@ document.addEventListener('DOMContentLoaded', function () {
         return allValid;
     };
 
+    let idCameraStream = null;
+
     window.handleCameraClick = function () {
         const idType = document.getElementById('id_type').value;
         if (!idType) {
             if (window.showError) window.showError('❌ Please select an ID type.', 'Incomplete Data'); else alert('❌ Please select an ID type.');
             return;
         }
-        document.getElementById('id_camera').click();
+
+        if (isMobile()) {
+            document.getElementById('id_camera').click();
+        } else {
+            openIdCameraModal();
+        }
+    };
+
+    window.openIdCameraModal = async function () {
+        const video = document.getElementById('id-webcam');
+        const modal = document.getElementById('id-camera-modal');
+        
+        try {
+            idCameraStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+                audio: false
+            });
+            video.srcObject = idCameraStream;
+            modal.style.display = 'flex';
+            requestAnimationFrame(() => {
+                modal.classList.add('visible');
+            });
+        } catch (err) {
+            console.error("Failed to open webcam:", err);
+            // Fallback to file picker if camera is blocked/unavailable
+            if (window.showError) {
+                window.showError("Unable to access camera. Opening file explorer as fallback.", "Camera Error");
+            }
+            document.getElementById('id_camera').click();
+        }
+    };
+
+    window.closeIdCameraModal = function () {
+        const modal = document.getElementById('id-camera-modal');
+        modal.classList.remove('visible');
+        setTimeout(() => {
+            modal.style.display = 'none';
+            if (idCameraStream) {
+                idCameraStream.getTracks().forEach(track => track.stop());
+                idCameraStream = null;
+            }
+        }, 350);
+    };
+
+    window.captureIdFromWebcam = function () {
+        const video = document.getElementById('id-webcam');
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Convert to dataUrl and load into the crop workspace
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+        
+        // Convert dataUrl to blob to simulate input file
+        fetch(dataUrl)
+            .then(res => res.blob())
+            .then(blob => {
+                idFile = new File([blob], "webcam_capture.jpg", { type: "image/jpeg" });
+                document.getElementById('id-image').src = dataUrl;
+                document.getElementById('step-id-form').style.display = 'none';
+                document.getElementById('id-preview').style.display = 'block';
+                
+                // Reset pin defaults
+                pins = {
+                    tl: { x: 0.15, y: 0.15 },
+                    tr: { x: 0.85, y: 0.15 },
+                    br: { x: 0.85, y: 0.85 },
+                    bl: { x: 0.15, y: 0.85 }
+                };
+                
+                initCropWorkspace();
+                window.closeIdCameraModal();
+            });
     };
 
     window.handleUploadClick = function () {
