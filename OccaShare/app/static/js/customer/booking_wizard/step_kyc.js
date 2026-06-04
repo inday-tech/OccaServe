@@ -814,17 +814,34 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (t.includes('phil') || t.includes('philsys') || t.includes('philid') || t.includes('national id')) return 'PhilSys / PhilID';
         if (t.includes('driver') || t.includes("driver's")) return "Driver's License";
-        if (t.includes('passport')) return 'Passport';
-        if (t.includes('umid')) return 'UMID';
-        // Fallback: return original casing if it matches a config key, else default to PhilSys
-        for (const key in ID_TYPE_CONFIG) {
-            if (key.toLowerCase() === t) return key;
-        }
+        if (t.includes('passport')) return "Passport";
         return 'PhilSys / PhilID';
     }
 
     function showOcrModal(data) {
         document.getElementById('ocr-loading').style.display = 'none';
+
+        // Robust Helpers for nested object/dictionary value extraction
+        function extractStringValue(obj) {
+            if (obj === null || obj === undefined) return '';
+            if (typeof obj !== 'object') {
+                const str = String(obj).trim();
+                return (str === 'NOT DETECTED' || str === 'LOW CONFIDENCE') ? '' : str;
+            }
+            if (obj.value !== undefined) return extractStringValue(obj.value);
+            return '';
+        }
+
+        function extractConfidenceValue(obj) {
+            if (obj === null || obj === undefined) return 95;
+            if (typeof obj !== 'object') {
+                const parsed = parseInt(obj);
+                return isNaN(parsed) ? 95 : parsed;
+            }
+            if (obj.confidence !== undefined) return extractConfidenceValue(obj.confidence);
+            if (obj.value !== undefined && typeof obj.value === 'object') return extractConfidenceValue(obj.value);
+            return 95;
+        }
 
         // Populate fields from extracted data
         const fields = data.fields || data || {};
@@ -853,15 +870,8 @@ document.addEventListener('DOMContentLoaded', function () {
         
         configFields.forEach(field => {
             const rawVal = fields[field.key] || data[field.key];
-            let val = '';
-            let conf = 95;
-            
-            if (rawVal && typeof rawVal === 'object') {
-                val = rawVal.value !== undefined ? String(rawVal.value).trim() : '';
-                conf = rawVal.confidence !== undefined ? parseInt(rawVal.confidence) : 95;
-            } else if (rawVal !== undefined && rawVal !== null) {
-                val = String(rawVal).trim();
-            }
+            let val = extractStringValue(rawVal);
+            let conf = extractConfidenceValue(rawVal);
             
             // Map common fallbacks if exact key isn't found
             if (!val) {
@@ -876,19 +886,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     fallbackVal = fields.last_name || data.last_name || '';
                 } else if (field.key === 'middle_name') {
                     fallbackVal = fields.middle_name || data.middle_name || '';
+                } else if (field.key === 'address') {
+                    fallbackVal = fields.address || data.address || '';
                 }
                 
                 if (fallbackVal) {
-                    if (typeof fallbackVal === 'object') {
-                        val = fallbackVal.value !== undefined ? String(fallbackVal.value).trim() : '';
-                        conf = fallbackVal.confidence !== undefined ? parseInt(fallbackVal.confidence) : 95;
-                    } else {
-                        val = String(fallbackVal).trim();
-                    }
+                    val = extractStringValue(fallbackVal);
+                    conf = extractConfidenceValue(fallbackVal);
                 }
             }
-
-            if (val === 'NOT DETECTED') val = '';
             
             // Build premium confidence badges
             let badgeColor = '#22c55e';
@@ -922,26 +928,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const html = `
                 <div class="ocr-field-row" style="${borderStyle} padding: 0.75rem; background: #f8fafc; border-radius: 1rem; display: flex; flex-direction: column; gap: 0.35rem; position: relative;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <i class="fas ${field.icon}" style="color: var(--kyc-slate-400); font-size: 0.85rem;"></i>
-                            <label style="margin: 0 !important; font-size: 0.7rem !important; font-weight: 800 !important; color: #94a3b8 !important; text-transform: uppercase !important; letter-spacing: 0.06em !important;">${field.label}</label>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.5rem; border-radius: 2rem; font-size: 0.65rem; font-weight: 800; color: ${badgeColor}; background: ${badgeBg};">
-                            ${badgeIcon} <span>${badgeText}</span>
-                        </div>
-                    </div>
-                    <input type="text" id="ocr-dynamic-${field.key}" value="${val}" placeholder="Enter ${field.label}" class="modern-input ${inputClass}" style="height: 2.5rem !important; padding: 0 0.75rem !important; font-size: 0.85rem !important; font-weight: 700 !important; border-radius: 0.65rem !important; border: 1.5px solid #e2e8f0; width: 100%; box-sizing: border-box;" oninput="this.className='modern-input';">
+                     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                         <div style="display: flex; align-items: center; gap: 0.5rem;">
+                             <i class="fas ${field.icon}" style="color: var(--kyc-slate-400); font-size: 0.85rem;"></i>
+                             <label style="margin: 0 !important; font-size: 0.7rem !important; font-weight: 800 !important; color: #94a3b8 !important; text-transform: uppercase !important; letter-spacing: 0.06em !important;">${field.label}</label>
+                         </div>
+                         <div style="display: flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.5rem; border-radius: 2rem; font-size: 0.65rem; font-weight: 800; color: ${badgeColor}; background: ${badgeBg};">
+                             ${badgeIcon} <span>${badgeText}</span>
+                         </div>
+                     </div>
+                     <input type="text" id="ocr-dynamic-${field.key}" value="${val}" placeholder="Enter ${field.label}" class="modern-input ${inputClass}" style="height: 2.5rem !important; padding: 0 0.75rem !important; font-size: 0.85rem !important; font-weight: 700 !important; border-radius: 0.65rem !important; border: 1.5px solid #e2e8f0; width: 100%; box-sizing: border-box;" oninput="this.className='modern-input';">
                 </div>
             `;
             container.innerHTML += html;
         });
 
         // Also pre-fill the hidden id_number field if OCR found one
-        let ocrIdNum = data.id_number || fields.id_number || fields.pcn_number || fields.license_number || fields.passport_number || '';
-        if (ocrIdNum && typeof ocrIdNum === 'object') {
-            ocrIdNum = ocrIdNum.value !== undefined ? ocrIdNum.value : '';
-        }
+        let ocrIdNum = extractStringValue(data.id_number || fields.id_number || fields.pcn_number || fields.license_number || fields.passport_number);
         if (ocrIdNum && !document.getElementById('id_number').value.trim()) {
             document.getElementById('id_number').value = ocrIdNum;
         }

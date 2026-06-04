@@ -166,7 +166,24 @@
                                     <span class="d-label">{{ field_labels.get(key, key | replace('_', ' ') | title) }}</span>
                                     <span class="d-value {{ 'mono' if key in ['pcn_number', 'license_number', 'passport_number', 'crn_number', 'id_number'] else '' }}">
                                         {% if val %}
-                                            {{ val }}
+                                            {% if val is mapping %}
+                                                {{ val.value }}
+                                                {% if val.confidence is defined and val.confidence > 0 %}
+                                                    <span style="display: inline-flex; align-items: center; gap: 2px; font-size: 0.65rem; padding: 2px 6px; border-radius: 12px; font-weight: 700; margin-left: 6px; 
+                                                    {% if val.confidence < 85 %}
+                                                        background: #fee2e2; color: #ef4444;
+                                                    {% elif val.confidence < 95 %}
+                                                        background: #fef9c3; color: #ca8a04;
+                                                    {% else %}
+                                                        background: #dcfce7; color: #16a34a;
+                                                    {% endif %}
+                                                    ">
+                                                        {{ val.confidence }}%
+                                                    </span>
+                                                {% endif %}
+                                            {% else %}
+                                                {{ val }}
+                                            {% endif %}
                                         {% else %}
                                             <span style="color: #94a3b8; font-style: italic;">NOT DETECTED</span>
                                         {% endif %}
