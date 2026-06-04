@@ -63,7 +63,9 @@ async def extract_id(
         db.add(kyc_record)
     
     kyc_record.verification_status = "pending_confirmation"
-    kyc_record.document_url = id_url
+    # Use cropped URL if auto-crop succeeded
+    final_doc_url = result.get("cropped_id_url") if result.get("autocrop_succeeded") else id_url
+    kyc_record.document_url = final_doc_url
     kyc_record.verification_type = id_type
     db.commit()
     
@@ -71,7 +73,9 @@ async def extract_id(
         "success": True,
         "extracted_data": result["data"],
         "quality": result["quality"],
-        "temp_id_url": id_url
+        "temp_id_url": id_url,
+        "cropped_id_url": result.get("cropped_id_url", id_url),
+        "autocrop_succeeded": result.get("autocrop_succeeded", False)
     }
 
 

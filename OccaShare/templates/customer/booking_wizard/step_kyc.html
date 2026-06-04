@@ -190,6 +190,16 @@
         box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
     }
 
+    .modern-input.low-confidence {
+        border-color: #fca5a5 !important;
+        background-color: #fff5f5 !important;
+    }
+
+    .modern-input.mid-confidence {
+        border-color: #fef08a !important;
+        background-color: #fef9c3 !important;
+    }
+
     .field-error-msg {
         font-size: 0.72rem;
         color: #ef4444;
@@ -810,7 +820,6 @@
                             <option value="PhilSys / PhilID">PhilSys / PhilID</option>
                             <option value="Driver's License">Philippine Driver's License</option>
                             <option value="Passport">Philippine Passport</option>
-                            <option value="UMID">UMID</option>
                         </select>
                         <div class="field-error-msg" id="err-id_type"><i class="fas fa-exclamation-circle"></i> Please
                             select an ID type.</div>

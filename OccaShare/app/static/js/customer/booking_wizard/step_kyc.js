@@ -254,7 +254,6 @@ document.addEventListener('DOMContentLoaded', function () {
     window.validateKycForm = function () {
         const fields = [
             { id: 'id_type',   errId: 'err-id_type',    required: true },
-            { id: 'id_number', errId: 'err-id_number',  required: true },
         ];
 
         let allValid = true;
@@ -280,9 +279,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const cameraBox = document.getElementById('option-camera');
         const uploadBox = document.getElementById('option-upload');
         const idType = document.getElementById('id_type').value;
-        const idNumber = document.getElementById('id_number').value.trim();
 
-        if (allValid && idType && idNumber) {
+        if (allValid && idType) {
             cameraBox.classList.remove('disabled');
             uploadBox.classList.remove('disabled');
         } else {
@@ -357,25 +355,13 @@ document.addEventListener('DOMContentLoaded', function () {
         // Convert to dataUrl and load into the crop workspace
         const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
         
-        // Convert dataUrl to blob to simulate input file
         fetch(dataUrl)
             .then(res => res.blob())
             .then(blob => {
                 idFile = new File([blob], "webcam_capture.jpg", { type: "image/jpeg" });
-                document.getElementById('id-image').src = dataUrl;
-                document.getElementById('step-id-form').style.display = 'none';
-                document.getElementById('id-preview').style.display = 'block';
-                
-                // Reset pin defaults
-                pins = {
-                    tl: { x: 0.15, y: 0.15 },
-                    tr: { x: 0.85, y: 0.15 },
-                    br: { x: 0.85, y: 0.85 },
-                    bl: { x: 0.15, y: 0.85 }
-                };
-                
-                initCropWorkspace();
+                window._ocrCompressedFile = null; // Reset crop
                 window.closeIdCameraModal();
+                finalizeIdAndProceed();
             });
     };
 
@@ -399,30 +385,8 @@ document.addEventListener('DOMContentLoaded', function () {
     window.handleIdUpload = function (input) {
         if (input.files && input.files[0]) {
             idFile = input.files[0];
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                const img = document.getElementById('id-image');
-                img.src = e.target.result;
-                document.getElementById('step-id-form').style.display = 'none';
-                document.getElementById('id-preview').style.display = 'block';
-                
-                // Reset pin defaults on new upload
-                pins = {
-                    tl: { x: 0.15, y: 0.15 },
-                    tr: { x: 0.85, y: 0.15 },
-                    br: { x: 0.85, y: 0.85 },
-                    bl: { x: 0.15, y: 0.85 }
-                };
-
-                if (img.complete) {
-                    initCropWorkspace();
-                } else {
-                    img.onload = function () {
-                        initCropWorkspace();
-                    };
-                }
-            };
-            reader.readAsDataURL(idFile);
+            window._ocrCompressedFile = null; // Reset crop
+            finalizeIdAndProceed();
         }
     };
 
@@ -741,10 +705,44 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Store the extracted data and temp URL for later upload
                 window._ocrExtractedData = result.extracted_data || {};
                 window._ocrTempIdUrl = result.temp_id_url || '';
-                window._ocrCompressedFile = finalFile;
 
-                // Populate the modal fields
-                showOcrModal(result.extracted_data);
+                if (window._ocrCompressedFile || result.autocrop_succeeded) {
+                    window._ocrCompressedFile = finalFile;
+                    
+                    const cropPreview = document.getElementById('ocr-crop-preview');
+                    if (cropPreview) {
+                        cropPreview.src = result.cropped_id_url || URL.createObjectURL(finalFile);
+                    }
+                    showOcrModal(result.extracted_data);
+                } else {
+                    // Fall back to manual crop workspace
+                    document.getElementById('ocr-loading').style.display = 'none';
+                    document.getElementById('step-id-form').style.display = 'none';
+                    document.getElementById('id-preview').style.display = 'block';
+                    
+                    const img = document.getElementById('id-image');
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        img.src = e.target.result;
+                        
+                        // Reset pin defaults on fallback
+                        pins = {
+                            tl: { x: 0.15, y: 0.15 },
+                            tr: { x: 0.85, y: 0.15 },
+                            br: { x: 0.85, y: 0.85 },
+                            bl: { x: 0.15, y: 0.85 }
+                        };
+                        
+                        if (img.complete) {
+                            initCropWorkspace();
+                        } else {
+                            img.onload = function () {
+                                initCropWorkspace();
+                            };
+                        }
+                    };
+                    reader.readAsDataURL(idFile);
+                }
             } else {
                 const data = await res.json().catch(() => ({}));
                 if (window.showError) window.showError(data.detail || "OCR extraction failed. Please try again.", "Extraction Error");
@@ -837,9 +835,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const configFields = ID_TYPE_CONFIG[idType] || ID_TYPE_CONFIG["PhilSys / PhilID"];
 
         // Set confidence bar
-        const confidence = Math.round((data.confidence_score || fields.confidence_score || 0) * 100);
-        document.getElementById('ocr-confidence-fill').style.width = confidence + '%';
-        document.getElementById('ocr-confidence-pct').innerText = confidence + '%';
+        let confidenceVal = data.confidence_score !== undefined ? data.confidence_score : (fields.confidence_score !== undefined ? fields.confidence_score : 0.95);
+        if (confidenceVal <= 1.0) {
+            confidenceVal = Math.round(confidenceVal * 100);
+        } else {
+            confidenceVal = Math.round(confidenceVal);
+        }
+        document.getElementById('ocr-confidence-fill').style.width = confidenceVal + '%';
+        document.getElementById('ocr-confidence-pct').innerText = confidenceVal + '%';
 
         // Render dynamic fields
         const container = document.getElementById('ocr-dynamic-fields-container');
@@ -850,40 +853,95 @@ document.addEventListener('DOMContentLoaded', function () {
         
         configFields.forEach(field => {
             const rawVal = fields[field.key] || data[field.key];
-            const val = rawVal && String(rawVal).trim() ? String(rawVal).trim() : '';
+            let val = '';
+            let conf = 95;
+            
+            if (rawVal && typeof rawVal === 'object') {
+                val = rawVal.value !== undefined ? String(rawVal.value).trim() : '';
+                conf = rawVal.confidence !== undefined ? parseInt(rawVal.confidence) : 95;
+            } else if (rawVal !== undefined && rawVal !== null) {
+                val = String(rawVal).trim();
+            }
             
             // Map common fallbacks if exact key isn't found
-            let finalVal = val;
-            if (!finalVal) {
+            if (!val) {
+                let fallbackVal = null;
                 if (field.key === 'id_number' || field.key === 'license_number' || field.key === 'passport_number') {
-                    finalVal = fields.id_number || fields.pcn_number || fields.license_number || fields.passport_number || '';
+                    fallbackVal = fields.id_number || fields.pcn_number || fields.license_number || fields.passport_number || '';
                 } else if (field.key === 'date_of_birth') {
-                    finalVal = fields.date_of_birth || data.birth_date || fields.extracted_dob || '';
+                    fallbackVal = fields.date_of_birth || data.birth_date || fields.extracted_dob || '';
                 } else if (field.key === 'given_names' || field.key === 'first_name') {
-                    finalVal = fields.given_names || fields.first_name || data.first_name || '';
+                    fallbackVal = fields.given_names || fields.first_name || data.first_name || '';
                 } else if (field.key === 'last_name') {
-                    finalVal = fields.last_name || data.last_name || '';
+                    fallbackVal = fields.last_name || data.last_name || '';
                 } else if (field.key === 'middle_name') {
-                    finalVal = fields.middle_name || data.middle_name || '';
+                    fallbackVal = fields.middle_name || data.middle_name || '';
+                }
+                
+                if (fallbackVal) {
+                    if (typeof fallbackVal === 'object') {
+                        val = fallbackVal.value !== undefined ? String(fallbackVal.value).trim() : '';
+                        conf = fallbackVal.confidence !== undefined ? parseInt(fallbackVal.confidence) : 95;
+                    } else {
+                        val = String(fallbackVal).trim();
+                    }
                 }
             }
 
-            if (finalVal === 'NOT DETECTED') finalVal = '';
+            if (val === 'NOT DETECTED') val = '';
+            
+            // Build premium confidence badges
+            let badgeColor = '#22c55e';
+            let badgeBg = '#dcfce7';
+            let badgeText = `${conf}%`;
+            let badgeIcon = '<i class="fas fa-check-circle"></i>';
+            let borderStyle = '';
+            let inputClass = '';
+            
+            if (conf < 85) {
+                badgeColor = '#ef4444';
+                badgeBg = '#fee2e2';
+                badgeIcon = '<i class="fas fa-exclamation-triangle"></i>';
+                borderStyle = 'border: 1.5px solid #fca5a5;';
+                inputClass = 'low-confidence';
+            } else if (conf < 95) {
+                badgeColor = '#eab308';
+                badgeBg = '#fef9c3';
+                badgeIcon = '<i class="fas fa-exclamation-circle"></i>';
+                borderStyle = 'border: 1.5px solid #fef08a;';
+                inputClass = 'mid-confidence';
+            }
+            
+            if (!val) {
+                badgeColor = '#94a3b8';
+                badgeBg = '#f1f5f9';
+                badgeText = 'Missing';
+                badgeIcon = '<i class="fas fa-question-circle"></i>';
+                inputClass = 'not-detected';
+            }
 
             const html = `
-                <div class="ocr-field-row" style="border: none; padding: 0.5rem; background: #f8fafc; border-radius: 1rem; display: flex; align-items: center; gap: 1rem;">
-                    <div class="ocr-field-icon"><i class="fas ${field.icon}"></i></div>
-                    <div class="ocr-field-content">
-                        <label>${field.label}</label>
-                        <input type="text" id="ocr-dynamic-${field.key}" value="${finalVal}" placeholder="Enter ${field.label}" class="${finalVal ? '' : 'not-detected'}" oninput="this.classList.remove('not-detected')">
+                <div class="ocr-field-row" style="${borderStyle} padding: 0.75rem; background: #f8fafc; border-radius: 1rem; display: flex; flex-direction: column; gap: 0.35rem; position: relative;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas ${field.icon}" style="color: var(--kyc-slate-400); font-size: 0.85rem;"></i>
+                            <label style="margin: 0 !important; font-size: 0.7rem !important; font-weight: 800 !important; color: #94a3b8 !important; text-transform: uppercase !important; letter-spacing: 0.06em !important;">${field.label}</label>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.5rem; border-radius: 2rem; font-size: 0.65rem; font-weight: 800; color: ${badgeColor}; background: ${badgeBg};">
+                            ${badgeIcon} <span>${badgeText}</span>
+                        </div>
                     </div>
+                    <input type="text" id="ocr-dynamic-${field.key}" value="${val}" placeholder="Enter ${field.label}" class="modern-input ${inputClass}" style="height: 2.5rem !important; padding: 0 0.75rem !important; font-size: 0.85rem !important; font-weight: 700 !important; border-radius: 0.65rem !important; border: 1.5px solid #e2e8f0; width: 100%; box-sizing: border-box;" oninput="this.className='modern-input';">
                 </div>
             `;
             container.innerHTML += html;
         });
 
         // Also pre-fill the hidden id_number field if OCR found one
-        const ocrIdNum = data.id_number || fields.id_number || fields.pcn_number || fields.license_number || fields.passport_number || '';
+        let ocrIdNum = data.id_number || fields.id_number || fields.pcn_number || fields.license_number || fields.passport_number || '';
+        if (ocrIdNum && typeof ocrIdNum === 'object') {
+            ocrIdNum = ocrIdNum.value !== undefined ? ocrIdNum.value : '';
+        }
         if (ocrIdNum && !document.getElementById('id_number').value.trim()) {
             document.getElementById('id_number').value = ocrIdNum;
         }

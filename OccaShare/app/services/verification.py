@@ -823,25 +823,42 @@ class VerificationService:
         return result
 
     def check_image_quality(self, image: np.ndarray) -> Dict[str, Any]:
-        """Checks image for blur, resolution, and basic glare."""
+        """Checks image for blur, resolution, brightness, and glare."""
+        if image is None:
+            return {"valid": False, "reason": "No image data found."}
+            
         height, width = image.shape[:2]
         
-        # 1. Resolution Check (Lowered because the frontend now tightly crops the ID card)
-        if width < 300 or height < 180:
-            return {"valid": False, "reason": f"Resolution too low ({width}x{height}). Please take a clearer photo."}
+        # 1. Resolution Check
+        if width < 500 or height < 300:
+            return {"valid": False, "reason": f"Resolution too low ({width}x{height}). Please take a higher resolution photo."}
         
-        # 2. Blur Detection (Laplacian Variance)
         if not CV2_AVAILABLE:
-            print("[KYC WARNING] Skipping blur detection: OpenCV not available.")
+            print("[KYC WARNING] Skipping detailed quality checks: OpenCV not available.")
             return {"valid": True}
-        
+            
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        blur_score = cv2.Laplacian(gray, cv2.CV_64F).var()
-        print(f"[KYC DEBUG] Image Quality Check - Resolution: {width}x{height}, Blur Score: {blur_score:.2f}")
         
-        # Threshold 100 is usually good for ID cards, but let's be very lenient for demo/panel defense (5)
-        if blur_score < 5:
-            return {"valid": False, "reason": "Image is too blurry. Please retake your ID photo."}
+        # 2. Brightness Check
+        mean_brightness = np.mean(gray)
+        if mean_brightness < 45:
+            return {"valid": False, "reason": "Image is too dark. Please take the photo in a well-lit area."}
+        if mean_brightness > 220:
+            return {"valid": False, "reason": "Image is too bright or washed out. Please adjust the lighting."}
+            
+        # 3. Blur Detection (Laplacian Variance)
+        blur_score = cv2.Laplacian(gray, cv2.CV_64F).var()
+        print(f"[KYC DEBUG] Image Quality Check - Resolution: {width}x{height}, Blur Score: {blur_score:.2f}, Brightness: {mean_brightness:.2f}")
+        
+        # Require a reasonable sharpness threshold (e.g. 10) for production quality
+        if blur_score < 10:
+            return {"valid": False, "reason": "Image is too blurry. Please keep your hand steady and retake."}
+            
+        # 4. Glare Check (Excessive bright spots)
+        glare_pixels = np.sum(gray > 250)
+        glare_pct = glare_pixels / gray.size
+        if glare_pct > 0.08:
+            return {"valid": False, "reason": "Glare detected on ID card. Please avoid direct overhead lights or flash reflections."}
             
         return {"valid": True}
 
@@ -882,6 +899,320 @@ class VerificationService:
             IdentityVerification.verification_status.in_(['approved', 'verified'])
         ).first()
         return existing is not None
+
+    def _correct_perspective_with_status(self, image: np.ndarray) -> Tuple[np.ndarray, bool]:
+        if not CV2_AVAILABLE:
+            return image, False
+        try:
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            blurred = cv2.bilateralFilter(gray, 9, 75, 75)
+            edged = cv2.Canny(blurred, 40, 150)
+            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+            dilated = cv2.dilate(edged, kernel, iterations=1)
+            
+            contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            if not contours:
+                return image, False
+                
+            contours = sorted(contours, key=cv2.contourArea, reverse=True)[:5]
+            img_h, img_w = image.shape[:2]
+            img_area = img_h * img_w
+            
+            for c in contours:
+                area = cv2.contourArea(c)
+                if area < img_area * 0.10:
+                    continue
+                peri = cv2.arcLength(c, True)
+                approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+                if len(approx) == 4 and cv2.isContourConvex(approx):
+                    rect = self._order_points(approx.reshape(4, 2))
+                    dst_w = 800
+                    dst_h = 505
+                    dst = np.array([
+                        [0, 0],
+                        [dst_w - 1, 0],
+                        [dst_w - 1, dst_h - 1],
+                        [0, dst_h - 1]], dtype="float32")
+                    M = cv2.getPerspectiveTransform(rect, dst)
+                    warped = cv2.warpPerspective(image, M, (dst_w, dst_h))
+                    return warped, True
+            return image, False
+        except Exception as e:
+            print(f"[KYC WARNING] Auto perspective correction failed: {e}")
+            return image, False
+
+    def _prepare_image_with_status(self, encrypted_path: str) -> Tuple[np.ndarray, bool]:
+        """Decrypts a file, handles EXIF orientation, and returns (OpenCV_BGR_image, crop_succeeded)."""
+        filename = os.path.basename(encrypted_path.replace('\\', '/'))
+        real_path = os.path.join("app/static/uploads/verification", filename)
+        
+        if not os.path.exists(real_path):
+            raise FileNotFoundError(f"KYC document not found at {real_path}")
+
+        try:
+            with open(real_path, "rb") as f:
+                raw_data = f.read()
+            
+            try:
+                decrypted_data = decrypt_data(raw_data)
+            except Exception:
+                decrypted_data = raw_data
+
+            pil_img = Image.open(io.BytesIO(decrypted_data))
+            pil_img = ImageOps.exif_transpose(pil_img)
+            
+            if CV2_AVAILABLE:
+                img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+            else:
+                img = np.array(pil_img)[:, :, ::-1].copy()
+                
+            img, cropped = self._correct_perspective_with_status(img)
+            return img, cropped
+        except Exception as e:
+            print(f"[KYC DEBUG] Error in _prepare_image_with_status: {e}")
+            # Fallback
+            raw_img = self._prepare_image(encrypted_path)
+            return raw_img, False
+
+    def parse_passport_mrz(self, text: str) -> Optional[dict]:
+        """Parses Passport MRZ TD3 standard block lines from OCR text."""
+        if not text:
+            return None
+        lines = [line.strip().upper().replace(" ", "") for line in text.split('\n') if line.strip()]
+        
+        # Find passport MRZ lines
+        mrz_lines = []
+        for line in lines:
+            cleaned_line = re.sub(r'[^A-Z0-9<]', '', line)
+            if len(cleaned_line) >= 40 and (cleaned_line.startswith('P<') or cleaned_line.startswith('P')):
+                mrz_lines.append(cleaned_line)
+                
+        if len(mrz_lines) < 2:
+            mrz_lines = []
+            for line in lines:
+                cleaned_line = re.sub(r'[^A-Z0-9<]', '', line)
+                if len(cleaned_line) >= 35 and ('<' in cleaned_line):
+                    mrz_lines.append(cleaned_line)
+                    
+        if len(mrz_lines) >= 2:
+            line1 = mrz_lines[-2]
+            line2 = mrz_lines[-1]
+            
+            if len(line1) < 44: line1 = line1.ljust(44, '<')
+            if len(line2) < 44: line2 = line2.ljust(44, '<')
+            
+            try:
+                name_part = line1[5:]
+                parts = name_part.split('<<')
+                surname = parts[0].replace('<', ' ').strip()
+                given_names = ""
+                middle_name = ""
+                if len(parts) > 1:
+                    given_parts = [p.strip() for p in parts[1].split('<') if p.strip()]
+                    if given_parts:
+                        given_names = given_parts[0]
+                        if len(given_parts) > 1:
+                            middle_name = " ".join(given_parts[1:])
+                            
+                passport_number = line2[0:9].replace('<', '').strip()
+                nationality = line2[10:13].replace('<', '').strip()
+                raw_dob = line2[13:19]
+                sex_char = line2[20]
+                sex = "MALE" if sex_char == "M" else ("FEMALE" if sex_char == "F" else "")
+                raw_expiry = line2[21:27]
+                
+                def parse_mrz_date(yymmdd: str, is_dob: bool = True) -> str:
+                    try:
+                        yy = int(yymmdd[0:2])
+                        mm = int(yymmdd[2:4])
+                        dd = int(yymmdd[4:6])
+                        current_year = datetime.now().year
+                        current_yy = current_year % 100
+                        if is_dob:
+                            year = 1900 + yy if yy > current_yy else 2000 + yy
+                        else:
+                            year = 2000 + yy if yy >= current_yy - 10 else 1900 + yy
+                        return f"{year:04d}-{mm:02d}-{dd:02d}"
+                    except:
+                        return ""
+                        
+                dob = parse_mrz_date(raw_dob, is_dob=True)
+                expiry = parse_mrz_date(raw_expiry, is_dob=False)
+                
+                return {
+                    "passport_number": passport_number,
+                    "last_name": surname,
+                    "given_names": given_names,
+                    "first_name": given_names,
+                    "middle_name": middle_name,
+                    "nationality": nationality,
+                    "date_of_birth": dob,
+                    "sex": sex,
+                    "expiry_date": expiry,
+                    "mrz_parsed": True
+                }
+            except Exception as e:
+                print(f"[KYC MRZ ERROR] Failed to parse MRZ lines: {e}")
+                return None
+        return None
+
+    def _validate_and_autocorrect_fields(self, fields: dict, id_type: str) -> dict:
+        """Applies smart validation and auto-correction rules on extracted fields."""
+        import re
+        from datetime import datetime
+
+        # Character replacement tables
+        digits_to_letters = {'0': 'O', '1': 'I', '2': 'Z', '5': 'S', '8': 'B', '4': 'A', '3': 'E'}
+        letters_to_digits = {'O': '0', 'o': '0', 'I': '1', 'i': '1', 'l': '1', '|': '1', 'S': '5', 's': '5', 'Z': '2', 'z': '2', 'B': '8', 'b': '8'}
+
+        def autocorrect_numeric_string(s: str) -> str:
+            res = []
+            for char in s:
+                if char in letters_to_digits:
+                    res.append(letters_to_digits[char])
+                else:
+                    res.append(char)
+            return "".join(res)
+
+        def autocorrect_alpha_string(s: str) -> str:
+            res = []
+            for char in s:
+                if char in digits_to_letters:
+                    res.append(digits_to_letters[char])
+                else:
+                    res.append(char)
+            return "".join(res)
+
+        # 1. Clean names (letters only)
+        for name_key in ["last_name", "first_name", "middle_name", "given_names", "surname"]:
+            if name_key in fields:
+                val = fields[name_key]["value"]
+                if val:
+                    corrected = autocorrect_alpha_string(val)
+                    corrected = re.sub(r'[^A-Z\s.,-]', '', corrected.upper())
+                    fields[name_key]["value"] = corrected
+
+        # 2. Validate and format ID Number format
+        if "id_number" in fields:
+            id_val = fields["id_number"]["value"].upper()
+            if id_val:
+                id_clean = id_val.replace(" ", "").replace("-", "")
+                
+                if id_type in ["PhilSys / PhilID", "PhilID"]:
+                    id_numeric = autocorrect_numeric_string(id_clean)
+                    id_numeric = re.sub(r'\D', '', id_numeric)
+                    if len(id_numeric) == 16:
+                        formatted = f"{id_numeric[0:4]}-{id_numeric[4:8]}-{id_numeric[8:12]}-{id_numeric[12:16]}"
+                        fields["id_number"]["value"] = formatted
+                        fields["id_number"]["confidence"] = max(fields["id_number"]["confidence"], 96)
+                    else:
+                        fields["id_number"]["value"] = id_val
+                        
+                elif id_type == "Driver's License":
+                    if len(id_clean) == 11:
+                        char1 = id_clean[0]
+                        if char1 in digits_to_letters:
+                            char1 = digits_to_letters[char1]
+                        digits_part = autocorrect_numeric_string(id_clean[1:])
+                        digits_part = re.sub(r'\D', '', digits_part)
+                        if len(digits_part) == 10:
+                            formatted = f"{char1}{digits_part[0:2]}-{digits_part[2:4]}-{digits_part[4:10]}"
+                            fields["id_number"]["value"] = formatted
+                            fields["id_number"]["confidence"] = max(fields["id_number"]["confidence"], 96)
+
+                elif id_type == "Passport":
+                    if len(id_clean) == 9:
+                        if id_clean[0:2].isalpha() and id_clean[2:9].isdigit():
+                            pass
+                        elif id_clean[0].isalpha() and id_clean[1:8].isdigit() and id_clean[8].isalpha():
+                            pass
+                        else:
+                            letters_part = id_clean[0:2]
+                            digits_part = id_clean[2:9]
+                            c_letters = autocorrect_alpha_string(letters_part)
+                            c_digits = autocorrect_numeric_string(digits_part)
+                            if len(c_letters) == 2 and len(c_digits) == 7:
+                                fields["id_number"]["value"] = c_letters + c_digits
+                                fields["id_number"]["confidence"] = max(fields["id_number"]["confidence"], 96)
+
+        # 3. Date Validation (DOB in past, Expiry in future)
+        def validate_date_string(date_str: str, is_future: bool = False) -> Tuple[str, bool]:
+            if not date_str:
+                return "", False
+            parsed_dt = self._parse_date(date_str)
+            if parsed_dt:
+                now = datetime.now()
+                if is_future:
+                    if parsed_dt > now:
+                        return parsed_dt.strftime("%Y-%m-%d"), True
+                else:
+                    if parsed_dt < now:
+                        return parsed_dt.strftime("%Y-%m-%d"), True
+            return date_str, False
+
+        for date_key in ["date_of_birth", "birth_date"]:
+            if date_key in fields:
+                val = fields[date_key]["value"]
+                if val:
+                    formatted_val, is_valid = validate_date_string(val, is_future=False)
+                    fields[date_key]["value"] = formatted_val
+                    if not is_valid:
+                        fields[date_key]["confidence"] = min(fields[date_key]["confidence"], 70)
+
+        for expiry_key in ["expiry_date", "expiration_date", "visa_until"]:
+            if expiry_key in fields:
+                val = fields[expiry_key]["value"]
+                if val:
+                    formatted_val, is_valid = validate_date_string(val, is_future=True)
+                    fields[expiry_key]["value"] = formatted_val
+                    if not is_valid:
+                        fields[expiry_key]["confidence"] = min(fields[expiry_key]["confidence"], 70)
+
+        # 4. Sex field validation
+        if "sex" in fields:
+            sex_val = fields["sex"]["value"].upper()
+            if sex_val:
+                if "M" in sex_val:
+                    fields["sex"]["value"] = "MALE"
+                elif "F" in sex_val:
+                    fields["sex"]["value"] = "FEMALE"
+
+        # 5. Nationality field validation
+        if "nationality" in fields:
+            nat_val = fields["nationality"]["value"].upper()
+            if "FILIP" in nat_val or "PH" in nat_val:
+                fields["nationality"]["value"] = "FILIPINO"
+
+        return fields
+
+    def _get_field_with_confidence(self, field_value: str, word_data: List[Dict]) -> Dict[str, Any]:
+        """Calculates value and confidence percentage (0-100) based on OCR word data."""
+        if not field_value or not str(field_value).strip():
+            return {"value": "", "confidence": 0}
+            
+        field_str = str(field_value).strip()
+        if field_str in ["NOT DETECTED", "LOW CONFIDENCE"]:
+            return {"value": "", "confidence": 0}
+            
+        if not word_data:
+            return {"value": field_str, "confidence": 75}
+            
+        words = field_str.split()
+        total_conf = 0
+        match_count = 0
+        
+        for w in words:
+            for d in word_data:
+                if w.lower() in d['word'].lower() or d['word'].lower() in w.lower():
+                    total_conf += d['conf']
+                    match_count += 1
+                    break
+                    
+        if match_count > 0:
+            avg_conf = int(total_conf / match_count)
+            return {"value": field_str, "confidence": max(10, min(100, avg_conf))}
+            
+        return {"value": field_str, "confidence": 60}
 
     def _is_ocr_garbage(self, text: str) -> bool:
         """Heuristic to check if OCR output is mostly noise/symbols."""
@@ -1389,93 +1720,92 @@ class VerificationService:
     # ── ID-Type-Specific OCR Prompt Engineering ──────────────────────────────
     ID_TYPE_OCR_PROMPTS = {
         "PhilSys / PhilID": {
-            "fields": ["last_name", "given_names", "middle_name", "id_number", "date_of_birth", "sex", "address", "blood_type", "nationality"],
+            "fields": ["id_number", "last_name", "first_name", "middle_name", "date_of_birth", "sex", "address", "nationality"],
             "prompt": (
-                "You are an expert OCR bot extracting data from a Philippine National ID (PhilSys/PhilID card). "
+                "You are an expert OCR bot extracting data from a Philippine National ID (PhilSys/PhilID card).\n"
                 "CRITICAL RULES:\n"
-                "1. The PhilID card prints Tagalog/Filipino field labels alongside the actual values. "
-                "You MUST extract ONLY the actual data values, NOT the label text itself.\n"
-                "2. Tagalog labels to IGNORE (do NOT include in output): "
-                "'Apelyido', 'Last Name', 'Mga Pangalan', 'Given Names', 'Gitnang Apelyido', 'Middle Name', "
-                "'Petsa ng Kapanganakan', 'Date of Birth', 'Tirahan', 'Address', 'Kasarian', 'Sex', "
-                "'Dugo', 'Blood Type', 'Nasyonalidad', 'Nationality', 'Lugar ng Kapanganakan', "
-                "'NG KAPANGANAKAN', 'MGA PANGALAN', 'GITNANG APELYIDO', 'APELYIDO'.\n"
-                "3. The ID number (PCN) is a 16-digit number formatted as: XXXX-XXXX-XXXX-XXXX.\n"
-                "4. Date of birth format on the card is: Month DD YYYY (e.g. 'October 01 2003' or 'OCT 01 2003').\n"
-                "5. The address will contain a barangay, municipality/city, province, and 'PHILIPPINES' with a 4-digit postal code.\n"
-                "6. Extract ONLY the person's actual name parts — do NOT include any label words.\n\n"
-                "Return a FLAT JSON object with EXACTLY these keys:\n"
-                "\"document_type_detected\": \"PhilSys / PhilID\",\n"
-                "\"last_name\": \"surname only, e.g. CARAGAY\",\n"
-                "\"given_names\": \"first and other given names only, e.g. NAOMI\",\n"
-                "\"middle_name\": \"mother's maiden surname only, e.g. TRILLANA\",\n"
-                "\"id_number\": \"16-digit PCN formatted as XXXX-XXXX-XXXX-XXXX\",\n"
-                "\"date_of_birth\": \"MM/DD/YYYY format\",\n"
-                "\"sex\": \"MALE or FEMALE\",\n"
-                "\"address\": \"full residential address as printed\",\n"
-                "\"blood_type\": \"e.g. O+\",\n"
-                "\"nationality\": \"e.g. FILIPINO\",\n"
-                "\"face_visible\": true or false,\n"
-                "\"confidence_score\": 0.0 to 1.0\n"
-                "Set any field to null if genuinely not visible. Return ONLY the JSON object, no other text."
+                "1. Extract ONLY the following fields: 'id_number' (16-digit PSN formatted as XXXX-XXXX-XXXX-XXXX), 'last_name', 'first_name', 'middle_name', 'date_of_birth', 'sex' (MALE or FEMALE), 'address', 'nationality'.\n"
+                "2. Ignore Tagalog/Filipino field labels (e.g. Apelyido, Last Name, Mga Pangalan, Petsa ng Kapanganakan, Tirahan, Kasarian, Nasyonalidad).\n"
+                "3. For each field, estimate your confidence score (0-100) based on readability and visual clarity.\n\n"
+                "Return a FLAT JSON object with EXACTLY this structure:\n"
+                "{\n"
+                "  \"document_type_detected\": \"PhilSys / PhilID\",\n"
+                "  \"fields\": {\n"
+                "    \"id_number\": { \"value\": \"XXXX-XXXX-XXXX-XXXX\", \"confidence\": 98 },\n"
+                "    \"last_name\": { \"value\": \"SURNAME\", \"confidence\": 99 },\n"
+                "    \"first_name\": { \"value\": \"FIRST NAME\", \"confidence\": 99 },\n"
+                "    \"middle_name\": { \"value\": \"MIDDLE NAME\", \"confidence\": 95 },\n"
+                "    \"date_of_birth\": { \"value\": \"MM/DD/YYYY\", \"confidence\": 97 },\n"
+                "    \"sex\": { \"value\": \"MALE\", \"confidence\": 99 },\n"
+                "    \"address\": { \"value\": \"FULL ADDRESS\", \"confidence\": 95 },\n"
+                "    \"nationality\": { \"value\": \"FILIPINO\", \"confidence\": 98 }\n"
+                "  },\n"
+                "  \"face_visible\": true,\n"
+                "  \"confidence_score\": 0.95\n"
+                "}\n"
+                "If a field is not found, set its 'value' to \"\" and 'confidence' to 0. Return ONLY the raw JSON object, no other text."
             )
         },
         "Driver's License": {
-            "fields": ["last_name", "first_name", "middle_name", "nationality", "sex", "date_of_birth", "weight", "height", "address", "license_number", "expiration_date", "agency_code", "blood_type", "eyes_color", "restrictions", "conditions"],
+            "fields": ["id_number", "last_name", "first_name", "middle_name", "nationality", "date_of_birth", "address", "sex", "expiry_date"],
             "prompt": (
-                "You are an ID extraction bot. Extract details from this Philippine Driver's License. "
-                "Return a FLAT JSON object with EXACTLY these keys (do not add explanations to the keys, do not nest the JSON):\n"
-                "\"document_type_detected\": \"Driver's License\",\n"
-                "\"last_name\": \"...\",\n"
-                "\"first_name\": \"...\",\n"
-                "\"middle_name\": \"...\",\n"
-                "\"nationality\": \"...\",\n"
-                "\"sex\": \"...\",\n"
-                "\"date_of_birth\": \"...\",\n"
-                "\"weight\": \"...\",\n"
-                "\"height\": \"...\",\n"
-                "\"address\": \"...\",\n"
-                "\"license_number\": \"...\",\n"
-                "\"expiration_date\": \"...\",\n"
-                "\"agency_code\": \"...\",\n"
-                "\"blood_type\": \"...\",\n"
-                "\"eyes_color\": \"...\",\n"
-                "\"restrictions\": \"...\",\n"
-                "\"conditions\": \"...\",\n"
-                "\"face_visible\": true/false,\n"
-                "\"confidence_score\": 0.9\n"
-                "Set to null if not found. Only return the JSON object."
+                "You are an expert OCR bot extracting details from a Philippine Driver's License.\n"
+                "CRITICAL RULES:\n"
+                "1. Extract ONLY: 'id_number' (License number matching format X00-00-000000), 'last_name', 'first_name', 'middle_name', 'nationality', 'date_of_birth', 'address', 'sex' (MALE or FEMALE), 'expiry_date'.\n"
+                "2. Estimate confidence (0-100) per field.\n\n"
+                "Return a FLAT JSON object with EXACTLY this structure:\n"
+                "{\n"
+                "  \"document_type_detected\": \"Driver's License\",\n"
+                "  \"fields\": {\n"
+                "    \"id_number\": { \"value\": \"A00-00-000000\", \"confidence\": 98 },\n"
+                "    \"last_name\": { \"value\": \"LAST NAME\", \"confidence\": 99 },\n"
+                "    \"first_name\": { \"value\": \"FIRST NAME\", \"confidence\": 99 },\n"
+                "    \"middle_name\": { \"value\": \"MIDDLE NAME\", \"confidence\": 95 },\n"
+                "    \"nationality\": { \"value\": \"FILIPINO\", \"confidence\": 98 },\n"
+                "    \"date_of_birth\": { \"value\": \"YYYY-MM-DD\", \"confidence\": 97 },\n"
+                "    \"address\": { \"value\": \"ADDRESS\", \"confidence\": 95 },\n"
+                "    \"sex\": { \"value\": \"MALE\", \"confidence\": 99 },\n"
+                "    \"expiry_date\": { \"value\": \"YYYY-MM-DD\", \"confidence\": 97 }\n"
+                "  },\n"
+                "  \"face_visible\": true,\n"
+                "  \"confidence_score\": 0.95\n"
+                "}\n"
+                "If a field is not found, set its 'value' to \"\" and 'confidence' to 0. Return ONLY the raw JSON object, no other text."
             )
         },
         "Passport": {
-            "fields": ["type", "country_code", "passport_number", "last_name", "given_names", "middle_name", "date_of_birth", "nationality", "sex", "place_of_birth", "date_issued", "visa_until", "issuing_authority"],
+            "fields": ["id_number", "last_name", "first_name", "middle_name", "nationality", "date_of_birth", "sex", "date_issued", "expiry_date"],
             "prompt": (
-                "You are an ID extraction bot. Extract details from this Philippine Passport. "
-                "Return a FLAT JSON object with EXACTLY these keys (do not add explanations to the keys, do not nest the JSON):\n"
-                "\"document_type_detected\": \"Passport\",\n"
-                "\"type\": \"...\",\n"
-                "\"country_code\": \"...\",\n"
-                "\"passport_number\": \"...\",\n"
-                "\"last_name\": \"...\",\n"
-                "\"given_names\": \"...\",\n"
-                "\"middle_name\": \"...\",\n"
-                "\"date_of_birth\": \"...\",\n"
-                "\"nationality\": \"...\",\n"
-                "\"sex\": \"...\",\n"
-                "\"place_of_birth\": \"...\",\n"
-                "\"date_issued\": \"...\",\n"
-                "\"visa_until\": \"...\",\n"
-                "\"issuing_authority\": \"...\",\n"
-                "\"face_visible\": true/false,\n"
-                "\"confidence_score\": 0.9\n"
-                "Set to null if not found. Only return the JSON object."
+                "You are an expert OCR bot extracting details from a Philippine Passport.\n"
+                "CRITICAL RULES:\n"
+                "1. Extract ONLY: 'id_number' (Passport number, e.g. P1234567A or AA0000000), 'last_name' (Surname), 'first_name' (Given Names), 'middle_name', 'nationality', 'date_of_birth', 'sex' (MALE or FEMALE), 'date_issued', 'expiry_date'.\n"
+                "2. If MRZ (Machine Readable Zone) is visible at the bottom, parse it and override/verify fields. MRZ values are extremely accurate.\n"
+                "3. Estimate confidence (0-100) per field.\n\n"
+                "Return a FLAT JSON object with EXACTLY this structure:\n"
+                "{\n"
+                "  \"document_type_detected\": \"Passport\",\n"
+                "  \"fields\": {\n"
+                "    \"id_number\": { \"value\": \"PASSPORT NUMBER\", \"confidence\": 99 },\n"
+                "    \"last_name\": { \"value\": \"SURNAME\", \"confidence\": 99 },\n"
+                "    \"first_name\": { \"value\": \"GIVEN NAMES\", \"confidence\": 99 },\n"
+                "    \"middle_name\": { \"value\": \"MIDDLE NAME\", \"confidence\": 95 },\n"
+                "    \"nationality\": { \"value\": \"FILIPINO\", \"confidence\": 98 },\n"
+                "    \"date_of_birth\": { \"value\": \"YYYY-MM-DD\", \"confidence\": 99 },\n"
+                "    \"sex\": { \"value\": \"MALE\", \"confidence\": 99 },\n"
+                "    \"date_issued\": { \"value\": \"YYYY-MM-DD\", \"confidence\": 97 },\n"
+                "    \"expiry_date\": { \"value\": \"YYYY-MM-DD\", \"confidence\": 99 }\n"
+                "  },\n"
+                "  \"face_visible\": true,\n"
+                "  \"confidence_score\": 0.95\n"
+                "}\n"
+                "If a field is not found, set its 'value' to \"\" and 'confidence' to 0. Return ONLY the raw JSON object, no other text."
             )
         },
         "UMID": {
             "fields": ["last_name", "given_names", "middle_name", "crn_number", "date_of_birth", "sex", "address"],
             "prompt": (
                 "You are an ID extraction bot. Extract details from this Philippine UMID. "
-                "Return a FLAT JSON object with EXACTLY these keys (do not add explanations to the keys, do not nest the JSON):\n"
+                "Return a FLAT JSON object with EXACTLY these keys:\n"
                 "\"document_type_detected\": \"UMID\",\n"
                 "\"last_name\": \"...\",\n"
                 "\"given_names\": \"...\",\n"
@@ -1609,63 +1939,115 @@ class VerificationService:
             if "PHILIPPINES" in clean[address_match.end(1):]:
                 addr_text += " PHILIPPINES"
             # Cleanup multiple spaces and newlines
-            addr_text = re.sub(r'\s+', ' ', addr_text).strip()
+            addr_text = re.sub(r'\s+', ' ', addr_text)
             parsed["address"] = addr_text
-            
-        if id_number:
-            parsed["id_number"] = id_number
-            
         return parsed
 
-
-    def _build_structured_ocr_data(self, gemini_data: dict, id_type: str, method: str = "gemini") -> dict:
+    def _build_structured_ocr_data(self, gemini_data: dict, id_type: str, method: str = "gemini", word_data: List[Dict] = None, raw_text: str = None) -> dict:
         """Builds a structured ocr_data dict from Gemini/Tesseract results."""
         expected_fields = self._get_id_type_fields(id_type)
         fields = {}
-        for field in expected_fields:
-            fields[field] = gemini_data.get(field)
         
-        # Also capture any extra fields Gemini found
-        skip_keys = {"face_visible", "confidence_score", "document_type_detected"}
-        for key, val in gemini_data.items():
-            if key not in skip_keys and key not in fields:
-                fields[key] = val
-
-        # For PhilID / UMID — strip any Tagalog label noise from name fields
+        # If gemini_data has a nested "fields" key (from new Gemini prompt)
+        gemini_fields = gemini_data.get("fields", {}) if isinstance(gemini_data, dict) else {}
+        
+        for field in expected_fields:
+            # Check nested fields first
+            if field in gemini_fields:
+                f_val = gemini_fields[field]
+                if isinstance(f_val, dict) and "value" in f_val:
+                    val = f_val.get("value", "")
+                    conf = f_val.get("confidence", 95)
+                else:
+                    val = str(f_val) if f_val is not None else ""
+                    conf = 95
+            else:
+                # Fallback to flat gemini_data
+                val_raw = gemini_data.get(field) if isinstance(gemini_data, dict) else None
+                if isinstance(val_raw, dict) and "value" in val_raw:
+                    val = val_raw.get("value", "")
+                    conf = val_raw.get("confidence", 95)
+                else:
+                    val = str(val_raw) if val_raw is not None else ""
+                    conf = 95
+            
+            # Map low/high values and strip tagalog label noise
+            if val in ["NOT DETECTED", "LOW CONFIDENCE", "None", None]:
+                val = ""
+                conf = 0
+            
+            if word_data and method != "gemini":
+                fields[field] = self._get_field_with_confidence(val, word_data)
+            else:
+                fields[field] = {
+                    "value": val,
+                    "confidence": int(conf)
+                }
+            
+        # Strip Tagalog label noise for PhilID / UMID
         is_philid = id_type in ("PhilSys / PhilID", "UMID")
         if is_philid:
             for name_field in ("last_name", "given_names", "middle_name", "first_name"):
-                if fields.get(name_field):
-                    fields[name_field] = self._strip_philid_label_noise(fields[name_field])
+                if name_field in fields and fields[name_field]["value"]:
+                    fields[name_field]["value"] = self._strip_philid_label_noise(fields[name_field]["value"])
 
-        # Build full_name from parts if not directly present
-        if not fields.get("full_name"):
-            if id_type == "Passport":
-                name_parts = [fields.get(k) for k in ("given_names", "middle_name", "last_name") if fields.get(k)]
-                if name_parts:
-                    fields["full_name"] = " ".join(name_parts)
-            elif is_philid:
-                # PhilID: Given Names + Last Name (middle name is mother's maiden surname — not part of display name)
-                name_parts = [fields.get(k) for k in ("given_names", "last_name") if fields.get(k)]
-                if name_parts:
-                    fields["full_name"] = " ".join(name_parts)
-            elif id_type == "Driver's License":
-                name_parts = [fields.get(k) for k in ("first_name", "middle_name", "last_name") if fields.get(k)]
-                if name_parts:
-                    fields["full_name"] = " ".join(name_parts)
-        
+        # Passport MRZ override if raw_text is available (highest accuracy)
+        if id_type == "Passport" and raw_text:
+            mrz_data = self.parse_passport_mrz(raw_text)
+            if mrz_data:
+                print(f"[KYC DEBUG] Overriding passport fields with parsed MRZ (high confidence)")
+                for field in expected_fields:
+                    if field in mrz_data:
+                        fields[field] = {
+                            "value": mrz_data[field],
+                            "confidence": 99 # High confidence MRZ override
+                        }
+
+        # Smart Validation & Auto-Correction
+        fields = self._validate_and_autocorrect_fields(fields, id_type)
+
+        # Build full_name from parts if not present
+        full_name_val = ""
+        full_name_conf = 95
+        if id_type == "Passport":
+            parts = [fields.get(k) for k in ("given_names", "middle_name", "last_name") if fields.get(k)]
+            if parts and all(isinstance(p, dict) for p in parts):
+                full_name_val = " ".join(p["value"] for p in parts if p["value"])
+                full_name_conf = int(sum(p["confidence"] for p in parts) / len(parts)) if parts else 95
+        elif is_philid:
+            # PhilID Given Names + Last Name
+            parts = [fields.get(k) for k in ("first_name", "last_name") if fields.get(k)]
+            if parts and all(isinstance(p, dict) for p in parts):
+                full_name_val = " ".join(p["value"] for p in parts if p["value"])
+                full_name_conf = int(sum(p["confidence"] for p in parts) / len(parts)) if parts else 95
+        elif id_type == "Driver's License":
+            parts = [fields.get(k) for k in ("first_name", "middle_name", "last_name") if fields.get(k)]
+            if parts and all(isinstance(p, dict) for p in parts):
+                full_name_val = " ".join(p["value"] for p in parts if p["value"])
+                full_name_conf = int(sum(p["confidence"] for p in parts) / len(parts)) if parts else 95
+
+        fields["full_name"] = {
+            "value": full_name_val,
+            "confidence": full_name_conf
+        }
+
+        # Build flat keys for backward compatibility in backend databases
+        flat_id_num = fields.get("id_number", {}).get("value", "")
+        flat_dob = fields.get("date_of_birth", {}).get("value", "") or fields.get("birth_date", {}).get("value", "")
+        flat_address = fields.get("address", {}).get("value", "")
+
         return {
             "id_type": id_type,
             "extraction_method": method,
-            "document_type_detected": gemini_data.get("document_type_detected", id_type),
-            "confidence_score": gemini_data.get("confidence_score", 0.0),
-            "face_visible": gemini_data.get("face_visible", False),
+            "document_type_detected": gemini_data.get("document_type_detected", id_type) if isinstance(gemini_data, dict) else id_type,
+            "confidence_score": gemini_data.get("confidence_score", 0.95) if isinstance(gemini_data, dict) else 0.95,
+            "face_visible": gemini_data.get("face_visible", False) if isinstance(gemini_data, dict) else False,
             "fields": fields,
             # Backward-compatible flat keys
-            "full_name": fields.get("full_name", ""),
-            "id_number": fields.get("id_number") or fields.get("pcn_number") or fields.get("license_number") or fields.get("passport_number") or fields.get("crn_number") or "",
-            "birth_date": fields.get("date_of_birth", ""),
-            "address": fields.get("address", "")
+            "full_name": full_name_val,
+            "id_number": flat_id_num,
+            "birth_date": flat_dob,
+            "address": flat_address
         }
 
     def _extract_mrz_from_text(self, text: str) -> dict:
@@ -1704,7 +2086,7 @@ class VerificationService:
             pattern_valid = self.validate_id_pattern(id_type, id_number)
             
             # 3. Image Loading & Quality Check
-            id_img = self._prepare_image(id_path)
+            id_img, cropped = self._prepare_image_with_status(id_path)
             quality_check = self.check_image_quality(id_img)
             if not quality_check["valid"]:
                 return {"status": "mismatched", "ocr_match": False, "pattern_valid": pattern_valid,
@@ -2076,27 +2458,61 @@ class VerificationService:
     async def extract_id_data(self, id_path: str, id_type: str) -> Dict[str, Any]:
         """Extracts text from ID using Gemini API (with EasyOCR + Tesseract fallback)."""
         try:
-            id_img = self._prepare_image(id_path)
+            id_img, cropped = self._prepare_image_with_status(id_path)
+            
+            # Save cropped image if successful
+            cropped_url = id_path
+            if cropped:
+                try:
+                    filename = os.path.basename(id_path.replace('\\', '/'))
+                    cropped_filename = f"cropped_{filename}"
+                    cropped_real_path = os.path.join("app/static/uploads/verification", cropped_filename)
+                    
+                    if CV2_AVAILABLE:
+                        _, buf = cv2.imencode(".jpg", id_img)
+                        cropped_bytes = buf.tobytes()
+                    else:
+                        from PIL import Image as PILImage
+                        pil_img = PILImage.fromarray(id_img[:, :, ::-1])
+                        buf = io.BytesIO()
+                        pil_img.save(buf, format="JPEG")
+                        cropped_bytes = buf.getvalue()
+                        
+                    from ..core.encryption import encrypt_data
+                    encrypted_cropped = encrypt_data(cropped_bytes)
+                    with open(cropped_real_path, "wb") as f:
+                        f.write(encrypted_cropped)
+                        
+                    cropped_url = f"/api/bookings/kyc/view/{cropped_filename}"
+                    print(f"[KYC DEBUG] Saved server-cropped image to {cropped_real_path}")
+                except Exception as save_err:
+                    print(f"[KYC WARNING] Failed to save cropped image: {save_err}")
             
             # 1. Blurry / Resolution Check
             quality_check = self.check_image_quality(id_img)
             if not quality_check["valid"]:
                 return {"success": False, "error": quality_check["reason"]}
             
-            # 2. Cropped ID Check
-            if self._is_image_cropped(id_img):
+            # 2. Cropped ID Check (only check if it wasn't successfully auto-cropped on server)
+            if not cropped and self._is_image_cropped(id_img):
                 return {"success": False, "error": "Please capture the entire ID card."}
             
             gemini_data = None
             if os.getenv("GEMINI_API_KEY"):
                 print("[KYC DEBUG] Calling Gemini API as primary OCR engine for ID extraction...")
                 gemini_prompt = self._get_id_type_ocr_prompt(id_type)
-                gemini_data = await self._call_gemini_ocr(id_path, gemini_prompt)
+                gemini_data = await self._call_gemini_ocr(cropped_url, gemini_prompt)
                 
             if gemini_data and isinstance(gemini_data, dict) and any(gemini_data.values()):
                 print(f"[KYC DEBUG] Gemini OCR Succeeded for ID type: {id_type}")
                 structured_ocr = self._build_structured_ocr_data(gemini_data, id_type, "gemini")
-                return {"success": True, "data": structured_ocr, "quality": quality_check}
+                return {
+                    "success": True, 
+                    "data": structured_ocr, 
+                    "quality": quality_check,
+                    "autocrop_succeeded": cropped,
+                    "cropped_id_url": cropped_url
+                }
                 
             # Fallback to EasyOCR/Tesseract if Gemini not available or failed
             print("[KYC WARNING] Gemini API unavailable or failed. Using EasyOCR/Tesseract fallback pipeline...")
@@ -2147,41 +2563,22 @@ class VerificationService:
             if not text or not text.strip() or self._is_ocr_garbage(text):
                 return {"success": False, "error": "Unable to extract ID details. Please try again."}
             
-            # Build structured output compatible with frontend
-            fields = {k: v for k, v in parsed.items() if k != "_all_not_detected"}
-
-            # For PhilID / UMID — strip Tagalog label noise from name fields (EasyOCR picks up labels)
-            if id_type in ("PhilSys / PhilID", "UMID"):
-                for name_field in ("last_name", "given_names", "middle_name", "first_name", "full_name"):
-                    if fields.get(name_field) and isinstance(fields[name_field], str):
-                        fields[name_field] = self._strip_philid_label_noise(fields[name_field])
-                # Always rebuild full_name for PhilID/UMID from the clean name components
-                name_parts = [fields.get(k) for k in ("given_names", "last_name") if fields.get(k)]
-                if name_parts:
-                    fields["full_name"] = " ".join(name_parts)
-            
-            # Determine extraction method used
             method = "easyocr" if EASYOCR_AVAILABLE else "tesseract"
+            structured_ocr = self._build_structured_ocr_data(parsed, id_type, method, word_data, text)
             
-            structured_ocr = {
-                "id_type": id_type,
-                "extraction_method": method,
-                "document_type_detected": id_type,
-                "confidence_score": self._calc_overall_confidence(word_data),
-                "face_visible": has_face,
-                "fields": fields,
-                # Backward-compatible flat keys
-                "full_name": fields.get("full_name", ""),
-                "id_number": fields.get("id_number") or parsed.get("id_number") or parsed.get("license_number") or parsed.get("passport_number") or "",
-                "birth_date": fields.get("date_of_birth") or parsed.get("date_of_birth") or "",
-                "address": fields.get("address") or parsed.get("address") or ""
+            # Ensure face_visible and confidence_score are set on root structured_ocr
+            structured_ocr["face_visible"] = has_face
+            
+            return {
+                "success": True, 
+                "data": structured_ocr, 
+                "quality": quality_check,
+                "autocrop_succeeded": cropped,
+                "cropped_id_url": cropped_url
             }
-
-            
-            return {"success": True, "data": structured_ocr, "quality": quality_check}
         except Exception as e:
             traceback.print_exc()
-            return {"success": False, "error": "Unable to extract ID details. Please try again."}
+            return {"success": False, "error": f"Unable to extract ID details: {str(e)}"}
 
     async def verify_identity_v2(self, 
                            id_path: str, 
