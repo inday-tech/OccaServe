@@ -181,8 +181,8 @@
     <div class="relative overflow-hidden rounded-3xl mb-12 shadow-md animate-in fade-in duration-1000 border border-slate-100/50 bg-white">
         <!-- Cover Banner Image -->
         <div class="h-56 md:h-72 w-full relative">
-            {% if caterer.banner_url %}
-            <img src="{{ caterer.banner_url }}" class="w-full h-full object-cover" alt="Cover Image">
+            {% if caterer.cover_image_url %}
+            <img src="{{ caterer.cover_image_url }}" class="w-full h-full object-cover" alt="Cover Image">
             {% else %}
             <img src="https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=1200" class="w-full h-full object-cover" alt="Cover Image">
             {% endif %}
@@ -445,10 +445,10 @@
                     </div>
                 </div>
                 
-                {% if caterer.booking_policy %}
+                {% if caterer.terms_and_conditions %}
                 <div class="mt-6 pt-6 border-t border-slate-100">
-                    <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Service Guidelines</div>
-                    <p class="text-xs text-slate-500 leading-relaxed">{{ caterer.booking_policy }}</p>
+                    <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Service Guidelines & Terms</div>
+                    <p class="text-xs text-slate-500 leading-relaxed whitespace-pre-wrap">{{ caterer.terms_and_conditions }}</p>
                 </div>
                 {% endif %}
             </section>

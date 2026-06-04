@@ -2248,6 +2248,8 @@ async def update_profile(
     card_holder_name: Optional[str] = Form(None),
     card_number: Optional[str] = Form(None),
     cash_instructions: Optional[str] = Form(None),
+    booking_lead_time: Optional[int] = Form(7),
+    min_pax: Optional[int] = Form(20),
     terms_and_conditions: Optional[str] = Form(None),
     primary_color: Optional[str] = Form(None),
     secondary_color: Optional[str] = Form(None),
@@ -2317,6 +2319,8 @@ async def update_profile(
     profile.card_holder_name = card_holder_name
     profile.card_number = card_number
     profile.cash_instructions = cash_instructions
+    profile.booking_lead_time = booking_lead_time
+    profile.min_pax = min_pax
     profile.terms_and_conditions = terms_and_conditions
 
     # Update branding

@@ -543,6 +543,18 @@
                         <p>Set clear expectations for bookings, payments, and cancellations.</p>
                     </div>
 
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label><i class="fas fa-calendar-alt"></i> Booking Lead Time (Days)</label>
+                            <input type="number" name="booking_lead_time" min="1" value="{{ profile.booking_lead_time or 7 }}">
+                            <span class="field-hint">Minimum days in advance a customer can book.</span>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-users"></i> Minimum Guests (Pax)</label>
+                            <input type="number" name="min_pax" min="1" value="{{ profile.min_pax or 20 }}">
+                            <span class="field-hint">Minimum number of pax required for a booking.</span>
+                        </div>
+                    </div>
 
                     <div class="form-group">
                         <label><i class="fas fa-file-signature"></i> Terms & Conditions (Digital Contract)</label>

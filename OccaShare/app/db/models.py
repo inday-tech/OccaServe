@@ -141,6 +141,8 @@ class CatererProfile(Base):
     
     # NEW: Policy Fields
     terms_and_conditions = Column(Text, nullable=True)
+    booking_lead_time = Column(Integer, default=7) # Days in advance
+    min_pax = Column(Integer, default=20) # Minimum pax for services
     
     # NEW: Notification Preferences (JSONB for flexibility)
     notification_preferences = Column(JSONB, default={
