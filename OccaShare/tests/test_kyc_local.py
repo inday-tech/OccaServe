@@ -16,8 +16,8 @@ def test_kyc():
     id_number = "1234-5678-9012"
     id_type = "PRC ID"
     
-    print("Starting verification test...")
-    result = verification_service.verify_identity_v2(id_path, selfie_paths, full_name, id_number, id_type)
+    import asyncio
+    result = asyncio.run(verification_service.verify_identity_v2(id_path, selfie_paths, full_name, id_number, id_type))
     
     print("\n--- TEST RESULT ---")
     for k, v in result.items():
