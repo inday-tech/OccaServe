@@ -846,11 +846,40 @@
 
 
             <div id="id-preview" style="display: none; text-align: center; padding: 1rem;">
-                <img id="id-image" src=""
-                    style="max-width: 480px; width: 100%; border-radius: 1rem; margin: 0 auto 2rem; display: block; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid var(--kyc-slate-200);">
+                <h3 style="font-weight: 800; font-size: 1.25rem; color: var(--kyc-slate-700); margin-bottom: 0.5rem;">Adjust ID Corners</h3>
+                <p class="card-desc" style="margin-bottom: 1.5rem; font-size: 0.85rem;">Drag the corner circles to align with the edges of your ID card for clean cropping and perspective correction.</p>
+                
+                <!-- Interactive Crop Area -->
+                <div id="crop-workspace-container" style="position: relative; max-width: 480px; width: 100%; margin: 0 auto 2rem; border-radius: 1rem; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.15); border: 1px solid var(--kyc-slate-200); background: #0f172a; user-select: none; -webkit-user-select: none;">
+                    <img id="id-image" src="" style="display: block; width: 100%; height: auto; pointer-events: none; opacity: 0.65;">
+                    
+                    <!-- SVG Overlay to draw boundary polygon and darken external area -->
+                    <svg id="crop-svg" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;">
+                        <defs>
+                            <mask id="crop-mask">
+                                <rect width="100%" height="100%" fill="white" />
+                                <polygon id="crop-svg-polygon-mask" fill="black" />
+                            </mask>
+                        </defs>
+                        <rect width="100%" height="100%" fill="rgba(15, 23, 42, 0.7)" mask="url(#crop-mask)" />
+                        <!-- Highlighted border line -->
+                        <polygon id="crop-svg-polygon" fill="none" stroke="var(--kyc-accent)" stroke-width="3" stroke-dasharray="6,4" />
+                    </svg>
+
+                    <!-- Corner Pins (Draggable) -->
+                    <div id="pin-tl" class="crop-pin" style="position: absolute; width: 28px; height: 28px; background: white; border: 3px solid var(--kyc-accent); border-radius: 50%; cursor: move; z-index: 20; transform: translate(-14px, -14px); box-shadow: 0 4px 10px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; touch-action: none;"><div style="width: 8px; height: 8px; background: var(--kyc-accent); border-radius: 50%;"></div></div>
+                    <div id="pin-tr" class="crop-pin" style="position: absolute; width: 28px; height: 28px; background: white; border: 3px solid var(--kyc-accent); border-radius: 50%; cursor: move; z-index: 20; transform: translate(-14px, -14px); box-shadow: 0 4px 10px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; touch-action: none;"><div style="width: 8px; height: 8px; background: var(--kyc-accent); border-radius: 50%;"></div></div>
+                    <div id="pin-br" class="crop-pin" style="position: absolute; width: 28px; height: 28px; background: white; border: 3px solid var(--kyc-accent); border-radius: 50%; cursor: move; z-index: 20; transform: translate(-14px, -14px); box-shadow: 0 4px 10px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; touch-action: none;"><div style="width: 8px; height: 8px; background: var(--kyc-accent); border-radius: 50%;"></div></div>
+                    <div id="pin-bl" class="crop-pin" style="position: absolute; width: 28px; height: 28px; background: white; border: 3px solid var(--kyc-accent); border-radius: 50%; cursor: move; z-index: 20; transform: translate(-14px, -14px); box-shadow: 0 4px 10px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; touch-action: none;"><div style="width: 8px; height: 8px; background: var(--kyc-accent); border-radius: 50%;"></div></div>
+                </div>
+
+                <!-- Hidden canvas variables used in perspective warp calculations -->
+                <canvas id="src-warp-canvas" style="display: none;"></canvas>
+                <canvas id="dst-warp-canvas" style="display: none;"></canvas>
+
                 <div style="display: flex; gap: 0.75rem; justify-content: center;">
-                    <button type="button" class="btn btn-secondary" onclick="resetIdUpload()">Upload Again</button>
-                    <button type="button" class="btn btn-primary" onclick="proceedToCamera()">Confirm ID</button>
+                    <button type="button" class="btn btn-outline-kyc" onclick="resetIdUpload()"><i class="fas fa-undo mr-1"></i> Upload Again</button>
+                    <button type="button" class="btn btn-primary-kyc" style="max-width: 200px; padding: 0.75rem 1.5rem !important; font-size: 0.95rem !important;" onclick="cropAndFinalizeId()"><i class="fas fa-magic mr-1"></i> Crop & Scan</button>
                 </div>
             </div>
 
@@ -871,23 +900,34 @@
             <!--  OCR VERIFICATION MODAL                     -->
             <!-- ═══════════════════════════════════════════ -->
             <div id="ocr-verification-modal" class="ocr-modal-overlay">
-                <div class="ocr-modal">
-                    <div class="ocr-modal-header">
-                        <div class="modal-icon"><i class="fas fa-file-lines"></i></div>
-                        <h2>Review Extracted Details</h2>
-                        <p>Verify the information below matches your ID</p>
+                <div class="ocr-modal" style="max-width: 850px; display: flex; flex-direction: column; overflow: hidden; max-height: 92vh;">
+                    <div class="ocr-modal-header" style="border-bottom: 1px solid #f1f5f9; padding: 2rem 2rem 1.25rem;">
+                        <div class="modal-icon"><i class="fas fa-file-invoice"></i></div>
+                        <h2>Verify Extracted ID Details</h2>
+                        <p>Check if all text matches the ID card. Correct any misspelled fields.</p>
                     </div>
-                    <div class="ocr-modal-body">
-                        <div class="ocr-confidence-bar">
-                            <span class="bar-label">Confidence:</span>
-                            <div class="bar-track"><div class="bar-fill" id="ocr-confidence-fill" style="width: 0%;"></div></div>
-                            <span class="bar-label" id="ocr-confidence-pct">0%</span>
+                    <div class="ocr-modal-body" style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 1.5rem; overflow-y: auto; flex: 1; padding: 1.5rem 2rem;">
+                        <!-- Left Column: Crop Snippet Preview -->
+                        <div style="flex: 1 1 280px; display: flex; flex-direction: column; gap: 0.75rem;">
+                            <label style="display: block; font-size: 0.7rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em;">Cropped ID Document</label>
+                            <div style="background: #0f172a; padding: 1rem; border-radius: 1rem; flex: 1; display: flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0; min-height: 200px;">
+                                <img id="ocr-crop-preview" src="" style="max-height: 280px; max-width: 100%; object-fit: contain; border-radius: 0.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.25);">
+                            </div>
                         </div>
 
-                        <!-- Dynamic fields will be injected here by step_kyc.js -->
-                        <div id="ocr-dynamic-fields-container"></div>
+                        <!-- Right Column: Fields Form -->
+                        <div style="flex: 1.2 1 300px; display: flex; flex-direction: column; gap: 1rem;">
+                            <div class="ocr-confidence-bar" style="margin: 0 0 0.5rem 0; width: 100%;">
+                                <span class="bar-label">OCR Match Confidence:</span>
+                                <div class="bar-track"><div class="bar-fill" id="ocr-confidence-fill" style="width: 0%;"></div></div>
+                                <span class="bar-label" id="ocr-confidence-pct">0%</span>
+                            </div>
+                            
+                            <!-- Dynamic fields container -->
+                            <div id="ocr-dynamic-fields-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;"></div>
+                        </div>
                     </div>
-                    <div class="ocr-modal-footer">
+                    <div class="ocr-modal-footer" style="border-top: 1px solid #f1f5f9; padding: 1.25rem 2rem 2rem;">
                         <button type="button" class="btn-modal-secondary" onclick="rescanId()"><i class="fas fa-redo-alt" style="margin-right:0.4rem;"></i> Rescan</button>
                         <button type="button" class="btn-modal-primary" onclick="saveOcrAndContinue()"><i class="fas fa-check" style="margin-right:0.4rem;"></i> Save & Continue</button>
                     </div>

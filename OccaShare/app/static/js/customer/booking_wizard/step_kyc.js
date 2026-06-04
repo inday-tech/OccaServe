@@ -311,21 +311,287 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('id_document').click();
     };
 
+    // Default coordinate pins as percentages
+    let pins = {
+        tl: { x: 0.1, y: 0.15 },
+        tr: { x: 0.9, y: 0.15 },
+        br: { x: 0.9, y: 0.85 },
+        bl: { x: 0.1, y: 0.85 }
+    };
+
     window.handleIdUpload = function (input) {
         if (input.files && input.files[0]) {
             idFile = input.files[0];
             const reader = new FileReader();
             reader.onload = function (e) {
-                document.getElementById('id-image').src = e.target.result;
+                const img = document.getElementById('id-image');
+                img.src = e.target.result;
                 document.getElementById('step-id-form').style.display = 'none';
                 document.getElementById('id-preview').style.display = 'block';
+                
+                // Reset pin defaults on new upload
+                pins = {
+                    tl: { x: 0.15, y: 0.15 },
+                    tr: { x: 0.85, y: 0.15 },
+                    br: { x: 0.85, y: 0.85 },
+                    bl: { x: 0.15, y: 0.85 }
+                };
+
+                if (img.complete) {
+                    initCropWorkspace();
+                } else {
+                    img.onload = function () {
+                        initCropWorkspace();
+                    };
+                }
             };
             reader.readAsDataURL(idFile);
         }
     };
 
+    function initCropWorkspace() {
+        updateCropOverlay();
+
+        const pinIds = ['tl', 'tr', 'br', 'bl'];
+        pinIds.forEach(id => {
+            const pinEl = document.getElementById(`pin-${id}`);
+            if (!pinEl) return;
+            
+            // Clone element to wipe previous drag listeners cleanly
+            const newPinEl = pinEl.cloneNode(true);
+            pinEl.parentNode.replaceChild(newPinEl, pinEl);
+            
+            setupDrag(newPinEl, id);
+        });
+    }
+
+    function setupDrag(el, id) {
+        const workspace = document.getElementById('crop-workspace-container');
+        
+        const onMove = (clientX, clientY) => {
+            const rect = workspace.getBoundingClientRect();
+            let x = (clientX - rect.left) / rect.width;
+            let y = (clientY - rect.top) / rect.height;
+
+            // Constrain pins within crop-workspace-container coordinates
+            x = Math.max(0, Math.min(1, x));
+            y = Math.max(0, Math.min(1, y));
+
+            pins[id].x = x;
+            pins[id].y = y;
+
+            updateCropOverlay();
+        };
+
+        const onStart = (e) => {
+            e.preventDefault();
+            const moveHandler = (moveEvent) => {
+                const touch = moveEvent.touches ? moveEvent.touches[0] : moveEvent;
+                onMove(touch.clientX, touch.clientY);
+            };
+            const endHandler = () => {
+                document.removeEventListener('mousemove', moveHandler);
+                document.removeEventListener('mouseup', endHandler);
+                document.removeEventListener('touchmove', moveHandler);
+                document.removeEventListener('touchend', endHandler);
+            };
+            document.addEventListener('mousemove', moveHandler);
+            document.addEventListener('mouseup', endHandler);
+            document.addEventListener('touchmove', moveHandler, { passive: false });
+            document.addEventListener('touchend', endHandler);
+        };
+
+        el.addEventListener('mousedown', onStart);
+        el.addEventListener('touchstart', onStart, { passive: false });
+    }
+
+    function updateCropOverlay() {
+        const workspace = document.getElementById('crop-workspace-container');
+        if (!workspace) return;
+        const rect = workspace.getBoundingClientRect();
+        const width = rect.width;
+        const height = rect.height;
+
+        const pts = {
+            tl: { x: pins.tl.x * width, y: pins.tl.y * height },
+            tr: { x: pins.tr.x * width, y: pins.tr.y * height },
+            br: { x: pins.br.x * width, y: pins.br.y * height },
+            bl: { x: pins.bl.x * width, y: pins.bl.y * height }
+        };
+
+        // Reposition corner divs
+        for (const id in pts) {
+            const el = document.getElementById(`pin-${id}`);
+            if (el) {
+                el.style.left = `${pts[id].x}px`;
+                el.style.top = `${pts[id].y}px`;
+            }
+        }
+
+        // Redraw SVG polygon lines & mask cutout
+        const poly = document.getElementById('crop-svg-polygon');
+        const polyMask = document.getElementById('crop-svg-polygon-mask');
+        const pointsStr = `${pts.tl.x},${pts.tl.y} ${pts.tr.x},${pts.tr.y} ${pts.br.x},${pts.br.y} ${pts.bl.x},${pts.bl.y}`;
+        
+        if (poly) poly.setAttribute('points', pointsStr);
+        if (polyMask) polyMask.setAttribute('points', pointsStr);
+    }
+
+    window.addEventListener('resize', updateCropOverlay);
+
+    // Solves system of 8 linear equations: A * x = B using Gaussian elimination
+    function solveLinearSystem(A, B) {
+        let n = 8;
+        for (let i = 0; i < n; i++) {
+            A[i].push(B[i]);
+        }
+        for (let i = 0; i < n; i++) {
+            let maxRow = i;
+            for (let k = i + 1; k < n; k++) {
+                if (Math.abs(A[k][i]) > Math.abs(A[maxRow][i])) {
+                    maxRow = k;
+                }
+            }
+            let temp = A[i]; A[i] = A[maxRow]; A[maxRow] = temp;
+            let diag = A[i][i];
+            if (Math.abs(diag) < 1e-8) return null;
+            for (let j = i; j <= n; j++) {
+                A[i][j] /= diag;
+            }
+            for (let k = 0; k < n; k++) {
+                if (k !== i) {
+                    let factor = A[k][i];
+                    for (let j = i; j <= n; j++) {
+                        A[k][j] -= factor * A[i][j];
+                    }
+                }
+            }
+        }
+        let X = [];
+        for (let i = 0; i < n; i++) {
+            X.push(A[i][n]);
+        }
+        return X;
+    }
+
+    function getPerspectiveTransform(src, dst) {
+        let A = [];
+        let B = [];
+        for (let i = 0; i < 4; i++) {
+            let u = dst[i].x;
+            let v = dst[i].y;
+            let x = src[i].x;
+            let y = src[i].y;
+            A.push([u, v, 1, 0, 0, 0, -u * x, -v * x]);
+            B.push(x);
+            A.push([0, 0, 0, u, v, 1, -u * y, -v * y]);
+            B.push(y);
+        }
+        return solveLinearSystem(A, B);
+    }
+
+    window.cropAndFinalizeId = function () {
+        const img = document.getElementById('id-image');
+        const srcCanvas = document.getElementById('src-warp-canvas');
+        const dstCanvas = document.getElementById('dst-warp-canvas');
+
+        if (!img.src || img.naturalWidth === 0) {
+            if (window.showError) window.showError("No image available for cropping.", "Cropping Error");
+            return;
+        }
+
+        // Draw source natural image
+        srcCanvas.width = img.naturalWidth;
+        srcCanvas.height = img.naturalHeight;
+        const srcCtx = srcCanvas.getContext('2d');
+        srcCtx.drawImage(img, 0, 0);
+
+        // Convert percentage pin positions to natural pixels
+        const srcPts = [
+            { x: pins.tl.x * img.naturalWidth, y: pins.tl.y * img.naturalHeight },
+            { x: pins.tr.x * img.naturalWidth, y: pins.tr.y * img.naturalHeight },
+            { x: pins.br.x * img.naturalWidth, y: pins.br.y * img.naturalHeight },
+            { x: pins.bl.x * img.naturalWidth, y: pins.bl.y * img.naturalHeight }
+        ];
+
+        // Standard ID card ratio (approx 1.58:1)
+        const dstWidth = 790;
+        const dstHeight = 500;
+        dstCanvas.width = dstWidth;
+        dstCanvas.height = dstHeight;
+
+        const dstPts = [
+            { x: 0, y: 0 },
+            { x: dstWidth, y: 0 },
+            { x: dstWidth, y: dstHeight },
+            { x: 0, y: dstHeight }
+        ];
+
+        const transform = getPerspectiveTransform(srcPts, dstPts);
+        if (!transform) {
+            if (window.showError) window.showError("Error computing document geometry.", "Warp Error");
+            return;
+        }
+
+        const srcData = srcCtx.getImageData(0, 0, srcCanvas.width, srcCanvas.height);
+        const dstCtx = dstCanvas.getContext('2d');
+        const dstData = dstCtx.createImageData(dstWidth, dstHeight);
+
+        const [a0, a1, a2, a3, a4, a5, a6, a7] = transform;
+
+        for (let yPrime = 0; yPrime < dstHeight; yPrime++) {
+            for (let xPrime = 0; xPrime < dstWidth; xPrime++) {
+                let denom = a6 * xPrime + a7 * yPrime + 1;
+                let x = (a0 * xPrime + a1 * yPrime + a2) / denom;
+                let y = (a3 * xPrime + a4 * yPrime + a5) / denom;
+
+                // Bilinear interpolation
+                let x0 = Math.floor(x);
+                let x1 = Math.min(x0 + 1, srcCanvas.width - 1);
+                let y0 = Math.floor(y);
+                let y1 = Math.min(y0 + 1, srcCanvas.height - 1);
+
+                if (x0 >= 0 && x0 < srcCanvas.width && y0 >= 0 && y0 < srcCanvas.height) {
+                    let dx = x - x0;
+                    let dy = y - y0;
+
+                    let idx00 = (y0 * srcCanvas.width + x0) * 4;
+                    let idx10 = (y0 * srcCanvas.width + x1) * 4;
+                    let idx01 = (y1 * srcCanvas.width + x0) * 4;
+                    let idx11 = (y1 * srcCanvas.width + x1) * 4;
+
+                    let dstIdx = (yPrime * dstWidth + xPrime) * 4;
+
+                    for (let c = 0; c < 4; c++) {
+                        let val = (1 - dx) * (1 - dy) * srcData.data[idx00 + c] +
+                                  dx * (1 - dy) * srcData.data[idx10 + c] +
+                                  (1 - dx) * dy * srcData.data[idx01 + c] +
+                                  dx * dy * srcData.data[idx11 + c];
+                        dstData.data[dstIdx + c] = Math.round(val);
+                    }
+                }
+            }
+        }
+        dstCtx.putImageData(dstData, 0, 0);
+
+        // Convert dstCanvas to Blob
+        dstCanvas.toBlob(async (blob) => {
+            window._ocrCompressedFile = new File([blob], "cropped_id.jpg", { type: "image/jpeg" });
+            
+            // Set image preview src in OCR modal column
+            const cropPreview = document.getElementById('ocr-crop-preview');
+            if (cropPreview) {
+                cropPreview.src = URL.createObjectURL(blob);
+            }
+            
+            // Proceed to API verification
+            await finalizeIdAndProceed();
+        }, 'image/jpeg', 0.85);
+    };
+
     window.resetIdUpload = function () {
         idFile = null;
+        window._ocrCompressedFile = null;
         document.getElementById('id-preview').style.display = 'none';
         document.getElementById('step-id-form').style.display = 'block';
         document.getElementById('id_document').value = '';
@@ -333,8 +599,8 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     window.proceedToCamera = async function () {
-        // frictionless optimization: Skip redundant extract-id call as data is already provided or will be extracted during upload
-        finalizeIdAndProceed();
+        // Obsolete function, replaced by cropAndFinalizeId
+        window.cropAndFinalizeId();
     };
 
     window.finalizeIdAndProceed = async function () {
@@ -369,14 +635,17 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }, 800);
 
-        // --- CLIENT SIDE COMPRESSION ---
-        let finalFile = idFile;
-        try {
-            const compressedBlob = await compressImage(idFile, 1280, 0.8);
-            finalFile = new File([compressedBlob], idFile.name, { type: 'image/jpeg' });
-            console.log(`[KYC] Compression: ${(idFile.size / 1024).toFixed(1)}KB -> ${(finalFile.size / 1024).toFixed(1)}KB`);
-        } catch (e) {
-            console.warn("[KYC] Compression failed, using original", e);
+        // Use warped crop file if present, else compress original raw file
+        let finalFile = window._ocrCompressedFile;
+        if (!finalFile) {
+            finalFile = idFile;
+            try {
+                const compressedBlob = await compressImage(idFile, 1280, 0.8);
+                finalFile = new File([compressedBlob], idFile.name, { type: 'image/jpeg' });
+                console.log(`[KYC] Compression: ${(idFile.size / 1024).toFixed(1)}KB -> ${(finalFile.size / 1024).toFixed(1)}KB`);
+            } catch (e) {
+                console.warn("[KYC] Compression failed, using original", e);
+            }
         }
 
         // Step 1: Call extract-id to get OCR data (NO validation yet)
@@ -560,164 +829,17 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 350);
     };
 
-    window.rescanId = async function () {
-        const idInputFile = document.getElementById('id_document')?.files?.[0];
-        let fileToRescan = window._ocrCompressedFile || idFile || idInputFile;
-        if (!fileToRescan) {
-            if (window.showError) window.showError('No uploaded ID file found. Please upload or capture your ID again.', 'Rescan Error');
-            window.cancelOcrModal();
-            return;
-        }
-
-        const idType = document.getElementById('id_type')?.value || '';
-        if (!idType) {
-            if (window.showError) window.showError('Please select an ID type before rescanning.', 'Missing ID Type');
-            window.cancelOcrModal();
-            return;
-        }
-
-        // 1. Close the modal smoothly
+    window.rescanId = function () {
         const modal = document.getElementById('ocr-verification-modal');
         modal.classList.remove('visible');
-        setTimeout(() => { modal.style.display = 'none'; }, 350);
-
-        // 2. Show the OCR loading animation
-        await new Promise(r => setTimeout(r, 360)); // wait for modal close
-        document.getElementById('step-id-form').style.display = 'none';
-        document.getElementById('id-preview').style.display = 'none';
-        document.getElementById('ocr-loading').style.display = 'block';
-        document.getElementById('extraction-title').innerText = 'Re-scanning Your ID';
-        updateStatusTracker(2);
-
-        // Reset quality indicators before re-animating
-        const indicators = ['qc-resolution', 'qc-focus', 'qc-ocr'];
-        indicators.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) {
-                el.style.color = '';
-                const icon = el.querySelector('i');
-                if (icon) icon.style.color = '';
-            }
-        });
-
-        // Animate quality indicators
-        const statusEl = document.getElementById('extraction-status');
-        statusEl.innerText = 'Scanning ID for key information...';
-        let indicatorIdx = 0;
-        const progressTimer = setInterval(() => {
-            if (indicatorIdx < indicators.length) {
-                const el = document.getElementById(indicators[indicatorIdx]);
-                if (el) {
-                    el.style.color = 'var(--kyc-accent)';
-                    const icon = el.querySelector('i');
-                    if (icon) icon.style.color = 'var(--kyc-accent)';
-                }
-                indicatorIdx++;
-                if (indicatorIdx === 1) statusEl.innerText = 'Analyzing document quality...';
-                if (indicatorIdx === 2) statusEl.innerText = 'Running AI-powered OCR extraction...';
-                if (indicatorIdx === 3) statusEl.innerText = 'Finalizing data extraction...';
-            }
-        }, 800);
-
-        async function getFileFromPreviewImage() {
-            const img = document.getElementById('id-image');
-            if (!img || !img.src) return null;
-
-            const src = img.src;
-
-            // Handle base64 / data: URIs directly (fetch() fails on data: URIs in most browsers)
-            if (src.startsWith('data:')) {
-                try {
-                    const arr = src.split(',');
-                    const mimeMatch = arr[0].match(/:(.*?);/);
-                    const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
-                    const bstr = atob(arr[1]);
-                    const n = bstr.length;
-                    const u8arr = new Uint8Array(n);
-                    for (let i = 0; i < n; i++) u8arr[i] = bstr.charCodeAt(i);
-                    const blob = new Blob([u8arr], { type: mime });
-                    return new File([blob], 'id_preview.jpg', { type: mime });
-                } catch (err) {
-                    console.warn('[KYC] Failed to decode base64 preview image', err);
-                    return null;
-                }
-            }
-
-            // Handle regular HTTP URLs
-            try {
-                const res = await fetch(src, { cache: 'no-store' });
-                if (res.ok) {
-                    const blob = await res.blob();
-                    const extension = blob.type.split('/')[1] || 'jpg';
-                    return new File([blob], `id_preview.${extension}`, { type: blob.type || 'image/jpeg' });
-                }
-            } catch (err) {
-                console.warn('[KYC] Failed to fetch preview image source', err);
-            }
-
-            return null;
-        }
-
-        // If the compressed file isn't already stored, compress before rescanning.
-        let finalFile = fileToRescan;
-        if (!window._ocrCompressedFile && fileToRescan instanceof File) {
-            try {
-                const compressedBlob = await compressImage(fileToRescan, 1280, 0.8);
-                finalFile = new File([compressedBlob], fileToRescan.name, { type: 'image/jpeg' });
-                window._ocrCompressedFile = finalFile;
-            } catch (err) {
-                console.warn('[KYC] Rescan compression failed, sending original file', err);
-                finalFile = fileToRescan;
-            }
-        }
-
-        if (!finalFile) {
-            finalFile = await getFileFromPreviewImage();
-            if (finalFile) {
-                window._ocrCompressedFile = finalFile;
-            }
-        }
-
-        if (!finalFile) {
-            if (window.showError) window.showError('Unable to reconstruct the uploaded ID image. Please upload it again.', 'Rescan Error');
-            document.getElementById('ocr-loading').style.display = 'none';
+        setTimeout(() => {
+            modal.style.display = 'none';
+            document.getElementById('step-id-form').style.display = 'none';
             document.getElementById('id-preview').style.display = 'block';
-            return;
-        }
-
-        // 3. Call extract-id again with the same file
-        const extractForm = new FormData();
-        extractForm.append('id_type', idType);
-        extractForm.append('id_document', finalFile);
-
-        try {
-            const res = await fetch('/api/bookings/extract-id', { method: 'POST', body: extractForm });
-            clearInterval(progressTimer);
-
-            if (res.ok) {
-                const result = await res.json();
-                console.log('[KYC] Rescan OCR result:', result);
-
-                // Update stored data with fresh scan results
-                window._ocrExtractedData = result.extracted_data || {};
-                window._ocrTempIdUrl = result.temp_id_url || window._ocrTempIdUrl;
-                window._ocrCompressedFile = finalFile;
-
-                // Show modal with fresh data
-                showOcrModal(result.extracted_data);
-            } else {
-                const data = await res.json().catch(() => ({}));
-                if (window.showError) window.showError(data.detail || 'Rescan failed. Please try again.', 'Rescan Error');
-                document.getElementById('ocr-loading').style.display = 'none';
-                document.getElementById('id-preview').style.display = 'block';
-            }
-        } catch (err) {
-            clearInterval(progressTimer);
-            console.error('[KYC] Rescan network error:', err);
-            if (window.showError) window.showError('Connection lost during rescan.', 'Network Error');
-            document.getElementById('ocr-loading').style.display = 'none';
-            document.getElementById('id-preview').style.display = 'block';
-        }
+            updateStatusTracker(1);
+            // Re-initialize to position pins correctly
+            initCropWorkspace();
+        }, 350);
     };
 
     // ─── SAVE & CONTINUE → COMPLIANCE → UPLOAD → LIVENESS ────────────
