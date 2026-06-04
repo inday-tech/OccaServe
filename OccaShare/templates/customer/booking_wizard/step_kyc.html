@@ -1185,5 +1185,5 @@
 
 {% block step_js %}
 <script>window.bookingId = "{{ booking_id }}";</script>
-<script src="{{ url_for('static', path='/js/customer/booking_wizard/step_kyc.js') }}?v=1.8"></script>
+<script src="{{ url_for('static', path='/js/customer/booking_wizard/step_kyc.js') }}?v={{ range(10000000, 99999999) | random }}"></script>
 {% endblock %}
