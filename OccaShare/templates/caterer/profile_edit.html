@@ -543,22 +543,12 @@
                         <p>Set clear expectations for bookings, payments, and cancellations.</p>
                     </div>
 
-                    <div class="form-group">
-                        <label><i class="fas fa-file-contract"></i> Booking Policy</label>
-                        <textarea name="booking_policy" rows="3"
-                            placeholder="e.g. Reservations must be made at least 7 days in advance...">{{ profile.booking_policy or '' }}</textarea>
-                    </div>
 
                     <div class="form-group">
-                        <label><i class="fas fa-money-check-alt"></i> Payment Policy</label>
-                        <textarea name="payment_policy" rows="3"
-                            placeholder="e.g. 50% downpayment required to confirm, balance due on event day...">{{ profile.payment_policy or '' }}</textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label><i class="fas fa-calendar-times"></i> Cancellation Policy</label>
-                        <textarea name="cancellation_policy" rows="3"
-                            placeholder="e.g. Cancellation must be made 3 days before the event for a partial refund...">{{ profile.cancellation_policy or '' }}</textarea>
+                        <label><i class="fas fa-file-signature"></i> Terms & Conditions (Digital Contract)</label>
+                        <textarea name="terms_and_conditions" rows="5"
+                            placeholder="e.g. A non-refundable, non-transferable deposit is required. Payment is due in full 1 week prior to event...">{{ profile.terms_and_conditions or '' }}</textarea>
+                        <span class="field-hint">This will be attached to your digital booking contract that customers must agree to before checkout.</span>
                     </div>
                 </div>
 

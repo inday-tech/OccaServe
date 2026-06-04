@@ -573,6 +573,18 @@
                             <div class="sum-row"><strong>When:</strong> <span id="rev-datetime">-</span></div>
                             <div class="sum-row"><strong>Address:</strong> <span id="rev-location">-</span></div>
                         </div>
+
+                        {% if caterer.terms_and_conditions %}
+                        <div style="margin-top: 1.5rem; background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #cbd5e1;">
+                            <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer;">
+                                <input type="checkbox" id="alacarteTermsAgreement" name="terms_agreement" required style="margin-top: 4px; transform: scale(1.2);">
+                                <span style="font-size: 0.85rem; color: var(--up-slate-700); line-height: 1.4;">
+                                    <strong>I agree to the Terms & Conditions of {{ caterer.business_name }}:</strong><br>
+                                    <span style="font-style: italic; display: block; margin-top: 4px; padding-left: 8px; border-left: 2px solid #cbd5e1;">"{{ caterer.terms_and_conditions }}"</span>
+                                </span>
+                            </label>
+                        </div>
+                        {% endif %}
                     </div>
 
                     <div id="place-order-loading" style="display: none; text-align: center; margin-bottom: 2.5rem;">
