@@ -337,6 +337,18 @@
                     </div>
                 </div>
 
+                {% if profile.terms_and_conditions %}
+                <div style="margin-bottom: 1.5rem; background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #cbd5e1;">
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" id="termsAgreementCheckbox" name="terms_agreement" form="wizard-payment-form" required style="margin-top: 4px; transform: scale(1.2);">
+                        <span style="font-size: 0.85rem; color: var(--up-slate-700); line-height: 1.4;">
+                            <strong>I agree to the Terms & Conditions of {{ profile.business_name }}:</strong><br>
+                            <span style="font-style: italic; display: block; margin-top: 4px; padding-left: 8px; border-left: 2px solid #cbd5e1;">"{{ profile.terms_and_conditions }}"</span>
+                        </span>
+                    </label>
+                </div>
+                {% endif %}
+
                 <button type="submit" id="submit-payment-btn" form="wizard-payment-form" style="width: 100%; background: var(--up-emerald-500); color: white; border: none; padding: 1rem; border-radius: 8px; font-weight: 800; font-size: 1rem; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);">
                     {% if booking.payment_status == 'reupload_requested' %}
                     Submit New Proof <i class="fas fa-check"></i>

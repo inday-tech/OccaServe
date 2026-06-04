@@ -140,9 +140,7 @@ class CatererProfile(Base):
     header_decoration = Column(String, default="none") # 'none', 'utensils', 'sparkles'
     
     # NEW: Policy Fields
-    booking_policy = Column(Text, nullable=True)
-    payment_policy = Column(Text, nullable=True)
-    cancellation_policy = Column(Text, nullable=True)
+    terms_and_conditions = Column(Text, nullable=True)
     
     # NEW: Notification Preferences (JSONB for flexibility)
     notification_preferences = Column(JSONB, default={

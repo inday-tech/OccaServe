@@ -138,32 +138,12 @@
         <h2 class="contract-section-title">3. Standard Terms & Conditions</h2>
         <div class="contract-clauses-list">
             <div class="clause-item">
-                <span class="clause-num">3.1 Payment Policy:</span>
-                <span class="clause-text">
-                    {% if booking.caterer.payment_policy %}
-                        {{ booking.caterer.payment_policy }}
+                <span class="clause-num">3.1 Terms & Conditions:</span>
+                <span class="clause-text" style="white-space: pre-wrap;">
+                    {% if booking.caterer.terms_and_conditions %}
+                        {{ booking.caterer.terms_and_conditions }}
                     {% else %}
-                        Full payment is required no later than seven (7) days prior to the event date. Failure to settle the balance may result in service suspension.
-                    {% endif %}
-                </span>
-            </div>
-            <div class="clause-item">
-                <span class="clause-num">3.2 Cancellation & Refund:</span>
-                <span class="clause-text">
-                    {% if booking.caterer.cancellation_policy %}
-                        {{ booking.caterer.cancellation_policy }}
-                    {% else %}
-                        Cancellations made within 14 days of the event will result in forfeiture of the security deposit. Special requests are non-refundable.
-                    {% endif %}
-                </span>
-            </div>
-            <div class="clause-item">
-                <span class="clause-num">3.3 Booking & Service Terms:</span>
-                <span class="clause-text">
-                    {% if booking.caterer.booking_policy %}
-                        {{ booking.caterer.booking_policy }}
-                    {% else %}
-                        The Service Provider is not liable for indirect or consequential damages. The Client assumes responsibility for venue compliance and obtaining necessary permits.
+                        The Service Provider is not liable for indirect or consequential damages. The Client assumes responsibility for venue compliance and obtaining necessary permits. Full payment is required prior to the event date. Cancellations are subject to forfeiture of the security deposit.
                     {% endif %}
                 </span>
             </div>

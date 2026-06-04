@@ -2248,9 +2248,7 @@ async def update_profile(
     card_holder_name: Optional[str] = Form(None),
     card_number: Optional[str] = Form(None),
     cash_instructions: Optional[str] = Form(None),
-    booking_policy: Optional[str] = Form(None),
-    payment_policy: Optional[str] = Form(None),
-    cancellation_policy: Optional[str] = Form(None),
+    terms_and_conditions: Optional[str] = Form(None),
     primary_color: Optional[str] = Form(None),
     secondary_color: Optional[str] = Form(None),
     accent_color: Optional[str] = Form(None),
@@ -2319,9 +2317,7 @@ async def update_profile(
     profile.card_holder_name = card_holder_name
     profile.card_number = card_number
     profile.cash_instructions = cash_instructions
-    profile.booking_policy = booking_policy
-    profile.payment_policy = payment_policy
-    profile.cancellation_policy = cancellation_policy
+    profile.terms_and_conditions = terms_and_conditions
 
     # Update branding
     profile.primary_color = primary_color

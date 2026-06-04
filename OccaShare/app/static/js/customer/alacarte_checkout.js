@@ -340,6 +340,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- FINAL SUBMIT ---
     window.submitAtaCarteOrder = async function() {
+        // Terms & Conditions Validation
+        const termsCheckbox = document.getElementById('alacarteTermsAgreement');
+        if (termsCheckbox && !termsCheckbox.checked) {
+            Swal.fire({
+                title: 'Action Required',
+                text: 'You must agree to the caterer\'s Terms & Conditions before placing your order.',
+                icon: 'warning',
+                confirmButtonColor: 'var(--up-emerald-500)'
+            });
+            return;
+        }
+
         // Fallback recovery
         const currentId = getActiveBookingId();
         
