@@ -1178,7 +1178,7 @@ currentPassInput.addEventListener('input', validateRequirements);
             geocoder.geocode({ location: { lat, lng } }, (results, status) => {
                 if (status === 'OK' && results[0]) {
                     const components = results[0].address_components;
-                    const cityInput = document.getElementById('locationCity');
+                    const cityInput = document.getElementById('cityNameHidden');
                     const addressInput = document.getElementById('businessAddress');
 
                     if (cityInput) {
@@ -1186,11 +1186,6 @@ currentPassInput.addEventListener('input', validateRequirements);
                             || components.find(c => c.types.includes('administrative_area_level_2'))
                             || components.find(c => c.types.includes('administrative_area_level_1'));
                         if (city) cityInput.value = city.long_name;
-                    }
-
-                    if (addressInput) {
-                        const parts = results[0].formatted_address.split(',');
-                        addressInput.value = parts.slice(0, Math.min(3, parts.length - 1)).join(',').trim();
                     }
                 }
             });
@@ -1241,7 +1236,7 @@ currentPassInput.addEventListener('input', validateRequirements);
             updateCoords(lat, lng);
 
             // Auto-fill city and address
-            const cityInput = document.getElementById('locationCity');
+            const cityInput = document.getElementById('cityNameHidden');
             const addressInput = document.getElementById('businessAddress');
             const components = place.address_components || [];
 
@@ -1250,11 +1245,6 @@ currentPassInput.addEventListener('input', validateRequirements);
                     || components.find(c => c.types.includes('administrative_area_level_2'))
                     || components.find(c => c.types.includes('administrative_area_level_1'));
                 if (city) cityInput.value = city.long_name;
-            }
-
-            if (addressInput) {
-                const parts = place.formatted_address.split(',');
-                addressInput.value = parts.slice(0, Math.min(3, parts.length - 1)).join(',').trim();
             }
         });
 
@@ -1315,9 +1305,10 @@ currentPassInput.addEventListener('input', validateRequirements);
             const hasValidCoords = initialLat !== 14.2811 && initialLng !== 121.4150 && initialLat !== 0 && initialLng !== 0;
             if (!hasValidCoords) {
                 const savedAddress = document.getElementById('businessAddress')?.value?.trim();
-                const savedCity = document.getElementById('locationCity')?.value?.trim();
+                const savedCity = document.getElementById('cityNameHidden')?.value?.trim();
+                const savedProv = document.getElementById('provinceNameHidden')?.value?.trim();
                 if (savedAddress || savedCity) {
-                    const fullAddress = [savedAddress, savedCity, 'Philippines'].filter(Boolean).join(', ');
+                    const fullAddress = [savedAddress, savedCity, savedProv, 'Philippines'].filter(Boolean).join(', ');
                     geocoder.geocode({ address: fullAddress }, (results, status) => {
                         if (status === 'OK' && results[0]) {
                             const loc = results[0].geometry.location;
