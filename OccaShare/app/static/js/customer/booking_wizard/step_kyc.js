@@ -706,7 +706,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 window._ocrExtractedData = result.extracted_data || {};
                 window._ocrTempIdUrl = result.temp_id_url || '';
 
-                if (window._ocrCompressedFile || result.autocrop_succeeded) {
+                if (window._ocrCompressedFile || result.autocrop_succeeded || result.success) {
                     window._ocrCompressedFile = finalFile;
                     
                     const cropPreview = document.getElementById('ocr-crop-preview');

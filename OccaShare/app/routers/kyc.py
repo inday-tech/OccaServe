@@ -397,22 +397,39 @@ async def view_kyc_document(
     """Secure proxy to decrypt and view KYC documents."""
     # RBAC: Only admin, the document owner, or their caterer can view
     is_admin = current_user.role == "admin"
-    is_owner = filename.startswith(f"user_{current_user.id}")
+    is_owner = (
+        filename.startswith(f"user_{current_user.id}_") or
+        filename.startswith(f"temp_ocr_{current_user.id}_") or
+        filename.startswith(f"cropped_temp_ocr_{current_user.id}_") or
+        filename.startswith(f"cropped_user_{current_user.id}_")
+    )
     
     is_caterer_authorized = False
     if current_user.role == "caterer":
         # Check if this caterer has a booking with the user whose ID this is
-        # Extract user_id from filename like "user_123_id_..."
         try:
-            target_user_id = int(filename.split("_")[1])
-            booking = db.query(models.Booking).filter(
-                models.Booking.caterer_id == current_user.caterer_profile.id,
-                models.Booking.user_id == target_user_id
-            ).first()
-            if booking:
-                is_caterer_authorized = True
-        except:
-            pass
+            parts = filename.split("_")
+            target_user_id = None
+            if filename.startswith("cropped_"):
+                if len(parts) > 2 and parts[1] == "user":
+                    target_user_id = int(parts[2])
+                elif len(parts) > 3 and parts[1] == "temp" and parts[2] == "ocr":
+                    target_user_id = int(parts[3])
+            else:
+                if len(parts) > 1 and parts[0] == "user":
+                    target_user_id = int(parts[1])
+                elif len(parts) > 2 and parts[0] == "temp" and parts[1] == "ocr":
+                    target_user_id = int(parts[2])
+
+            if target_user_id is not None:
+                booking = db.query(models.Booking).filter(
+                    models.Booking.caterer_id == current_user.caterer_profile.id,
+                    models.Booking.user_id == target_user_id
+                ).first()
+                if booking:
+                    is_caterer_authorized = True
+        except Exception as parse_err:
+            print(f"[KYC VIEW] Caterer authorization parsing failed: {parse_err}")
 
     if not (is_owner or is_admin or is_caterer_authorized):
         raise HTTPException(status_code=403, detail="Unauthorized access to this document.")
