@@ -52,7 +52,7 @@
         // Update Buttons
         const prevBtn = document.getElementById('prevBtnCat');
         const nextBtn = document.getElementById('nextBtnCat');
-        if (prevBtn) prevBtn.style.display = currentStepCat === 1 ? 'none' : 'block';
+        if (prevBtn) prevBtn.style.display = currentStepCat === 1 ? 'none' : 'inline-block';
 
         if (nextBtn) {
             const btnText = nextBtn.querySelector('span') || nextBtn;
@@ -333,6 +333,8 @@
         return valid;
     }
 
+    window.extractedOcrData = window.extractedOcrData || {};
+
     async function submitCatererForm() {
         const form = document.getElementById('catererForm');
         if (!form) return;
@@ -354,12 +356,129 @@
             return;
         }
 
+        // Show OCR Validation Modal before final submit
+        showOcrReviewModal();
+    }
+
+    function showOcrReviewModal() {
+        const userBizName = document.getElementById('business_name')?.value || '';
+        const userFirstName = document.getElementById('first_name_cat')?.value || '';
+        const userLastName = document.getElementById('last_name_cat')?.value || '';
+        const userIdNumber = document.getElementById('id_number_cat')?.value || '';
+
+        const extBizName = window.extractedOcrData?.permit?.business_name || window.extractedOcrData?.permit?.business_name_extracted || 'Not clear/detected';
+        const extFullName = window.extractedOcrData?.id?.full_name || window.extractedOcrData?.id?.full_name_extracted || 'Not clear/detected';
+        const extIdNum = window.extractedOcrData?.id?.id_number || window.extractedOcrData?.id?.id_number_extracted || 'Not clear/detected';
+
+        if (window.Swal) {
+            Swal.fire({
+                title: 'Review Extracted Information',
+                html: `
+                    <div style="text-align: left; font-size: 0.9rem; max-height: 60vh; overflow-y: auto; overflow-x: hidden; padding-right: 5px;">
+                        <p style="margin-bottom: 1.5rem; color: #475569;">Please verify the extracted information from your uploaded documents against what you entered. You may edit your input if needed.</p>
+                        
+                        <div style="margin-bottom: 1.25rem;">
+                            <h4 style="color: #1e293b; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem;">Business Name</h4>
+                            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                <div>
+                                    <label style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Extracted from Permit</label>
+                                    <div style="padding: 0.6rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.5rem; color: #0f172a; font-weight: 500; word-break: break-word;">${extBizName}</div>
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Your Input</label>
+                                    <input type="text" id="review_biz_name" class="minimal-input" value="${userBizName}" style="padding: 0.6rem; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 0.5rem;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 1.25rem;">
+                            <h4 style="color: #1e293b; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem;">Owner Name</h4>
+                            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                <div>
+                                    <label style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Extracted from ID</label>
+                                    <div style="padding: 0.6rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.5rem; color: #0f172a; font-weight: 500; word-break: break-word;">${extFullName}</div>
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Your Input (First / Last)</label>
+                                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                        <input type="text" id="review_first_name" class="minimal-input" value="${userFirstName}" placeholder="First" style="padding: 0.6rem; flex: 1; min-width: 100px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 0.5rem;">
+                                        <input type="text" id="review_last_name" class="minimal-input" value="${userLastName}" placeholder="Last" style="padding: 0.6rem; flex: 1; min-width: 100px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 0.5rem;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 style="color: #1e293b; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem;">ID Number</h4>
+                            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                <div>
+                                    <label style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Extracted from ID</label>
+                                    <div style="padding: 0.6rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.5rem; color: #0f172a; font-weight: 500; word-break: break-word;">${extIdNum}</div>
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Your Input</label>
+                                    <input type="text" id="review_id_number" class="minimal-input" value="${userIdNumber}" style="padding: 0.6rem; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 0.5rem;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `,
+                width: '90%',
+                maxWidth: '500px',
+                showCancelButton: true,
+                confirmButtonText: 'Looks Good, Submit',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#f97316',
+                customClass: {
+                    popup: 'premium-auth-swal'
+                },
+                preConfirm: () => {
+                    const rBizName = document.getElementById('review_biz_name').value.trim();
+                    const rFirst = document.getElementById('review_first_name').value.trim();
+                    const rLast = document.getElementById('review_last_name').value.trim();
+                    const rId = document.getElementById('review_id_number').value.trim();
+
+                    if (!rBizName || !rFirst || !rLast || !rId) {
+                        Swal.showValidationMessage('All fields must be filled.');
+                        return false;
+                    }
+
+                    document.getElementById('business_name').value = rBizName;
+                    document.getElementById('first_name_cat').value = rFirst;
+                    document.getElementById('last_name_cat').value = rLast;
+                    document.getElementById('id_number_cat').value = rId;
+
+                    return true;
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    finalExecuteSubmit();
+                }
+            });
+        } else {
+            finalExecuteSubmit();
+        }
+    }
+
+    function updateAddressCat() {
+        const prov = document.getElementById('province_cat')?.value || '';
+        const city = document.getElementById('city_cat')?.value || '';
+        const brgy = document.getElementById('barangay_cat')?.value || '';
+        const street = document.getElementById('street_cat')?.value || '';
+        const hiddenAddress = document.getElementById('address_cat_hidden');
+        if (hiddenAddress) {
+            hiddenAddress.value = `${street}, ${brgy}, ${city}, ${prov}`.replace(/^[\s,]+|[\s,]+$/g, '');
+        }
+    }
+
+    async function finalExecuteSubmit() {
+        const form = document.getElementById('catererForm');
         const formData = new FormData(form);
         const submitBtn = document.getElementById('nextBtnCat');
 
         if (submitBtn) submitBtn.disabled = true;
-        const originalText = submitBtn.innerHTML;
-        submitBtn.innerText = 'Creating Account...';
+        const originalText = submitBtn ? submitBtn.innerText : 'Submit';
+        if (submitBtn) submitBtn.innerText = 'Creating Account...';
 
         try {
             updateAddressCat();
@@ -375,6 +494,12 @@
                 const val = formData.get(f);
                 if (val) formData.set(f, val.toString().replace(/,/g, ''));
             });
+
+            // Re-compose full name after potential edit in review modal
+            const fn = document.getElementById('first_name_cat')?.value.trim() || '';
+            const ln = document.getElementById('last_name_cat')?.value.trim() || '';
+            const mn = document.getElementById('middle_name_cat')?.value.trim() || '';
+            formData.set('full_name', `${fn} ${mn ? mn + ' ' : ''}${ln}`.trim());
 
             const response = await fetch('/auth/register', {
                 method: 'POST',
@@ -396,7 +521,7 @@
         } finally {
             if (submitBtn) {
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = originalText;
+                submitBtn.innerText = originalText;
             }
         }
     }
@@ -635,8 +760,12 @@
                         }, 800);
                     }
                 } catch (err) {
-                    Swal.showValidationMessage(`Camera Error: ${err.message}`);
-                    setTimeout(() => Swal.close(), 2000);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Camera Access Required',
+                        text: 'No camera detected or permission denied. Please allow camera access or connect a camera to proceed with identity verification. This is required for security.',
+                        confirmButtonColor: '#f97316'
+                    });
                 }
             },
 
@@ -662,6 +791,32 @@
         const canvas = document.getElementById('modalWebcamCanvas');
 
         if (!video || !canvas) return false;
+
+        if (video.readyState < 2) {
+            if (instr) {
+                instr.innerText = "Waiting for camera feed...";
+                instr.style.background = "#fef3c7";
+                instr.style.color = "#92400e";
+            }
+            try {
+                await new Promise((resolve, reject) => {
+                    let attempts = 0;
+                    const check = setInterval(() => {
+                        attempts++;
+                        if (video.readyState >= 2) {
+                            clearInterval(check);
+                            resolve();
+                        } else if (attempts > 50) {
+                            clearInterval(check);
+                            reject(new Error("timeout"));
+                        }
+                    }, 100);
+                });
+            } catch (e) {
+                Swal.fire('Camera Error', 'Camera feed is not active. Please check your hardware or permissions.', 'error');
+                return false;
+            }
+        }
 
         if (typeof FaceMesh !== 'undefined') {
             if (instr) {
@@ -713,11 +868,37 @@
 
                     const landmarks = results.multiFaceLandmarks[0];
 
-                    // Occlusion & Obstruction Detection
+                    let minX = 1, maxX = 0, minY = 1, maxY = 0;
+                    for (let i = 0; i < landmarks.length; i++) {
+                        if (landmarks[i].x < minX) minX = landmarks[i].x;
+                        if (landmarks[i].x > maxX) maxX = landmarks[i].x;
+                        if (landmarks[i].y < minY) minY = landmarks[i].y;
+                        if (landmarks[i].y > maxY) maxY = landmarks[i].y;
+                    }
+                    const faceWidth = maxX - minX;
+                    const faceHeight = maxY - minY;
+
+                    if (faceWidth < 0.22 || faceHeight < 0.32) {
+                        if (instr) {
+                            instr.innerText = "⚠️ Please move closer to the camera.";
+                            instr.style.background = "#fef3c7";
+                            instr.style.color = "#92400e";
+                        }
+                        return;
+                    }
+
+                    if (faceWidth > 0.85 || faceHeight > 0.85) {
+                        if (instr) {
+                            instr.innerText = "⚠️ Please move a bit further back.";
+                            instr.style.background = "#fef3c7";
+                            instr.style.color = "#92400e";
+                        }
+                        return;
+                    }
+
                     const criticalPoints = [1, 33, 263, 61, 291];
                     const boundsCheck = criticalPoints.some(idx => !landmarks[idx] || landmarks[idx].x < 0 || landmarks[idx].x > 1 || landmarks[idx].y < 0 || landmarks[idx].y > 1);
 
-                    // Calculate Nose Centering
                     const nose = landmarks[1];
                     const leftEye = landmarks[33];
                     const rightEye = landmarks[263];
@@ -729,9 +910,18 @@
                         yawRatio = distR > 0 ? distL / distR : 5;
                     }
 
-                    if (boundsCheck || yawRatio > 2.5 || yawRatio < 0.4) {
+                    if (boundsCheck) {
                         if (instr) {
-                            instr.innerText = "⚠️ Tanggalin yung mga nakaharang sa mukha";
+                            instr.innerText = "⚠️ Remove face coverings or ensure good lighting.";
+                            instr.style.background = "#fee2e2";
+                            instr.style.color = "#991b1b";
+                        }
+                        return;
+                    }
+
+                    if (yawRatio > 2.0 || yawRatio < 0.5) {
+                        if (instr) {
+                            instr.innerText = "⚠️ Face the camera directly.";
                             instr.style.background = "#fee2e2";
                             instr.style.color = "#991b1b";
                         }
@@ -844,39 +1034,13 @@
                 analyzeFrame();
             });
         } else {
-            console.warn("[KYC] MediaPipe not loaded. Falling back to countdown mode.");
-            const frames = [];
-            const steps = [
-                { text: "Look directly at the camera", delay: 800 },
-                { text: "Now... BLINK your eyes", delay: 1000 },
-                { text: "Hold still...", delay: 800 }
-            ];
-
-            for (const step of steps) {
-                if (instr) {
-                    instr.innerText = step.text;
-                    instr.classList.add('active');
-                }
-                await new Promise(r => setTimeout(r, step.delay));
-
-                const blob = await new Promise(resolve => {
-                    const context = canvas.getContext('2d');
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    canvas.toBlob(resolve, 'image/jpeg', 0.9);
-                });
-                frames.push(blob);
-            }
-
-            const filename = `selfie_sequence_${Date.now()}.jpg`;
-            const files = frames.map((blob, i) => new File([blob], `frame_${i}_${filename}`, { type: "image/jpeg" }));
-
-            const nameEl = document.getElementById('selfieNameCat');
-            if (nameEl) nameEl.innerText = "Sequence Captured";
-
-            window.handleFileUploadCat(files, 'selfie');
-            return true;
+            Swal.fire({
+                icon: 'error',
+                title: 'AI Scanner Missing',
+                text: 'The Liveness AI Scanner failed to load. Please check your internet connection.',
+                confirmButtonColor: '#f97316'
+            });
+            return false;
         }
     }
 
@@ -1020,6 +1184,13 @@
             if (result.status === 'matched' || result.status === 'approved') {
                 box.classList.add('scanned-success');
                 statusLabel.innerText = type === 'selfie' ? "Identity Matched" : "Verification Passed";
+
+                // Save OCR Data to window object for final review
+                if (result.ocr_data) {
+                    window.extractedOcrData = window.extractedOcrData || {};
+                    if (type === 'id') window.extractedOcrData.id = result.ocr_data;
+                    if (type === 'permit') window.extractedOcrData.permit = result.ocr_data;
+                }
 
                 // Show Success Toast
                 if (window.Swal) {

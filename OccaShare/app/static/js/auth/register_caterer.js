@@ -197,7 +197,7 @@
         // Update Buttons
         const prevBtn = document.getElementById('prevBtnCat');
         const nextBtn = document.getElementById('nextBtnCat');
-        if (prevBtn) prevBtn.style.display = currentStepCat === 1 ? 'none' : 'block';
+        if (prevBtn) prevBtn.style.display = currentStepCat === 1 ? 'none' : 'inline-block';
 
         if (nextBtn) {
             const btnText = nextBtn.querySelector('span');

@@ -123,9 +123,41 @@
             return { valid: true };
         },
         email: (email) => {
-            const emailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+            // Standard email validation regex
+            const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
             if (!email) return { valid: false, message: "Required" };
-            if (!emailRegex.test(email)) return { valid: false, message: "Gmail only (example@gmail.com)" };
+            if (!emailRegex.test(email)) return { valid: false, message: "Invalid email format" };
+            
+            // Anti-spam: No consecutive dots or special characters
+            if (/\.{2,}/.test(email) || /_{2,}/.test(email) || /-{2,}/.test(email)) {
+                return { valid: false, message: "Consecutive symbols are not allowed" };
+            }
+
+            const parts = email.split('@');
+            const prefix = parts[0].toLowerCase();
+            const domain = parts[1].toLowerCase();
+
+            // Minimum 3 characters for the prefix rule
+            if (prefix.length < 3) {
+                return { valid: false, message: "Email prefix must be at least 3 characters" };
+            }
+
+            // Block role-based and test emails
+            const blockedPrefixes = ['admin', 'support', 'info', 'test', 'demo', 'noreply', 'no-reply', 'sysadmin', 'webmaster'];
+            if (blockedPrefixes.includes(prefix)) {
+                return { valid: false, message: "Role-based/Test emails are not allowed" };
+            }
+
+            // Block common disposable email domains for security
+            const disposableDomains = [
+                'mailinator.com', '10minutemail.com', 'guerrillamail.com', 
+                'tempmail.com', 'yopmail.com', 'dropmail.me', 'temp-mail.org', 
+                'throwawaymail.com', 'trashmail.com', 'dispostable.com'
+            ];
+            
+            if (disposableDomains.includes(domain)) {
+                return { valid: false, message: "Disposable emails are not allowed" };
+            }
             return { valid: true };
         },
         mobile: (val) => {
@@ -134,6 +166,22 @@
 
             if (!valClean) return { valid: false, message: "Required" };
             if (!mobileRegex.test(valClean)) return { valid: false, message: "Format: 09XXXXXXXXX (11 digits)" };
+            
+            // Check for excessive repeating identical digits (e.g., 09333333333 or 09333354545 with many 3s)
+            if (/(.)\1{4,}/.test(valClean)) {
+                return { valid: false, message: "Repetitive numbers are not allowed" };
+            }
+            
+            // Check for repetitive sequences (e.g., 545454)
+            if (/(\d{2,})\1{2,}/.test(valClean)) {
+                return { valid: false, message: "Repetitive patterns are not allowed" };
+            }
+            
+            // Check for common test sequences
+            if (/09123456789/.test(valClean) || /09987654321/.test(valClean) || /09000000000/.test(valClean)) {
+                return { valid: false, message: "Invalid contact number pattern" };
+            }
+
             return { valid: true };
         },
         password: (p) => {

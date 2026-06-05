@@ -378,19 +378,25 @@
                         <div class="danger-zone-body">
                             <div class="danger-action-row">
                                 <div>
-                                    <strong>Deactivate Account</strong>
-                                    <p>Temporarily hide your business from customers. You can reactivate anytime.</p>
+                                    <strong>{{ 'Reactivate Account' if profile.account_status == 'Deactivated' else 'Deactivate Account' }}</strong>
+                                    <p>{{ 'Your business is currently hidden. Reactivate to be visible again.' if profile.account_status == 'Deactivated' else 'Temporarily hide your business from customers. You can reactivate anytime.' }}</p>
                                 </div>
-                                <button type="button" class="btn-danger-outline" onclick="handleDeactivate()">
+                                {% if profile.account_status == 'Deactivated' %}
+                                <button type="button" id="btnReactivate" class="btn-primary" style="background:#10b981; border:none; padding:10px 16px; color:white; border-radius:8px; pointer-events: auto !important; position: relative; z-index: 99;">
+                                    <i class="fas fa-eye"></i> Reactivate
+                                </button>
+                                {% else %}
+                                <button type="button" id="btnDeactivate" class="btn-danger-outline" style="pointer-events: auto !important; position: relative; z-index: 99;">
                                     <i class="fas fa-eye-slash"></i> Deactivate
                                 </button>
+                                {% endif %}
                             </div>
                             <div class="danger-action-row" style="border-top: 1px solid #fee2e2;">
                                 <div>
                                     <strong>Request Account Deletion</strong>
                                     <p>Permanently delete all your data. This action cannot be undone.</p>
                                 </div>
-                                <button type="button" class="btn-danger-solid" onclick="handleDeleteRequest()">
+                                <button type="button" id="btnDeleteRequest" class="btn-danger-solid" style="pointer-events: auto !important; position: relative; z-index: 99;">
                                     <i class="fas fa-trash-alt"></i> Request Deletion
                                 </button>
                             </div>
@@ -1513,5 +1519,108 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 });
+
+// ─── ACCOUNT DEACTIVATION & DELETION ───
+async function handleDeactivate() {
+    const reason = window.prompt("Deactivate Account?\n\nYour business profile will be hidden from customers. You can reactivate it later by logging in and clicking Reactivate.\n\nPlease enter a reason (e.g., Taking a break, Fully booked):");
+    
+    if (reason === null) return; // Cancelled
+    if (reason.trim() === '') {
+        alert('You must provide a reason to deactivate.');
+        return;
+    }
+
+    try {
+        const res = await fetch('/caterer/settings/deactivate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason: reason })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            alert('Deactivated: ' + data.message);
+            window.location.href = '/logout';
+        } else {
+            alert('Error: ' + (data.message || 'Failed to deactivate account.'));
+        }
+    } catch (err) {
+        alert('Network error. Please try again.');
+    }
+}
+
+async function handleReactivate() {
+    const confirmed = window.confirm("Reactivate Account?\n\nYour business profile will be visible to customers again.");
+    
+    if (confirmed) {
+        try {
+            const res = await fetch('/caterer/settings/reactivate', { method: 'POST' });
+            const data = await res.json();
+            if (data.status === 'success') {
+                alert('Reactivated: ' + data.message);
+                window.location.reload();
+            } else {
+                alert('Error: ' + (data.message || 'Failed to reactivate account.'));
+            }
+        } catch (err) {
+            alert('Network error. Please try again.');
+        }
+    }
+}
+
+async function handleDeleteRequest() {
+    const confirmWord = window.prompt("Request Account Deletion\n\nThis action is irreversible. All your data, menus, and past bookings will be queued for deletion.\n\nType exactly 'DELETE' to confirm:");
+    
+    if (confirmWord === null) return; // Cancelled
+    
+    if (confirmWord === 'DELETE') {
+        try {
+            const res = await fetch('/caterer/settings/deactivate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason: 'PERMANENT DELETION REQUESTED' })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                alert('Request Submitted: Your account deletion request has been submitted to Admin. You will now be logged out.');
+                window.location.href = '/logout';
+            } else {
+                alert('Error: ' + (data.message || 'Failed to submit request.'));
+            }
+        } catch (err) {
+            alert('Network error. Please try again.');
+        }
+    } else {
+        alert("You must type 'DELETE' exactly. Request cancelled.");
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const btnDeactivate = document.getElementById('btnDeactivate');
+    const btnReactivate = document.getElementById('btnReactivate');
+    const btnDelete = document.getElementById('btnDeleteRequest');
+
+    if (btnDeactivate) {
+        btnDeactivate.addEventListener('click', (e) => {
+            e.preventDefault();
+            console.log("Deactivate clicked");
+            handleDeactivate();
+        });
+    }
+    if (btnReactivate) {
+        btnReactivate.addEventListener('click', (e) => {
+            e.preventDefault();
+            console.log("Reactivate clicked");
+            handleReactivate();
+        });
+    }
+    if (btnDelete) {
+        btnDelete.addEventListener('click', (e) => {
+            e.preventDefault();
+            console.log("Delete clicked");
+            handleDeleteRequest();
+        });
+    }
+});
 </script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 {% endblock %}
