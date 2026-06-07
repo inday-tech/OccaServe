@@ -25,14 +25,15 @@
 
         body {
             font-family: 'Poppins', sans-serif;
-            /* Vibrant Orange Shade Background */
             background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 50%, #fed7aa 100%);
-            height: 100vh;
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
+            overflow-x: hidden;
+            overflow-y: auto;
             color: var(--navy);
+            padding: 2rem 1rem;
         }
 
         /* Decorative background shapes */
@@ -210,6 +211,36 @@
 
         footer strong {
             color: var(--navy);
+        }
+
+        @media (max-width: 768px) {
+            .maintenance-card {
+                padding: 2.5rem 1.5rem;
+                width: 100%;
+                border-radius: 32px;
+            }
+            .logo-container {
+                width: 100px;
+                height: 100px;
+                padding: 15px;
+                margin-bottom: 2rem;
+            }
+            h1 {
+                font-size: 2rem;
+            }
+            p {
+                font-size: 0.95rem;
+                margin-bottom: 2rem;
+            }
+            .status-badge {
+                font-size: 0.7rem;
+                padding: 6px 16px;
+            }
+        }
+        @media (max-height: 700px) {
+            body {
+                align-items: flex-start;
+            }
         }
     </style>
 </head>
