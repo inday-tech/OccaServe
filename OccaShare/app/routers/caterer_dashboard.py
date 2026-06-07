@@ -3805,7 +3805,11 @@ async def view_compliance_queue(
         models.Booking.caterer_id == profile.id,
         models.User.role == "customer",
         models.User.is_archived == False,
-        models.IdentityVerification.verification_status == "pending",
+        models.IdentityVerification.verification_status.in_([
+            "pending", "pending_confirmation", "pending_liveliness", 
+            "processing", "pending_manual_review", "manual_review", 
+            "liveliness_failed", "rejected", "failed"
+        ]),
         models.IdentityVerification.is_archived == False
     ).distinct().all()
 

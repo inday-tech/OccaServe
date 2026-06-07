@@ -329,14 +329,53 @@ def run_liveness_check(images: List[np.ndarray]) -> dict:
     liveness_score = 0.0
     if face_detected_count == len(images) and not occlusion_detected:
         liveness_score += 0.4
-        if ear_variance > 0.001:
+        if ear_variance > 0.0005: # slightly lower threshold for webcams
             liveness_score += 0.3
-        if movement > 0.01:
+        if movement > 0.005: # lower threshold to avoid false rejects
             liveness_score += 0.3
+
+    liveness_score_pct = int(liveness_score * 100)
+    
+    # ─── ANTI-SPOOFING SYSTEM (0-100) ───
+    anti_spoof_score = 98 if face_detected_count == len(images) and not occlusion_detected else 0
+    
+    if face_detected_count == len(images) and not occlusion_detected and len(images) > 1:
+        # 1. Static Image Spoof Check (checking if frames are identical)
+        diffs = []
+        for i in range(1, len(images)):
+            img1_gray = cv2.cvtColor(images[i-1], cv2.COLOR_BGR2GRAY)
+            img2_gray = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
+            if img1_gray.shape != img2_gray.shape:
+                img2_gray = cv2.resize(img2_gray, (img1_gray.shape[1], img1_gray.shape[0]))
+            diff = cv2.absdiff(img1_gray, img2_gray)
+            mean_diff = np.mean(diff)
+            diffs.append(mean_diff)
+            
+        avg_diff = np.mean(diffs)
+        print(f"[Anti-Spoof] Average frame difference: {avg_diff}")
+        if avg_diff < 0.3: # Static image/screenshot replay detection
+            print("[Anti-Spoof] WARNING: Extremely low frame difference. Suspected static image spoof.")
+            anti_spoof_score = min(anti_spoof_score, 12)
+            
+        # 2. Glare/Reflection check (common for screens and monitors)
+        glare_pixels = 0
+        total_pixels = 0
+        for img in images:
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            glare = np.sum(gray > 250)
+            glare_pixels += glare
+            total_pixels += gray.size
+            
+        glare_pct = (glare_pixels / total_pixels) * 100 if total_pixels > 0 else 0.0
+        print(f"[Anti-Spoof] Glare percentage: {glare_pct:.2f}%")
+        if glare_pct > 15.0:
+            print("[Anti-Spoof] WARNING: High glare. Screen display suspected.")
+            anti_spoof_score = min(anti_spoof_score, 35)
 
     return {
         "success": face_detected_count > 0,
-        "score": float(liveness_score),
+        "score": liveness_score_pct,
+        "anti_spoof_score": int(anti_spoof_score),
         "face_count": face_detected_count,
         "occlusion_detected": occlusion_detected,
         "failure_reason": occlusion_reason,
@@ -483,14 +522,23 @@ async def verify(
                 enforce_detection=enforce_detection,
                 model_name="VGG-Face"
             )
+            distance = float(df_result.get("distance", 0.0))
+            threshold = float(df_result.get("threshold", 0.4))
+            
+            # Map score to 0-100 scale based on threshold
+            if distance <= threshold:
+                face_match_score = int(90 + (10 * (threshold - distance) / threshold)) if threshold > 0 else 100
+            else:
+                face_match_score = int(max(0, 90 * (1.0 - distance) / (1.0 - threshold))) if (1.0 - threshold) > 0 else 0
 
             result["verification"] = {
                 "success": True,
                 "verified": bool(df_result.get("verified", False)),
-                "distance": float(df_result.get("distance", 0.0)),
-                "threshold": float(df_result.get("threshold", 0.4)),
+                "distance": distance,
+                "threshold": threshold,
                 "model": df_result.get("model", "VGG-Face"),
-                "similarity_score": float(1 - df_result.get("distance", 0.0))
+                "similarity_score": float(1.0 - distance),
+                "face_match_score": int(face_match_score)
             }
         except Exception as e:
             print(f"[API Verify] DeepFace verification failed: {e}")

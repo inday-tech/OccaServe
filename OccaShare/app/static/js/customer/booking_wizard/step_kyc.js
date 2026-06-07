@@ -1,3 +1,5 @@
+import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8";
+
 document.addEventListener('DOMContentLoaded', function () {
     let bookingId = window.bookingId;
     let stream = null;
@@ -7,6 +9,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let ws = null;
     let availableDevices = [];
     let currentDeviceIndex = 0;
+    let currentFacingMode = "environment";
 
     // Mobile Detection
     const isMobile = () => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -1126,27 +1129,71 @@ document.addEventListener('DOMContentLoaded', function () {
                     
                     canvas.width = width;
                     canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-                    canvas.toBlob((blob) => resolve(blob), 'image/jpeg', quality);
-                };
-                img.onerror = (e) => reject(e);
-            };
-            reader.onerror = (e) => reject(e);
-        });
+            // MediaPipe & Active Challenge State Variables
+    let faceLandmarker = null;
+    let challengesList = [];
+    let currentChallengeIndex = 0;
+    let challengeHeldStartTime = 0;
+    let isLivenessRunning = false;
+    let lastVideoTime = -1;
+    let animationFrameId = null;
+    
+    // Canvas helper context for mirrored visual outline guide overlay
+    let guideCanvas = document.getElementById('face-guide-canvas');
+    let guideCtx = guideCanvas ? guideCanvas.getContext('2d') : null;
+
+    async function initializeFaceLandmarker() {
+        if (faceLandmarker) return;
+        try {
+            console.log("[KYC] Initializing MediaPipe Face Landmarker...");
+            const vision = await FilesetResolver.forVisionTasks(
+                "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/wasm"
+            );
+            faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+                baseOptions: {
+                    modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+                    delegate: "GPU"
+                },
+                runningMode: "VIDEO",
+                numFaces: 1
+            });
+            console.log("[KYC] MediaPipe Face Landmarker initialized successfully.");
+        } catch (err) {
+            console.error("[KYC] Failed to initialize Face Landmarker:", err);
+            if (window.showError) {
+                window.showError("Failed to initialize biometrics engine. Please ensure you are connected to the internet.", "Biometrics Error");
+            }
+        }
     }
 
     window.startRealtimeScanner = async function () {
         const video = document.getElementById('webcam');
         const startBtn = document.getElementById('btn-start-camera');
-        const beginBtn = document.getElementById('btn-begin-capture');
-
+        
         if (stream) {
-            stream.getTracks().forEach(track => track.stop());
+            try {
+                stream.getTracks().forEach(track => track.stop());
+            } catch (e) {}
         }
 
+        // 1. Fetch randomized challenges from backend
+        try {
+            const initRes = await fetch(`/api/bookings/${bookingId}/kyc/session/init`, { method: 'POST' });
+            if (!initRes.ok) throw new Error("Failed to initialize verification session");
+            const sessionData = await initRes.json();
+            console.log("[KYC] Initialized Verification Session:", sessionData);
+            challengesList = sessionData.challenges || ["blink", "smile"];
+            currentChallengeIndex = 0;
+            selfieFrames = [];
+        } catch (err) {
+            console.error("[KYC] Verification Session Init Error:", err);
+            if (window.showError) window.showError("Unable to initialize verification session.", "Session Error");
+            return;
+        }
+
+        // 2. Open Webcam
         const configs = [
-            { video: { facingMode: livenessFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } } },
+            { video: { facingMode: livenessFacingMode, width: { ideal: 640 }, height: { ideal: 480 } } },
             { video: { facingMode: livenessFacingMode } },
             { video: true }
         ];
@@ -1158,98 +1205,293 @@ document.addEventListener('DOMContentLoaded', function () {
                 success = true;
                 break;
             } catch (err) {
-                console.warn("Liveness camera failed", err);
+                console.warn("Liveness camera failed config", err);
             }
         }
 
         if (success) {
             video.srcObject = stream;
-            startBtn.style.display = 'none';
-            beginBtn.style.display = 'inline-block';
-            const feedbackEl = document.getElementById('scan-feedback');
-            if (feedbackEl) feedbackEl.innerText = "Look into the center of the circle and click 'I'm Ready'";
+            if (startBtn) startBtn.style.display = 'none';
+            
+            // Auto start biometrics landmarker if not initialized
+            await initializeFaceLandmarker();
+            
+            // Show challenges checklist UI
+            const chBox = document.getElementById('active-challenges-box');
+            if (chBox) chBox.style.display = 'block';
+            
+            renderChallengeChecklist();
+            
+            isLivenessRunning = true;
+            
+            // Re-find canvas in case it was re-rendered or not present earlier
+            guideCanvas = document.getElementById('face-guide-canvas');
+            if (guideCanvas) {
+                guideCtx = guideCanvas.getContext('2d');
+            }
+
+            video.onloadedmetadata = () => {
+                if (guideCanvas) {
+                    guideCanvas.width = video.videoWidth || 640;
+                    guideCanvas.height = video.videoHeight || 480;
+                }
+            };
+
+            video.onplaying = () => {
+                if (guideCanvas && (!guideCanvas.width || guideCanvas.width === 300)) {
+                    guideCanvas.width = video.videoWidth || 640;
+                    guideCanvas.height = video.videoHeight || 480;
+                }
+                lastVideoTime = -1;
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                animationFrameId = requestAnimationFrame(livenessDetectionLoop);
+            };
+            
             await getCameraDevices();
         } else {
-            if (window.showError) window.showError("Unable to access camera.", "Camera Error"); else alert("Unable to access camera.");
+            if (window.showError) window.showError("Unable to access camera.", "Camera Error");
         }
     };
 
-    window.beginLivenessSequence = async function () {
-        const countdownEl = document.getElementById('selfie-countdown');
-        const feedbackEl = document.getElementById('scan-feedback');
-        document.getElementById('btn-begin-capture').style.display = 'none';
-
-        selfieFrames = [];
-        const prompts = ["Look into the camera", "Blink slowly", "Stay still..."];
-
-        for (let i = 0; i < 3; i++) {
-            const feedbackEl = document.getElementById('scan-feedback');
-            if (feedbackEl) feedbackEl.innerText = prompts[i];
-
-            // 3-2-1 Countdown
-            countdownEl.style.display = 'block';
-            for (let count = 3; count > 0; count--) {
-                countdownEl.innerText = count;
-                await new Promise(r => setTimeout(r, 800));
+    function renderChallengeChecklist() {
+        const checklist = document.getElementById('challenge-checklist');
+        if (!checklist) return;
+        checklist.innerHTML = '';
+        
+        challengesList.forEach((challenge, idx) => {
+            let label = '';
+            let icon = 'fa-circle-notch fa-spin';
+            let color = '#94a3b8';
+            
+            switch(challenge) {
+                case 'blink': label = 'Blink slowly'; break;
+                case 'smile': label = 'Smile widely'; break;
+                case 'turn_left': label = 'Turn your head left'; break;
+                case 'turn_right': label = 'Turn your head right'; break;
+                case 'look_up': label = 'Look slightly up'; break;
+                case 'look_down': label = 'Look slightly down'; break;
+                default: label = challenge;
             }
-            countdownEl.innerText = "📸";
-            await new Promise(r => setTimeout(r, 200));
-            countdownEl.style.display = 'none';
+            
+            let statusHtml = '';
+            if (idx < currentChallengeIndex) {
+                icon = 'fa-check-circle';
+                color = '#22c55e';
+                statusHtml = `<span style="color: #22c55e; font-size: 0.7rem; font-weight: 800;">Completed</span>`;
+            } else if (idx === currentChallengeIndex) {
+                icon = 'fa-spinner fa-spin';
+                color = 'var(--kyc-accent)';
+                statusHtml = `<span style="color: var(--kyc-accent); font-size: 0.7rem; font-weight: 800;">Detecting...</span>`;
+            } else {
+                icon = 'fa-circle';
+                color = '#cbd5e1';
+                statusHtml = `<span style="color: #94a3b8; font-size: 0.7rem; font-weight: 600;">Pending</span>`;
+            }
+            
+            const html = `
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.75rem; background: white; border-radius: 0.75rem; border: 1px solid #f1f5f9;">
+                    <div style="display: flex; align-items: center; gap: 0.6rem;">
+                        <i class="fas ${icon}" style="color: ${color}; font-size: 0.85rem;"></i>
+                        <span style="font-size: 0.8rem; font-weight: 700; color: #1e293b;">${label}</span>
+                    </div>
+                    ${statusHtml}
+                </div>
+            `;
+            checklist.innerHTML += html;
+        });
+        
+        const progressPct = Math.round((currentChallengeIndex / challengesList.length) * 100);
+        const progressText = document.getElementById('challenge-progress-text');
+        const progressBar = document.getElementById('challenge-progress-bar');
+        if (progressText) progressText.innerText = `${progressPct}%`;
+        if (progressBar) progressBar.style.width = `${progressPct}%`;
+    }
 
-            captureFrame(i + 1);
-            await new Promise(r => setTimeout(r, 500));
-        }
+    function getDistance(p1, p2) {
+        return Math.sqrt(
+            Math.pow(p1.x - p2.x, 2) + 
+            Math.pow(p1.y - p2.y, 2) + 
+            Math.pow((p1.z || 0) - (p2.z || 0), 2)
+        );
+    }
 
-        finalizeCapture();
-    };
-
-    function captureFrame(index) {
+    async function livenessDetectionLoop() {
         const video = document.getElementById('webcam');
-        const canvas = document.getElementById('frame-canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0);
+        if (!isLivenessRunning || !video || video.paused || video.ended) return;
 
-        canvas.toBlob((blob) => {
-            const file = new File([blob], `selfie_${index}.jpg`, { type: 'image/jpeg' });
-            selfieFrames.push(file);
-
-            // Add to gallery preview
-            const gallery = document.getElementById('selfie-gallery');
-            const img = document.createElement('img');
-            img.src = URL.createObjectURL(blob);
-            img.style.width = '80px';
-            img.style.height = '80px';
-            img.style.objectFit = 'cover';
-            img.style.borderRadius = '8px';
-            img.style.border = '2px solid var(--kyc-accent)';
-            gallery.appendChild(img);
-        }, 'image/jpeg', 0.9);
-    }
-
-    async function finalizeCapture() {
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-            stream = null;
+        if (guideCanvas && guideCtx) {
+            guideCtx.clearRect(0, 0, guideCanvas.width, guideCanvas.height);
+            
+            // Draw Oval Guide in the center
+            const cx = guideCanvas.width / 2;
+            const cy = guideCanvas.height / 2;
+            const rx = guideCanvas.width * 0.28;
+            const ry = guideCanvas.height * 0.38;
+            
+            guideCtx.beginPath();
+            guideCtx.ellipse(cx, cy, rx, ry, 0, 0, 2 * Math.PI);
+            guideCtx.lineWidth = 4;
+            guideCtx.strokeStyle = window._facePositionedCorrectly ? "#22c55e" : "#f97316";
+            guideCtx.stroke();
         }
 
-        document.getElementById('scanner-container').style.display = 'none';
-        document.getElementById('liveness-review').style.display = 'block';
+        if (faceLandmarker && video.currentTime !== lastVideoTime) {
+            lastVideoTime = video.currentTime;
+            
+            const result = faceLandmarker.detectForVideo(video, performance.now());
+            
+            if (result.faceLandmarks && result.faceLandmarks.length > 0) {
+                const landmarks = result.faceLandmarks[0];
+                
+                // Draw face outline points
+                if (guideCanvas && guideCtx) {
+                    guideCtx.fillStyle = window._facePositionedCorrectly ? "rgba(34, 197, 94, 0.5)" : "rgba(249, 115, 22, 0.5)";
+                    const highlightIndices = [33, 133, 159, 145, 362, 263, 386, 374, 1, 61, 291, 10, 152];
+                    highlightIndices.forEach(idx => {
+                        const lm = landmarks[idx];
+                        const x = lm.x * guideCanvas.width;
+                        const y = lm.y * guideCanvas.height;
+                        guideCtx.beginPath();
+                        guideCtx.arc(x, y, 3, 0, 2 * Math.PI);
+                        guideCtx.fill();
+                    });
+                }
+
+                // --- FACE POSITIONING CHECKS ---
+                const eye_center_x = (landmarks[33].x + landmarks[263].x) / 2;
+                const eye_dist = Math.abs(landmarks[263].x - landmarks[33].x);
+                const nose_offset = (landmarks[1].x - eye_center_x) / eye_dist;
+                
+                const face_height = Math.abs(landmarks[152].y - landmarks[10].y);
+                const nose_rel_y = (landmarks[1].y - landmarks[10].y) / face_height;
+
+                const isCentered = Math.abs(nose_offset) < 0.15 && nose_rel_y > 0.43 && nose_rel_y < 0.60;
+                const isProperSize = eye_dist > 0.16 && eye_dist < 0.48;
+
+                if (!isCentered || !isProperSize) {
+                    window._facePositionedCorrectly = false;
+                    const feedbackEl = document.getElementById('scan-feedback');
+                    if (feedbackEl) {
+                        if (!isProperSize) {
+                            feedbackEl.innerText = eye_dist <= 0.16 ? "Move closer to the camera" : "Move further back";
+                        } else {
+                            feedbackEl.innerText = "Center your face inside the circle";
+                        }
+                    }
+                    challengeHeldStartTime = 0;
+                } else {
+                    window._facePositionedCorrectly = true;
+                    
+                    const currentChallenge = challengesList[currentChallengeIndex];
+                    let challengePassed = false;
+                    let challengePrompt = "";
+
+                    if (currentChallenge === 'blink') {
+                        challengePrompt = "Blink slowly";
+                        const ear_left = getDistance(landmarks[159], landmarks[145]) / getDistance(landmarks[33], landmarks[133]);
+                        const ear_right = getDistance(landmarks[386], landmarks[374]) / getDistance(landmarks[362], landmarks[263]);
+                        const ear_avg = (ear_left + ear_right) / 2;
+                        
+                        if (ear_avg < 0.17) {
+                            challengePassed = true;
+                        }
+                    } else if (currentChallenge === 'smile') {
+                        challengePrompt = "Smile widely";
+                        const mouth_w = getDistance(landmarks[291], landmarks[61]);
+                        const smile_ratio = mouth_w / eye_dist;
+                        
+                        if (smile_ratio > 0.94) {
+                            challengePassed = true;
+                        }
+                    } else if (currentChallenge === 'turn_left') {
+                        challengePrompt = "Turn your head to the left";
+                        if (nose_offset < -0.22) {
+                            challengePassed = true;
+                        }
+                    } else if (currentChallenge === 'turn_right') {
+                        challengePrompt = "Turn your head to the right";
+                        if (nose_offset > 0.22) {
+                            challengePassed = true;
+                        }
+                    } else if (currentChallenge === 'look_up') {
+                        challengePrompt = "Look slightly up";
+                        if (nose_rel_y < 0.43) {
+                            challengePassed = true;
+                        }
+                    } else if (currentChallenge === 'look_down') {
+                        challengePrompt = "Look slightly down";
+                        if (nose_rel_y > 0.59) {
+                            challengePassed = true;
+                        }
+                    }
+
+                    const feedbackEl = document.getElementById('scan-feedback');
+                    if (feedbackEl) feedbackEl.innerText = challengePrompt;
+
+                    if (challengePassed) {
+                        if (challengeHeldStartTime === 0) {
+                            challengeHeldStartTime = Date.now();
+                        } else if (Date.now() - challengeHeldStartTime > 600) { // Hold for 600ms
+                            console.log(`[KYC] Completed challenge: ${currentChallenge}`);
+                            
+                            const file = await captureChallengeFrame(currentChallenge);
+                            selfieFrames.push(file);
+                            
+                            currentChallengeIndex++;
+                            challengeHeldStartTime = 0;
+                            
+                            renderChallengeChecklist();
+                            
+                            if (currentChallengeIndex >= challengesList.length) {
+                                console.log("[KYC] All challenges completed! Auto-submitting...");
+                                isLivenessRunning = false;
+                                if (stream) {
+                                    stream.getTracks().forEach(track => track.stop());
+                                    stream = null;
+                                }
+                                if (guideCtx) guideCtx.clearRect(0, 0, guideCanvas.width, guideCanvas.height);
+                                await autoSubmitLiveness();
+                                return;
+                            }
+                        }
+                    } else {
+                        challengeHeldStartTime = 0;
+                    }
+                }
+            } else {
+                window._facePositionedCorrectly = false;
+                challengeHeldStartTime = 0;
+                const feedbackEl = document.getElementById('scan-feedback');
+                if (feedbackEl) feedbackEl.innerText = "Align your face in the circle";
+            }
+        }
+
+        if (isLivenessRunning) {
+            animationFrameId = requestAnimationFrame(livenessDetectionLoop);
+        }
     }
 
-    window.retryLiveness = function () {
-        selfieFrames = [];
-        document.getElementById('selfie-gallery').innerHTML = '';
-        document.getElementById('liveness-review').style.display = 'none';
-        document.getElementById('scanner-container').style.display = 'block';
-        document.getElementById('btn-start-camera').style.display = 'inline-block';
-        document.getElementById('btn-begin-capture').style.display = 'none';
-        const feedbackEl = document.getElementById('scan-feedback');
-        if (feedbackEl) feedbackEl.innerText = "Tap 'Start Camera' to begin";
-    };
+    async function captureChallengeFrame(challengeName) {
+        const video = document.getElementById('webcam');
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        return new Promise((resolve) => {
+            canvas.toBlob((blob) => {
+                const file = new File([blob], `selfie_${challengeName}.jpg`, { type: 'image/jpeg' });
+                resolve(file);
+            }, 'image/jpeg', 0.92);
+        });
+    }
 
-    window.submitLiveness = async function () {
-        document.getElementById('liveness-review').style.display = 'none';
+    async function autoSubmitLiveness() {
+        const activeBox = document.getElementById('active-challenges-box');
+        if (activeBox) activeBox.style.display = 'none';
+        
+        document.getElementById('scanner-container').style.display = 'none';
         document.getElementById('step-processing').style.display = 'block';
         document.getElementById('status-text').innerText = 'Verifying Biometrics...';
         document.getElementById('status-text').style.color = '';
@@ -1258,21 +1500,53 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const formData = new FormData();
         selfieFrames.forEach(file => formData.append('selfies', file));
+        
+        const completedStr = challengesList.join(",");
+        formData.append('completed_challenges', completedStr);
 
         try {
             const res = await fetch(`/api/bookings/${bookingId}/verify-full`, { method: 'POST', body: formData });
             if (res.ok) {
-                // Stay on the processing screen — polling will decide what to show next
-                // (liveness failure → retry banner, or passed → waiting for caterer)
                 initKycWebSocket();
                 startPolling();
             } else {
                 const data = await res.json();
-                handleRejection(data.detail || "Upload failed");
+                handleRejection(data.detail || "Verification failed");
             }
         } catch (err) {
             handleRejection("Connection lost.");
         }
+    }
+
+    window.beginLivenessSequence = async function () {
+        // Automatically starts on Start Camera now, kept for backward compatibility
+    };
+
+    window.retryLiveness = function () {
+        selfieFrames = [];
+        currentChallengeIndex = 0;
+        challengeHeldStartTime = 0;
+        isLivenessRunning = false;
+        
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+        }
+
+        const activeBox = document.getElementById('active-challenges-box');
+        if (activeBox) activeBox.style.display = 'none';
+        
+        document.getElementById('liveness-review').style.display = 'none';
+        document.getElementById('scanner-container').style.display = 'block';
+        const startBtn = document.getElementById('btn-start-camera');
+        if (startBtn) startBtn.style.display = 'inline-block';
+        
+        const feedbackEl = document.getElementById('scan-feedback');
+        if (feedbackEl) feedbackEl.innerText = "Tap 'Start Camera' to begin";
+    };
+
+    window.submitLiveness = async function () {
+        // Automatically handled by autoSubmitLiveness, kept for backward compatibility
     };
 
     function initKycWebSocket() {
@@ -1313,7 +1587,6 @@ document.addEventListener('DOMContentLoaded', function () {
         };
     }
 
-
     function startPolling() {
         pollingInterval = setInterval(async () => {
             try {
@@ -1324,15 +1597,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     stopPolling();
                     handleApproval(data);
                 } else if (data.status === 'manual_review' || data.status === 'pending_manual_review') {
-                    // Liveness passed — now show the waiting screen for caterer review
                     stopPolling();
                     document.getElementById('step-processing').style.display = 'none';
                     document.getElementById('kyc-waiting-approval').style.display = 'block';
-                    // Keep WebSocket alive for real-time caterer approval notification
                     if (!ws) {
                         initKycWebSocket();
                     }
-                    // Resume polling at a slower rate just to catch approval/rejection
                     pollingInterval = setInterval(async () => {
                         try {
                             const r2 = await fetch(`/api/bookings/${bookingId}/status`);
@@ -1347,7 +1617,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         } catch (e) { console.error("Polling error (phase 2)", e); }
                     }, 5000);
                 } else if (data.status === 'liveliness_failed') {
-                    // Liveness failed — show error immediately during liveness step
                     stopPolling();
                     handleLivenessFailure(data.reason || "Liveness check failed. Please try again.");
                 } else if (data.status === 'rejected' || data.status === 'blocked') {
@@ -1364,9 +1633,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (pollingInterval) clearInterval(pollingInterval);
     }
 
-    // Deprecated in favor of initKycWebSocket
-    function initWebSocket(userId) { }
-
+    function initWebSocket(userId) {}
 
     function handleApproval(data) {
         document.getElementById('kyc-waiting-approval').style.display = 'none';
@@ -1376,12 +1643,12 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('status-text').style.color = "var(--kyc-accent)";
         document.getElementById('status-subtext').innerText = "Success! Continuing...";
 
-
         document.getElementById('node-4').classList.add('completed');
         document.getElementById('node-4').classList.remove('active');
 
         setTimeout(() => {
-            document.getElementById('btn-next').style.display = 'inline-block';
+            const nextBtn = document.getElementById('btn-next');
+            if (nextBtn) nextBtn.style.display = 'inline-block';
             window.location.href = `/bookings/step/quotation/${bookingId}`;
         }, 2000);
     }
@@ -1393,7 +1660,6 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('status-text').style.color = "#ef4444";
         document.getElementById('status-subtext').innerText = msg;
 
-        // Clear any existing buttons inside step-processing to avoid duplicates on fast polling
         const existingBtn = document.getElementById('step-processing').querySelector('.btn-retry-kyc');
         if (existingBtn) existingBtn.remove();
 
@@ -1406,18 +1672,15 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function handleLivenessFailure(msg) {
-        // Liveness failed: return user to selfie step so they can retry without losing ID data
         document.getElementById('kyc-waiting-approval').style.display = 'none';
         document.getElementById('step-processing').style.display = 'none';
 
-        // Show a friendly error banner inside the liveness review / scanner area
         const livenessRetryBanner = document.getElementById('liveness-retry-banner');
         if (livenessRetryBanner) {
             livenessRetryBanner.style.display = 'block';
             const msgEl = document.getElementById('liveness-retry-message');
             if (msgEl) msgEl.innerText = msg;
         } else {
-            // Fallback: show error modal and return to selfie step
             if (window.showError) {
                 window.showError(msg, 'Liveness Check Failed');
             } else {
@@ -1425,21 +1688,28 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // Reset KYC status back to pending_liveliness so the next submit works
         fetch('/api/bookings/kyc/reset-liveness', { method: 'POST' }).catch(() => {});
 
-        // Return user to the selfie capture screen (not a full reload)
         selfieFrames = [];
-        const gallery = document.getElementById('selfie-gallery');
-        if (gallery) gallery.innerHTML = '';
-        document.getElementById('liveness-review').style.display = 'none';
+        currentChallengeIndex = 0;
+        challengeHeldStartTime = 0;
+        isLivenessRunning = false;
+        
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+        }
+
+        const checklistBox = document.getElementById('active-challenges-box');
+        if (checklistBox) checklistBox.style.display = 'none';
+
         document.getElementById('scanner-container').style.display = 'block';
         const startBtn = document.getElementById('btn-start-camera');
-        const beginBtn = document.getElementById('btn-begin-capture');
         if (startBtn) startBtn.style.display = 'inline-block';
-        if (beginBtn) beginBtn.style.display = 'none';
+        
         const feedbackEl = document.getElementById('scan-feedback');
         if (feedbackEl) feedbackEl.innerText = "Tap 'Start Camera' to begin";
+        
         updateStatusTracker(3);
     }
 
@@ -1455,7 +1725,6 @@ document.addEventListener('DOMContentLoaded', function () {
     window.validateIdSelection();
     initDefaultMethod();
 
-    // Re-initialize listeners if already in waiting state
     if (document.getElementById('kyc-waiting-approval').style.display === 'block') {
         console.log("[KYC] Page loaded in waiting state. Initializing real-time listeners...");
         initKycWebSocket();

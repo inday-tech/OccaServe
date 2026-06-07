@@ -56,6 +56,7 @@ class User(Base):
     refresh_tokens = relationship("RefreshToken", back_populates="user")
     audit_logs = relationship("AuditLog", back_populates="user")
     platform_feedback = relationship("PlatformFeedback", back_populates="user", cascade="all, delete-orphan")
+    verification_sessions = relationship("VerificationSession", back_populates="user", cascade="all, delete-orphan")
     
     sent_messages = relationship("ChatMessage", foreign_keys="ChatMessage.sender_id", back_populates="sender")
     received_messages = relationship("ChatMessage", foreign_keys="ChatMessage.receiver_id", back_populates="receiver")
@@ -804,5 +805,22 @@ class BusinessExpense(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     caterer = relationship("CatererProfile", back_populates="business_expenses")
+
+
+class VerificationSession(Base):
+    __tablename__ = "verification_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    status = Column(String, default="pending_liveness") # pending_liveness, pending_face_match, pending_compliance_review, verified, rejected
+    liveness_score = Column(Float, default=0.0)
+    anti_spoof_score = Column(Float, default=0.0)
+    face_match_score = Column(Float, default=0.0)
+    verification_result = Column(JSONB, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
+
+    user = relationship("User", back_populates="verification_sessions")
+
 
 

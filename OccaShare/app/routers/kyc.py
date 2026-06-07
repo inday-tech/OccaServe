@@ -1,11 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, BackgroundTasks, Request
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from ..db import database, models
 from ..core import security as auth
 from ..services.verification import verification_service
 from ..core.encryption import encrypt_data, decrypt_data
 from ..core.utils import validate_file_type_and_size
 from fastapi.responses import Response
+from ..services.notification import NotificationService
+from ..services.realtime import manager
 import os
 import uuid
 import shutil
@@ -13,6 +16,7 @@ import io
 import asyncio
 import time
 import traceback
+import random
 
 # Security Constants
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
@@ -219,12 +223,48 @@ async def upload_id(
 
     return {"success": True, "message": "ID details saved successfully. Proceeding to liveness detection."}
 
+@router.post("/{booking_id}/kyc/session/init")
+async def init_kyc_session(
+    booking_id: int,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """Initializes/resets the liveness verification session with randomized challenges."""
+    # Find existing session or create a new one
+    session = db.query(models.VerificationSession).filter(models.VerificationSession.user_id == current_user.id).order_by(models.VerificationSession.created_at.desc()).first()
+    
+    if not session or session.status in ["verified", "rejected"]:
+        session = models.VerificationSession(user_id=current_user.id)
+        db.add(session)
+        db.commit()
+        db.refresh(session)
+        
+    # Pick 2-3 randomized challenges from the list
+    all_challenges = ["blink", "smile", "turn_left", "turn_right", "look_up", "look_down"]
+    num_challenges = random.randint(2, 3)
+    challenges = random.sample(all_challenges, num_challenges)
+    
+    session.status = "pending_liveness"
+    session.liveness_score = 0.0
+    session.anti_spoof_score = 0.0
+    session.face_match_score = 0.0
+    session.verification_result = {"assigned_challenges": challenges}
+    
+    db.commit()
+    return {
+        "success": True,
+        "session_id": session.id,
+        "challenges": challenges
+    }
+
+
 @router.post("/{booking_id}/verify-full")
 async def verify_full(
     booking_id: int,
     background_tasks: BackgroundTasks,
     request: Request,
     selfies: list[UploadFile] = File(...),
+    completed_challenges: str = Form(None), # e.g. "blink,smile,turn_left"
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
@@ -232,7 +272,12 @@ async def verify_full(
     if not kyc_record or kyc_record.verification_status == "blocked":
         raise HTTPException(status_code=400, detail="KYC process not initialized or blocked.")
 
-    # Save 3 selfie frames (Encrypted)
+    # Get active VerificationSession
+    session = db.query(models.VerificationSession).filter(models.VerificationSession.user_id == current_user.id).order_by(models.VerificationSession.created_at.desc()).first()
+    if not session:
+        raise HTTPException(status_code=400, detail="Liveness session not initialized. Please call init first.")
+
+    # Save selfie frames (Encrypted)
     selfie_urls = []
     for i, file in enumerate(selfies[:3]):
         content = await file.read()
@@ -252,10 +297,14 @@ async def verify_full(
     if len(selfie_urls) > 2: kyc_record.selfie_3_url = selfie_urls[2]
     kyc_record.ip_address = request.client.host
     kyc_record.verification_status = "processing"
+    
+    session.status = "processing"
     db.commit()
 
-    # Add background task for fintech logic
-    # Retrieve data from user profile for background comparison
+    # Parse completed and assigned challenges
+    completed_list = [c.strip() for c in completed_challenges.split(",") if c.strip()] if completed_challenges else []
+    assigned_list = session.verification_result.get("assigned_challenges", []) if session.verification_result else []
+
     dob_str = current_user.dob.strftime('%Y-%m-%d') if current_user.dob else None
     
     full_name_parts = [current_user.first_name]
@@ -273,12 +322,15 @@ async def verify_full(
         kyc_record.id_number,
         kyc_record.verification_type,
         dob_str,
-        current_user.address
+        current_user.address,
+        completed_list,
+        assigned_list
     )
 
     return {"status": "processing", "message": "Verification started. Please wait."}
 
-async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, full_name, id_number, id_type, dob, address):
+
+async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, full_name, id_number, id_type, dob, address, completed_challenges, assigned_challenges):
     # This simulates the Celery worker / Background task logic
     db = next(database.get_db())
     try:
@@ -286,65 +338,110 @@ async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, ful
         user = db.query(models.User).get(user_id)
         booking = db.query(models.Booking).get(booking_id)
         kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user_id).first()
+        session = db.query(models.VerificationSession).filter(models.VerificationSession.user_id == user_id).order_by(models.VerificationSession.created_at.desc()).first()
         
         # Simulate processing time
         time.sleep(0.5)
         
-        result = await verification_service.verify_identity_v2(id_path, selfie_paths, full_name, id_number, id_type, db, user_id, dob, address)
+        result = await verification_service.verify_identity_v2(
+            id_path, selfie_paths, full_name, id_number, id_type, db, user_id, dob, address,
+            completed_challenges=completed_challenges,
+            assigned_challenges=assigned_challenges
+        )
         
-        print(f"[KYC BACKGROUND] Verification Service result: {result.get('status')}")
+        print(f"[KYC BACKGROUND] Verification Service result status: {result.get('status')}")
         
-        # Route based on result:
-        # - liveliness_failed → set status back to 'liveliness_failed' so customer can retry
-        # - anything else (matched / rejected by OCR) → pending_manual_review for caterer audit
-        if result.get("status") == "liveliness_failed":
-            kyc_record.verification_status = "liveliness_failed"
-            print(f"[KYC BACKGROUND] Liveness failed. Setting status to 'liveliness_failed' so customer can retry.")
-        else:
-            kyc_record.verification_status = "pending_manual_review"
-            print(f"[KYC BACKGROUND] Liveness passed. Setting status to 'pending_manual_review' for caterer review.")
-
-        kyc_record.fraud_score = result["fraud_score"]
-        kyc_record.match_score = result.get("face_match_confidence", 0.0)
-        kyc_record.face_detected = result.get("liveness_score", 0.0) > 0 or result.get("face_match_confidence", 0.0) > 0
-        kyc_record.id_detected = result.get("ocr_match", False) or result.get("ocr_data", {}).get("full_name") is not None
-        kyc_record.failure_reason = result["failure_reason"]
-        kyc_record.ocr_data = result.get("ocr_data", {})
-        kyc_record.liveness_status = "passed" if result["status"] != "liveliness_failed" else "failed"
+        # Update VerificationSession
+        if session:
+            session.status = result.get("status", "failed")
+            session.liveness_score = float(result.get("liveness_score", 0.0))
+            session.anti_spoof_score = float(result.get("anti_spoof_score", 0.0))
+            session.face_match_score = float(result.get("face_match_score", 0.0))
+            # Merge dictionary
+            current_res = session.verification_result or {}
+            session.verification_result = {**current_res, **result}
+            db.commit()
+            
+        # Update User & IdentityVerification records if verified
+        if result.get("status") == "verified":
+            user.is_verified = True
+            user.is_kyc_complete = True
+            if kyc_record:
+                kyc_record.verification_status = "verified"
+                kyc_record.verified_at = func.now()
+                kyc_record.failure_reason = None
+                
+            db.query(models.Booking).filter(
+                models.Booking.user_id == user_id,
+                models.Booking.caterer_id == booking.caterer_id
+            ).update({"ocr_verified": True, "liveness_verified": True})
+            
+            # Send Notification
+            await NotificationService.notify_status_update(
+                db, user_id, 
+                "Identity Approved!", 
+                f"Your identity has been verified. You may now proceed with your booking.",
+                f"/bookings/step/quotation/{booking.id}",
+                "kyc_update"
+            )
+            
+        elif result.get("status") == "pending_manual_review":
+            if kyc_record:
+                kyc_record.verification_status = "pending_manual_review"
+                kyc_record.failure_reason = result.get("failure_reason")
+                
+        elif result.get("status") == "liveliness_failed":
+            if kyc_record:
+                kyc_record.verification_status = "liveliness_failed"
+                kyc_record.failure_reason = result.get("failure_reason")
+                
+        elif result.get("status") == "rejected":
+            if kyc_record:
+                kyc_record.verification_status = "rejected"
+                kyc_record.failure_reason = result.get("failure_reason")
+            user.is_verified = False
+            
+            # Send Notification
+            await NotificationService.notify_status_update(
+                db, user_id, 
+                "Identity Action Required", 
+                f"Your identity verification was rejected. Reason: {result.get('failure_reason')}",
+                f"/bookings/step/kyc/{booking.id}",
+                "kyc_update"
+            )
+            
+        if kyc_record:
+            kyc_record.fraud_score = result.get("fraud_score", 0)
+            kyc_record.match_score = result.get("face_match_confidence", 0.0)
+            kyc_record.face_detected = result.get("liveness_score", 0.0) > 0 or result.get("face_match_confidence", 0.0) > 0
+            kyc_record.id_detected = result.get("ocr_match", False) or result.get("ocr_data", {}).get("full_name") is not None
+            kyc_record.ocr_data = result.get("ocr_data", {})
+            kyc_record.liveness_status = "passed" if result["status"] not in ["liveliness_failed", "failed"] else "failed"
             
         # Log to Audit
         audit = models.AuditLog(
             user_id=user_id,
             action="kyc_verification",
             old_status="processing",
-            new_status=kyc_record.verification_status,
-            notes=f"Fraud Score: {result.get('fraud_score', 0)}, OCR: {result.get('ocr_match', False)}"
+            new_status=result.get("status", "failed"),
+            notes=f"Fraud Score: {result.get('fraud_score', 0)}, OCR Match: {result.get('ocr_match', False)}, Liveness Score: {result.get('liveness_score', 0)}"
         )
         db.add(audit)
         db.commit()
-
-        # Terminal Logging for the background process
-        print(f"\n[KYC BACKGROUND] Verification Complete for User {user_id}")
-        print(f" - Status: {kyc_record.verification_status}")
-        print(f" - Fraud Score: {result.get('fraud_score')}")
-        print(f" - OCR Match: {result.get('ocr_match')}")
-        print(f" - Liveness Status: {kyc_record.liveness_status}")
-        if result.get('failure_reason'):
-            print(f" - Failure Reason: {result.get('failure_reason')}")
-        print("-" * 40 + "\n")
-
-    except Exception as e:
-        print(f"[KYC DEBUG] Error in background KYC: {e}")
-        traceback.print_exc()
+        
+        # Real-time WebSocket Notification
         try:
-            db = next(database.get_db())
-            kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user_id).first()
-            if kyc_record:
-                kyc_record.verification_status = "failed"
-                kyc_record.failure_reason = f"System error during processing: {str(e)}"
-                db.commit()
-        except:
-            pass
+            await manager.broadcast_to_user(user_id, {
+                "type": "kyc_update",
+                "status": result.get("status"),
+                "reason": result.get("failure_reason")
+            })
+        except Exception as e:
+            print(f"[KYC BACKGROUND WS ERROR] {e}")
+            
+    except Exception as e:
+        print(f"[KYC BACKGROUND ERROR] {e}")
+        traceback.print_exc()
 
 @router.post("/kyc/reset")
 async def reset_kyc_status(
@@ -379,14 +476,32 @@ async def get_kyc_status(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    session = db.query(models.VerificationSession).filter(models.VerificationSession.user_id == current_user.id).order_by(models.VerificationSession.created_at.desc()).first()
     kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).first()
-    if not kyc_record:
-        return {"status": "pending"}
-    return {
-        "status": kyc_record.verification_status,
-        "fraud_score": kyc_record.fraud_score,
-        "reason": kyc_record.failure_reason
-    }
+    
+    # If blocked or rejected on the main compliance record, yield that
+    if kyc_record and kyc_record.verification_status in ["blocked", "rejected"]:
+        return {
+            "status": kyc_record.verification_status,
+            "fraud_score": kyc_record.fraud_score,
+            "reason": kyc_record.failure_reason
+        }
+        
+    if session:
+        return {
+            "status": session.status,
+            "fraud_score": int(session.anti_spoof_score),
+            "reason": session.verification_result.get("failure_reason") if session.verification_result else None
+        }
+        
+    if kyc_record:
+        return {
+            "status": kyc_record.verification_status,
+            "fraud_score": kyc_record.fraud_score,
+            "reason": kyc_record.failure_reason
+        }
+        
+    return {"status": "pending"}
 
 @router.get("/kyc/view/{filename}")
 async def view_kyc_document(
