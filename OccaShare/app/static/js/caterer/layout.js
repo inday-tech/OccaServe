@@ -1,53 +1,48 @@
 (function () {
-    // ─── Inactivity Auto-Logout ──────────────────────────────────────────────
-    let timeoutLength = 15 * 60 * 1000; // 15 minutes
-    let warningLength = 14 * 60 * 1000; // 14 minutes
-    let inactivityTimeout;
-    let warningTimeout;
-    const modal = document.getElementById('inactivityModal');
-    const stayBtn = document.getElementById('stayLoggedInBtn');
-
-    function resetTimer() {
-        if (modal && modal.style.display === 'flex') return;
-        clearTimeout(inactivityTimeout);
-        clearTimeout(warningTimeout);
-
-        warningTimeout = setTimeout(function () {
-            if (modal) {
-                modal.style.display = 'flex';
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        modal.classList.add('active');
-                    });
-                });
+        // ─── Inactivity Auto-Logout ──────────────────────────────────────────────
+    const LIMIT = 15 * 60 * 1000; // 15 mins total
+    const WARN = 60 * 1000;       // 1 min countdown
+    let idle, countdown;
+    
+    function initInactivityTimer() {
+        const reset = () => {
+            clearTimeout(idle); clearInterval(countdown);
+            const m = document.getElementById('inactivityModal');
+            if (m) {
+                m.classList.remove('active');
+                setTimeout(() => { if (!m.classList.contains('active')) m.style.display = 'none'; }, 400);
             }
-        }, warningLength);
+            idle = setTimeout(warn, LIMIT - WARN);
+        };
 
-        inactivityTimeout = setTimeout(function () {
-            window.location.href = '/auth/logout?reason=inactivity';
-        }, timeoutLength);
-    }
-
-    if (stayBtn) {
-        stayBtn.addEventListener('click', function () {
-            if (modal) {
-                modal.classList.remove('active');
-                setTimeout(() => {
-                    if (!modal.classList.contains('active')) {
-                        modal.style.display = 'none';
-                    }
-                }, 400);
+        const warn = () => {
+            const m = document.getElementById('inactivityModal');
+            if (m) {
+                m.style.display = 'flex';
+                // Trigger reflow to animate
+                requestAnimationFrame(() => requestAnimationFrame(() => m.classList.add('active')));
             }
-            resetTimer();
-        });
-    }
+            let s = 60;
+            const cdEl = document.getElementById('inactivityCountdown');
+            if(cdEl) cdEl.innerText = s;
+            
+            countdown = setInterval(() => { 
+                s--;
+                if(cdEl) cdEl.innerText = s;
+                if (s <= 0) { 
+                    clearInterval(countdown); 
+                    window.location.href = '/auth/logout?reason=inactivity'; 
+                } 
+            }, 1000);
+        };
 
-    // Initialize timer only once
-    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
-    activityEvents.forEach(evt => {
-        document.addEventListener(evt, resetTimer, { passive: true });
-    });
-    resetTimer();
+        const activityEvents = ['mousedown','mousemove','keypress','scroll','touchstart','click'];
+        activityEvents.forEach(ev => document.addEventListener(ev, reset, { passive: true }));
+        const stayBtn = document.getElementById('stayLoggedInBtn');
+        if(stayBtn) stayBtn.addEventListener('click', reset);
+        reset();
+    }
+    initInactivityTimer();
 
     // ─── Sidebar Scroll Persistence ─────────────────────────────────────────
     const sidebar = document.getElementById('sidebar');

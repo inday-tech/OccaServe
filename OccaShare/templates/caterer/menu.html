@@ -449,9 +449,8 @@
                 image_url: el.dataset.imageUrl,
                 is_combo: el.dataset.isCombo === 'true',
                 max_choices: el.dataset.maxChoices || 0,
-                combo_options: el.dataset.comboOptions || '[]',
-                max_stock_quantity: el.dataset.maxStockQuantity || ''
-            };
+                combo_options: el.dataset.comboOptions || '[]'
+                            };
 
             modalTitle.innerText = 'Edit Dish Library';
             form.action = `/caterer/menu/${item.id}/update`;
@@ -462,8 +461,7 @@
             form.cost_price.value = item.cost_price || 0;
             form.serving_size.value = item.serving_size || '';
             form.pricing_unit.value = item.pricing_unit || 'per_serving';
-            form.max_stock_quantity.value = item.max_stock_quantity || '';
-            
+                        
             
             const cb = document.getElementById('isAddonCheckbox');
             if (cb) cb.checked = item.is_addon;

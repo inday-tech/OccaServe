@@ -108,32 +108,48 @@
         });
     }
 
-    // ─── Inactivity Auto-Logout ───────────────────────────────────────────────
-    const WARN_MS    = 29 * 60 * 1000;  // 29 min
-    const LOGOUT_MS  = 30 * 60 * 1000; // 30 min
-    const modal      = document.getElementById('inactivityModal');
-    const stayBtn    = document.getElementById('stayLoggedInBtn');
-    let warnTimer, logoutTimer;
+        // ─── Inactivity Auto-Logout ───────────────────────────────────────────────
+    const LIMIT = 15 * 60 * 1000;
+    const WARN = 60 * 1000;
+    let idle, countdown;
+    
+    function initInactivityTimer() {
+        const reset = () => {
+            clearTimeout(idle); clearInterval(countdown);
+            const m = document.getElementById('inactivityModal');
+            if (m) {
+                m.classList.remove('active');
+                setTimeout(() => { if (!m.classList.contains('active')) m.style.display = 'none'; }, 400);
+            }
+            idle = setTimeout(warn, LIMIT - WARN);
+        };
 
-    function resetInactivity() {
-        if (modal && modal.style.display === 'flex') return;
-        clearTimeout(warnTimer);
-        clearTimeout(logoutTimer);
-        warnTimer   = setTimeout(() => { if (modal) modal.style.display = 'flex'; }, WARN_MS);
-        logoutTimer = setTimeout(() => { window.location.href = '/auth/logout?reason=inactivity'; }, LOGOUT_MS);
+        const warn = () => {
+            const m = document.getElementById('inactivityModal');
+            if (m) {
+                m.style.display = 'flex';
+                requestAnimationFrame(() => requestAnimationFrame(() => m.classList.add('active')));
+            }
+            let s = 60;
+            const cdEl = document.getElementById('inactivityCountdown');
+            if(cdEl) cdEl.innerText = s;
+            
+            countdown = setInterval(() => { 
+                s--;
+                if(cdEl) cdEl.innerText = s;
+                if (s <= 0) { 
+                    clearInterval(countdown); 
+                    window.location.href = '/auth/logout?reason=inactivity'; 
+                } 
+            }, 1000);
+        };
+
+        ['mousedown','mousemove','keypress','scroll','touchstart','click'].forEach(ev => document.addEventListener(ev, reset, { passive: true }));
+        const stayBtn = document.getElementById('stayLoggedInBtn');
+        if(stayBtn) stayBtn.addEventListener('click', reset);
+        reset();
     }
-
-    if (stayBtn) {
-        stayBtn.addEventListener('click', () => {
-            if (modal) modal.style.display = 'none';
-            resetInactivity();
-        });
-    }
-
-    ['mousedown', 'keypress', 'scroll', 'touchstart'].forEach(evt =>
-        document.addEventListener(evt, resetInactivity, { passive: true })
-    );
-    resetInactivity();
+    initInactivityTimer();
 
     // Close on outside click
     document.addEventListener('click', (e) => {
