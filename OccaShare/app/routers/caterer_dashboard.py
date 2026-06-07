@@ -2131,6 +2131,7 @@ async def add_menu_item(
     cost_price: float = Form(0.0),
     cost_breakdown: Optional[str] = Form(None),
     serving_size: Optional[str] = Form(None),
+    max_stock_quantity: Optional[int] = Form(None),
     pricing_unit: str = Form("per_serving"),
     is_addon: bool = Form(False),
     addon_price: float = Form(0.0),
@@ -2173,6 +2174,7 @@ async def add_menu_item(
         cost_price=cost_price,
         cost_breakdown=cost_breakdown_data,
         serving_size=serving_size,
+        max_stock_quantity=max_stock_quantity,
         pricing_unit=pricing_unit,
         is_addon=is_addon,
         addon_price=addon_price,
@@ -2274,6 +2276,7 @@ async def update_profile(
     card_number: Optional[str] = Form(None),
     cash_instructions: Optional[str] = Form(None),
     booking_lead_time: Optional[int] = Form(7),
+    equipment_turnover_hours: Optional[int] = Form(24),
     min_pax: Optional[int] = Form(20),
     terms_and_conditions: Optional[str] = Form(None),
     primary_color: Optional[str] = Form(None),
@@ -2345,6 +2348,7 @@ async def update_profile(
     profile.card_number = card_number
     profile.cash_instructions = cash_instructions
     profile.booking_lead_time = booking_lead_time
+    profile.equipment_turnover_hours = equipment_turnover_hours
     profile.min_pax = min_pax
     profile.terms_and_conditions = terms_and_conditions
 
@@ -2818,6 +2822,7 @@ async def update_menu_item(
     cost_price: float = Form(0.0),
     cost_breakdown: Optional[str] = Form(None),
     serving_size: Optional[str] = Form(None),
+    max_stock_quantity: Optional[int] = Form(None),
     pricing_unit: str = Form("per_serving"),
     is_addon: bool = Form(False),
     addon_price: float = Form(0.0),
@@ -2853,6 +2858,7 @@ async def update_menu_item(
     elif cost_breakdown == "":
         item.cost_breakdown = None
     item.serving_size = serving_size
+    item.max_stock_quantity = max_stock_quantity
     item.pricing_unit = pricing_unit
     item.is_addon = is_addon
     item.addon_price = addon_price

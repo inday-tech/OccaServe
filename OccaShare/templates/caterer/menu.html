@@ -22,7 +22,7 @@
     </div>
 </div>
 
-{% set categories_list = ['Appetizer', 'Soup', 'Salad', 'Main Course', 'Side Dish', 'Dessert', 'Drinks', 'Party Trays / Bilao', 'Other'] %}
+{% set categories_list = ['Appetizer', 'Soup', 'Salad', 'Main Course', 'Side Dish', 'Dessert', 'Drinks', 'Party Trays / Bilao', 'Rentals', 'Equipment', 'Other'] %}
 <div class="category-filters animate-up delay-1">
     <button class="cat-chip active" data-cat="all" onclick="filterByCategory('all')">
         All Items <span class="badge-count">{{ menu_items|length }}</span>
@@ -77,6 +77,7 @@
                         data-is-combo="{{ 'true' if item.is_combo else 'false' }}"
                         data-max-choices="{{ item.max_choices or 0 }}"
                         data-combo-options='{{ item.combo_options|tojson if item.combo_options else "[]" }}'
+                        data-max-stock-quantity="{{ item.max_stock_quantity if item.max_stock_quantity is not none else '' }}"
                         onclick="editMenuItem(this)">
                         <i class="fas fa-edit"></i> Edit
                     </button>
@@ -177,6 +178,8 @@
                                 <option value="Dessert">Dessert</option>
                                 <option value="Drinks">Drinks</option>
                                 <option value="Party Trays / Bilao">Party Trays / Bilao</option>
+                                <option value="Rentals">Rentals</option>
+                                <option value="Equipment">Equipment</option>
                                 <option value="Other">Other</option>
                             </select>
                         </div>
@@ -199,8 +202,9 @@
                             <label>Serving Size / Capacity</label>
                             <input type="text" name="serving_size" class="control-pro" placeholder="e.g. Good for 10-15" maxlength="50">
                         </div>
-                        <div class="form-group-pro">
-                            <!-- Empty spacer for layout -->
+                        <div class="form-group-pro" id="stockQtyContainer" style="display: none;">
+                            <label>Max Stock Qty</label>
+                            <input type="number" name="max_stock_quantity" id="maxStockQuantityInput" class="control-pro" placeholder="e.g. 50" min="0">
                         </div>
                     </div>
 
@@ -412,6 +416,7 @@
         updateRecipeUI();
         toggleAddonPrice();
         switchDishTab('basic');
+        toggleStockVisibility();
         if (document.getElementById('menuErrorDrawer')) document.getElementById('menuErrorDrawer').style.display = 'none';
         
         if (window.openModal) {
@@ -444,7 +449,8 @@
                 image_url: el.dataset.imageUrl,
                 is_combo: el.dataset.isCombo === 'true',
                 max_choices: el.dataset.maxChoices || 0,
-                combo_options: el.dataset.comboOptions || '[]'
+                combo_options: el.dataset.comboOptions || '[]',
+                max_stock_quantity: el.dataset.maxStockQuantity || ''
             };
 
             modalTitle.innerText = 'Edit Dish Library';
@@ -456,6 +462,8 @@
             form.cost_price.value = item.cost_price || 0;
             form.serving_size.value = item.serving_size || '';
             form.pricing_unit.value = item.pricing_unit || 'per_serving';
+            form.max_stock_quantity.value = item.max_stock_quantity || '';
+            toggleStockVisibility();
             
             const cb = document.getElementById('isAddonCheckbox');
             if (cb) cb.checked = item.is_addon;
@@ -502,6 +510,7 @@
             else modal.style.display = 'flex';
             
             switchDishTab('basic');
+        toggleStockVisibility();
 
             // Load Recipe from API
             await loadRecipe(item.id);
@@ -725,6 +734,26 @@
             } else if (margin < 20) badge.style.background = '#f59e0b';
             else badge.style.background = 'var(--success-color, #22c55e)';
         } else badge.innerText = 'Margin: --%';
+    }
+
+
+    // Inventory Field Visibility Logic
+    const categorySelect = document.getElementById('modalCategory');
+    const stockContainer = document.getElementById('stockQtyContainer');
+    
+    function toggleStockVisibility() {
+        if (!categorySelect || !stockContainer) return;
+        const val = categorySelect.value.toLowerCase();
+        if (val === 'rentals' || val === 'equipment' || val === 'services') {
+            stockContainer.style.display = 'block';
+        } else {
+            stockContainer.style.display = 'none';
+            document.getElementById('maxStockQuantityInput').value = '';
+        }
+    }
+    
+    if (categorySelect) {
+        categorySelect.addEventListener('change', toggleStockVisibility);
     }
 
     const menuValidation = new window.ValidationManager('menuForm', {
