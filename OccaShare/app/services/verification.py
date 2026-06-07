@@ -1652,8 +1652,8 @@ class VerificationService:
                 pil_img.save(buf, format="JPEG", quality=80)
                 raw_data = buf.getvalue()
                 
-            # Use gemini-2.0-flash for OCR - fast, multimodal, and widely available
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_key}"
+            # Use gemini-2.5-flash-lite for OCR - fast, multimodal, and widely available
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key={gemini_key}"
             headers = {"Content-Type": "application/json"}
             base64_image = base64.b64encode(raw_data).decode('utf-8')
             
@@ -2075,6 +2075,8 @@ class VerificationService:
                            dob: str = None,
                            address: str = None) -> Dict[str, Any]:
         """Strictly validates the ID document (Quality + OCR + Patterns) synchronously."""
+        if id_type in ["PhilID (National ID)", "philsys", "PhilID"]:
+            id_type = "PhilSys / PhilID"
         try:
             # 1. Duplicate Check (Fraud Prevention)
             if db and user_id and id_number:
@@ -2130,20 +2132,21 @@ class VerificationService:
                 ocr_text = " ".join(text_parts)
                 clean_ocr_upper = ocr_text.upper()
                 is_likely_id = True
+                fields = structured_ocr.get("fields", {})
                 rich_data = {
                     "full_name": structured_ocr.get("full_name", ""),
                     "id_number": structured_ocr.get("id_number", "") or id_number,
-                    "extracted_dob": gemini_data.get("date_of_birth", ""),
-                    "extracted_expiry": gemini_data.get("expiry_date", ""),
-                    "extracted_address": gemini_data.get("address", ""),
-                    "first_name": gemini_data.get("first_name", ""),
-                    "last_name": gemini_data.get("last_name", ""),
-                    "middle_name": gemini_data.get("middle_name", ""),
-                    "given_names": gemini_data.get("given_names", ""),
+                    "extracted_dob": fields.get("date_of_birth", {}).get("value", "") or structured_ocr.get("birth_date", ""),
+                    "extracted_expiry": fields.get("expiry_date", {}).get("value", "") or fields.get("expiration_date", {}).get("value", "") or fields.get("visa_until", {}).get("value", ""),
+                    "extracted_address": fields.get("address", {}).get("value", "") or structured_ocr.get("address", ""),
+                    "first_name": fields.get("first_name", {}).get("value", ""),
+                    "last_name": fields.get("last_name", {}).get("value", ""),
+                    "middle_name": fields.get("middle_name", {}).get("value", ""),
+                    "given_names": fields.get("given_names", {}).get("value", "") or fields.get("first_name", {}).get("value", ""),
                     "is_tampered": False
                 }
                 # Optimization: Trust Gemini for face visibility to save OpenCV processing time
-                has_face = gemini_data.get("face_visible", True)
+                has_face = structured_ocr.get("face_visible", True)
                 id_faces = [1] if has_face else [] 
             else:
                 # Normal path: EasyOCR / Tesseract pipeline
@@ -2439,6 +2442,9 @@ class VerificationService:
             final_ocr_data["full_name_extracted"] = rich_data.get("full_name")
             final_ocr_data["dob_extracted"] = rich_data.get("extracted_dob")
             final_ocr_data["address_extracted"] = rich_data.get("extracted_address")
+            final_ocr_data["extracted_dob"] = rich_data.get("extracted_dob")
+            final_ocr_data["extracted_expiry"] = rich_data.get("extracted_expiry")
+            final_ocr_data["extracted_address"] = rich_data.get("extracted_address")
 
             return {
                 "status": status,
@@ -2457,6 +2463,8 @@ class VerificationService:
 
     async def extract_id_data(self, id_path: str, id_type: str) -> Dict[str, Any]:
         """Extracts text from ID using Gemini API (with EasyOCR + Tesseract fallback)."""
+        if id_type in ["PhilID (National ID)", "philsys", "PhilID"]:
+            id_type = "PhilSys / PhilID"
         try:
             id_img, cropped = self._prepare_image_with_status(id_path)
             
@@ -2591,6 +2599,8 @@ class VerificationService:
                            dob: str = None,
                            address: str = None) -> Dict[str, Any]:
         """Refactored full verification logic using verify_id_document and liveness checks."""
+        if id_type in ["PhilID (National ID)", "philsys", "PhilID"]:
+            id_type = "PhilSys / PhilID"
         try:
             # 1. Document Verification
             id_result = await self.verify_id_document(id_path, full_name, id_number, id_type, db, user_id, dob, address)
