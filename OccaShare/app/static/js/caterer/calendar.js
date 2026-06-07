@@ -13,7 +13,8 @@ function initWebSocket() {
     if (wsConnection) return;
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const url = `${protocol}//${window.location.host}/ws/caterer/calendar`;
+    const clientId = 'caterer_cal_' + Math.random().toString(36).substr(2, 9);
+    const url = `${protocol}//${window.location.host}/ws/${clientId}`;
 
     wsConnection = new WebSocket(url);
 
@@ -700,6 +701,12 @@ function initCustomerDetection() {
                 const data = await resp.json();
 
                 if (data.exists) {
+                    if (data.role === 'caterer' || data.role === 'admin') {
+                        window.setFieldError('manCustEmail', 'Security Violation: This email is registered to a Caterer or Admin account. Only customer accounts can be used for walk-in bookings.');
+                        btn.innerHTML = 'Create Booking';
+                        btn.disabled = false;
+                        return;
+                    }
                     badge.style.borderLeftColor = '#0ea5e9';
                     badge.style.background = '#f0f9ff';
                     badge.style.borderColor = '#bae6fd';
@@ -1525,3 +1532,4 @@ window.closeRoiBreakdown = closeRoiBreakdown;
 window.toggleOtherEventType = toggleOtherEventType;
 window.updateCapacitySettings = updateCapacitySettings;
 window.setReminder = setReminder;
+

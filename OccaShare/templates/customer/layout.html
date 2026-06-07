@@ -113,6 +113,13 @@
                     </a>
                 </li>
                 <li>
+                    <a href="/customer/archives" class="nav-item {{ 'active' if active_page == 'archives' }}"
+                        onclick="closeSidebar()">
+                        <div class="nav-icon"><i class="fas fa-archive"></i></div>
+                        <span class="nav-label">Archived Bookings</span>
+                    </a>
+                </li>
+                <li>
                     <a href="/customer/messages" class="nav-item {{ 'active' if active_page == 'messages' }}"
                         onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-comment-dots"></i></div>
@@ -300,6 +307,7 @@
                             <li><a href="/customer/profile"><i class="fas fa-user"></i> My Profile</a></li>
                             <li><a href="/customer/payments"><i class="fas fa-wallet"></i> Payments</a></li>
                             <li><a href="/customer/bookings"><i class="fas fa-calendar-check"></i> My Bookings</a></li>
+                            <li><a href="/customer/archives"><i class="fas fa-archive"></i> Archived Bookings</a></li>
                         </ul>
                         <div style="height: 1px; background: var(--dm-slate-50); margin: 0.25rem 0;"></div>
                         <ul class="hdr-profile-links">

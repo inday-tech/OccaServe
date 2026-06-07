@@ -200,22 +200,34 @@
                     </div>
                 </div>
 
-                <!-- Tab 2: Inclusions & Amenities -->
+                <!-- Tab 2: Included Equipment & Services -->
                 <div id="tab-perks" class="tab-pane-pro">
                     <div class="form-group-pro">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md);">
-                            <label style="margin:0;">Amenities & Package Perks</label>
-                            <span style="font-size: 9px; font-weight:800; color:var(--color-neutral-400); text-transform:uppercase; background:var(--color-neutral-100); padding:2px 8px; border-radius:calc(var(--border-radius) * 0.3);">Checklist Mode</span>
+                            <label style="margin:0;">Included Equipment & Services</label>
+                            <span style="font-size: 9px; font-weight:800; color:var(--color-neutral-400); text-transform:uppercase; background:var(--color-neutral-100); padding:2px 8px; border-radius:calc(var(--border-radius) * 0.3);">Inventory Linked</span>
                         </div>
-                        <div style="background:var(--color-neutral-50); border-radius:var(--border-radius); padding:var(--space-md); border:1px solid var(--color-neutral-200); margin-bottom:var(--space-md); max-height:220px; overflow-y:auto;">
-                            <div id="inclusionMatrix" class="inclusion-matrix">
+                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Select the rentals and services from your inventory that are included in this package. These will automatically appear in the customer's package details.</p>
+                        <div style="background:var(--color-neutral-50); border-radius:var(--border-radius); padding:var(--space-md); border:1px solid var(--color-neutral-200); margin-bottom:var(--space-md); max-height:280px; overflow-y:auto;">
+                            <div class="inclusion-matrix" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem;">
+                                {% if services %}
+                                    {% for item in services %}
+                                    <label class="matrix-check" style="display: flex; align-items: center; gap: 8px; background: white; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; cursor: pointer;">
+                                        <input type="checkbox" name="linked_menu_ids" value="{{ item.id }}" style="accent-color: var(--primary-color);">
+                                        <div style="display: flex; flex-direction: column;">
+                                            <span style="font-size: 0.85rem; font-weight: 700; color: #1e293b;">{{ item.name }}</span>
+                                            <span style="font-size: 0.7rem; color: #64748b;">{{ item.category }}</span>
+                                        </div>
+                                    </label>
+                                    {% endfor %}
+                                {% else %}
+                                    <div style="grid-column: 1 / -1; text-align: center; color: #94a3b8; padding: 2rem 0; font-size: 0.85rem;">
+                                        <i class="fas fa-box-open" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                                        No inventory items found. Add items to your Inventory first.
+                                    </div>
+                                {% endif %}
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="custom-add-box" style="display:flex; gap:0.5rem; background:#f8fafc; padding:0.75rem; border-radius:var(--border-radius); border:1px dashed #cbd5e1; margin-top: 1rem;">
-                        <input type="text" id="customInclusionInput" class="control-pro" style="height:38px; font-size:0.85rem;">
-                        <button type="button" onclick="window.addCustomInclusion()" class="btn-primary-pro" style="height:38px; padding:0 1rem; font-size:0.8rem; min-width:80px;">Add</button>
                     </div>
                 </div>
 

@@ -200,11 +200,6 @@
         min-width: 600px;
     }
 
-    /* --- Navigation: Hide Desktop --- */
-    .nav-links { display: none; }
-    .nav-auth { display: none !important; }
-    .hamburger { display: block !important; }
-
     /* --- Dashboard Wrapper: Stack --- */
     .dashboard-wrapper {
         flex-direction: column !important;

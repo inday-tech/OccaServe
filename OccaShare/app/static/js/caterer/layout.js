@@ -157,8 +157,8 @@
     };
 
     function closeAllDropdowns() {
-        const dropdowns = document.querySelectorAll('.profile-dropdown');
-        const triggers = document.querySelectorAll('.profile-trigger, .header-action-btn');
+        const dropdowns = document.querySelectorAll('.premium-dropdown, .profile-dropdown');
+        const triggers = document.querySelectorAll('.profile-trigger, .header-action-btn, .hdr-btn');
         dropdowns.forEach(d => {
             d.classList.remove('active');
             setTimeout(() => {

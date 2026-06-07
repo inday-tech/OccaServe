@@ -33,7 +33,7 @@ async def get_package_details_modal(
     # Categorise menu items
     categorised_menu = {}
     for item in package.menu_items:
-        if not item.is_addon:
+        if not item.is_addon and item.category not in ["Rentals", "Services"]:
             cat = item.category or "Others"
             if cat not in categorised_menu:
                 categorised_menu[cat] = []

@@ -405,38 +405,55 @@
 </div>
 
 <!-- Password Modal (Dashboard Style) -->
-<div id="passwordModal" style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.6); z-index: 9999; backdrop-filter: blur(8px); align-items: center; justify-content: center;">
-    <div class="panel-elite" style="width: 100%; max-width: 450px; padding: 0; overflow: hidden; animation: modalSlideUp 0.3s ease-out;">
-        <div style="padding: 1.5rem; background: var(--dm-slate-50); border-bottom: 1px solid var(--dm-slate-100); display: flex; justify-content: space-between; align-items: center;">
-            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 850; color: var(--up-slate-900);">
-                <i class="fas fa-key" style="color: var(--up-orange); margin-right: 8px;"></i> Security Update
-            </h3>
-            <button onclick="closePasswordModal()" style="background: none; border: none; font-size: 1.5rem; color: var(--dm-slate-400); cursor: pointer;">&times;</button>
+<div id="passwordModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-sm">
+        <div class="occ-modal-header">
+            <div>
+                <h3 class="occ-modal-title"><i class="fas fa-key" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Update Password</h3>
+                <div class="occ-modal-subtitle">Ensure your account stays secure with a strong password.</div>
+            </div>
+            <button type="button" onclick="closePasswordModal()" class="occ-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
         
-        <form id="changePasswordForm" onsubmit="handlePasswordChange(event)" style="padding: 2rem;">
-            <div id="passwordFormError" style="display: none; background: #fef2f2; color: #ef4444; padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem; font-size: 0.82rem; font-weight: 700;"></div>
-
-            <div class="form-elite-group">
-                <label>Current Password</label>
-                <input type="password" name="current_password" class="form-elite-input" required>
+        <form id="changePasswordForm" onsubmit="handlePasswordChange(event)">
+            <div class="occ-modal-body">
+                <div class="occ-form-grid">
+                    <div class="occ-form-group full-width">
+                        <label class="occ-form-label">Current Password</label>
+                        <input type="password" name="current_password" class="occ-form-input" required placeholder="Enter current password">
+                    </div>
+                    
+                    <div class="occ-form-group full-width">
+                        <label class="occ-form-label">New Password</label>
+                        <input type="password" name="new_password" id="new_password" class="occ-form-input" required placeholder="Min 8 characters" minlength="8">
+                        <div class="password-requirements" style="margin-top: 8px; font-size: 0.7rem; display: flex; flex-direction: column; gap: 4px;">
+                            <div id="req-length" class="req-item" style="color: #64748b; font-weight: 500;"><i class="fas fa-circle" style="font-size: 0.5rem; vertical-align: middle; margin-right: 6px;"></i> Minimum 8 characters</div>
+                            <div id="req-different" class="req-item" style="color: #64748b; font-weight: 500;"><i class="fas fa-circle" style="font-size: 0.5rem; vertical-align: middle; margin-right: 6px;"></i> Must be different from current</div>
+                            <div id="req-upper" class="req-item" style="color: #64748b; font-weight: 500;"><i class="fas fa-circle" style="font-size: 0.5rem; vertical-align: middle; margin-right: 6px;"></i> At least 1 uppercase letter</div>
+                            <div id="req-special" class="req-item" style="color: #64748b; font-weight: 500;"><i class="fas fa-circle" style="font-size: 0.5rem; vertical-align: middle; margin-right: 6px;"></i> At least 1 special character</div>
+                        </div>
+                    </div>
+                    
+                    <div class="occ-form-group full-width">
+                        <label class="occ-form-label">Confirm New Password</label>
+                        <input type="password" name="confirm_password" id="confirm_password" class="occ-form-input" required placeholder="Retype new password">
+                        <div id="passwordMatchStatus" style="font-size: 0.7rem; height: 18px; margin-top: 5px; display: flex; align-items: center; gap: 6px; font-weight: 600;">
+                            <i id="matchIndicatorIcon"></i>
+                            <span id="matchIndicatorText"></span>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="form-elite-group">
-                <label>New Password</label>
-                <input type="password" name="new_password" id="new_password" class="form-elite-input" required minlength="8">
-                <p style="margin: 8px 0 0; font-size: 0.72rem; color: var(--dm-slate-400); font-weight: 500;">Min. 8 characters with symbols.</p>
-            </div>
-            <div class="form-elite-group" style="margin-bottom: 2rem;">
-                <label>Confirm Password</label>
-                <input type="password" name="confirm_password" id="confirm_password" class="form-elite-input" required>
-            </div>
-
-            <div style="display: flex; gap: 1rem;">
-                <button type="button" onclick="closePasswordModal()" class="btn-security-action" style="flex: 1;">Cancel</button>
-                <button type="submit" id="submitPasswordBtn" class="btn-update-elite" style="flex: 2;">Update Password</button>
+            
+            <div class="occ-modal-footer">
+                <button type="button" onclick="closePasswordModal()" class="btn-outline" style="min-width:100px; height:44px; display:inline-flex; align-items:center; justify-content:center;">Cancel</button>
+                <button type="submit" id="submitPasswordBtn" class="btn-primary" style="height:44px; padding:0 1.5rem;">Save Changes</button>
             </div>
         </form>
     </div>
+</div>
 </div>
 
 <style>

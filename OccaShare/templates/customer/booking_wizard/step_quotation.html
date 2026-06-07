@@ -70,19 +70,22 @@
                             </div>
 
                             <div class="inclusions-row-sakto">
-                                {% if package and package.inclusions %}
+                                {% set package_inventory = package.menu_items|selectattr("category", "in", ["Rentals", "Services"])|list %}
+                                {% set legacy_inclusions = [] %}
                                 {% if package.inclusions is mapping %}
-                                {% for k, v in package.inclusions.items() if v %}
-                                {% if loop.index <= 4 %} <span class="inc-pill-sakto"><i class="fas fa-check"></i> {{ k
-                                    }}</span>
-                                    {% endif %}
+                                    {% for k, v in package.inclusions.items() if v %}
+                                        {% set _ = legacy_inclusions.append(k) %}
                                     {% endfor %}
-                                    {% else %}
-                                    {% for inc in package.inclusions[:4] %}
-                                    <span class="inc-pill-sakto"><i class="fas fa-check"></i> {{ inc }}</span>
-                                    {% endfor %}
-                                    {% endif %}
-                                    {% endif %}
+                                {% elif package.inclusions is iterable and package.inclusions is not string %}
+                                    {% set legacy_inclusions = package.inclusions %}
+                                {% elif package.inclusions is string and package.inclusions %}
+                                    {% set legacy_inclusions = [package.inclusions] %}
+                                {% endif %}
+                                
+                                {% set all_inclusions = legacy_inclusions + package_inventory|map(attribute='name')|list %}
+                                {% for inc in all_inclusions[:4] %}
+                                <span class="inc-pill-sakto"><i class="fas fa-check"></i> {{ inc }}</span>
+                                {% endfor %}
                             </div>
                         </div>
 

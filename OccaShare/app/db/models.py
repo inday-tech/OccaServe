@@ -142,6 +142,7 @@ class CatererProfile(Base):
     # NEW: Policy Fields
     terms_and_conditions = Column(Text, nullable=True)
     booking_lead_time = Column(Integer, default=7) # Days in advance
+    equipment_turnover_hours = Column(Integer, default=24) # Turnaround time for rentals
     min_pax = Column(Integer, default=20) # Minimum pax for services
     
     # NEW: Notification Preferences (JSONB for flexibility)
@@ -284,6 +285,7 @@ class MenuItem(Base):
     is_addon = Column(Boolean, default=False)
     addon_price = Column(Float, default=0.0)
     image_url = Column(String, nullable=True)
+    max_stock_quantity = Column(Integer, nullable=True) # Used for rentals/inventory
     is_hidden = Column(Boolean, default=False)
     is_archived = Column(Boolean, default=False)
     
@@ -344,6 +346,7 @@ class Booking(Base):
     status = Column(String, default="pending")
     payment_status = Column(String, default="pending") # pending, paid, deposit_paid
     payment_method = Column(String, nullable=True) # GCash, Credit Card, etc.
+    customer_archived = Column(Boolean, default=False)
     payment_reference = Column(String, nullable=True)
     payment_proof_url = Column(String, nullable=True)
     balance_proof_url = Column(String, nullable=True)
@@ -801,4 +804,5 @@ class BusinessExpense(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     caterer = relationship("CatererProfile", back_populates="business_expenses")
+
 

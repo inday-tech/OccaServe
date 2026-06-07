@@ -207,7 +207,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Logo image preview
-    logoInputs.forEach(input => {
+    document.querySelectorAll('.form-file-input').forEach(input => {
         input.addEventListener('change', function() {
             if (this.files?.[0]) {
                 const reader = new FileReader();
@@ -232,209 +232,246 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Magic Palette Extraction Logic
-    const magicBtns = document.querySelectorAll('.magic-extract-shared');
-    magicBtns.forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            // Get file from the input closest to this button, or fallback to the first one found
-            const formGroup = this.closest('.form-group') || this.closest('.logo-extraction-row') || document;
-            const fileInput = formGroup.querySelector('.logo-input-shared') || document.querySelector('.logo-input-shared');
-            const file = fileInput ? fileInput.files[0] : null;
-            
-            if (!file && !document.querySelector('.profile-sidebar-logo img')) {
-                if (window.showError) window.showError("Please select a logo file first!");
-                else alert("Please select a logo file first!");
-                return;
+    // Magic Palette Extraction Logic using Event Delegation
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.magic-extract-shared');
+        if (!btn) return;
+        
+        e.preventDefault();
+        console.log("Analyze & Apply clicked!");
+        
+        const fileInput = document.querySelector('input[name="logo_brand"]');
+        const file = fileInput ? fileInput.files[0] : null;
+        
+        if (!file && !document.querySelector('.profile-sidebar-logo img')) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire('Requirement', 'Please upload a logo in the Professional Branding tab first!', 'warning');
+            } else {
+                alert('Please upload a logo in the Professional Branding tab first!');
             }
-            
-            const btnOriginalHtml = this.innerHTML;
-            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
-            this.disabled = true;
+            return;
+        }
+        
+        const btnOriginalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+        btn.disabled = true;
 
-            const processImage = (imgSrc) => {
-                const img = new Image();
-                if (imgSrc.startsWith('http') || imgSrc.startsWith('/')) {
-                    img.crossOrigin = "Anonymous";
-                }
-                img.src = imgSrc;
-                img.onload = function() {
-                    try {
-                        const canvas = document.createElement('canvas');
-                        const ctx = canvas.getContext('2d');
-                        const size = 150; 
-                        canvas.width = size;
-                        canvas.height = size;
-                        ctx.drawImage(img, 0, 0, size, size);
+        const processImage = (imgSrc) => {
+            const img = new Image();
+            if (imgSrc.startsWith('http') || imgSrc.startsWith('/')) {
+                img.crossOrigin = "Anonymous";
+            }
+            img.src = imgSrc;
+            img.onload = function() {
+                try {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const size = 150; 
+                    canvas.width = size;
+                    canvas.height = size;
+                    ctx.drawImage(img, 0, 0, size, size);
 
-                        const imageData = ctx.getImageData(0, 0, size, size).data;
-                        const colorCounts = {};
-                        const q = 16; 
+                    const imageData = ctx.getImageData(0, 0, size, size).data;
+                    const colorCounts = {};
+                    const q = 16; 
 
-                        for (let i = 0; i < imageData.length; i += 4) {
-                            const r = imageData[i], g = imageData[i + 1], b = imageData[i + 2], a = imageData[i + 3];
-                            if (a < 128) continue; 
+                    for (let i = 0; i < imageData.length; i += 4) {
+                        const r = imageData[i], g = imageData[i + 1], b = imageData[i + 2], a = imageData[i + 3];
+                        if (a < 128) continue; 
 
-                            const avg = (r + g + b) / 3;
-                            if (avg > 240 || avg < 15) continue; 
+                        const avg = (r + g + b) / 3;
+                        if (avg > 240 || avg < 15) continue; 
 
-                            const qr = Math.round(r / q) * q;
-                            const qg = Math.round(g / q) * q;
-                            const qb = Math.round(b / q) * q;
-                            const key = `${qr},${qg},${qb}`;
-                            colorCounts[key] = (colorCounts[key] || 0) + 1;
-                        }
-
-                        const rgbToHex = (r, g, b) => "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
-                        const hexToRgb = (hex) => {
-                            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-                            return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : {r:0,g:0,b:0};
-                        };
-                        const rgbToHsv = (r, g, b) => {
-                            r /= 255, g /= 255, b /= 255;
-                            const max = Math.max(r, g, b), min = Math.min(r, g, b);
-                            let h, s, v = max;
-                            const d = max - min;
-                            s = max === 0 ? 0 : d / max;
-                            if (max === min) h = 0;
-                            else {
-                                switch (max) {
-                                    case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-                                    case g: h = (b - r) / d + 2; break;
-                                    case b: h = (r - g) / d + 4; break;
-                                }
-                                h /= 6;
-                            }
-                            return { h, s, v };
-                        };
-                        const hsvToRgb = (h, s, v) => {
-                            let r, g, b;
-                            const i = Math.floor(h * 6);
-                            const f = h * 6 - i;
-                            const p = v * (1 - s);
-                            const q = v * (1 - f * s);
-                            const t = v * (1 - (1 - f) * s);
-                            switch (i % 6) {
-                                case 0: r = v, g = t, b = p; break;
-                                case 1: r = q, g = v, b = p; break;
-                                case 2: r = p, g = v, b = t; break;
-                                case 3: r = p, g = q, b = v; break;
-                                case 4: r = t, g = p, b = v; break;
-                                case 5: r = v, g = p, b = q; break;
-                            }
-                            return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
-                        };
-
-                        const sortedColors = Object.entries(colorCounts)
-                            .map(([rgbStr, count]) => {
-                                const rgb = rgbStr.split(',').map(Number);
-                                const hex = rgbToHex(rgb[0], rgb[1], rgb[2]);
-                                const hsv = rgbToHsv(rgb[0], rgb[1], rgb[2]);
-                                return { hex, count, ...hsv };
-                            })
-                            .sort((a, b) => b.count - a.count);
-                        
-                        if (sortedColors.length === 0) throw new Error("No usable colors extracted.");
-
-                        const hueGroups = {};
-                        sortedColors.forEach(c => {
-                            const hKey = Math.floor(c.h * 12);
-                            if (!hueGroups[hKey]) hueGroups[hKey] = [];
-                            hueGroups[hKey].push(c);
-                        });
-
-                        const groups = Object.values(hueGroups).sort((a, b) => {
-                            const countA = a.reduce((sum, curr) => sum + curr.count, 0);
-                            const countB = b.reduce((sum, curr) => sum + curr.count, 0);
-                            return countB - countA;
-                        });
-
-                        const getBalancedColor = (candidates) => {
-                            return candidates.sort((a, b) => {
-                                const scoreA = (a.s > 0.2 ? 1 : 0) + (a.v > 0.2 && a.v < 0.8 ? 1 : 0);
-                                const scoreB = (b.s > 0.2 ? 1 : 0) + (b.v > 0.2 && b.v < 0.8 ? 1 : 0);
-                                return scoreB - scoreA || b.count - a.count;
-                            })[0];
-                        };
-
-                        let primary = getBalancedColor(groups[0]).hex;
-
-                        let secondary;
-                        if (groups[1]) {
-                            secondary = getBalancedColor(groups[1]).hex;
-                        } else {
-                            const pRgb = hexToRgb(primary);
-                            secondary = rgbToHex(Math.max(0, pRgb.r - 40), Math.max(0, pRgb.g - 40), Math.max(0, pRgb.b - 40));
-                        }
-
-                        const allBySaturation = [...sortedColors].sort((a, b) => b.s - a.s);
-                        let accent = (allBySaturation.find(c => c.s > 0.4 && c.v > 0.4) || allBySaturation[0]).hex;
-
-                        const highlight = rgbToHex(
-                            Math.min(255, hexToRgb(primary).r + 180),
-                            Math.min(255, hexToRgb(primary).g + 180),
-                            Math.min(255, hexToRgb(primary).b + 180)
-                        );
-
-                        const sanitize = (hex) => {
-                            const hsv = rgbToHsv(...Object.values(hexToRgb(hex)));
-                            if (hsv.s > 0.85 || hsv.v > 0.95) {
-                                const rgb = hsvToRgb(hsv.h, Math.min(hsv.s, 0.7), Math.min(hsv.v, 0.8));
-                                return rgbToHex(rgb.r, rgb.g, rgb.b);
-                            }
-                            return hex;
-                        };
-
-                        const applyColor = (name, hex) => {
-                            const input = document.querySelector(`input[name="${name}"]`);
-                            if (input) {
-                                input.value = hex;
-                                input.dispatchEvent(new Event('input', { bubbles: true }));
-                                const span = input.nextElementSibling;
-                                if (span && span.classList.contains('color-code')) {
-                                    span.textContent = hex.toUpperCase();
-                                }
-                            }
-                        };
-
-                        applyColor('primary_color', sanitize(primary));
-                        applyColor('secondary_color', sanitize(secondary));
-                        applyColor('accent_color', sanitize(accent));
-                        applyColor('highlight_color', sanitize(highlight));
-                        
-                        if (typeof updateMockup === 'function') updateMockup();
-
-                        if (window.showSuccess) window.showSuccess("Magic Palette applied! Elite dashboard theme generated.");
-                        else alert("Magic Palette applied! Elite dashboard theme generated.");
-                    } catch (err) {
-                        console.error("Extraction error", err);
-                        if (window.showError) window.showError("Failed to extract colors. Please try a different image format.");
-                    } finally {
-                        btn.innerHTML = btnOriginalHtml;
-                        btn.disabled = false;
+                        const qr = Math.round(r / q) * q;
+                        const qg = Math.round(g / q) * q;
+                        const qb = Math.round(b / q) * q;
+                        const key = `${qr},${qg},${qb}`;
+                        colorCounts[key] = (colorCounts[key] || 0) + 1;
                     }
-                };
-                img.onerror = () => {
-                    if (window.showError) window.showError("Failed to load image for extraction.");
+
+                    const rgbToHex = (r, g, b) => "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+                    const hexToRgb = (hex) => {
+                        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                        return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : {r:0,g:0,b:0};
+                    };
+                    const rgbToHsv = (r, g, b) => {
+                        r /= 255, g /= 255, b /= 255;
+                        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+                        let h, s, v = max;
+                        const d = max - min;
+                        s = max === 0 ? 0 : d / max;
+                        if (max === min) h = 0;
+                        else {
+                            switch (max) {
+                                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                                case g: h = (b - r) / d + 2; break;
+                                case b: h = (r - g) / d + 4; break;
+                            }
+                            h /= 6;
+                        }
+                        return { h, s, v };
+                    };
+                    const hsvToRgb = (h, s, v) => {
+                        let r, g, b;
+                        const i = Math.floor(h * 6);
+                        const f = h * 6 - i;
+                        const p = v * (1 - s);
+                        const q = v * (1 - f * s);
+                        const t = v * (1 - (1 - f) * s);
+                        switch (i % 6) {
+                            case 0: r = v, g = t, b = p; break;
+                            case 1: r = q, g = v, b = p; break;
+                            case 2: r = p, g = v, b = t; break;
+                            case 3: r = p, g = q, b = v; break;
+                            case 4: r = t, g = p, b = v; break;
+                            case 5: r = v, g = p, b = q; break;
+                        }
+                        return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
+                    };
+
+                    const sortedColors = Object.entries(colorCounts)
+                        .map(([rgbStr, count]) => {
+                            const rgb = rgbStr.split(',').map(Number);
+                            const hex = rgbToHex(rgb[0], rgb[1], rgb[2]);
+                            const hsv = rgbToHsv(rgb[0], rgb[1], rgb[2]);
+                            return { hex, count, ...hsv };
+                        })
+                        .sort((a, b) => b.count - a.count);
+                    
+                    if (sortedColors.length === 0) throw new Error("No usable colors extracted.");
+
+                    const hueGroups = {};
+                    sortedColors.forEach(c => {
+                        const hKey = Math.floor(c.h * 12);
+                        if (!hueGroups[hKey]) hueGroups[hKey] = [];
+                        hueGroups[hKey].push(c);
+                    });
+
+                    const groups = Object.values(hueGroups).sort((a, b) => {
+                        const countA = a.reduce((sum, curr) => sum + curr.count, 0);
+                        const countB = b.reduce((sum, curr) => sum + curr.count, 0);
+                        return countB - countA;
+                    });
+
+                    const getBalancedColor = (candidates) => {
+                        return candidates.sort((a, b) => {
+                            const scoreA = (a.s > 0.2 ? 1 : 0) + (a.v > 0.2 && a.v < 0.8 ? 1 : 0);
+                            const scoreB = (b.s > 0.2 ? 1 : 0) + (b.v > 0.2 && b.v < 0.8 ? 1 : 0);
+                            return scoreB - scoreA || b.count - a.count;
+                        })[0];
+                    };
+
+                    let primary = getBalancedColor(groups[0]).hex;
+
+                    let secondary;
+                    if (groups[1]) {
+                        secondary = getBalancedColor(groups[1]).hex;
+                    } else {
+                        const pRgb = hexToRgb(primary);
+                        secondary = rgbToHex(Math.max(0, pRgb.r - 40), Math.max(0, pRgb.g - 40), Math.max(0, pRgb.b - 40));
+                    }
+
+                    const allBySaturation = [...sortedColors].sort((a, b) => b.s - a.s);
+                    let accent = (allBySaturation.find(c => c.s > 0.4 && c.v > 0.4) || allBySaturation[0]).hex;
+
+                    const highlight = rgbToHex(
+                        Math.min(255, hexToRgb(primary).r + 180),
+                        Math.min(255, hexToRgb(primary).g + 180),
+                        Math.min(255, hexToRgb(primary).b + 180)
+                    );
+
+                    const sanitize = (hex) => {
+                        const hsv = rgbToHsv(...Object.values(hexToRgb(hex)));
+                        if (hsv.s > 0.85 || hsv.v > 0.95) {
+                            const rgb = hsvToRgb(hsv.h, Math.min(hsv.s, 0.7), Math.min(hsv.v, 0.8));
+                            return rgbToHex(rgb.r, rgb.g, rgb.b);
+                        }
+                        return hex;
+                    };
+
+                    const applyColor = (name, hex) => {
+                        const input = document.querySelector(`input[name="${name}"]`);
+                        if (input) {
+                            input.value = hex;
+                            input.dispatchEvent(new Event('input', { bubbles: true }));
+                            const span = input.nextElementSibling;
+                            if (span && span.classList.contains('color-code')) {
+                                span.textContent = hex.toUpperCase();
+                            }
+                        }
+                    };
+
+                    applyColor('primary_color', sanitize(primary));
+                    applyColor('secondary_color', sanitize(secondary));
+                    applyColor('accent_color', sanitize(accent));
+                    applyColor('highlight_color', sanitize(highlight));
+                    
+                    if (typeof updateMockup === 'function') updateMockup();
+
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire('Palette Generated!', 'Magic Palette applied. Elite dashboard theme generated.', 'success');
+                    } else {
+                        alert('Palette Generated! Magic Palette applied.');
+                    }
+                } catch (err) {
+                    console.error("Extraction error", err);
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire('Extraction Failed', 'Failed to extract colors. Please try a different image format.', 'error');
+                    } else {
+                        alert('Extraction Failed: Failed to extract colors.');
+                    }
+                } finally {
                     btn.innerHTML = btnOriginalHtml;
                     btn.disabled = false;
-                };
+                }
             };
+            img.onerror = () => {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire('Load Failed', 'Failed to load image for extraction.', 'error');
+                } else {
+                    alert('Load Failed: Failed to load image for extraction.');
+                }
+                btn.innerHTML = btnOriginalHtml;
+                btn.disabled = false;
+            };
+        };
 
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (event) => processImage(event.target.result);
-                reader.readAsDataURL(file);
-            } else {
-                const existingImg = document.querySelector('.profile-sidebar-logo img');
-                if (existingImg) processImage(existingImg.src);
-            }
-        });
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => processImage(event.target.result);
+            reader.readAsDataURL(file);
+        } else {
+            const existingImg = document.querySelector('.profile-sidebar-logo img');
+            if (existingImg) processImage(existingImg.src);
+        }
     });
 
     // Initial Update
     updateMockup();
+
+    // Hook up danger zone buttons
+    const btnDeactivate = document.getElementById('btnDeactivate');
+    const btnReactivate = document.getElementById('btnReactivate');
+    const btnDelete = document.getElementById('btnDeleteRequest');
+
+    if (btnDeactivate) {
+        btnDeactivate.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleDeactivate();
+        });
+    }
+    if (btnReactivate) {
+        btnReactivate.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleReactivate();
+        });
+    }
+    if (btnDelete) {
+        btnDelete.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleDeleteRequest();
+        });
+    }
 });
 
 // Gallery Archive Function
@@ -490,70 +527,66 @@ async function saveNotificationPrefs() {
 
 // Account Deactivation
 async function handleDeactivate() {
-    if (!window.showStandardConfirm) return;
-
-    const { value: reason, isConfirmed } = await window.showStandardConfirm({
-        title: 'Deactivate Account',
-        message: 'Please provide a reason for deactivating your account (optional):',
-        input: 'text',
-        inputPlaceholder: 'e.g. Taking a break, remodeling...',
-        icon: 'warning',
-        confirmButtonText: 'Proceed to Deactivate'
-    });
-
-    if (!isConfirmed) return;
-
-    const confirmResult = await window.showStandardConfirm({
-        title: 'Are you absolutely sure?',
-        message: 'Your business will be hidden from customers. You can reactivate anytime by logging back in and going to settings.',
-        icon: 'warning',
-        confirmButtonText: 'Yes, deactivate my account'
-    });
-
-    if (!confirmResult.isConfirmed) return;
-
-    try {
-        const response = await fetch('/caterer/settings/deactivate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reason: reason || 'No reason provided' })
+    if (typeof Swal !== "undefined") {
+        const result = await Swal.fire({
+            title: "Deactivate Account?",
+            text: "Your profile will be hidden from customers. Are you sure?",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#f39c12",
+            cancelButtonColor: "#3085d6",
+            confirmButtonText: "Yes, deactivate it!"
         });
-        const result = await response.json();
-        if (result.status === 'success') {
-            if (window.showSuccess) window.showSuccess('Account deactivated. Redirecting...');
-            setTimeout(() => window.location.href = '/auth/logout', 2000);
-        } else {
-            if (window.showError) window.showError(result.message || 'Failed to deactivate.');
-        }
-    } catch (err) {
-        console.error(err);
-        if (window.showError) window.showError('An error occurred.');
+        if (!result.isConfirmed) return;
+    } else {
+        if (!confirm("Are you sure you want to deactivate your account? Your profile will be hidden from customers.")) return;
     }
+    try {
+        const res = await window.apiAction("/caterer/settings/deactivate", { method: "POST" });
+        if (res) setTimeout(() => window.location.href = "/login", 1500);
+    } catch (e) {}
 }
 
-// Account Deletion Request
+async function handleReactivate() {
+    if (typeof Swal !== "undefined") {
+        const result = await Swal.fire({
+            title: "Reactivate Account?",
+            text: "Your profile will be visible to customers again.",
+            icon: "info",
+            showCancelButton: true,
+            confirmButtonColor: "#2ecc71",
+            cancelButtonColor: "#3085d6",
+            confirmButtonText: "Yes, reactivate it!"
+        });
+        if (!result.isConfirmed) return;
+    } else {
+        if (!confirm("Are you sure you want to reactivate your account? Your profile will be visible again.")) return;
+    }
+    try {
+        const res = await window.apiAction("/caterer/settings/reactivate", { method: "POST" });
+        if (res) setTimeout(() => window.location.reload(), 1500);
+    } catch (e) {}
+}
+
 async function handleDeleteRequest() {
-    if (!window.showStandardConfirm) return;
-
-    const { value: confirmed, isConfirmed } = await window.showStandardConfirm({
-        title: 'Request Account Deletion',
-        html: 'Permanently delete all your data. This action <b>cannot be undone</b>.<br><br>Type <strong>DELETE</strong> to confirm:',
-        input: 'text',
-        inputPlaceholder: 'DELETE',
-        icon: 'error',
-        confirmButtonText: 'Request Deletion'
-    });
-
-    if (!isConfirmed) return;
-
-    if (confirmed !== 'DELETE') {
-        if (window.showError) window.showError('You must type "DELETE" exactly to confirm.');
-        return;
+    if (typeof Swal !== "undefined") {
+        const result = await Swal.fire({
+            title: "PERMANENTLY DELETE ACCOUNT?",
+            text: "WARNING: All data, dishes, and history will be lost. This cannot be undone!",
+            icon: "error",
+            showCancelButton: true,
+            confirmButtonColor: "#d33",
+            cancelButtonColor: "#3085d6",
+            confirmButtonText: "Yes, delete my account forever!"
+        });
+        if (!result.isConfirmed) return;
+    } else {
+        if (!confirm("WARNING: Are you absolutely sure you want to PERMANENTLY delete your account? All data, dishes, and history will be lost. This cannot be undone.")) return;
     }
-
-    if (window.showSuccess) {
-        window.showSuccess('Your deletion request has been submitted. An admin will review and process it within 7 business days.');
-    }
+    try {
+        const res = await window.apiAction("/caterer/settings/delete", { method: "POST" });
+        if (res) setTimeout(() => window.location.href = "/login", 2000);
+    } catch (e) {}
 }
 
 // Reset Brand to Defaults

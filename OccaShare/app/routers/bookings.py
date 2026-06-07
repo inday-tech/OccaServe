@@ -12,6 +12,7 @@ import shutil
 import os
 import uuid
 import base64
+import json
 import httpx
 from ..services.realtime import manager
 from ..services.notification import NotificationService
@@ -735,7 +736,7 @@ async def _validate_receipt_with_gemini(filepath: str, payment_method: str, expe
             with open(filepath, "rb") as image_file:
                 encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
             
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_key}"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key={gemini_key}"
             prompt = (
                 f"Analyze this image. Is it a legitimate payment receipt or screenshot for {payment_method}? "
                 "Look for evidence of a successful transaction, reference numbers, amounts, and dates. "

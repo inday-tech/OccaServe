@@ -1,7 +1,7 @@
-{% set active_page = 'menu' %}
+{% set active_page = 'services' %}
 {% extends "caterer/layout.html" %}
 
-{% block title %}Menu Library - OccaShare Caterer{% endblock %}
+{% block title %}Equipments & Services - OccaShare Caterer{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/menu.css') }}?v={{ range(1, 10000) | random }}">
@@ -10,25 +10,25 @@
 {% block content %}
 <div class="page-header">
     <div class="header-title-group">
-        <h1>Menu Library</h1>
-        <p>Manage your collection of exquisite dishes and culinary offerings.</p>
+        <h1>Equipments & Services</h1>
+        <p>Manage your collection of rentals, equipment, and services.</p>
     </div>
     <div class="menu-header-actions">
         <!-- Local search removed, using global header search -->
         <input type="hidden" id="menuSearchInput">
         <button class="btn-primary-pro" onclick="openAddMenuModal()">
-            <span>Add New Dish</span>
+            <span>Add New Item/Service</span>
         </button>
     </div>
 </div>
 
-{% set categories_list = ['Appetizer', 'Soup', 'Salad', 'Main Course', 'Side Dish', 'Dessert', 'Drinks', 'Party Trays / Bilao', 'Other'] %}
+{% set categories_list = ['Rentals', 'Services'] %}
 <div class="category-filters animate-up delay-1">
     <button class="cat-chip active" data-cat="all" onclick="filterByCategory('all')">
-        All Items <span class="badge-count">{{ menu_items|length }}</span>
+        All Items <span class="badge-count">{{ services|length }}</span>
     </button>
     {% for cat in categories_list %}
-    {% set count = menu_items|selectattr('category', 'equalto', cat)|list|length %}
+    {% set count = services|selectattr('category', 'equalto', cat)|list|length %}
     {% if count > 0 %}
     <button class="cat-chip" data-cat="{{ cat }}" onclick="filterByCategory('{{ cat }}')">
         {{ cat }} <span class="badge-count">{{ count }}</span>
@@ -37,15 +37,15 @@
     {% endfor %}
 </div>
 
-{% if menu_items %}
+{% if services %}
 <div class="menu-grid animate-up delay-2">
-    {% for item in menu_items %}
+    {% for item in services %}
     <div class="menu-item-card-premium" data-category="{{ item.category }}" data-name="{{ item.name|lower }}">
         <div class="item-visual-pro">
             {% if item.image_url %}
-                <img src="{{ item.image_url }}" alt="{{ item.name }}" class="item-img-pro" onerror="this.outerHTML='<div class=\'item-img-placeholder\'><i class=\'fas fa-utensils\'></i></div>'">
+                <img src="{{ item.image_url }}" alt="{{ item.name }}" class="item-img-pro" onerror="this.outerHTML='<div class=\'item-img-placeholder\'><i class=\'fas fa-box-open\'></i></div>'">
             {% else %}
-                <div class="item-img-placeholder"><i class="fas fa-utensils"></i></div>
+                <div class="item-img-placeholder"><i class="fas fa-box-open"></i></div>
             {% endif %}
             <div class="item-status-overlay">
                 {% if item.is_hidden %}
@@ -126,11 +126,11 @@
 {% else %}
 <div class="empty-state animate-up delay-2" style="padding: 4rem 1rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; width: 100%;">
     <div class="empty-icon" style="color: #cbd5e1; font-size: 4rem; margin-bottom: 1.5rem;">
-        <i class="fas fa-utensils"></i>
+        <i class="fas fa-box-open"></i>
     </div>
-    <h2 style="color: #1e293b; font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem;">Your Library is Empty</h2>
-    <p class="mx-auto" style="max-width: 400px; color: #64748b; margin-top: 0;">Start building your culinary collection by adding your signature dishes.</p>
-    <button class="btn-primary-pro mt-4 mx-auto" onclick="openAddMenuModal()" style="margin-top: 1.5rem;">Add Your First Dish</button>
+    <h2 style="color: #1e293b; font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem;">Your Inventory is Empty</h2>
+    <p class="mx-auto" style="max-width: 400px; color: #64748b; margin-top: 0;">Start adding your rentals and services.</p>
+    <button class="btn-primary-pro mt-4 mx-auto" onclick="openAddMenuModal()" style="margin-top: 1.5rem;">Add Your First Item</button>
 </div>
 {% endif %}
 
@@ -139,8 +139,8 @@
     <div class="occ-modal-box sz-md occ-content-pop">
         <div class="occ-modal-header glass-header">
             <div>
-                <h3 id="menuModalTitle" class="occ-modal-title"><i class="fas fa-utensils-alt"></i> Add New Dish</h3>
-                <div class="occ-modal-subtitle">Configure your dish details, recipe, and pricing strategy.</div>
+                <h3 id="menuModalTitle" class="occ-modal-title"><i class="fas fa-box"></i> Add New Item</h3>
+                <div class="occ-modal-subtitle">Configure your item details and pricing.</div>
             </div>
             <button onclick="window.closeModal('menuModal')" class="occ-modal-close">
                 <i class="fas fa-times"></i>
@@ -149,7 +149,6 @@
 
         <div class="modal-tabs-pro">
             <button class="tab-btn-pro active" onclick="switchDishTab('basic')">Basic Info</button>
-            <button class="tab-btn-pro" onclick="switchDishTab('recipe')">Recipe & Cost</button>
             <button class="tab-btn-pro" onclick="switchDishTab('labels')">Preferences</button>
         </div>
 
@@ -160,8 +159,8 @@
                 <!-- TAB 1: BASIC INFO -->
                 <div id="tab-basic" class="dish-tab-content active">
                     <div class="form-group-pro">
-                        <label>Dish Name *</label>
-                        <input type="text" name="name" class="control-pro" placeholder="e.g. Braised Beef Short Ribs" required minlength="2" maxlength="100">
+                        <label>Item / Service Name *</label>
+                        <input type="text" name="name" class="control-pro" placeholder="e.g. Tent, Chafing Dish, Waiter" required minlength="2" maxlength="100">
                         <div class="invalid-feedback"></div>
                     </div>
 
@@ -169,35 +168,27 @@
                         <div class="form-group-pro">
                             <label>Category</label>
                             <select name="category" id="modalCategory" class="control-pro" required>
-                                <option value="Appetizer">Appetizer</option>
-                                <option value="Soup">Soup</option>
-                                <option value="Salad">Salad</option>
-                                <option value="Main Course">Main Course</option>
-                                <option value="Side Dish">Side Dish</option>
-                                <option value="Dessert">Dessert</option>
-                                <option value="Drinks">Drinks</option>
-                                <option value="Party Trays / Bilao">Party Trays / Bilao</option>
-                                <option value="Other">Other</option>
+                                <option value="Rentals">Rentals (Tables, Chairs, Tents)</option>
+                                <option value="Services">Services (Waiters, Setup, Lights)</option>
                             </select>
                         </div>
                         <div class="form-group-pro">
                             <label>Pricing Unit</label>
                             <select name="pricing_unit" id="modalPricingUnit" class="control-pro" required>
-                                <option value="per_serving">Per Serving / Piece</option>
-                                <option value="per_tray">Per Tray (Half/Full)</option>
-                                <option value="per_bilao">Per Bilao</option>
-                                <option value="per_pax">Per Pax</option>
-                                <option value="per_unit">Per Unit / Item</option>
-                                <option value="per_hour">Per Hour</option>
+                                <option value="per_piece">Per Piece</option>
                                 <option value="per_set">Per Set</option>
+                                <option value="per_hour">Per Hour</option>
+                                <option value="per_day">Per Day</option>
+                                <option value="per_event">Per Event</option>
+                                <option value="per_unit">Per Unit</option>
                             </select>
                         </div>
                     </div>
                     
                     <div class="form-row-pro">
                         <div class="form-group-pro">
-                            <label>Serving Size / Capacity</label>
-                            <input type="text" name="serving_size" class="control-pro" placeholder="e.g. Good for 10-15" maxlength="50">
+                            <label>Capacity / Specifications</label>
+                            <input type="text" name="serving_size" class="control-pro" placeholder="e.g. 10x10ft, Seats 8-10 pax" maxlength="50">
                         </div>
                         <div class="form-group-pro">
                             <!-- Empty spacer for layout -->
@@ -206,14 +197,14 @@
 
                     <div class="form-group-pro">
                         <label>Description</label>
-                        <textarea name="description" class="control-pro" placeholder="Describe flavors, ingredients..." maxlength="500" style="height: 80px;"></textarea>
+                        <textarea name="description" class="control-pro" placeholder="Describe dimensions, material, or service details..." maxlength="500" style="height: 80px;"></textarea>
                     </div>
 
                     <div class="form-group-pro">
-                        <label>Dish Presentation Photo</label>
+                        <label>Photo</label>
                         <div class="photo-dropzone-pro" onclick="document.getElementById('menuImageInput').click()">
                             <i class="fas fa-camera"></i>
-                            <span>Upload dish photo</span>
+                            <span>Upload photo</span>
                             <input type="file" name="image" id="menuImageInput" accept="image/*" style="display: none;" onchange="previewImage(event)">
                         </div>
                         <div id="imagePreviewContainer" class="preview-box-pro" style="display: none;">
@@ -221,88 +212,21 @@
                             <button type="button" class="btn-remove-img-pro" onclick="removeImage()"><i class="fas fa-times"></i></button>
                         </div>
                     </div>
-                </div>
-
-                <!-- TAB 2: RECIPE & COSTING -->
-                <div id="tab-recipe" class="dish-tab-content">
-                    <div class="recipe-builder-card-premium">
-                        <div class="builder-header-pro">
-                            <h4 class="builder-title-pro">Recipe Composition</h4>
-                            <div class="builder-total-badge-pro">₱<span id="totalRecipeCost">0.00</span></div>
+                    <!-- PRICE DIRECTLY ON BASIC TAB FOR SERVICES -->
+                    <div class="form-row-pro mt-3">
+                        <div class="form-group-pro">
+                            <label>Selling Price (₱) *</label>
+                            <input type="text" name="price" id="servicePriceInput" class="control-pro js-format-comma" placeholder="0" required inputmode="numeric" maxlength="10">
                         </div>
-                        
-                        <div class="builder-controls-pro">
-                            <select id="ingredientPicker" class="control-pro-sm">
-                                <option value="">Select Ingredient...</option>
-                                {% for ing in ingredients %}
-                                <option value="{{ ing.id }}" data-price="{{ ing.unit_price }}" data-unit="{{ ing.unit }}">{{ ing.name }}</option>
-                                {% endfor %}
-                            </select>
-                            <input type="number" id="ingredientQty" class="control-pro-sm" placeholder="Qty" step="0.01" min="0.01" style="width: 70px;">
-                            <button type="button" class="btn-add-recipe-pro" onclick="addIngredientToRecipe()"><i class="fas fa-plus"></i></button>
-                        </div>
-
-                        <div class="recipe-items-list-pro" id="recipeListContainer">
-                            <div class="empty-recipe-msg">No ingredients added.</div>
+                        <div class="form-group-pro">
+                            <label>Cost (₱) *</label>
+                            <input type="text" name="cost_price" id="cost_price_input" class="control-pro js-format-comma" placeholder="0" required inputmode="numeric" maxlength="10">
                         </div>
                     </div>
-
-                    <div class="pricing-lab-card">
-                        <div class="form-row-pro">
-                            <div class="form-group-pro">
-                                <label>Target Markup (%)</label>
-                                <input type="number" id="markupInput" class="control-pro" placeholder="300" min="0" max="10000" oninput="if(this.value.length > 5) this.value = this.value.slice(0,5); suggestPrice();">
-                            </div>
-                            <div class="form-group-pro">
-                                <label>Suggested Price</label>
-                                <div class="suggestion-pill">
-                                    <span id="suggestedPrice">₱0.00</span>
-                                    <button type="button" onclick="applySuggestedPrice()">Use</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-row-pro mt-3">
-                            <div class="form-group-pro">
-                                <label>Selling Price (₱) *</label>
-                                <input type="text" name="price" class="control-pro js-format-comma" placeholder="0" required inputmode="numeric" maxlength="10">
-                            </div>
-                            <div class="form-group-pro">
-                                <label>Prep Cost (₱) *</label>
-                                <input type="text" name="cost_price" id="cost_price_input" class="control-pro js-format-comma" placeholder="0" required inputmode="numeric" maxlength="10">
-                            </div>
-                        </div>
-                        <div class="margin-analytics-pro" id="roiMarginBadge">Margin: --%</div>
-                    </div>
-                </div>
+                </div> <!-- End of tab-basic -->
 
                 <!-- TAB 3: PREFERENCES -->
                 <div id="tab-labels" class="dish-tab-content">
-                    <div class="form-group-pro">
-                        <label>Combo / Platter Mode</label>
-                        <div class="visibility-toggle-pro" style="background: #e0e7ff; color: #3730a3;">
-                            <span>Enable Combo/Bilao Settings</span>
-                            <label class="switch-pro">
-                                <input type="checkbox" name="is_combo" id="isComboCheckbox" onchange="toggleComboSettings()">
-                                <span class="slider-pro"></span>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div id="comboSettingsContainer" style="display: none; background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                        <div class="form-row-pro">
-                            <div class="form-group-pro">
-                                <label>Max Choices Allowed</label>
-                                <input type="number" name="max_choices" id="maxChoicesInput" class="control-pro" placeholder="e.g. 3" min="1">
-                            </div>
-                        </div>
-                        <div class="form-group-pro">
-                            <label>Available Combo Options</label>
-                            <input type="text" id="comboOptionsInput" class="control-pro" placeholder="e.g. Pancit, Beef Caldereta, Pork BBQ (Comma separated)">
-                            <small style="color: #64748b;">Separate each option with a comma.</small>
-                            <input type="hidden" name="combo_options" id="hiddenComboOptions">
-                        </div>
-                    </div>
-
                     <div class="form-group-pro">
                         <label>Visibility</label>
                         <div class="visibility-toggle-pro">
@@ -311,24 +235,6 @@
                                 <input type="checkbox" name="is_visible" id="isVisibleCheckbox" checked>
                                 <span class="slider-pro"></span>
                             </label>
-                        </div>
-                    </div>
-
-                    <div class="form-group-pro">
-                        <label>Dietary Labels</label>
-                        <div class="label-matrix-pro">
-                            {% for tag in ['Vegetarian', 'Vegan', 'Halal', 'Keto', 'Spicy'] %}
-                            <label class="matrix-check"><input type="checkbox" name="dietary_tags" value="{{ tag }}"> {{ tag }}</label>
-                            {% endfor %}
-                        </div>
-                    </div>
-
-                    <div class="form-group-pro">
-                        <label>Allergen Alerts</label>
-                        <div class="label-matrix-pro danger">
-                            {% for alg in ['Nuts', 'Dairy', 'Seafood', 'Egg', 'Soy'] %}
-                            <label class="matrix-check"><input type="checkbox" name="allergen_info" value="{{ alg }}"> {{ alg }}</label>
-                            {% endfor %}
                         </div>
                     </div>
 
@@ -347,7 +253,7 @@
 
             <div class="occ-modal-footer">
                 <button type="button" class="btn-secondary-pro" style="min-width:100px;" onclick="window.closeModal('menuModal')">Cancel</button>
-                <button type="submit" class="btn-primary-pro" style="padding:0 var(--space-xl);">Save Dish to Library</button>
+                <button type="submit" class="btn-primary-pro" style="padding:0 var(--space-xl);">Save Item to Inventory</button>
             </div>
         </form>
     </div>
@@ -358,7 +264,7 @@
     <div class="occ-modal-box sz-sm occ-content-pop" style="font-family: 'Poppins', sans-serif; border-radius: 12px; overflow: hidden; max-width: 450px; width: 100%;">
         <div class="occ-modal-header" style="background: #ef4444; padding: 1.5rem; color: white !important; display: flex; justify-content: space-between; align-items: flex-start;">
             <div>
-                <h3 class="occ-modal-title" style="margin: 0; font-size: 1.25rem; font-weight: 700; color: white !important;">Archive Dish</h3>
+                <h3 class="occ-modal-title" style="margin: 0; font-size: 1.25rem; font-weight: 700; color: white !important;">Archive Item</h3>
                 <div class="occ-modal-subtitle" style="font-size: 0.85rem; opacity: 0.9; margin-top: 0.25rem; color: white !important;">Confirming database removal.</div>
             </div>
             <button onclick="window.closeModal('archiveDishModal')" class="occ-modal-close" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer;">
@@ -370,11 +276,11 @@
                 <div style="color: #ef4444; font-size: 1.5rem;"><i class="fas fa-exclamation-triangle"></i></div>
                 <div>
                     <p style="margin: 0; color: #7f1d1d; font-size: 0.9rem;">
-                        Archive "<strong id="archiveItemName"></strong>"? It will no longer appear in your active menu library or package creator.
+                        Archive "<strong id="archiveItemName"></strong>"? It will no longer appear in your active inventory or package creator.
                     </p>
                 </div>
             </div>
-            <p style="font-size: 0.8rem; color: #64748b; line-height: 1.5; margin: 0;">Linked packages will still retain this dish temporarily, but you will not be able to assign it to new bookings.</p>
+            <p style="font-size: 0.8rem; color: #64748b; line-height: 1.5; margin: 0;">Linked packages will still retain this item temporarily, but you will not be able to assign it to new bookings.</p>
         </div>
         <div class="occ-modal-footer" style="padding: 1.25rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
             <button type="button" class="btn-secondary" onclick="window.closeModal('archiveDishModal')" style="background: #e2e8f0; color: #475569; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 700; cursor: pointer; font-family: 'Poppins', sans-serif;">Cancel</button>
@@ -404,12 +310,10 @@
     }
 
     function openAddMenuModal() {
-        modalTitle.innerText = 'Add New Dish';
+        modalTitle.innerText = 'Add New Item';
         form.action = '/caterer/menu/add';
         form.reset();
         removeImage();
-        currentRecipe = [];
-        updateRecipeUI();
         toggleAddonPrice();
         switchDishTab('basic');
         if (document.getElementById('menuErrorDrawer')) document.getElementById('menuErrorDrawer').style.display = 'none';
@@ -420,11 +324,10 @@
             modal.style.display = 'flex';
             requestAnimationFrame(() => modal.classList.add('active'));
         }
-        calculateMenuCosts();
     }
 
     async function editMenuItem(el) {
-    const btn = document.querySelector('#menuForm button[type="submit"]');
+    const btn = document.querySelector('#serviceForm button[type="submit"]');
     if (btn) btn.disabled = false;
         try {
             const item = {
@@ -447,7 +350,7 @@
                 combo_options: el.dataset.comboOptions || '[]'
             };
 
-            modalTitle.innerText = 'Edit Dish Library';
+            modalTitle.innerHTML = '<i class="fas fa-box"></i> Edit Inventory Item';
             form.action = `/caterer/menu/${item.id}/update`;
             form.name.value = item.name;
             form.category.value = item.category;
@@ -468,25 +371,6 @@
             }
             toggleAddonPrice();
             
-            const comboCb = document.getElementById('isComboCheckbox');
-            if (comboCb) comboCb.checked = item.is_combo;
-            form.max_choices.value = item.max_choices;
-            try {
-                const parsedOptions = JSON.parse(item.combo_options);
-                document.getElementById('comboOptionsInput').value = parsedOptions ? parsedOptions.join(', ') : '';
-            } catch(e) {
-                document.getElementById('comboOptionsInput').value = '';
-            }
-            toggleComboSettings();
-
-            let tags = [];
-            try { tags = JSON.parse(item.dietary_tags); } catch(e) { tags = []; }
-            form.querySelectorAll('input[name="dietary_tags"]').forEach(c => c.checked = tags.includes(c.value));
-
-            let allergens = [];
-            try { allergens = JSON.parse(item.allergen_info); } catch(e) { allergens = []; }
-            form.querySelectorAll('input[name="allergen_info"]').forEach(c => c.checked = allergens.includes(c.value));
-
             const visibleCb = document.getElementById('isVisibleCheckbox');
             if (visibleCb) visibleCb.checked = !item.is_hidden;
 
@@ -502,10 +386,6 @@
             else modal.style.display = 'flex';
             
             switchDishTab('basic');
-
-            // Load Recipe from API
-            await loadRecipe(item.id);
-            calculateMenuCosts();
         } catch (err) { console.error("Edit error:", err); }
     }
 
@@ -697,7 +577,7 @@
     function confirmArchiveDish(id) {
         const archiveModal = document.getElementById('archiveDishModal');
         const btn = document.querySelector(`.dropdown-item-pro[data-id="${id}"]`);
-        document.getElementById('archiveItemName').innerText = btn ? btn.dataset.name : 'this dish';
+        document.getElementById('archiveItemName').innerText = btn ? btn.dataset.name : 'this item';
         document.getElementById('confirmArchiveBtn').onclick = async () => {
             const res = await window.apiAction(`/caterer/menu/${id}/archive`, { method: 'POST' });
             if (res) {
@@ -757,19 +637,19 @@
         
         if (sellPrice <= 0) {
             alert("Selling Price must be greater than zero.");
-            switchDishTab('recipe');
+            switchDishTab('basic');
             if (btn) btn.disabled = false;
             return;
         }
         if (costPrice < 0) {
-            alert("Prep Cost cannot be negative.");
-            switchDishTab('recipe');
+            alert("Cost cannot be negative.");
+            switchDishTab('basic');
             if (btn) btn.disabled = false;
             return;
         }
         if (sellPrice < costPrice) {
-            alert("Warning: Selling Price is lower than Prep Cost. A negative margin (loss) is not allowed for dishes.");
-            switchDishTab('recipe');
+            alert("Warning: Selling Price is lower than Cost. A negative margin (loss) is not allowed.");
+            switchDishTab('basic');
             if (btn) btn.disabled = false;
             return;
         }
@@ -779,32 +659,13 @@
         // Map is_visible checkbox to is_hidden for backend
         data.set('is_hidden', !this.querySelector('#isVisibleCheckbox').checked);
         
-        // Map combo options
-        if (this.querySelector('#isComboCheckbox').checked) {
-            const rawOptions = document.getElementById('comboOptionsInput').value;
-            const optionsArray = rawOptions.split(',').map(s => s.trim()).filter(s => s !== '');
-            const maxChoices = parseInt(document.getElementById('maxChoicesInput').value) || 0;
-            
-            if (optionsArray.length === 0 || maxChoices < 1) {
-                alert("For Combo/Platter mode, please provide at least one valid Option and set Max Choices to 1 or more.");
-                switchDishTab('labels');
-                if (btn) btn.disabled = false;
-                return;
-            }
-            if (maxChoices > optionsArray.length) {
-                alert("Max Choices cannot be greater than the number of Available Combo Options.");
-                switchDishTab('labels');
-                if (btn) btn.disabled = false;
-                return;
-            }
-            data.set('combo_options', JSON.stringify(optionsArray));
-        } else {
-            data.set('combo_options', JSON.stringify([]));
-            data.set('max_choices', 0);
-        }
+        // Defaults for Services
+        data.set('is_combo', "false");
+        data.set('combo_options', JSON.stringify([]));
+        data.set('max_choices', 0);
         
-        // Include Recipe Data
-        data.set('recipe_data', JSON.stringify(currentRecipe));
+        // Include Recipe Data (Empty for Services)
+        data.set('recipe_data', JSON.stringify([]));
 
         if (window.apiAction) {
             const res = await window.apiAction(this.action, { method: 'POST', body: data }, btn);

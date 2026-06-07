@@ -213,52 +213,18 @@ body, .customer-page-content { background: #f1f5f9 !important; }
     <!-- Header -->
     <div class="bk-header">
         <div>
-            <h1>My Bookings</h1>
-            <p>Track and manage all your catering bookings in one place.</p>
+            <h1>Archived Bookings</h1>
+            <p>View your completed or cancelled bookings history.</p>
         </div>
-        <a href="/customer/marketplace" class="btn-new-booking">
-            <i class="fas fa-plus"></i> New Booking
-        </a>
+        <a href="/customer/dashboard" class="btn-new-booking"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
     </div>
 
-    <!-- Stat Cards -->
-    {% set action_count = namespace(value=0) %}
-    {% for b in bookings %}
-        {% if b.payment_status in ['reupload_requested','balance_reupload_requested'] or b.status in ['pending_payment','awaiting_payment','draft'] %}
-            {% set action_count.value = action_count.value + 1 %}
-        {% endif %}
-    {% endfor %}
-
-    <div class="premium-stats-grid">
-        <div class="premium-stat-card">
-            <div class="premium-stat-title">TOTAL BOOKINGS</div>
-            <div class="premium-stat-value" style="color: #3b82f6;">{{ stats.total_reservations }}</div>
-            <div class="premium-stat-subtitle">All reservations</div>
-        </div>
-        
-        <div class="premium-stat-card">
-            <div class="premium-stat-title">AMOUNT PAID</div>
-            <div class="premium-stat-value" style="color: #10b981;">₱{{ "{:,.0f}".format(stats.total_spent) }}</div>
-            <div class="premium-stat-subtitle">Confirmed payments</div>
-        </div>
-        
-        <div class="premium-stat-card">
-            <div class="premium-stat-title">BALANCE DUE</div>
-            <div class="premium-stat-value" style="color: #f59e0b;">₱{{ "{:,.0f}".format(stats.pending_obligations) }}</div>
-            <div class="premium-stat-subtitle">Pending obligations</div>
-        </div>
-        
-        <div class="premium-stat-card">
-            <div class="premium-stat-title">ACTION NEEDED</div>
-            <div class="premium-stat-value" style="color: #ef4444;">{{ action_count.value }}</div>
-            <div class="premium-stat-subtitle">Requires attention</div>
-        </div>
-    </div>
+    
 
     <!-- Main Panel -->
     <div class="bk-panel">
         <div class="bk-panel-head">
-            <h3>All Bookings</h3>
+            <h3>Past Bookings</h3>
             <select class="bk-filter" id="statusFilter" onchange="applyFilter()">
                 <option value="">All Status</option>
                 <option value="action">⚡ Action Needed</option>
@@ -351,7 +317,7 @@ body, .customer-page-content { background: #f1f5f9 !important; }
                         <button onclick="removeBooking({{ b.id }})" class="bk-btn btn-del" title="Delete Draft">Delete</button>
                     {% elif bs in ['completed', 'cancelled'] %}
                         <a href="/customer/bookings/manage/{{ b.id }}" class="bk-btn btn-manage">View Details</a>
-                        <button onclick="archiveBooking({{ b.id }})" class="bk-btn btn-manage" title="Archive Booking"><i class="fas fa-archive"></i> Archive</button>
+                        <button onclick="deleteArchivedBooking({{ b.id }})" class="bk-btn btn-del" title="Permanently Delete Booking"><i class="fas fa-trash-alt"></i> Delete</button>
                     {% else %}
                         <a href="/customer/bookings/manage/{{ b.id }}" class="bk-btn btn-manage">View Details</a>
                     {% endif %}
@@ -380,9 +346,9 @@ body, .customer-page-content { background: #f1f5f9 !important; }
         {% else %}
         <div class="bk-empty">
             <div class="bk-empty-icon"><i class="fas fa-calendar-xmark"></i></div>
-            <h4>No Bookings Yet</h4>
-            <p>You haven't made any bookings. Browse caterers to get started.</p>
-            <a href="/customer/marketplace" class="btn-new-booking">Browse Caterers</a>
+            <h4>No Archived Bookings</h4>
+            <p>Your archived bookings will appear here.</p>
+            <a href="/customer/dashboard" class="btn-new-booking"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
         </div>
         {% endif %}
     </div>
@@ -539,6 +505,22 @@ async function archiveBooking(id) {
     } catch { alert('Connection error. Please try again.'); }
 }
 
+/* ── Delete Archived Booking ── */
+async function deleteArchivedBooking(id) {
+    if (!confirm('Are you sure you want to PERMANENTLY delete this archived booking? This cannot be undone.')) return;
+    try {
+        const res  = await fetch(`/customer/bookings/${id}/delete`, { method:'POST' });
+        const data = await res.json();
+        if (res.ok) {
+            if (window.showToast) window.showToast(data.message, 'success');
+            location.reload();
+        } else {
+            if (window.showError) window.showError(data.detail || 'Failed.', 'Error');
+            else alert(data.detail || 'Error');
+        }
+    } catch { alert('Connection error. Please try again.'); }
+}
+
 /* ── Real-time: intercept WS booking updates to show banner instead of instant reload ── */
 const _origWsHandler = window.__bkWsPatched;
 if (!_origWsPatched) {
@@ -575,3 +557,5 @@ if (!_origWsPatched) {
 }
 </script>
 {% endblock %}
+
+

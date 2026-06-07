@@ -80,8 +80,8 @@ async function openAddPackageModal() {
         }
         if (placeholder) placeholder.style.display = 'flex';
 
-        // Render default standard inclusions
-        renderInclusions({});
+        // Clear checked perks
+        document.querySelectorAll('#tab-perks input[name="linked_menu_ids"]').forEach(cb => cb.checked = false);
 
         // Clear dynamic costs
         calculateCosts();
@@ -148,8 +148,7 @@ async function editPackage(pkgId) {
 
         calculateCosts();
 
-        // Inclusions
-        renderInclusions(pkg.inclusions || {});
+        // Perks/Inclusions are now fetched from linked items via loadPkgMenuLibrary()
 
         // Image Preview Handling
         const preview = document.getElementById('pkgImagePreview');
@@ -184,91 +183,7 @@ async function editPackage(pkgId) {
     }
 }
 
-const STANDARD_INCLUSIONS = [
-    "Tables and Chairs",
-    "Table Linens & Centerpieces",
-    "Complete Silverware & Glassware",
-    "Uniformed Waitstaff",
-    "Basic Sound System",
-    "Purified Drinking Water",
-    "Setup and Teardown",
-    "Food Warmers & Buffet Setup"
-];
-
-function renderInclusions(activeInclusions = {}) {
-    const matrix = document.getElementById('inclusionMatrix');
-    if (!matrix) return;
-    matrix.innerHTML = '';
-
-    const allInclusions = new Set(STANDARD_INCLUSIONS);
-    if (activeInclusions) {
-        Object.keys(activeInclusions).forEach(inc => {
-            if (activeInclusions[inc]) allInclusions.add(inc);
-        });
-    }
-
-    allInclusions.forEach(val => {
-        const isChecked = activeInclusions ? activeInclusions[val] === true : false;
-        const isCustom = !STANDARD_INCLUSIONS.includes(val);
-        appendInclusionRow(val, isChecked, isCustom);
-    });
-}
-
-function appendInclusionRow(val, checked = true, isCustom = true) {
-    const matrix = document.getElementById('inclusionMatrix');
-    if (!matrix) return;
-    const newLabel = document.createElement('label');
-    newLabel.className = 'matrix-item checklist-item-pro';
-    newLabel.style = "position: relative; display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s;";
-    
-    const checkedAttr = checked ? 'checked' : '';
-    
-    let actionsHtml = '';
-    if (isCustom) {
-        actionsHtml = `
-        <div style="margin-left: auto; display: flex; gap: 0.4rem;">
-            <button type="button" onclick="window.editCustomInclusion(this, event)" style="color:var(--primary-color); border:none; background:none; cursor:pointer; font-size:11px;"><i class="fas fa-edit"></i></button>
-            <button type="button" onclick="this.closest('.matrix-item').remove(); event.preventDefault(); event.stopPropagation();" style="color:#ef4444; border:none; background:none; cursor:pointer; font-size:11px;"><i class="fas fa-trash-alt"></i></button>
-        </div>
-        `;
-    }
-
-    newLabel.innerHTML = `
-        <input type="checkbox" name="inclusions" value="${val}" ${checkedAttr} style="width: 1.1rem; height: 1.1rem; accent-color: var(--primary-color); cursor: pointer;" onclick="event.stopPropagation()">
-        <span class="inc-text" style="font-size: 0.9rem; font-weight: 600; color: #334155;">${val}</span>
-        ${actionsHtml}
-    `;
-    
-    matrix.appendChild(newLabel);
-}
-
-function addCustomInclusion() {
-    const input = document.getElementById('customInclusionInput');
-    if (!input) return;
-    const val = input.value.trim();
-    if (val) {
-        const matrix = document.getElementById('inclusionMatrix');
-        if (matrix && !matrix.querySelector(`input[value="${val}"]`)) {
-            appendInclusionRow(val, true, true);
-        }
-        input.value = '';
-    }
-}
-
-function editCustomInclusion(btn, event) {
-    if (event) {
-        event.preventDefault();
-        event.stopPropagation();
-    }
-    const row = btn.closest('.matrix-item');
-    const span = row.querySelector('.inc-text');
-    const input = row.querySelector('input[type="checkbox"]');
-    const newVal = prompt("Edit Inclusion:", span.innerText);
-    if (newVal && newVal.trim()) {
-        span.innerText = newVal.trim();
-        input.value = newVal.trim();
-    }
-}
+// Old Inclusions logic removed to favor Inventory Linking
 
 // Dynamic Wizard Navigation & Step validations
 function validateTab(tabName, silent = false) {
@@ -342,11 +257,11 @@ function validateTab(tabName, silent = false) {
     }
     
     if (tabName === 'perks') {
-        const checkedInclusions = document.querySelectorAll('input[name="inclusions"]:checked').length;
+        const checkedInclusions = document.querySelectorAll('#tab-perks input[name="linked_menu_ids"]:checked').length;
         if (checkedInclusions === 0) {
             isValid = false;
             if (!silent) {
-                const matrix = document.getElementById('inclusionMatrix');
+                const matrix = document.querySelector('.inclusion-matrix');
                 if (matrix) {
                     matrix.style.border = '2px dashed #ef4444';
                     setTimeout(() => matrix.style.border = 'none', 3000);
@@ -354,7 +269,7 @@ function validateTab(tabName, silent = false) {
                     const badge = document.createElement('div');
                     badge.className = 'inline-error-badge text-center py-2';
                     badge.style = 'color: #ef4444; font-size: 11px; font-weight: 800; margin-top: 8px;';
-                    badge.innerText = "Please select at least 1 inclusion or amenity.";
+                    badge.innerText = "Please select at least 1 inclusion or equipment from your inventory.";
                     matrix.parentNode.appendChild(badge);
                 }
             }
@@ -594,6 +509,11 @@ async function loadPkgMenuLibrary() {
         const library = await libRes.json();
         const linkedItems = pkgId ? await linkedRes.json() : [];
         const linkedIds = Array.isArray(linkedItems) ? linkedItems.map(i => i.id) : [];
+
+        // Populate tab-perks (Equipment/Services) checkboxes
+        document.querySelectorAll('#tab-perks input[name="linked_menu_ids"]').forEach(cb => {
+            cb.checked = linkedIds.includes(parseInt(cb.value));
+        });
 
         container.innerHTML = '';
         if (library.length === 0) {

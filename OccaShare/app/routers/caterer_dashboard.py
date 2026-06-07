@@ -200,7 +200,8 @@ async def check_customer_duplicate(
             "exists": True, 
             "name": f"{existing_user.first_name} {existing_user.last_name}".strip(),
             "email": existing_user.email,
-            "contact": existing_user.phone_number
+            "contact": existing_user.phone_number,
+            "role": existing_user.role
         }
     return {"exists": False}
 
@@ -252,6 +253,8 @@ async def create_manual_booking(
             if not customer_email.lower().endswith("@gmail.com"):
                  raise HTTPException(status_code=400, detail="manCustEmail|For security and reliability, only Gmail accounts are supported for customer records.")
             target_user = db.query(models.User).filter(models.User.email == customer_email).first()
+            if target_user and target_user.role != "customer":
+                raise HTTPException(status_code=400, detail="manCustEmail|Security Violation: This email is registered to a Caterer or Admin account. Only customer accounts can be used for bookings.")
         
         # Contact Validation
         if customer_contact:
@@ -1920,13 +1923,15 @@ async def manage_packages(
 ):
     profile = user.caterer_profile
     active_packages = [p for p in profile.packages if p.status != 'archived']
-    active_menu = [m for m in profile.menu_items if not m.is_archived]
+    active_menu = [m for m in profile.menu_items if not m.is_archived and m.category not in ['Rentals', 'Services']]
+    active_services = [m for m in profile.menu_items if not m.is_archived and m.category in ['Rentals', 'Services']]
     
     return templates.TemplateResponse("caterer/packages.html", {
         "request": request,
         "user": user,
         "packages": active_packages,
         "menu_items": active_menu,
+        "services": active_services,
         "active_page": "packages"
     })
 
@@ -1936,7 +1941,7 @@ async def manage_menu(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    active_menu = [m for m in user.caterer_profile.menu_items if not m.is_archived]
+    active_menu = [m for m in user.caterer_profile.menu_items if not m.is_archived and m.category not in ['Rentals', 'Services']]
     all_ingredients = [i for i in user.caterer_profile.ingredients if not i.is_archived]
     return templates.TemplateResponse("caterer/menu.html", {
         "request": request,
@@ -1944,6 +1949,20 @@ async def manage_menu(
         "menu_items": active_menu,
         "ingredients": all_ingredients,
         "active_page": "menu"
+    })
+
+@router.get("/services", response_class=HTMLResponse)
+async def manage_services(
+    request: Request, 
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    active_services = [m for m in user.caterer_profile.menu_items if not m.is_archived and m.category in ['Rentals', 'Services']]
+    return templates.TemplateResponse("caterer/services.html", {
+        "request": request,
+        "user": user,
+        "services": active_services,
+        "active_page": "services"
     })
 
 @router.get("/profile", response_class=HTMLResponse)
@@ -2357,6 +2376,11 @@ async def update_profile(
                     mime = file_obj.content_type or "image/jpeg"
                     data_url = f"data:{mime};base64,{encoded}"
                     setattr(profile, f"{field_name}_url" if field_name != 'logo' else 'logo_url', data_url)
+                    if field_name == 'logo':
+                        # Sync Caterer's User profile image with their Business Logo
+                        user = db.query(User).filter(User.id == current_user_id).first()
+                        if user:
+                            user.profile_image_url = data_url
             except Exception:
                 pass
 
@@ -4485,7 +4509,10 @@ async def deactivate_account(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    data = await request.json()
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
     reason = data.get("reason", "No reason provided")
     profile = user.caterer_profile
     
@@ -4717,3 +4744,4 @@ async def caterer_report_booking(
     db.commit()
 
     return JSONResponse(content={"success": True, "message": f"Report submitted successfully. Reference ID: {reference_id}"})
+

@@ -619,48 +619,55 @@
 </div>
 
 <!-- Password Modal -->
-<div id="passModal" class="admin-modal-overlay">
-    <div class="admin-modal-card" style="max-width: 500px; padding: 0; overflow: hidden; border-radius: 2.5rem;">
-        <div class="display-header" style="background: white; border-bottom: 1px solid var(--dm-border);">
-             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h2 style="font-size: 1.25rem;">Update Credentials</h2>
-                <button onclick="closePassModal()" style="border: none; background: none; font-size: 1.5rem; color: var(--dm-text-muted); cursor: pointer;">&times;</button>
-             </div>
-        </div>
-        <form id="passForm" onsubmit="handlePass(event)" style="padding: 2.5rem;">
-            <div class="input-wrapper">
-                <label class="label-premium">Current Administrative Key</label>
-                <input type="password" name="current_password" class="input-premium" placeholder="Verify identity" required>
+<!-- Password Modal -->
+<div id="passModal" class="occ-modal-overlay">
+    <div class="occ-modal-box sz-sm">
+        <div class="occ-modal-header">
+            <div>
+                <h3 class="occ-modal-title"><i class="fas fa-key" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Update Password</h3>
+                <div class="occ-modal-subtitle">Ensure your administrative gateway stays secure with a strong key.</div>
             </div>
-            <div class="input-wrapper">
-                <label class="label-premium">New Secure Password</label>
-                <input type="password" id="new_password" name="new_password" class="input-premium" placeholder="Min. 8 characters" required oninput="validatePassword(this.value)">
-                
-                <div id="password-checklist" style="margin-top: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <div id="check-length" class="check-item" style="font-size: 0.7rem; color: #94a3b8; font-weight: 600;"><i class="fas fa-circle" style="font-size: 6px; margin-right: 6px;"></i> 8+ Characters</div>
-                    <div id="check-upper" class="check-item" style="font-size: 0.7rem; color: #94a3b8; font-weight: 600;"><i class="fas fa-circle" style="font-size: 6px; margin-right: 6px;"></i> Uppercase</div>
-                    <div id="check-number" class="check-item" style="font-size: 0.7rem; color: #94a3b8; font-weight: 600;"><i class="fas fa-circle" style="font-size: 6px; margin-right: 6px;"></i> Number</div>
-                    <div id="check-symbol" class="check-item" style="font-size: 0.7rem; color: #94a3b8; font-weight: 600;"><i class="fas fa-circle" style="font-size: 6px; margin-right: 6px;"></i> Symbol</div>
+            <button type="button" onclick="closePassModal()" class="occ-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form id="passForm" onsubmit="handlePass(event)">
+            <div class="occ-modal-body">
+                <div class="occ-form-grid">
+                    <div class="occ-form-group full-width">
+                        <label class="occ-form-label">Current Administrative Key</label>
+                        <input type="password" name="current_password" class="occ-form-input" required placeholder="Verify identity">
+                    </div>
+                    
+                    <div class="occ-form-group full-width">
+                        <label class="occ-form-label">New Secure Password</label>
+                        <input type="password" name="new_password" id="new_password" class="occ-form-input" required placeholder="Min 8 characters" minlength="8" oninput="validatePassword(this.value)">
+                        <div class="password-requirements" style="margin-top: 8px; font-size: 0.7rem; display: flex; flex-direction: column; gap: 4px;">
+                            <div id="check-length" class="req-item" style="color: #64748b; font-weight: 500;"><i class="fas fa-circle" style="font-size: 0.5rem; vertical-align: middle; margin-right: 6px;"></i> Minimum 8 characters</div>
+                            <div id="check-upper" class="req-item" style="color: #64748b; font-weight: 500;"><i class="fas fa-circle" style="font-size: 0.5rem; vertical-align: middle; margin-right: 6px;"></i> At least 1 uppercase letter</div>
+                            <div id="check-number" class="req-item" style="color: #64748b; font-weight: 500;"><i class="fas fa-circle" style="font-size: 0.5rem; vertical-align: middle; margin-right: 6px;"></i> At least 1 number</div>
+                        </div>
+                    </div>
+                    
+                    <div class="occ-form-group full-width">
+                        <label class="occ-form-label">Confirm New Password</label>
+                        <input type="password" name="confirm_password" id="confirm_password" class="occ-form-input" required placeholder="Re-type for validation">
+                        <div id="passwordMatchStatus" style="font-size: 0.7rem; height: 18px; margin-top: 5px; display: flex; align-items: center; gap: 6px; font-weight: 600;">
+                            <i id="matchIndicatorIcon"></i>
+                            <span id="matchIndicatorText"></span>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="input-wrapper">
-                <label class="label-premium">Confirm New Password</label>
-                <input type="password" id="confirm_password" name="confirm_password" class="input-premium" placeholder="Re-type for validation" required>
-            </div>
             
-            <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 1.25rem; border-radius: 1.25rem; margin-bottom: 2rem; display: flex; gap: 12px;">
-                <i class="fas fa-triangle-exclamation" style="color: #d97706; margin-top: 3px;"></i>
-                <p style="margin: 0; font-size: 0.8rem; color: #92400e; line-height: 1.5; font-weight: 500;">
-                    Rotating your key will invalidate all active sessions. You must log in again immediately after sync.
-                </p>
-            </div>
-
-            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-                <button type="button" class="terminal-btn" style="width: auto; margin: 0;" onclick="closePassModal()">Cancel</button>
-                <button type="submit" id="btn-update-pass" class="btn-sync" disabled style="padding: 1rem 2rem;">Update Key</button>
+            <div class="occ-modal-footer">
+                <button type="button" onclick="closePassModal()" class="btn-outline" style="min-width:100px; height:44px; display:inline-flex; align-items:center; justify-content:center;">Cancel</button>
+                <button type="submit" id="btn-update-pass" class="btn-primary" style="height:44px; padding:0 1.5rem;">Save Changes</button>
             </div>
         </form>
     </div>
+</div>
 </div>
 
 <div id="toast-container"></div>
@@ -865,3 +872,4 @@
 </script>
 
 {% endblock %}
+

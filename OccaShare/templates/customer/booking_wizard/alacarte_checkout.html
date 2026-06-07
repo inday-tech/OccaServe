@@ -1,6 +1,13 @@
 {% extends "customer/booking_wizard/wizard_base.html" %}
 
-{% block wizard_title %}A La Carte Checkout{% endblock %}
+{% set is_rental = false %}
+{% for item in menu_items %}
+    {% if item.category|lower == 'rentals' %}
+        {% set is_rental = true %}
+    {% endif %}
+{% endfor %}
+
+{% block wizard_title %}{{ 'Equipment Rental Checkout' if is_rental else 'A La Carte Checkout' }}{% endblock %}
 
 {% block step_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_details.css') }}">
@@ -318,6 +325,15 @@
     .field-error.show {
         display: block !important;
     }
+
+    @media (max-width: 992px) {
+        .checkout-grid {
+            grid-template-columns: 1fr;
+        }
+        .bill-card-premium {
+            position: static;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -327,7 +343,7 @@
     <div class="mini-stepper">
         <div class="mini-step active" id="m-step-1">
             <div class="ms-icon">1</div>
-            <span class="ms-label">Delivery</span>
+            <span class="ms-label">{{ 'Delivery & Setup' if is_rental else 'Delivery' }}</span>
         </div>
         <div class="mini-step" id="m-step-2">
             <div class="ms-icon">2</div>
@@ -345,7 +361,7 @@
                             <i class="fas fa-truck" style="color: var(--checkout-primary);"></i>
                             Delivery Information
                         </h2>
-                        <p class="section-subtitle">Please tell us how you want to receive your order.</p>
+                        <p class="section-subtitle" id="subtitle_step1">Please tell us how you want to receive your order.</p>
 
                         <div class="form-group">
                             <label>Fulfillment Method</label>
@@ -354,7 +370,7 @@
                                     <input type="radio" name="fulfillment" value="delivery" checked onchange="updateFulfillment(this)" style="display: none;">
                                     <div class="fulfillment-icon"><i class="fas fa-bicycle"></i></div>
                                     <div class="fulfillment-details">
-                                        <div class="fulfillment-name">Delivery</div>
+                                        <div class="fulfillment-name" id="lbl_fulfill_del">{{ 'Delivery & Setup' if is_rental else 'Delivery' }}</div>
                                         <div class="fulfillment-hint">+₱150 Fee</div>
                                     </div>
                                     <div class="fulfillment-check"><i class="fas fa-check"></i></div>
@@ -363,7 +379,7 @@
                                     <input type="radio" name="fulfillment" value="pickup" onchange="updateFulfillment(this)" style="display: none;">
                                     <div class="fulfillment-icon"><i class="fas fa-store"></i></div>
                                     <div class="fulfillment-details">
-                                        <div class="fulfillment-name">Pickup</div>
+                                        <div class="fulfillment-name" id="lbl_fulfill_pick">{{ 'Self-Collect' if is_rental else 'Pickup' }}</div>
                                         <div class="fulfillment-hint">Self-collect (Free)</div>
                                     </div>
                                     <div class="fulfillment-check"><i class="fas fa-check"></i></div>
@@ -411,31 +427,31 @@
                         {% endif %}
 
                         <div class="form-group">
-                            <label>Full Name</label>
+                            <label>Contact Person <span style="font-weight: 400; font-size: 0.8em; color: var(--hub-slate-400);">(Editable for Proxy Bookings)</span></label>
                             <input type="text" name="full_name" id="full_name" class="form-input" value="{{ user.first_name }} {{ user.last_name }}" required>
-                            <span class="field-error" id="err-full_name">Full name is required.</span>
+                            <span class="field-error" id="err-full_name">Contact person name is required.</span>
                         </div>
 
                         <div class="grid-2-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                             <div class="form-group">
-                                <label>Contact Number</label>
-                                <input type="tel" name="contact_number" id="contact_number" class="form-input" placeholder="09XX XXX XXXX" required>
-                                <span class="field-error" id="err-contact_number">11-digit mobile required.</span>
+                                <label>Contact Number <span style="font-weight: 400; font-size: 0.8em; color: var(--hub-slate-400);">(Editable)</span></label>
+                                <input type="tel" name="contact_number" id="contact_number" class="form-input" value="{{ user.phone_number if user.phone_number else '' }}" placeholder="09XX XXX XXXX" maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                                <span class="field-error" id="err-contact_number">Must be 11 digits starting with 09.</span>
                             </div>
                             <div class="form-group">
-                                <label>Order Quantity</label>
-                                <input type="number" name="quantity" id="quantity_input" class="form-input" value="1" min="1" max="100" oninput="updateCheckoutSummary()">
+                                <!-- Global Quantity Hidden -->
+                                <input type="hidden" name="quantity" id="quantity_input" value="1">
                             </div>
                         </div>
 
                         <div class="grid-2-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                             <div class="form-group">
-                                <label>Delivery Date</label>
+                                <label id="lbl_delivery_date">Delivery Date</label>
                                 <input type="date" name="delivery_date" id="delivery_date" class="form-input" required>
                                 <span class="field-error" id="err-delivery_date">Please select a date.</span>
                             </div>
                             <div class="form-group">
-                                <label>Delivery Time</label>
+                                <label id="lbl_delivery_time">Delivery Time</label>
                                 <input type="time" name="delivery_time" id="delivery_time" class="form-input" required>
                                 <span class="field-error" id="err-delivery_time">Please select a time.</span>
                             </div>
@@ -609,7 +625,7 @@
                             <i class="fas fa-check"></i>
                         </div>
                         <h1 class="wizard-title" style="font-size: 2rem;">Order Received!</h1>
-                        <p class="wizard-subtitle" style="margin-bottom: 3rem;">Your food order has been sent to {{ caterer.business_name }}.</p>
+                        <p class="wizard-subtitle" style="margin-bottom: 3rem;" id="subtitle_step3">Your {{ 'equipment request' if is_rental else 'food order' }} has been sent to {{ caterer.business_name }}.</p>
                         
                         <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 1.25rem; padding: 1.5rem; text-align: left; margin-bottom: 3rem;">
                             <p style="color: #166534; font-weight: 700; margin-bottom: 0.5rem;"><i class="fas fa-clipboard-check" style="margin-right: 0.5rem;"></i> Track Order</p>
@@ -629,27 +645,13 @@
             <div class="bill-card-premium">
                 <h3 class="bill-title">Bill Summary</h3>
                 
-                {% set base_total = 0 %}
-                {% for item in menu_items %}
-                {% set base_total = base_total + item.price %}
-                <div class="bill-item-wrap">
-                    <div class="bill-item-thumb">
-                         <img src="{{ item.image_url if item.image_url else '/static/images/placeholder_dish.jpg' }}" alt="{{ item.name }}">
-                    </div>
-                    <div class="bill-item-info">
-                        <h4>{{ item.name }}</h4>
-                        <p>₱{{ "{:,.0f}".format(item.price) }} {% if item.is_combo %}(Platter){% else %}/ Tray{% endif %}</p>
-                    </div>
+                <div id="dynamic-bill-items">
+                    <!-- Populated by JS -->
                 </div>
-                {% endfor %}
 
                 <div class="bill-row">
                     <span>Base Total</span>
-                    <span id="sum-base-price">₱{{ "{:,.2f}".format(base_total) }}</span>
-                </div>
-                <div class="bill-row">
-                    <span>Quantity</span>
-                    <span id="sum-qty">x1</span>
+                    <span id="sum-base-price">₱0.00</span>
                 </div>
                 <div class="bill-row" id="delivery-row">
                     <span>Delivery Fee</span>
@@ -660,10 +662,10 @@
 
                 <div class="bill-total-impact">
                     <span class="bill-total-label">Grand Total</span>
-                    <span class="bill-total-value" id="sum-grand-total">₱{{ "{:,.2f}".format(base_total + 150) }}</span>
+                    <span class="bill-total-value" id="sum-grand-total">₱0.00</span>
                 </div>
 
-                <button type="button" class="btn-secure-checkout" onclick="nextScreen(currentScreen + 1)">
+                <button type="button" class="btn-secure-checkout" onclick="nextScreen(window.currentScreen + 1)">
                     <i class="fas fa-shield-alt"></i>
                     SECURE CHECKOUT
                 </button>
@@ -675,10 +677,22 @@
 
 {% block step_js %}
 <script>
-    window.itemPrice = parseFloat("{{ base_total }}") || 0;
     window.catererId = "{{ caterer.id }}";
     window.menuId = "{{ menu_id_raw }}";
     window.isVerified = {% if user.is_verified %}true{% else %}false{% endif %};
+    window.bookingLeadTime = {{ caterer.booking_lead_time or 7 }};
+    window.backendMenuItems = [
+        {% for item in menu_items %}
+        {
+            id: "{{ item.id }}",
+            name: {{ (item.name or '')|tojson }},
+            price: {{ item.price or 0 }},
+            image_url: "{{ item.image_url if item.image_url else '/static/images/placeholder_dish.jpg' }}",
+            is_combo: {{ 'true' if item.is_combo else 'false' }},
+            is_rental: {{ 'true' if item.category and item.category|lower == 'rentals' else 'false' }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
 </script>
 <script src="{{ url_for('static', path='/js/customer/alacarte_checkout.js') }}?v={{ range(1, 9999) | random }}"></script>
 {% endblock %}

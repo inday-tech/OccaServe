@@ -998,7 +998,8 @@ function showBookingDetails(btn) {
         }
         
         // Add Copy Payment Link Button (useful for sending to FB Walk-in customers)
-        if (!['cancelled', 'completed', 'draft'].includes(data.status)) {
+        const noLinkStatuses = ['draft', 'pending_quotation', 'awaiting_caterer', 'awaiting_customer', 'pending', 'cancelled', 'completed'];
+        if (!noLinkStatuses.includes(data.status)) {
             actionsEl.innerHTML += `
                 <button type="button" class="btn-footer-action" onclick="window.copyInvoiceLink(${data.id})" style="background: white; color: #475569; border: 1px solid #cbd5e1;">
                     <i class="fas fa-link"></i> Copy Payment Link
@@ -1025,7 +1026,7 @@ function showBookingDetails(btn) {
     const modalDueDate = document.getElementById('modalDueDate');
     const badgeContainer = document.getElementById('dueDateBadgeContainer');
     
-    const isEarlyStage = ['pending', 'pending_quotation', 'awaiting_caterer', 'awaiting_payment', 'pending_payment'].includes(data.status);
+    const isEarlyStage = ['pending', 'pending_quotation', 'awaiting_caterer', 'awaiting_customer', 'awaiting_payment', 'pending_payment'].includes(data.status);
     if (data.paymentPlan === 'full' || data.paymentStatus === 'paid' || isEarlyStage) {
         if (dueDateCard) dueDateCard.style.display = 'none';
     } else {

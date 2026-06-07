@@ -1010,3 +1010,381 @@ h6 {
         padding: 3.5rem 0;
     }
 }
+.occ-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.45);
+        z-index: 9999;
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 2000; /* High priority */
+        background: rgba(15, 23, 42, 0.45); /* Deep slate with glass alpha */
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 2.5rem;
+        backdrop-filter: blur(12px) saturate(180%);
+        -webkit-backdrop-filter: blur(12px) saturate(180%);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        opacity: 0;
+    }
+
+    .occ-modal-overlay.active {
+        display: flex;
+        opacity: 1;
+    }
+
+    .occ-modal-box {
+        background: var(--modal-glass-bg);
+        border-radius: 1.5rem;
+        width: 100%;
+        max-width: 720px;
+        max-height: 90vh;
+        min-height: 0;
+        /* Important for flex-child scrolling */
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border: var(--modal-border);
+        box-shadow: var(--modal-shadow);
+        transform: translateY(20px) scale(0.96);
+        opacity: 0;
+        transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+        position: relative;
+        z-index: 3001;
+        pointer-events: auto !important;
+        will-change: transform, opacity;
+    }
+
+    /* Fix for modals using forms: Ensure the form fills the box and allows the body to scroll */
+    .occ-modal-box>form {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+        height: 100%;
+        width: 100%;
+        pointer-events: auto;
+    }
+
+    .occ-modal-overlay.active .occ-modal-box {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+
+    /* ─── Entry Animation Variants ─── */
+    .occ-content-pop {
+        transform: scale(0.88) translateY(10px);
+    }
+
+    .occ-content-slide-down {
+        transform: translateY(-50px) scale(0.98);
+    }
+
+    .occ-content-slide-right {
+        transform: translateX(50px) scale(0.98);
+    }
+
+    .occ-content-slide-up {
+        transform: translateY(50px) scale(0.98);
+    }
+
+    .occ-modal-overlay.active .occ-modal-box.occ-content-pop,
+    .occ-modal-overlay.active .occ-modal-box.occ-content-slide-down,
+    .occ-modal-overlay.active .occ-modal-box.occ-content-slide-right,
+    .occ-modal-overlay.active .occ-modal-box.occ-content-slide-up {
+        transform: translate(0, 0) scale(1);
+        opacity: 1;
+    }
+
+    .occ-modal-header {
+        padding: 1.5rem 2.5rem;
+        background: var(--modal-header-bg);
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-shrink: 0;
+    }
+
+    .occ-modal-title {
+        margin: 0;
+        font-size: var(--text-xl);
+        font-weight: 800;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        letter-spacing: -0.01em;
+    }
+
+    .occ-modal-subtitle {
+        font-size: var(--text-sm);
+        color: #64748b;
+        margin-top: 0.25rem;
+        font-weight: 400;
+    }
+
+    .occ-modal-close {
+        background: #f1f5f9;
+        border: none;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #64748b;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        flex-shrink: 0;
+    }
+
+    .occ-modal-close:hover {
+        background: #fee2e2;
+        color: #ef4444;
+        transform: rotate(90deg);
+    }
+
+    .occ-modal-body {
+        padding: var(--modal-body-padding);
+        overflow-y: auto;
+        flex: 1;
+        min-height: 0;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: var(--modal-gap);
+        pointer-events: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+        scrollbar-color: #cbd5e1 transparent;
+    }
+
+    .occ-modal-body::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .occ-modal-body::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .occ-modal-body::-webkit-scrollbar-thumb {
+        background: #e2e8f0;
+        border-radius: 10px;
+    }
+
+    .occ-modal-body::-webkit-scrollbar-thumb:hover {
+        background: #cbd5e1;
+    }
+
+    .occ-modal-footer {
+        padding: 1.5rem 2.5rem;
+        background: #ffffff;
+        border-top: 1px solid #f1f5f9;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 1.25rem;
+        border-radius: 0 0 1.5rem 1.5rem;
+    }
+
+    /* Professional Utility: Center buttons for specific modals */
+    .occ-modal-footer.modal-footer-centered {
+        justify-content: center;
+    }
+
+    /* ─── Premium Modal Button Standardization (Applied Globally) ─── */
+    .occ-modal-footer .btn-primary,
+    .occ-modal-footer .btn-primary-pro,
+    .occ-modal-footer button[type="submit"],
+    .occ-modal-footer button:not(.btn-secondary):not(.btn-secondary-pro):not([onclick*="closeModal"]):not([onclick*="hide"]) {
+        background: var(--secondary-color) !important;
+        color: white !important;
+        padding: 0 1.75rem !important;
+        border-radius: 8px !important;
+        font-weight: 800 !important;
+        text-transform: none !important;
+        letter-spacing: 0 !important;
+        border: none !important;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15) !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        height: 44px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-family: inherit !important;
+    }
+
+    .occ-modal-footer .btn-primary:hover,
+    .occ-modal-footer .btn-primary-pro:hover,
+    .occ-modal-footer button[type="submit"]:hover,
+    .occ-modal-footer button:not(.btn-secondary):not(.btn-secondary-pro):not([onclick*="closeModal"]):not([onclick*="hide"]):hover {
+        transform: translateY(-2px) scale(1.02) !important;
+        filter: brightness(1.1) !important;
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2) !important;
+    }
+
+    .occ-modal-footer .btn-secondary,
+    .occ-modal-footer .btn-secondary-pro,
+    .occ-modal-footer button[onclick*="closeModal"],
+    .occ-modal-footer button[onclick*="hide"] {
+        background: #f8fafc !important;
+        color: var(--primary-color) !important;
+        padding: 0 1.75rem !important;
+        border-radius: 8px !important;
+        font-weight: 800 !important;
+        border: 2px solid var(--primary-color) !important;
+        text-transform: none !important;
+        letter-spacing: 0 !important;
+        box-shadow: none !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        height: 44px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-family: inherit !important;
+    }
+
+    .occ-modal-footer .btn-secondary:hover,
+    .occ-modal-footer .btn-secondary-pro:hover,
+    .occ-modal-footer button[onclick*="closeModal"]:hover,
+    .occ-modal-footer button[onclick*="hide"]:hover {
+        background: rgba(var(--primary-color-rgb, 239, 68, 68), 0.1) !important;
+        transform: translateY(-2px) scale(1.02) !important;
+    }
+
+    .occ-modal-footer.modal-footer-balanced {
+        justify-content: space-between;
+    }
+
+    /* Modal Form Grid */
+    .occ-form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.25rem;
+    }
+
+    .occ-form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .occ-form-group.full-width {
+        grid-column: span 2;
+    }
+
+    .occ-form-label {
+        font-size: var(--text-sm);
+        font-weight: 700;
+        color: #475569;
+    }
+
+    .occ-form-input {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 0.75rem;
+        font-family: inherit;
+        font-size: var(--text-base);
+        transition: all 0.2s;
+        background: #ffffff;
+    }
+
+    .occ-form-input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.15);
+    }
+
+    /* Size Variants */
+    .occ-modal-box.sz-sm {
+        max-width: 480px;
+    }
+
+    .occ-modal-box.sz-md {
+        max-width: 640px;
+    }
+
+    .occ-modal-box.sz-lg {
+        max-width: 850px;
+    }
+
+    .occ-modal-box.sz-xl {
+        max-width: 1100px;
+    }
+
+    /* ─── Mobile Responsiveness (Floating Bottom Sheet) ─── */
+    @media (max-width: 640px) {
+        .occ-modal-overlay {
+            padding: 1rem;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .occ-modal-box {
+            border-radius: 1.5rem;
+            max-height: 85vh;
+            width: 100%;
+            max-width: 420px;
+            margin-bottom: 0.5rem;
+            /* Slight float from bottom */
+            transform: translateY(105%);
+            transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .occ-modal-overlay.active .occ-modal-box {
+            transform: translateY(0);
+        }
+
+        /* Animation overrides for mobile sheet */
+        .occ-content-pop,
+        .occ-content-slide-down,
+        .occ-content-slide-right,
+        .occ-content-slide-up {
+            transform: translateY(100%);
+        }
+
+        .occ-modal-overlay.active .occ-modal-box.occ-content-pop,
+        .occ-modal-overlay.active .occ-modal-box.occ-content-slide-down,
+        .occ-modal-overlay.active .occ-modal-box.occ-content-slide-right,
+        .occ-modal-overlay.active .occ-modal-box.occ-content-slide-up {
+            transform: translateY(0);
+        }
+
+        .occ-modal-body {
+            padding: 1.25rem 1.5rem;
+            gap: 1.25rem;
+        }
+
+        .occ-modal-header {
+            padding: 1.25rem 1.5rem;
+        }
+
+        .occ-modal-footer {
+            padding: 1.25rem 1.5rem;
+        }
+
+        .occ-form-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .occ-form-group.full-width {
+            grid-column: span 1;
+        }
+    }
+
+    /* SweetAlert2 Mobile Override */
+    @media (max-width: 640px) {
+        div.swal2-popup {
+            width: 90% !important;
+            max-width: 360px !important;
+            border-radius: 1.5rem !important;
+            padding: 1.25em !important;
+        }
+    }
+
+    /* ─── Validation UI ─── */
+    

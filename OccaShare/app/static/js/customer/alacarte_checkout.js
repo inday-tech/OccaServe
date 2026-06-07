@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const menuId = window.menuId;
 
     let deliveryFee = 150; 
-    let currentScreen = 1;
+    window.currentScreen = 1;
 
     // --- DELIVERY FEE MAPPING (Sta. Cruz, Marinduque) ---
     const BRGY_FEES = {
@@ -88,12 +88,114 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
+    // LOAD CART
+    let parsedCart = [];
+    try {
+        parsedCart = JSON.parse(sessionStorage.getItem('alacarte_cart_' + window.catererId));
+        if (!Array.isArray(parsedCart)) parsedCart = [];
+    } catch (e) {
+        parsedCart = [];
+    }
+    window.cartItems = parsedCart;
+    
+    // Fallback if cartItems is empty but backendMenuItems has items (e.g., direct navigation)
+    if (window.cartItems.length === 0 && window.backendMenuItems) {
+        window.backendMenuItems.forEach(item => {
+            window.cartItems.push({ id: String(item.id), name: item.name, price: item.price, qty: 1 });
+        });
+    }
+
+    function applyDynamicTerminology() {
+        const hasFood = window.cartItems.some(cItem => {
+            const backendList = window.backendMenuItems || [];
+            const bItem = backendList.find(i => String(i.id) === String(cItem.id)) || cItem;
+            return !bItem.is_rental;
+        });
+
+        // If it's pure rentals (no food), change the wordings
+        const isRentalOnly = !hasFood && window.cartItems.length > 0;
+
+        const lblDelDate = document.getElementById('lbl_delivery_date');
+        if (lblDelDate) lblDelDate.innerText = isRentalOnly ? 'Delivery & Setup Date' : 'Delivery Date';
+        
+        const lblDelTime = document.getElementById('lbl_delivery_time');
+        if (lblDelTime) lblDelTime.innerText = isRentalOnly ? 'Setup Time' : 'Delivery Time';
+
+        const lblFulfillDel = document.getElementById('lbl_fulfill_del');
+        if (lblFulfillDel) lblFulfillDel.innerText = isRentalOnly ? 'Delivery & Setup' : 'Delivery';
+
+        const lblFulfillPick = document.getElementById('lbl_fulfill_pick');
+        if (lblFulfillPick) lblFulfillPick.innerText = isRentalOnly ? 'Self-Collect' : 'Pickup';
+
+        const subtitle1 = document.getElementById('subtitle_step1');
+        if (subtitle1) subtitle1.innerText = isRentalOnly ? 'Please tell us how you want to receive your equipment.' : 'Please tell us how you want to receive your order.';
+
+        const subtitle3 = document.getElementById('subtitle_step3');
+        if (subtitle3) subtitle3.innerText = isRentalOnly ? 'Your equipment request has been sent to' : 'Your food order has been sent to';
+        
+        const btnSubmit = document.getElementById('final-submit-btn');
+        if (btnSubmit) btnSubmit.innerHTML = isRentalOnly ? 'CONFIRM RENTAL <i class="fas fa-check" style="margin-left: 0.75rem;"></i>' : 'PLACE ORDER NOW <i class="fas fa-check" style="margin-left: 0.75rem;"></i>';
+    }
+
+    // MAP items
+    window.renderBillItems = function() {
+        applyDynamicTerminology();
+        const container = document.getElementById('dynamic-bill-items');
+        if (!container) return;
+        
+        let html = '';
+        let baseTotal = 0;
+
+        window.cartItems.forEach((cItem, index) => {
+            const backendList = window.backendMenuItems || [];
+            const bItem = backendList.find(i => String(i.id) === String(cItem.id)) || cItem;
+            const price = parseFloat(cItem.price || bItem.price) || 0;
+            const qty = parseInt(cItem.qty) || 1;
+            const isRental = bItem.is_rental;
+            const unitLabel = isRental ? '/ Unit' : (bItem.is_combo ? '(Platter)' : '/ Tray');
+            
+            baseTotal += (price * qty);
+
+            html += `
+                <div class="bill-item-wrap" style="align-items: start;">
+                    <div class="bill-item-thumb">
+                         <img src="${bItem.image_url || '/static/images/placeholder_dish.jpg'}" alt="${bItem.name}">
+                    </div>
+                    <div class="bill-item-info" style="flex: 1;">
+                        <h4>${bItem.name}</h4>
+                        <p style="margin-bottom: 0.5rem;">₱${price.toLocaleString(undefined, { minimumFractionDigits: 0 })} ${unitLabel}</p>
+                        
+                        <div style="display: flex; align-items: center; gap: 0.5rem; background: #f1f5f9; width: fit-content; border-radius: 6px; padding: 2px;">
+                            <button type="button" onclick="updateItemQty(${index}, -1)" style="border: none; background: white; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; color: #64748b; font-weight: bold;">-</button>
+                            <span style="font-size: 0.8rem; font-weight: 800; width: 20px; text-align: center;">${qty}</span>
+                            <button type="button" onclick="updateItemQty(${index}, 1)" style="border: none; background: white; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; color: #64748b; font-weight: bold;">+</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+        window.updateCheckoutSummary(baseTotal);
+    };
+
+    window.updateItemQty = function(index, delta) {
+        let newQty = (parseInt(window.cartItems[index].qty) || 1) + delta;
+        if (newQty < 1) newQty = 1;
+        if (newQty > 99) {
+            Swal.fire({icon: 'info', title: 'Limit Reached', text: 'Maximum quantity limit reached.', confirmButtonColor: '#10b981'});
+            return;
+        }
+        window.cartItems[index].qty = newQty;
+        sessionStorage.setItem('alacarte_cart_' + window.catererId, JSON.stringify(window.cartItems));
+        window.renderBillItems();
+    };
+
     function buildCartData() {
         const cart = [];
-        const menuIds = String(menuId).split(',').map(id => parseInt(id.trim())).filter(id => id);
-        const globalQty = parseInt(document.getElementById('quantity_input').value) || 1;
-        
-        menuIds.forEach(id => {
+        window.cartItems.forEach(cItem => {
+            const id = cItem.id;
+            const qty = cItem.qty;
             const choices = [];
             const grid = document.querySelector(`.combo-options-grid[data-id="${id}"]`);
             if (grid) {
@@ -103,7 +205,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             cart.push({
                 id: id,
-                quantity: globalQty,
+                quantity: qty,
                 choices: choices
             });
         });
@@ -112,11 +214,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- NAVIGATION LOGIC ---
     window.nextScreen = async function (n, force = false) {
-        if (!force && n > currentScreen) {
-            if (!validateScreen(currentScreen)) return;
+        if (!force && n > window.currentScreen) {
+            if (!validateScreen(window.currentScreen)) return;
             
             // Create Draft Booking when moving from Step 1 to Step 2
-            if (currentScreen === 1 && n === 2) {
+            if (window.currentScreen === 1 && n === 2) {
                 const ok = await createDraftBooking();
                 if (!ok) return;
             }
@@ -129,7 +231,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Update Stepper
         updateStepper(n);
-        currentScreen = n;
+        window.currentScreen = n;
 
         if (n === 2) populateReview();
 
@@ -178,7 +280,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             
             const phone = document.getElementById('contact_number').value.replace(/\D/g, '');
-            if (phone.length !== 11 && phone.length > 0) {
+            if ((phone.length !== 11 || !phone.startsWith('09')) && phone.length > 0) {
                 showError('contact_number', 'err-contact_number');
                 isValid = false;
             }
@@ -192,6 +294,85 @@ document.addEventListener('DOMContentLoaded', function () {
         const err = document.getElementById(errId);
         if (input) input.classList.add('error');
         if (err) err.classList.add('show');
+    }
+
+    function clearError(inputId, errId) {
+        const input = document.getElementById(inputId);
+        const err = document.getElementById(errId);
+        if (input) input.classList.remove('error');
+        if (err) err.classList.remove('show');
+    }
+
+    function bindRealTimeValidation() {
+        const required = ['full_name', 'delivery_date', 'delivery_time'];
+        
+        required.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('input', function() {
+                    if (!this.value.trim()) {
+                        showError(id, `err-${id}`);
+                    } else {
+                        clearError(id, `err-${id}`);
+                    }
+                });
+            }
+        });
+
+        const phone = document.getElementById('contact_number');
+        if (phone) {
+            phone.addEventListener('input', function() {
+                const val = this.value.replace(/\D/g, '');
+                if (val.length === 0 || val.length !== 11 || !val.startsWith('09')) {
+                    showError('contact_number', 'err-contact_number');
+                } else {
+                    clearError('contact_number', 'err-contact_number');
+                }
+            });
+        }
+
+        const brgy = document.getElementById('brgy_select');
+        if (brgy) {
+            brgy.addEventListener('change', function() {
+                const fulfillment = document.querySelector('input[name="fulfillment"]:checked').value;
+                if (fulfillment === 'delivery' && !this.value) {
+                    showError('brgy_select', 'err-brgy_select');
+                } else {
+                    clearError('brgy_select', 'err-brgy_select');
+                }
+            });
+        }
+    }
+
+    function bindDatePicker() {
+        const dateInput = document.getElementById('delivery_date');
+        if (!dateInput) return;
+        
+        const leadTime = window.bookingLeadTime || 7;
+        const today = new Date();
+        today.setDate(today.getDate() + leadTime);
+        
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        
+        const minDate = `${yyyy}-${mm}-${dd}`;
+        dateInput.setAttribute('min', minDate);
+        
+        dateInput.addEventListener('change', function() {
+            if (this.value && this.value < minDate) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Invalid Date',
+                    text: `Based on the caterer's policy, bookings must be made at least ${leadTime} days in advance (earliest is ${minDate}).`,
+                    confirmButtonColor: '#10b981'
+                });
+                this.value = ''; // Reset invalid selection
+                showError('delivery_date', 'err-delivery_date');
+            } else if (this.value) {
+                clearError('delivery_date', 'err-delivery_date');
+            }
+        });
     }
 
     function validateCombos() {
@@ -209,7 +390,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
         });
-        if (!valid) alert("Please complete your platter selections.");
+        if (!valid) {
+            Swal.fire({icon: 'warning', title: 'Incomplete Selection', text: 'Please complete your platter selections.', confirmButtonColor: '#10b981'});
+        }
         return valid;
     }
 
@@ -242,12 +425,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 console.log("[CHECKOUT] Draft created/updated:", bookingId);
                 return true;
             } else {
-                alert("Error creating booking: " + data.message);
+                Swal.fire({icon: 'error', title: 'Booking Failed', text: data.message, confirmButtonColor: '#10b981'});
                 return false;
             }
         } catch (e) {
             console.error(e);
-            alert("Connection error occurred.");
+            Swal.fire({icon: 'error', title: 'Network Error', text: 'Connection error occurred while saving draft.', confirmButtonColor: '#10b981'});
             return false;
         } finally {
             const btn = document.querySelector('#screen-1 .btn-wizard-next');
@@ -257,15 +440,26 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // --- SUMMARY & FULFILLMENT ---
-    window.updateCheckoutSummary = function() {
-        const qty = parseInt(document.getElementById('quantity_input').value) || 1;
-        const base = itemPrice * qty;
+    window.updateCheckoutSummary = function(calculatedBaseTotal = null) {
+        let base = calculatedBaseTotal;
+        if (base === null) {
+            base = 0;
+            window.cartItems.forEach(cItem => {
+                const price = parseFloat(cItem.price) || 0;
+                const qty = parseInt(cItem.qty) || 1;
+                base += (price * qty);
+            });
+        }
         const total = base + deliveryFee;
         
-        document.getElementById('sum-base-price').innerText = '₱' + base.toLocaleString(undefined, { minimumFractionDigits: 2 });
-        document.getElementById('sum-qty').innerText = 'x' + qty;
-        document.getElementById('sum-delivery-fee').innerText = '₱' + deliveryFee.toLocaleString(undefined, { minimumFractionDigits: 2 });
-        document.getElementById('sum-grand-total').innerText = '₱' + total.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        const sumBaseEl = document.getElementById('sum-base-price');
+        if (sumBaseEl) sumBaseEl.innerText = '₱' + base.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        
+        const feeEl = document.getElementById('sum-delivery-fee');
+        if (feeEl) feeEl.innerText = '₱' + deliveryFee.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        
+        const grandEl = document.getElementById('sum-grand-total');
+        if (grandEl) grandEl.innerText = '₱' + total.toLocaleString(undefined, { minimumFractionDigits: 2 });
     };
 
     window.updateFulfillment = function(el) {
@@ -293,6 +487,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initial call to sync UI
     const defaultFulfillment = document.querySelector('input[name="fulfillment"]:checked');
     if (defaultFulfillment) window.updateFulfillment(defaultFulfillment);
+
+    // Render dynamic items on load
+    window.renderBillItems();
+
+    // Bind real-time validation listeners
+    bindRealTimeValidation();
+    bindDatePicker();
 
     function calculateTotal() {
         return parseFloat(document.getElementById('sum-grand-total').innerText.replace(/[^\d.-]/g, ''));
@@ -356,7 +557,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const currentId = getActiveBookingId();
         
         if (!currentId) {
-            alert("Session lost. Please try going back to the first step to re-save your details.");
+            Swal.fire({icon: 'error', title: 'Session Lost', text: 'Please try going back to the first step to re-save your details.', confirmButtonColor: '#10b981'});
             console.error("[CHECKOUT] Submission failed: No bookingId found.");
             return;
         }
@@ -385,12 +586,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 nextScreen(3, true);
             } else {
                 const errMsg = data.message || (data.detail ? JSON.stringify(data.detail) : "Unknown Error");
-                alert("Order Error: " + errMsg);
+                Swal.fire({icon: 'error', title: 'Checkout Failed', text: errMsg, confirmButtonColor: '#10b981'});
                 btn.disabled = false;
                 loader.style.display = 'none';
             }
         } catch (e) {
-            alert("Network error.");
+            Swal.fire({icon: 'error', title: 'Network Error', text: 'A network error occurred.', confirmButtonColor: '#10b981'});
             btn.disabled = false;
             loader.style.display = 'none';
         }

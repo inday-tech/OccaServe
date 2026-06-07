@@ -622,7 +622,7 @@
     }
 
     /* Profile Dropdown */
-    .profile-dropdown {
+    .premium-dropdown {
         position: absolute;
         top: calc(100% + 10px);
         right: 0;
@@ -639,7 +639,7 @@
         z-index: 2100;
     }
 
-    .profile-dropdown.active {
+    .premium-dropdown.active {
         display: block;
         opacity: 1;
         transform: translateY(0);
@@ -2036,7 +2036,7 @@
 
     /* Mobile Header Dropdown Fix */
     @media (max-width: 768px) {
-        .header-dropdown-wrapper .profile-dropdown {
+        .header-dropdown-wrapper .premium-dropdown {
             position: fixed !important;
             top: 70px !important; /* Position just below the header */
             right: 10px !important;
@@ -2061,4 +2061,5 @@
 .texture-circuit { background-image: radial-gradient(rgba(203, 213, 225, 0.3) 1px, transparent 0) !important; background-size: 20px 20px !important; background-position: -10px -10px !important; }
 .texture-food { background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10 10c2 0 4 2 4 4s-2 4-4 4-4-2-4-4 2-4 4-4zm30 30c2 0 4 2 4 4s-2 4-4 4-4-2-4-4 2-4 4-4zM20 50c1 0 2 1 2 2s-1 2-2 2-2-1-2-2 1-2 2-2zm30-40c1 0 2 1 2 2s-1 2-2 2-2-1-2-2 1-2 2-2zM15 30c3 0 5 2 5 5s-2 5-5 5-5-2-5-5 2-5 5-5zm30 0c3 0 5 2 5 5s-2 5-5 5-5-2-5-5 2-5 5-5z' fill='%23cbd5e1' fill-opacity='0.15'/%3E%3C/svg%3E") !important; }
 .texture-dining { background-image: linear-gradient(45deg, rgba(203,213,225,0.05) 25%, transparent 25%), linear-gradient(-45deg, rgba(203,213,225,0.05) 25%, transparent 25%) !important; background-size: 30px 30px !important; }
+
 

@@ -118,6 +118,8 @@
 
     /* ---- TABS NAVIGATION ---- */
     .hub-tabs {
+        z-index: 1000 !important;
+        pointer-events: auto !important;
         display: flex;
         gap: 2rem;
         border-bottom: 2px solid var(--hub-slate-100);
@@ -138,6 +140,8 @@
         padding: 0.5rem 0;
         position: relative;
         transition: all 0.3s;
+        z-index: 1000;
+        pointer-events: auto;
     }
 
     .tab-btn:hover {
@@ -542,6 +546,8 @@
 
         /* --- Tabs: scrollable, no wrap --- */
         .hub-tabs {
+        z-index: 1000 !important;
+        pointer-events: auto !important;
             overflow-x: auto !important;
             scrollbar-width: none !important;
             gap: 1rem !important;
@@ -1086,7 +1092,15 @@
                         incList = Object.keys(pkg.inclusions).filter(k => pkg.inclusions[k] === true || pkg.inclusions[k] === 1);
                     }
                 }
-            } catch(e) {}
+            } catch (err) {
+                console.error("Error parsing inclusions:", err);
+            }
+            // Combine legacy inclusions with new linked inventory
+            if (pkg.linked_inventory && Array.isArray(pkg.linked_inventory)) {
+                pkg.linked_inventory.forEach(item => {
+                    if (item && !incList.includes(item)) incList.push(item);
+                });
+            }
 
             // Section 1: Service Details
             const paxLabel = pkg.price_unit === 'per_guest' ? '/pax' : ' total';
@@ -1305,15 +1319,40 @@
                     <div class="cat-card-grid">
                         {% for cat in categories %}
                         {% set cat_items = active_menu | selectattr('category', 'equalto', cat) | list %}
-                        {% set first_img = cat_items[0].image_url if cat_items[0].image_url else 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=400' %}
+                        
+                        {% set display_img = namespace(url='') %}
+                        {% for item in cat_items %}
+                            {% if item.image_url and not display_img.url %}
+                                {% set display_img.url = item.image_url %}
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if not display_img.url %}
+                            {% set final_img = 'https://ui-avatars.com/api/?name=' ~ (cat|urlencode) ~ '&background=f1f5f9&color=64748b&size=400&font-size=0.2' %}
+                        {% else %}
+                            {% set final_img = display_img.url %}
+                        {% endif %}
+                        
+                        {% set item_names = [] %}
+                        {% for item in cat_items[:3] %}
+                            {% set _ = item_names.append(item.name) %}
+                        {% endfor %}
+                        
+                        {% if cat_items|length == 1 %}
+                            {% set dynamic_desc = 'Featuring ' ~ item_names[0] ~ '.' %}
+                        {% else %}
+                            {% set dynamic_desc = cat_items|length ~ ' options available, including ' ~ item_names|join(', ') ~ '.' %}
+                        {% endif %}
+                        
                         <div class="cat-card" onclick="window.openCategoryModal('{{ cat|e }}')">
-                            <img src="{{ first_img }}" class="cat-card-img" alt="{{ cat }}" loading="lazy">
+                            <img src="{{ final_img }}" class="cat-card-img" alt="{{ cat }}" loading="lazy" style="object-fit: cover;">
                             <div class="cat-card-body">
                                 <span class="cat-card-name">{{ cat }}</span>
-                                <span class="cat-card-count">{{ cat_items|length }} dish{{ 'es' if cat_items|length != 1 else '' }}</span>
+                                <span class="cat-card-desc" style="font-size: 0.75rem; color: #64748b; margin-top: 2px; display: block; line-height: 1.3;">{{ dynamic_desc }}</span>
+                                <span class="cat-card-count" style="margin-top: 6px; display: inline-block;">{{ cat_items|length }} item{{ 's' if cat_items|length != 1 else '' }}</span>
                             </div>
                             <div class="cat-card-footer">
-                                <span>Browse dishes</span>
+                                <span>Browse {{ 'Items' if cat in ['Rentals', 'Services'] else 'Dishes' }}</span>
                                 <i class="fas fa-chevron-right" style="font-size: 0.65rem;"></i>
                             </div>
                         </div>
@@ -1436,11 +1475,11 @@
                 </div>
             </div>
 
-            <!-- LIVE ORDER DRAWER -->
+            <!-- LIVE SELECTION DRAWER -->
             <div class="order-drawer">
                 <div class="drawer-title">
                     <i class="fas fa-shopping-basket" style="color: var(--hub-primary);"></i>
-                    Live Order Drawer
+                    Live Selection Drawer
                 </div>
                 <div id="order-items-list"
                     style="max-height: 350px; overflow-y: auto; margin-bottom: 1rem; padding-right: 5px;">
@@ -1490,7 +1529,8 @@ window.hubPkgs = {
         additional_guest_price: {{ (pkg.additional_guest_price or 0)|tojson }},
         overtime_fee: {{ (pkg.overtime_fee or 0)|tojson }},
         inclusions: {{ (pkg.inclusions)|tojson if pkg.inclusions else '[]' }},
-        dishes: [{% for dish in pkg.menu_items %}{{ dish.name|tojson }}{{ ',' if not loop.last }}{% endfor %}]
+        linked_inventory: [{% for item in pkg.menu_items %}{% if item.category in ['Rentals', 'Services'] %}{{ item.name|tojson }},{% endif %}{% endfor %}].filter(Boolean),
+        dishes: [{% for item in pkg.menu_items %}{% if item.category not in ['Rentals', 'Services'] %}{{ item.name|tojson }},{% endif %}{% endfor %}].filter(Boolean)
     }{{ ',' if not loop.last }}
     {% endfor %}
 };
@@ -1519,7 +1559,7 @@ window.updateCartUI = function() {
     // Update title with count
     if (title) {
         title.innerHTML = `<i class="fas fa-shopping-basket" style="color:var(--hub-primary);"></i>
-            Your Order <span style="background:var(--hub-primary);color:#fff;font-size:0.65rem;padding:2px 8px;border-radius:100px;margin-left:6px;font-weight:800;">${items.length}</span>`;
+            Your Selection <span style="background:var(--hub-primary);color:#fff;font-size:0.65rem;padding:2px 8px;border-radius:100px;margin-left:6px;font-weight:800;">${items.length}</span>`;
     }
 
     // Render items with name, qty, price, subtotal, remove
@@ -1592,7 +1632,8 @@ window.toggleMenuItem = function(id, name, price) {
 window.checkoutOrder = function() {
     if (window.selectedItems.length === 0) return;
     const menuIds = window.selectedItems.map(i => i.id).join(',');
-    const catererId = window.hubCatererId;
+    const catererId = {{ caterer.id }};
+    sessionStorage.setItem('alacarte_cart_' + catererId, JSON.stringify(window.selectedItems));
     window.location.href = `/bookings/alacarte/checkout/${catererId}?menu_id=${menuIds}`;
 };
 
@@ -1722,7 +1763,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             class="dish-row-btn ${isSelected ? 'selected' : ''}"
                             id="mbtn-${item.id}"
                             onclick="window.toggleModalItem(${item.id})">
-                            ${isSelected ? 'Added ✓' : 'Add'}
+                            ${isSelected ? (cat === 'Rentals' ? 'Rented ✓' : 'Added ✓') : (cat === 'Rentals' ? 'Rent' : 'Add')}
                         </button>
                     </div>
                 </div>`;
@@ -1763,12 +1804,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     price: menuItem ? (parseFloat(menuItem.price) || 0) : 0,
                     qty: qtyVal
                 });
-                if (btn) { btn.classList.add('selected'); btn.textContent = 'Added ✓'; }
+                if (btn) { btn.classList.add('selected'); btn.textContent = (menuItem && menuItem.category === 'Rentals') ? 'Rented ✓' : 'Added ✓'; }
                 if (qty) qty.disabled = true;
             } else {
                 // Toggle off
                 window.selectedItems.splice(idx, 1);
-                if (btn) { btn.classList.remove('selected'); btn.textContent = 'Add'; }
+                if (btn) { btn.classList.remove('selected'); btn.textContent = (menuItem && menuItem.category === 'Rentals') ? 'Rent' : 'Add'; }
                 if (qty) { qty.disabled = false; qty.value = 1; }
             }
 
@@ -1784,4 +1825,5 @@ document.addEventListener('DOMContentLoaded', function() {
             window.updateCartUI();
         };
     </script>
-{% endblock %}
+{% endblock %}
+

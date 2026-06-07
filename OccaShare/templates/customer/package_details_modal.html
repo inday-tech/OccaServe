@@ -61,25 +61,30 @@
         <!-- Service & Setup -->
         <div class="body-section">
             <h3 class="section-title">
-                <i class="fas fa-concierge-bell"></i> SERVICE DETAILS
+                <i class="fas fa-concierge-bell"></i> INCLUSIONS & AMENITIES
             </h3>
             <div class="service-list">
+                {% set package_inventory = package.menu_items|selectattr("category", "in", ["Rentals", "Services"])|list %}
+                
+                {% for item in package_inventory %}
+                <div class="service-item">
+                    <div class="icon-wrap"><i class="fas fa-check"></i></div>
+                    <div class="text-wrap">
+                        <span class="service-label">{{ item.name }}</span>
+                        <p>{{ item.description or 'Included in the package' }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+                
+                {% if not package_inventory %}
                 <div class="service-item">
                     <div class="icon-wrap"><i class="fas fa-chair"></i></div>
                     <div class="text-wrap">
-                        <span class="service-label">Setup & Presentation</span>
-                        <p>{{ package.inclusions.get('setup', 'Professional buffet setup with thematic presentation.')
-                            if package.inclusions else 'Full buffet setup included.' }}</p>
+                        <span class="service-label">Standard Setup & Crew</span>
+                        <p>Complete professional setup and service staff included.</p>
                     </div>
                 </div>
-                <div class="service-item">
-                    <div class="icon-wrap"><i class="fas fa-user-tie"></i></div>
-                    <div class="text-wrap">
-                        <span class="service-label">Service Crew</span>
-                        <p>{{ package.inclusions.get('crew', 'Uniformed servers and professional buffet attendants.') if
-                            package.inclusions else 'Uniformed service staff included.' }}</p>
-                    </div>
-                </div>
+                {% endif %}
             </div>
         </div>
 

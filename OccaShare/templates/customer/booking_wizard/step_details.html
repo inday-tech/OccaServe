@@ -122,7 +122,8 @@
             </div>
 
             <!-- Package Inclusions & Services -->
-            {% if package and package.inclusions %}
+            {% set package_inventory = package.menu_items|selectattr("category", "in", ["Rentals", "Services"])|list %}
+            {% if package and (package.inclusions or package_inventory|length > 0) %}
             <div class="c-card-premium">
                 <div class="section-header-wrap">
                     <div class="section-icon-wrap"><i class="fas fa-concierge-bell"></i></div>
@@ -138,12 +139,19 @@
                             <span>{{ inc }}</span>
                         </div>
                         {% endfor %}
-                    {% else %}
+                    {% elif package.inclusions is string and package.inclusions %}
                         <div class="inclusion-pill">
                             <i class="fas fa-check-circle"></i>
                             <span>{{ package.inclusions }}</span>
                         </div>
                     {% endif %}
+                    
+                    {% for item in package_inventory %}
+                        <div class="inclusion-pill">
+                            <i class="fas fa-check-circle"></i>
+                            <span>{{ item.name }}</span>
+                        </div>
+                    {% endfor %}
                 </div>
             </div>
             {% endif %}
@@ -158,8 +166,9 @@
 
                 <div class="menu-sections-pro">
                     <!-- Included Items (Swappable vs Selectable) -->
+                    {% set food_items = package.menu_items|rejectattr("category", "in", ["Rentals", "Services"])|list %}
                     {% if package.selection_rules and package.selection_rules.keys()|length > 0 %}
-                        {% set grouped_items = package.menu_items|groupby('category') %}
+                        {% set grouped_items = food_items|groupby('category') %}
                         {% for cat in grouped_items %}
                             {% set rule_limit = package.selection_rules.get(cat.grouper, 0) %}
                             {% if rule_limit > 0 %}
@@ -187,7 +196,7 @@
                         <div class="menu-sub-section">
                             <label class="form-label">Included in Package</label>
                             <div class="menu-item-cards">
-                                {% for item in package.menu_items %}
+                                {% for item in food_items %}
                                 <div class="menu-item-card included" id="slot-{{ loop.index }}">
                                     <input type="hidden" name="selected_items" value="{{ item.id }}" class="slot-input">
                                     <div class="indicator-circle active"><i class="fas fa-check"></i></div>

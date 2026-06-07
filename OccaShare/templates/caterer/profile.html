@@ -308,20 +308,30 @@
                         {% set icon_class = get_category_icon(cat)|trim %}
                         
                         {# Extract first active item with valid image in this category #}
-                        {% set active_photo_item = none %}
+                        {% set active_photo = namespace(url='') %}
                         {% for item in cat_items %}
-                            {% if item.image_url and not active_photo_item %}
-                                {% set active_photo_item = item %}
+                            {% if item.image_url and not active_photo.url %}
+                                {% set active_photo.url = item.image_url %}
                             {% endif %}
                         {% endfor %}
-                        {% set cat_cover_image = active_photo_item.image_url if active_photo_item else get_category_default_image(cat)|trim %}
+                        {% set cat_cover_image = active_photo.url if active_photo.url else 'https://ui-avatars.com/api/?name=' ~ (cat|urlencode) ~ '&background=f1f5f9&color=64748b&size=400&font-size=0.2' %}
+                        
+                        {% set item_names = [] %}
+                        {% for item in cat_items[:3] %}
+                            {% set _ = item_names.append(item.name) %}
+                        {% endfor %}
+                        {% if cat_items|length == 1 %}
+                            {% set dynamic_desc = 'Featuring ' ~ item_names[0] ~ '.' %}
+                        {% else %}
+                            {% set dynamic_desc = cat_items|length ~ ' options available, including ' ~ item_names|join(', ') ~ '.' %}
+                        {% endif %}
                         
                         <div onclick="openCategoryShowcase('{{ cat|e }}')" 
                              class="group cursor-pointer border border-slate-200/80 rounded-3xl overflow-hidden transition-all duration-300 hover:border-secondary/40 hover:-translate-y-2 bg-white hover:shadow-xl relative flex flex-col shadow-sm">
                             
                             <!-- Cover Header Image -->
                             <div class="h-40 w-full overflow-hidden relative bg-slate-100 flex-shrink-0">
-                                <img src="{{ cat_cover_image }}" onerror="this.src='{{ get_category_default_image(cat)|trim }}'" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="{{ cat }}">
+                                <img src="{{ cat_cover_image }}" onerror="this.src='https://ui-avatars.com/api/?name={{ cat|urlencode }}&background=f1f5f9&color=64748b&size=400&font-size=0.2'" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="{{ cat }}">
                                 <div class="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent"></div>
                             </div>
 
@@ -340,19 +350,7 @@
                                 </div>
 
                                 <p class="text-[10px] text-slate-500 leading-relaxed font-semibold flex-1">
-                                    {% if 'dessert' in cat|lower or 'sweet' in cat|lower or 'cake' in cat|lower or 'bake' in cat|lower %}
-                                    Indulge in our exquisite assortment of artisan desserts and crafted sweets.
-                                    {% elif 'main' in cat|lower or 'entree' in cat|lower or 'dish' in cat|lower %}
-                                    Hearty, savory chef-crafted entrees perfect for family feasts and banquets.
-                                    {% elif 'appetizer' in cat|lower or 'salad' in cat|lower or 'start' in cat|lower %}
-                                    Refreshing, light and zesty starters designed to set a delightful dining mood.
-                                    {% elif 'drink' in cat|lower or 'beverage' in cat|lower %}
-                                    Curated ice-cold specialty drinks, custom cocktails, and fresh premium fruit juices.
-                                    {% elif 'pasta' in cat|lower or 'noodle' in cat|lower %}
-                                    Rich, savory noodles and handcrafted pasta dishes with authentic local spices.
-                                    {% else %}
-                                    Hand-selected, signature recipes prepared fresh daily by our premier culinary team.
-                                    {% endif %}
+                                    {{ dynamic_desc }}
                                 </p>
 
                                 <div class="mt-4 flex items-center justify-center gap-1.5 text-[9px] font-black text-brand uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">
@@ -770,7 +768,7 @@
                     <div class="px-1 flex flex-col gap-1.5 items-center w-full">
                         <div class="text-xs font-black text-slate-800 uppercase tracking-wider line-clamp-1">${item.name}</div>
                         <div class="text-brand font-black text-sm bg-brand/5 px-3 py-1 rounded-full border border-brand/10">₱${parseFloat(item.price).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</div>
-                        <button onclick="promptBookingAuth()" class="mt-2 w-full text-[10px] font-bold text-white bg-brand rounded-full py-1.5 transition hover:bg-brand/90 shadow-sm uppercase tracking-widest"><i class="fas fa-cart-plus"></i> Order</button>
+                        <button onclick="promptBookingAuth()" class="mt-2 w-full text-[10px] font-bold text-white bg-brand rounded-full py-1.5 transition hover:bg-brand/90 shadow-sm uppercase tracking-widest"><i class="fas ${categoryName === 'Rentals' ? 'fa-box' : 'fa-cart-plus'}"></i> ${categoryName === 'Rentals' ? 'Rent' : 'Order'}</button>
                     </div>
                 </div>
             `).join('');

@@ -259,19 +259,27 @@
     @media (max-width: 1024px) {
         .messages-container {
             grid-template-columns: 1fr;
+            height: calc(100vh - var(--header-height) - 80px);
         }
-        .conversations-sidebar.hidden {
+        
+        #chatArea {
             display: none;
         }
-        .chat-area.hidden {
+        
+        #conversationsSidebar.hidden {
             display: none;
+        }
+        
+        /* If sidebar is hidden, we must be showing the chat area */
+        #conversationsSidebar.hidden + #chatArea {
+            display: flex;
         }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="dashboard-header">
+<div class="page-header">
     <div class="header-text">
         <h1>Messages</h1>
         <p>Chat with your customers in real-time.</p>

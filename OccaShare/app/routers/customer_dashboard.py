@@ -28,7 +28,7 @@ async def customer_dashboard(
     user: models.User = Depends(customer_only)
 ):
     # Filter out archived bookings
-    bookings = [b for b in user.bookings if not b.is_archived]
+    bookings = [b for b in user.bookings if not b.customer_archived]
     today = date.today()
     upcoming_count = 0
     
@@ -229,7 +229,7 @@ async def customer_bookings(
     user: models.User = Depends(customer_only)
 ):
     # Calculate Intelligence Stats
-    active_bookings = [b for b in user.bookings if not b.is_archived]
+    active_bookings = [b for b in user.bookings if not b.customer_archived]
     total_reservations = len(active_bookings)
     total_spent = sum([b.total_amount for b in active_bookings if b.status in ['confirmed', 'completed'] and b.total_amount])
     
@@ -1257,3 +1257,67 @@ async def report_booking(
     db.commit()
 
     return JSONResponse(content={"success": True, "message": f"Report submitted successfully. Reference ID: {reference_id}"})
+
+
+@router.post("/bookings/{booking_id}/archive")
+async def archive_customer_booking(
+    booking_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(customer_only)
+):
+    booking = db.query(models.Booking).filter(
+        models.Booking.id == booking_id,
+        models.Booking.user_id == user.id
+    ).first()
+    
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+        
+    if booking.status not in ['completed', 'cancelled']:
+        raise HTTPException(status_code=400, detail="Only completed or cancelled bookings can be archived.")
+        
+    booking.customer_archived = True
+    db.commit()
+    return {"status": "success", "message": "Booking archived successfully."}
+
+@router.post("/bookings/{booking_id}/delete")
+async def delete_customer_booking(
+    booking_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(customer_only)
+):
+    booking = db.query(models.Booking).filter(
+        models.Booking.id == booking_id,
+        models.Booking.user_id == user.id
+    ).first()
+    
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+        
+    if not getattr(booking, 'customer_archived', False):
+        raise HTTPException(status_code=400, detail="Only archived bookings can be permanently deleted.")
+        
+    db.delete(booking)
+    db.commit()
+    return {"status": "success", "message": "Booking permanently deleted."}
+
+@router.get("/archives")
+async def customer_archives(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(customer_only)
+):
+    archived_bookings = db.query(models.Booking).filter(
+        models.Booking.user_id == user.id,
+        models.Booking.customer_archived == True
+    ).order_by(models.Booking.updated_at.desc()).all()
+    
+    return templates.TemplateResponse(
+        "customer/archives.html",
+        {
+            "request": request,
+            "user": user,
+            "bookings": archived_bookings,
+            "active_page": "archives"
+        }
+    )

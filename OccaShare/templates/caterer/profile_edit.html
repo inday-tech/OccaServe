@@ -8,7 +8,7 @@
 
 {% block extra_js %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/color-thief/2.3.0/color-thief.umd.js"></script>
-<script src="{{ url_for('static', path='/js/caterer/profile_edit.js') }}?v=2.1"></script>
+<script src="{{ url_for('static', path='/js/caterer/profile_edit.js') }}?v=3.0"></script>
 {% endblock %}
 
 {% block content %}
@@ -97,10 +97,7 @@
                         <div class="form-group">
                             <label><i class="fas fa-image"></i> Business Logo</label>
                             <div class="logo-upload-box">
-                                <input type="file" name="logo" accept="image/*" class="form-file-input logo-input-shared">
-                                <button type="button" class="magic-extract-btn magic-extract-shared" title="Extract branding colors from logo">
-                                    <i class="fas fa-wand-magic-sparkles"></i> Magic Palette
-                                </button>
+                                <input type="file" name="logo" accept="image/*" class="form-file-input">
                             </div>
                             <span class="field-hint">Used in your public profile and digital contracts.</span>
                         </div>
@@ -411,24 +408,7 @@
                         <p>Configure how customers can pay you and where you'll receive your earnings.</p>
                     </div>
 
-                    <!-- Withdrawal Config -->
-                    <div class="payout-method-selection-card" style="margin-bottom: 2rem; background: var(--color-neutral-50); padding: 1.5rem; border-radius: 16px; border: 1px solid var(--color-neutral-100);">
-                        <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
-                            <i class="fas fa-money-check-dollar" style="font-size: 1.5rem; color: var(--primary-color);"></i>
-                            <div>
-                                <h4 style="margin: 0; font-size: 0.9rem; font-weight: 800; color: var(--color-neutral-900);">Preferred Payout Method</h4>
-                                <p style="margin: 0; font-size: 0.75rem; color: var(--color-neutral-500);">This is where OccaServe will transfer your earnings.</p>
-                            </div>
-                        </div>
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <select name="payout_method" class="filter-select-pro" style="background: white;">
-                                <option value="" {% if not profile.payout_method %}selected{% endif %}>-- Select Method --</option>
-                                <option value="GCash" {% if profile.payout_method == 'GCash' %}selected{% endif %}>GCash</option>
-                                <option value="Maya" {% if profile.payout_method == 'Maya' %}selected{% endif %}>Maya</option>
-                                <option value="Bank Transfer" {% if profile.payout_method == 'Bank Transfer' %}selected{% endif %}>Bank Transfer</option>
-                            </select>
-                        </div>
-                    </div>
+
 
                     <div class="payment-methods-tabs-grid">
                         <!-- GCash -->
@@ -549,16 +529,21 @@
                         <p>Set clear expectations for bookings, payments, and cancellations.</p>
                     </div>
 
-                    <div class="form-row-2">
+                    <div class="form-row-three-col" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
                         <div class="form-group">
                             <label><i class="fas fa-calendar-alt"></i> Booking Lead Time (Days)</label>
                             <input type="number" name="booking_lead_time" min="1" value="{{ profile.booking_lead_time or 7 }}">
-                            <span class="field-hint">Minimum days in advance a customer can book.</span>
+                            <span class="field-hint">Minimum days in advance.</span>
                         </div>
                         <div class="form-group">
-                            <label><i class="fas fa-users"></i> Minimum Guests (Pax)</label>
+                            <label><i class="fas fa-users"></i> Min Pax (Guests)</label>
                             <input type="number" name="min_pax" min="1" value="{{ profile.min_pax or 20 }}">
-                            <span class="field-hint">Minimum number of pax required for a booking.</span>
+                            <span class="field-hint">Minimum pax required.</span>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-clock"></i> Turnover (Hours)</label>
+                            <input type="number" name="equipment_turnover_hours" min="0" value="{{ profile.equipment_turnover_hours or 24 }}">
+                            <span class="field-hint">Rest period before reuse.</span>
                         </div>
                     </div>
 
@@ -591,7 +576,7 @@
                                             <input type="file" name="logo_brand" accept="image/*"
                                                 class="form-file-input logo-input-shared">
                                         </div>
-                                        <button type="button" class="magic-extract-btn magic-extract-shared" style="background: var(--secondary-color);">
+                                        <button type="button" class="magic-extract-btn magic-extract-shared" style="background: var(--secondary-color); pointer-events: auto !important; position: relative; z-index: 999; cursor: pointer;">
                                             <i class="fas fa-microchip"></i> Analyze & Apply
                                         </button>
                                     </div>
@@ -1520,107 +1505,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-// ─── ACCOUNT DEACTIVATION & DELETION ───
-async function handleDeactivate() {
-    const reason = window.prompt("Deactivate Account?\n\nYour business profile will be hidden from customers. You can reactivate it later by logging in and clicking Reactivate.\n\nPlease enter a reason (e.g., Taking a break, Fully booked):");
-    
-    if (reason === null) return; // Cancelled
-    if (reason.trim() === '') {
-        alert('You must provide a reason to deactivate.');
-        return;
-    }
 
-    try {
-        const res = await fetch('/caterer/settings/deactivate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reason: reason })
-        });
-        const data = await res.json();
-        if (data.status === 'success') {
-            alert('Deactivated: ' + data.message);
-            window.location.href = '/logout';
-        } else {
-            alert('Error: ' + (data.message || 'Failed to deactivate account.'));
-        }
-    } catch (err) {
-        alert('Network error. Please try again.');
-    }
-}
-
-async function handleReactivate() {
-    const confirmed = window.confirm("Reactivate Account?\n\nYour business profile will be visible to customers again.");
-    
-    if (confirmed) {
-        try {
-            const res = await fetch('/caterer/settings/reactivate', { method: 'POST' });
-            const data = await res.json();
-            if (data.status === 'success') {
-                alert('Reactivated: ' + data.message);
-                window.location.reload();
-            } else {
-                alert('Error: ' + (data.message || 'Failed to reactivate account.'));
-            }
-        } catch (err) {
-            alert('Network error. Please try again.');
-        }
-    }
-}
-
-async function handleDeleteRequest() {
-    const confirmWord = window.prompt("Request Account Deletion\n\nThis action is irreversible. All your data, menus, and past bookings will be queued for deletion.\n\nType exactly 'DELETE' to confirm:");
-    
-    if (confirmWord === null) return; // Cancelled
-    
-    if (confirmWord === 'DELETE') {
-        try {
-            const res = await fetch('/caterer/settings/deactivate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ reason: 'PERMANENT DELETION REQUESTED' })
-            });
-            const data = await res.json();
-            if (data.status === 'success') {
-                alert('Request Submitted: Your account deletion request has been submitted to Admin. You will now be logged out.');
-                window.location.href = '/logout';
-            } else {
-                alert('Error: ' + (data.message || 'Failed to submit request.'));
-            }
-        } catch (err) {
-            alert('Network error. Please try again.');
-        }
-    } else {
-        alert("You must type 'DELETE' exactly. Request cancelled.");
-    }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    const btnDeactivate = document.getElementById('btnDeactivate');
-    const btnReactivate = document.getElementById('btnReactivate');
-    const btnDelete = document.getElementById('btnDeleteRequest');
-
-    if (btnDeactivate) {
-        btnDeactivate.addEventListener('click', (e) => {
-            e.preventDefault();
-            console.log("Deactivate clicked");
-            handleDeactivate();
-        });
-    }
-    if (btnReactivate) {
-        btnReactivate.addEventListener('click', (e) => {
-            e.preventDefault();
-            console.log("Reactivate clicked");
-            handleReactivate();
-        });
-    }
-    if (btnDelete) {
-        btnDelete.addEventListener('click', (e) => {
-            e.preventDefault();
-            console.log("Delete clicked");
-            handleDeleteRequest();
-        });
-    }
-});
 </script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 {% endblock %}
