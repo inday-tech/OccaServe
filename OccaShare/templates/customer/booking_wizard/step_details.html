@@ -109,7 +109,7 @@
                             value="{{ booking.event_date.isoformat() if booking and booking.event_date else '' }}"
                             required onchange="checkAvailability()">
                         <div id="availability-chip" class="availability-chip"></div>
-                        <span class="field-error" id="err-date">Please select a date at least 3 days in advance.</span>
+                        <span class="field-error" id="err-date">Please select a date at least {{ caterer.booking_lead_time or 3 }} days in advance.</span>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Start Time</label>
@@ -371,6 +371,7 @@
     window.catererId = "{{ caterer.id }}";
     window.minGuests = parseInt("{{ package.min_guests or caterer.min_pax or 1 }}") || 1;
     window.maxGuests = parseInt("{{ package.max_guests or 0 }}") || 0;
+    window.bookingLeadTime = parseInt("{{ caterer.booking_lead_time or 3 }}") || 3;
 </script>
 <script
     src="{{ url_for('static', path='/js/customer/booking_wizard/step_details.js') }}?v={{ range(1, 9999) | random }}"></script>

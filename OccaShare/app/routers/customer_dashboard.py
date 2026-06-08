@@ -878,6 +878,7 @@ async def update_profile(
     request: Request,
     first_name: str = Form(...),
     last_name: str = Form(...),
+    email: Optional[str] = Form(None),
     middle_name: Optional[str] = Form(None),
     phone_number: Optional[str] = Form(None),
     address: Optional[str] = Form(None),
@@ -890,6 +891,12 @@ async def update_profile(
         phone_number = phone_number.replace(" ", "").replace("-", "")
         if not re.match(r"^09\d{9}$", phone_number):
             return RedirectResponse(url="/customer/profile?error_msg=Invalid+phone+number.+Must+be+11+digits+starting+with+09.", status_code=303)
+            
+    if email and email.strip() != user.email:
+        existing_email = db.query(models.User).filter(models.User.email == email.strip()).first()
+        if existing_email:
+            return RedirectResponse(url="/customer/profile?error_msg=Email+address+is+already+in+use.", status_code=303)
+        user.email = email.strip()
             
     user.first_name = first_name
     user.last_name = last_name

@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const pricePerHead = Number(window.pricePerHead || 0);
     const catererId = Number(window.catererId || 0);
     const minGuests = Number(window.minGuests || 1);
+    const leadTime = Number(window.bookingLeadTime || 3);
     const phCities = window.PH_CITIES || [];
 
     // --- Selectors ---
@@ -31,9 +32,13 @@ document.addEventListener('DOMContentLoaded', function () {
     let cachedCities = {};
     let cachedBarangays = {};
 
-    // --- 1. Set Min Date to Today ---
-    const today = new Date().toISOString().split('T')[0];
-    dateInput.setAttribute('min', today);
+    // --- 1. Set Min Date based on Lead Time ---
+    const minCalendarDate = new Date();
+    minCalendarDate.setDate(minCalendarDate.getDate() + leadTime); // Using lead time dynamically
+    const minDateString = minCalendarDate.toISOString().split('T')[0];
+    if (dateInput) {
+        dateInput.setAttribute('min', minDateString);
+    }
 
     // --- 1.5 Format Guest Count ---
     window.formatGuestCount = function (input) {
@@ -152,7 +157,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (parts.length === 3) {
             const selectedDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
             const minDate = new Date();
-            minDate.setDate(minDate.getDate() + 2); // At least 3 days in advance
+            minDate.setDate(minDate.getDate() + leadTime - 1); // Dynamic lead time constraint
             minDate.setHours(0,0,0,0);
             if (selectedDate <= minDate) {
                 chip.style.display = 'none'; // Hide chip since inline validation already flags it
@@ -390,10 +395,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const selectedDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
             
             const minDate = new Date();
-            minDate.setDate(minDate.getDate() + 2); // At least 3 days in advance
+            minDate.setDate(minDate.getDate() + leadTime - 1); // Dynamic lead time constraint
             minDate.setHours(0,0,0,0);
             return selectedDate > minDate;
-        }, "Please select a date at least 3 days in advance.");
+        }, `Please select a date at least ${leadTime} days in advance.`);
     };
     if (dateInput) {
         dateInput.addEventListener('input', validateEventDate);

@@ -490,14 +490,18 @@ async def step_details_submit(
     redirect_base = f"/bookings/step/details/{booking_id}" if booking_id else "/bookings/step/details"
     if not user: return RedirectResponse(url=f"/auth/login?next={redirect_base}")
 
+    caterer = db.query(models.CatererProfile).get(caterer_id)
+    if not caterer: return RedirectResponse(url=f"/customer/marketplace", status_code=303)
+
     from datetime import date as dt_date, timedelta, datetime
     today = dt_date.today()
     
     # 🚨 VALIDATION 1: Strict Lead Time Validation
-    # Must be at least 3 days in the future
-    min_lead_date = today + timedelta(days=3)
+    # Must be at least `caterer.booking_lead_time` days in the future
+    lead_time = caterer.booking_lead_time or 3
+    min_lead_date = today + timedelta(days=lead_time)
     if event_date < min_lead_date:
-        return RedirectResponse(url=f"{redirect_base}?booking_error=Event+date+must+be+at+least+3+days+in+advance+for+proper+preparation.", status_code=303)
+        return RedirectResponse(url=f"{redirect_base}?booking_error=Event+date+must+be+at+least+{lead_time}+days+in+advance+for+proper+preparation.", status_code=303)
 
     # 🚨 VALIDATION 1.5: Sensible Operating Hours Check
     # Restrict events to standard operating hours (6:00 AM to 9:00 PM)
@@ -535,23 +539,27 @@ async def step_details_submit(
         models.Booking.status.in_(['confirmed', 'preparing', 'in_progress', 'on_the_way'])
     ).all()
     
+    turnover = caterer.turnover_hours or 4.0
     for sdb in same_day_bookings:
         if sdb.event_time:
             dt1 = datetime.combine(today, event_time)
             dt2 = datetime.combine(today, sdb.event_time)
             diff_hours = abs((dt1 - dt2).total_seconds()) / 3600.0
-            if diff_hours < 4.0:
-                return RedirectResponse(url=f"{redirect_base}?booking_error=The+caterer+has+another+confirmed+event+around+this+time.+Please+adjust+your+time+by+at+least+4+hours.", status_code=303)
+            if diff_hours < turnover:
+                return RedirectResponse(url=f"{redirect_base}?booking_error=The+caterer+has+another+confirmed+event+around+this+time.+Please+adjust+your+time+by+at+least+{turnover}+hours.", status_code=303)
 
     # 🚨 VALIDATION 4: Guest Count Bounds
     package = None
+    min_guests_required = caterer.min_pax or 1
     if package_id:
         package = db.query(models.CateringPackage).get(package_id)
         if package:
-            if package.min_guests and guest_count < package.min_guests:
-                return RedirectResponse(url=f"{redirect_base}?booking_error=Guest+count+cannot+be+less+than+the+package+minimum+of+{package.min_guests}.", status_code=303)
+            min_guests_required = package.min_guests or caterer.min_pax or 1
             if package.max_guests and guest_count > package.max_guests:
                 return RedirectResponse(url=f"{redirect_base}?booking_error=Guest+count+exceeds+the+package+maximum+capacity+of+{package.max_guests}.", status_code=303)
+
+    if guest_count < min_guests_required:
+        return RedirectResponse(url=f"{redirect_base}?booking_error=Guest+count+cannot+be+less+than+the+minimum+requirement+of+{min_guests_required}.", status_code=303)
 
     # 1. Check Availability (Only if date changed or new booking)
     # [Availability check logic remains same for now]
