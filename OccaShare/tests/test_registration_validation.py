@@ -6,6 +6,7 @@ from typing import Optional
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.routers.auth import is_dummy_email, is_dummy_phone
+from app.core.utils import is_valid_business_name
 
 def test_email_validation():
     print("Testing email validation...")
@@ -91,10 +92,25 @@ def test_password_complexity():
     })
     assert "Gmail only (@gmail.com)" in response.text
 
+def test_business_name_validation():
+    print("Testing business name validation...")
+    # Valid business names (including new chars)
+    assert is_valid_business_name("Gab Hub's Imported Cuisines") is None
+    assert is_valid_business_name("Mary's Kitchen & Catering") is None
+    assert is_valid_business_name("R-Events, Inc.") is None
+    
+    # Invalid characters (e.g. symbol '@' or '#')
+    assert is_valid_business_name("Gab @ Hub") == "Business name should only contain letters, numbers, spaces, dots, apostrophes, hyphens, commas, and ampersands"
+    # Purely numeric
+    assert is_valid_business_name("12345") == "Business name cannot be purely numeric"
+    # Too short
+    assert is_valid_business_name("Ab") == "Business name must be at least 3 characters"
+
 if __name__ == "__main__":
     try:
         test_email_validation()
         test_phone_validation()
+        test_business_name_validation()
         test_password_complexity()
         print("\nSUCCESS: All registration validation tests passed!")
     except AssertionError as e:
