@@ -18,83 +18,10 @@ from sqlalchemy import func
 Base.metadata.create_all(bind=engine)
 
 
-def create_initial_caterer(db):
-    """Insert the initial caterer for occaserve.com"""
-    email = "bonifaciojrandresito@gmail.com"
-    password = "Bonifacio123"
-    
-    # Check if user already exists (case-insensitive)
-    user = db.query(models.User).filter(func.lower(models.User.email) == email.lower()).first()
-    if user:
-        print(f"✓ Caterer user {email} already exists. Updating record.")
-        user.role = 'caterer'
-        user.is_verified = True
-        user.is_email_verified = True
-        user.status = 'active'
-        user.password_hash = get_password_hash(password)
-        
-        # Ensure Profile is also updated if it exists
-        profile = db.query(models.CatererProfile).filter(models.CatererProfile.user_id == user.id).first()
-        if profile:
-            profile.business_name = "Thatalicious Catering Services"
-            profile.account_status = 'Active'
-            profile.verification_status = 'Verified'
-            profile.is_verified = True
-        
-        db.commit()
-    else:
-        print(f"Creating caterer user: {email}...")
-        user = models.User(
-            email=email,
-            password_hash=get_password_hash(password),
-            role='caterer',
-            first_name="Andresito",
-            last_name="Bonifacio Jr",
-            status='active',
-            is_verified=True,
-            is_email_verified=True
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-
-    # Handle Profile
-    profile = db.query(models.CatererProfile).filter(models.CatererProfile.user_id == user.id).first()
-    if not profile:
-        print(f"Creating profile for {email}...")
-        profile = models.CatererProfile(
-            user_id=user.id,
-            business_name="Thatalicious Catering Services",
-            slug="thatalicious-catering-" + str(user.id),
-            business_type="Full Service Catering",
-            description="Professional catering services.",
-            account_status='Active',
-            verification_status='Verified',
-            is_verified=True
-        )
-        db.add(profile)
-        db.commit()
-    
-    # Handle IV
-    iv = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user.id).first()
-    if not iv:
-        print(f"Creating verification record for {email}...")
-        iv = models.IdentityVerification(
-            user_id=user.id,
-            verification_status='approved',
-            verified_at=models.func.now(),
-            ocr_data={"manual_insertion": True}
-        )
-        db.add(iv)
-        db.commit()
-
 def create_admin():
     db = SessionLocal()
     try:
-        # 1. Create Initial Caterer (as requested for occaserve.com)
-        create_initial_caterer(db)
-
-        # 2. Check if the admin account already exists
+        # Check if the admin account already exists
         existing = db.query(models.User).filter(models.User.email == "admin@occaserve.com").first()
         if existing:
             print("✓ Admin user already exists. Skipping creation.")
