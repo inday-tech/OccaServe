@@ -84,9 +84,9 @@ def is_valid_business_name(name: str) -> Optional[str]:
     if len(name) > 100:
         return "Business name is too long (max 100 characters)"
     
-    # Accept letters, numbers, spaces, and dots
-    if not re.match(r"^[a-zA-Z0-9\s\.]+$", name):
-        return "Business name should only contain letters, numbers, spaces, and dots"
+    # Accept letters, numbers, spaces, dots, apostrophes, hyphens, commas, and ampersands
+    if not re.match(r"^[a-zA-Z0-9\s\.\'\-\,\&]+$", name):
+        return "Business name should only contain letters, numbers, spaces, dots, apostrophes, hyphens, commas, and ampersands"
 
         
     # Must not be purely numeric
