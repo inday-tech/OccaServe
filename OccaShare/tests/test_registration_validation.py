@@ -11,20 +11,20 @@ def test_email_validation():
     print("Testing email validation...")
     # Only Gmail allowed
     assert is_dummy_email("mizzy.events@gmail.com") is None
-    assert is_dummy_email("mizzy.events@yahoo.com") == "Only Gmail addresses are allowed"
-    assert is_dummy_email("mizzy.events@hotmail.com") == "Only Gmail addresses are allowed"
+    assert is_dummy_email("mizzy.events@yahoo.com") == "Only @gmail.com addresses are permitted for platform security"
+    assert is_dummy_email("mizzy.events@hotmail.com") == "Only @gmail.com addresses are permitted for platform security"
     
     # Specific patterns (disposable/placeholder)
-    assert is_dummy_email("aaa@gmail.com") == "Disposable or placeholder email addresses are not allowed"
+    assert is_dummy_email("aaa@gmail.com") == "Please use a real, professional email prefix"
     # repetitive chars (local part)
-    assert is_dummy_email("aaabbb@gmail.com") == "Invalid email pattern (repetitive characters)"
+    assert is_dummy_email("aaabbb@gmail.com") == "Invalid email pattern (repetitive characters detected)"
 
 def test_phone_validation():
     print("Testing phone validation...")
     res1 = is_dummy_phone("09171234567")
     print(f"DEBUG: is_dummy_phone('09171234567') -> '{res1}'")
     assert res1 is None # 11 digits
-    assert is_dummy_phone("091712345678") == "Mobile number cannot exceed 11 digits"
+    assert is_dummy_phone("091712345678") == "Mobile number must be exactly 11 digits"
     
     # No 3+ repetitive digits
     assert is_dummy_phone("09111234567") == "Mobile number contains too many repetitive digits (e.g., 111)"
@@ -53,7 +53,7 @@ def test_password_complexity():
         "confirm_password": "password123!",
         "role": "customer"
     })
-    assert "Password must contain at least one uppercase letter" in response.text
+    assert "Password must include: uppercase" in response.text
     
     # 2. Missing number
     response = client.post("/auth/register", data={
@@ -65,7 +65,7 @@ def test_password_complexity():
         "confirm_password": "Password!",
         "role": "customer"
     })
-    assert "Password must contain at least one number" in response.text
+    assert "Password must include: number" in response.text
     
     # 3. Missing special character
     response = client.post("/auth/register", data={
@@ -77,7 +77,7 @@ def test_password_complexity():
         "confirm_password": "Password123",
         "role": "customer"
     })
-    assert "Password must contain at least one special character" in response.text
+    assert "Password must include: symbol" in response.text
     
     # 4. Valid Gmail check
     response = client.post("/auth/register", data={
@@ -89,7 +89,7 @@ def test_password_complexity():
         "confirm_password": "Password123!",
         "role": "customer"
     })
-    assert "Only Gmail addresses are allowed" in response.text
+    assert "Gmail only (@gmail.com)" in response.text
 
 if __name__ == "__main__":
     try:

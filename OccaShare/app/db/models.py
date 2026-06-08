@@ -101,6 +101,8 @@ class CatererProfile(Base):
     cash_instructions = Column(Text, nullable=True)
     verification_status = Column(String, default='Pending') # Pending, Verified, Rejected
     account_status = Column(String, default='Active') # Active, Suspended, Deactivated
+    status = Column(String, default='Draft') # Draft, Registered, Identity Verified, Profile Incomplete, Ready For Review, Published
+    team_size = Column(Integer, default=1, nullable=True)
     is_verified = Column(Boolean, default=False)
     
     # NEW: Jurisdictional Location (PSGC)

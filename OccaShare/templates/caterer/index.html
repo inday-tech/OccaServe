@@ -382,6 +382,191 @@
     </div>
 </div>
 
+{% if completion_percentage < 100 or profile.status != 'Published' %}
+<!-- Onboarding / Listing Setup Progress Card -->
+<div class="c-card-premium animate-up" style="margin-bottom: 24px; padding: 24px; background: white; border: 1px solid #f1f5f9; box-shadow: var(--card-shadow); border-radius: 1.25rem;">
+    <div style="display: flex; gap: 24px; align-items: center; flex-wrap: wrap;">
+        <!-- Left: Progress Dial -->
+        <div style="text-align: center; width: 140px; flex-shrink: 0; position: relative;">
+            <div style="position: relative; width: 100px; height: 100px; margin: 0 auto 10px;">
+                <svg style="width: 100px; height: 100px; transform: rotate(-90deg);">
+                    <circle cx="50" cy="50" r="42" stroke="#f1f5f9" stroke-width="8" fill="transparent" />
+                    <circle cx="50" cy="50" r="42" stroke="var(--primary-color)" stroke-width="8" fill="transparent" 
+                            stroke-dasharray="263.89" stroke-dashoffset="{{ 263.89 * (1 - completion_percentage / 100) }}" style="transition: stroke-dashoffset 1s ease-out;" />
+                </svg>
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+                    <span style="font-size: 1.35rem; font-weight: 800; color: #0f172a;">{{ completion_percentage }}%</span>
+                </div>
+            </div>
+            <div style="font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Setup Progress</div>
+        </div>
+
+        <!-- Right: Checklist Details & Toggle -->
+        <div style="flex: 1; min-width: 250px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                        Complete Your Business Listing 
+                        {% if profile.status == 'Published' %}
+                        <span style="font-size: 0.65rem; background: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 50px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;"><i class="fas fa-eye"></i> Published</span>
+                        {% else %}
+                        <span style="font-size: 0.65rem; background: #fee2e2; color: #b91c1c; padding: 3px 8px; border-radius: 50px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;"><i class="fas fa-eye-slash"></i> Offline</span>
+                        {% endif %}
+                    </h3>
+                    <p style="margin: 4px 0 0; font-size: 0.8rem; color: #64748b;">Complete the requirements below to make your services visible to elite clients.</p>
+                </div>
+
+                <!-- Publish Switch Toggle -->
+                <div style="display: flex; align-items: center; gap: 10px; background: #f8fafc; padding: 10px 16px; border: 1px solid #e2e8f0; border-radius: 12px;">
+                    <div style="text-align: right;">
+                        <div style="font-size: 0.75rem; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">Publish Listing</div>
+                        <div style="font-size: 0.65rem; color: #64748b;">Status: {{ profile.status }}</div>
+                    </div>
+                    <label class="publish-switch" style="position: relative; display: inline-block; width: 44px; height: 24px;">
+                        <input type="checkbox" id="publishToggle" {% if profile.status == 'Published' %}checked{% endif %} style="opacity: 0; width: 0; height: 0;" onchange="handlePublishToggle(this)">
+                        <span class="publish-slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .3s; border-radius: 24px;"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Checklist Grid -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 15px;">
+                <!-- Required items for Publishing -->
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: #334155;">
+                    <i class="fas fa-check-circle" style="color: #10b981;"></i>
+                    <span style="font-weight: 600;">Identity Verified <span style="font-size:0.7rem; color:#94a3b8;">(40%)</span></span>
+                </div>
+                
+                <a href="/caterer/profile" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: {{ '#334155' if has_description else '#64748b' }}; text-decoration: none;" class="checklist-item-hover">
+                    <i class="fas {{ 'fa-check-circle' if has_description else 'fa-circle-notch' }}" style="color: {{ '#10b981' if has_description else '#cbd5e1' }};"></i>
+                    <span style="{% if has_description %}font-weight: 600;{% endif %} text-decoration: {{ 'none' if has_description else 'underline' }};">Business Description <span style="font-size:0.7rem; color:#94a3b8;">(+5%)</span></span>
+                </a>
+
+                <a href="/caterer/profile" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: {{ '#334155' if has_logo else '#64748b' }}; text-decoration: none;" class="checklist-item-hover">
+                    <i class="fas {{ 'fa-check-circle' if has_logo else 'fa-circle-notch' }}" style="color: {{ '#10b981' if has_logo else '#cbd5e1' }};"></i>
+                    <span style="{% if has_logo %}font-weight: 600;{% endif %} text-decoration: {{ 'none' if has_logo else 'underline' }};">Business Logo <span style="font-size:0.7rem; color:#94a3b8;">(+10%)</span></span>
+                </a>
+
+                <a href="/caterer/profile" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: {{ '#334155' if has_cover else '#64748b' }}; text-decoration: none;" class="checklist-item-hover">
+                    <i class="fas {{ 'fa-check-circle' if has_cover else 'fa-circle-notch' }}" style="color: {{ '#10b981' if has_cover else '#cbd5e1' }};"></i>
+                    <span style="{% if has_cover %}font-weight: 600;{% endif %} text-decoration: {{ 'none' if has_cover else 'underline' }};">Cover Image <span style="font-size:0.7rem; color:#94a3b8;">(+5%)</span></span>
+                </a>
+
+                <a href="/caterer/profile" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: {{ '#334155' if has_starting_price else '#64748b' }}; text-decoration: none;" class="checklist-item-hover">
+                    <i class="fas {{ 'fa-check-circle' if has_starting_price else 'fa-circle-notch' }}" style="color: {{ '#10b981' if has_starting_price else '#cbd5e1' }};"></i>
+                    <span style="{% if has_starting_price %}font-weight: 600;{% endif %} text-decoration: {{ 'none' if has_starting_price else 'underline' }};">Starting Price <span style="font-size:0.7rem; color:#94a3b8;">(+5%)</span></span>
+                </a>
+
+                <a href="/caterer/packages" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: {{ '#334155' if has_packages else '#64748b' }}; text-decoration: none;" class="checklist-item-hover">
+                    <i class="fas {{ 'fa-check-circle' if has_packages else 'fa-circle-notch' }}" style="color: {{ '#10b981' if has_packages else '#cbd5e1' }};"></i>
+                    <span style="{% if has_packages %}font-weight: 600;{% endif %} text-decoration: {{ 'none' if has_packages else 'underline' }};">Catering Package <span style="font-size:0.7rem; color:#94a3b8;">(+15%)</span></span>
+                </a>
+
+                <a href="/caterer/profile" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: {{ '#334155' if has_photos else '#64748b' }}; text-decoration: none;" class="checklist-item-hover">
+                    <i class="fas {{ 'fa-check-circle' if has_photos else 'fa-circle-notch' }}" style="color: {{ '#10b981' if has_photos else '#cbd5e1' }};"></i>
+                    <span style="{% if has_photos %}font-weight: 600;{% endif %} text-decoration: {{ 'none' if has_photos else 'underline' }};">3+ Food Photos <span style="font-size:0.7rem; color:#94a3b8;">(+10%)</span></span>
+                </a>
+
+                <a href="/caterer/compliance" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: {{ '#334155' if has_menu else '#64748b' }}; text-decoration: none;" class="checklist-item-hover">
+                    <i class="fas {{ 'fa-check-circle' if has_menu else 'fa-circle-notch' }}" style="color: {{ '#10b981' if has_menu else '#cbd5e1' }};"></i>
+                    <span style="{% if has_menu %}font-weight: 600;{% endif %} text-decoration: {{ 'none' if has_menu else 'underline' }};">Sample Menu <span style="font-size:0.7rem; color:#94a3b8;">(+5%)</span></span>
+                </a>
+
+                <a href="/caterer/compliance" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: {{ '#334155' if has_permit else '#64748b' }}; text-decoration: none;" class="checklist-item-hover">
+                    <i class="fas {{ 'fa-check-circle' if has_permit else 'fa-circle-notch' }}" style="color: {{ '#10b981' if has_permit else '#cbd5e1' }};"></i>
+                    <span style="{% if has_permit %}font-weight: 600;{% endif %} text-decoration: {{ 'none' if has_permit else 'underline' }};">Business Permit <span style="font-size:0.7rem; color:#94a3b8;">(+5%)</span></span>
+                </a>
+            </div>
+
+            <!-- Alert banner for publish requirements -->
+            {% if not can_publish %}
+            <div style="font-size: 0.72rem; color: #9a3412; background: #fff7ed; border: 1px solid #ffedd5; padding: 8px 12px; border-radius: 8px; display: flex; align-items: center; gap: 6px;">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>Minimum to Publish: Description, Catering Package, 3+ Food Photos.</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .checklist-item-hover:hover span {
+        color: var(--primary-color) !important;
+        text-decoration: underline !important;
+    }
+    .publish-switch input:checked + .publish-slider {
+        background-color: var(--primary-color) !important;
+    }
+    .publish-switch input:checked + .publish-slider:before {
+        transform: translateX(20px);
+    }
+    .publish-slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: .3s;
+        border-radius: 50%;
+    }
+</style>
+
+<script>
+    async function handlePublishToggle(checkbox) {
+        const checked = checkbox.checked;
+        
+        try {
+            const response = await fetch('/caterer/toggle-publish', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            });
+            const result = await response.json();
+            
+            if (response.ok && result.success) {
+                if (window.Swal) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: checked ? 'Listing Published!' : 'Listing Offline',
+                        text: result.message,
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    window.location.reload();
+                }
+            } else {
+                // Revert state
+                checkbox.checked = !checked;
+                if (window.Swal) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Publish Failed',
+                        text: result.message || 'Verification checks failed.'
+                    });
+                }
+            }
+        } catch (error) {
+            checkbox.checked = !checked;
+            console.error('Publish error:', error);
+            if (window.Swal) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'System Error',
+                    text: 'An error occurred while toggling publish status.'
+                });
+            }
+        }
+    }
+</script>
+{% endif %}
+
 <!-- Quick Stats Summary -->
 <div class="kpi-grid-clean">
     <div class="kpi-card-clean">

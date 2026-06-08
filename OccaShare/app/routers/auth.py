@@ -198,6 +198,7 @@ async def register(
     pax_range: Optional[str] = Form(None),
     city: Optional[str] = Form(None), # RESTORED
     min_pax: Optional[int] = Form(None),
+    team_size: Optional[int] = Form(None),
     sample_menu: Optional[UploadFile] = File(None),
     logo: Optional[UploadFile] = File(None), # RESTORED
     permit: Optional[UploadFile] = File(None),
@@ -504,42 +505,30 @@ async def register(
                 gov_id_url=gov_id_url,
                 latitude=latitude,
                 longitude=longitude,
-                verification_status="Pending"
+                verification_status="Verified",
+                status="Identity Verified",
+                team_size=team_size
             )
             db.add(new_profile)
 
-            if gov_id_url or permit_url:
+            if gov_id_url:
                 # --- REAL OCR INTEGRATION ---
                 print(f"[AUTH] Performing real OCR for new caterer: {business_name}")
                 try:
-                    # 1. OCR for ID
+                    # 1. OCR for ID only
                     id_res = await verification_service.verify_id_document(
-                        gov_id_url, full_name, id_number or "", id_type or "Passport"
+                        gov_id_url, full_name, id_number or "", id_type or "Passport", db=db
                     )
                     
-                    # 2. OCR for Permit
-                    permit_res = await verification_service.verify_business_permit(
-                        permit_url, business_name, owner_name=full_name, db=db
-                    )
-                    
-                    # 3. Face Match (If selfie provided)
+                    permit_res = {"status": "skipped"}
                     face_res = {"status": "skipped"}
-                    if selfie_url:
-                        face_res = await verification_service.verify_identity_v2(
-                            gov_id_url, [selfie_url], full_name, id_number or "", id_type or "Passport", db, new_user.id
-                        )
 
                     # --- BLOCKING LOGIC ---
-                    if id_res["status"] != "matched" or permit_res["status"] != "matched":
+                    if id_res["status"] != "matched":
                         # If mismatched and blocking is enabled
                         db.rollback()
-                        error_msg = "Security Check Failed: "
-                        if id_res["status"] != "matched": 
-                            error_msg += f"ID Validation Error ({id_res.get('failure_reason')}). "
-                            print(f"[KYC DEBUG] ID Validation Failed: {id_res.get('failure_reason')}")
-                        if permit_res["status"] != "matched": 
-                            error_msg += f"Permit Validation Error ({permit_res.get('failure_reason', 'Owner Name Mismatch')}). "
-                            print(f"[KYC DEBUG] Permit Validation Failed: {permit_res.get('failure_reason')}")
+                        error_msg = f"Security Check Failed: ID Validation Error ({id_res.get('failure_reason')}). "
+                        print(f"[KYC DEBUG] ID Validation Failed: {id_res.get('failure_reason')}")
                         
                         if is_ajax:
                             return JSONResponse(status_code=400, content={"success": False, "message": error_msg})
@@ -561,15 +550,14 @@ async def register(
                     verification = models.IdentityVerification(
                         user_id=new_user.id,
                         document_url=gov_id_url,
-                        selfie_url=selfie_url or permit_url,
+                        selfie_url=None,
                         ocr_data=ocr_payload,
-                        verification_status="approved" if face_res.get("status") == "approved" else "pending"
+                        verification_status="approved"
                     )
                     
                     db.add(verification)
                 except Exception as ocr_err:
                     print(f"[AUTH OCR ERROR] Registration OCR failed: {ocr_err}")
-                    # If system error happens, we might still want to manual review or block
                     db.rollback()
                     if is_ajax:
                         return JSONResponse(status_code=500, content={"success": False, "message": f"Verification system error: {str(ocr_err)}"})
@@ -648,6 +636,9 @@ async def register(
         )
         response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
         return response
+
+    if is_ajax and role == "caterer":
+        return JSONResponse(content={"status": "success", "email": email, "redirect": f"/auth/verify?email={email}"})
 
     verify_url = f"/auth/verify?email={email}"
     if next_url:

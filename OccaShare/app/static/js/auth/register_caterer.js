@@ -281,27 +281,7 @@
                 }
             }
 
-            // Sample Menu Validation
-            const menuInput = document.getElementById('sample_menu_cat');
-            const menuBox = document.getElementById('menuBoxCat');
-            const menuError = document.getElementById('menuErrorCat');
-            if (menuInput && menuBox) {
-                if (menuInput.files.length === 0 && !menuBox.classList.contains('scanned-success')) {
-                    valid = false;
-                    menuBox.style.borderColor = '#ef4444';
-                    if (menuError) {
-                        menuError.innerText = "Sample Menu is required";
-                        menuError.style.display = 'block';
-                        menuError.style.color = '#ef4444';
-                    }
-                } else {
-                    menuBox.style.borderColor = '';
-                    if (menuError && menuError.innerText === "Sample Menu is required") {
-                        menuError.innerText = "";
-                        menuError.style.display = 'none';
-                    }
-                }
-            }
+
 
             const minPaxInput = document.getElementById('min_pax');
             const priceInput = document.getElementById('starting_price');
@@ -525,18 +505,6 @@
             });
         }
 
-        const menuInputCat = document.getElementById('sample_menu_cat');
-        if (menuInputCat) {
-            menuInputCat.addEventListener('change', () => {
-                if (menuInputCat.files.length > 0) {
-                    const menuBox = document.getElementById('menuBoxCat');
-                    const menuError = document.getElementById('menuErrorCat');
-                    if (menuBox) menuBox.style.borderColor = '';
-                    if (menuError && menuError.innerText === "Sample Menu is required") {
-                        menuError.style.display = 'none';
-                    }
-                }
-            });
-        }
+
     });
 })();

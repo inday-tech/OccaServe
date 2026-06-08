@@ -880,14 +880,87 @@ async def caterer_dashboard(
     timeframe = request.query_params.get('timeframe', 'month')
     stats = _get_caterer_stats(profile, bookings, timeframe=timeframe)
     
+    # Calculate profile completion dynamically
+    has_logo = bool(profile.logo_url and profile.logo_url != "/static/images/default_caterer.png")
+    has_cover = bool(profile.cover_image_url)
+    has_description = bool(profile.description and profile.description.strip())
+    has_packages = len(profile.packages) >= 1
+    has_photos = len(profile.gallery_items) >= 3
+    has_starting_price = bool(profile.starting_price and profile.starting_price > 0)
+    has_menu = bool(profile.sample_menu_url)
+    has_permit = bool(profile.permit_url)
+    
+    completion_pct = 40  # Base wizard
+    if has_logo: completion_pct += 10
+    if has_cover: completion_pct += 5
+    if has_description: completion_pct += 5
+    if has_packages: completion_pct += 15
+    if has_photos: completion_pct += 10
+    if has_starting_price: completion_pct += 5
+    if has_menu: completion_pct += 5
+    if has_permit: completion_pct += 5
+    
+    # Check eligibility to publish: Identity Verified + 1 Package + 3 Photos + Description
+    is_identity_verified = profile.status in ['Identity Verified', 'Published', 'Ready For Review', 'Verified'] or profile.verification_status == 'Verified'
+    can_publish = is_identity_verified and has_packages and has_photos and has_description
     
     return templates.TemplateResponse("caterer/index.html", {
         "request": request,
         "user": user,
         "profile": profile,
         **stats,
-        "active_page": "dashboard"
+        "active_page": "dashboard",
+        "completion_percentage": completion_pct,
+        "has_logo": has_logo,
+        "has_cover": has_cover,
+        "has_description": has_description,
+        "has_packages": has_packages,
+        "has_photos": has_photos,
+        "has_starting_price": has_starting_price,
+        "has_menu": has_menu,
+        "has_permit": has_permit,
+        "can_publish": can_publish,
+        "is_identity_verified": is_identity_verified
     })
+
+@router.post("/toggle-publish")
+async def toggle_publish(
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    profile = user.caterer_profile
+    if not profile:
+        return JSONResponse(status_code=404, content={"success": False, "message": "Profile not found"})
+        
+    has_description = bool(profile.description and profile.description.strip())
+    has_packages = len(profile.packages) >= 1
+    has_photos = len(profile.gallery_items) >= 3
+    is_identity_verified = profile.status in ['Identity Verified', 'Published', 'Ready For Review', 'Verified'] or profile.verification_status == 'Verified'
+    
+    can_publish = is_identity_verified and has_packages and has_photos and has_description
+    
+    if profile.status == "Published":
+        profile.status = "Identity Verified"
+        db.commit()
+        return {"success": True, "status": "Identity Verified", "message": "Listing successfully unpublished."}
+    else:
+        if not can_publish:
+            missing = []
+            if not is_identity_verified: missing.append("Identity Verification")
+            if not has_packages: missing.append("At least 1 Package")
+            if not has_photos: missing.append("At least 3 Food Photos")
+            if not has_description: missing.append("Business Description")
+            return JSONResponse(
+                status_code=400, 
+                content={
+                    "success": False, 
+                    "message": f"Cannot publish listing. Missing requirements: {', '.join(missing)}"
+                }
+            )
+        
+        profile.status = "Published"
+        db.commit()
+        return {"success": True, "status": "Published", "message": "Listing successfully published to customers!"}
 
 @router.get("/api/dashboard-overview")
 async def dashboard_overview_api(

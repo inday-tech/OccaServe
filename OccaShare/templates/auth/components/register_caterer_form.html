@@ -20,11 +20,11 @@
         </div>
         <div class="progress-step" id="p-step-3">
             3
-            <span class="step-label">Services</span>
+            <span class="step-label">Identity</span>
         </div>
         <div class="progress-step" id="p-step-4">
             4
-            <span class="step-label">Verification</span>
+            <span class="step-label">Done</span>
         </div>
     </div>
 
@@ -35,37 +35,28 @@
 
     <form action="/auth/register" method="post" enctype="multipart/form-data" id="catererForm">
         <input type="hidden" name="role" value="caterer">
-        <input type="hidden" name="event_types" id="eventTypesInput" value="">
 
         <!-- Step 1: Basic Account Information -->
         <div class="form-step active" id="step-1">
             <div class="form-grid">
-                <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; width: 100%; grid-column: 1 / -1; margin-top: 1.5rem;">
-                    <input type="hidden" id="full_name_cat" name="full_name" value="">
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label for="last_name_cat">Last Name</label>
-                        <div class="input-wrapper" id="lastNameCatWrapper">
-                            <input type="text" id="last_name_cat" name="last_name" class="minimal-input" required>
-                            <div id="lastNameCatError" class="error-drawer"></div>
-                        </div>
+                <!-- Business Name (moved to Step 1) -->
+                <div class="form-group full-width" style="margin-top: 1.5rem;">
+                    <label for="business_name">Business Name <span style="color:#ef4444;">*</span></label>
+                    <div class="input-wrapper" id="businessNameWrapper">
+                        <input type="text" id="business_name" name="business_name" class="minimal-input" required>
+                        <div id="businessNameError" class="error-drawer">Required</div>
                     </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label for="first_name_cat">First Name</label>
-                        <div class="input-wrapper" id="firstNameCatWrapper">
-                            <input type="text" id="first_name_cat" name="first_name" class="minimal-input" required>
-                            <div id="firstNameCatError" class="error-drawer"></div>
-                        </div>
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label for="middle_name_cat">Middle Name</label>
-                        <div class="input-wrapper" id="middleNameCatWrapper">
-                            <input type="text" id="middle_name_cat" name="middle_name" class="minimal-input">
-                            <div id="middleNameCatError" class="error-drawer"></div>
-                        </div>
+                </div>
+                <!-- Contact Person Name (replaces Last, First, Middle name grid) -->
+                <div class="form-group full-width">
+                    <label for="full_name_cat">Contact Person Name <span style="color:#ef4444;">*</span></label>
+                    <div class="input-wrapper" id="fullNameCatWrapper">
+                        <input type="text" id="full_name_cat" name="full_name" class="minimal-input" required>
+                        <div id="fullNameCatError" class="error-drawer">Required</div>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label for="email_cat">Email Address</label>
+                    <label for="email_cat">Email Address <span style="color:#ef4444;">*</span></label>
                     <div class="input-wrapper" id="emailCatWrapper">
                         <input type="email" id="email_cat" name="email" class="minimal-input" required
                             autocomplete="off"
@@ -74,7 +65,7 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label for="mobile_number_cat">Contact Number</label>
+                    <label for="mobile_number_cat">Contact Number <span style="color:#ef4444;">*</span></label>
                     <div class="input-wrapper" id="mobileCatWrapper">
                         <input type="tel" id="mobile_number_cat" name="mobile_number" class="minimal-input" required
                             maxlength="11"
@@ -84,7 +75,7 @@
                 </div>
                 {% if not user or user.auth_provider == 'email' %}
                 <div class="form-group">
-                    <label for="password_cat">Password</label>
+                    <label for="password_cat">Password <span style="color:#ef4444;">*</span></label>
                     <div class="input-wrapper" id="passwordCatWrapper">
                         <div class="password-field-wrapper">
                             <input type="password" id="password_cat" name="password" class="minimal-input has-toggle" required
@@ -97,7 +88,7 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label for="confirm_password_cat">Confirm Password</label>
+                    <label for="confirm_password_cat">Confirm Password <span style="color:#ef4444;">*</span></label>
                     <div class="input-wrapper" id="confirmCatWrapper">
                         <div class="password-field-wrapper">
                             <input type="password" id="confirm_password_cat" name="confirm_password"
@@ -119,16 +110,8 @@
         <!-- Step 2: Business Information -->
         <div class="form-step" id="step-2">
             <div class="form-grid">
-                <div class="form-group full-width" style="margin-top: 1.5rem;">
-                    <label for="business_name">Business Name</label>
-                    <div class="input-wrapper" id="businessNameWrapper">
-                        <input type="text" id="business_name" name="business_name" class="minimal-input"
-                            required>
-                        <div id="businessNameError" class="error-drawer">Required</div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="province_cat">Province</label>
+                <div class="form-group" style="margin-top: 1.5rem;">
+                    <label for="province_cat">Province <span style="color:#ef4444;">*</span></label>
                     <div class="input-wrapper" id="provinceCatWrapper">
                         <select id="province_cat" class="minimal-input" required>
                             <option value="">-- Province --</option>
@@ -140,8 +123,8 @@
                         <div id="provinceCatError" class="error-drawer">Required</div>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label for="city_cat">City / Municipality</label>
+                <div class="form-group" style="margin-top: 1.5rem;">
+                    <label for="city_cat">City / Municipality <span style="color:#ef4444;">*</span></label>
                     <div class="input-wrapper" id="cityCatWrapper">
                         <select name="city" id="city_cat" class="minimal-input" required>
                             <option value="">-- City --</option>
@@ -151,7 +134,7 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label for="barangay_cat">Barangay</label>
+                    <label for="barangay_cat">Barangay <span style="color:#ef4444;">*</span></label>
                     <div class="input-wrapper" id="barangayCatWrapper">
                         <select id="barangay_cat" class="minimal-input" required>
                             <option value="">-- Barangay --</option>
@@ -160,104 +143,39 @@
                         <div id="barangayCatError" class="error-drawer">Required</div>
                     </div>
                 </div>
-                <div class="form-group full-width">
-                    <label for="street_cat">Street Address / Landmark</label>
+                <div class="form-group">
+                    <label for="street_cat">Street Address / Landmark <span style="color:#ef4444;">*</span></label>
                     <div class="input-wrapper" id="streetCatWrapper">
-                        <input type="text" id="street_cat" class="minimal-input">
+                        <input type="text" id="street_cat" class="minimal-input" required>
                         <div id="streetCatError" class="error-drawer">Required for accurate location</div>
                     </div>
                 </div>
                 <input type="hidden" name="address" id="address_cat_hidden">
-                <div class="form-group">
-                    <label for="business_type">Business Type</label>
-                    <div class="input-wrapper" id="businessTypeWrapper">
-                        <select id="business_type" name="business_type" class="minimal-input" required>
-                            <option value="">Select Type</option>
-                            <option value="Single Proprietorship">Single Proprietorship</option>
-                            <option value="Partnership">Partnership</option>
-                            <option value="Corporation">Corporation</option>
-                            <option value="Cooperative">Cooperative</option>
-                        </select>
-                        <div id="businessTypeError" class="error-drawer">Required</div>
+                <div class="form-group full-width">
+                    <label for="coverage_area_cat">Service Areas <span style="color:#ef4444;">*</span></label>
+                    <div class="input-wrapper" id="coverageAreaCatWrapper">
+                        <input type="text" id="coverage_area_cat" name="coverage_area" class="minimal-input" required placeholder="e.g. Laguna, Cavite, Metro Manila">
+                        <div id="coverageAreaCatError" class="error-drawer">Required</div>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label for="years_of_operation">Years in Business</label>
+                    <label for="years_of_operation">Years of Experience (Optional)</label>
                     <div class="input-wrapper" id="yearsWrapper">
-                        <input type="text" id="years_of_operation" name="years_of_operation" class="minimal-input js-format-comma" required
+                        <input type="text" id="years_of_operation" name="years_of_operation" class="minimal-input js-format-comma"
                             inputmode="numeric">
-                        <div id="yearsError" class="error-drawer">Required</div>
+                        <div id="yearsError" class="error-drawer"></div>
                     </div>
                 </div>
-                <div class="form-group full-width">
-                    <label for="business_description">Short Description</label>
-                    <div class="input-wrapper" id="descriptionWrapper">
-                        <textarea id="business_description" name="business_description" class="minimal-input"
-                            rows="2"></textarea>
-                        <div id="descriptionError" class="error-drawer">Please tell us a bit about your business</div>
+                <div class="form-group">
+                    <label for="team_size_cat">Team Size (Optional)</label>
+                    <div class="input-wrapper" id="teamSizeCatWrapper">
+                        <input type="number" id="team_size_cat" name="team_size" class="minimal-input" min="1" placeholder="e.g. 5">
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Step 3: Services -->
-        <div class="form-step" id="step-3">
-            <div class="form-grid">
-                <div class="form-group full-width" style="margin-top: 1.5rem;">
-                    <label>Type of Events Supported</label>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-top: 0.5rem;">
-                        
-                        <!-- Primary Events -->
-                        <div style="background: var(--auth-slate-50); padding: 1rem; border-radius: 0.75rem; border: 1px solid var(--auth-slate-100);">
-                            <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--auth-slate-700); margin-bottom: 0.75rem;"><i class="fas fa-star" style="color: #f59e0b; margin-right: 0.25rem;"></i> Primary Events</h4>
-                            <div class="checkbox-group" style="display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start;">
-                                <label class="checkbox-item" style="margin: 0; padding: 0.4rem 0.75rem; width: 100%; border-radius: 0.5rem; transition: background 0.2s;"><input type="checkbox" name="event_type_choice" value="Weddings" onchange="this.parentElement.classList.toggle('checked', this.checked)"> Weddings</label>
-                                <label class="checkbox-item" style="margin: 0; padding: 0.4rem 0.75rem; width: 100%; border-radius: 0.5rem; transition: background 0.2s;"><input type="checkbox" name="event_type_choice" value="Birthdays" onchange="this.parentElement.classList.toggle('checked', this.checked)"> Birthdays</label>
-                                <label class="checkbox-item" style="margin: 0; padding: 0.4rem 0.75rem; width: 100%; border-radius: 0.5rem; transition: background 0.2s;"><input type="checkbox" name="event_type_choice" value="Corporate Events" onchange="this.parentElement.classList.toggle('checked', this.checked)"> Corporate Events</label>
-                                <label class="checkbox-item" style="margin: 0; padding: 0.4rem 0.75rem; width: 100%; border-radius: 0.5rem; transition: background 0.2s;"><input type="checkbox" name="event_type_choice" value="Debuts & Milestones" onchange="this.parentElement.classList.toggle('checked', this.checked)"> Debuts & Milestones</label>
-                            </div>
-                        </div>
-
-                        <!-- Gatherings & Celebrations -->
-                        <div style="background: var(--auth-slate-50); padding: 1rem; border-radius: 0.75rem; border: 1px solid var(--auth-slate-100);">
-                            <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--auth-slate-700); margin-bottom: 0.75rem;"><i class="fas fa-users" style="color: #3b82f6; margin-right: 0.25rem;"></i> Gatherings & Celebrations</h4>
-                            <div class="checkbox-group" style="display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start;">
-                                <label class="checkbox-item" style="margin: 0; padding: 0.4rem 0.75rem; width: 100%; border-radius: 0.5rem; transition: background 0.2s;"><input type="checkbox" name="event_type_choice" value="Baptism & Family Events" onchange="this.parentElement.classList.toggle('checked', this.checked)"> Baptism & Family Events</label>
-                                <label class="checkbox-item" style="margin: 0; padding: 0.4rem 0.75rem; width: 100%; border-radius: 0.5rem; transition: background 0.2s;"><input type="checkbox" name="event_type_choice" value="Private Parties" onchange="this.parentElement.classList.toggle('checked', this.checked)"> Private Parties</label>
-                                <label class="checkbox-item" style="margin: 0; padding: 0.4rem 0.75rem; width: 100%; border-radius: 0.5rem; transition: background 0.2s;"><input type="checkbox" name="event_type_choice" value="Fiestas & Large Events" onchange="this.parentElement.classList.toggle('checked', this.checked)"> Fiestas & Large Events</label>
-                                <label class="checkbox-item" style="margin: 0; padding: 0.4rem 0.75rem; width: 100%; border-radius: 0.5rem; transition: background 0.2s;"><input type="checkbox" name="event_type_choice" value="Holiday Celebrations" onchange="this.parentElement.classList.toggle('checked', this.checked)"> Holiday Celebrations</label>
-                                <label class="checkbox-item" style="margin: 0; padding: 0.4rem 0.75rem; width: 100%; border-radius: 0.5rem; transition: background 0.2s;"><input type="checkbox" name="event_type_choice" value="Other" id="eventOtherCheck" onchange="toggleEventOther(this)"> Custom / Others</label>
-                            </div>
-                            <div id="eventOtherContainer" style="display: none; margin-top: 0.75rem;">
-                                <input type="text" id="event_type_other" class="minimal-input" placeholder="Please specify...">
-                            </div>
-                        </div>
-
-                    </div>
-                    <div id="eventTypeError" class="error-drawer" style="margin-top: 0.5rem;"></div>
-                </div>
-                <div class="form-group full-width">
-                    <label for="min_pax">Minimum Pax</label>
-                    <div class="input-wrapper" id="minPaxWrapper">
-                        <input type="text" id="min_pax" name="min_pax" class="minimal-input js-format-comma" required inputmode="numeric">
-                        <div id="minPaxError" class="error-drawer">Required</div>
-                    </div>
-                </div>
-                <div class="form-group full-width">
-                    <label for="sample_menu_cat">Sample Menu (e.g., Food List, Price List)</label>
-                    <div class="file-upload-box" id="menuBoxCat">
-                        <i class="fas fa-utensils"></i>
-                        <p id="menuNameCat">Select or Drag Menu PDF/Image</p>
-                        <span id="menuStatusCat" class="scan-status-badge"></span>
-                        <input type="file" id="sample_menu_cat" name="sample_menu" accept=".pdf,image/*"
-                            onchange="updateFileNameCat(this, 'menuNameCat'); handleFileUploadCat(this, 'menu');">
-                    </div>
-                    <div id="menuErrorCat" class="ocr-error-text"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Step 4: Verification -->
+        <!-- Step 3: Identity Verification -->
         <style>
             .file-upload-box {
                 height: 150px !important;
@@ -304,21 +222,29 @@
                 grid-template-columns: 1fr !important;
             }
         </style>
-        <div class="form-step" id="step-4">
+        <div class="form-step" id="step-3">
             <div class="form-grid full-width-grid" style="grid-template-columns: 1fr !important;">
                 <div class="form-group full-width" style="margin-top: 1.5rem;">
                     <label for="id_type_cat">Valid ID Type <span style="color:#ef4444;">*</span></label>
-                    <select id="id_type_cat" name="id_type" class="minimal-input">
-                        <option value="">-- Choose ID Type --</option>
-                        <option value="PhilID (National ID)">PhilSys / PhilID</option>
-                        <option value="Driver's License">Philippine Driver's License</option>
-                        <option value="Passport">Philippine Passport</option>
-                        <option value="UMID">UMID</option>
-                    </select>
+                    <div class="input-wrapper" id="idTypeCatWrapper">
+                        <select id="id_type_cat" name="id_type" class="minimal-input" required>
+                            <option value="">-- Choose ID Type --</option>
+                            <option value="PhilID (National ID)">PhilSys / PhilID</option>
+                            <option value="Driver's License">Philippine Driver's License</option>
+                            <option value="Passport">Philippine Passport</option>
+                            <option value="UMID">UMID</option>
+                            <option value="PRC ID">PRC ID</option>
+                            <option value="Postal ID">Postal ID</option>
+                        </select>
+                        <div id="idTypeCatError" class="error-drawer">Required</div>
+                    </div>
                 </div>
                 <div class="form-group full-width">
                     <label for="id_number_cat">ID Number <span style="color:#ef4444;">*</span></label>
-                    <input type="text" id="id_number_cat" name="id_number" class="minimal-input" oninput="formatIdNumberInline(this, 'id_type_cat')">
+                    <div class="input-wrapper" id="idNumberCatWrapper">
+                        <input type="text" id="id_number_cat" name="id_number" class="minimal-input" required oninput="formatIdNumberInline(this, 'id_type_cat')">
+                        <div id="idNumberCatError" class="error-drawer">Required</div>
+                    </div>
                 </div>
                 
                 <script>
@@ -398,9 +324,9 @@
                         }
                     });
                 </script>
-
+ 
                 <div class="form-group full-width">
-                    <label for="gov_id_cat">Valid Government ID</label>
+                    <label for="gov_id_cat">Valid Government ID <span style="color:#ef4444;">*</span></label>
                     <div class="file-upload-box" id="govIdBoxCat" onclick="document.getElementById('gov_id_cat').click()">
                         <div id="govIdInitialViewCat" style="text-align: center; width: 100%;">
                             <i class="fas fa-id-card" style="font-size: 1.5rem; color: var(--primary); margin-bottom: 0.5rem;"></i>
@@ -408,66 +334,54 @@
                             <span style="font-size: 0.7rem; color: var(--auth-slate-400);">Click to Upload (JPEG/PNG)</span>
                         </div>
                         <span id="govIdStatusCat" class="scan-status-badge"></span>
-                        <input type="file" id="gov_id_cat" name="gov_id" accept="image/*" style="display:none;"
+                        <input type="file" id="gov_id_cat" name="gov_id" accept="image/*" style="display:none;" required
                             onchange="updateFileNameCat(this, 'govIdNameCat'); handleFileUploadCat(this, 'id');">
                     </div>
                     <div id="govIdOcrErrorCat" class="ocr-error-text"></div>
                 </div>
-
-                <div class="form-group full-width">
-                    <label for="permit_cat">Business Permit / DTI</label>
-                    <div class="file-upload-box" id="permitBoxCat" onclick="document.getElementById('permit_cat').click()">
-                        <div id="permitInitialViewCat" style="text-align: center; width: 100%;">
-                            <i class="fas fa-file-invoice" style="font-size: 1.5rem; color: var(--primary); margin-bottom: 0.5rem;"></i>
-                            <p id="permitNameCat" style="font-size: 0.8rem; font-weight: 600; margin-bottom: 0.5rem;">Business Permit / DTI</p>
-                            <span style="font-size: 0.7rem; color: var(--auth-slate-400);">Click to Upload (JPEG/PNG)</span>
-                        </div>
-                        <span id="permitStatusCat" class="scan-status-badge"></span>
-                        <input type="file" id="permit_cat" name="permit" accept="image/*" style="display:none;"
-                            onchange="updateFileNameCat(this, 'permitNameCat'); handleFileUploadCat(this, 'permit');">
-                    </div>
-                    <div id="permitOcrErrorCat" class="ocr-error-text"></div>
-                </div>
-
-                <div class="form-group full-width">
-                    <label for="logo_cat">Business Logo / Brand Picture</label>
-                    <div class="file-upload-box" id="logoBoxCat" onclick="document.getElementById('logo_cat').click()">
-                        <img id="logoPreviewCat" class="logo-preview" style="display:none; height: 80px; border-radius: 50%;">
-                        <span id="logoDefaultIcon"><i class="fas fa-user-circle" style="font-size: 2rem; color: var(--auth-slate-300);"></i></span>
-                        <p id="uploadTextCat" style="font-size: 0.8rem; font-weight: 600; margin-top: 0.5rem;">Upload Brand Logo</p>
-                        <span id="logoStatusCat" class="scan-status-badge"></span>
-                        <input type="file" id="logo_cat" name="logo" accept="image/*" style="display:none;" onchange="previewLogoCat(this)">
-                    </div>
-                    <div id="logoErrorCat" class="ocr-error-text"></div>
-                </div>
-
-                <div class="form-group full-width">
-                    <label>Live Identity Verification (Selfie)</label>
-                    <div class="file-upload-box" id="selfieBoxCat" onclick="startUniversalScanCat('selfie')">
-                        <div id="selfieInitialViewCat" style="text-align: center; width: 100%;">
-                            <i class="fas fa-camera" style="font-size: 1.5rem; color: var(--primary); margin-bottom: 0.5rem;"></i>
-                            <p id="selfieNameCat" style="font-size: 0.8rem; font-weight: 600; margin-bottom: 0.5rem;">Live Identity Verification</p>
-                            <span style="font-size: 0.7rem; color: var(--auth-slate-400);">Click to Start Camera Scan</span>
-                        </div>
-                        <span id="selfieStatusCat" class="scan-status-badge"></span>
-                        <input type="file" id="selfie_cat" name="selfie" capture="user" accept="image/*" style="display:none;" 
-                            onchange="updateFileNameCat(this, 'selfieNameCat'); handleFileUploadCat(this, 'selfie');">
-                    </div>
-                    <div id="selfieErrorCat" class="ocr-error-text"></div>
-                </div>
             </div>
         </div>
 
-        <div class="caterer-nav-buttons" style="display: flex; flex-direction: row; flex-wrap: nowrap; justify-content: space-between; align-items: center; width: 100%; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--auth-slate-100); box-sizing: border-box; gap: 1rem;">
+        <!-- Step 4: Registration Complete success state -->
+        <div class="form-step" id="step-4">
+            <div style="text-align: center; padding: 2rem 1rem;">
+                <div style="width: 70px; height: 70px; background: #f0fdf4; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+                    <i class="fas fa-check-circle" style="font-size: 2.5rem; color: #10b981;"></i>
+                </div>
+                <h3 style="font-size: 1.4rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem;">Welcome to OccaServe!</h3>
+                <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 2rem;">Your account has been created successfully.</p>
+                
+                <!-- Onboarding Completion Progress Circle dial -->
+                <div style="position: relative; width: 120px; height: 120px; margin: 0 auto 1.5rem;">
+                    <svg style="width: 120px; height: 120px; transform: rotate(-90deg);">
+                        <circle cx="60" cy="60" r="50" stroke="#f1f5f9" stroke-width="10" fill="transparent" />
+                        <circle cx="60" cy="60" r="50" stroke="#f97316" stroke-width="10" fill="transparent" 
+                                stroke-dasharray="314.16" stroke-dashoffset="188.5" style="transition: stroke-dashoffset 1s ease-out;" />
+                    </svg>
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+                        <span style="font-size: 1.5rem; font-weight: 800; color: #0f172a;">40%</span>
+                        <div style="font-size: 0.65rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Profile</div>
+                    </div>
+                </div>
+                
+                <p style="color: #475569; font-size: 0.8rem; max-width: 320px; margin: 0 auto 2rem; line-height: 1.5;">
+                    Let's complete the remaining checklist on your dashboard to publish your business listing.
+                </p>
+                
+                <button type="button" class="btn-primary" id="btnGoToDashboard" style="width: 100%; max-width: 250px; margin: 0 auto; padding: 0.7rem 1.5rem; font-weight: 700;" onclick="window.location.href='/caterer/dashboard'">Go To Dashboard</button>
+            </div>
+        </div>
+
+        <div class="caterer-nav-buttons" id="catererNavButtonsContainer" style="display: flex; flex-direction: row; flex-wrap: nowrap; justify-content: space-between; align-items: center; width: 100%; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--auth-slate-100); box-sizing: border-box; gap: 1rem;">
             <button type="button" class="btn-secondary" id="prevBtnCat" style="display: none; width: auto !important; min-width: 120px; padding: 0.6rem 1.5rem; margin: 0;"
                 onclick="changeStepCat(-1)">Back</button>
             <button type="button" class="btn-primary" id="nextBtnCat" style="width: auto !important; min-width: 120px; padding: 0.6rem 1.5rem; margin: 0 0 0 auto;" onclick="changeStepCat(1)">Next Step</button>
         </div>
     </form>
 
-    <div class="auth-footer" style="text-align: center; margin-top: 2rem; border-top: 1px solid var(--auth-slate-100); padding-top: 1.5rem;">
+    <div class="auth-footer" id="catererAuthFooter" style="text-align: center; margin-top: 2rem; border-top: 1px solid var(--auth-slate-100); padding-top: 1.5rem;">
         <p style="color: var(--auth-slate-600); margin-bottom: 0.5rem;">Already a partner? <a href="#" onclick="openAuthModal('login'); return false;" id="catLoginLink" style="color: var(--auth-primary); font-weight: 600; text-decoration: none;">Log in here</a></p>
         <p><a href="#" onclick="openAuthModal('signup'); return false;" id="catCustomerLink" style="color: var(--auth-slate-700); font-weight: 500; font-size: 0.9rem; text-decoration: underline;">Wait, I'm a regular customer</a></p>
     </div>
 </div>
-<script src="{{ url_for('static', path='/js/auth/location_data.js') }}"></script>
+<script src="{{ url_for('static', path='/js/auth/location_data.js') }}"></script>

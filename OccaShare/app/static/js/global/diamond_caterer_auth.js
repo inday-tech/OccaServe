@@ -29,16 +29,15 @@
         if (n === 1) {
             const stepValid = await validateCurrentStepCat();
             if (!stepValid) return;
+            
+            if (currentStepCat === 3) {
+                submitCatererForm();
+                return;
+            }
         }
 
         steps[currentStepCat - 1].classList.remove('active');
         currentStepCat += n;
-
-        if (currentStepCat > totalStepsCat) {
-            submitCatererForm();
-            currentStepCat = totalStepsCat;
-            return;
-        }
 
         steps[currentStepCat - 1].classList.add('active');
 
@@ -70,58 +69,27 @@
 
         let valid = true;
 
-        // 1. Mark all fields in this step as touched (so real-time validators show errors)
         const inputs = step.querySelectorAll('input, select, textarea');
         inputs.forEach(input => {
             input.classList.add('touched');
         });
 
-        // 2. Perform formatting checks for Step 1
         if (currentStepCat === 1) {
-            // First Name, Middle Name, Last Name
-            const fnEl = document.getElementById('first_name_cat');
-            const mnEl = document.getElementById('middle_name_cat');
-            const lnEl = document.getElementById('last_name_cat');
+            const bizNameEl = document.getElementById('business_name');
+            if (bizNameEl) {
+                const res = window.diamondValidators.businessNameFormat(bizNameEl.value);
+                window.setDiamondError('businessName', res.message, !res.valid);
+                if (!res.valid) valid = false;
+            }
 
-            const fnVal = (fnEl?.value || '').trim();
-            const mnVal = (mnEl?.value || '').trim();
-            const lnVal = (lnEl?.value || '').trim();
-
-            // Check formats using central diamondValidators
+            const fnEl = document.getElementById('full_name_cat');
             if (fnEl) {
-                const res = window.diamondValidators.name(fnVal);
-                window.setDiamondError('firstNameCat', res.message, !res.valid);
-                if (!res.valid) valid = false;
-            }
-            if (lnEl) {
-                const res = window.diamondValidators.name(lnVal);
-                window.setDiamondError('lastNameCat', res.message, !res.valid);
-                if (!res.valid) valid = false;
-            }
-            if (mnEl && mnVal) {
-                const res = window.diamondValidators.name(mnVal);
-                window.setDiamondError('middleNameCat', res.message, !res.valid);
+                const nameVal = fnEl.value.trim();
+                const res = window.diamondValidators.name(nameVal);
+                window.setDiamondError('fullNameCat', res.message, !res.valid);
                 if (!res.valid) valid = false;
             }
 
-            // Cross check names identically
-            if (fnVal && lnVal && fnVal.toLowerCase() === lnVal.toLowerCase()) {
-                window.setDiamondError('firstNameCat', "First & Last name cannot be identical");
-                window.setDiamondError('lastNameCat', "First & Last name cannot be identical");
-                valid = false;
-            }
-            if (fnVal && mnVal && fnVal.toLowerCase() === mnVal.toLowerCase()) {
-                window.setDiamondError('firstNameCat', "First & Middle name cannot be identical");
-                window.setDiamondError('middleNameCat', "First & Middle name cannot be identical");
-                valid = false;
-            }
-            if (mnVal && lnVal && mnVal.toLowerCase() === lnVal.toLowerCase()) {
-                window.setDiamondError('middleNameCat', "Middle & Last name cannot be identical");
-                window.setDiamondError('lastNameCat', "Middle & Last name cannot be identical");
-                valid = false;
-            }
-
-            // Email Format
             const emailEl = document.getElementById('email_cat');
             if (emailEl) {
                 const res = window.diamondValidators.email(emailEl.value);
@@ -129,7 +97,6 @@
                 if (!res.valid) valid = false;
             }
 
-            // Mobile Format
             const mobileEl = document.getElementById('mobile_number_cat');
             if (mobileEl) {
                 const res = window.diamondValidators.mobile(mobileEl.value);
@@ -137,7 +104,6 @@
                 if (!res.valid) valid = false;
             }
 
-            // Passwords Format
             const passEl = document.getElementById('password_cat');
             const confirmEl = document.getElementById('confirm_password_cat');
             if (passEl) {
@@ -157,8 +123,17 @@
                 }
             }
 
-            // If the formatting validation passed so far, perform awaited AJAX uniqueness checks
             if (valid) {
+                if (bizNameEl && bizNameEl.value) {
+                    try {
+                        const response = await fetch(`/auth/check-business-name?name=${encodeURIComponent(bizNameEl.value)}`);
+                        const data = await response.json();
+                        if (!data.available) {
+                            window.setDiamondError('businessName', "Business name already registered");
+                            valid = false;
+                        }
+                    } catch (err) { console.error("Business uniqueness check failed", err); }
+                }
                 if (emailEl && emailEl.value) {
                     try {
                         const response = await fetch(`/auth/check-email?email=${encodeURIComponent(emailEl.value)}`);
@@ -169,7 +144,6 @@
                         }
                     } catch (err) { console.error("Email uniqueness check failed", err); }
                 }
-
                 if (mobileEl && mobileEl.value) {
                     const cleanPhone = mobileEl.value.replace(/\s/g, '');
                     try {
@@ -184,150 +158,75 @@
             }
         }
 
-        // 3. Perform formatting checks for Step 2
         if (currentStepCat === 2) {
-            const bizNameEl = document.getElementById('business_name');
-            if (bizNameEl) {
-                const res = window.diamondValidators.businessNameFormat(bizNameEl.value);
-                window.setDiamondError('businessName', res.message, !res.valid);
-                if (!res.valid) valid = false;
-            }
-
             const cityEl = document.getElementById('city_cat');
             if (cityEl && (!cityEl.value || cityEl.value.trim() === '')) {
                 window.setDiamondError('cityCat', "Required");
                 valid = false;
+            } else {
+                window.setDiamondError('cityCat', "", false);
             }
 
             const brgyEl = document.getElementById('barangay_cat');
             if (brgyEl && (!brgyEl.value || brgyEl.value.trim() === '')) {
                 window.setDiamondError('barangayCat', "Required");
                 valid = false;
+            } else {
+                window.setDiamondError('barangayCat', "", false);
             }
 
             const streetEl = document.getElementById('street_cat');
             if (streetEl && (!streetEl.value || streetEl.value.trim() === '')) {
                 window.setDiamondError('streetCat', "Required");
                 valid = false;
+            } else {
+                window.setDiamondError('streetCat', "", false);
             }
 
-            const bizTypeEl = document.getElementById('business_type');
-            if (bizTypeEl && (!bizTypeEl.value || bizTypeEl.value.trim() === '')) {
-                window.setDiamondError('businessType', "Required");
+            const coverageEl = document.getElementById('coverage_area_cat');
+            if (coverageEl && (!coverageEl.value || coverageEl.value.trim() === '')) {
+                window.setDiamondError('coverageAreaCat', "Required");
                 valid = false;
+            } else {
+                window.setDiamondError('coverageAreaCat', "", false);
             }
 
             const yearsEl = document.getElementById('years_of_operation');
-            if (yearsEl) {
+            if (yearsEl && yearsEl.value.trim() !== '') {
                 const res = window.diamondValidators.years(yearsEl.value);
                 window.setDiamondError('years', res.message, !res.valid);
                 if (!res.valid) valid = false;
-            }
-
-            const descEl = document.getElementById('business_description');
-            if (descEl && (!descEl.value || descEl.value.trim() === '')) {
-                window.setDiamondError('description', "Required");
-                valid = false;
-            }
-
-            // If formatting passed, run awaited business name uniqueness check
-            if (valid && bizNameEl && bizNameEl.value) {
-                try {
-                    const response = await fetch(`/auth/check-business-name?name=${encodeURIComponent(bizNameEl.value)}`);
-                    const data = await response.json();
-                    if (!data.available) {
-                        window.setDiamondError('businessName', "Business name already registered");
-                        valid = false;
-                    }
-                } catch (err) { console.error("Business uniqueness check failed", err); }
+            } else {
+                window.setDiamondError('years', "", false);
             }
         }
 
         if (currentStepCat === 3) {
-            const minPaxEl = document.getElementById('min_pax');
-            if (minPaxEl) {
-                const res = window.diamondValidators.minPax(minPaxEl.value);
-                window.setDiamondError('minPax', res.message, !res.valid);
-                if (!res.valid) valid = false;
-            }
-
-            // Event Types Validation
-            const eventCheckboxes = step.querySelectorAll('input[name="event_type_choice"]:checked');
-            const eventErrorDrawer = document.getElementById('eventTypeError');
-            if (eventCheckboxes.length === 0) {
+            const idTypeEl = document.getElementById('id_type_cat');
+            if (idTypeEl && (!idTypeEl.value || idTypeEl.value.trim() === '')) {
+                window.setDiamondError('idTypeCat', "Required", true);
                 valid = false;
-                if (eventErrorDrawer) {
-                    eventErrorDrawer.innerText = "Please select at least one event type";
-                    eventErrorDrawer.style.display = 'block';
-                }
             } else {
-                let otherError = false;
-                const otherCheck = document.getElementById('eventOtherCheck');
-                if (otherCheck && otherCheck.checked) {
-                    const otherInput = document.getElementById('event_type_other');
-                    if (!otherInput || !otherInput.value.trim()) {
-                        valid = false;
-                        otherError = true;
-                        if (eventErrorDrawer) {
-                            eventErrorDrawer.innerText = "Please specify the other event type";
-                            eventErrorDrawer.style.display = 'block';
-                        }
-                        if (otherInput) otherInput.style.borderColor = '#ef4444';
-                    } else {
-                        if (otherInput) otherInput.style.borderColor = '';
-                    }
-                }
-
-                if (!otherError && eventErrorDrawer) {
-                    eventErrorDrawer.style.display = 'none';
-                }
+                window.setDiamondError('idTypeCat', "", false);
             }
 
-            // Sample Menu Validation
-            const menuInput = document.getElementById('sample_menu_cat');
-            const menuBox = document.getElementById('menuBoxCat');
-            const menuError = document.getElementById('menuErrorCat');
-            if (menuInput && menuBox) {
-                if (menuInput.files.length === 0 && !menuBox.classList.contains('scanned-success')) {
-                    valid = false;
-                    menuBox.style.borderColor = '#ef4444';
-                    if (menuError) {
-                        menuError.innerText = "Sample Menu is required";
-                        menuError.style.display = 'block';
-                        menuError.style.color = '#ef4444';
-                    }
-                } else {
-                    menuBox.style.borderColor = '';
-                    if (menuError && menuError.innerText === "Sample Menu is required") {
-                        menuError.innerText = "";
-                        menuError.style.display = 'none';
-                    }
-                }
-            }
-        }
-
-        // 5. Step 4 Verification Check
-        if (currentStepCat === 4) {
-            const permitScanned = document.getElementById('permitBoxCat').classList.contains('scanned-success');
-            const idScanned = document.getElementById('govIdBoxCat').classList.contains('scanned-success');
-            const selfieScanned = document.getElementById('selfieBoxCat').classList.contains('scanned-success');
-
-            if (!permitScanned || !idScanned || !selfieScanned) {
-                if (window.Swal) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Verification Incomplete',
-                        text: 'Please ensure your Permit, ID, and Selfie are successfully verified before proceeding.',
-                        confirmButtonColor: '#f97316'
-                    });
-                }
+            const idNumEl = document.getElementById('id_number_cat');
+            if (idNumEl && (!idNumEl.value || idNumEl.value.trim() === '')) {
+                window.setDiamondError('idNumberCat', "Required", true);
                 valid = false;
+            } else {
+                window.setDiamondError('idNumberCat', "", false);
             }
-        }
 
-        // Sync full name if on Step 1
-        if (currentStepCat === 1 && typeof window.composeFullNameCat === 'function') {
-            window.composeFullNameCat();
+            const govIdBox = document.getElementById('govIdBoxCat');
+            if (govIdBox && !govIdBox.classList.contains('scanned-success')) {
+                const errDiv = document.getElementById('govIdOcrErrorCat');
+                if (errDiv) { errDiv.innerText = "Valid Government ID scan required"; errDiv.style.display = 'block'; }
+                valid = false;
+            } else {
+                const errDiv = document.getElementById('govIdOcrErrorCat');
+                if (errDiv) { errDiv.style.display = 'none'; }
+            }
         }
 
         return valid;
@@ -340,16 +239,14 @@
         if (!form) return;
 
         // Final Verification Safeguard
-        const permitScanned = document.getElementById('permitBoxCat').classList.contains('scanned-success');
         const idScanned = document.getElementById('govIdBoxCat').classList.contains('scanned-success');
-        const selfieScanned = document.getElementById('selfieBoxCat').classList.contains('scanned-success');
 
-        if (!permitScanned || !idScanned || !selfieScanned) {
+        if (!idScanned) {
             if (window.Swal) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Security Check Required',
-                    text: 'Full identity verification is required. Please follow the instructions in Step 4.',
+                    text: 'Government ID verification is required. Please upload or capture your valid ID in Step 3.',
                     confirmButtonColor: '#f97316'
                 });
             }
@@ -361,12 +258,9 @@
     }
 
     function showOcrReviewModal() {
-        const userBizName = document.getElementById('business_name')?.value || '';
-        const userFirstName = document.getElementById('first_name_cat')?.value || '';
-        const userLastName = document.getElementById('last_name_cat')?.value || '';
+        const userFullName = document.getElementById('full_name_cat')?.value || '';
         const userIdNumber = document.getElementById('id_number_cat')?.value || '';
 
-        const extBizName = window.extractedOcrData?.permit?.business_name || window.extractedOcrData?.permit?.business_name_extracted || 'Not clear/detected';
         const extFullName = window.extractedOcrData?.id?.full_name || window.extractedOcrData?.id?.full_name_extracted || 'Not clear/detected';
         const extIdNum = window.extractedOcrData?.id?.id_number || window.extractedOcrData?.id?.id_number_extracted || 'Not clear/detected';
 
@@ -375,35 +269,18 @@
                 title: 'Review Extracted Information',
                 html: `
                     <div style="text-align: left; font-size: 0.9rem; max-height: 60vh; overflow-y: auto; overflow-x: hidden; padding-right: 5px;">
-                        <p style="margin-bottom: 1.5rem; color: #475569;">Please verify the extracted information from your uploaded documents against what you entered. You may edit your input if needed.</p>
+                        <p style="margin-bottom: 1.5rem; color: #475569;">Please verify the extracted information from your uploaded government ID against what you entered. You may edit your input if needed.</p>
                         
                         <div style="margin-bottom: 1.25rem;">
-                            <h4 style="color: #1e293b; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem;">Business Name</h4>
-                            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                                <div>
-                                    <label style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Extracted from Permit</label>
-                                    <div style="padding: 0.6rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.5rem; color: #0f172a; font-weight: 500; word-break: break-word;">${extBizName}</div>
-                                </div>
-                                <div>
-                                    <label style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Your Input</label>
-                                    <input type="text" id="review_biz_name" class="minimal-input" value="${userBizName}" style="padding: 0.6rem; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 0.5rem;">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style="margin-bottom: 1.25rem;">
-                            <h4 style="color: #1e293b; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem;">Owner Name</h4>
+                            <h4 style="color: #1e293b; font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem;">Contact Person Name</h4>
                             <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                                 <div>
                                     <label style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Extracted from ID</label>
                                     <div style="padding: 0.6rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.5rem; color: #0f172a; font-weight: 500; word-break: break-word;">${extFullName}</div>
                                 </div>
                                 <div>
-                                    <label style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Your Input (First / Last)</label>
-                                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                                        <input type="text" id="review_first_name" class="minimal-input" value="${userFirstName}" placeholder="First" style="padding: 0.6rem; flex: 1; min-width: 100px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 0.5rem;">
-                                        <input type="text" id="review_last_name" class="minimal-input" value="${userLastName}" placeholder="Last" style="padding: 0.6rem; flex: 1; min-width: 100px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 0.5rem;">
-                                    </div>
+                                    <label style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Your Input</label>
+                                    <input type="text" id="review_full_name" class="minimal-input" value="${userFullName}" style="padding: 0.6rem; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 0.5rem;">
                                 </div>
                             </div>
                         </div>
@@ -433,19 +310,15 @@
                     popup: 'premium-auth-swal'
                 },
                 preConfirm: () => {
-                    const rBizName = document.getElementById('review_biz_name').value.trim();
-                    const rFirst = document.getElementById('review_first_name').value.trim();
-                    const rLast = document.getElementById('review_last_name').value.trim();
+                    const rFullName = document.getElementById('review_full_name').value.trim();
                     const rId = document.getElementById('review_id_number').value.trim();
 
-                    if (!rBizName || !rFirst || !rLast || !rId) {
+                    if (!rFullName || !rId) {
                         Swal.showValidationMessage('All fields must be filled.');
                         return false;
                     }
 
-                    document.getElementById('business_name').value = rBizName;
-                    document.getElementById('first_name_cat').value = rFirst;
-                    document.getElementById('last_name_cat').value = rLast;
+                    document.getElementById('full_name_cat').value = rFullName;
                     document.getElementById('id_number_cat').value = rId;
 
                     return true;
@@ -461,7 +334,7 @@
     }
 
     function updateAddressCat() {
-        const prov = document.getElementById('province_cat')?.value || '';
+        const prov = document.getElementById('province_cat')?.value || 'Laguna';
         const city = document.getElementById('city_cat')?.value || '';
         const brgy = document.getElementById('barangay_cat')?.value || '';
         const street = document.getElementById('street_cat')?.value || '';
@@ -495,11 +368,9 @@
                 if (val) formData.set(f, val.toString().replace(/,/g, ''));
             });
 
-            // Re-compose full name after potential edit in review modal
-            const fn = document.getElementById('first_name_cat')?.value.trim() || '';
-            const ln = document.getElementById('last_name_cat')?.value.trim() || '';
-            const mn = document.getElementById('middle_name_cat')?.value.trim() || '';
-            formData.set('full_name', `${fn} ${mn ? mn + ' ' : ''}${ln}`.trim());
+            // Set full name directly
+            const fn = document.getElementById('full_name_cat')?.value.trim() || '';
+            formData.set('full_name', fn);
 
             const response = await fetch('/auth/register', {
                 method: 'POST',
@@ -510,8 +381,34 @@
                 window.location.href = response.url;
             } else {
                 const result = await response.json();
-                if (result.status === 'success' || result.redirect) {
-                    window.location.href = result.redirect || '/auth/verify-email';
+                if (result.status === 'success') {
+                    // Update Step 4 redirect button
+                    const btn = document.getElementById('btnGoToDashboard');
+                    if (btn && result.email) {
+                        btn.onclick = function() {
+                            window.location.href = `/auth/verify?email=${encodeURIComponent(result.email)}`;
+                        };
+                    }
+                    
+                    // Transition to step 4
+                    const steps = form.querySelectorAll('.form-step');
+                    steps[currentStepCat - 1].classList.remove('active');
+                    currentStepCat = 4;
+                    steps[currentStepCat - 1].classList.add('active');
+
+                    // Update Progress Tracker
+                    const pSteps = document.querySelectorAll('.progress-step');
+                    pSteps.forEach((s, idx) => {
+                        if (idx + 1 < currentStepCat) s.className = 'progress-step completed';
+                        else if (idx + 1 === currentStepCat) s.className = 'progress-step active';
+                        else s.className = 'progress-step';
+                    });
+
+                    // Hide Buttons & footer
+                    const navBtns = document.getElementById('catererNavButtonsContainer');
+                    if (navBtns) navBtns.style.display = 'none';
+                    const authFooter = document.getElementById('catererAuthFooter');
+                    if (authFooter) authFooter.style.display = 'none';
                 } else if (window.Swal) {
                     Swal.fire({ icon: 'error', title: 'Registration Failed', text: result.message || 'Please check your information.' });
                 }
@@ -1152,13 +1049,17 @@
 
         const businessName = document.getElementById('business_name')?.value.trim() || "";
         // Compose full name from separate fields (checking both _cat and regular IDs)
-        const fnCat = (document.getElementById('first_name_cat')?.value || document.getElementById('first_name')?.value || '').trim();
-        const lnCat = (document.getElementById('last_name_cat')?.value || document.getElementById('last_name')?.value || '').trim();
-        const mnCat = (document.getElementById('middle_name_cat')?.value || document.getElementById('middle_name')?.value || '').trim();
-        const fullName = `${fnCat} ${mnCat ? mnCat + ' ' : ''}${lnCat}`.trim();
-        // Update hidden full_name_cat field
-        const hiddenFn = document.getElementById('full_name_cat') || document.getElementById('full_name');
-        if (hiddenFn) hiddenFn.value = fullName;
+        let fullName = "";
+        const singleNameEl = document.getElementById('full_name_cat') || document.getElementById('full_name');
+        if (singleNameEl && singleNameEl.type !== 'hidden') {
+            fullName = singleNameEl.value.trim();
+        } else {
+            const fnCat = (document.getElementById('first_name_cat')?.value || document.getElementById('first_name')?.value || '').trim();
+            const lnCat = (document.getElementById('last_name_cat')?.value || document.getElementById('last_name')?.value || '').trim();
+            const mnCat = (document.getElementById('middle_name_cat')?.value || document.getElementById('middle_name')?.value || '').trim();
+            fullName = `${fnCat} ${mnCat ? mnCat + ' ' : ''}${lnCat}`.trim();
+            if (singleNameEl) singleNameEl.value = fullName;
+        }
 
         formData.append('user_name', type === 'permit' ? businessName : fullName);
         if (type === 'permit') formData.append('owner_name', fullName);
@@ -1182,29 +1083,69 @@
             }
 
             if (result.status === 'matched' || result.status === 'approved') {
-                box.classList.add('scanned-success');
-                statusLabel.innerText = type === 'selfie' ? "Identity Matched" : "Verification Passed";
+                if (box) box.classList.add('scanned-success');
+                if (statusLabel) statusLabel.innerText = "Verification Passed";
 
-                // Save OCR Data to window object for final review
                 if (result.ocr_data) {
                     window.extractedOcrData = window.extractedOcrData || {};
-                    if (type === 'id') window.extractedOcrData.id = result.ocr_data;
-                    if (type === 'permit') window.extractedOcrData.permit = result.ocr_data;
-                }
-
-                // Show Success Toast
-                if (window.Swal) {
-                    const Toast = Swal.mixin({
-                        toast: true,
-                        position: 'top-end',
-                        showConfirmButton: false,
-                        timer: 3000,
-                        timerProgressBar: true
-                    });
-                    Toast.fire({
-                        icon: 'success',
-                        title: `${type === 'id' ? 'ID' : (type === 'selfie' ? 'Face Scan' : 'Permit')} verified successfully!`
-                    });
+                    if (type === 'id') {
+                        window.extractedOcrData.id = result.ocr_data;
+                        
+                        // Show review and auto-fill modal
+                        const extName = result.ocr_data.full_name || result.ocr_data.full_name_extracted || "";
+                        const extNum = result.ocr_data.id_number || result.ocr_data.id_number_extracted || "";
+                        
+                        if (window.Swal) {
+                            Swal.fire({
+                                title: 'Confirm Extracted ID Info',
+                                html: `
+                                    <div style="text-align: left; font-size: 0.9rem;">
+                                        <p style="margin-bottom: 1.25rem; color: #475569;">We successfully scanned your ID. Please review and confirm the extracted details:</p>
+                                        <div style="margin-bottom: 1rem;">
+                                            <label style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Full Name</label>
+                                            <input type="text" id="swal_ocr_name" class="minimal-input" value="${extName}" style="width:100%; box-sizing:border-box; border:1px solid #cbd5e1; border-radius:0.5rem; padding: 0.6rem;">
+                                        </div>
+                                        <div>
+                                            <label style="font-size: 0.75rem; color: #64748b; font-weight: 600;">ID Number</label>
+                                            <input type="text" id="swal_ocr_number" class="minimal-input" value="${extNum}" style="width:100%; box-sizing:border-box; border:1px solid #cbd5e1; border-radius:0.5rem; padding: 0.6rem;">
+                                        </div>
+                                    </div>
+                                `,
+                                showCancelButton: true,
+                                confirmButtonText: 'Confirm & Auto-fill',
+                                confirmButtonColor: '#f97316',
+                                allowOutsideClick: false,
+                                preConfirm: () => {
+                                    const name = document.getElementById('swal_ocr_name').value.trim();
+                                    const num = document.getElementById('swal_ocr_number').value.trim();
+                                    if (!name || !num) {
+                                        Swal.showValidationMessage('Both fields are required.');
+                                        return false;
+                                    }
+                                    return { name, num };
+                                }
+                            }).then(res => {
+                                if (res.isConfirmed) {
+                                    document.getElementById('id_number_cat').value = res.value.num;
+                                    document.getElementById('full_name_cat').value = res.value.name;
+                                    
+                                    // Set OCR status to success
+                                    if (box) box.classList.add('scanned-success');
+                                } else {
+                                    // User cancelled, clear the box state
+                                    if (box) {
+                                        box.classList.remove('scanned-success');
+                                        box.classList.add('scanned-error');
+                                    }
+                                    if (statusLabel) statusLabel.innerText = "Cancelled";
+                                }
+                            });
+                        } else {
+                            // No SwAl fallback
+                            if (extNum) document.getElementById('id_number_cat').value = extNum;
+                            if (extName) document.getElementById('full_name_cat').value = extName;
+                        }
+                    }
                 }
 
                 if (type === 'id' && result.doc_path) {
@@ -1375,14 +1316,6 @@
             }
         });
 
-        // ── Step 3: Sample Menu file ─────────────────────────────────────────
-        document.getElementById('sample_menu_cat')?.addEventListener('change', function () {
-            if (this.files.length > 0) {
-                const menuBox = document.getElementById('menuBoxCat');
-                const menuError = document.getElementById('menuErrorCat');
-                if (menuBox) menuBox.style.borderColor = '';
-                if (menuError) { menuError.innerText = ''; menuError.style.display = 'none'; }
-            }
-        });
+
     });
 })();
