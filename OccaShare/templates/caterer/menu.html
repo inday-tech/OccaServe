@@ -476,7 +476,7 @@
             
             const comboCb = document.getElementById('isComboCheckbox');
             if (comboCb) comboCb.checked = item.is_combo;
-            form.max_choices.value = item.max_choices;
+            form.max_choices.value = (item.max_choices && item.max_choices !== '0') ? item.max_choices : '';
             try {
                 const parsedOptions = JSON.parse(item.combo_options);
                 document.getElementById('comboOptionsInput').value = parsedOptions ? parsedOptions.join(', ') : '';
@@ -513,6 +513,9 @@
             // Load Recipe from API
             await loadRecipe(item.id);
             calculateMenuCosts();
+            
+            // Trigger ValidationManager to naturally evaluate the valid form
+            form.dispatchEvent(new Event('input', { bubbles: true }));
         } catch (err) { console.error("Edit error:", err); }
     }
 

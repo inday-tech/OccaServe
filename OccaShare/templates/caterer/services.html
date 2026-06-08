@@ -329,7 +329,7 @@
     }
 
     async function editMenuItem(el) {
-    const btn = document.querySelector('#serviceForm button[type="submit"]');
+    const btn = document.querySelector('#menuForm button[type="submit"]');
     if (btn) btn.disabled = false;
         try {
             const item = {
@@ -390,6 +390,9 @@
             else modal.style.display = 'flex';
             
             switchDishTab('basic');
+            
+            // Trigger ValidationManager to naturally evaluate the valid form
+            form.dispatchEvent(new Event('input', { bubbles: true }));
         } catch (err) { console.error("Edit error:", err); }
     }
 

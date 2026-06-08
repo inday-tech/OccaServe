@@ -2372,6 +2372,7 @@ async def update_profile(
     booking_lead_time: Optional[int] = Form(7),
     equipment_turnover_hours: Optional[int] = Form(24),
     min_pax: Optional[int] = Form(20),
+    starting_price: Optional[float] = Form(0.0),
     terms_and_conditions: Optional[str] = Form(None),
     primary_color: Optional[str] = Form(None),
     secondary_color: Optional[str] = Form(None),
@@ -2444,6 +2445,7 @@ async def update_profile(
     profile.booking_lead_time = booking_lead_time
     profile.equipment_turnover_hours = equipment_turnover_hours
     profile.min_pax = min_pax
+    profile.starting_price = starting_price
     profile.terms_and_conditions = terms_and_conditions
 
     # Update branding

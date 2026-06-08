@@ -166,7 +166,7 @@ async function editPackage(pkgId) {
         const firstStep = document.getElementById('step-btn-basic');
         if (firstStep) switchPackageTab(firstStep, 'basic');
         
-        loadPkgMenuLibrary();
+        await loadPkgMenuLibrary();
 
         if (typeof window.reactivelyValidateForm === 'function') {
             window.reactivelyValidateForm(true);
