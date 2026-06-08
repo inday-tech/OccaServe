@@ -243,7 +243,17 @@ def master_migration():
             ("favicon_url", "VARCHAR"),
             ("facebook_link", "VARCHAR"),
             ("instagram_link", "VARCHAR"),
-            ("twitter_link", "VARCHAR")
+            ("twitter_link", "VARCHAR"),
+            ("hero_bg_1", "VARCHAR"),
+            ("hero_label_1", "VARCHAR DEFAULT 'Wedding Receptions'"),
+            ("hero_bg_2", "VARCHAR"),
+            ("hero_label_2", "VARCHAR DEFAULT 'Corporate Events'"),
+            ("hero_bg_3", "VARCHAR"),
+            ("hero_label_3", "VARCHAR DEFAULT 'Christmas Parties'"),
+            ("hero_bg_4", "VARCHAR"),
+            ("hero_label_4", "VARCHAR DEFAULT 'Birthdays'"),
+            ("hero_bg_5", "VARCHAR"),
+            ("hero_label_5", "VARCHAR DEFAULT 'Private Parties'")
         ]
         
         # Quotations
