@@ -1576,10 +1576,6 @@
                         onclick="toggleSidebar()">
                         <i class="fas fa-bars"></i>
                     </button>
-                    <!-- Space reserved for future left-side utilities -->
-                </div>
-                <div class="header-right">
-                    {% if active_page not in ['dashboard', 'archives'] %}
                     <!-- Omni-Search Reactor -->
                     <div class="command-search-wrap">
                         <div class="header-search" id="omniSearchTrigger">
@@ -1599,7 +1595,8 @@
                             </div>
                         </div>
                     </div>
-                    {% endif %}
+                </div>
+                <div class="header-right">
                     <div class="header-actions">
                         <!-- Direct Booking Link Action (Only on Bookings/Calendar) -->
                         {% if active_page in ['bookings', 'calendar'] %}
@@ -1873,15 +1870,87 @@
             }
         });
 
-        // Global Search Dispatcher
-        const globalSearchInput = document.getElementById('globalSearchInput');
-        if (globalSearchInput) {
-            globalSearchInput.addEventListener('input', function (e) {
-                const query = e.target.value;
-                const searchEvent = new CustomEvent('globalSearch', { detail: { value: query } });
-                window.dispatchEvent(searchEvent);
+        // ===== OMNI-SEARCH =====
+        (function () {
+            const configs = [
+                { input: document.getElementById('globalSearchInput'), resBox: document.getElementById('omniSearchResults') },
+                { input: document.getElementById('mobileSearchInput'), resBox: document.getElementById('omniSearchResultsMobile') }
+            ];
+
+            let timeout = null;
+
+            configs.forEach(conf => {
+                if (!conf.input || !conf.resBox) return;
+                conf.input.addEventListener('input', (e) => {
+                    clearTimeout(timeout);
+                    const q = e.target.value.trim();
+                    if (q.length < 2) { conf.resBox.classList.remove('active'); conf.resBox.innerHTML = ''; return; }
+                    timeout = setTimeout(async () => {
+                        try {
+                            conf.resBox.innerHTML = '<div style="padding:1rem;text-align:center;color:#94a3b8;font-size:0.8rem;"><i class="fas fa-spinner fa-spin"></i> Searching...</div>';
+                            conf.resBox.classList.add('active');
+                            const r = await fetch(`/caterer/api/omni-search?q=${encodeURIComponent(q)}`);
+                            const data = await r.json();
+                            if (data.results && data.results.length > 0) {
+                                conf.resBox.innerHTML = '<div class="results-scroller">' + data.results.map(i => `
+                                    <a href="${i.url}" class="omni-result-item">
+                                        <div class="omni-result-icon"><i class="${i.icon}"></i></div>
+                                        <div class="omni-result-content">
+                                            <div class="omni-result-header">
+                                                <span class="omni-result-title">${i.title}</span>
+                                                <span class="omni-type-tag">${i.type}</span>
+                                            </div>
+                                            <span class="omni-result-subtitle">${i.subtitle}</span>
+                                        </div>
+                                    </a>
+                                `).join('') + '</div>';
+                            } else {
+                                conf.resBox.innerHTML = '<div style="padding:1.5rem;text-align:center;color:#94a3b8;font-size:0.8rem;"><i class="fas fa-search" style="display:block;font-size:1.5rem;margin-bottom:0.5rem;opacity:0.4;"></i>No results found for "<b>' + q + '</b>"</div>';
+                            }
+                        } catch (e) {
+                            conf.resBox.innerHTML = '<div style="padding:1rem;text-align:center;color:#ef4444;font-size:0.8rem;">Search error. Try again.</div>';
+                            console.error("Search error:", e);
+                        }
+                    }, 280);
+                });
             });
-        }
+
+            // Close on outside click
+            document.addEventListener('click', (e) => {
+                configs.forEach(conf => {
+                    if (conf.input && conf.resBox) {
+                        const isInsideInput = conf.input.contains(e.target) || (conf.input.closest('.command-search-wrap') && conf.input.closest('.command-search-wrap').contains(e.target));
+                        const isInsideDropdown = conf.input.closest('.premium-dropdown') && conf.input.closest('.premium-dropdown').contains(e.target);
+                        if (!isInsideInput && !isInsideDropdown) {
+                            conf.resBox.classList.remove('active');
+                        }
+                    }
+                });
+            });
+
+            // Ctrl+K shortcut
+            document.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'k') { 
+                    e.preventDefault(); 
+                    if(configs[0].input && window.innerWidth > 1024) { 
+                        configs[0].input.focus(); 
+                        configs[0].input.select(); 
+                    } else if (window.innerWidth <= 1024) {
+                        const plusBtn = document.querySelector('.plus-btn');
+                        if(plusBtn) plusBtn.click();
+                        setTimeout(() => { if(configs[1].input) configs[1].input.focus(); }, 100);
+                    }
+                }
+                if (e.key === 'Escape') { 
+                    configs.forEach(conf => {
+                        if (conf.input && conf.resBox) {
+                            conf.resBox.classList.remove('active');
+                            conf.input.blur();
+                        }
+                    });
+                }
+            });
+        })();
 
 
         // Close sidebar on window resize if it was open on mobile

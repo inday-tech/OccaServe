@@ -984,16 +984,16 @@ async def caterer_omni_search(
     ).all()
     
     for b in bookings:
-        b_ref = b.reference_id.lower() if b.reference_id else ""
-        b_name = b.customer_name.lower() if b.customer_name else ""
+        b_ref = str(b.id)
+        b_name = f"{b.user.first_name} {b.user.last_name}".lower() if b.user else ""
         b_type = b.event_type.lower() if b.event_type else ""
         b_status = b.status.lower() if b.status else ""
         
         if query in b_ref or query in b_name or query in b_type or query in b_status:
             results.append({
                 "type": "Booking",
-                "title": f"Booking #{b.reference_id} - {b.customer_name}",
-                "subtitle": f"{b.event_type.capitalize()} • {b.status.upper()}",
+                "title": f"Booking #{b_ref} - {b_name.title()}",
+                "subtitle": f"{b.event_type.capitalize() if b.event_type else 'Event'} • {b.status.upper() if b.status else 'UNKNOWN'}",
                 "url": f"/caterer/bookings?focus={b.id}",
                 "icon": "fas fa-calendar-check"
             })
@@ -1031,7 +1031,7 @@ async def caterer_omni_search(
             })
             
     # 4. Search Customers
-    customers = db.query(models.User).join(models.Booking, models.Booking.customer_id == models.User.id).filter(
+    customers = db.query(models.User).join(models.Booking, models.Booking.user_id == models.User.id).filter(
         models.Booking.caterer_id == profile.id
     ).distinct().all()
     for c in customers:
