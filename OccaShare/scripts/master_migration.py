@@ -127,6 +127,8 @@ def master_migration():
             ("cash_instructions", "TEXT"),
             ("verification_status", "VARCHAR DEFAULT 'Pending'"),
             ("account_status", "VARCHAR DEFAULT 'Active'"),
+            ("status", "VARCHAR DEFAULT 'Draft'"),
+            ("team_size", "INTEGER DEFAULT 1"),
             ("notification_preferences", "JSONB"),
             ("deactivation_reason", "TEXT"),
             ("deactivated_at", "TIMESTAMP WITH TIME ZONE"),
