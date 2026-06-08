@@ -1179,6 +1179,133 @@
             justify-content: center;
             padding: 0.85rem 0;
         }
+        
+/* =========================================
+   OMNI SEARCH & CLOCK UI FIXES (DIAMOND STANDARD)
+   ========================================= */
+.command-search-wrap { position: relative; width: 420px; max-width: 100%; display: flex; align-items: center; }
+.header-search {
+    display: flex; align-items: center; gap: 0.75rem;
+    background: #f1f5f9;
+    border: none;
+    border-radius: 99px;
+    padding: 0 1rem 0 1.25rem;
+    height: 44px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: text;
+    width: 100%;
+}
+.header-search:hover { background: #e2e8f0; }
+.header-search i { color: #64748b; font-size: 0.95rem; transition: color 0.3s; }
+.header-search input {
+    border: none; background: transparent; outline: none;
+    font-size: 0.9rem; font-weight: 500; color: #1e293b; width: 100%;
+    padding: 0;
+}
+.header-search input::focus { outline: none; box-shadow: none; }
+.header-search input::placeholder { color: #94a3b8; font-weight: 500; }
+
+.search-kbd {
+    display: flex; align-items: center; justify-content: center;
+    padding: 3px 8px; background: #fff;
+    border-radius: 10px;
+    font-family: inherit; font-size: 0.65rem; font-weight: 800; color: #64748b;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+    white-space: nowrap;
+}
+
+.command-search-wrap:focus-within .header-search {
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(var(--primary-color-rgb), 0.1), 0 4px 12px rgba(0,0,0,0.05);
+}
+.command-search-wrap:focus-within .header-search i { color: var(--primary-color); }
+
+/* LIVE CLOCK */
+.header-clock { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; line-height: 1.2; margin-left: auto; white-space: nowrap; }
+.clock-time { font-size: 0.8rem; font-weight: 800; color: #1e293b; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.clock-date { font-size: 0.65rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; white-space: nowrap; }
+
+.header-separator { width: 1px; height: 28px; background: #e2e8f0; margin: 0 1rem; }
+
+/* RESPONSIVE HEADER OVERRIDES */
+@media (max-width: 1024px) {
+    .command-search-wrap { display: none !important; }
+    .dashboard-header { padding: 0 1rem !important; }
+    .header-right { gap: 1rem !important; }
+    .header-actions { gap: 0.5rem !important; }
+}
+@media (max-width: 768px) {
+    .dashboard-header { padding: 0 0.75rem !important; }
+    .header-left { gap: 0.75rem !important; }
+    .header-right { gap: 0.75rem !important; }
+    .header-actions { gap: 0.5rem !important; }
+    .header-separator { margin: 0 0.5rem; }
+    .header-clock { min-width: max-content; display: flex !important; transform: scale(0.9); transform-origin: right center; }
+    .profile-meta, .profile-chevron { display: none !important; }
+    .profile-trigger { padding: 0 !important; }
+    .profile-avatar { width: 36px !important; height: 36px !important; }
+    .hdr-btn { width: 36px !important; height: 36px !important; font-size: 0.95rem !important; }
+    .hdr-btn.plus-btn { width: 36px !important; height: 36px !important; font-size: 1rem !important; border-radius: 10px !important; }
+    
+    .mobile-search-dropdown-wrap { display: block; padding: 12px; border-bottom: 1px solid #f1f5f9; }
+    .mobile-search-dropdown-wrap .header-search { display: flex !important; width: 100%; border: none; border-radius: 99px; padding: 0 1rem; height: 44px; align-items: center; gap: 8px; background: #f1f5f9; }
+    .mobile-search-dropdown-wrap .header-search input { border: none; background: transparent; width: 100%; outline: none; font-size: 0.9rem; color: #1e293b; font-weight: 500; }
+}
+@media (min-width: 769px) {
+    .mobile-search-dropdown-wrap { display: none !important; }
+}
+
+/* QUICK ACTIONS BTN */
+.hdr-btn.plus-btn {
+    width: 42px; height: 42px; border-radius: 12px;
+    background: var(--primary-color); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.15rem; border: none; cursor: pointer; transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.25);
+}
+.hdr-btn.plus-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(var(--primary-color-rgb), 0.35);
+}
+
+/* OMNI-RESULTS PANEL */
+.omni-results-panel {
+    position: absolute; top: calc(100% + 10px); left: 0; right: 0;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(20px); border: 1px solid #e2e8f0;
+    border-radius: 18px; box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.12);
+    z-index: 1100; opacity: 0; transform: translateY(-10px);
+    pointer-events: none; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    max-height: 480px; display: flex; flex-direction: column; overflow: hidden;
+}
+.omni-results-panel.active { opacity: 1; transform: translateY(0); pointer-events: auto; }
+
+.results-scroller { overflow-y: auto; flex: 1; padding: 10px; }
+
+.omni-result-item {
+    display: flex; align-items: center; gap: 14px; padding: 12px 14px;
+    border-radius: 12px; text-decoration: none; transition: all 0.2s;
+    margin-bottom: 4px; color: inherit; border-bottom: 1px solid #f1f5f9;
+}
+.omni-result-item:last-child { border-bottom: none; }
+.omni-result-item:hover { background: #f8fafc; }
+
+.omni-result-icon {
+    width: 42px; height: 42px; border-radius: 11px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; flex-shrink: 0;
+    background: #f1f5f9; color: #64748b;
+}
+
+.omni-result-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.omni-result-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.omni-result-title { font-size: 0.88rem; font-weight: 700; color: #1e293b; margin: 0; }
+.omni-type-tag {
+    font-size: 0.6rem; font-weight: 800; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 6px; letter-spacing: 0.05em;
+    background: #f1f5f9; color: #475569;
+}
+.omni-result-subtitle { font-size: 0.75rem; color: #64748b; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     </style>
 
     <!-- Early Sidebar State Handler (Prevents Flash) -->
@@ -1453,9 +1580,24 @@
                 </div>
                 <div class="header-right">
                     {% if active_page not in ['dashboard', 'archives'] %}
-                    <div class="header-search-container">
-                        <i class="fas fa-search search-icon"></i>
-                        <input type="text" id="globalSearchInput" placeholder="Search..." autocomplete="off">
+                    <!-- Omni-Search Reactor -->
+                    <div class="command-search-wrap">
+                        <div class="header-search" id="omniSearchTrigger">
+                            <i class="fas fa-magnifying-glass"></i>
+                            <input type="text" id="globalSearchInput" placeholder="Search platform..." autocomplete="off">
+                            <div class="search-kbd">
+                                <span>Ctrl K</span>
+                            </div>
+                        </div>
+                        <!-- Dynamic Search Results Panel -->
+                        <div id="omniSearchResults" class="omni-results-panel">
+                            <div class="results-scroller" id="searchResultsScroller">
+                                <div class="search-placeholder">
+                                    <i class="fas fa-terminal"></i>
+                                    <p>Type to search bookings, menu, or system pages...</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     {% endif %}
                     <div class="header-actions">
@@ -1466,6 +1608,48 @@
                             <i class="fas fa-link"></i>
                         </button>
                         {% endif %}
+                        <!-- Live Operational Clock -->
+                        <div class="header-clock" id="headerClock">
+                            <span class="clock-time">00:00:00</span>
+                            <span class="clock-date">May 09, 2026</span>
+                        </div>
+                        <div class="header-separator"></div>
+
+                        <!-- Quick Commands -->
+                        <div class="header-dropdown-wrapper">
+                            <button type="button" class="hdr-btn plus-btn" title="Quick Actions"
+                                onclick="toggleHeaderDropdown('quickActionsDropdown', this)">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                            <div class="premium-dropdown" id="quickActionsDropdown" style="width: 280px; padding: 0;">
+                                <div class="mobile-search-dropdown-wrap">
+                                    <div class="header-search">
+                                        <i class="fas fa-magnifying-glass" style="color: #64748b;"></i>
+                                        <input type="text" id="mobileSearchInput" placeholder="Search platform..." autocomplete="off">
+                                    </div>
+                                    <div id="omniSearchResultsMobile" class="omni-results-panel" style="position: relative; top: 10px; box-shadow: none; border: none; padding: 0; background: transparent; max-height: none;"></div>
+                                </div>
+                                <div class="dropdown-header" style="padding: 12px 16px; font-weight: 700; color: #64748b; font-size: 0.75rem; text-transform: uppercase;">Quick Commands</div>
+                                <ul class="dropdown-links" style="list-style: none; margin: 0; padding: 8px;">
+                                    <li>
+                                        <a href="/caterer/menu" style="display: flex; align-items: center; gap: 12px; padding: 10px; color: #1e293b; text-decoration: none; border-radius: 8px; transition: background 0.2s;">
+                                            <i class="fas fa-plus-circle" style="color: var(--primary-color);"></i> Add Menu Item
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="/caterer/packages" style="display: flex; align-items: center; gap: 12px; padding: 10px; color: #1e293b; text-decoration: none; border-radius: 8px; transition: background 0.2s;">
+                                            <i class="fas fa-box-open" style="color: var(--accent-color);"></i> Create Package
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="/caterer/calendar" style="display: flex; align-items: center; gap: 12px; padding: 10px; color: #1e293b; text-decoration: none; border-radius: 8px; transition: background 0.2s;">
+                                            <i class="fas fa-calendar-plus" style="color: var(--highlight-color);"></i> New Manual Booking
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
                         <!-- Notifications Dropdown -->
                         <div class="header-dropdown-wrapper" style="position: relative;">
                             {% set unread_count = user.notifications|selectattr('is_read', 'equalto', false)|list|count
@@ -1836,6 +2020,30 @@
                 showNotification('Error', 'Failed to copy link', 'error');
             });
         };
+
+        // ===== LIVE CLOCK =====
+        function updateHeaderClock() {
+            const clockEl = document.querySelector('.clock-time');
+            const dateEl = document.querySelector('.clock-date');
+            if(!clockEl || !dateEl) return;
+            
+            const now = new Date();
+            let h = now.getHours();
+            let m = now.getMinutes();
+            let s = now.getSeconds();
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            h = h % 12;
+            h = h ? h : 12; 
+            m = m < 10 ? '0'+m : m;
+            s = s < 10 ? '0'+s : s;
+            
+            clockEl.textContent = h + ':' + m + ':' + s + '\u00A0' + ampm;
+            
+            const options = { month: 'short', day: 'numeric', year: 'numeric' };
+            dateEl.textContent = now.toLocaleDateString('en-US', options);
+        }
+        setInterval(updateHeaderClock, 1000);
+        updateHeaderClock();
     </script>
 
     <!-- Global Standard Confirmation/Prompt Modal -->

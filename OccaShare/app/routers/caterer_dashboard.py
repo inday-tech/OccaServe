@@ -962,6 +962,118 @@ async def toggle_publish(
         db.commit()
         return {"success": True, "status": "Published", "message": "Listing successfully published to customers!"}
 
+@router.get("/api/omni-search")
+async def caterer_omni_search(
+    q: str,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    import time
+    query = q.lower().strip()
+    if not query:
+        return {"results": []}
+    
+    results = []
+    profile = user.caterer_profile
+    if not profile:
+        return {"results": []}
+
+    # 1. Search Bookings (Reference ID, Customer Name, Event Type, Status)
+    bookings = db.query(models.Booking).filter(
+        models.Booking.caterer_id == profile.id
+    ).all()
+    
+    for b in bookings:
+        b_ref = b.reference_id.lower() if b.reference_id else ""
+        b_name = b.customer_name.lower() if b.customer_name else ""
+        b_type = b.event_type.lower() if b.event_type else ""
+        b_status = b.status.lower() if b.status else ""
+        
+        if query in b_ref or query in b_name or query in b_type or query in b_status:
+            results.append({
+                "type": "Booking",
+                "title": f"Booking #{b.reference_id} - {b.customer_name}",
+                "subtitle": f"{b.event_type.capitalize()} • {b.status.upper()}",
+                "url": f"/caterer/bookings?focus={b.id}",
+                "icon": "fas fa-calendar-check"
+            })
+
+    # 2. Search Menu Items
+    menu_items = db.query(models.MenuItem).filter(
+        models.MenuItem.caterer_id == profile.id,
+        models.MenuItem.is_archived == False
+    ).all()
+    for item in menu_items:
+        i_name = item.name.lower() if item.name else ""
+        if query in i_name:
+            results.append({
+                "type": "Menu Item",
+                "title": item.name,
+                "subtitle": f"₱{item.price:,.2f} • {item.category}",
+                "url": "/caterer/menu",
+                "icon": "fas fa-utensils"
+            })
+
+    # 3. Search Packages
+    packages = db.query(models.CateringPackage).filter(
+        models.CateringPackage.caterer_id == profile.id,
+        models.CateringPackage.status != "archived"
+    ).all()
+    for pkg in packages:
+        p_name = pkg.name.lower() if pkg.name else ""
+        if query in p_name:
+            results.append({
+                "type": "Package",
+                "title": pkg.name,
+                "subtitle": f"₱{pkg.price_per_head:,.2f}/head",
+                "url": "/caterer/packages",
+                "icon": "fas fa-box"
+            })
+            
+    # 4. Search Customers
+    customers = db.query(models.User).join(models.Booking, models.Booking.customer_id == models.User.id).filter(
+        models.Booking.caterer_id == profile.id
+    ).distinct().all()
+    for c in customers:
+        c_name = f"{c.first_name} {c.last_name}".lower()
+        c_email = c.email.lower()
+        if query in c_name or query in c_email:
+            results.append({
+                "type": "Customer",
+                "title": f"{c.first_name} {c.last_name}",
+                "subtitle": c.email,
+                "url": "/caterer/customers",
+                "icon": "fas fa-user-tag"
+            })
+
+    # 5. Search System Modules/Pages
+    pages = [
+        {"name": "Dashboard & Analytics", "url": "/caterer/dashboard", "icon": "fas fa-chart-line"},
+        {"name": "Calendar & Schedule", "url": "/caterer/calendar", "icon": "fas fa-calendar-alt"},
+        {"name": "Booking Management", "url": "/caterer/bookings", "icon": "fas fa-book-open"},
+        {"name": "Financials & Payouts", "url": "/caterer/financials", "icon": "fas fa-wallet"},
+        {"name": "Payments & Invoices", "url": "/caterer/payments", "icon": "fas fa-file-invoice-dollar"},
+        {"name": "Customers Database", "url": "/caterer/customers", "icon": "fas fa-users"},
+        {"name": "Menu Builder", "url": "/caterer/menu", "icon": "fas fa-utensils"},
+        {"name": "Package Management", "url": "/caterer/packages", "icon": "fas fa-box-open"},
+        {"name": "Reviews & Feedback", "url": "/caterer/reviews", "icon": "fas fa-star"},
+        {"name": "Brand Profile Settings", "url": "/caterer/profile", "icon": "fas fa-store"},
+        {"name": "Message Center", "url": "/caterer/messages", "icon": "fas fa-comments"}
+    ]
+    
+    for p in pages:
+        if query in p["name"].lower():
+            results.append({
+                "type": "Module",
+                "title": p["name"],
+                "subtitle": "System Page",
+                "url": p["url"],
+                "icon": p["icon"]
+            })
+
+    # Limit results to 8 to avoid overwhelming the UI
+    return {"results": results[:8]}
+
 @router.get("/api/dashboard-overview")
 async def dashboard_overview_api(
     request: Request,
