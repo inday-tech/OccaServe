@@ -232,7 +232,6 @@ async def alacarte_checkout_submit(
             booking = db.query(models.Booking).get(booking_id)
             if booking and booking.user_id == user.id:
                 booking.status = status
-                booking.event_name = f"Food Order: {full_name}"
                 booking.payment_method = payment_method
                 booking.venue_address = address if fulfillment == "delivery" else "PICKUP"
                 booking.special_requests = landmark
@@ -241,12 +240,29 @@ async def alacarte_checkout_submit(
                 # Clear old items to re-save
                 db.query(models.BookingMenuItem).filter(models.BookingMenuItem.booking_id == booking.id).delete()
         
+        # Check if items are rentals
+        is_rental = False
+        if cart_data:
+            cart_items = json.loads(cart_data)
+            for item in cart_items:
+                m_item = db.query(models.MenuItem).get(int(item['id']))
+                if m_item and m_item.category and m_item.category.lower() == 'rentals':
+                    is_rental = True
+                    break
+
+        event_name = f"Equipment Rental: {full_name}" if is_rental else f"Food Order: {full_name}"
+        event_type = "Equipment Rental" if is_rental else "Ala Carte Order"
+        
+        if booking:
+            booking.event_name = event_name
+            booking.event_type = event_type
+            
         if not booking:
             booking = models.Booking(
                 user_id=user.id,
                 caterer_id=caterer_id,
-                event_name=f"Food Order: {full_name}",
-                event_type="Ala Carte Order",
+                event_name=event_name,
+                event_type=event_type,
                 event_date=event_date_obj,
                 event_time=event_time_obj,
                 venue_address=address if fulfillment == "delivery" else "PICKUP",

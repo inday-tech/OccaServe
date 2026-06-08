@@ -3269,7 +3269,8 @@ async def get_calendar_events(
         "Birthday": "#0ea5e9", # Cerulean
         "Corporate": "#0f172a", # Charcoal
         "Private Party": "#10b981", # Emerald
-        "Ala Carte": "#f59e0b" # Amber/Orange
+        "Ala Carte": "#f59e0b", # Amber/Orange
+        "Equipment Rental": "#14b8a6" # Teal
     }
     
     # Check if we should show full details (only for the caterer owner)
@@ -3300,8 +3301,10 @@ async def get_calendar_events(
         # Normalize event type for color mapping
         raw_type = (b.event_type or "Wedding").strip()
         ev_type = raw_type.title()
-        if ev_type.lower() in ['ala carte', 'alacarte', 'a la carte']:
+        if ev_type.lower() in ['ala carte', 'alacarte', 'a la carte', 'ala carte order']:
             ev_type = "Ala Carte"
+        elif ev_type.lower() in ['equipment rental']:
+            ev_type = "Equipment Rental"
             
         event_data = {
             "id": str(b.id),
@@ -4017,7 +4020,7 @@ async def view_compliance_queue(
         user_bookings = db.query(models.Booking).filter(
             models.Booking.user_id == customer.id, 
             models.Booking.caterer_id == profile.id,
-            models.Booking.event_type != "Ala Carte Order"
+            ~models.Booking.event_type.in_(["Ala Carte Order", "Equipment Rental"])
         ).order_by(models.Booking.created_at.desc()).all()
         
         if not user_bookings:

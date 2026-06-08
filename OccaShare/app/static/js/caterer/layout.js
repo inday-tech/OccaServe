@@ -724,44 +724,4 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// ─── Global Logout Handler ──────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', function() {
-    const logoutLinks = document.querySelectorAll('.logout-link');
-    logoutLinks.forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const logoutUrl = this.getAttribute('href') || '/auth/logout';
-            
-            const doLogout = () => {
-                window.location.href = logoutUrl;
-            };
-
-            if (typeof window.showStandardConfirm === 'function') {
-                window.showStandardConfirm({
-                    title: 'Logout',
-                    message: 'Are you sure you want to log out?',
-                    icon: 'warning',
-                    confirmButtonText: 'Yes, Logout'
-                }).then((result) => {
-                    if (result.isConfirmed) doLogout();
-                });
-            } else if (typeof window.showConfirm === 'function') {
-                window.showConfirm('Are you sure you want to log out?', doLogout, 'Logout', 'Yes, Logout');
-            } else if (typeof Swal !== 'undefined') {
-                Swal.fire({
-                    title: 'Logout',
-                    text: 'Are you sure you want to log out?',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: 'var(--primary-color, #f97316)',
-                    cancelButtonColor: '#94a3b8',
-                    confirmButtonText: 'Yes, Logout'
-                }).then((result) => {
-                    if (result.isConfirmed) doLogout();
-                });
-            } else {
-                if (confirm('Are you sure you want to log out?')) doLogout();
-            }
-        });
-    });
-});
+// ─── Global Logout Handler is now managed directly by confirmLogout() in layout.html ───

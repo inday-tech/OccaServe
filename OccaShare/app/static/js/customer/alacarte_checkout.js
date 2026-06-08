@@ -623,6 +623,12 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('payment_method').value = method;
         document.querySelectorAll('.payment-opt').forEach(opt => opt.classList.remove('active'));
         el.classList.add('active');
+        
+        const gcashDiv = document.getElementById('gcash-instructions');
+        if (gcashDiv) {
+            gcashDiv.style.display = method === 'GCASH' ? 'block' : 'none';
+        }
+        
         console.log("[CHECKOUT] Payment Method Selected:", method);
     };
 

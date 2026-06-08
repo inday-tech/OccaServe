@@ -90,23 +90,7 @@
         htmlEl.classList.add('sidebar-icons-only');
     }
 
-    // ─── Logout Confirmation ──────────────────────────────────────────────────
-    const logoutLink = document.querySelector('.nav-logout');
-    if (logoutLink) {
-        logoutLink.addEventListener('click', function (e) {
-            e.preventDefault();
-            const href = this.getAttribute('href');
-            if (window.showConfirm) {
-                window.showConfirm(
-                    'Are you sure you want to log out of the Admin panel?',
-                    () => { window.location.href = href; },
-                    'Ready to leave?'
-                );
-            } else {
-                window.location.href = href;
-            }
-        });
-    }
+    // ─── Logout Confirmation is handled by layout.html's confirmLogout() ──
 
         // ─── Inactivity Auto-Logout ───────────────────────────────────────────────
     const LIMIT = 15 * 60 * 1000;

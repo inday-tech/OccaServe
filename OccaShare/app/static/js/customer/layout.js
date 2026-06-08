@@ -608,22 +608,10 @@ function initWebSocket() {
    CONFIRM LOGOUT
    ============================================================ */
 window.confirmLogout = function (e) {
-    e.preventDefault();
-    const url = '/auth/logout';
-    if (typeof Swal !== 'undefined') {
-        Swal.fire({
-            title: 'Sign out?',
-            text: 'You will be signed out of your account.',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: 'var(--primary-color)',
-            cancelButtonColor: '#94a3b8',
-            confirmButtonText: 'Yes, sign out',
-            cancelButtonText: 'Stay'
-        }).then(r => { if (r.isConfirmed) window.location.href = url; });
-    } else {
-        if (confirm('Sign out?')) window.location.href = url;
-    }
+    if(e) e.preventDefault();
+    const modal = document.getElementById('univLogoutModal');
+    if (modal) modal.classList.add('active');
+    else window.location.href = '/auth/logout';
 };
 
 /* ============================================================

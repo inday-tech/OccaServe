@@ -578,6 +578,22 @@
                                 </div>
                             </div>
                             <input type="hidden" name="payment_method" id="payment_method" value="COD">
+
+                            <!-- GCash Instructions (Hidden by default) -->
+                            <div id="gcash-instructions" style="display: none; margin-top: 2rem; padding: 2rem; background: #eff6ff; border: 2px dashed #bfdbfe; border-radius: 1rem; text-align: center;">
+                                <h4 style="color: #1e3a8a; font-weight: 850; margin-bottom: 1rem; font-size: 1.1rem;"><i class="fas fa-qrcode"></i> Scan to Pay via GCash</h4>
+                                {% if caterer.gcash_qr_url %}
+                                <img src="{{ caterer.gcash_qr_url }}" alt="GCash QR" style="width: 220px; height: 220px; object-fit: cover; border-radius: 16px; border: 2px solid #bfdbfe; margin-bottom: 1rem;">
+                                {% endif %}
+                                <div style="color: #1e40af; font-weight: 600; font-size: 0.95rem;">
+                                    {% if caterer.gcash_qr_url %}
+                                    <p style="margin-bottom: 0.5rem;"><strong>Scan the QR Code</strong> above OR "Send Money" to <br><strong style="font-size: 1.2rem; color: #1e3a8a;">{{ caterer.gcash_number if caterer.gcash_number else "the Caterer's Number" }}</strong>.</p>
+                                    {% else %}
+                                    <p style="margin-bottom: 0.5rem;">"Send Money" to <br><strong style="font-size: 1.2rem; color: #1e3a8a;">{{ caterer.gcash_number if caterer.gcash_number else "the Caterer's Number" }}</strong>.</p>
+                                    {% endif %}
+                                </div>
+                                <p style="font-size: 0.8rem; color: #3b82f6; margin-top: 1rem; font-style: italic;">* Please save your screenshot receipt. The caterer may request it upon delivery or pickup.</p>
+                            </div>
                         </div>
 
                         <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 2.5rem 0;">
