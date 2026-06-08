@@ -61,6 +61,8 @@ async def read_root(request: Request, db: Session = Depends(database.get_db)):
         "hosts": total_hosts
     }
 
+    config = db.query(models.WebsiteConfig).first()
+
     return templates.TemplateResponse("index.html", {
         "request": request, 
         "packages": packages,
@@ -68,7 +70,8 @@ async def read_root(request: Request, db: Session = Depends(database.get_db)):
         "highlighted_reviews": highlighted_reviews,
         "user": user,
         "nav_page": "home",
-        "stats": stats
+        "stats": stats,
+        "config": config
     })
 
 

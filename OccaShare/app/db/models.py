@@ -695,6 +695,18 @@ class WebsiteConfig(Base):
     logo_url = Column(String, nullable=True)
     favicon_url = Column(String, nullable=True)
     
+    # Hero Slider
+    hero_bg_1 = Column(String, nullable=True)
+    hero_label_1 = Column(String, default="Wedding Receptions")
+    hero_bg_2 = Column(String, nullable=True)
+    hero_label_2 = Column(String, default="Corporate Events")
+    hero_bg_3 = Column(String, nullable=True)
+    hero_label_3 = Column(String, default="Christmas Parties")
+    hero_bg_4 = Column(String, nullable=True)
+    hero_label_4 = Column(String, default="Birthdays")
+    hero_bg_5 = Column(String, nullable=True)
+    hero_label_5 = Column(String, default="Private Parties")
+    
     # Social Links
     facebook_link = Column(String, nullable=True)
     instagram_link = Column(String, nullable=True)

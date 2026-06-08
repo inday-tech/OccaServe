@@ -357,20 +357,20 @@
                                 <i class="fas fa-ellipsis-h"></i>
                             </div>
                             <div class="dropdown-menu-dm">
-                                <button class="dropdown-item-dm" onclick="auditCustomer('{{ customer.id }}')">
+                                <button class="dropdown-item-dm" 
+                                    data-name="{{ customer.first_name }} {{ customer.last_name }}"
+                                    data-email="{{ customer.email }}"
+                                    data-phone="{{ customer.phone_number or 'N/A' }}"
+                                    data-joined="{{ customer.created_at.strftime('%b %d, %Y') if customer.created_at else 'N/A' }}"
+                                    data-bookings="{{ customer.bookings|length if customer.bookings else 0 }}"
+                                    data-status="{{ 'VERIFIED' if customer.is_verified else 'PENDING KYC' }}"
+                                    onclick="viewCustomerDetails(this)">
                                     <i class="fas fa-id-card"></i> View Account Details
-                                </button>
-                                <button class="dropdown-item-dm" onclick="viewLedger('{{ customer.id }}')">
-                                    <i class="fas fa-history"></i> View Booking History
-                                </button>
-                                <button class="dropdown-item-dm" onclick="sendAlert('{{ customer.id }}')">
-                                    <i class="fas fa-envelope"></i> Send Notification
                                 </button>
                                 <div class="dropdown-divider"></div>
                                 <button class="dropdown-item-dm danger" onclick="suspendAccount('{{ customer.id }}')">
                                     <i class="fas fa-ban"></i> Suspend Account
                                 </button>
-                                <div class="dropdown-divider"></div>
                                 <button class="dropdown-item-dm" onclick="archiveItem('customers', '{{ customer.id }}')"
                                     style="color: #64748b;">
                                     <i class="fas fa-archive"></i> Archive Account
@@ -421,9 +421,7 @@
         <div class="modal-body-clean" id="intelligenceBody"></div>
         <div class="modal-footer-clean">
             <button class="btn-clean" style="background: white; color: var(--adm-navy); border: 1px solid #e2e8f0;"
-                onclick="closeIntelligenceModal()">Close Audit</button>
-            <button class="btn-clean" style="background: var(--adm-primary); color: white; font-weight: 800;">Generate
-                Compliance Report</button>
+                onclick="closeIntelligenceModal()">Close</button>
         </div>
     </div>
 </div>
@@ -511,72 +509,41 @@
         document.querySelectorAll('.dropdown-menu-dm').forEach(m => m.classList.remove('show'));
     };
 
-    async function auditCustomer(id) {
-        Swal.fire({
-            title: 'Loading Details',
-            text: 'Fetching customer profile...',
-            allowOutsideClick: false,
-            didOpen: () => Swal.showLoading()
-        });
+    function viewCustomerDetails(btn) {
+        const name = btn.getAttribute('data-name');
+        const email = btn.getAttribute('data-email');
+        const phone = btn.getAttribute('data-phone');
+        const joined = btn.getAttribute('data-joined');
+        const bookings = btn.getAttribute('data-bookings');
+        const status = btn.getAttribute('data-status');
+        
+        const badgeClass = status === 'VERIFIED' ? 'status-active' : 'status-flagged';
+        const initial = name ? name.charAt(0) : '?';
 
-        try {
-            const res = await fetch(`/admin/api/customers/${id}/audit`);
-            const result = await res.json();
-
-            if (result.success) {
-                const d = result.data;
-                const riskColor = d.risk_score > 70 ? '#ef4444' : (d.risk_score > 30 ? '#f59e0b' : '#10b981');
-
-                document.getElementById('intelligenceBody').innerHTML = `
-                    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-                        <div style="background: #f8fafc; padding: 1.5rem; display: flex; align-items: center; gap: 1rem; border-bottom: 1px solid #f1f5f9;">
-                            <div class="registry-avatar" style="width: 56px; height: 56px; font-size: 1.25rem;">${d.full_name[0]}</div>
-                            <div>
-                                <div style="font-weight: 800; color: var(--adm-navy); font-size: 1rem;">${d.full_name}</div>
-                                <div style="font-size: 0.8rem; color: var(--adm-muted); font-weight: 600;">${d.email}</div>
-                                <span class="status-badge-dm status-${d.status}" style="margin-top: 6px;">${d.status.toUpperCase()}</span>
-                            </div>
-                        </div>
-                        
-                        <div style="padding: 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                            <div style="background: #f8fafc; padding: 1rem; border-radius: 12px; border: 1px solid #f1f5f9;">
-                                <div style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Engagement Metric</div>
-                                <div style="font-weight: 800; color: var(--adm-navy); font-size: 1.1rem; margin-top: 4px;">₱${d.lifetime_value.toLocaleString()}</div>
-                                <div style="font-size: 0.65rem; color: #10b981; font-weight: 700;">LIFETIME VALUE</div>
-                            </div>
-                            <div style="background: #f8fafc; padding: 1rem; border-radius: 12px; border: 1px solid #f1f5f9;">
-                                <div style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Reliability Score</div>
-                                <div style="font-weight: 800; color: ${riskColor}; font-size: 1.1rem; margin-top: 4px;">${d.risk_score}%</div>
-                                <div style="font-size: 0.65rem; color: var(--adm-muted); font-weight: 700;">RISK PROBABILITY</div>
-                            </div>
-                        </div>
-
-                        <div style="padding: 0 1.5rem 1.5rem;">
-                            <div style="background: #eff6ff; padding: 1rem; border-radius: 12px; border: 1px solid #dbeafe; margin-bottom: 1rem;">
-                                <div style="font-size: 0.65rem; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 8px;">Account Overview</div>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.75rem; font-weight: 700; color: #1e40af;">
-                                    <div>Total Bookings: ${d.total_bookings}</div>
-                                    <div>Cancellations: ${d.cancellations}</div>
-                                    <div>Date Joined: ${d.join_date}</div>
-                                    <div>Status: ${d.is_verified ? 'VERIFIED' : 'UNVERIFIED'}</div>
-                                </div>
-                            </div>
-                            
-                            <div style="background: #fff7ed; padding: 1rem; border-radius: 12px; border: 1px solid #ffedd5;">
-                                <div style="font-size: 0.65rem; font-weight: 800; color: #9a3412; text-transform: uppercase; margin-bottom: 4px;">Admin Notes</div>
-                                <div style="font-size: 0.75rem; color: #c2410c; font-weight: 600; line-height: 1.5;">${d.investigation_notes}</div>
-                            </div>
+        document.getElementById('intelligenceBody').innerHTML = `
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                <div style="background: #f8fafc; padding: 1.5rem; display: flex; align-items: center; gap: 1rem; border-bottom: 1px solid #f1f5f9;">
+                    <div class="registry-avatar" style="width: 56px; height: 56px; font-size: 1.25rem;">${initial}</div>
+                    <div>
+                        <div style="font-weight: 800; color: var(--adm-navy); font-size: 1rem;">${name}</div>
+                        <div style="font-size: 0.8rem; color: var(--adm-muted); font-weight: 600;">${email}</div>
+                        <span class="status-badge-dm ${badgeClass}" style="margin-top: 6px;">${status}</span>
+                    </div>
+                </div>
+                <div style="padding: 1.5rem;">
+                    <div style="background: #eff6ff; padding: 1rem; border-radius: 12px; border: 1px solid #dbeafe; margin-bottom: 1rem;">
+                        <div style="font-size: 0.65rem; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 8px;">Account Overview</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.75rem; font-weight: 700; color: #1e40af;">
+                            <div>Phone: ${phone}</div>
+                            <div>Date Joined: ${joined}</div>
+                            <div>Total Bookings: ${bookings}</div>
+                            <div>Status: ${status}</div>
                         </div>
                     </div>
-                `;
-                Swal.close();
-                document.getElementById('intelligenceModal').classList.add('active');
-            } else {
-                Swal.fire('Fetch Failure', result.message, 'error');
-            }
-        } catch (e) {
-            Swal.fire('Error', 'Server unreachable.', 'error');
-        }
+                </div>
+            </div>
+        `;
+        document.getElementById('intelligenceModal').classList.add('active');
     }
 
     function suspendAccount(id) {

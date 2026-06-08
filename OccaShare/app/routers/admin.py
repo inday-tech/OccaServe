@@ -613,6 +613,46 @@ async def activate_caterer(
     asyncio.create_task(manager.broadcast({"type": "caterer_update", "caterer_id": caterer_id, "action": "activate"}))
     return {"success": True, "message": "Partner account reactivated."}
 
+@router.post("/api/caterers/{caterer_id}/recover")
+async def recover_caterer_account(
+    caterer_id: int,
+    email: str = Form(...),
+    db: Session = Depends(database.get_db),
+    admin: models.User = Depends(admin_only)
+):
+    import uuid
+    from datetime import datetime, timedelta
+    from ..services.email import EmailService
+    
+    caterer = db.query(models.CatererProfile).get(caterer_id)
+    if not caterer or not caterer.user:
+        return {"success": False, "message": "Caterer account not found."}
+        
+    user = caterer.user
+    
+    token = str(uuid.uuid4())
+    user.reset_token = token
+    user.reset_token_expires = datetime.now() + timedelta(hours=1)
+    
+    # Log Audit
+    audit = models.AuditLog(
+        user_id=user.id,
+        action="account_recovery_initiated",
+        new_status=user.status,
+        notes=f"Admin {admin.first_name} triggered account recovery to email: {email}"
+    )
+    db.add(audit)
+    db.commit()
+    
+    try:
+        success = EmailService.send_password_reset_email(email, token)
+        if success:
+            return {"success": True, "message": "Recovery link sent securely."}
+        else:
+            return {"success": False, "message": "Failed to send email. SMTP error."}
+    except Exception as e:
+        return {"success": False, "message": f"Service Error: {str(e)}"}
+
 @router.post("/api/caterers/{caterer_id}/flag")
 async def flag_caterer(
     caterer_id: int,
@@ -811,6 +851,16 @@ async def update_website_settings(
     maint_msg: str = Form(...),
     logo: Optional[UploadFile] = File(None),
     favicon: Optional[UploadFile] = File(None),
+    hero_label_1: Optional[str] = Form(None),
+    hero_label_2: Optional[str] = Form(None),
+    hero_label_3: Optional[str] = Form(None),
+    hero_label_4: Optional[str] = Form(None),
+    hero_label_5: Optional[str] = Form(None),
+    hero_bg_1: Optional[UploadFile] = File(None),
+    hero_bg_2: Optional[UploadFile] = File(None),
+    hero_bg_3: Optional[UploadFile] = File(None),
+    hero_bg_4: Optional[UploadFile] = File(None),
+    hero_bg_5: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
@@ -883,6 +933,26 @@ async def update_website_settings(
                 changes.append("Updated Browser Favicon")
         except Exception as e:
             pass
+            
+    if hero_label_1 is not None: config.hero_label_1 = hero_label_1
+    if hero_label_2 is not None: config.hero_label_2 = hero_label_2
+    if hero_label_3 is not None: config.hero_label_3 = hero_label_3
+    if hero_label_4 is not None: config.hero_label_4 = hero_label_4
+    if hero_label_5 is not None: config.hero_label_5 = hero_label_5
+    
+    # Handle Hero Backgrounds
+    for i, bg_file in enumerate([hero_bg_1, hero_bg_2, hero_bg_3, hero_bg_4, hero_bg_5], start=1):
+        if bg_file and bg_file.filename:
+            try:
+                bg_content = await bg_file.read()
+                if bg_content:
+                    encoded_string = base64.b64encode(bg_content).decode("utf-8")
+                    mime_type = bg_file.content_type or "image/jpeg"
+                    bg_url = f"data:{mime_type};base64,{encoded_string}"
+                    setattr(config, f"hero_bg_{i}", bg_url)
+                    changes.append(f"Updated Hero Background {i}")
+            except Exception as e:
+                pass
 
     # 🕵️ LOG AUDIT
     if changes:

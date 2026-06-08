@@ -187,7 +187,7 @@
 
         <!-- Logout -->
         <div class="sidebar-footer">
-            <a href="/auth/logout" class="nav-item nav-logout" onclick="closeSidebar()">
+            <a href="javascript:void(0)" onclick="confirmLogout(); closeSidebar();" class="nav-item nav-logout">
                 <div class="nav-icon"><i class="fas fa-right-from-bracket"></i></div>
                 <span class="nav-label brand-text-label">Logout</span>
             </a>
@@ -237,21 +237,30 @@
 
                 <div class="header-separator"></div>
 
-                <!-- Quick Action Reactor -->
                 <div class="header-dropdown-wrapper">
                     <button class="header-icon-btn plus-btn" title="Quick Actions"
                         onclick="toggleHeaderDropdown('quickActionsDropdown', this)">
                         <i class="fas fa-plus"></i>
                     </button>
                     <div class="premium-dropdown" id="quickActionsDropdown">
+                        <style>
+                            .mobile-search-dropdown-wrap { display: none; padding: 12px; border-bottom: 1px solid #f1f5f9; }
+                            @media (max-width: 768px) { .mobile-search-dropdown-wrap { display: block; } }
+                            .mobile-search-dropdown-wrap .header-search { display: flex !important; width: 100%; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0 12px; height: 40px; align-items: center; gap: 8px; background: #f8fafc; }
+                            .mobile-search-dropdown-wrap .header-search input { border: none; background: transparent; width: 100%; outline: none; font-size: 0.85rem; color: var(--adm-navy); }
+                        </style>
+                        <div class="mobile-search-dropdown-wrap">
+                            <div class="header-search">
+                                <i class="fas fa-magnifying-glass" style="color: #64748b;"></i>
+                                <input type="text" id="mobileSearchInput" placeholder="Search platform..." autocomplete="off">
+                            </div>
+                            <div id="omniSearchResultsMobile" class="omni-results-panel" style="position: relative; top: 10px; box-shadow: none; border: none; padding: 0; background: transparent; max-height: none;"></div>
+                        </div>
                         <div class="dropdown-header">Quick Commands</div>
                         <ul class="dropdown-links">
-                            <li><a href="/admin/caterers?action=verify"><i class="fas fa-shield-check"></i> Manual
-                                    Verification</a></li>
-                            <li><a href="/admin/settings?tab=announcements"><i class="fas fa-bullhorn"></i> Push
-                                    Announcement</a></li>
-                            <li><a href="/admin/bookings?view=urgent"><i class="fas fa-fire-flame-curved"></i> Review
-                                    Urgent Bookings</a></li>
+                            <li><a href="/admin/caterers?action=verify"><i class="fas fa-shield-halved"></i> Manual Verification</a></li>
+                            <li><a href="/admin/settings?tab=announcements"><i class="fas fa-bullhorn"></i> Push Announcement</a></li>
+                            <li><a href="/admin/bookings?view=urgent"><i class="fas fa-fire-flame-curved"></i> Review Urgent Bookings</a></li>
                         </ul>
                     </div>
                 </div>
@@ -317,7 +326,7 @@
                         </ul>
                         <div class="dropdown-divider"></div>
                         <ul class="dropdown-links">
-                            <li><a href="/auth/logout" class="nav-logout text-danger"><i
+                            <li><a href="javascript:void(0)" onclick="confirmLogout()" class="nav-logout text-danger"><i
                                         class="fas fa-right-from-bracket"></i> Sign Out</a></li>
                         </ul>
                     </div>
@@ -525,6 +534,16 @@
             },
             buttonsStyling: false
         });
+
+        // Consistent Logout Modal
+        function confirmLogout() {
+            openConfirmModal(
+                'Log Out?', 
+                'Are you sure you want to securely end your admin session?', 
+                () => { window.location.href = '/auth/logout'; }, 
+                { variant: 'warning' }
+            );
+        }
     </script>
 
 
@@ -602,53 +621,74 @@
 
         // ===== OMNI-SEARCH =====
         (function () {
-            const input = document.getElementById('globalSearchInput');
-            const resBox = document.getElementById('omniSearchResults');
-            if (!input || !resBox) return;
+            const configs = [
+                { input: document.getElementById('globalSearchInput'), resBox: document.getElementById('omniSearchResults') },
+                { input: document.getElementById('mobileSearchInput'), resBox: document.getElementById('omniSearchResultsMobile') }
+            ];
+
             let timeout = null;
 
-            input.addEventListener('input', (e) => {
-                clearTimeout(timeout);
-                const q = e.target.value.trim();
-                if (q.length < 2) { resBox.classList.remove('active'); resBox.innerHTML = ''; return; }
-                timeout = setTimeout(async () => {
-                    try {
-                        resBox.innerHTML = '<div style="padding:1rem;text-align:center;color:#94a3b8;font-size:0.8rem;"><i class="fas fa-spinner fa-spin"></i> Searching...</div>';
-                        resBox.classList.add('active');
-                        const r = await fetch(`/admin/api/omni-search?q=${encodeURIComponent(q)}`);
-                        const data = await r.json();
-                        if (data.success && data.results.length > 0) {
-                            resBox.innerHTML = data.results.map(i => `
-                                <a href="${i.link}" class="omni-result-item">
-                                    <div class="omni-result-icon"><i class="${i.icon}"></i></div>
-                                    <div class="omni-result-info">
-                                        <span class="omni-result-title">${i.title}</span>
-                                        <span class="omni-result-subtitle">${i.subtitle}</span>
-                                    </div>
-                                    <span class="omni-result-type">${i.type}</span>
-                                </a>
-                            `).join('');
-                        } else {
-                            resBox.innerHTML = '<div style="padding:1.5rem;text-align:center;color:#94a3b8;font-size:0.8rem;"><i class="fas fa-search" style="display:block;font-size:1.5rem;margin-bottom:0.5rem;opacity:0.4;"></i>No results found for "<b>' + q + '</b>"</div>';
+            configs.forEach(conf => {
+                if (!conf.input || !conf.resBox) return;
+                conf.input.addEventListener('input', (e) => {
+                    clearTimeout(timeout);
+                    const q = e.target.value.trim();
+                    if (q.length < 2) { conf.resBox.classList.remove('active'); conf.resBox.innerHTML = ''; return; }
+                    timeout = setTimeout(async () => {
+                        try {
+                            conf.resBox.innerHTML = '<div style="padding:1rem;text-align:center;color:#94a3b8;font-size:0.8rem;"><i class="fas fa-spinner fa-spin"></i> Searching...</div>';
+                            conf.resBox.classList.add('active');
+                            const r = await fetch(`/admin/api/omni-search?q=${encodeURIComponent(q)}`);
+                            const data = await r.json();
+                            if (data.success && data.results.length > 0) {
+                                conf.resBox.innerHTML = '<div class="results-scroller">' + data.results.map(i => `
+                                    <a href="${i.link}" class="omni-result-item">
+                                        <div class="omni-result-icon"><i class="${i.icon}"></i></div>
+                                        <div class="omni-result-info">
+                                            <span class="omni-result-title">${i.title}</span>
+                                            <span class="omni-result-subtitle">${i.subtitle}</span>
+                                        </div>
+                                        <span class="omni-result-type">${i.type}</span>
+                                    </a>
+                                `).join('') + '</div>';
+                            } else {
+                                conf.resBox.innerHTML = '<div style="padding:1.5rem;text-align:center;color:#94a3b8;font-size:0.8rem;"><i class="fas fa-search" style="display:block;font-size:1.5rem;margin-bottom:0.5rem;opacity:0.4;"></i>No results found for "<b>' + q + '</b>"</div>';
+                            }
+                        } catch (e) {
+                            conf.resBox.innerHTML = '<div style="padding:1rem;text-align:center;color:#ef4444;font-size:0.8rem;">Search error. Try again.</div>';
+                            console.error("Search error:", e);
                         }
-                    } catch (e) {
-                        resBox.innerHTML = '<div style="padding:1rem;text-align:center;color:#ef4444;font-size:0.8rem;">Search error. Try again.</div>';
-                        console.error("Search error:", e);
-                    }
-                }, 280);
+                    }, 280);
+                });
             });
 
             // Close on outside click
             document.addEventListener('click', (e) => {
-                if (!input.closest('.header-search-wrap').contains(e.target)) {
-                    resBox.classList.remove('active');
-                }
+                configs.forEach(conf => {
+                    if (conf.input && conf.resBox) {
+                        const isInsideInput = conf.input.contains(e.target) || (conf.input.closest('.header-search-wrap') && conf.input.closest('.header-search-wrap').contains(e.target));
+                        const isInsideDropdown = conf.input.closest('.premium-dropdown') && conf.input.closest('.premium-dropdown').contains(e.target);
+                        if (!isInsideInput && !isInsideDropdown) {
+                            conf.resBox.classList.remove('active');
+                        }
+                    }
+                });
             });
 
             // Ctrl+K / Cmd+K shortcut
             document.addEventListener('keydown', (e) => {
-                if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); input.focus(); input.select(); }
-                if (e.key === 'Escape') { resBox.classList.remove('active'); input.blur(); }
+                if ((e.ctrlKey || e.metaKey) && e.key === 'k') { 
+                    e.preventDefault(); 
+                    if(configs[0].input) { configs[0].input.focus(); configs[0].input.select(); }
+                }
+                if (e.key === 'Escape') { 
+                    configs.forEach(conf => {
+                        if (conf.input && conf.resBox) {
+                            conf.resBox.classList.remove('active');
+                            conf.input.blur();
+                        }
+                    });
+                }
             });
         })();
     </script>

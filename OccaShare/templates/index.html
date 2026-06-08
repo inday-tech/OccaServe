@@ -341,36 +341,37 @@
     <header id="home" class="page-hero-premium-full section-clean">
         {# Background slideshow images — one per event type #}
         <div class="hero-slideshow">
-            <div class="hero-slide active"
-                style="background-image: url('https://images.unsplash.com/photo-1519225421980-715cb0215aed?q=80&w=1920&auto=format&fit=crop');">
-            </div>
-            <div class="hero-slide"
-                style="background-image: url('https://images.unsplash.com/photo-1530103862676-de8c9debad1d?q=80&w=1920&auto=format&fit=crop');">
-            </div>
-            <div class="hero-slide"
-                style="background-image: url('https://images.unsplash.com/photo-1414235077428-338989a2e8c0?q=80&w=1920&auto=format&fit=crop');">
-            </div>
-            <div class="hero-slide"
-                style="background-image: url('https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=1920&auto=format&fit=crop');">
-            </div>
-            <div class="hero-slide"
-                style="background-image: url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1920&auto=format&fit=crop');">
-            </div>
-            <div class="hero-slide"
-                style="background-image: url('https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=1920&auto=format&fit=crop');">
-            </div>
-            <div class="hero-slide"
-                style="background-image: url('https://images.unsplash.com/photo-1482575832494-771f74bf6857?q=80&w=1920&auto=format&fit=crop');">
-            </div>
-            <div class="hero-slide"
-                style="background-image: url('https://images.unsplash.com/photo-1467810563316-b5476525c0f9?q=80&w=1920&auto=format&fit=crop');">
-            </div>
-            <div class="hero-slide"
-                style="background-image: url('https://images.unsplash.com/photo-1518199266791-5375a83190b7?q=80&w=1920&auto=format&fit=crop');">
-            </div>
-            <div class="hero-slide"
-                style="background-image: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1920&auto=format&fit=crop');">
-            </div>
+            {% set hero_events = [] %}
+            
+            {% if config and (config.hero_bg_1 or config.hero_bg_2 or config.hero_bg_3 or config.hero_bg_4 or config.hero_bg_5) %}
+                {% if config.hero_bg_1 %}
+                    <div class="hero-slide {% if hero_events|length == 0 %}active{% endif %}" style="background-image: url('{{ config.hero_bg_1 }}');"></div>
+                    {% set _ = hero_events.append({'name': config.hero_label_1 or 'Event 1', 'icon': 'fas fa-glass-cheers'}) %}
+                {% endif %}
+
+                {% if config.hero_bg_2 %}
+                    <div class="hero-slide {% if hero_events|length == 0 %}active{% endif %}" style="background-image: url('{{ config.hero_bg_2 }}');"></div>
+                    {% set _ = hero_events.append({'name': config.hero_label_2 or 'Event 2', 'icon': 'fas fa-glass-cheers'}) %}
+                {% endif %}
+
+                {% if config.hero_bg_3 %}
+                    <div class="hero-slide {% if hero_events|length == 0 %}active{% endif %}" style="background-image: url('{{ config.hero_bg_3 }}');"></div>
+                    {% set _ = hero_events.append({'name': config.hero_label_3 or 'Event 3', 'icon': 'fas fa-glass-cheers'}) %}
+                {% endif %}
+
+                {% if config.hero_bg_4 %}
+                    <div class="hero-slide {% if hero_events|length == 0 %}active{% endif %}" style="background-image: url('{{ config.hero_bg_4 }}');"></div>
+                    {% set _ = hero_events.append({'name': config.hero_label_4 or 'Event 4', 'icon': 'fas fa-glass-cheers'}) %}
+                {% endif %}
+
+                {% if config.hero_bg_5 %}
+                    <div class="hero-slide {% if hero_events|length == 0 %}active{% endif %}" style="background-image: url('{{ config.hero_bg_5 }}');"></div>
+                    {% set _ = hero_events.append({'name': config.hero_label_5 or 'Event 5', 'icon': 'fas fa-glass-cheers'}) %}
+                {% endif %}
+            {% else %}
+                <div class="hero-slide active" style="background-image: url('https://images.unsplash.com/photo-1519225421980-715cb0215aed?q=80&w=1920&auto=format&fit=crop');"></div>
+                {% set _ = hero_events.append({'name': 'Welcome to OccaServe', 'icon': 'fas fa-glass-cheers'}) %}
+            {% endif %}
         </div>
         <div class="hero-overlay"></div>
 
@@ -702,18 +703,7 @@
         const label = document.getElementById('heroEventLabel');
         if (!slides.length || !pill || !label) return;
 
-        const events = [
-            { name: 'Weddings', icon: 'fas fa-ring' },
-            { name: 'Birthdays', icon: 'fas fa-birthday-cake' },
-            { name: 'Fine Dining', icon: 'fas fa-wine-glass-alt' },
-            { name: 'Corporate Events', icon: 'fas fa-briefcase' },
-            { name: 'Fiestas', icon: 'fas fa-utensils' },
-            { name: 'Private Parties', icon: 'fas fa-glass-cheers' },
-            { name: 'Christmas Parties', icon: 'fas fa-tree' },
-            { name: 'New Year Celebrations', icon: 'fas fa-champagne-glasses' },
-            { name: 'Valentines Day', icon: 'fas fa-heart' },
-            { name: 'Summer Events', icon: 'fas fa-sun' },
-        ];
+        const events = {{ hero_events | tojson | safe }};
 
         let current = 0;
         const INTERVAL = 5000; // 5 seconds per slide
