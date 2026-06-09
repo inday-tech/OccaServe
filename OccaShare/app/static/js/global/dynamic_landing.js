@@ -200,7 +200,36 @@ document.addEventListener('DOMContentLoaded', () => {
             submitBtn.innerHTML = originalText;
             submitBtn.disabled = false;
         }
-    };
+    // 7. CLIENT-SIDE DISTANCE CALCULATION
+    function calculateDistancesOnLoad() {
+        const userLat = sessionStorage.getItem('user_lat');
+        const userLon = sessionStorage.getItem('user_lon');
+        if (!userLat || !userLon) return;
+
+        document.querySelectorAll('.dist-display').forEach(el => {
+            const lat = parseFloat(el.getAttribute('data-lat'));
+            const lon = parseFloat(el.getAttribute('data-lon'));
+            if (!lat || !lon) return;
+
+            const R = 6371; // radius of Earth in km
+            const dLat = (lat - parseFloat(userLat)) * Math.PI / 180;
+            const dLon = (lon - parseFloat(userLon)) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(parseFloat(userLat) * Math.PI / 180) * Math.cos(lat * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const d = R * c;
+
+            const distText = el.querySelector('.dist-text');
+            if (distText && !distText.innerText.includes('km away')) {
+                distText.innerText = d.toFixed(1) + ' km away';
+                el.style.display = 'flex';
+            }
+        });
+    }
+    
+    // Run it on load in case the API response doesn't have it but session storage does
+    calculateDistancesOnLoad();
 
 });
 
