@@ -903,7 +903,17 @@
             const res = await fetch('/admin/caterers/add', { method: 'POST', body: fd });
             const data = await res.json();
             if (data.success) {
-                Swal.fire('Success', data.message, 'success').then(() => location.reload());
+                if (data.email_failed) {
+                    Swal.fire({
+                        title: 'Account Created (Email Failed)',
+                        html: data.message,
+                        icon: 'warning',
+                        confirmButtonText: 'I have copied the password',
+                        confirmButtonColor: '#f97316'
+                    }).then(() => location.reload());
+                } else {
+                    Swal.fire('Success', data.message, 'success').then(() => location.reload());
+                }
             } else {
                 let errorMsg = data.message || 'Creation failed.';
                 if (data.errors) {

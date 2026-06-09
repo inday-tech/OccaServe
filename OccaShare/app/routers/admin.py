@@ -1490,8 +1490,12 @@ async def add_caterer(
         db.add(new_profile)
         db.commit()
 
-        # 5. Send welcome email
-        background_tasks.add_task(_send_caterer_welcome_email, email, temp_password, business_name)
+        # 5. Send welcome email synchronously to check for SMTP delivery success
+        email_sent = False
+        try:
+            email_sent = EmailService.send_caterer_account_created_email(email, temp_password, business_name)
+        except Exception as exc:
+            logger.error(f"[admin] Welcome email exception: {exc}")
 
         # Real-time update
         asyncio.create_task(manager.broadcast({
@@ -1500,7 +1504,15 @@ async def add_caterer(
             "name": business_name
         }))
 
-        return {"success": True, "message": "Caterer account created! The credentials have been sent to their email."}
+        if email_sent:
+            return {"success": True, "message": "Caterer account created! The credentials have been sent to their email."}
+        else:
+            return {
+                "success": True,
+                "email_failed": True,
+                "temp_password": temp_password,
+                "message": f"Caterer account was created, but the welcome email failed to send (SMTP Authentication failure).<br><br><strong>Temporary Password:</strong> <code style='font-size:1.2rem; color:#f97316; font-weight:bold;'>{temp_password}</code><br><br>Please copy this password and send it to the caterer manually."
+            }
 
     except Exception as e:
         db.rollback()
