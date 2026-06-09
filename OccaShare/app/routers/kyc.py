@@ -239,10 +239,8 @@ async def init_kyc_session(
         db.commit()
         db.refresh(session)
         
-    # Pick 2-3 randomized challenges from the list
-    all_challenges = ["blink", "smile", "turn_left", "turn_right", "look_up", "look_down"]
-    num_challenges = random.randint(2, 3)
-    challenges = random.sample(all_challenges, num_challenges)
+    # Set the assigned challenges exactly as requested: Blink twice, Turn head left, Turn head right
+    challenges = ["blink", "turn_left", "turn_right"]
     
     session.status = "pending_liveness"
     session.liveness_score = 0.0

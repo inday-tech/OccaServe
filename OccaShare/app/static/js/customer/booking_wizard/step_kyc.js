@@ -1194,7 +1194,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             if (!initRes.ok) throw new Error("Failed to initialize verification session");
                             const sessionData = await initRes.json();
                             console.log("[KYC] Initialized Verification Session:", sessionData);
-                            challengesList = sessionData.challenges || ["blink", "smile"];
+                            challengesList = sessionData.challenges || ["blink", "turn_left", "turn_right"];
                             currentChallengeIndex = 0;
                             selfieFrames = [];
                         } catch (err) {
@@ -1286,7 +1286,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             let color = '#94a3b8';
 
                             switch (challenge) {
-                                case 'blink': label = 'Blink slowly'; break;
+                                case 'blink': label = 'Blink twice'; break;
                                 case 'smile': label = 'Smile widely'; break;
                                 case 'turn_left': label = 'Turn your head left'; break;
                                 case 'turn_right': label = 'Turn your head right'; break;
@@ -1422,27 +1422,27 @@ document.addEventListener('DOMContentLoaded', function () {
                                         const mouth_w = getDistance(landmarks[291], landmarks[61]);
                                         const smile_ratio = mouth_w / eye_dist;
 
-                                        if (smile_ratio > 0.94) {
+                                        if (smile_ratio > 0.84) {
                                             challengePassed = true;
                                         }
                                     } else if (currentChallenge === 'turn_left') {
                                         challengePrompt = "Turn your head to the left";
-                                        if (nose_offset < -0.22) {
+                                        if (nose_offset < -0.17) {
                                             challengePassed = true;
                                         }
                                     } else if (currentChallenge === 'turn_right') {
                                         challengePrompt = "Turn your head to the right";
-                                        if (nose_offset > 0.22) {
+                                        if (nose_offset > 0.17) {
                                             challengePassed = true;
                                         }
                                     } else if (currentChallenge === 'look_up') {
                                         challengePrompt = "Look slightly up";
-                                        if (nose_rel_y < 0.43) {
+                                        if (nose_rel_y < 0.47) {
                                             challengePassed = true;
                                         }
                                     } else if (currentChallenge === 'look_down') {
                                         challengePrompt = "Look slightly down";
-                                        if (nose_rel_y > 0.59) {
+                                        if (nose_rel_y > 0.54) {
                                             challengePassed = true;
                                         }
                                     }
@@ -1453,7 +1453,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                     if (challengePassed) {
                                         if (challengeHeldStartTime === 0) {
                                             challengeHeldStartTime = Date.now();
-                                        } else if (Date.now() - challengeHeldStartTime > 600) { // Hold for 600ms
+                                        } else if (Date.now() - challengeHeldStartTime > 300) { // Hold for 300ms
                                             console.log(`[KYC] Completed challenge: ${currentChallenge}`);
 
                                             const file = await captureChallengeFrame(currentChallenge);
