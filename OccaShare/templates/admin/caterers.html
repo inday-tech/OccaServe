@@ -741,11 +741,13 @@
             const emailInp = document.getElementById('onboard_email');
             const phoneInp = document.getElementById('onboard_phone');
             const fnameInp = document.getElementById('onboard_fname');
+            const mnameInp = document.getElementById('onboard_mname');
             const lnameInp = document.getElementById('onboard_lname');
 
             const email = emailInp.value.trim().toLowerCase();
             const phone = phoneInp.value.replace(/\D/g, '');
             const fname = fnameInp.value.trim().toLowerCase();
+            const mname = mnameInp.value.trim().toLowerCase();
             let lname = lnameInp.value.trim().toLowerCase();
             const suffixVal = document.getElementById('onboard_suffix').value;
             if (suffixVal && suffixVal.trim() !== '' && suffixVal.trim() !== '-') {
@@ -754,7 +756,7 @@
 
             // 1. Logical Validation: Name Check
             const nameStat = document.getElementById('name_audit_status');
-            const hasNumbers = /\d/.test(fname) || /\d/.test(lname);
+            const hasNumbers = /\d/.test(fname) || /\d/.test(lname) || /\d/.test(mname);
             
             if (fname.length > 0 && fname.length < 2) {
                 nameStat.textContent = 'INVALID: FIRST NAME TOO SHORT';
@@ -768,6 +770,7 @@
                 nameStat.textContent = 'INVALID: NAMES CANNOT CONTAIN NUMBERS';
                 nameStat.className = 'status-indicator show status-error';
                 if (/\d/.test(fname)) fnameInp.className = 'input-error';
+                if (/\d/.test(mname)) mnameInp.className = 'input-error';
                 if (/\d/.test(lname)) lnameInp.className = 'input-error';
             } else if (fname && lname && fname === lname) {
                 nameStat.textContent = 'INVALID: IDENTICAL FIRST & LAST NAME';
@@ -776,6 +779,7 @@
             } else {
                 nameStat.className = 'status-indicator';
                 fnameInp.className = lnameInp.className = (fname.length >= 2 && lname.length >= 2) ? 'input-success' : '';
+                mnameInp.className = (mname.length > 0 && !/\d/.test(mname)) ? 'input-success' : '';
             }
 
             // 2. Phone prefix & length check
@@ -846,7 +850,7 @@
         }, 500);
     }
 
-    ['onboard_fname', 'onboard_lname', 'onboard_email', 'onboard_phone', 'onboard_suffix'].forEach(id => {
+    ['onboard_fname', 'onboard_mname', 'onboard_lname', 'onboard_email', 'onboard_phone', 'onboard_suffix'].forEach(id => {
         document.getElementById(id).addEventListener('input', runIdentityAudit);
     });
     document.getElementById('onboard_suffix').addEventListener('change', runIdentityAudit);
