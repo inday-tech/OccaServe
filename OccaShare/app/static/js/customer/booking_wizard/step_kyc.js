@@ -1222,19 +1222,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
 
                         if (success) {
-                            video.srcObject = stream;
                             if (startBtn) startBtn.style.display = 'none';
-
-                            // Auto start biometrics landmarker if not initialized
-                            await initializeFaceLandmarker();
 
                             // Show challenges checklist UI
                             const chBox = document.getElementById('active-challenges-box');
                             if (chBox) chBox.style.display = 'block';
-
-                            renderChallengeChecklist();
-
-                            isLivenessRunning = true;
 
                             // Re-find canvas in case it was re-rendered or not present earlier
                             guideCanvas = document.getElementById('face-guide-canvas');
@@ -1242,7 +1234,9 @@ document.addEventListener('DOMContentLoaded', function () {
                                 guideCtx = guideCanvas.getContext('2d');
                             }
 
+                            // Register event listeners BEFORE setting srcObject/awaiting model to prevent race conditions
                             video.onloadedmetadata = () => {
+                                console.log("[KYC] Video metadata loaded");
                                 if (guideCanvas) {
                                     guideCanvas.width = video.videoWidth || 640;
                                     guideCanvas.height = video.videoHeight || 480;
@@ -1250,6 +1244,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             };
 
                             video.onplaying = () => {
+                                console.log("[KYC] Video playing");
                                 if (guideCanvas && (!guideCanvas.width || guideCanvas.width === 300)) {
                                     guideCanvas.width = video.videoWidth || 640;
                                     guideCanvas.height = video.videoHeight || 480;
@@ -1258,6 +1253,21 @@ document.addEventListener('DOMContentLoaded', function () {
                                 if (animationFrameId) cancelAnimationFrame(animationFrameId);
                                 animationFrameId = requestAnimationFrame(livenessDetectionLoop);
                             };
+
+                            // Auto start biometrics landmarker if not initialized
+                            await initializeFaceLandmarker();
+
+                            renderChallengeChecklist();
+                            isLivenessRunning = true;
+
+                            // Now assign the stream to trigger the events
+                            video.srcObject = stream;
+
+                            // Manual fallback if video is already playing or playing state changes before onload
+                            if (video.readyState >= 2 && !video.paused) {
+                                console.log("[KYC] Video is already playing, manually triggering loop");
+                                video.onplaying();
+                            }
 
                             await getCameraDevices();
                         } else {
