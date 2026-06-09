@@ -175,11 +175,16 @@ def unified_search_api(request: Request, q: str = "", lat: Optional[float] = Non
     if lat is not None and lon is not None:
         # Haversine formula in SQL
         distance_query = text("""
-            (6371 * acos(
-                cos(radians(:lat)) * cos(radians(latitude)) * 
-                cos(radians(longitude) - radians(:lon)) + 
-                sin(radians(:lat)) * sin(radians(latitude))
-            ))
+            CASE 
+                WHEN latitude IS NULL OR longitude IS NULL THEN 99999
+                ELSE (6371 * acos(
+                    LEAST(1.0, GREATEST(-1.0,
+                        cos(radians(:lat)) * cos(radians(latitude)) * 
+                        cos(radians(longitude) - radians(:lon)) + 
+                        sin(radians(:lat)) * sin(radians(latitude))
+                    ))
+                ))
+            END
         """).bindparams(lat=lat, lon=lon)
         
         query = query.add_columns(distance_query.label("distance")).order_by(text("distance ASC"))

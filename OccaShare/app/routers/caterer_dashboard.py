@@ -2536,16 +2536,24 @@ async def update_profile(
         profile.city_code = city_code
     if brgy_code:
         profile.brgy_code = brgy_code
-        
-    # Also save the names if provided
-    if province and province != province_code:
-        # Assuming we might want to store province name somewhere, or just in address_details
-        pass 
+
+    # Save human-readable name parts
     if municipality and municipality != city_code:
         profile.city = municipality
+    
+    # Build a clean composite address_details from all parts
+    # This becomes the single source of truth for display across all views
+    addr_parts = []
+    if contact_address and contact_address.strip():
+        addr_parts.append(contact_address.strip())
     if barangay and barangay != brgy_code:
-        # We don't have a specific column for barangay name, maybe just keep it in address_details if needed
-        pass
+        addr_parts.append(f"Brgy. {barangay}")
+    if municipality and municipality != city_code:
+        addr_parts.append(municipality)
+    if province and province != province_code:
+        addr_parts.append(province)
+    if addr_parts:
+        profile.address_details = ", ".join(addr_parts)
     # Update payment methods
     profile.gcash_number = gcash_number
     profile.maya_number = maya_number

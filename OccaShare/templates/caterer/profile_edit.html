@@ -1294,12 +1294,13 @@ currentPassInput.addEventListener('input', validateRequirements);
             });
         }
 
-        // Force proper rendering after init
         setTimeout(() => {
             google.maps.event.trigger(map, 'resize');
             map.setCenter(marker.getPosition());
 
             // If coordinates are missing/default, geocode the saved address
+            // NOTE: Only move the map — do NOT auto-save to latInput/lonInput
+            // Coordinates must be explicitly set by the user (drag, click, or GPS)
             const hasValidCoords = initialLat !== 14.2811 && initialLng !== 121.4150 && initialLat !== 0 && initialLng !== 0;
             if (!hasValidCoords) {
                 const savedAddress = document.getElementById('businessAddress')?.value?.trim();
@@ -1310,11 +1311,15 @@ currentPassInput.addEventListener('input', validateRequirements);
                     geocoder.geocode({ address: fullAddress }, (results, status) => {
                         if (status === 'OK' && results[0]) {
                             const loc = results[0].geometry.location;
+                            // Move map center and marker visually only
                             map.setCenter(loc);
                             map.setZoom(17);
                             marker.setPosition(loc);
                             marker.setAnimation(google.maps.Animation.DROP);
-                            updateCoords(loc.lat(), loc.lng());
+                            // Do NOT call updateCoords here — user must explicitly confirm by dragging/clicking
+                            // Show a hint to the user
+                            const display = document.getElementById('latDisplay');
+                            if (display) display.closest('.coords-display').style.borderColor = '#f97316';
                         }
                     });
                 }

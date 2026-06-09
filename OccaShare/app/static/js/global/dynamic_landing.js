@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const navbar = document.getElementById('mainNavbar');
     const catererGrid = document.querySelector('.caterer-grid-new');
     const categoryLinks = document.querySelectorAll('.event-card');
-    
+
     // 1. GLOBAL INTERSECTION OBSERVER (For Entrance Animations)
     window.observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -21,7 +21,6 @@ document.addEventListener('DOMContentLoaded', () => {
         window.observer.observe(el);
     });
 
-
     // 3. AJAX CATEGORY FILTERING (injects into unified search)
     const unifiedInput = document.getElementById('unifiedSearchInput');
     const searchLoader = document.getElementById('searchLoader');
@@ -30,19 +29,19 @@ document.addEventListener('DOMContentLoaded', () => {
         link.addEventListener('click', async (e) => {
             if (window.location.pathname !== '/' || e.ctrlKey || e.metaKey) return;
             e.preventDefault();
-            
+
             const url = new URL(link.href);
             const type = url.searchParams.get('type');
-            
+
             // Inject into unified search input
             if (unifiedInput && type) {
                 unifiedInput.value = type;
                 unifiedInput.focus();
             }
-            
+
             const section = document.getElementById('caterers');
             if (section) section.scrollIntoView({ behavior: 'smooth' });
-            
+
             await performUnifiedSearch();
         });
     });
@@ -63,9 +62,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const elapsed = timestamp - startTime;
                 const progress = Math.min(elapsed / duration, 1);
                 const currentCount = Math.floor(progress * target);
-                
+
                 num.innerText = currentCount.toLocaleString() + (target > 50 && progress === 1 ? '+' : '');
-                
+
                 if (progress < 1) {
                     requestAnimationFrame(updateCount);
                 }
@@ -80,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
             counted = true;
         }
     }, { threshold: 0.2 });
-    
+
     if (statsSection) statsObserver.observe(statsSection);
 
     // 5. UNIFIED LIVE SEARCH (single input, deep search)
@@ -106,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!catererGrid) return;
 
         const q = unifiedInput ? unifiedInput.value.trim() : '';
-        
+
         // Get user location from sessionStorage if available
         const userLat = sessionStorage.getItem('user_lat');
         const userLon = sessionStorage.getItem('user_lon');
@@ -135,12 +134,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 catererGrid.style.opacity = '1';
                 // Refresh scroll animations for new results
                 catererGrid.querySelectorAll('.animate-on-scroll').forEach(el => window.observer.observe(el));
-                
+
+                // Update distance badges on newly loaded cards
+                calculateDistancesOnCards();
+
                 // If location was used, show a subtle hint
                 if (userLat && userLon && !q) {
                     const header = document.querySelector('#caterers .section-header p');
                     if (header && !header.innerText.includes('near you')) {
-                        header.innerHTML = '<i class="fas fa-location-dot" style="color:#f97316;"></i> Showing elite caterers <span style="color:#f97316; font-weight:700;">near you</span> first.';
+                        header.innerHTML = '<i class="fas fa-location-dot" style="color:#f97316;"></i> Showing caterers <span style="color:#f97316; font-weight:700;">nearest to you</span> first.';
                     }
                 }
             }, 200);
@@ -153,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Expose globally for backward compat
+    // Expose globally
     window.performUnifiedSearch = performUnifiedSearch;
     window.performDeepSearch = performUnifiedSearch;
 
@@ -200,62 +202,133 @@ document.addEventListener('DOMContentLoaded', () => {
             submitBtn.innerHTML = originalText;
             submitBtn.disabled = false;
         }
-    // 7. CLIENT-SIDE DISTANCE CALCULATION
-    function calculateDistancesOnLoad() {
-        const userLat = sessionStorage.getItem('user_lat');
-        const userLon = sessionStorage.getItem('user_lon');
-        if (!userLat || !userLon) return;
+    };
 
-        document.querySelectorAll('.dist-display').forEach(el => {
-            const lat = parseFloat(el.getAttribute('data-lat'));
-            const lon = parseFloat(el.getAttribute('data-lon'));
-            if (!lat || !lon) return;
+    // 7. CLIENT-SIDE DISTANCE CALCULATION (fallback for static page load)
+    calculateDistancesOnCards();
 
-            const R = 6371; // radius of Earth in km
-            const dLat = (lat - parseFloat(userLat)) * Math.PI / 180;
-            const dLon = (lon - parseFloat(userLon)) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(parseFloat(userLat) * Math.PI / 180) * Math.cos(lat * Math.PI / 180) *
-                      Math.sin(dLon/2) * Math.sin(dLon/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            const d = R * c;
-
-            const distText = el.querySelector('.dist-text');
-            if (distText && !distText.innerText.includes('km away')) {
-                distText.innerText = d.toFixed(1) + ' km away';
-                el.style.display = 'flex';
-            }
-        });
+    // 8. AUTO-SORT on page load if location is already cached from a previous session
+    const cachedLat = sessionStorage.getItem('user_lat');
+    const cachedLon = sessionStorage.getItem('user_lon');
+    if (cachedLat && cachedLon) {
+        setLocationActiveUI();
+        performUnifiedSearch();
     }
-    
-    // Run it on load in case the API response doesn't have it but session storage does
-    calculateDistancesOnLoad();
 
-});
+}); // END DOMContentLoaded
 
 
-window.triggerGeolocation = function() {
+// ─── GEOLOCATION ──────────────────────────────────────────────────────────────
+
+window.triggerGeolocation = function () {
     const btn = document.getElementById('locateMeBtn');
-    if ('geolocation' in navigator) {
-        if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        navigator.geolocation.getCurrentPosition(function(position) {
-            sessionStorage.setItem('user_lat', position.coords.latitude);
-            sessionStorage.setItem('user_lon', position.coords.longitude);
-            if (btn) {
-                btn.innerHTML = '<i class="fas fa-location-crosshairs"></i>';
-                btn.style.color = '#f97316';
-                btn.style.borderColor = '#f97316';
-                btn.style.backgroundColor = '#fff7ed';
-            }
-            if (window.performUnifiedSearch) {
-                window.performUnifiedSearch();
-            }
-        }, function(error) {
-            if (btn) btn.innerHTML = '<i class="fas fa-location-crosshairs"></i>';
-            if (typeof Swal !== 'undefined') Swal.fire('Location Access Denied', 'Please allow location permissions to find nearby caterers.', 'warning');
-            else alert('Location Access Denied. Please allow location permissions to find nearby caterers.');
-        }, { timeout: 10000 });
-    } else {
+    const icon = document.getElementById('locateMeIcon');
+    const label = document.getElementById('locateMeLabel');
+
+    if (!('geolocation' in navigator)) {
         alert('Geolocation is not supported by your browser.');
+        return;
     }
+
+    // Loading state
+    if (icon) icon.className = 'fas fa-spinner fa-spin';
+    if (label) label.textContent = 'Locating...';
+    if (btn) btn.disabled = true;
+
+    navigator.geolocation.getCurrentPosition(function (position) {
+        sessionStorage.setItem('user_lat', position.coords.latitude);
+        sessionStorage.setItem('user_lon', position.coords.longitude);
+
+        setLocationActiveUI();
+
+        if (window.performUnifiedSearch) {
+            window.performUnifiedSearch();
+        }
+    }, function (error) {
+        // Reset button on error
+        if (icon) icon.className = 'fas fa-location-crosshairs';
+        if (label) label.textContent = 'Near Me';
+        if (btn) btn.disabled = false;
+
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Location Access Denied',
+                text: 'Please allow location permissions to sort caterers by distance.',
+                confirmButtonColor: '#f97316'
+            });
+        } else {
+            alert('Location Access Denied. Please allow location permissions to find nearby caterers.');
+        }
+    }, { timeout: 10000 });
 };
+
+function setLocationActiveUI() {
+    const btn = document.getElementById('locateMeBtn');
+    const icon = document.getElementById('locateMeIcon');
+    const label = document.getElementById('locateMeLabel');
+    const badge = document.getElementById('locationStatusBadge');
+
+    if (btn) {
+        btn.style.background = '#16a34a';
+        btn.style.boxShadow = '0 3px 12px rgba(22,163,74,0.3)';
+        btn.disabled = false;
+    }
+    if (icon) icon.className = 'fas fa-circle-check';
+    if (label) label.textContent = 'Nearby';
+    if (badge) badge.style.display = 'block';
+}
+
+window.clearUserLocation = function () {
+    sessionStorage.removeItem('user_lat');
+    sessionStorage.removeItem('user_lon');
+
+    const btn = document.getElementById('locateMeBtn');
+    const icon = document.getElementById('locateMeIcon');
+    const label = document.getElementById('locateMeLabel');
+    const badge = document.getElementById('locationStatusBadge');
+
+    if (btn) {
+        btn.style.background = 'var(--lp-primary, #f97316)';
+        btn.style.boxShadow = '0 3px 12px rgba(249,115,22,0.3)';
+        btn.disabled = false;
+    }
+    if (icon) icon.className = 'fas fa-location-crosshairs';
+    if (label) label.textContent = 'Near Me';
+    if (badge) badge.style.display = 'none';
+
+    // Reset the section header back to default
+    const header = document.querySelector('#caterers .section-header p');
+    if (header) header.innerHTML = 'Discover handpicked catering professionals trusted by hundreds of clients.';
+
+    // Re-fetch sorted by rating (default)
+    if (window.performUnifiedSearch) window.performUnifiedSearch();
+};
+
+// Haversine client-side distance calculation (fills in badges if backend didn't compute them)
+function calculateDistancesOnCards() {
+    const userLat = sessionStorage.getItem('user_lat');
+    const userLon = sessionStorage.getItem('user_lon');
+    if (!userLat || !userLon) return;
+
+    document.querySelectorAll('.dist-display').forEach(el => {
+        const lat = parseFloat(el.getAttribute('data-lat'));
+        const lon = parseFloat(el.getAttribute('data-lon'));
+        if (!lat || !lon) return;
+
+        const R = 6371;
+        const dLat = (lat - parseFloat(userLat)) * Math.PI / 180;
+        const dLon = (lon - parseFloat(userLon)) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(parseFloat(userLat) * Math.PI / 180) * Math.cos(lat * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const d = (R * c).toFixed(1);
+
+        const distText = el.querySelector('.dist-text');
+        if (distText) {
+            distText.innerText = d + ' km away';
+            el.style.display = 'flex';
+        }
+    });
+}

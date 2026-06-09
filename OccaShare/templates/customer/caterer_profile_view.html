@@ -1019,7 +1019,7 @@
                 </div>
 
                 <div class="hero-meta">
-                    <div class="meta-pill"><i class="fas fa-map-marker-alt"></i> <span>{{ caterer.contact_address or ((caterer.city ~ (', ' ~ caterer.province_code if caterer.province_code else '')) if caterer.city else (caterer.province_code or 'Philippines')) }}</span></div>
+                    <div class="meta-pill"><i class="fas fa-map-marker-alt"></i> <span>{{ caterer.address_details or caterer.contact_address or caterer.city or 'Philippines' }}</span></div>
                     <div class="meta-pill"><i class="fas fa-star"></i> <span>{{ "%.1f"|format(caterer.rating) if caterer.rating else 'New Partner' }} ({{ caterer.review_count or 0 }} Reviews)</span></div>
                     <div class="meta-pill"><i class="fas fa-eye"></i> <span>{{ caterer.profile_views or 0 }} Views</span></div>
                     <div class="meta-pill"><i class="fas fa-clock"></i> <span>{{ caterer.equipment_turnover_hours if caterer.equipment_turnover_hours is not none else 24 }}h Turnover Buffer</span></div>

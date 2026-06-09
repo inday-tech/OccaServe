@@ -747,13 +747,19 @@ async def customer_marketplace(
     # Sorting
     if lat is not None and lon is not None:
         from sqlalchemy import text
-        # Haversine formula in SQL
+        # Haversine formula in SQL — wrapped in CASE WHEN to handle NULL coordinates gracefully
+        # Caterers without coordinates get distance 99999 (sorted to end)
         distance_query = text("""
-            (6371 * acos(
-                cos(radians(:lat)) * cos(radians(latitude)) * 
-                cos(radians(longitude) - radians(:lon)) + 
-                sin(radians(:lat)) * sin(radians(latitude))
-            ))
+            CASE 
+                WHEN latitude IS NULL OR longitude IS NULL THEN 99999
+                ELSE (6371 * acos(
+                    LEAST(1.0, GREATEST(-1.0,
+                        cos(radians(:lat)) * cos(radians(latitude)) * 
+                        cos(radians(longitude) - radians(:lon)) + 
+                        sin(radians(:lat)) * sin(radians(latitude))
+                    ))
+                ))
+            END
         """).bindparams(lat=lat, lon=lon)
         query = query.order_by(distance_query.asc())
     elif sort == "rating":

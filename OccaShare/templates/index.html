@@ -432,12 +432,20 @@
                     <div class="unified-search-loader" id="searchLoader" style="display: none;">
                         <i class="fas fa-spinner fa-spin"></i>
                     </div>
-                    <button id="locateMeBtn" onclick="triggerGeolocation()" class="bg-brand text-white hover:bg-orange-600 rounded-full px-5 py-2.5 h-full flex-shrink-0 flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg font-bold text-xs uppercase tracking-widest whitespace-nowrap" title="Find caterers near my location">
-                        <i class="fas fa-location-crosshairs animate-pulse"></i> <span>Near Me</span>
+                    <button id="locateMeBtn" onclick="triggerGeolocation()" title="Sort caterers by distance from your location" style="background: var(--lp-primary, #f97316); color: #fff; border: none; padding: 0.55rem 1.1rem; border-radius: 100px; cursor: pointer; font-size: 0.8rem; font-weight: 700; white-space: nowrap; display: flex; align-items: center; gap: 6px; flex-shrink: 0; transition: background 0.2s ease, transform 0.2s ease; letter-spacing: 0.03em; box-shadow: 0 3px 12px rgba(249,115,22,0.3);">
+                        <i class="fas fa-location-crosshairs" id="locateMeIcon"></i>
+                        <span id="locateMeLabel">Near Me</span>
                     </button>
                 </div>
+                <!-- Location status badge (shown after location is obtained) -->
+                <div id="locationStatusBadge" style="display:none; margin-top: 0.6rem; text-align: center;">
+                    <span style="display: inline-flex; align-items: center; gap: 6px; background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; padding: 4px 14px; border-radius: 100px; font-size: 0.78rem; font-weight: 600;">
+                        <i class="fas fa-circle-check"></i>
+                        <span id="locationStatusText">Sorting by nearest location</span>
+                        <button onclick="clearUserLocation()" style="background:none; border:none; cursor:pointer; color: #9ca3af; font-size: 0.75rem; padding: 0; margin-left: 4px;" title="Clear location"><i class="fas fa-xmark"></i></button>
+                    </span>
+                </div>
             </div>
-
 
             <div class="caterer-grid-new">
                 {% include "caterer/components/caterer_card_grid.html" %}

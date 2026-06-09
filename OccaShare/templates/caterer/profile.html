@@ -213,7 +213,7 @@
                 </div>
 
                 <div class="flex flex-wrap items-center justify-center gap-3 text-xs text-slate-500 font-semibold mb-5">
-                    <span class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100/80 rounded-full border border-secondary border-opacity-20"><i class="fas fa-map-marker-alt text-secondary"></i> {{ caterer.contact_address if caterer.contact_address else (caterer.city or 'Location') }}</span>
+                    <span class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100/80 rounded-full border border-secondary border-opacity-20"><i class="fas fa-map-marker-alt text-secondary"></i> {{ caterer.address_details or caterer.contact_address or caterer.city or 'Location' }}</span>
                     <span class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100/80 rounded-full border border-secondary border-opacity-20"><i class="fas fa-star text-accent"></i> {{ "%.1f"|format(caterer.rating) if caterer.rating else 'New Partner' }}</span>
                     <span class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100/80 rounded-full border border-secondary border-opacity-20"><i class="fas fa-eye text-secondary"></i> {{ caterer.profile_views or 0 }} Views</span>
                 </div>
@@ -470,7 +470,7 @@
                         <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-brand shadow-sm flex-shrink-0">
                             <i class="fas fa-map-marker-alt"></i>
                         </div>
-                        <span class="line-clamp-2 text-xs font-semibold text-slate-600">{{ caterer.contact_address or caterer.city or 'Operational HQ' }}</span>
+                        <span class="line-clamp-2 text-xs font-semibold text-slate-600">{{ caterer.address_details or caterer.contact_address or caterer.city or 'Operational HQ' }}</span>
                     </div>
                     <button onclick="calcProfileDistance()" id="profileDistBtn" class="w-full sm:w-auto bg-brand text-white hover:bg-orange-600 px-5 py-2.5 rounded-full text-xs uppercase font-black tracking-widest flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg whitespace-nowrap">
                         <i class="fas fa-location-arrow animate-pulse"></i> <span id="profileDistText">Check Distance</span>
@@ -909,12 +909,13 @@
     // Initialize Google Maps for Verified Location
     document.addEventListener('DOMContentLoaded', function() {
         const businessName = "{{ caterer.business_name|safe }}";
-        const savedAddress = "{{ caterer.contact_address or '' }}";
+        const savedAddress = "{{ caterer.address_details or caterer.contact_address or '' }}";
         const savedCity = "{{ caterer.city or '' }}";
-        const fullAddress = [savedAddress, savedCity, 'Philippines'].filter(Boolean).join(', ');
+        const fullAddress = savedAddress || [savedCity, 'Philippines'].filter(Boolean).join(', ');
         
-        let cLat = {{ caterer.latitude if caterer.latitude else 0 }};
-        let cLon = {{ caterer.longitude if caterer.longitude else 0 }};
+        // Use null to distinguish "not set" from 0.0
+        let cLat = {{ caterer.latitude if caterer.latitude is not none else 'null' }};
+        let cLon = {{ caterer.longitude if caterer.longitude is not none else 'null' }};
         
         const mapElement = document.getElementById('map');
         if (!mapElement) return;
@@ -968,17 +969,25 @@
             window.catererResolvedLon = loc.lng();
         }
 
-        if (cLat !== 0 && cLon !== 0) {
+        // Priority: use saved pin coords → geocode text address → default center
+        if (cLat !== null && cLon !== null && cLat !== 0 && cLon !== 0) {
+            // Caterer has pinned their exact location — use it directly
             placeMarker(new google.maps.LatLng(cLat, cLon));
-        } else {
+        } else if (savedAddress || savedCity) {
+            // Fallback: geocode their text address
             const geocoder = new google.maps.Geocoder();
             geocoder.geocode({ address: fullAddress }, (results, status) => {
                 if (status === 'OK' && results[0]) {
                     placeMarker(results[0].geometry.location);
                 } else {
+                    // Last resort: center on Laguna
                     placeMarker(new google.maps.LatLng(14.1989, 121.4286));
                 }
             });
+        } else {
+            // No coordinates, no address — show default center with a note
+            map.setCenter(new google.maps.LatLng(14.2811, 121.4150));
+            map.setZoom(10);
         }
         
         window.updateMapDistance = function(distanceText) {
