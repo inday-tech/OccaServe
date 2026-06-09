@@ -1129,7 +1129,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     canvas.width = width;
                     canvas.height = height;
-                    // MediaPipe & Active Challenge State Variables
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    canvas.toBlob((blob) => {
+                        resolve(blob);
+                    }, 'image/jpeg', quality);
+                };
+                img.onerror = reject;
+            };
+            reader.onerror = reject;
+        });
+    }
+
+    // MediaPipe & Active Challenge State Variables
                     let faceLandmarker = null;
                     let challengesList = [];
                     let currentChallengeIndex = 0;
