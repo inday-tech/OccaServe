@@ -22,6 +22,22 @@ async def read_root(request: Request, db: Session = Depends(database.get_db)):
         except JWTError:
             pass
 
+    # Temporary Schema Sync
+    try:
+        from sqlalchemy import text
+        db.execute(text("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS event_address TEXT"))
+        db.execute(text("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS id_address TEXT"))
+        db.execute(text("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS current_address TEXT"))
+        db.execute(text("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS verification_status VARCHAR DEFAULT 'pending'"))
+        db.execute(text("ALTER TABLE ocr_verification ADD COLUMN IF NOT EXISTS full_name VARCHAR"))
+        db.execute(text("ALTER TABLE ocr_verification ADD COLUMN IF NOT EXISTS birthdate DATE"))
+        db.execute(text("ALTER TABLE ocr_verification ADD COLUMN IF NOT EXISTS id_address_extracted TEXT"))
+        db.execute(text("ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS permit_status VARCHAR DEFAULT 'Pending'"))
+        db.commit()
+    except Exception as e:
+        print(f"[DB SYNC ERROR] {e}")
+        db.rollback()
+
     packages = db.query(models.CateringPackage).filter(models.CateringPackage.is_active == True).limit(3).all()
     caterers = db.query(models.CatererProfile).filter(models.CatererProfile.status == 'Published').order_by(models.CatererProfile.rating.desc()).limit(5).all()
 
@@ -36,20 +52,7 @@ async def read_root(request: Request, db: Session = Depends(database.get_db)):
     # Stats for the "Trust Counter" section
     total_caterers = db.query(models.CatererProfile).filter(models.CatererProfile.status == 'Published').count()
     # Count actual events that are paid or completed
-    # Temporary Schema Sync
-    try:
-        from sqlalchemy import text
-        db.execute(text("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS event_address TEXT"))
-        db.execute(text("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS id_address TEXT"))
-        db.execute(text("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS current_address TEXT"))
-        db.execute(text("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS verification_status VARCHAR DEFAULT 'pending'"))
-        db.execute(text("ALTER TABLE ocr_verification ADD COLUMN IF NOT EXISTS full_name VARCHAR"))
-        db.execute(text("ALTER TABLE ocr_verification ADD COLUMN IF NOT EXISTS birthdate DATE"))
-        db.execute(text("ALTER TABLE ocr_verification ADD COLUMN IF NOT EXISTS id_address_extracted TEXT"))
-        db.commit()
-    except Exception as e:
-        print(f"[DB SYNC ERROR] {e}")
-        db.rollback()
+
 
     total_events = db.query(models.Booking).filter(models.Booking.status.in_(['paid', 'completed'])).count()
     # Count unique happy hosts (customers)
