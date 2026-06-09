@@ -22,11 +22,48 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Dynamic Location Data via PSGC ---
     const PROVINCE_CODES = {
+        "Abra": "140100000",
+        "Albay": "050500000",
+        "Apayao": "148100000",
+        "Aurora": "037700000",
+        "Bataan": "030800000",
+        "Batanes": "020900000",
         "Batangas": "041000000",
+        "Benguet": "141100000",
+        "Bulacan": "031400000",
+        "Cagayan": "021500000",
+        "Camarines Norte": "051600000",
+        "Camarines Sur": "051700000",
+        "Catanduanes": "052000000",
         "Cavite": "042100000",
+        "Ifugao": "142700000",
+        "Ilocos Norte": "012800000",
+        "Ilocos Sur": "012900000",
+        "Isabela": "023100000",
+        "Kalinga": "143200000",
+        "La Union": "013300000",
         "Laguna": "043400000",
+        "Marinduque": "174000000",
+        "Masbate": "054100000",
+        "Metro Manila - 1st District": "133900000",
+        "Metro Manila - 2nd District": "137400000",
+        "Metro Manila - 3rd District": "137500000",
+        "Metro Manila - 4th District": "137600000",
+        "Mountain Province": "144400000",
+        "Nueva Ecija": "034900000",
+        "Nueva Vizcaya": "025000000",
+        "Occidental Mindoro": "175100000",
+        "Oriental Mindoro": "175200000",
+        "Palawan": "175300000",
+        "Pampanga": "035400000",
+        "Pangasinan": "015500000",
         "Quezon": "045600000",
-        "Rizal": "045800000"
+        "Quirino": "025700000",
+        "Rizal": "045800000",
+        "Romblon": "175900000",
+        "Sorsogon": "056200000",
+        "Tarlac": "036900000",
+        "Zambales": "037100000"
     };
 
     let cachedCities = {};
@@ -217,7 +254,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 let cities = cachedCities[code];
                 if (!cities) {
                     citySelect.innerHTML = '<option value="">Loading...</option>';
-                    const res = await fetch(`https://psgc.gitlab.io/api/provinces/${code}/cities-municipalities/`);
+                    let url = `https://psgc.gitlab.io/api/provinces/${code}/cities-municipalities/`;
+                    if (code.startsWith('13')) {
+                        url = `https://psgc.gitlab.io/api/districts/${code}/cities-municipalities/`;
+                    }
+                    const res = await fetch(url);
                     cities = await res.json();
                     cities.sort((a, b) => a.name.localeCompare(b.name));
                     cachedCities[code] = cities;
