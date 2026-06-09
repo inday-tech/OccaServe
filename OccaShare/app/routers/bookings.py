@@ -555,7 +555,7 @@ async def step_details_submit(
         models.Booking.status.in_(['confirmed', 'preparing', 'in_progress', 'on_the_way'])
     ).all()
     
-    turnover = caterer.turnover_hours or 4.0
+    turnover = caterer.equipment_turnover_hours or 4.0
     for sdb in same_day_bookings:
         if sdb.event_time:
             dt1 = datetime.combine(today, event_time)
