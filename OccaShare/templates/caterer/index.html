@@ -434,7 +434,9 @@
                 <!-- Required items for Publishing -->
                 <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: {{ '#334155' if is_identity_verified else '#64748b' }};">
                     <i class="fas {{ 'fa-check-circle' if is_identity_verified else 'fa-circle-notch' }}" style="color: {{ '#10b981' if is_identity_verified else '#cbd5e1' }};"></i>
-                    <span style="{% if is_identity_verified %}font-weight: 600;{% endif %} text-decoration: {{ 'none' if is_identity_verified else 'underline' }};">Identity Verified <span style="font-size:0.7rem; color:#94a3b8;">(40%)</span></span>
+                    <span style="{% if is_identity_verified %}font-weight: 600;{% endif %} text-decoration: {{ 'none' if is_identity_verified else 'underline' }};">
+                        {{ 'Identity Verified' if is_identity_verified else 'Identity Verification (Pending Review)' }} <span style="font-size:0.7rem; color:#94a3b8;">(40%)</span>
+                    </span>
                 </div>
                 
                 <a href="/caterer/profile" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: {{ '#334155' if has_description else '#64748b' }}; text-decoration: none;" class="checklist-item-hover">

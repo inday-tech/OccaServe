@@ -208,22 +208,33 @@
                             <span style="font-size: 9px; font-weight:800; color:var(--color-neutral-400); text-transform:uppercase; background:var(--color-neutral-100); padding:2px 8px; border-radius:calc(var(--border-radius) * 0.3);">Inventory Linked</span>
                         </div>
                         <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Select the rentals and services from your inventory that are included in this package. These will automatically appear in the customer's package details.</p>
-                        <div style="background:var(--color-neutral-50); border-radius:var(--border-radius); padding:var(--space-md); border:1px solid var(--color-neutral-200); margin-bottom:var(--space-md); max-height:280px; overflow-y:auto;">
-                            <div class="inclusion-matrix" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem;">
+                        <div style="background:var(--color-neutral-50); border-radius:var(--border-radius); padding:var(--space-md); border:1px solid var(--color-neutral-200); margin-bottom:var(--space-md); max-height:350px; overflow-y:auto;">
+                            <div class="menu-grid-scroll" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem;">
                                 {% if services %}
                                     {% for item in services %}
-                                    <label class="matrix-check" style="display: flex; align-items: center; gap: 8px; background: white; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; cursor: pointer;">
-                                        <input type="checkbox" name="linked_menu_ids" value="{{ item.id }}" style="accent-color: var(--primary-color);">
-                                        <div style="display: flex; flex-direction: column;">
-                                            <span style="font-size: 0.85rem; font-weight: 700; color: #1e293b;">{{ item.name }}</span>
-                                            <span style="font-size: 0.7rem; color: #64748b;">{{ item.category }}</span>
+                                    <div class="menu-select-card" data-id="{{ item.id }}" onclick="window.toggleLibItemSelectCard(this, {{ item.id }})" style="position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.5rem; padding: 1.25rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; cursor: pointer; transition: all 0.2s; background: white;">
+                                        <div style="position: absolute; top: 10px; right: 10px; font-size: 1.2rem; color: #cbd5e1; transition: all 0.2s;">
+                                            <i class="far fa-circle"></i>
                                         </div>
-                                    </label>
+                                        {% if item.image_url %}
+                                            <img src="{{ item.image_url }}" alt="{{ item.name }}" style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 3px solid #f8fafc; margin-bottom: 0.25rem; box-shadow: 0 4px 8px rgba(0,0,0,0.06);">
+                                        {% else %}
+                                            <div style="width: 64px; height: 64px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center; margin-bottom: 0.25rem;">
+                                                <i class="fas fa-box" style="font-size: 1.5rem; color: #94a3b8;"></i>
+                                            </div>
+                                        {% endif %}
+                                        <div style="flex: 1; width: 100%;">
+                                            <h6 style="margin: 0; font-size: 0.85rem; font-weight: 800; color: #1e293b; line-height: 1.2; text-overflow: ellipsis; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">{{ item.name }}</h6>
+                                            <div style="font-size: 0.65rem; font-weight: 800; color: var(--primary-color); text-transform: uppercase; margin-top: 6px; letter-spacing: 0.05em;">{{ item.category }}</div>
+                                            <div style="font-size: 0.75rem; color: #64748b; font-weight: 700; margin-top: 2px;">₱{{ "{:,.2f}".format(item.cost_price or 0) }} cost</div>
+                                        </div>
+                                        <input type="checkbox" name="linked_menu_ids" value="{{ item.id }}" style="display:none;">
+                                    </div>
                                     {% endfor %}
                                 {% else %}
                                     <div style="grid-column: 1 / -1; text-align: center; color: #94a3b8; padding: 2rem 0; font-size: 0.85rem;">
                                         <i class="fas fa-box-open" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
-                                        No inventory items found. Add items to your Inventory first.
+                                        No inventory items found. Add items to your Menu Library first with 'Equipment' or 'Rentals' category.
                                     </div>
                                 {% endif %}
                             </div>
@@ -266,16 +277,16 @@
                             </div>
                             <div class="form-group-pro">
                                 <label>Min Guests</label>
-                                <input type="number" name="min_guests" class="control-pro" style="height: 50px; font-weight: 700;" value="50" min="1" max="100000">
+                                <input type="number" name="min_guests" class="control-pro" style="height: 50px; font-weight: 700;" value="50" min="1" max="100000" oninput="if(this.value.length > 6) this.value = this.value.slice(0,6);">
                             </div>
                             <div class="form-group-pro">
                                 <label>Reservation Fee (₱)</label>
-                                <input type="number" name="reservation_fee" class="control-pro" style="height: 50px; font-weight: 700;" value="5000" min="0" max="99999999">
+                                <input type="number" name="reservation_fee" class="control-pro" style="height: 50px; font-weight: 700;" value="5000" min="0" max="99999999" oninput="if(this.value.length > 8) this.value = this.value.slice(0,8);">
                             </div>
                         </div>
                         <div class="form-group-pro" style="margin-bottom: 1rem;">
                             <label>Min. Contract Amount (₱)</label>
-                            <input type="number" name="min_contract_amount" class="control-pro" style="font-weight: 700;" placeholder="Optional" min="0" max="99999999">
+                            <input type="number" name="min_contract_amount" class="control-pro" style="font-weight: 700;" placeholder="Optional" min="0" max="99999999" oninput="if(this.value.length > 8) this.value = this.value.slice(0,8);">
                             <small style="font-size: 10px; color: #94a3b8;">Overrides pax calculation if total is lower than this.</small>
                         </div>
 
@@ -301,19 +312,19 @@
                         <div class="form-row-pro" style="grid-template-columns: repeat(2, 1fr); gap: 1rem;">
                             <div class="form-group-pro" style="margin-bottom: 0.5rem;">
                                 <label style="font-size: 10px;">Labor / Staff (₱)</label>
-                                <input type="number" id="pkgLaborCost" name="labor_cost" class="control-pro" value="0" min="0" max="999999">
+                                <input type="number" id="pkgLaborCost" name="labor_cost" class="control-pro" value="0" min="0" max="999999" oninput="if(this.value.length > 7) this.value = this.value.slice(0,7);">
                             </div>
                             <div class="form-group-pro" style="margin-bottom: 0.5rem;">
                                 <label style="font-size: 10px;">Utilities (₱)</label>
-                                <input type="number" id="pkgUtilityCost" name="utility_cost" class="control-pro" value="0" min="0" max="999999">
+                                <input type="number" id="pkgUtilityCost" name="utility_cost" class="control-pro" value="0" min="0" max="999999" oninput="if(this.value.length > 7) this.value = this.value.slice(0,7);">
                             </div>
                             <div class="form-group-pro" style="margin-bottom: 0.5rem;">
                                 <label style="font-size: 10px;">Equipment (₱)</label>
-                                <input type="number" id="pkgEquipmentCost" name="equipment_cost" class="control-pro" value="0" min="0" max="999999">
+                                <input type="number" id="pkgEquipmentCost" name="equipment_cost" class="control-pro" value="0" min="0" max="999999" oninput="if(this.value.length > 7) this.value = this.value.slice(0,7);">
                             </div>
                             <div class="form-group-pro" style="margin-bottom: 0.5rem;">
                                 <label style="font-size: 10px;">Base Pax</label>
-                                <input type="number" id="pkgBasePax" name="base_pax" class="control-pro" value="50" min="1" max="100000">
+                                <input type="number" id="pkgBasePax" name="base_pax" class="control-pro" value="50" min="1" max="100000" oninput="if(this.value.length > 6) this.value = this.value.slice(0,6);">
                             </div>
                         </div>
                         

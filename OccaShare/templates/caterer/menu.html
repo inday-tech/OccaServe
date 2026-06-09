@@ -22,7 +22,7 @@
     </div>
 </div>
 
-{% set categories_list = ['Appetizer', 'Soup', 'Salad', 'Main Course', 'Side Dish', 'Dessert', 'Drinks', 'Party Trays / Bilao', 'Rentals', 'Equipment', 'Other'] %}
+{% set categories_list = ['Chicken', 'Beef', 'Pork', 'Seafood', 'Vegetable', 'Pasta', 'Dessert', 'Drinks', 'Party Trays / Bilao', 'Other'] %}
 <div class="category-filters animate-up delay-1">
     <button class="cat-chip active" data-cat="all" onclick="filterByCategory('all')">
         All Items <span class="badge-count">{{ menu_items|length }}</span>
@@ -169,20 +169,19 @@
                     <div class="form-row-pro">
                         <div class="form-group-pro">
                             <label>Category</label>
-                            <select name="category" id="modalCategory" class="control-pro" required>
-                                <option value="Appetizer">Appetizer</option>
-                                <option value="Soup">Soup</option>
-                                <option value="Salad">Salad</option>
-                                <option value="Main Course">Main Course</option>
-                                <option value="Side Dish">Side Dish</option>
+                            <select name="category" id="modalCategory" class="control-pro" required onchange="toggleCustomCategory()">
+                                <option value="Chicken">Chicken</option>
+                                <option value="Beef">Beef</option>
+                                <option value="Pork">Pork</option>
+                                <option value="Seafood">Seafood</option>
+                                <option value="Vegetable">Vegetable</option>
+                                <option value="Pasta">Pasta</option>
                                 <option value="Dessert">Dessert</option>
                                 <option value="Drinks">Drinks</option>
                                 <option value="Party Trays / Bilao">Party Trays / Bilao</option>
-                                
-                                
-                                
                                 <option value="Other">Other</option>
                             </select>
+                            <input type="text" name="custom_category" id="customCategoryInput" class="control-pro" placeholder="Type specific category (e.g. Goat, Special)" style="display: none; margin-top: 10px;">
                         </div>
                         <div class="form-group-pro">
                             <label>Pricing Unit</label>
@@ -455,7 +454,18 @@
             modalTitle.innerText = 'Edit Dish Library';
             form.action = `/caterer/menu/${item.id}/update`;
             form.name.value = item.name;
-            form.category.value = item.category;
+            const catSelect = form.category;
+            const catOptions = Array.from(catSelect.options).map(o => o.value);
+            if (catOptions.includes(item.category)) {
+                catSelect.value = item.category;
+                document.getElementById('customCategoryInput').style.display = 'none';
+                document.getElementById('customCategoryInput').required = false;
+            } else {
+                catSelect.value = 'Other';
+                document.getElementById('customCategoryInput').style.display = 'block';
+                document.getElementById('customCategoryInput').value = item.category;
+                document.getElementById('customCategoryInput').required = true;
+            }
             form.description.value = item.description || '';
             form.price.value = item.price || 0;
             form.cost_price.value = item.cost_price || 0;
@@ -659,6 +669,18 @@
         document.getElementById('menuImageInput').value = '';
     }
 
+    function toggleCustomCategory() {
+        const catSelect = document.getElementById('modalCategory');
+        const customInput = document.getElementById('customCategoryInput');
+        if (catSelect.value === 'Other') {
+            customInput.style.display = 'block';
+            customInput.required = true;
+        } else {
+            customInput.style.display = 'none';
+            customInput.required = false;
+        }
+    }
+
     function toggleAddonPrice() {
         const cb = document.getElementById('isAddonCheckbox');
         if (cb && addonPriceContainer) addonPriceContainer.style.display = cb.checked ? 'block' : 'none';
@@ -761,6 +783,14 @@
         }
         const btn = this.querySelector('button[type="submit"]');
         this.querySelectorAll('.js-format-comma').forEach(i => i.value = i.value.replace(/,/g, ''));
+        
+        // --- CUSTOM CATEGORY LOGIC ---
+        const catSelect = this.querySelector('select[name="category"]');
+        const customInput = document.getElementById('customCategoryInput');
+        if (catSelect.value === 'Other' && customInput && customInput.value.trim() !== '') {
+            const newOpt = new Option(customInput.value.trim(), customInput.value.trim(), true, true);
+            catSelect.appendChild(newOpt);
+        }
         
         // --- PRICING & MARGIN VALIDATION ---
         const sellPrice = parseFloat(this.querySelector('input[name="price"]').value) || 0;

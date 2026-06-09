@@ -1376,7 +1376,7 @@ async def add_caterer(
     email: str = Form(...),
     first_name: str = Form(...),
     last_name: str = Form(...),
-    middle_initial: str = Form(""),
+    middle_name: str = Form(""),
     phone: str = Form(...),
     province: str = Form(...),
     municipality: str = Form(...),
@@ -1441,7 +1441,7 @@ async def add_caterer(
 
 
     # Name formatting
-    final_first_name = f"{first_name.strip()} {middle_initial.strip()}".strip()
+    final_first_name = f"{first_name.strip()} {middle_name.strip()}".strip()
     final_last_name = last_name.strip()
 
     # password logic

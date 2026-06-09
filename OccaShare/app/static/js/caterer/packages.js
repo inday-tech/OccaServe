@@ -38,7 +38,7 @@ window.closePackageModal = () => safeCloseModal('packageModal');
 function getActivePackageId() {
     const form = document.getElementById('packageForm');
     if (!form) return null;
-    const action = form.getAttribute('action') || '';
+    const action = form.action || form.getAttribute('action') || '';
     if (action.includes('/update')) {
         const parts = action.split('/');
         return parts[parts.length - 2];
@@ -360,7 +360,8 @@ window.reactivelyValidateForm = function(isInitialLoad = false) {
     // Enable or disable Save Package button reactively
     const saveBtn = document.getElementById('pkgSaveBtn');
     if (saveBtn) {
-        if (isAllValid) {
+        const isEditMode = getActivePackageId() !== null;
+        if (isAllValid || isEditMode) {
             saveBtn.style.opacity = '1';
             saveBtn.style.background = 'var(--primary-color)';
             saveBtn.innerHTML = '<i class="fas fa-check-circle"></i> Save Package';
@@ -370,7 +371,7 @@ window.reactivelyValidateForm = function(isInitialLoad = false) {
         } else {
             saveBtn.style.opacity = '0.7'; 
             saveBtn.style.background = '#94a3b8';
-            saveBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Form Incomplete';
+            saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Package';
             saveBtn.disabled = true;
             saveBtn.style.cursor = 'not-allowed';
             saveBtn.style.pointerEvents = 'none';
@@ -513,15 +514,39 @@ async function loadPkgMenuLibrary() {
         // Populate tab-perks (Equipment/Services) checkboxes
         document.querySelectorAll('#tab-perks input[name="linked_menu_ids"]').forEach(cb => {
             cb.checked = linkedIds.includes(parseInt(cb.value));
+            // Add visual selection style if checked
+            const card = cb.closest('.menu-select-card');
+            if (card) {
+                if (cb.checked) {
+                    card.classList.add('selected');
+                    card.style.background = '#f0fdf4';
+                    card.style.borderColor = '#22c55e';
+                    const icon = card.querySelector('i');
+                    if(icon) icon.className = 'fas fa-check-circle text-green-500';
+                } else {
+                    card.classList.remove('selected');
+                    card.style.background = 'white';
+                    card.style.borderColor = '#e2e8f0';
+                    const icon = card.querySelector('i');
+                    if(icon) icon.className = 'far fa-circle text-slate-200';
+                }
+            }
+        });
+
+        // Filter library to only show food items in Menu Setup
+        const excludeCats = ['rentals', 'services', 'equipment'];
+        const foodLibrary = library.filter(item => {
+            const cat = item.category ? item.category.toLowerCase() : '';
+            return !excludeCats.includes(cat);
         });
 
         container.innerHTML = '';
-        if (library.length === 0) {
-            container.innerHTML = '<div class="text-center py-5 text-slate-400 text-xs">Your library is currently empty.</div>';
+        if (foodLibrary.length === 0) {
+            container.innerHTML = '<div class="text-center py-5 text-slate-400 text-xs">Your menu library is currently empty.</div>';
             return;
         }
 
-        container.innerHTML = library.map(item => {
+        container.innerHTML = foodLibrary.map(item => {
             const isSelected = linkedIds.includes(item.id);
             return `
                 <div class="menu-select-card ${isSelected ? 'selected' : ''}" 
@@ -807,7 +832,14 @@ async function loadLibraryItems() {
         const linkedItems = await linkedRes.json();
         const linkedIds = Array.isArray(linkedItems) ? linkedItems.map(i => i.id) : [];
 
-        container.innerHTML = library.map(item => {
+        // Filter library to only show food items
+        const excludeCats = ['rentals', 'services', 'equipment'];
+        const foodLibrary = library.filter(item => {
+            const cat = item.category ? item.category.toLowerCase() : '';
+            return !excludeCats.includes(cat);
+        });
+
+        container.innerHTML = foodLibrary.map(item => {
             const isLinked = linkedIds.includes(item.id);
             return `
                 <div class="library-item-row" data-name="${item.name.toLowerCase()}" style="display: flex; align-items: center; gap: 1rem; background: #fff; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; margin-bottom: 0.5rem;">

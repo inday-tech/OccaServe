@@ -890,7 +890,12 @@ async def caterer_dashboard(
     has_menu = len([m for m in profile.menu_items if getattr(m, 'is_archived', False) == False]) > 0
     has_permit = bool(profile.permit_url)
     
-    completion_pct = 40  # Base wizard
+    # Check eligibility to publish: Identity Verified + 1 Package + 3 Photos + Description
+    is_identity_verified = profile.status in ['Identity Verified', 'Published', 'Ready For Review', 'Verified'] or profile.verification_status == 'Verified'
+    can_publish = is_identity_verified and has_packages and has_photos and has_description
+
+    completion_pct = 0
+    if is_identity_verified: completion_pct += 40
     if has_logo: completion_pct += 10
     if has_cover: completion_pct += 5
     if has_description: completion_pct += 5
@@ -899,10 +904,6 @@ async def caterer_dashboard(
     if has_starting_price: completion_pct += 5
     if has_menu: completion_pct += 5
     if has_permit: completion_pct += 5
-    
-    # Check eligibility to publish: Identity Verified + 1 Package + 3 Photos + Description
-    is_identity_verified = profile.status in ['Identity Verified', 'Published', 'Ready For Review', 'Verified'] or profile.verification_status == 'Verified'
-    can_publish = is_identity_verified and has_packages and has_photos and has_description
     
     return templates.TemplateResponse("caterer/index.html", {
         "request": request,
@@ -2129,8 +2130,8 @@ async def manage_packages(
 ):
     profile = user.caterer_profile
     active_packages = [p for p in profile.packages if p.status != 'archived']
-    active_menu = [m for m in profile.menu_items if not m.is_archived and m.category not in ['Rentals', 'Services']]
-    active_services = [m for m in profile.menu_items if not m.is_archived and m.category in ['Rentals', 'Services']]
+    active_menu = [m for m in profile.menu_items if not m.is_archived and m.category not in ['Rentals', 'Services', 'Equipment']]
+    active_services = [m for m in profile.menu_items if not m.is_archived and m.category in ['Rentals', 'Services', 'Equipment']]
     
     return templates.TemplateResponse("caterer/packages.html", {
         "request": request,
