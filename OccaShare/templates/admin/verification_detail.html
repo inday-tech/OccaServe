@@ -274,7 +274,11 @@
                     {% if target_user.role == 'caterer' and target_user.caterer_profile and target_user.caterer_profile.permit_url %}
                     <div class="image-scanner">
                         <label style="position: absolute; top: 12px; left: 12px; background: rgba(15,23,42,0.8); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.6rem; font-weight: 800; z-index: 30;">Business Permit</label>
+                        {% if target_user.caterer_profile.permit_url.startswith('data:application/pdf') or target_user.caterer_profile.permit_url.endswith('.pdf') %}
+                        <iframe src="{{ target_user.caterer_profile.permit_url }}" style="width: 100%; height: 260px; border: none; background: #e2e8f0;"></iframe>
+                        {% else %}
                         <img src="{{ target_user.caterer_profile.permit_url }}" style="width: 100%; height: 260px; object-fit: contain; background: #e2e8f0;">
+                        {% endif %}
                     </div>
                     {% endif %}
                 </div>

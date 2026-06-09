@@ -686,7 +686,7 @@ async def customer_marketplace(
         stats_subquery.c.min_price,
         stats_subquery.c.max_capacity
     ).outerjoin(stats_subquery, models.CatererProfile.id == stats_subquery.c.caterer_id)\
-     .filter(models.CatererProfile.verification_status == "Verified")
+     .filter(models.CatererProfile.status == "Published")
 
     # Search filter (deep unified search across all fields)
     if q:
@@ -855,7 +855,8 @@ async def caterer_detail(
 
     # Guard: check if caterer can accept new bookings
     caterer_unavailable = bool(
-        caterer.account_status and caterer.account_status.lower() != 'active'
+        (caterer.account_status and caterer.account_status.lower() != 'active') or 
+        (caterer.status != 'Published')
     )
 
     return templates.TemplateResponse("customer/caterer_profile_view.html", {
@@ -1173,7 +1174,7 @@ async def customer_omni_search(
 
     # 1. Search Caterers
     caterers = db.query(models.CatererProfile).filter(
-        models.CatererProfile.verification_status == "Verified",
+        models.CatererProfile.status == "Published",
         models.CatererProfile.business_name.ilike(search_filter)
     ).limit(5).all()
 

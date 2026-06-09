@@ -887,7 +887,7 @@ async def caterer_dashboard(
     has_packages = len(profile.packages) >= 1
     has_photos = len(profile.gallery_items) >= 3
     has_starting_price = bool(profile.starting_price and profile.starting_price > 0)
-    has_menu = bool(profile.sample_menu_url)
+    has_menu = len([m for m in profile.menu_items if not m.is_archived]) > 0
     has_permit = bool(profile.permit_url)
     
     completion_pct = 40  # Base wizard
@@ -2506,6 +2506,7 @@ async def update_profile(
     city_code: Optional[str] = Form(None),
     brgy_code: Optional[str] = Form(None),
     gallery: List[UploadFile] = File(default=[]),
+    permit_file: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
@@ -2579,7 +2580,7 @@ async def update_profile(
     import base64
     # Handle Single File Uploads
     logo_file = logo if (logo and logo.filename) else logo_brand
-    for field_name, file_obj in [("logo", logo_file), ("cover_image", cover_image), ("gcash_qr", gcash_qr), ("maya_qr", maya_qr), ("bank_qr", bank_qr)]:
+    for field_name, file_obj in [("logo", logo_file), ("cover_image", cover_image), ("gcash_qr", gcash_qr), ("maya_qr", maya_qr), ("bank_qr", bank_qr), ("permit", permit_file)]:
         if file_obj and file_obj.filename:
             try:
                 content_bytes = await file_obj.read()
@@ -2590,9 +2591,13 @@ async def update_profile(
                     setattr(profile, f"{field_name}_url" if field_name != 'logo' else 'logo_url', data_url)
                     if field_name == 'logo':
                         # Sync Caterer's User profile image with their Business Logo
-                        user = db.query(User).filter(User.id == current_user_id).first()
-                        if user:
-                            user.profile_image_url = data_url
+                        db_user = db.query(models.User).filter(models.User.id == user.id).first()
+                        if db_user:
+                            db_user.profile_image_url = data_url
+                    if field_name == 'permit':
+                        profile.permit_status = 'Pending Review'
+                        # Reset verification status if they uploaded a new permit to require re-review
+                        profile.verification_status = 'Pending Review'
             except Exception:
                 pass
 

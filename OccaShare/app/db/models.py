@@ -116,6 +116,7 @@ class CatererProfile(Base):
     starting_price = Column(Float, default=0.0)
     sample_menu_url = Column(String, nullable=True)
     permit_url = Column(String, nullable=True)
+    permit_status = Column(String, default='Pending') # Pending, Verified, Rejected
     gov_id_url = Column(String, nullable=True)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)

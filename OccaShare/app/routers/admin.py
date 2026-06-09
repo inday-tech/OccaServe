@@ -1995,6 +1995,8 @@ async def kyc_manual_action(
         # If caterer, also update profile status
         if target_user.role == "caterer" and target_user.caterer_profile:
             target_user.caterer_profile.verification_status = "Verified"
+            if target_user.caterer_profile.permit_url:
+                target_user.caterer_profile.permit_status = "Verified"
             
         # Send Approval Email
         EmailService.send_kyc_approval_email(target_user.email, full_name)
@@ -2006,6 +2008,8 @@ async def kyc_manual_action(
         
         if target_user.role == "caterer" and target_user.caterer_profile:
             target_user.caterer_profile.verification_status = "Rejected"
+            if target_user.caterer_profile.permit_url:
+                target_user.caterer_profile.permit_status = "Rejected"
             
         # Send Rejection Email
         EmailService.send_kyc_rejection_email(target_user.email, full_name, kyc.failure_reason)
