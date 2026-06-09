@@ -93,7 +93,9 @@ def is_valid_business_name(name: str) -> Optional[str]:
     if name.strip().isdigit():
         return "Business name cannot be purely numeric"
         
-    if is_keyboard_walk(name.replace(" ", "")) or is_gibberish(name.replace(" ", "")):
+    # Split by spaces/hyphens to prevent false positives from word concatenation (e.g., "importeds and" -> "dsa")
+    words = re.split(r'[\s\-]+', name)
+    if any(is_keyboard_walk(w) for w in words) or is_gibberish(name.replace(" ", "")):
         return "Please provide a valid, professional business name"
         
     return None
@@ -106,7 +108,9 @@ def is_valid_person_name(name: str) -> Optional[str]:
     if not re.match(r"^[a-zA-Z\s\-]+$", name):
         return "Name should not contain numbers or special characters"
         
-    if is_keyboard_walk(name.replace(" ", "").replace("-", "")) or is_gibberish(name.replace(" ", "").replace("-", "")):
+    # Split by spaces/hyphens to prevent false positives from word concatenation (e.g., "david samuel" -> "dsa")
+    words = re.split(r'[\s\-]+', name)
+    if any(is_keyboard_walk(w) for w in words) or is_gibberish(name.replace(" ", "").replace("-", "")):
         return "Please provide a real name"
         
     if re.search(r"(.)\1\1", name): # Triple repetitive check

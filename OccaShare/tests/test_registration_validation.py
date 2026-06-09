@@ -6,7 +6,7 @@ from typing import Optional
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.routers.auth import is_dummy_email, is_dummy_phone
-from app.core.utils import is_valid_business_name
+from app.core.utils import is_valid_business_name, is_valid_person_name
 
 def test_email_validation():
     print("Testing email validation...")
@@ -98,6 +98,11 @@ def test_business_name_validation():
     assert is_valid_business_name("Gab Hub's Imported Cuisines") is None
     assert is_valid_business_name("Mary's Kitchen & Catering") is None
     assert is_valid_business_name("R-Events, Inc.") is None
+    assert is_valid_business_name("GAB HUBS IMPORTEDS AND RESTORANTE") is None
+    
+    # Check that person names with accidental keyboard walks are allowed
+    assert is_valid_person_name("David Samuel") is None
+    assert is_valid_person_name("Lucas Diaz") is None
     
     # Invalid characters (e.g. symbol '@' or '#')
     assert is_valid_business_name("Gab @ Hub") == "Business name should only contain letters, numbers, spaces, dots, apostrophes, hyphens, commas, and ampersands"
