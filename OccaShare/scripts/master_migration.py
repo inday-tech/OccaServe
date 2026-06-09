@@ -101,6 +101,7 @@ def master_migration():
             ("starting_price", "FLOAT DEFAULT 0.0"),
             ("sample_menu_url", "VARCHAR"),
             ("permit_url", "VARCHAR"),
+            ("permit_status", "VARCHAR DEFAULT 'Pending'"),
             ("gov_id_url", "VARCHAR"),
             ("latitude", "FLOAT"),
             ("longitude", "FLOAT"),
