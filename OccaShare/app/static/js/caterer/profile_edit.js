@@ -264,163 +264,51 @@ document.addEventListener('DOMContentLoaded', function () {
             img.src = imgSrc;
             img.onload = function() {
                 try {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    const size = 150; 
-                    canvas.width = size;
-                    canvas.height = size;
-                    ctx.drawImage(img, 0, 0, size, size);
+                    Vibrant.from(img).getPalette().then((palette) => {
+                        const getHex = (swatch, fallback) => swatch ? swatch.getHex() : fallback;
+                        
+                        // Vibrant returns true, rich colors instead of washed-out averages
+                        const primary = getHex(palette.Vibrant, '#FF7B54');
+                        const secondary = getHex(palette.DarkVibrant, getHex(palette.Muted, '#2D4059'));
+                        const accent = getHex(palette.LightVibrant, primary);
+                        const highlight = getHex(palette.DarkMuted, getHex(palette.LightMuted, primary));
 
-                    const imageData = ctx.getImageData(0, 0, size, size).data;
-                    const colorCounts = {};
-                    const q = 16; 
-
-                    for (let i = 0; i < imageData.length; i += 4) {
-                        const r = imageData[i], g = imageData[i + 1], b = imageData[i + 2], a = imageData[i + 3];
-                        if (a < 128) continue; 
-
-                        const avg = (r + g + b) / 3;
-                        if (avg > 240 || avg < 15) continue; 
-
-                        const qr = Math.round(r / q) * q;
-                        const qg = Math.round(g / q) * q;
-                        const qb = Math.round(b / q) * q;
-                        const key = `${qr},${qg},${qb}`;
-                        colorCounts[key] = (colorCounts[key] || 0) + 1;
-                    }
-
-                    const rgbToHex = (r, g, b) => "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
-                    const hexToRgb = (hex) => {
-                        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-                        return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : {r:0,g:0,b:0};
-                    };
-                    const rgbToHsv = (r, g, b) => {
-                        r /= 255, g /= 255, b /= 255;
-                        const max = Math.max(r, g, b), min = Math.min(r, g, b);
-                        let h, s, v = max;
-                        const d = max - min;
-                        s = max === 0 ? 0 : d / max;
-                        if (max === min) h = 0;
-                        else {
-                            switch (max) {
-                                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-                                case g: h = (b - r) / d + 2; break;
-                                case b: h = (r - g) / d + 4; break;
+                        const applyColor = (name, hex) => {
+                            const input = document.querySelector(`input[name="${name}"]`);
+                            if (input) {
+                                input.value = hex;
+                                input.dispatchEvent(new Event('input', { bubbles: true }));
+                                const span = input.nextElementSibling;
+                                if (span && span.classList.contains('color-code')) {
+                                    span.textContent = hex.toUpperCase();
+                                }
                             }
-                            h /= 6;
-                        }
-                        return { h, s, v };
-                    };
-                    const hsvToRgb = (h, s, v) => {
-                        let r, g, b;
-                        const i = Math.floor(h * 6);
-                        const f = h * 6 - i;
-                        const p = v * (1 - s);
-                        const q = v * (1 - f * s);
-                        const t = v * (1 - (1 - f) * s);
-                        switch (i % 6) {
-                            case 0: r = v, g = t, b = p; break;
-                            case 1: r = q, g = v, b = p; break;
-                            case 2: r = p, g = v, b = t; break;
-                            case 3: r = p, g = q, b = v; break;
-                            case 4: r = t, g = p, b = v; break;
-                            case 5: r = v, g = p, b = q; break;
-                        }
-                        return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
-                    };
+                        };
 
-                    const sortedColors = Object.entries(colorCounts)
-                        .map(([rgbStr, count]) => {
-                            const rgb = rgbStr.split(',').map(Number);
-                            const hex = rgbToHex(rgb[0], rgb[1], rgb[2]);
-                            const hsv = rgbToHsv(rgb[0], rgb[1], rgb[2]);
-                            return { hex, count, ...hsv };
-                        })
-                        .sort((a, b) => b.count - a.count);
-                    
-                    if (sortedColors.length === 0) throw new Error("No usable colors extracted.");
+                        applyColor('primary_color', primary);
+                        applyColor('secondary_color', secondary);
+                        applyColor('accent_color', accent);
+                        applyColor('highlight_color', highlight);
+                        
+                        if (typeof updateMockup === 'function') updateMockup();
 
-                    const hueGroups = {};
-                    sortedColors.forEach(c => {
-                        const hKey = Math.floor(c.h * 12);
-                        if (!hueGroups[hKey]) hueGroups[hKey] = [];
-                        hueGroups[hKey].push(c);
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire('Palette Generated!', 'Magic Palette applied. Elite dashboard theme generated.', 'success');
+                        } else {
+                            alert('Palette Generated! Magic Palette applied.');
+                        }
+                    }).catch(err => {
+                        console.error("Extraction error", err);
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire('Extraction Failed', 'Failed to extract colors. Please try a different image format.', 'error');
+                        } else {
+                            alert('Extraction Failed: Failed to extract colors.');
+                        }
+                    }).finally(() => {
+                        btn.innerHTML = btnOriginalHtml;
+                        btn.disabled = false;
                     });
-
-                    const groups = Object.values(hueGroups).sort((a, b) => {
-                        const countA = a.reduce((sum, curr) => sum + curr.count, 0);
-                        const countB = b.reduce((sum, curr) => sum + curr.count, 0);
-                        return countB - countA;
-                    });
-
-                    const getBalancedColor = (candidates) => {
-                        return candidates.sort((a, b) => {
-                            const scoreA = (a.s > 0.2 ? 1 : 0) + (a.v > 0.2 && a.v < 0.8 ? 1 : 0);
-                            const scoreB = (b.s > 0.2 ? 1 : 0) + (b.v > 0.2 && b.v < 0.8 ? 1 : 0);
-                            return scoreB - scoreA || b.count - a.count;
-                        })[0];
-                    };
-
-                    let primary = getBalancedColor(groups[0]).hex;
-
-                    let secondary;
-                    if (groups[1]) {
-                        secondary = getBalancedColor(groups[1]).hex;
-                    } else {
-                        const pRgb = hexToRgb(primary);
-                        secondary = rgbToHex(Math.max(0, pRgb.r - 40), Math.max(0, pRgb.g - 40), Math.max(0, pRgb.b - 40));
-                    }
-
-                    const allBySaturation = [...sortedColors].sort((a, b) => b.s - a.s);
-                    let accent = (allBySaturation.find(c => c.s > 0.4 && c.v > 0.4) || allBySaturation[0]).hex;
-
-                    const highlight = rgbToHex(
-                        Math.min(255, hexToRgb(primary).r + 180),
-                        Math.min(255, hexToRgb(primary).g + 180),
-                        Math.min(255, hexToRgb(primary).b + 180)
-                    );
-
-                    const sanitize = (hex) => {
-                        const hsv = rgbToHsv(...Object.values(hexToRgb(hex)));
-                        if (hsv.s > 0.85 || hsv.v > 0.95) {
-                            const rgb = hsvToRgb(hsv.h, Math.min(hsv.s, 0.7), Math.min(hsv.v, 0.8));
-                            return rgbToHex(rgb.r, rgb.g, rgb.b);
-                        }
-                        return hex;
-                    };
-
-                    const applyColor = (name, hex) => {
-                        const input = document.querySelector(`input[name="${name}"]`);
-                        if (input) {
-                            input.value = hex;
-                            input.dispatchEvent(new Event('input', { bubbles: true }));
-                            const span = input.nextElementSibling;
-                            if (span && span.classList.contains('color-code')) {
-                                span.textContent = hex.toUpperCase();
-                            }
-                        }
-                    };
-
-                    applyColor('primary_color', sanitize(primary));
-                    applyColor('secondary_color', sanitize(secondary));
-                    applyColor('accent_color', sanitize(accent));
-                    applyColor('highlight_color', sanitize(highlight));
-                    
-                    if (typeof updateMockup === 'function') updateMockup();
-
-                    if (typeof Swal !== 'undefined') {
-                        Swal.fire('Palette Generated!', 'Magic Palette applied. Elite dashboard theme generated.', 'success');
-                    } else {
-                        alert('Palette Generated! Magic Palette applied.');
-                    }
                 } catch (err) {
-                    console.error("Extraction error", err);
-                    if (typeof Swal !== 'undefined') {
-                        Swal.fire('Extraction Failed', 'Failed to extract colors. Please try a different image format.', 'error');
-                    } else {
-                        alert('Extraction Failed: Failed to extract colors.');
-                    }
-                } finally {
                     btn.innerHTML = btnOriginalHtml;
                     btn.disabled = false;
                 }

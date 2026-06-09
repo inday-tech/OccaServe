@@ -2598,8 +2598,10 @@ async def update_profile(
                         profile.permit_status = 'Pending Review'
                         # Reset verification status if they uploaded a new permit to require re-review
                         profile.verification_status = 'Pending Review'
-            except Exception:
-                pass
+            except Exception as e:
+                import traceback
+                print(f"[IMAGE UPLOAD ERROR] Failed on {field_name}: {str(e)}")
+                traceback.print_exc()
 
     # Handle Gallery Uploads (Multiple)
     if gallery:
@@ -2618,8 +2620,10 @@ async def update_profile(
                             media_type="image"
                         )
                         db.add(new_gallery_item)
-                except Exception:
-                    pass
+                except Exception as e:
+                    import traceback
+                    print(f"[GALLERY UPLOAD ERROR] Failed: {str(e)}")
+                    traceback.print_exc()
 
     db.commit()
     return RedirectResponse(url="/caterer/profile?success_msg=Business+profile+updated+successfully", status_code=303)

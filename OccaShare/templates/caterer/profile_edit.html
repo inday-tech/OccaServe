@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/color-thief/2.3.0/color-thief.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/node-vibrant/3.1.6/vibrant.min.js"></script>
 <script src="{{ url_for('static', path='/js/caterer/profile_edit.js') }}?v=3.0"></script>
 {% endblock %}
 
@@ -181,7 +181,7 @@
                     <div class="form-row-two-col">
                         <div class="form-group">
                             <label><i class="fas fa-flag"></i> Province</label>
-                            <select id="locationProvince" required class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:8px;">
+                            <select id="locationProvince" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:8px;">
                                 <option value="">Select Province</option>
                             </select>
                             <input type="hidden" name="province_code" id="provinceCodeHidden" value="{{ profile.province_code or '' }}">
@@ -190,7 +190,7 @@
                         </div>
                         <div class="form-group">
                             <label><i class="fas fa-city"></i> Municipality / City</label>
-                            <select id="locationMunicipality" required class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:8px;" disabled>
+                            <select id="locationMunicipality" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:8px;" disabled>
                                 <option value="">Select Municipality</option>
                             </select>
                             <input type="hidden" name="city_code" id="cityCodeHidden" value="{{ profile.city_code or '' }}">
@@ -201,7 +201,7 @@
                     <div class="form-row-two-col">
                         <div class="form-group">
                             <label><i class="fas fa-map-pin"></i> Barangay</label>
-                            <select id="locationBarangay" required class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:8px;" disabled>
+                            <select id="locationBarangay" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:8px;" disabled>
                                 <option value="">Select Barangay</option>
                             </select>
                             <input type="hidden" name="brgy_code" id="brgyCodeHidden" value="{{ profile.brgy_code or '' }}">
@@ -258,12 +258,6 @@
                         </div>
                         {% endif %}
                         <span class="field-hint">Required for administrative review and platform compliance. This is strictly private and visible only to you and platform admins.</span>
-                    </div>
-
-                    <div style="margin-top: 1.5rem;">
-                        <button type="button" class="profile-action-btn secondary" onclick="openPasswordModal()" style="max-width: 280px;">
-                            <i class="fas fa-key"></i> <span>Change Password</span>
-                        </button>
                     </div>
 
                     <!-- Notification Preferences -->
@@ -715,10 +709,6 @@
                                 </div>
                             </div>
 
-                            <div class="brand-action-footer">
-                                <button type="submit" class="btn-primary btn-save-changes">Save Brand Settings</button>
-                                <a href="/caterer/dashboard" class="btn-outline btn-discard-changes">Discard Changes</a>
-                            </div>
 
                             <!-- Layout Controls -->
                             <div class="brand-settings-card">
@@ -1405,12 +1395,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         optNCR.textContent = "NATIONAL CAPITAL REGION (NCR)";
         provSelect.appendChild(optNCR);
 
-        if (savedProvCode) {
-            provSelect.value = savedProvCode;
+        let activeProvCode = savedProvCode;
+        if (savedProvCode && isNaN(savedProvCode)) {
+            const upName = savedProvCode.toUpperCase();
+            const found = provinces.find(p => p.name.toUpperCase() === upName || p.name.toUpperCase().includes(upName));
+            if (found) { activeProvCode = found.code; provCodeHidden.value = activeProvCode; }
+            else if (upName.includes("NCR") || upName.includes("METRO MANILA")) { activeProvCode = "130000000"; provCodeHidden.value = activeProvCode; }
+        }
+
+        if (activeProvCode) {
+            provSelect.value = activeProvCode;
             if (provSelect.options[provSelect.selectedIndex]) {
                 provNameHidden.value = provSelect.options[provSelect.selectedIndex].text;
             }
-            await fetchCities(savedProvCode, savedCityCode);
+            await fetchCities(activeProvCode, savedCityCode);
         }
     } catch (e) { console.error('Failed to load provinces:', e); }
 
@@ -1478,12 +1476,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             citySelect.disabled = false;
 
-            if (preSelectCode) {
-                citySelect.value = preSelectCode;
+            let activeCityCode = preSelectCode;
+            if (preSelectCode && isNaN(preSelectCode)) {
+                const upName = preSelectCode.toUpperCase();
+                const found = cities.find(c => c.name.toUpperCase() === upName || c.name.toUpperCase().includes(upName));
+                if (found) { activeCityCode = found.code; cityCodeHidden.value = activeCityCode; }
+            }
+
+            if (activeCityCode) {
+                citySelect.value = activeCityCode;
                 if (citySelect.options[citySelect.selectedIndex]) {
                     cityNameHidden.value = citySelect.options[citySelect.selectedIndex].text;
                 }
-                await fetchBarangays(preSelectCode, savedBrgyCode);
+                await fetchBarangays(activeCityCode, savedBrgyCode);
             }
         } catch (e) {
             console.error('Failed to load cities:', e);
@@ -1509,8 +1514,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             brgySelect.disabled = false;
 
-            if (preSelectCode) {
-                brgySelect.value = preSelectCode;
+            let activeBrgyCode = preSelectCode;
+            if (preSelectCode && isNaN(preSelectCode)) {
+                const upName = preSelectCode.toUpperCase();
+                const found = brgys.find(b => b.name.toUpperCase() === upName || b.name.toUpperCase().includes(upName));
+                if (found) { activeBrgyCode = found.code; brgyCodeHidden.value = activeBrgyCode; }
+            }
+
+            if (activeBrgyCode) {
+                brgySelect.value = activeBrgyCode;
                 if (brgySelect.options[brgySelect.selectedIndex]) {
                     brgyNameHidden.value = brgySelect.options[brgySelect.selectedIndex].text;
                 }
