@@ -884,10 +884,10 @@ async def caterer_dashboard(
     has_logo = bool(profile.logo_url and profile.logo_url != "/static/images/default_caterer.png")
     has_cover = bool(profile.cover_image_url)
     has_description = bool(profile.description and profile.description.strip())
-    has_packages = len(profile.packages) >= 1
-    has_photos = len(profile.gallery_items) >= 3
+    has_packages = len([p for p in profile.packages if getattr(p, 'is_archived', False) == False]) >= 1
+    has_photos = len([i for i in profile.gallery_items if getattr(i, 'is_archived', False) == False]) >= 3
     has_starting_price = bool(profile.starting_price and profile.starting_price > 0)
-    has_menu = len([m for m in profile.menu_items if not m.is_archived]) > 0
+    has_menu = len([m for m in profile.menu_items if getattr(m, 'is_archived', False) == False]) > 0
     has_permit = bool(profile.permit_url)
     
     completion_pct = 40  # Base wizard
@@ -933,8 +933,8 @@ async def toggle_publish(
         return JSONResponse(status_code=404, content={"success": False, "message": "Profile not found"})
         
     has_description = bool(profile.description and profile.description.strip())
-    has_packages = len(profile.packages) >= 1
-    has_photos = len(profile.gallery_items) >= 3
+    has_packages = len([p for p in profile.packages if getattr(p, 'is_archived', False) == False]) >= 1
+    has_photos = len([i for i in profile.gallery_items if getattr(i, 'is_archived', False) == False]) >= 3
     is_identity_verified = profile.status in ['Identity Verified', 'Published', 'Ready For Review', 'Verified'] or profile.verification_status == 'Verified'
     
     can_publish = is_identity_verified and has_packages and has_photos and has_description

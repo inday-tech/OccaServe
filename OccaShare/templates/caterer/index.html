@@ -432,9 +432,9 @@
             <!-- Checklist Grid -->
             <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 15px;">
                 <!-- Required items for Publishing -->
-                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: #334155;">
-                    <i class="fas fa-check-circle" style="color: #10b981;"></i>
-                    <span style="font-weight: 600;">Identity Verified <span style="font-size:0.7rem; color:#94a3b8;">(40%)</span></span>
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: {{ '#334155' if is_identity_verified else '#64748b' }};">
+                    <i class="fas {{ 'fa-check-circle' if is_identity_verified else 'fa-circle-notch' }}" style="color: {{ '#10b981' if is_identity_verified else '#cbd5e1' }};"></i>
+                    <span style="{% if is_identity_verified %}font-weight: 600;{% endif %} text-decoration: {{ 'none' if is_identity_verified else 'underline' }};">Identity Verified <span style="font-size:0.7rem; color:#94a3b8;">(40%)</span></span>
                 </div>
                 
                 <a href="/caterer/profile" style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: {{ '#334155' if has_description else '#64748b' }}; text-decoration: none;" class="checklist-item-hover">
@@ -480,9 +480,9 @@
 
             <!-- Alert banner for publish requirements -->
             {% if not can_publish %}
-            <div style="font-size: 0.72rem; color: #9a3412; background: #fff7ed; border: 1px solid #ffedd5; padding: 8px 12px; border-radius: 8px; display: flex; align-items: center; gap: 6px;">
-                <i class="fas fa-exclamation-triangle"></i>
-                <span>Minimum to Publish: Description, Catering Package, 3+ Food Photos.</span>
+            <div style="margin-top: 15px; font-size: 0.75rem; color: #b91c1c; background: #fef2f2; padding: 10px 15px; border-radius: 8px; display: flex; gap: 10px; align-items: flex-start; border: 1px solid #fecaca;">
+                <i class="fas fa-exclamation-triangle" style="margin-top: 2px;"></i>
+                <span><strong>Minimum to Publish:</strong> Identity Verification, Business Description, 1 Catering Package, 3+ Unarchived Food Photos.</span>
             </div>
             {% endif %}
         </div>
