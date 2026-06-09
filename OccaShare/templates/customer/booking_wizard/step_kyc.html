@@ -250,6 +250,15 @@
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02) !important;
     }
 
+    .action-card.disabled {
+        opacity: 0.4 !important;
+        pointer-events: none !important;
+        filter: grayscale(0.5);
+        cursor: not-allowed !important;
+        border-color: var(--kyc-slate-200) !important;
+        background: var(--kyc-slate-50) !important;
+    }
+
     .action-card:hover:not(.disabled) {
         border-color: var(--kyc-accent) !important;
         transform: translateY(-6px) !important;
