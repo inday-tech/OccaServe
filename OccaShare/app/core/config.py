@@ -40,3 +40,4 @@ class Settings:
     PAYMONGO_WEBHOOK_SIG_KEY = os.getenv("PAYMONGO_WEBHOOK_SIG_KEY", "")
 
 settings = Settings()
+# Env reload trigger
