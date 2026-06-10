@@ -1815,6 +1815,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     window.validateIdSelection();
                     initDefaultMethod();
 
+                    const scannerContainer = document.getElementById('scanner-container');
+                    if (scannerContainer && scannerContainer.style.display === 'block') {
+                        console.log("[KYC] Page loaded in liveness step. Auto-starting camera...");
+                        window.startRealtimeScanner();
+                    }
+
                     if (document.getElementById('kyc-waiting-approval').style.display === 'block') {
                         console.log("[KYC] Page loaded in waiting state. Initializing real-time listeners...");
                         initKycWebSocket();
