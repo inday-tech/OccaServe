@@ -1130,446 +1130,475 @@ document.addEventListener('DOMContentLoaded', function () {
                     canvas.width = width;
                     canvas.height = height;
                     const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-                    canvas.toBlob((blob) => {
-                        resolve(blob);
-                    }, 'image/jpeg', quality);
-                };
-                img.onerror = reject;
+                    ctx.drawImage(    // MediaPipe & Active Challenge State Variables
+    let faceLandmarker = null;
+    let isLivenessRunning = false;
+    let lastVideoTime = -1;
+    let animationFrameId = null;
+
+    // Canvas helper context for mirrored visual outline guide overlay
+    let guideCanvas = document.getElementById('face-guide-canvas');
+    let guideCtx = guideCanvas ? guideCanvas.getContext('2d') : null;
+
+    // Liveness states
+    const STATE_ALIGNING = 0;
+    const STATE_COUNTDOWN = 1;
+    const STATE_BLINK = 2;
+    const STATE_VERIFYING = 3;
+    const STATE_SUCCESS = 4;
+    const STATE_FAILED = 5;
+
+    let currentLivenessState = STATE_ALIGNING;
+    let alignedStartTime = 0;
+    let countdownValue = 3;
+    let countdownInterval = null;
+    let blinkStep = 0;
+    let selfieFrames = [];
+
+    async function initializeFaceLandmarker() {
+        if (faceLandmarker) return;
+        try {
+            console.log("[KYC] Initializing MediaPipe Face Landmarker...");
+            const vision = await FilesetResolver.forVisionTasks(
+                "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/wasm"
+            );
+            faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+                baseOptions: {
+                    modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+                    delegate: "GPU"
+                },
+                runningMode: "VIDEO",
+                numFaces: 1
+            });
+            console.log("[KYC] MediaPipe Face Landmarker initialized successfully.");
+        } catch (err) {
+            console.error("[KYC] Failed to initialize Face Landmarker:", err);
+            if (window.showError) {
+                window.showError("Failed to initialize biometrics engine. Please ensure you are connected to the internet.", "Biometrics Error");
+            }
+        }
+    }
+
+    function setProgressRing(percent, color = null) {
+        const ringFill = document.getElementById('progress-ring-fill');
+        if (!ringFill) return;
+        const offset = 930 - (percent / 100) * 930;
+        ringFill.style.strokeDashoffset = offset;
+        if (color) {
+            ringFill.style.stroke = color;
+        } else {
+            ringFill.style.stroke = '';
+        }
+    }
+
+    function updateInstruction(mainText, subText) {
+        const mainEl = document.getElementById('scan-feedback');
+        const subEl = document.getElementById('liveness-sub-feedback');
+        if (mainEl) mainEl.innerText = mainText;
+        if (subEl) subEl.innerText = subText;
+    }
+
+    window.startRealtimeScanner = async function () {
+        const video = document.getElementById('webcam');
+        const startBtn = document.getElementById('btn-start-camera');
+
+        if (stream) {
+            try {
+                stream.getTracks().forEach(track => track.stop());
+            } catch (e) { }
+        }
+
+        currentLivenessState = STATE_ALIGNING;
+        alignedStartTime = 0;
+        countdownValue = 3;
+        if (countdownInterval) clearInterval(countdownInterval);
+        countdownInterval = null;
+        blinkStep = 0;
+        selfieFrames = [];
+        setProgressRing(0);
+
+        const circleContainer = document.getElementById('camera-circle-container');
+        if (circleContainer) {
+            circleContainer.classList.add('pulse-ring');
+        }
+
+        const checkmarkOverlay = document.getElementById('success-checkmark-overlay');
+        if (checkmarkOverlay) {
+            checkmarkOverlay.style.display = 'none';
+        }
+
+        updateInstruction("Preparing camera...", "Position your face within the circle");
+
+        const configs = [
+            { video: { facingMode: livenessFacingMode, width: { ideal: 640 }, height: { ideal: 480 } } },
+            { video: { facingMode: livenessFacingMode } },
+            { video: true }
+        ];
+
+        let success = false;
+        for (const config of configs) {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia(config);
+                success = true;
+                break;
+            } catch (err) {
+                console.warn("Liveness camera failed config", err);
+            }
+        }
+
+        if (success) {
+            if (startBtn) startBtn.style.display = 'none';
+
+            guideCanvas = document.getElementById('face-guide-canvas');
+            if (guideCanvas) {
+                guideCtx = guideCanvas.getContext('2d');
+            }
+
+            video.onloadedmetadata = () => {
+                console.log("[KYC] Video metadata loaded");
+                if (guideCanvas) {
+                    guideCanvas.width = video.videoWidth || 640;
+                    guideCanvas.height = video.videoHeight || 480;
+                }
             };
-            reader.onerror = reject;
+
+            video.onplaying = () => {
+                console.log("[KYC] Video playing");
+                if (guideCanvas && (!guideCanvas.width || guideCanvas.width === 300)) {
+                    guideCanvas.width = video.videoWidth || 640;
+                    guideCanvas.height = video.videoHeight || 480;
+                }
+                lastVideoTime = -1;
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                animationFrameId = requestAnimationFrame(livenessDetectionLoop);
+            };
+
+            await initializeFaceLandmarker();
+
+            isLivenessRunning = true;
+            video.srcObject = stream;
+
+            if (video.readyState >= 2 && !video.paused) {
+                console.log("[KYC] Video is already playing, manually triggering loop");
+                video.onplaying();
+            }
+
+            await getCameraDevices();
+        } else {
+            if (window.showError) window.showError("Unable to access camera.", "Camera Error");
+        }
+    };
+
+    function getDistance(p1, p2) {
+        return Math.sqrt(
+            Math.pow(p1.x - p2.x, 2) +
+            Math.pow(p1.y - p2.y, 2) +
+            Math.pow((p1.z || 0) - (p2.z || 0), 2)
+        );
+    }
+
+    async function captureFrameToFile(challengeName) {
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('frame-canvas') || document.createElement('canvas');
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        return new Promise((resolve) => {
+            canvas.toBlob((blob) => {
+                const file = new File([blob], `selfie_${challengeName}.jpg`, { type: 'image/jpeg' });
+                resolve(file);
+            }, 'image/jpeg', 0.90);
         });
     }
 
-    // MediaPipe & Active Challenge State Variables
-                    let faceLandmarker = null;
-                    let challengesList = [];
-                    let currentChallengeIndex = 0;
-                    let challengeHeldStartTime = 0;
-                    let isLivenessRunning = false;
-                    let lastVideoTime = -1;
-                    let animationFrameId = null;
+    async function livenessDetectionLoop() {
+        const video = document.getElementById('webcam');
+        if (!isLivenessRunning || !video || video.paused || video.ended) return;
 
-                    // Canvas helper context for mirrored visual outline guide overlay
-                    let guideCanvas = document.getElementById('face-guide-canvas');
-                    let guideCtx = guideCanvas ? guideCanvas.getContext('2d') : null;
+        if (guideCanvas && guideCtx) {
+            guideCtx.clearRect(0, 0, guideCanvas.width, guideCanvas.height);
 
-                    async function initializeFaceLandmarker() {
-                        if (faceLandmarker) return;
-                        try {
-                            console.log("[KYC] Initializing MediaPipe Face Landmarker...");
-                            const vision = await FilesetResolver.forVisionTasks(
-                                "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/wasm"
-                            );
-                            faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
-                                baseOptions: {
-                                    modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
-                                    delegate: "GPU"
-                                },
-                                runningMode: "VIDEO",
-                                numFaces: 1
-                            });
-                            console.log("[KYC] MediaPipe Face Landmarker initialized successfully.");
-                        } catch (err) {
-                            console.error("[KYC] Failed to initialize Face Landmarker:", err);
-                            if (window.showError) {
-                                window.showError("Failed to initialize biometrics engine. Please ensure you are connected to the internet.", "Biometrics Error");
+            const cx = guideCanvas.width / 2;
+            const cy = guideCanvas.height / 2;
+            const rx = guideCanvas.width * 0.28;
+            const ry = guideCanvas.height * 0.38;
+
+            guideCtx.beginPath();
+            guideCtx.ellipse(cx, cy, rx, ry, 0, 0, 2 * Math.PI);
+            guideCtx.lineWidth = 4;
+            guideCtx.setLineDash([8, 6]);
+            guideCtx.strokeStyle = window._facePositionedCorrectly ? "#22c55e" : "#f97316";
+            guideCtx.stroke();
+            guideCtx.setLineDash([]);
+        }
+
+        if (faceLandmarker && video.currentTime !== lastVideoTime) {
+            lastVideoTime = video.currentTime;
+
+            const result = faceLandmarker.detectForVideo(video, performance.now());
+
+            if (result.faceLandmarks && result.faceLandmarks.length > 0) {
+                const landmarks = result.faceLandmarks[0];
+
+                const eye_center_x = (landmarks[33].x + landmarks[263].x) / 2;
+                const eye_dist = Math.abs(landmarks[263].x - landmarks[33].x);
+                const nose_offset = (landmarks[1].x - eye_center_x) / eye_dist;
+
+                const face_height = Math.abs(landmarks[152].y - landmarks[10].y);
+                const nose_rel_y = (landmarks[1].y - landmarks[10].y) / face_height;
+
+                const isCentered = Math.abs(nose_offset) < 0.15 && nose_rel_y > 0.43 && nose_rel_y < 0.60;
+                const isProperSize = eye_dist > 0.16 && eye_dist < 0.48;
+
+                if (currentLivenessState === STATE_ALIGNING) {
+                    if (!isCentered || !isProperSize) {
+                        window._facePositionedCorrectly = false;
+                        alignedStartTime = 0;
+
+                        const circleContainer = document.getElementById('camera-circle-container');
+                        if (circleContainer) circleContainer.classList.add('pulse-ring');
+
+                        let subPrompt = "Center your face inside the circle";
+                        if (!isProperSize) {
+                            subPrompt = eye_dist <= 0.16 ? "Move closer to the camera" : "Move further back";
+                        }
+                        updateInstruction("Align your face in the circle", subPrompt);
+                        setProgressRing(0);
+                    } else {
+                        window._facePositionedCorrectly = true;
+
+                        const circleContainer = document.getElementById('camera-circle-container');
+                        if (circleContainer) circleContainer.classList.add('pulse-ring');
+
+                        updateInstruction("Align your face in the circle", "Keep still...");
+                        setProgressRing(0);
+
+                        if (alignedStartTime === 0) {
+                            alignedStartTime = Date.now();
+                        } else if (Date.now() - alignedStartTime > 1500) {
+                            currentLivenessState = STATE_COUNTDOWN;
+                            alignedStartTime = 0;
+                            countdownValue = 3;
+
+                            const circleContainer = document.getElementById('camera-circle-container');
+                            if (circleContainer) circleContainer.classList.remove('pulse-ring');
+
+                            const countdownEl = document.getElementById('selfie-countdown');
+                            if (countdownEl) {
+                                countdownEl.innerText = countdownValue;
+                                countdownEl.classList.add('show');
                             }
+                            updateInstruction("Preparing to capture", "Keep steady...");
+                            setProgressRing(0);
+
+                            if (countdownInterval) clearInterval(countdownInterval);
+                            countdownInterval = setInterval(() => {
+                                countdownValue--;
+                                if (countdownValue > 0) {
+                                    if (countdownEl) countdownEl.innerText = countdownValue;
+                                } else {
+                                    clearInterval(countdownInterval);
+                                    countdownInterval = null;
+                                    if (countdownEl) countdownEl.classList.remove('show');
+
+                                    currentLivenessState = STATE_BLINK;
+                                    blinkStep = 0;
+                                    selfieFrames = [];
+                                    updateInstruction("Blink your eyes", "Look straight and blink naturally");
+                                    setProgressRing(0);
+                                }
+                            }, 1000);
                         }
                     }
-
-                    window.startRealtimeScanner = async function () {
-                        const video = document.getElementById('webcam');
-                        const startBtn = document.getElementById('btn-start-camera');
-
-                        if (stream) {
-                            try {
-                                stream.getTracks().forEach(track => track.stop());
-                            } catch (e) { }
+                } else if (currentLivenessState === STATE_COUNTDOWN) {
+                    if (!isCentered || !isProperSize) {
+                        if (!window._countdownLostStartTime) {
+                            window._countdownLostStartTime = Date.now();
+                        } else if (Date.now() - window._countdownLostStartTime > 1000) {
+                            clearInterval(countdownInterval);
+                            countdownInterval = null;
+                            const countdownEl = document.getElementById('selfie-countdown');
+                            if (countdownEl) countdownEl.classList.remove('show');
+                            currentLivenessState = STATE_ALIGNING;
+                            alignedStartTime = 0;
+                            window._countdownLostStartTime = 0;
+                            window._facePositionedCorrectly = false;
+                            updateInstruction("Align your face in the circle", "Alignment lost, please realign");
+                            setProgressRing(0);
                         }
-
-                        // 1. Fetch randomized challenges from backend
-                        try {
-                            const initRes = await fetch(`/api/bookings/${bookingId}/kyc/session/init`, { method: 'POST' });
-                            if (!initRes.ok) throw new Error("Failed to initialize verification session");
-                            const sessionData = await initRes.json();
-                            console.log("[KYC] Initialized Verification Session:", sessionData);
-                            challengesList = sessionData.challenges || ["blink", "turn_left", "turn_right"];
-                            currentChallengeIndex = 0;
+                    } else {
+                        window._countdownLostStartTime = 0;
+                    }
+                } else if (currentLivenessState === STATE_BLINK) {
+                    if (!isCentered || !isProperSize) {
+                        if (!window._blinkLostStartTime) {
+                            window._blinkLostStartTime = Date.now();
+                        } else if (Date.now() - window._blinkLostStartTime > 2000) {
+                            currentLivenessState = STATE_ALIGNING;
+                            alignedStartTime = 0;
+                            blinkStep = 0;
                             selfieFrames = [];
-                        } catch (err) {
-                            console.error("[KYC] Verification Session Init Error:", err);
-                            if (window.showError) window.showError("Unable to initialize verification session.", "Session Error");
+                            window._blinkLostStartTime = 0;
+                            window._facePositionedCorrectly = false;
+                            updateInstruction("Align your face in the circle", "Alignment lost, please realign");
+                            setProgressRing(0);
                             return;
                         }
-
-                        // 2. Open Webcam
-                        const configs = [
-                            { video: { facingMode: livenessFacingMode, width: { ideal: 640 }, height: { ideal: 480 } } },
-                            { video: { facingMode: livenessFacingMode } },
-                            { video: true }
-                        ];
-
-                        let success = false;
-                        for (const config of configs) {
-                            try {
-                                stream = await navigator.mediaDevices.getUserMedia(config);
-                                success = true;
-                                break;
-                            } catch (err) {
-                                console.warn("Liveness camera failed config", err);
-                            }
-                        }
-
-                        if (success) {
-                            if (startBtn) startBtn.style.display = 'none';
-
-                            // Show challenges checklist UI
-                            const chBox = document.getElementById('active-challenges-box');
-                            if (chBox) chBox.style.display = 'block';
-
-                            // Re-find canvas in case it was re-rendered or not present earlier
-                            guideCanvas = document.getElementById('face-guide-canvas');
-                            if (guideCanvas) {
-                                guideCtx = guideCanvas.getContext('2d');
-                            }
-
-                            // Register event listeners BEFORE setting srcObject/awaiting model to prevent race conditions
-                            video.onloadedmetadata = () => {
-                                console.log("[KYC] Video metadata loaded");
-                                if (guideCanvas) {
-                                    guideCanvas.width = video.videoWidth || 640;
-                                    guideCanvas.height = video.videoHeight || 480;
-                                }
-                            };
-
-                            video.onplaying = () => {
-                                console.log("[KYC] Video playing");
-                                if (guideCanvas && (!guideCanvas.width || guideCanvas.width === 300)) {
-                                    guideCanvas.width = video.videoWidth || 640;
-                                    guideCanvas.height = video.videoHeight || 480;
-                                }
-                                lastVideoTime = -1;
-                                if (animationFrameId) cancelAnimationFrame(animationFrameId);
-                                animationFrameId = requestAnimationFrame(livenessDetectionLoop);
-                            };
-
-                            // Auto start biometrics landmarker if not initialized
-                            await initializeFaceLandmarker();
-
-                            renderChallengeChecklist();
-                            isLivenessRunning = true;
-
-                            // Now assign the stream to trigger the events
-                            video.srcObject = stream;
-
-                            // Manual fallback if video is already playing or playing state changes before onload
-                            if (video.readyState >= 2 && !video.paused) {
-                                console.log("[KYC] Video is already playing, manually triggering loop");
-                                video.onplaying();
-                            }
-
-                            await getCameraDevices();
-                        } else {
-                            if (window.showError) window.showError("Unable to access camera.", "Camera Error");
-                        }
-                    };
-
-                    function renderChallengeChecklist() {
-                        const checklist = document.getElementById('challenge-checklist');
-                        if (!checklist) return;
-                        checklist.innerHTML = '';
-
-                        challengesList.forEach((challenge, idx) => {
-                            let label = '';
-                            let icon = 'fa-circle-notch fa-spin';
-                            let color = '#94a3b8';
-
-                            switch (challenge) {
-                                case 'blink': label = 'Blink twice'; break;
-                                case 'smile': label = 'Smile widely'; break;
-                                case 'turn_left': label = 'Turn your head left'; break;
-                                case 'turn_right': label = 'Turn your head right'; break;
-                                case 'look_up': label = 'Look slightly up'; break;
-                                case 'look_down': label = 'Look slightly down'; break;
-                                default: label = challenge;
-                            }
-
-                            let statusHtml = '';
-                            if (idx < currentChallengeIndex) {
-                                icon = 'fa-check-circle';
-                                color = '#22c55e';
-                                statusHtml = `<span style="color: #22c55e; font-size: 0.7rem; font-weight: 800;">Completed</span>`;
-                            } else if (idx === currentChallengeIndex) {
-                                icon = 'fa-spinner fa-spin';
-                                color = 'var(--kyc-accent)';
-                                statusHtml = `<span style="color: var(--kyc-accent); font-size: 0.7rem; font-weight: 800;">Detecting...</span>`;
-                            } else {
-                                icon = 'fa-circle';
-                                color = '#cbd5e1';
-                                statusHtml = `<span style="color: #94a3b8; font-size: 0.7rem; font-weight: 600;">Pending</span>`;
-                            }
-
-                            const html = `
-                <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.75rem; background: white; border-radius: 0.75rem; border: 1px solid #f1f5f9;">
-                    <div style="display: flex; align-items: center; gap: 0.6rem;">
-                        <i class="fas ${icon}" style="color: ${color}; font-size: 0.85rem;"></i>
-                        <span style="font-size: 0.8rem; font-weight: 700; color: #1e293b;">${label}</span>
-                    </div>
-                    ${statusHtml}
-                </div>
-            `;
-                            checklist.innerHTML += html;
-                        });
-
-                        const progressPct = Math.round((currentChallengeIndex / challengesList.length) * 100);
-                        const progressText = document.getElementById('challenge-progress-text');
-                        const progressBar = document.getElementById('challenge-progress-bar');
-                        if (progressText) progressText.innerText = `${progressPct}%`;
-                        if (progressBar) progressBar.style.width = `${progressPct}%`;
+                    } else {
+                        window._blinkLostStartTime = 0;
                     }
 
-                    function getDistance(p1, p2) {
-                        return Math.sqrt(
-                            Math.pow(p1.x - p2.x, 2) +
-                            Math.pow(p1.y - p2.y, 2) +
-                            Math.pow((p1.z || 0) - (p2.z || 0), 2)
-                        );
-                    }
+                    const ear_left = getDistance(landmarks[159], landmarks[145]) / getDistance(landmarks[33], landmarks[133]);
+                    const ear_right = getDistance(landmarks[386], landmarks[374]) / getDistance(landmarks[362], landmarks[263]);
+                    const ear_avg = (ear_left + ear_right) / 2;
 
-                    async function livenessDetectionLoop() {
-                        const video = document.getElementById('webcam');
-                        if (!isLivenessRunning || !video || video.paused || video.ended) return;
-
-                        if (guideCanvas && guideCtx) {
-                            guideCtx.clearRect(0, 0, guideCanvas.width, guideCanvas.height);
-
-                            // Draw Oval Guide in the center
-                            const cx = guideCanvas.width / 2;
-                            const cy = guideCanvas.height / 2;
-                            const rx = guideCanvas.width * 0.28;
-                            const ry = guideCanvas.height * 0.38;
-
-                            guideCtx.beginPath();
-                            guideCtx.ellipse(cx, cy, rx, ry, 0, 0, 2 * Math.PI);
-                            guideCtx.lineWidth = 4;
-                            guideCtx.strokeStyle = window._facePositionedCorrectly ? "#22c55e" : "#f97316";
-                            guideCtx.stroke();
+                    if (blinkStep === 0) {
+                        if (ear_avg > 0.22) {
+                            const file = await captureFrameToFile("open_1");
+                            selfieFrames.push(file);
+                            blinkStep = 1;
+                            setProgressRing(33);
+                            console.log("[KYC] Step 0 completed. Open 1 captured. EAR:", ear_avg);
                         }
+                    } else if (blinkStep === 1) {
+                        if (ear_avg < 0.17) {
+                            const file = await captureFrameToFile("closed");
+                            selfieFrames.push(file);
+                            blinkStep = 2;
+                            setProgressRing(66);
+                            console.log("[KYC] Step 1 completed. Closed captured. EAR:", ear_avg);
+                        }
+                    } else if (blinkStep === 2) {
+                        if (ear_avg > 0.22) {
+                            const file = await captureFrameToFile("open_2");
+                            selfieFrames.push(file);
+                            blinkStep = 3;
+                            setProgressRing(100, "#22c55e");
+                            console.log("[KYC] Step 2 completed. Open 2 captured. EAR:", ear_avg);
 
-                        if (faceLandmarker && video.currentTime !== lastVideoTime) {
-                            lastVideoTime = video.currentTime;
-
-                            const result = faceLandmarker.detectForVideo(video, performance.now());
-
-                            if (result.faceLandmarks && result.faceLandmarks.length > 0) {
-                                const landmarks = result.faceLandmarks[0];
-
-                                // Draw face outline points
-                                if (guideCanvas && guideCtx) {
-                                    guideCtx.fillStyle = window._facePositionedCorrectly ? "rgba(34, 197, 94, 0.5)" : "rgba(249, 115, 22, 0.5)";
-                                    const highlightIndices = [33, 133, 159, 145, 362, 263, 386, 374, 1, 61, 291, 10, 152];
-                                    highlightIndices.forEach(idx => {
-                                        const lm = landmarks[idx];
-                                        const x = lm.x * guideCanvas.width;
-                                        const y = lm.y * guideCanvas.height;
-                                        guideCtx.beginPath();
-                                        guideCtx.arc(x, y, 3, 0, 2 * Math.PI);
-                                        guideCtx.fill();
-                                    });
-                                }
-
-                                // --- FACE POSITIONING CHECKS ---
-                                const eye_center_x = (landmarks[33].x + landmarks[263].x) / 2;
-                                const eye_dist = Math.abs(landmarks[263].x - landmarks[33].x);
-                                const nose_offset = (landmarks[1].x - eye_center_x) / eye_dist;
-
-                                const face_height = Math.abs(landmarks[152].y - landmarks[10].y);
-                                const nose_rel_y = (landmarks[1].y - landmarks[10].y) / face_height;
-
-                                const isCentered = Math.abs(nose_offset) < 0.15 && nose_rel_y > 0.43 && nose_rel_y < 0.60;
-                                const isProperSize = eye_dist > 0.16 && eye_dist < 0.48;
-
-                                if (!isCentered || !isProperSize) {
-                                    window._facePositionedCorrectly = false;
-                                    const feedbackEl = document.getElementById('scan-feedback');
-                                    if (feedbackEl) {
-                                        if (!isProperSize) {
-                                            feedbackEl.innerText = eye_dist <= 0.16 ? "Move closer to the camera" : "Move further back";
-                                        } else {
-                                            feedbackEl.innerText = "Center your face inside the circle";
-                                        }
-                                    }
-                                    challengeHeldStartTime = 0;
-                                } else {
-                                    window._facePositionedCorrectly = true;
-
-                                    const currentChallenge = challengesList[currentChallengeIndex];
-                                    let challengePassed = false;
-                                    let challengePrompt = "";
-
-                                    if (currentChallenge === 'blink') {
-                                        challengePrompt = "Blink slowly";
-                                        const ear_left = getDistance(landmarks[159], landmarks[145]) / getDistance(landmarks[33], landmarks[133]);
-                                        const ear_right = getDistance(landmarks[386], landmarks[374]) / getDistance(landmarks[362], landmarks[263]);
-                                        const ear_avg = (ear_left + ear_right) / 2;
-
-                                        if (ear_avg < 0.17) {
-                                            challengePassed = true;
-                                        }
-                                    } else if (currentChallenge === 'smile') {
-                                        challengePrompt = "Smile widely";
-                                        const mouth_w = getDistance(landmarks[291], landmarks[61]);
-                                        const smile_ratio = mouth_w / eye_dist;
-
-                                        if (smile_ratio > 0.84) {
-                                            challengePassed = true;
-                                        }
-                                    } else if (currentChallenge === 'turn_left') {
-                                        challengePrompt = "Turn your head to the left";
-                                        if (nose_offset < -0.17) {
-                                            challengePassed = true;
-                                        }
-                                    } else if (currentChallenge === 'turn_right') {
-                                        challengePrompt = "Turn your head to the right";
-                                        if (nose_offset > 0.17) {
-                                            challengePassed = true;
-                                        }
-                                    } else if (currentChallenge === 'look_up') {
-                                        challengePrompt = "Look slightly up";
-                                        if (nose_rel_y < 0.47) {
-                                            challengePassed = true;
-                                        }
-                                    } else if (currentChallenge === 'look_down') {
-                                        challengePrompt = "Look slightly down";
-                                        if (nose_rel_y > 0.54) {
-                                            challengePassed = true;
-                                        }
-                                    }
-
-                                    const feedbackEl = document.getElementById('scan-feedback');
-                                    if (feedbackEl) feedbackEl.innerText = challengePrompt;
-
-                                    if (challengePassed) {
-                                        if (challengeHeldStartTime === 0) {
-                                            challengeHeldStartTime = Date.now();
-                                        } else if (Date.now() - challengeHeldStartTime > 300) { // Hold for 300ms
-                                            console.log(`[KYC] Completed challenge: ${currentChallenge}`);
-
-                                            const file = await captureChallengeFrame(currentChallenge);
-                                            selfieFrames.push(file);
-
-                                            currentChallengeIndex++;
-                                            challengeHeldStartTime = 0;
-
-                                            renderChallengeChecklist();
-
-                                            if (currentChallengeIndex >= challengesList.length) {
-                                                console.log("[KYC] All challenges completed! Auto-submitting...");
-                                                isLivenessRunning = false;
-                                                if (stream) {
-                                                    stream.getTracks().forEach(track => track.stop());
-                                                    stream = null;
-                                                }
-                                                if (guideCtx) guideCtx.clearRect(0, 0, guideCanvas.width, guideCanvas.height);
-                                                await autoSubmitLiveness();
-                                                return;
-                                            }
-                                        }
-                                    } else {
-                                        challengeHeldStartTime = 0;
-                                    }
-                                }
-                            } else {
-                                window._facePositionedCorrectly = false;
-                                challengeHeldStartTime = 0;
-                                const feedbackEl = document.getElementById('scan-feedback');
-                                if (feedbackEl) feedbackEl.innerText = "Align your face in the circle";
+                            isLivenessRunning = false;
+                            if (stream) {
+                                stream.getTracks().forEach(track => track.stop());
+                                stream = null;
                             }
-                        }
+                            if (guideCtx) guideCtx.clearRect(0, 0, guideCanvas.width, guideCanvas.height);
 
-                        if (isLivenessRunning) {
-                            animationFrameId = requestAnimationFrame(livenessDetectionLoop);
-                        }
-                    }
+                            currentLivenessState = STATE_VERIFYING;
+                            updateInstruction("Verifying your identity...", "Analyzing biometrics");
 
-                    async function captureChallengeFrame(challengeName) {
-                        const video = document.getElementById('webcam');
-                        const canvas = document.createElement('canvas');
-                        canvas.width = video.videoWidth || 640;
-                        canvas.height = video.videoHeight || 480;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-                        return new Promise((resolve) => {
-                            canvas.toBlob((blob) => {
-                                const file = new File([blob], `selfie_${challengeName}.jpg`, { type: 'image/jpeg' });
-                                resolve(file);
-                            }, 'image/jpeg', 0.92);
-                        });
-                    }
-
-                    async function autoSubmitLiveness() {
-                        const activeBox = document.getElementById('active-challenges-box');
-                        if (activeBox) activeBox.style.display = 'none';
-
-                        document.getElementById('scanner-container').style.display = 'none';
-                        document.getElementById('step-processing').style.display = 'block';
-                        document.getElementById('status-text').innerText = 'Verifying Biometrics...';
-                        document.getElementById('status-text').style.color = '';
-                        document.getElementById('status-subtext').innerText = 'Analyzing your face against the ID. This may take a few seconds.';
-                        updateStatusTracker(4);
-
-                        const formData = new FormData();
-                        selfieFrames.forEach(file => formData.append('selfies', file));
-
-                        const completedStr = challengesList.join(",");
-                        formData.append('completed_challenges', completedStr);
-
-                        try {
-                            const res = await fetch(`/api/bookings/${bookingId}/verify-full`, { method: 'POST', body: formData });
-                            if (res.ok) {
-                                initKycWebSocket();
-                                startPolling();
-                            } else {
-                                const data = await res.json();
-                                handleRejection(data.detail || "Verification failed");
-                            }
-                        } catch (err) {
-                            handleRejection("Connection lost.");
+                            await autoSubmitLiveness();
                         }
                     }
-
-                    window.beginLivenessSequence = async function () {
-                        // Automatically starts on Start Camera now, kept for backward compatibility
-                    };
-
-                    window.retryLiveness = function () {
+                }
+            } else {
+                window._facePositionedCorrectly = false;
+                if (currentLivenessState === STATE_ALIGNING) {
+                    alignedStartTime = 0;
+                    updateInstruction("Align your face in the circle", "No face detected");
+                    setProgressRing(0);
+                } else if (currentLivenessState === STATE_COUNTDOWN) {
+                    if (!window._countdownLostStartTime) {
+                        window._countdownLostStartTime = Date.now();
+                    } else if (Date.now() - window._countdownLostStartTime > 1000) {
+                        clearInterval(countdownInterval);
+                        countdownInterval = null;
+                        const countdownEl = document.getElementById('selfie-countdown');
+                        if (countdownEl) countdownEl.classList.remove('show');
+                        currentLivenessState = STATE_ALIGNING;
+                        alignedStartTime = 0;
+                        window._countdownLostStartTime = 0;
+                        updateInstruction("Align your face in the circle", "Face lost, please realign");
+                        setProgressRing(0);
+                    }
+                } else if (currentLivenessState === STATE_BLINK) {
+                    if (!window._blinkLostStartTime) {
+                        window._blinkLostStartTime = Date.now();
+                    } else if (Date.now() - window._blinkLostStartTime > 2000) {
+                        currentLivenessState = STATE_ALIGNING;
+                        alignedStartTime = 0;
+                        blinkStep = 0;
                         selfieFrames = [];
-                        currentChallengeIndex = 0;
-                        challengeHeldStartTime = 0;
-                        isLivenessRunning = false;
+                        window._blinkLostStartTime = 0;
+                        updateInstruction("Align your face in the circle", "Face lost, please realign");
+                        setProgressRing(0);
+                    }
+                }
+            }
+        }
 
-                        if (animationFrameId) {
-                            cancelAnimationFrame(animationFrameId);
-                            animationFrameId = null;
-                        }
+        if (isLivenessRunning) {
+            animationFrameId = requestAnimationFrame(livenessDetectionLoop);
+        }
+    }
 
-                        const activeBox = document.getElementById('active-challenges-box');
-                        if (activeBox) activeBox.style.display = 'none';
+    async function autoSubmitLiveness() {
+        const activeBox = document.getElementById('active-challenges-box');
+        if (activeBox) activeBox.style.display = 'none';
 
-                        document.getElementById('liveness-review').style.display = 'none';
-                        document.getElementById('scanner-container').style.display = 'block';
-                        const startBtn = document.getElementById('btn-start-camera');
-                        if (startBtn) startBtn.style.display = 'inline-block';
+        document.getElementById('step-processing').style.display = 'block';
+        document.getElementById('status-text').innerText = 'Verifying Biometrics...';
+        document.getElementById('status-text').style.color = '';
+        document.getElementById('status-subtext').innerText = 'Analyzing your face against the ID. This may take a few seconds.';
+        updateStatusTracker(4);
 
-                        const feedbackEl = document.getElementById('scan-feedback');
-                        if (feedbackEl) feedbackEl.innerText = "Tap 'Start Camera' to begin";
-                    };
+        const formData = new FormData();
+        selfieFrames.forEach(file => formData.append('selfies', file));
+        formData.append('completed_challenges', 'blink');
 
-                    window.submitLiveness = async function () {
-                        // Automatically handled by autoSubmitLiveness, kept for backward compatibility
-                    };
+        try {
+            const res = await fetch(`/api/bookings/${bookingId}/verify-full`, { method: 'POST', body: formData });
+            if (res.ok) {
+                initKycWebSocket();
+                startPolling();
+            } else {
+                const data = await res.json();
+                handleRejection(data.detail || "Verification failed");
+            }
+        } catch (err) {
+            handleRejection("Connection lost.");
+        }
+    }
+
+    window.beginLivenessSequence = async function () {
+        // Automatically starts on Start Camera now, kept for backward compatibility
+    };
+
+    window.retryLiveness = function () {
+        selfieFrames = [];
+        blinkStep = 0;
+        currentLivenessState = STATE_ALIGNING;
+        alignedStartTime = 0;
+        isLivenessRunning = false;
+
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+        }
+        if (countdownInterval) {
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+        }
+
+        const countdownEl = document.getElementById('selfie-countdown');
+        if (countdownEl) countdownEl.classList.remove('show');
+
+        const checkmarkOverlay = document.getElementById('success-checkmark-overlay');
+        if (checkmarkOverlay) checkmarkOverlay.style.display = 'none';
+
+        document.getElementById('liveness-review').style.display = 'none';
+        document.getElementById('scanner-container').style.display = 'block';
+
+        setProgressRing(0);
+        updateInstruction("Preparing camera...", "Position your face within the circle");
+
+        window.startRealtimeScanner();
+    };
+
+    window.submitLiveness = async function () {
+        // Automatically handled by autoSubmitLiveness, kept for backward compatibility
+    };
 
                     function initKycWebSocket() {
                         if (ws) return;
@@ -1658,8 +1687,24 @@ document.addEventListener('DOMContentLoaded', function () {
                     function initWebSocket(userId) { }
 
                     function handleApproval(data) {
+                        const scannerContainer = document.getElementById('scanner-container');
+                        const checkmarkOverlay = document.getElementById('success-checkmark-overlay');
+                        
+                        if (scannerContainer && scannerContainer.style.display !== 'none' && checkmarkOverlay) {
+                            checkmarkOverlay.style.display = 'flex';
+                            updateInstruction("Liveness Verified", "Identity verification successful");
+                            setProgressRing(100, "#22c55e");
+                        }
+
                         document.getElementById('kyc-waiting-approval').style.display = 'none';
-                        document.getElementById('step-processing').style.display = 'block';
+                        const stepProcessing = document.getElementById('step-processing');
+                        if (stepProcessing) {
+                            if (scannerContainer && scannerContainer.style.display !== 'none') {
+                                // keep scanner visible to show checkmark
+                            } else {
+                                stepProcessing.style.display = 'block';
+                            }
+                        }
 
                         document.getElementById('status-text').innerText = "Identity Verified!";
                         document.getElementById('status-text').style.color = "var(--kyc-accent)";
@@ -1669,8 +1714,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         document.getElementById('node-4').classList.remove('active');
 
                         setTimeout(() => {
-                            const nextBtn = document.getElementById('btn-next');
-                            if (nextBtn) nextBtn.style.display = 'inline-block';
                             window.location.href = `/bookings/step/quotation/${bookingId}`;
                         }, 2000);
                     }
@@ -1713,26 +1756,35 @@ document.addEventListener('DOMContentLoaded', function () {
                         fetch('/api/bookings/kyc/reset-liveness', { method: 'POST' }).catch(() => { });
 
                         selfieFrames = [];
-                        currentChallengeIndex = 0;
-                        challengeHeldStartTime = 0;
+                        blinkStep = 0;
+                        currentLivenessState = STATE_ALIGNING;
+                        alignedStartTime = 0;
                         isLivenessRunning = false;
 
                         if (animationFrameId) {
                             cancelAnimationFrame(animationFrameId);
                             animationFrameId = null;
                         }
+                        if (countdownInterval) {
+                            clearInterval(countdownInterval);
+                            countdownInterval = null;
+                        }
 
-                        const checklistBox = document.getElementById('active-challenges-box');
-                        if (checklistBox) checklistBox.style.display = 'none';
+                        const countdownEl = document.getElementById('selfie-countdown');
+                        if (countdownEl) countdownEl.classList.remove('show');
+
+                        const checkmarkOverlay = document.getElementById('success-checkmark-overlay');
+                        if (checkmarkOverlay) checkmarkOverlay.style.display = 'none';
 
                         document.getElementById('scanner-container').style.display = 'block';
-                        const startBtn = document.getElementById('btn-start-camera');
-                        if (startBtn) startBtn.style.display = 'inline-block';
-
-                        const feedbackEl = document.getElementById('scan-feedback');
-                        if (feedbackEl) feedbackEl.innerText = "Tap 'Start Camera' to begin";
+                        setProgressRing(0);
+                        updateInstruction("Align your face in the circle", "Liveness check failed, please try again");
 
                         updateStatusTracker(3);
+
+                        setTimeout(() => {
+                            window.startRealtimeScanner();
+                        }, 1500);
                     }
 
                     let livenessFacingMode = "user";

@@ -239,8 +239,8 @@ async def init_kyc_session(
         db.commit()
         db.refresh(session)
         
-    # Set the assigned challenges exactly as requested: Blink twice, Turn head left, Turn head right
-    challenges = ["blink", "turn_left", "turn_right"]
+    # Use only eye-blink detection for liveness verification
+    challenges = ["blink"]
     
     session.status = "pending_liveness"
     session.liveness_score = 0.0

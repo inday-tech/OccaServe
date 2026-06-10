@@ -545,3 +545,172 @@
 
     .kyc-status-tracker { flex-wrap: wrap !important; gap: 1rem !important; }
 }
+
+/* ── Redesigned Liveness Camera Style (GCash / Maya Redesign) ─────── */
+.camera-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 2rem auto;
+    max-width: 400px;
+    width: 100%;
+}
+
+.camera-circle-container {
+    position: relative;
+    width: 320px;
+    height: 320px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 2rem;
+}
+
+.progress-ring-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 320px;
+    height: 320px;
+    transform: rotate(-90deg);
+    pointer-events: none;
+    z-index: 2;
+}
+
+.progress-ring-track {
+    fill: none;
+    stroke: #f1f5f9;
+    stroke-width: 6;
+}
+
+.progress-ring-fill {
+    fill: none;
+    stroke: var(--kyc-accent); /* Standard orange accent */
+    stroke-width: 6;
+    stroke-linecap: round;
+    stroke-dasharray: 930; /* 2 * PI * 148 = 929.9 */
+    stroke-dashoffset: 930;
+    transition: stroke-dashoffset 0.2s linear, stroke 0.35s ease;
+}
+
+/* Pulse animation for the ring during alignment */
+@keyframes ringPulse {
+    0%, 100% { opacity: 0.75; transform: scale(1) rotate(-90deg); }
+    50% { opacity: 1; transform: scale(1.015) rotate(-90deg); }
+}
+
+.camera-circle-container.pulse-ring .progress-ring-svg {
+    animation: ringPulse 2s infinite ease-in-out;
+}
+
+.camera-frame {
+    width: 290px;
+    height: 290px;
+    border-radius: 50%;
+    overflow: hidden;
+    position: relative;
+    background: #ffffff;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.04);
+    border: 1px solid #e2e8f0;
+    z-index: 1;
+}
+
+.camera-frame video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.camera-frame canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+/* Countdown Overlay */
+.countdown-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 6rem;
+    font-weight: 800;
+    color: #ffffff;
+    background: rgba(15, 23, 42, 0.35);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 10;
+    display: none;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.countdown-overlay.show {
+    display: flex;
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* Success Checkmark Overlay */
+.success-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+    animation: kyc-fadeIn 0.35s ease forwards;
+}
+
+@keyframes kyc-fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.checkmark-circle {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: #dcfce7;
+    border: 4px solid #22c55e;
+    color: #22c55e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3.5rem;
+    animation: scaleInCheck 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes scaleInCheck {
+    0% { transform: scale(0) rotate(-45deg); opacity: 0; }
+    100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+/* Premium Typography for KYC Step */
+.kyc-instruction-container {
+    text-align: center;
+    margin-top: 1.5rem;
+}
+
+.kyc-main-instruction {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin: 0 0 0.4rem 0;
+    transition: color 0.3s ease;
+    letter-spacing: -0.02em;
+}
+
+.kyc-sub-instruction {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #94a3b8;
+    margin: 0;
+    transition: color 0.3s ease;
+}

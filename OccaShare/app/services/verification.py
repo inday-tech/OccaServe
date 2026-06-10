@@ -395,8 +395,10 @@ class VerificationService:
         liveness_score = 0.0
         if face_detected_count == len(img_list) and not occlusion_detected:
             liveness_score += 0.4
-            if ear_variance > 0.001: liveness_score += 0.3
-            if movement > 0.01: liveness_score += 0.3
+            if ear_variance > 0.001:
+                liveness_score += 0.6  # Eye-blink alone is sufficient to prove liveness (total = 1.0)
+            elif movement > 0.01:
+                liveness_score += 0.3
 
         return {
             "score": liveness_score,
