@@ -1273,15 +1273,31 @@ document.addEventListener('DOMContentLoaded', function () {
                 animationFrameId = requestAnimationFrame(livenessDetectionLoop);
             };
 
-            await initializeFaceLandmarker();
+            video.muted = true;
+            video.srcObject = stream;
+
+            try {
+                await video.play();
+            } catch (playErr) {
+                console.warn("[KYC] video.play() failed:", playErr);
+            }
 
             isLivenessRunning = true;
-            video.srcObject = stream;
 
             if (video.readyState >= 2 && !video.paused) {
                 console.log("[KYC] Video is already playing, manually triggering loop");
                 video.onplaying();
             }
+
+            updateInstruction("Align your face in the circle", "Loading biometrics...");
+            initializeFaceLandmarker().then(() => {
+                console.log("[KYC] Biometrics engine loaded in background");
+                if (currentLivenessState === STATE_ALIGNING) {
+                    updateInstruction("Align your face in the circle", "Position your face within the circle");
+                }
+            }).catch(err => {
+                console.error("[KYC] Asynchronous biometrics load failed:", err);
+            });
 
             await getCameraDevices();
         } else {
