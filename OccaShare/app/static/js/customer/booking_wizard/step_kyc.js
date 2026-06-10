@@ -1130,7 +1130,18 @@ document.addEventListener('DOMContentLoaded', function () {
                     canvas.width = width;
                     canvas.height = height;
                     const ctx = canvas.getContext('2d');
-                    ctx.drawImage(    // MediaPipe & Active Challenge State Variables
+                    ctx.drawImage(img, 0, 0, width, height);
+                    canvas.toBlob((blob) => {
+                        resolve(blob);
+                    }, 'image/jpeg', quality);
+                };
+                img.onerror = reject;
+            };
+            reader.onerror = reject;
+        });
+    }
+
+    // MediaPipe & Active Challenge State Variables
     let faceLandmarker = null;
     let isLivenessRunning = false;
     let lastVideoTime = -1;
