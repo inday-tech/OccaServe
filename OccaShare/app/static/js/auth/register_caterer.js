@@ -311,12 +311,15 @@
             const permitBox = document.getElementById('permitBoxCat');
             const govIdBox = document.getElementById('govIdBoxCat');
 
-            const permitVerified = permitBox && permitBox.classList.contains('scanned-success');
-            const idVerified = govIdBox && govIdBox.classList.contains('scanned-success');
+            const permitVerified = !permitBox || permitBox.classList.contains('scanned-success');
+            const idVerified = !govIdBox || govIdBox.classList.contains('scanned-success');
 
-            if (!permitVerified || !idVerified) {
+            if (!idVerified) {
                 valid = false;
-                alert("⚠️ Verification Required: Please upload and successfully scan your Business Permit and Government ID first.");
+                alert("⚠️ Verification Required: Please upload and successfully scan your Government ID first.");
+            } else if (!permitVerified) {
+                valid = false;
+                alert("⚠️ Verification Required: Please upload and successfully scan your Business Permit first.");
             }
         }
 
