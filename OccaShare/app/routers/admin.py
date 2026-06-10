@@ -343,25 +343,7 @@ async def export_audit_logs(
     response.headers["Content-Disposition"] = "attachment; filename=system_audit_logs.csv"
     return response
 
-@router.get("/health", response_class=HTMLResponse)
-async def admin_health(
-    request: Request,
-    db: Session = Depends(database.get_db),
-    user: models.User = Depends(admin_only)
-):
-    db_ok = True
-    try:
-        db.execute("SELECT 1")
-    except:
-        db_ok = False
 
-    return templates.TemplateResponse("admin/health.html", {
-        "request": request,
-        "user": user,
-        "db_status": "Connected" if db_ok else "Disconnected",
-        "uptime": "99.99%",
-        "active_page": "health"
-    })
 
 def _send_caterer_welcome_email(email: str, temp_password: str, business_name: str) -> None:
     """Send the caterer account-created email, logging any failure without raising."""

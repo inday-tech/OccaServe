@@ -527,7 +527,10 @@ async def update_booking_status(
     # BILLING: Calculate Commission and Add to Outstanding Balance
     if new_status == "completed" and not booking.commission_calculated:
         caterer_prof = user.caterer_profile
-        commission_rate = caterer_prof.commission_rate if caterer_prof.commission_rate else 0.05
+        
+        # Use Global Admin Commission Setting
+        config = db.query(models.AdminSettings).first()
+        commission_rate = (config.commission_rate / 100.0) if config and config.commission_rate else 0.10
         commission_amount = float(booking.total_amount or 0.0) * commission_rate
         
         caterer_prof.outstanding_balance = float(caterer_prof.outstanding_balance or 0.0) + commission_amount
