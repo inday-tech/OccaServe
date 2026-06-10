@@ -1,6 +1,6 @@
 import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8";
 
-document.addEventListener('DOMContentLoaded', function () {
+const initKyc = () => {
     let bookingId = window.bookingId;
     let stream = null;
     let idFile = null;
@@ -1837,5 +1837,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         initKycWebSocket();
                         startPolling();
                     }
-                });
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initKyc);
+} else {
+    initKyc();
+}
 
