@@ -125,62 +125,38 @@ const initKyc = () => {
 
     window.validateIdSelection = function () {
         const idType = document.getElementById('id_type').value;
-        const idInput = document.getElementById('id_number');
-        const validationMsg = document.getElementById('id-validation-msg');
         const cameraBox = document.getElementById('option-camera');
         const uploadBox = document.getElementById('option-upload');
+        const helperText = document.getElementById('kyc-helper-text');
 
-        let value = idInput.value;
-        let isIdNumberValid = false;
-
-        if (idType && validationPatterns[idType]) {
-            const pattern = validationPatterns[idType];
-
-            // Auto-format
-            const formatted = pattern.format(value);
-            if (formatted !== value) {
-                idInput.value = formatted;
-                value = formatted;
-            }
-
-            isIdNumberValid = pattern.regex.test(value);
-            idInput.placeholder = pattern.placeholder;
-
-            if (value.length > 0) {
-                if (isIdNumberValid) {
-                    idInput.style.borderColor = 'var(--kyc-accent)';
-                    validationMsg.innerText = 'Format valid';
-                    validationMsg.style.color = 'var(--kyc-accent)';
-                } else {
-                    idInput.style.borderColor = '#ef4444';
-                    validationMsg.innerText = 'Invalid ' + idType + ' format';
-                    validationMsg.style.color = '#ef4444';
-                }
-            } else {
-                idInput.style.borderColor = 'var(--kyc-slate-200)';
-                validationMsg.innerText = '';
-            }
-        } else {
-            idInput.placeholder = 'Enter ID number';
-            idInput.style.borderColor = 'var(--kyc-slate-200)';
-            validationMsg.innerText = '';
-        }
-
-        // Only require ID Type to be selected to enable upload/scan (OCR will extract the number)
         if (idType) {
+            // Enable cards with visual feedback
             cameraBox.classList.remove('disabled');
             uploadBox.classList.remove('disabled');
 
-            // Auto-focus the best method if not already selected
+            // Update helper text
+            if (helperText) {
+                helperText.innerHTML = '<i class="fas fa-check-circle" style="margin-right: 0.35rem; color: var(--kyc-accent);"></i>Capture or upload a clear photo of your selected ID.';
+                helperText.style.color = 'var(--kyc-accent)';
+            }
+
+            // Auto-highlight camera on mobile
             if (isMobile() && !cameraBox.classList.contains('active-option')) {
                 cameraBox.style.borderColor = 'var(--kyc-accent)';
                 cameraBox.style.backgroundColor = 'var(--kyc-accent-soft)';
             }
         } else {
+            // Disable cards
             cameraBox.classList.add('disabled');
             uploadBox.classList.add('disabled');
             cameraBox.style.borderColor = '';
             cameraBox.style.backgroundColor = '';
+
+            // Reset helper text
+            if (helperText) {
+                helperText.innerHTML = '<i class="fas fa-info-circle" style="margin-right: 0.35rem;"></i>Please select an ID type first to continue.';
+                helperText.style.color = 'var(--kyc-slate-400)';
+            }
         }
     };
 
@@ -1627,216 +1603,216 @@ const initKyc = () => {
         // Automatically handled by autoSubmitLiveness, kept for backward compatibility
     };
 
-                    function initKycWebSocket() {
-                        if (ws) return;
+    function initKycWebSocket() {
+        if (ws) return;
 
-                        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                        const clientId = `kyc_pkg_${bookingId}_${Date.now()}`;
-                        ws = new WebSocket(`${protocol}//${window.location.host}/verification/ws/${clientId}`);
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const clientId = `kyc_pkg_${bookingId}_${Date.now()}`;
+        ws = new WebSocket(`${protocol}//${window.location.host}/verification/ws/${clientId}`);
 
-                        ws.onmessage = (event) => {
-                            const data = JSON.parse(event.data);
-                            console.log("[KYC WS] Received update:", data);
-                            if (data.type === 'kyc_update') {
-                                if (data.status === 'approved' || data.status === 'verified' || data.status === 'manual_review_approved') {
-                                    stopPolling();
-                                    if (ws) ws.close();
-                                    handleApproval(data);
-                                } else if (data.status === 'liveliness_failed') {
-                                    stopPolling();
-                                    if (ws) ws.close();
-                                    handleLivenessFailure(data.reason || "Liveness check failed. Please try again.");
-                                } else if (data.status === 'rejected') {
-                                    stopPolling();
-                                    if (ws) ws.close();
-                                    handleRejection(data.reason || "Verification rejected by caterer");
-                                }
-                            }
-                        };
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            console.log("[KYC WS] Received update:", data);
+            if (data.type === 'kyc_update') {
+                if (data.status === 'approved' || data.status === 'verified' || data.status === 'manual_review_approved') {
+                    stopPolling();
+                    if (ws) ws.close();
+                    handleApproval(data);
+                } else if (data.status === 'liveliness_failed') {
+                    stopPolling();
+                    if (ws) ws.close();
+                    handleLivenessFailure(data.reason || "Liveness check failed. Please try again.");
+                } else if (data.status === 'rejected') {
+                    stopPolling();
+                    if (ws) ws.close();
+                    handleRejection(data.reason || "Verification rejected by caterer");
+                }
+            }
+        };
 
-                        ws.onclose = () => {
-                            console.log("[KYC WS] Connection closed. Falling back to primary polling.");
-                            ws = null;
-                        };
+        ws.onclose = () => {
+            console.log("[KYC WS] Connection closed. Falling back to primary polling.");
+            ws = null;
+        };
 
-                        ws.onerror = (err) => {
-                            console.error("[KYC WS] Error:", err);
-                            ws = null;
-                        };
-                    }
+        ws.onerror = (err) => {
+            console.error("[KYC WS] Error:", err);
+            ws = null;
+        };
+    }
 
-                    function startPolling() {
-                        pollingInterval = setInterval(async () => {
-                            try {
-                                const res = await fetch(`/api/bookings/${bookingId}/status`);
-                                const data = await res.json();
+    function startPolling() {
+        pollingInterval = setInterval(async () => {
+            try {
+                const res = await fetch(`/api/bookings/${bookingId}/status`);
+                const data = await res.json();
 
-                                if (data.status === 'approved' || data.status === 'verified') {
-                                    stopPolling();
-                                    handleApproval(data);
-                                } else if (data.status === 'manual_review' || data.status === 'pending_manual_review') {
-                                    stopPolling();
-                                    document.getElementById('step-processing').style.display = 'none';
-                                    document.getElementById('kyc-waiting-approval').style.display = 'block';
-                                    if (!ws) {
-                                        initKycWebSocket();
-                                    }
-                                    pollingInterval = setInterval(async () => {
-                                        try {
-                                            const r2 = await fetch(`/api/bookings/${bookingId}/status`);
-                                            const d2 = await r2.json();
-                                            if (d2.status === 'approved' || d2.status === 'verified') {
-                                                stopPolling();
-                                                handleApproval(d2);
-                                            } else if (d2.status === 'rejected' || d2.status === 'blocked') {
-                                                stopPolling();
-                                                handleRejection(d2.reason || "Verification rejected by caterer");
-                                            }
-                                        } catch (e) { console.error("Polling error (phase 2)", e); }
-                                    }, 5000);
-                                } else if (data.status === 'liveliness_failed') {
-                                    stopPolling();
-                                    handleLivenessFailure(data.reason || "Liveness check failed. Please try again.");
-                                } else if (data.status === 'rejected' || data.status === 'blocked') {
-                                    stopPolling();
-                                    handleRejection(data.reason || "Verification failed");
-                                }
-                            } catch (e) {
-                                console.error("Polling error", e);
-                            }
-                        }, 3000);
-                    }
-
-                    function stopPolling() {
-                        if (pollingInterval) clearInterval(pollingInterval);
-                    }
-
-                    function initWebSocket(userId) { }
-
-                    function handleApproval(data) {
-                        const scannerContainer = document.getElementById('scanner-container');
-                        const checkmarkOverlay = document.getElementById('success-checkmark-overlay');
-                        
-                        if (scannerContainer && scannerContainer.style.display !== 'none' && checkmarkOverlay) {
-                            checkmarkOverlay.style.display = 'flex';
-                            updateInstruction("Liveness Verified", "Identity verification successful");
-                            setProgressRing(100, "#22c55e");
-                        }
-
-                        document.getElementById('kyc-waiting-approval').style.display = 'none';
-                        const stepProcessing = document.getElementById('step-processing');
-                        if (stepProcessing) {
-                            if (scannerContainer && scannerContainer.style.display !== 'none') {
-                                // keep scanner visible to show checkmark
-                            } else {
-                                stepProcessing.style.display = 'block';
-                            }
-                        }
-
-                        document.getElementById('status-text').innerText = "Identity Verified!";
-                        document.getElementById('status-text').style.color = "var(--kyc-accent)";
-                        document.getElementById('status-subtext').innerText = "Success! Continuing...";
-
-                        document.getElementById('node-4').classList.add('completed');
-                        document.getElementById('node-4').classList.remove('active');
-
-                        setTimeout(() => {
-                            window.location.href = `/bookings/step/quotation/${bookingId}`;
-                        }, 2000);
-                    }
-
-                    function handleRejection(msg) {
-                        document.getElementById('kyc-waiting-approval').style.display = 'none';
-                        document.getElementById('step-processing').style.display = 'block';
-                        document.getElementById('status-text').innerText = "Verification Rejected";
-                        document.getElementById('status-text').style.color = "#ef4444";
-                        document.getElementById('status-subtext').innerText = msg;
-
-                        const existingBtn = document.getElementById('step-processing').querySelector('.btn-retry-kyc');
-                        if (existingBtn) existingBtn.remove();
-
-                        const btn = document.createElement('button');
-                        btn.className = 'btn btn-primary btn-retry-kyc';
-                        btn.style.marginTop = '1rem';
-                        btn.innerText = 'Retry Verification';
-                        btn.onclick = () => window.location.reload();
-                        document.getElementById('step-processing').appendChild(btn);
-                    }
-
-                    function handleLivenessFailure(msg) {
-                        document.getElementById('kyc-waiting-approval').style.display = 'none';
-                        document.getElementById('step-processing').style.display = 'none';
-
-                        const livenessRetryBanner = document.getElementById('liveness-retry-banner');
-                        if (livenessRetryBanner) {
-                            livenessRetryBanner.style.display = 'block';
-                            const msgEl = document.getElementById('liveness-retry-message');
-                            if (msgEl) msgEl.innerText = msg;
-                        } else {
-                            if (window.showError) {
-                                window.showError(msg, 'Liveness Check Failed');
-                            } else {
-                                alert('Liveness check failed: ' + msg);
-                            }
-                        }
-
-                        fetch('/api/bookings/kyc/reset-liveness', { method: 'POST' }).catch(() => { });
-
-                        selfieFrames = [];
-                        blinkStep = 0;
-                        currentLivenessState = STATE_ALIGNING;
-                        alignedStartTime = 0;
-                        isLivenessRunning = false;
-
-                        if (animationFrameId) {
-                            cancelAnimationFrame(animationFrameId);
-                            animationFrameId = null;
-                        }
-                        if (countdownInterval) {
-                            clearInterval(countdownInterval);
-                            countdownInterval = null;
-                        }
-
-                        const countdownEl = document.getElementById('selfie-countdown');
-                        if (countdownEl) countdownEl.classList.remove('show');
-
-                        const checkmarkOverlay = document.getElementById('success-checkmark-overlay');
-                        if (checkmarkOverlay) checkmarkOverlay.style.display = 'none';
-
-                        document.getElementById('scanner-container').style.display = 'block';
-                        setProgressRing(0);
-                        updateInstruction("Align your face in the circle", "Liveness check failed, please try again");
-
-                        updateStatusTracker(3);
-
-                        setTimeout(() => {
-                            window.startRealtimeScanner();
-                        }, 1500);
-                    }
-
-                    let livenessFacingMode = "user";
-
-                    window.switchLivenessCamera = function (mode = null) {
-                        if (mode) { livenessFacingMode = mode; }
-                        else { livenessFacingMode = (livenessFacingMode === "user") ? "environment" : "user"; }
-                        console.log("[KYC] Liveness Camera Switching to:", livenessFacingMode);
-                        window.startRealtimeScanner();
-                    };
-
-                    window.validateIdSelection();
-                    initDefaultMethod();
-
-                    const scannerContainer = document.getElementById('scanner-container');
-                    if (scannerContainer && scannerContainer.style.display === 'block') {
-                        console.log("[KYC] Page loaded in liveness step. Auto-starting camera...");
-                        window.startRealtimeScanner();
-                    }
-
-                    if (document.getElementById('kyc-waiting-approval').style.display === 'block') {
-                        console.log("[KYC] Page loaded in waiting state. Initializing real-time listeners...");
+                if (data.status === 'approved' || data.status === 'verified') {
+                    stopPolling();
+                    handleApproval(data);
+                } else if (data.status === 'manual_review' || data.status === 'pending_manual_review') {
+                    stopPolling();
+                    document.getElementById('step-processing').style.display = 'none';
+                    document.getElementById('kyc-waiting-approval').style.display = 'block';
+                    if (!ws) {
                         initKycWebSocket();
-                        startPolling();
                     }
+                    pollingInterval = setInterval(async () => {
+                        try {
+                            const r2 = await fetch(`/api/bookings/${bookingId}/status`);
+                            const d2 = await r2.json();
+                            if (d2.status === 'approved' || d2.status === 'verified') {
+                                stopPolling();
+                                handleApproval(d2);
+                            } else if (d2.status === 'rejected' || d2.status === 'blocked') {
+                                stopPolling();
+                                handleRejection(d2.reason || "Verification rejected by caterer");
+                            }
+                        } catch (e) { console.error("Polling error (phase 2)", e); }
+                    }, 5000);
+                } else if (data.status === 'liveliness_failed') {
+                    stopPolling();
+                    handleLivenessFailure(data.reason || "Liveness check failed. Please try again.");
+                } else if (data.status === 'rejected' || data.status === 'blocked') {
+                    stopPolling();
+                    handleRejection(data.reason || "Verification failed");
+                }
+            } catch (e) {
+                console.error("Polling error", e);
+            }
+        }, 3000);
+    }
+
+    function stopPolling() {
+        if (pollingInterval) clearInterval(pollingInterval);
+    }
+
+    function initWebSocket(userId) { }
+
+    function handleApproval(data) {
+        const scannerContainer = document.getElementById('scanner-container');
+        const checkmarkOverlay = document.getElementById('success-checkmark-overlay');
+
+        if (scannerContainer && scannerContainer.style.display !== 'none' && checkmarkOverlay) {
+            checkmarkOverlay.style.display = 'flex';
+            updateInstruction("Liveness Verified", "Identity verification successful");
+            setProgressRing(100, "#22c55e");
+        }
+
+        document.getElementById('kyc-waiting-approval').style.display = 'none';
+        const stepProcessing = document.getElementById('step-processing');
+        if (stepProcessing) {
+            if (scannerContainer && scannerContainer.style.display !== 'none') {
+                // keep scanner visible to show checkmark
+            } else {
+                stepProcessing.style.display = 'block';
+            }
+        }
+
+        document.getElementById('status-text').innerText = "Identity Verified!";
+        document.getElementById('status-text').style.color = "var(--kyc-accent)";
+        document.getElementById('status-subtext').innerText = "Success! Continuing...";
+
+        document.getElementById('node-4').classList.add('completed');
+        document.getElementById('node-4').classList.remove('active');
+
+        setTimeout(() => {
+            window.location.href = `/bookings/step/quotation/${bookingId}`;
+        }, 2000);
+    }
+
+    function handleRejection(msg) {
+        document.getElementById('kyc-waiting-approval').style.display = 'none';
+        document.getElementById('step-processing').style.display = 'block';
+        document.getElementById('status-text').innerText = "Verification Rejected";
+        document.getElementById('status-text').style.color = "#ef4444";
+        document.getElementById('status-subtext').innerText = msg;
+
+        const existingBtn = document.getElementById('step-processing').querySelector('.btn-retry-kyc');
+        if (existingBtn) existingBtn.remove();
+
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-primary btn-retry-kyc';
+        btn.style.marginTop = '1rem';
+        btn.innerText = 'Retry Verification';
+        btn.onclick = () => window.location.reload();
+        document.getElementById('step-processing').appendChild(btn);
+    }
+
+    function handleLivenessFailure(msg) {
+        document.getElementById('kyc-waiting-approval').style.display = 'none';
+        document.getElementById('step-processing').style.display = 'none';
+
+        const livenessRetryBanner = document.getElementById('liveness-retry-banner');
+        if (livenessRetryBanner) {
+            livenessRetryBanner.style.display = 'block';
+            const msgEl = document.getElementById('liveness-retry-message');
+            if (msgEl) msgEl.innerText = msg;
+        } else {
+            if (window.showError) {
+                window.showError(msg, 'Liveness Check Failed');
+            } else {
+                alert('Liveness check failed: ' + msg);
+            }
+        }
+
+        fetch('/api/bookings/kyc/reset-liveness', { method: 'POST' }).catch(() => { });
+
+        selfieFrames = [];
+        blinkStep = 0;
+        currentLivenessState = STATE_ALIGNING;
+        alignedStartTime = 0;
+        isLivenessRunning = false;
+
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+        }
+        if (countdownInterval) {
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+        }
+
+        const countdownEl = document.getElementById('selfie-countdown');
+        if (countdownEl) countdownEl.classList.remove('show');
+
+        const checkmarkOverlay = document.getElementById('success-checkmark-overlay');
+        if (checkmarkOverlay) checkmarkOverlay.style.display = 'none';
+
+        document.getElementById('scanner-container').style.display = 'block';
+        setProgressRing(0);
+        updateInstruction("Align your face in the circle", "Liveness check failed, please try again");
+
+        updateStatusTracker(3);
+
+        setTimeout(() => {
+            window.startRealtimeScanner();
+        }, 1500);
+    }
+
+    let livenessFacingMode = "user";
+
+    window.switchLivenessCamera = function (mode = null) {
+        if (mode) { livenessFacingMode = mode; }
+        else { livenessFacingMode = (livenessFacingMode === "user") ? "environment" : "user"; }
+        console.log("[KYC] Liveness Camera Switching to:", livenessFacingMode);
+        window.startRealtimeScanner();
+    };
+
+    window.validateIdSelection();
+    initDefaultMethod();
+
+    const scannerContainer = document.getElementById('scanner-container');
+    if (scannerContainer && scannerContainer.style.display === 'block') {
+        console.log("[KYC] Page loaded in liveness step. Auto-starting camera...");
+        window.startRealtimeScanner();
+    }
+
+    if (document.getElementById('kyc-waiting-approval').style.display === 'block') {
+        console.log("[KYC] Page loaded in waiting state. Initializing real-time listeners...");
+        initKycWebSocket();
+        startPolling();
+    }
 };
 
 if (document.readyState === 'loading') {

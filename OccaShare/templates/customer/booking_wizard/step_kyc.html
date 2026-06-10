@@ -821,7 +821,10 @@
                 <input type="hidden" id="address_street">
                 <input type="hidden" id="address">
 
-                <div class="kyc-form-grid">
+                <!-- Hidden ID number field - populated by OCR extraction -->
+                <input type="hidden" id="id_number" value="">
+
+                <div style="max-width: 420px; margin: 0 auto 2rem;">
                     <div class="field-group">
                         <label>Select ID Type <span style="color:#ef4444;">*</span></label>
                         <select id="id_type" class="modern-input" onchange="validateIdSelection(); validateKycForm();">
@@ -832,15 +835,6 @@
                         </select>
                         <div class="field-error-msg" id="err-id_type"><i class="fas fa-exclamation-circle"></i> Please
                             select an ID type.</div>
-                    </div>
-                    <div class="field-group">
-                        <label>ID Number <span style="color:#ef4444;">*</span></label>
-                        <input type="text" id="id_number" class="modern-input" placeholder="Enter ID number"
-                            oninput="validateIdSelection(); validateKycForm();">
-                        <div id="id-validation-msg" style="font-size: 0.75rem; margin-top: 0.25rem; height: 1rem;">
-                        </div>
-                        <div class="field-error-msg" id="err-id_number"><i class="fas fa-exclamation-circle"></i> ID
-                            number is required.</div>
                     </div>
                 </div>
 
@@ -856,6 +850,11 @@
                         <p class="card-desc">Choose from gallery</p>
                     </div>
                 </div>
+
+                <!-- Dynamic helper text -->
+                <p id="kyc-helper-text" style="text-align: center; font-size: 0.85rem; font-weight: 600; color: var(--kyc-slate-400); margin-top: -0.5rem; margin-bottom: 1.5rem; transition: all 0.3s ease;">
+                    <i class="fas fa-info-circle" style="margin-right: 0.35rem;"></i>Please select an ID type first to continue.
+                </p>
                 <input type="file" id="id_camera" style="display: none;" accept="image/*" capture="environment"
                     onchange="handleIdUpload(this)">
                 <input type="file" id="id_document" style="display: none;" accept="image/*"
