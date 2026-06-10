@@ -859,7 +859,7 @@ class VerificationService:
         # 4. Glare Check (Excessive bright spots)
         glare_pixels = np.sum(gray > 250)
         glare_pct = glare_pixels / gray.size
-        if glare_pct > 0.08:
+        if glare_pct > 0.25:
             return {"valid": False, "reason": "Glare detected on ID card. Please avoid direct overhead lights or flash reflections."}
             
         return {"valid": True}

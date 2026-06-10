@@ -424,10 +424,12 @@
         visibility: hidden;
         transition: all 0.35s ease;
     }
+
     .ocr-modal-overlay.visible {
         opacity: 1;
         visibility: visible;
     }
+
     .ocr-modal {
         background: #fff;
         border-radius: 1.75rem;
@@ -435,41 +437,51 @@
         width: 100%;
         max-height: 90vh;
         overflow-y: auto;
-        box-shadow: 0 25px 60px rgba(0,0,0,0.15);
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.15);
         transform: translateY(30px) scale(0.96);
         transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
+
     .ocr-modal-overlay.visible .ocr-modal {
         transform: translateY(0) scale(1);
     }
+
     .ocr-modal-header {
         padding: 2rem 2rem 0;
         text-align: center;
     }
+
     .ocr-modal-header .modal-icon {
-        width: 64px; height: 64px;
+        width: 64px;
+        height: 64px;
         background: linear-gradient(135deg, #f97316, #fb923c);
         border-radius: 1rem;
         display: inline-flex;
-        align-items: center; justify-content: center;
-        font-size: 1.75rem; color: white;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.75rem;
+        color: white;
         margin-bottom: 1rem;
         box-shadow: 0 8px 20px rgba(249, 115, 22, 0.25);
     }
+
     .ocr-modal-header h2 {
         font-size: 1.35rem;
         font-weight: 800;
         color: #1e293b;
         margin-bottom: 0.35rem;
     }
+
     .ocr-modal-header p {
         font-size: 0.85rem;
         color: #94a3b8;
         font-weight: 600;
     }
+
     .ocr-modal-body {
         padding: 1.5rem 2rem;
     }
+
     .ocr-field-row {
         display: flex;
         align-items: flex-start;
@@ -477,27 +489,40 @@
         padding: 1rem 0;
         border-bottom: 1px solid #f1f5f9;
     }
+
     .ocr-fields-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 1rem;
     }
+
     @media (max-width: 600px) {
         .ocr-fields-grid {
             grid-template-columns: 1fr;
         }
     }
-    .ocr-field-row:last-child { border-bottom: none; }
+
+    .ocr-field-row:last-child {
+        border-bottom: none;
+    }
+
     .ocr-field-icon {
-        width: 40px; height: 40px;
+        width: 40px;
+        height: 40px;
         background: var(--kyc-accent-soft);
         border-radius: 0.75rem;
-        display: flex; align-items: center; justify-content: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         color: var(--kyc-accent);
         font-size: 0.9rem;
         flex-shrink: 0;
     }
-    .ocr-field-content { flex: 1; }
+
+    .ocr-field-content {
+        flex: 1;
+    }
+
     .ocr-field-content label {
         display: block !important;
         font-size: 0.7rem !important;
@@ -507,6 +532,7 @@
         letter-spacing: 0.06em !important;
         margin-bottom: 0.35rem !important;
     }
+
     .ocr-field-content input {
         width: 100%;
         border: 1.5px solid #e2e8f0;
@@ -518,23 +544,27 @@
         background: #f8fafc;
         transition: all 0.2s ease;
     }
+
     .ocr-field-content input:focus {
         outline: none;
         border-color: var(--kyc-accent);
         background: #fff;
         box-shadow: 0 0 0 3px var(--kyc-accent-soft);
     }
+
     .ocr-field-content input.not-detected {
         color: #94a3b8;
         font-style: italic;
         font-weight: 600;
     }
+
     .ocr-confidence-bar {
         margin: 0.5rem 0 1rem;
         display: flex;
         align-items: center;
         gap: 0.75rem;
     }
+
     .ocr-confidence-bar .bar-track {
         flex: 1;
         height: 6px;
@@ -542,23 +572,27 @@
         border-radius: 3px;
         overflow: hidden;
     }
+
     .ocr-confidence-bar .bar-fill {
         height: 100%;
         background: linear-gradient(90deg, #f97316, #22c55e);
         border-radius: 3px;
         transition: width 0.6s ease;
     }
+
     .ocr-confidence-bar .bar-label {
         font-size: 0.75rem;
         font-weight: 800;
         color: #64748b;
         white-space: nowrap;
     }
+
     .ocr-modal-footer {
         padding: 0 2rem 2rem;
         display: flex;
         gap: 0.75rem;
     }
+
     .ocr-modal-footer button {
         flex: 1;
         padding: 0.85rem 1.5rem;
@@ -569,16 +603,22 @@
         cursor: pointer;
         transition: all 0.25s ease;
     }
+
     .btn-modal-secondary {
         background: #f1f5f9;
         color: #64748b;
     }
-    .btn-modal-secondary:hover { background: #e2e8f0; }
+
+    .btn-modal-secondary:hover {
+        background: #e2e8f0;
+    }
+
     .btn-modal-primary {
         background: linear-gradient(135deg, #f97316, #ea580c);
         color: white;
         box-shadow: 0 6px 15px rgba(249, 115, 22, 0.25);
     }
+
     .btn-modal-primary:hover {
         transform: translateY(-2px);
         box-shadow: 0 8px 20px rgba(249, 115, 22, 0.35);
@@ -591,47 +631,71 @@
         text-align: center;
         padding: 3rem 1.5rem;
     }
+
     .compliance-icon-wrap {
-        width: 80px; height: 80px;
+        width: 80px;
+        height: 80px;
         background: linear-gradient(135deg, #f97316, #fb923c);
         border-radius: 50%;
         display: inline-flex;
-        align-items: center; justify-content: center;
-        font-size: 2rem; color: white;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        color: white;
         margin-bottom: 1.5rem;
         animation: compliancePulse 2s ease-in-out infinite;
         box-shadow: 0 10px 30px rgba(249, 115, 22, 0.25);
     }
+
     @keyframes compliancePulse {
-        0%, 100% { transform: scale(1); box-shadow: 0 10px 30px rgba(249, 115, 22, 0.25); }
-        50% { transform: scale(1.08); box-shadow: 0 15px 40px rgba(249, 115, 22, 0.35); }
+
+        0%,
+        100% {
+            transform: scale(1);
+            box-shadow: 0 10px 30px rgba(249, 115, 22, 0.25);
+        }
+
+        50% {
+            transform: scale(1.08);
+            box-shadow: 0 15px 40px rgba(249, 115, 22, 0.35);
+        }
     }
+
     .compliance-checklist {
         max-width: 340px;
         margin: 1.5rem auto 0;
         text-align: left;
     }
+
     .compliance-check-item {
-        display: flex; align-items: center; gap: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
         padding: 0.75rem 0;
         font-size: 0.85rem;
         font-weight: 700;
         color: #94a3b8;
         transition: all 0.4s ease;
     }
+
     .compliance-check-item.checked {
         color: #1e293b;
     }
+
     .compliance-check-item .check-icon {
-        width: 28px; height: 28px;
+        width: 28px;
+        height: 28px;
         border-radius: 50%;
         background: #f1f5f9;
-        display: flex; align-items: center; justify-content: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         font-size: 0.7rem;
         color: #94a3b8;
         flex-shrink: 0;
         transition: all 0.4s ease;
     }
+
     .compliance-check-item.checked .check-icon {
         background: #dcfce7;
         color: #16a34a;
@@ -641,21 +705,26 @@
     /*  PREMIUM LIVENESS FACE FRAME                           */
     /* ═══════════════════════════════════════════════════════ */
     .liveness-premium-container .face-circle-frame {
-        width: 260px; height: 260px;
+        width: 260px;
+        height: 260px;
         border: 4px solid var(--kyc-accent);
         border-radius: 50%;
         position: relative;
         margin: 0 auto 1.5rem;
         overflow: hidden;
-        box-shadow: 0 0 0 8px var(--kyc-accent-soft), 0 15px 40px rgba(0,0,0,0.1);
+        box-shadow: 0 0 0 8px var(--kyc-accent-soft), 0 15px 40px rgba(0, 0, 0, 0.1);
     }
+
     .face-circle-frame video {
-        width: 100%; height: 100%;
+        width: 100%;
+        height: 100%;
         object-fit: cover;
     }
+
     .liveness-instruction-pill {
         display: inline-flex;
-        align-items: center; gap: 0.5rem;
+        align-items: center;
+        gap: 0.5rem;
         background: #1e293b;
         color: white;
         padding: 0.65rem 1.5rem;
@@ -664,9 +733,11 @@
         font-weight: 700;
         margin-bottom: 1.5rem;
     }
+
     .liveness-instruction-pill i {
         color: var(--kyc-accent);
     }
+
     .face-compare-row {
         display: flex;
         justify-content: center;
@@ -674,20 +745,29 @@
         gap: 1.5rem;
         margin: 1.5rem 0;
     }
+
     .face-compare-item {
         text-align: center;
     }
-    .face-compare-item img, .face-compare-item .placeholder-face {
-        width: 80px; height: 80px;
+
+    .face-compare-item img,
+    .face-compare-item .placeholder-face {
+        width: 80px;
+        height: 80px;
         border-radius: 50%;
         object-fit: cover;
         border: 3px solid #e2e8f0;
     }
+
     .face-compare-item .placeholder-face {
         background: #f1f5f9;
-        display: flex; align-items: center; justify-content: center;
-        color: #94a3b8; font-size: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #94a3b8;
+        font-size: 2rem;
     }
+
     .face-compare-item span {
         display: block;
         font-size: 0.7rem;
@@ -697,17 +777,29 @@
         margin-top: 0.5rem;
         letter-spacing: 0.05em;
     }
+
     .compare-arrow {
         font-size: 1.5rem;
         color: var(--kyc-accent);
         animation: arrowPulse 1.5s ease-in-out infinite;
     }
+
     @keyframes arrowPulse {
-        0%, 100% { opacity: 0.4; transform: scale(0.9); }
-        50% { opacity: 1; transform: scale(1.1); }
+
+        0%,
+        100% {
+            opacity: 0.4;
+            transform: scale(0.9);
+        }
+
+        50% {
+            opacity: 1;
+            transform: scale(1.1);
+        }
     }
 </style>
-<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_kyc.css') }}?v={{ range(10000000, 99999999) | random }}">
+<link rel="stylesheet"
+    href="{{ url_for('static', path='/css/customer/booking_wizard/step_kyc.css') }}?v={{ range(10000000, 99999999) | random }}">
 <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/wizard_navigation.css') }}">
 {% endblock %}
 
@@ -852,8 +944,10 @@
                 </div>
 
                 <!-- Dynamic helper text -->
-                <p id="kyc-helper-text" style="text-align: center; font-size: 0.85rem; font-weight: 600; color: var(--kyc-slate-400); margin-top: -0.5rem; margin-bottom: 1.5rem; transition: all 0.3s ease;">
-                    <i class="fas fa-info-circle" style="margin-right: 0.35rem;"></i>Please select an ID type first to continue.
+                <p id="kyc-helper-text"
+                    style="text-align: center; font-size: 0.85rem; font-weight: 600; color: var(--kyc-slate-400); margin-top: -0.5rem; margin-bottom: 1.5rem; transition: all 0.3s ease;">
+                    <i class="fas fa-info-circle" style="margin-right: 0.35rem;"></i>Please select an ID type first to
+                    continue.
                 </p>
                 <input type="file" id="id_camera" style="display: none;" accept="image/*" capture="environment"
                     onchange="handleIdUpload(this)">
@@ -863,15 +957,20 @@
 
 
             <div id="id-preview" style="display: none; text-align: center; padding: 1rem;">
-                <h3 style="font-weight: 800; font-size: 1.25rem; color: var(--kyc-slate-700); margin-bottom: 0.5rem;">Adjust ID Corners</h3>
-                <p class="card-desc" style="margin-bottom: 1.5rem; font-size: 0.85rem;">Drag the corner circles to align with the edges of your ID card for clean cropping and perspective correction.</p>
-                
+                <h3 style="font-weight: 800; font-size: 1.25rem; color: var(--kyc-slate-700); margin-bottom: 0.5rem;">
+                    Adjust ID Corners</h3>
+                <p class="card-desc" style="margin-bottom: 1.5rem; font-size: 0.85rem;">Drag the corner circles to align
+                    with the edges of your ID card for clean cropping and perspective correction.</p>
+
                 <!-- Interactive Crop Area -->
-                <div id="crop-workspace-container" style="position: relative; max-width: 480px; width: 100%; margin: 0 auto 2rem; border-radius: 1rem; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.15); border: 1px solid var(--kyc-slate-200); background: #0f172a; user-select: none; -webkit-user-select: none;">
-                    <img id="id-image" src="" style="display: block; width: 100%; height: auto; pointer-events: none; opacity: 0.65;">
-                    
+                <div id="crop-workspace-container"
+                    style="position: relative; max-width: 480px; width: 100%; margin: 0 auto 2rem; border-radius: 1rem; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.15); border: 1px solid var(--kyc-slate-200); background: #0f172a; user-select: none; -webkit-user-select: none;">
+                    <img id="id-image" src=""
+                        style="display: block; width: 100%; height: auto; pointer-events: none; opacity: 0.65;">
+
                     <!-- SVG Overlay to draw boundary polygon and darken external area -->
-                    <svg id="crop-svg" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;">
+                    <svg id="crop-svg"
+                        style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;">
                         <defs>
                             <mask id="crop-mask">
                                 <rect width="100%" height="100%" fill="white" />
@@ -880,14 +979,27 @@
                         </defs>
                         <rect width="100%" height="100%" fill="rgba(15, 23, 42, 0.7)" mask="url(#crop-mask)" />
                         <!-- Highlighted border line -->
-                        <polygon id="crop-svg-polygon" fill="none" stroke="var(--kyc-accent)" stroke-width="3" stroke-dasharray="6,4" />
+                        <polygon id="crop-svg-polygon" fill="none" stroke="var(--kyc-accent)" stroke-width="3"
+                            stroke-dasharray="6,4" />
                     </svg>
 
                     <!-- Corner Pins (Draggable) -->
-                    <div id="pin-tl" class="crop-pin" style="position: absolute; width: 28px; height: 28px; background: white; border: 3px solid var(--kyc-accent); border-radius: 50%; cursor: move; z-index: 20; transform: translate(-14px, -14px); box-shadow: 0 4px 10px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; touch-action: none;"><div style="width: 8px; height: 8px; background: var(--kyc-accent); border-radius: 50%;"></div></div>
-                    <div id="pin-tr" class="crop-pin" style="position: absolute; width: 28px; height: 28px; background: white; border: 3px solid var(--kyc-accent); border-radius: 50%; cursor: move; z-index: 20; transform: translate(-14px, -14px); box-shadow: 0 4px 10px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; touch-action: none;"><div style="width: 8px; height: 8px; background: var(--kyc-accent); border-radius: 50%;"></div></div>
-                    <div id="pin-br" class="crop-pin" style="position: absolute; width: 28px; height: 28px; background: white; border: 3px solid var(--kyc-accent); border-radius: 50%; cursor: move; z-index: 20; transform: translate(-14px, -14px); box-shadow: 0 4px 10px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; touch-action: none;"><div style="width: 8px; height: 8px; background: var(--kyc-accent); border-radius: 50%;"></div></div>
-                    <div id="pin-bl" class="crop-pin" style="position: absolute; width: 28px; height: 28px; background: white; border: 3px solid var(--kyc-accent); border-radius: 50%; cursor: move; z-index: 20; transform: translate(-14px, -14px); box-shadow: 0 4px 10px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; touch-action: none;"><div style="width: 8px; height: 8px; background: var(--kyc-accent); border-radius: 50%;"></div></div>
+                    <div id="pin-tl" class="crop-pin"
+                        style="position: absolute; width: 28px; height: 28px; background: white; border: 3px solid var(--kyc-accent); border-radius: 50%; cursor: move; z-index: 20; transform: translate(-14px, -14px); box-shadow: 0 4px 10px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; touch-action: none;">
+                        <div style="width: 8px; height: 8px; background: var(--kyc-accent); border-radius: 50%;"></div>
+                    </div>
+                    <div id="pin-tr" class="crop-pin"
+                        style="position: absolute; width: 28px; height: 28px; background: white; border: 3px solid var(--kyc-accent); border-radius: 50%; cursor: move; z-index: 20; transform: translate(-14px, -14px); box-shadow: 0 4px 10px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; touch-action: none;">
+                        <div style="width: 8px; height: 8px; background: var(--kyc-accent); border-radius: 50%;"></div>
+                    </div>
+                    <div id="pin-br" class="crop-pin"
+                        style="position: absolute; width: 28px; height: 28px; background: white; border: 3px solid var(--kyc-accent); border-radius: 50%; cursor: move; z-index: 20; transform: translate(-14px, -14px); box-shadow: 0 4px 10px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; touch-action: none;">
+                        <div style="width: 8px; height: 8px; background: var(--kyc-accent); border-radius: 50%;"></div>
+                    </div>
+                    <div id="pin-bl" class="crop-pin"
+                        style="position: absolute; width: 28px; height: 28px; background: white; border: 3px solid var(--kyc-accent); border-radius: 50%; cursor: move; z-index: 20; transform: translate(-14px, -14px); box-shadow: 0 4px 10px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; touch-action: none;">
+                        <div style="width: 8px; height: 8px; background: var(--kyc-accent); border-radius: 50%;"></div>
+                    </div>
                 </div>
 
                 <!-- Hidden canvas variables used in perspective warp calculations -->
@@ -895,8 +1007,11 @@
                 <canvas id="dst-warp-canvas" style="display: none;"></canvas>
 
                 <div style="display: flex; gap: 0.75rem; justify-content: center;">
-                    <button type="button" class="btn btn-outline-kyc" onclick="resetIdUpload()"><i class="fas fa-undo mr-1"></i> Upload Again</button>
-                    <button type="button" class="btn btn-primary-kyc" style="max-width: 200px; padding: 0.75rem 1.5rem !important; font-size: 0.95rem !important;" onclick="cropAndFinalizeId()"><i class="fas fa-magic mr-1"></i> Crop & Scan</button>
+                    <button type="button" class="btn btn-outline-kyc" onclick="resetIdUpload()"><i
+                            class="fas fa-undo mr-1"></i> Upload Again</button>
+                    <button type="button" class="btn btn-primary-kyc"
+                        style="max-width: 200px; padding: 0.75rem 1.5rem !important; font-size: 0.95rem !important;"
+                        onclick="cropAndFinalizeId()"><i class="fas fa-magic mr-1"></i> Crop & Scan</button>
                 </div>
             </div>
 
@@ -917,18 +1032,24 @@
             <!--  OCR VERIFICATION MODAL                     -->
             <!-- ═══════════════════════════════════════════ -->
             <div id="ocr-verification-modal" class="ocr-modal-overlay">
-                <div class="ocr-modal" style="max-width: 850px; display: flex; flex-direction: column; overflow: hidden; max-height: 92vh;">
+                <div class="ocr-modal"
+                    style="max-width: 850px; display: flex; flex-direction: column; overflow: hidden; max-height: 92vh;">
                     <div class="ocr-modal-header" style="border-bottom: 1px solid #f1f5f9; padding: 2rem 2rem 1.25rem;">
                         <div class="modal-icon"><i class="fas fa-file-invoice"></i></div>
                         <h2>Verify Extracted ID Details</h2>
                         <p>Check if all text matches the ID card. Correct any misspelled fields.</p>
                     </div>
-                    <div class="ocr-modal-body" style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 1.5rem; overflow-y: auto; flex: 1; padding: 1.5rem 2rem;">
+                    <div class="ocr-modal-body"
+                        style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 1.5rem; overflow-y: auto; flex: 1; padding: 1.5rem 2rem;">
                         <!-- Left Column: Crop Snippet Preview -->
                         <div style="flex: 1 1 280px; display: flex; flex-direction: column; gap: 0.75rem;">
-                            <label style="display: block; font-size: 0.7rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em;">Cropped ID Document</label>
-                            <div style="background: #0f172a; padding: 1rem; border-radius: 1rem; flex: 1; display: flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0; min-height: 200px;">
-                                <img id="ocr-crop-preview" src="" style="max-height: 280px; max-width: 100%; object-fit: contain; border-radius: 0.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.25);">
+                            <label
+                                style="display: block; font-size: 0.7rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em;">Cropped
+                                ID Document</label>
+                            <div
+                                style="background: #0f172a; padding: 1rem; border-radius: 1rem; flex: 1; display: flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0; min-height: 200px;">
+                                <img id="ocr-crop-preview" src=""
+                                    style="max-height: 280px; max-width: 100%; object-fit: contain; border-radius: 0.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.25);">
                             </div>
                         </div>
 
@@ -936,41 +1057,56 @@
                         <div style="flex: 1.2 1 300px; display: flex; flex-direction: column; gap: 1rem;">
                             <div class="ocr-confidence-bar" style="margin: 0 0 0.5rem 0; width: 100%;">
                                 <span class="bar-label">OCR Match Confidence:</span>
-                                <div class="bar-track"><div class="bar-fill" id="ocr-confidence-fill" style="width: 0%;"></div></div>
+                                <div class="bar-track">
+                                    <div class="bar-fill" id="ocr-confidence-fill" style="width: 0%;"></div>
+                                </div>
                                 <span class="bar-label" id="ocr-confidence-pct">0%</span>
                             </div>
-                            
+
                             <!-- Dynamic fields container -->
-                            <div id="ocr-dynamic-fields-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;"></div>
+                            <div id="ocr-dynamic-fields-container"
+                                style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;"></div>
                         </div>
                     </div>
                     <div class="ocr-modal-footer" style="border-top: 1px solid #f1f5f9; padding: 1.25rem 2rem 2rem;">
-                        <button type="button" class="btn-modal-secondary" onclick="rescanId()"><i class="fas fa-redo-alt" style="margin-right:0.4rem;"></i> Rescan</button>
-                        <button type="button" class="btn-modal-primary" onclick="saveOcrAndContinue()"><i class="fas fa-check" style="margin-right:0.4rem;"></i> Save & Continue</button>
+                        <button type="button" class="btn-modal-secondary" onclick="rescanId()"><i
+                                class="fas fa-redo-alt" style="margin-right:0.4rem;"></i> Rescan</button>
+                        <button type="button" class="btn-modal-primary" onclick="saveOcrAndContinue()"><i
+                                class="fas fa-check" style="margin-right:0.4rem;"></i> Save & Continue</button>
                     </div>
                 </div>
             </div>
 
             <!-- Webcam ID Capture Modal for Desktops -->
             <div id="id-camera-modal" class="ocr-modal-overlay">
-                <div class="ocr-modal" style="max-width: 500px; display: flex; flex-direction: column; overflow: hidden; max-height: 90vh;">
+                <div class="ocr-modal"
+                    style="max-width: 500px; display: flex; flex-direction: column; overflow: hidden; max-height: 90vh;">
                     <div class="ocr-modal-header" style="border-bottom: 1px solid #f1f5f9; padding: 2rem 2rem 1.25rem;">
                         <div class="modal-icon"><i class="fas fa-camera"></i></div>
                         <h2>Capture ID Document</h2>
                         <p>Align your ID card inside the frame and keep it steady</p>
                     </div>
-                    <div class="ocr-modal-body" style="padding: 1.5rem 2rem; display: flex; align-items: center; justify-content: center; background: #f8fafc;">
-                        <div style="position: relative; width: 100%; aspect-ratio: 4/3; background: #0f172a; border-radius: 1rem; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-                            <video id="id-webcam" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+                    <div class="ocr-modal-body"
+                        style="padding: 1.5rem 2rem; display: flex; align-items: center; justify-content: center; background: #f8fafc;">
+                        <div
+                            style="position: relative; width: 100%; aspect-ratio: 4/3; background: #0f172a; border-radius: 1rem; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                            <video id="id-webcam" autoplay playsinline
+                                style="width: 100%; height: 100%; object-fit: cover;"></video>
                             <!-- Highlight Bracket Overlay -->
-                            <div style="position: absolute; inset: 0; pointer-events: none; border: 4px dashed var(--kyc-accent); border-radius: 1rem; margin: 1.5rem; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 0 200px rgba(15,23,42,0.4);">
-                                <span style="font-size: 0.75rem; font-weight: bold; background: rgba(0,0,0,0.6); color: white; padding: 0.35rem 0.75rem; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.15);">Align ID Card</span>
+                            <div
+                                style="position: absolute; inset: 0; pointer-events: none; border: 4px dashed var(--kyc-accent); border-radius: 1rem; margin: 1.5rem; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 0 200px rgba(15,23,42,0.4);">
+                                <span
+                                    style="font-size: 0.75rem; font-weight: bold; background: rgba(0,0,0,0.6); color: white; padding: 0.35rem 0.75rem; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.15);">Align
+                                    ID Card</span>
                             </div>
                         </div>
                     </div>
-                    <div class="ocr-modal-footer" style="border-top: 1px solid #f1f5f9; padding: 1.25rem 2rem 2rem; display: flex; gap: 0.75rem;">
-                        <button type="button" class="btn-modal-secondary" style="flex: 1;" onclick="closeIdCameraModal()">Cancel</button>
-                        <button type="button" class="btn-modal-primary" style="flex: 1;" onclick="captureIdFromWebcam()"><i class="fas fa-camera mr-1"></i> Capture Photo</button>
+                    <div class="ocr-modal-footer"
+                        style="border-top: 1px solid #f1f5f9; padding: 1.25rem 2rem 2rem; display: flex; gap: 0.75rem;">
+                        <button type="button" class="btn-modal-secondary" style="flex: 1;"
+                            onclick="closeIdCameraModal()">Cancel</button>
+                        <button type="button" class="btn-modal-primary" style="flex: 1;"
+                            onclick="captureIdFromWebcam()"><i class="fas fa-camera mr-1"></i> Capture Photo</button>
                     </div>
                 </div>
             </div>
@@ -983,8 +1119,10 @@
                     <div class="compliance-icon-wrap">
                         <i class="fas fa-clipboard-check"></i>
                     </div>
-                    <h2 style="font-weight: 800; font-size: 1.4rem; color: #1e293b; margin-bottom: 0.5rem;">Checking Caterer Compliance</h2>
-                    <p style="color: #94a3b8; font-weight: 600; font-size: 0.9rem; max-width: 380px; margin: 0 auto;">We're verifying your identity data against caterer requirements</p>
+                    <h2 style="font-weight: 800; font-size: 1.4rem; color: #1e293b; margin-bottom: 0.5rem;">Checking
+                        Caterer Compliance</h2>
+                    <p style="color: #94a3b8; font-weight: 600; font-size: 0.9rem; max-width: 380px; margin: 0 auto;">
+                        We're verifying your identity data against caterer requirements</p>
 
                     <div class="compliance-checklist" id="compliance-checklist">
                         <div class="compliance-check-item" id="comp-check-1">
@@ -1010,18 +1148,27 @@
             <!-- ═══════════════════════════════════════════ -->
             <!--  PREMIUM LIVENESS DETECTION                 -->
             <!-- ═══════════════════════════════════════════ -->
-            <div id="scanner-container" style="display: {% if kyc_status in ['pending_liveliness', 'liveliness_failed'] %}block{% else %}none{% endif %};">
+            <div id="scanner-container"
+                style="display: {% if kyc_status in ['pending_liveliness', 'liveliness_failed'] %}block{% else %}none{% endif %};">
                 <div class="liveness-premium-container" style="text-align: center;">
                     <!-- Liveness Retry Banner (shown when liveness check fails) -->
-                    <div id="liveness-retry-banner" style="display: {% if kyc_status == 'liveliness_failed' %}block{% else %}none{% endif %}; background: #fff5f5; border: 1.5px solid #fca5a5; border-radius: 1rem; padding: 1rem 1.25rem; margin: 0 auto 1.5rem; text-align: left; max-width: 420px;">
+                    <div id="liveness-retry-banner"
+                        style="display: {% if kyc_status == 'liveliness_failed' %}block{% else %}none{% endif %}; background: #fff5f5; border: 1.5px solid #fca5a5; border-radius: 1rem; padding: 1rem 1.25rem; margin: 0 auto 1.5rem; text-align: left; max-width: 420px;">
                         <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
-                            <div style="width: 36px; height: 36px; background: #fee2e2; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <div
+                                style="width: 36px; height: 36px; background: #fee2e2; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                                 <i class="fas fa-exclamation-triangle" style="color: #ef4444; font-size: 0.9rem;"></i>
                             </div>
                             <div style="flex: 1;">
-                                <div style="font-weight: 800; font-size: 0.9rem; color: #b91c1c; margin-bottom: 0.25rem;">Verification Failed</div>
-                                <div id="liveness-retry-message" style="font-size: 0.82rem; color: #7f1d1d; font-weight: 600; margin-bottom: 0.6rem;">{% if user.identity_verification and user.identity_verification.failure_reason %}{{ user.identity_verification.failure_reason }}{% endif %}</div>
-                                <ul style="font-size: 0.78rem; color: #991b1b; font-weight: 600; padding-left: 1rem; margin: 0; line-height: 1.8;">
+                                <div
+                                    style="font-weight: 800; font-size: 0.9rem; color: #b91c1c; margin-bottom: 0.25rem;">
+                                    Verification Failed</div>
+                                <div id="liveness-retry-message"
+                                    style="font-size: 0.82rem; color: #7f1d1d; font-weight: 600; margin-bottom: 0.6rem;">
+                                    {% if user.identity_verification and user.identity_verification.failure_reason %}{{
+                                    user.identity_verification.failure_reason }}{% endif %}</div>
+                                <ul
+                                    style="font-size: 0.78rem; color: #991b1b; font-weight: 600; padding-left: 1rem; margin: 0; line-height: 1.8;">
                                     <li>Ensure good lighting on your face</li>
                                     <li>Look directly at the camera and blink when prompted</li>
                                     <li>Avoid glasses, masks, or hats</li>
@@ -1038,10 +1185,15 @@
                                 <circle class="progress-ring-fill" id="progress-ring-fill" cx="160" cy="160" r="148" />
                             </svg>
                             <div class="camera-frame">
-                                <video id="webcam" autoplay playsinline style="transform: scaleX(-1); width: 100%; height: 100%; object-fit: cover;"></video>
-                                <canvas id="face-guide-canvas" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; transform: scaleX(-1);"></canvas>
-                                <div id="selfie-countdown" class="countdown-overlay" style="display: none; position: absolute; inset: 0; align-items: center; justify-content: center; font-size: 6rem; font-weight: 800; color: #ffffff; background: rgba(15, 23, 42, 0.35); z-index: 10; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); border-radius: 50%;">3</div>
-                                <div id="success-checkmark-overlay" class="success-overlay" style="display: none; position: absolute; inset: 0; background: rgba(255, 255, 255, 0.95); align-items: center; justify-content: center; z-index: 20; border-radius: 50%;">
+                                <video id="webcam" autoplay playsinline
+                                    style="transform: scaleX(-1); width: 100%; height: 100%; object-fit: cover;"></video>
+                                <canvas id="face-guide-canvas"
+                                    style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; transform: scaleX(-1);"></canvas>
+                                <div id="selfie-countdown" class="countdown-overlay"
+                                    style="display: none; position: absolute; inset: 0; align-items: center; justify-content: center; font-size: 6rem; font-weight: 800; color: #ffffff; background: rgba(15, 23, 42, 0.35); z-index: 10; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); border-radius: 50%;">
+                                    3</div>
+                                <div id="success-checkmark-overlay" class="success-overlay"
+                                    style="display: none; position: absolute; inset: 0; background: rgba(255, 255, 255, 0.95); align-items: center; justify-content: center; z-index: 20; border-radius: 50%;">
                                     <div class="checkmark-circle">
                                         <i class="fas fa-check"></i>
                                     </div>
@@ -1052,7 +1204,8 @@
                         <!-- Minimalist Instruction Display -->
                         <div class="kyc-instruction-container">
                             <h2 id="scan-feedback" class="kyc-main-instruction">Preparing camera...</h2>
-                            <p id="liveness-sub-feedback" class="kyc-sub-instruction">Position your face within the circle</p>
+                            <p id="liveness-sub-feedback" class="kyc-sub-instruction">Position your face within the
+                                circle</p>
                         </div>
                     </div>
 
@@ -1112,7 +1265,8 @@
             <div id="step-processing" style="display: none; text-align: center; padding: 2rem 0;">
                 <div class="ocr-loader"></div>
                 <h3 id="status-text">Verifying Biometrics...</h3>
-                <p id="status-subtext" class="card-desc">Analyzing your face against the ID. This may take a few seconds.</p>
+                <p id="status-subtext" class="card-desc">Analyzing your face against the ID. This may take a few
+                    seconds.</p>
             </div>
         </div>
     </div>
@@ -1180,5 +1334,6 @@
 
 {% block step_js %}
 <script>window.bookingId = "{{ booking_id }}";</script>
-<script type="module" src="{{ url_for('static', path='/js/customer/booking_wizard/step_kyc.js') }}?v={{ range(10000000, 99999999) | random }}"></script>
+<script type="module"
+    src="{{ url_for('static', path='/js/customer/booking_wizard/step_kyc.js') }}?v={{ range(10000000, 99999999) | random }}"></script>
 {% endblock %}

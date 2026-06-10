@@ -1,4 +1,19 @@
-import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8";
+// MediaPipe imports loaded dynamically when needed (liveness step)
+// to avoid blocking the entire module if the CDN is slow/unreachable
+let _FaceLandmarker = null;
+let _FilesetResolver = null;
+async function loadMediaPipe() {
+    if (!_FaceLandmarker) {
+        try {
+            const module = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8");
+            _FaceLandmarker = module.FaceLandmarker;
+            _FilesetResolver = module.FilesetResolver;
+        } catch (e) {
+            console.warn("[KYC] MediaPipe failed to load:", e);
+        }
+    }
+    return { FaceLandmarker: _FaceLandmarker, FilesetResolver: _FilesetResolver };
+}
 
 const initKyc = () => {
     let bookingId = window.bookingId;
@@ -1808,7 +1823,8 @@ const initKyc = () => {
         window.startRealtimeScanner();
     }
 
-    if (document.getElementById('kyc-waiting-approval').style.display === 'block') {
+    const waitingEl = document.getElementById('kyc-waiting-approval');
+    if (waitingEl && waitingEl.style.display === 'block') {
         console.log("[KYC] Page loaded in waiting state. Initializing real-time listeners...");
         initKycWebSocket();
         startPolling();
