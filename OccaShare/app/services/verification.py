@@ -118,6 +118,8 @@ class VerificationService:
 
     def __init__(self):
         self.landmarker = None
+        self._vps_online = None
+        self._vps_last_checked = 0
         
         if not MEDIAPIPE_AVAILABLE:
             print("[KYC DEBUG] MediaPipe not available. Liveness detection disabled.")
@@ -171,6 +173,44 @@ class VerificationService:
                 print(f"[KYC DEBUG] MediaPipe model not found. Liveness might fail.")
         except Exception as e:
             print(f"[KYC DEBUG] MediaPipe setup failed: {e}")
+
+    def is_vps_reachable_sync(self) -> bool:
+        vps_url = os.getenv("VPS_AI_URL")
+        if not vps_url:
+            return False
+            
+        current_time = time.time()
+        if self._vps_online is not None and (current_time - self._vps_last_checked < 60):
+            return self._vps_online
+            
+        try:
+            import requests
+            res = requests.get(vps_url, timeout=1.5)
+            self._vps_online = res.status_code < 500
+        except Exception:
+            self._vps_online = False
+            
+        self._vps_last_checked = current_time
+        return self._vps_online
+
+    async def is_vps_reachable_async(self) -> bool:
+        vps_url = os.getenv("VPS_AI_URL")
+        if not vps_url:
+            return False
+            
+        current_time = time.time()
+        if self._vps_online is not None and (current_time - self._vps_last_checked < 60):
+            return self._vps_online
+            
+        try:
+            async with httpx.AsyncClient() as client:
+                res = await client.get(vps_url, timeout=1.5)
+                self._vps_online = res.status_code < 500
+        except Exception:
+            self._vps_online = False
+            
+        self._vps_last_checked = current_time
+        return self._vps_online
 
     def validate_id_pattern(self, id_type: str, id_number: str) -> bool:
         """Checks if the ID number matches the expected pattern for the ID type."""
@@ -1475,7 +1515,7 @@ class VerificationService:
         
         vps_url = os.getenv("VPS_AI_URL")
         vps_api_key = os.getenv("VPS_API_KEY")
-        if vps_url:
+        if vps_url and self.is_vps_reachable_sync():
             print(f"[KYC DEBUG] Delegating OCR pipeline to VPS: {vps_url}/ocr")
             try:
                 if CV2_AVAILABLE:
@@ -2242,172 +2282,215 @@ class VerificationService:
                 return {"status": "mismatched", "ocr_match": False, "pattern_valid": pattern_valid,
                         "failure_reason": quality_check["reason"]}
             
-            # 4. Perform OCR via Gemini (Primary) or unified EasyOCR -> Tesseract pipeline (Fallback)
-            gemini_data = None
-            ocr_text = None
-            parsed = None
-            word_data = None
-            
-            if os.getenv("GEMINI_API_KEY"):
-                print("[KYC DEBUG] Calling Gemini API as primary OCR engine for document verification...")
-                gemini_prompt = self._get_id_type_ocr_prompt(id_type)
-                gemini_data = await self._call_gemini_ocr(id_path, gemini_prompt)
-            
-            if not gemini_data:
-                print("[KYC WARNING] Gemini API unavailable or failed. Using EasyOCR/Tesseract pipeline...")
-                ocr_text, parsed, word_data = self._run_ocr_pipeline(id_img, id_type)
-                
-                # For PhilID: apply a layout-aware parser that uses Tagalog label anchors as field separators
-                if id_type in ("PhilSys / PhilID", "UMID") and ocr_text:
-                    philid_parsed = self._parse_philid_from_ocr_text(ocr_text)
-                    if philid_parsed:
-                        parsed.update(philid_parsed)
+            # Check for existing clean OCR data to avoid redundant API calls and rate-limiting
+            existing_ocr_data = None
+            if db and user_id:
+                try:
+                    from ..db.models import IdentityVerification
+                    kyc_rec = db.query(IdentityVerification).filter(IdentityVerification.user_id == user_id).first()
+                    if kyc_rec and kyc_rec.document_url == id_path:
+                        if kyc_rec.ocr_data and isinstance(kyc_rec.ocr_data, dict) and "fields" in kyc_rec.ocr_data:
+                            existing_ocr_data = kyc_rec.ocr_data
+                            print(f"[KYC DEBUG] Reusing existing ocr_data for User {user_id} to avoid redundant OCR.")
+                except Exception as cache_err:
+                    print(f"[KYC WARNING] Failed to retrieve cached ocr_data: {cache_err}")
 
-            
-            structured_ocr = None
-            
-            if gemini_data and isinstance(gemini_data, dict) and any(gemini_data.values()):
-                print(f"[KYC DEBUG] Gemini OCR Succeeded for ID type: {id_type}")
-                print(f"[KYC DEBUG] Gemini extracted fields: {list(gemini_data.keys())}")
-                
-                structured_ocr = self._build_structured_ocr_data(gemini_data, id_type, "gemini")
-                
-                # Build text for matching logic
-                text_parts = []
-                for v in gemini_data.values():
-                    if isinstance(v, str) and v:
-                        text_parts.append(v)
-                ocr_text = " ".join(text_parts)
+            if existing_ocr_data:
+                structured_ocr = existing_ocr_data
+                ocr_text = existing_ocr_data.get("raw_text", "")
                 clean_ocr_upper = ocr_text.upper()
                 is_likely_id = True
                 fields = structured_ocr.get("fields", {})
+                
+                # Helper to safely extract string values from dict/flat fields
+                def get_field_val(f_key):
+                    f_val = fields.get(f_key)
+                    if isinstance(f_val, dict):
+                        return f_val.get("value", "")
+                    return str(f_val) if f_val is not None else ""
+
                 rich_data = {
                     "full_name": structured_ocr.get("full_name", ""),
                     "id_number": structured_ocr.get("id_number", "") or id_number,
-                    "extracted_dob": fields.get("date_of_birth", {}).get("value", "") or structured_ocr.get("birth_date", ""),
-                    "extracted_expiry": fields.get("expiry_date", {}).get("value", "") or fields.get("expiration_date", {}).get("value", "") or fields.get("visa_until", {}).get("value", ""),
-                    "extracted_address": fields.get("address", {}).get("value", "") or structured_ocr.get("address", ""),
-                    "first_name": fields.get("first_name", {}).get("value", ""),
-                    "last_name": fields.get("last_name", {}).get("value", ""),
-                    "middle_name": fields.get("middle_name", {}).get("value", ""),
-                    "given_names": fields.get("given_names", {}).get("value", "") or fields.get("first_name", {}).get("value", ""),
+                    "extracted_dob": get_field_val("date_of_birth") or structured_ocr.get("birth_date", ""),
+                    "extracted_expiry": get_field_val("expiry_date") or get_field_val("expiration_date") or get_field_val("visa_until") or "",
+                    "extracted_address": get_field_val("address") or structured_ocr.get("address", ""),
+                    "first_name": get_field_val("first_name"),
+                    "last_name": get_field_val("last_name"),
+                    "middle_name": get_field_val("middle_name"),
+                    "given_names": get_field_val("given_names") or get_field_val("first_name"),
                     "is_tampered": False
                 }
-                # Optimization: Trust Gemini for face visibility to save OpenCV processing time
                 has_face = structured_ocr.get("face_visible", True)
-                id_faces = [1] if has_face else [] 
+                id_faces = [1] if has_face else []
+                method = structured_ocr.get("extraction_method", "unknown")
             else:
-                # Normal path: EasyOCR / Tesseract pipeline
-                # Handle empty/garbage text for Demo mode if no Gemini key or Gemini failed
-                if not ocr_text or not ocr_text.strip() or self._is_ocr_garbage(ocr_text):
-                    print(f"[KYC WARNING] OCR pipeline failed to parse text for ID.")
-                    if not os.getenv("GEMINI_API_KEY"):
-                        print("[KYC DEBUG] Permitting empty OCR text for ID in Demo mode.")
-                        ocr_text = f"DEMO_BYPASS_MODE_TEXT {full_name} {id_number}"
-                    else:
-                        return {
-                            "status": "rejected",
-                            "ocr_match": False,
-                            "failure_reason": "❌ Unable to read the ID. Please upload a clearer image."
-                        }
+                # 4. Perform OCR via Gemini (Primary) or unified EasyOCR -> Tesseract pipeline (Fallback)
+                gemini_data = None
+                ocr_text = None
+                parsed = None
+                word_data = None
                 
-                clean_ocr_upper = ocr_text.upper()
+                if os.getenv("GEMINI_API_KEY"):
+                    print("[KYC DEBUG] Calling Gemini API as primary OCR engine for document verification...")
+                    gemini_prompt = self._get_id_type_ocr_prompt(id_type)
+                    gemini_data = await self._call_gemini_ocr(id_path, gemini_prompt)
                 
-                # Check for face
-                id_faces = self._detect_faces_detailed(id_img)
-                has_face = len(id_faces) > 0
-                if not has_face and parsed:
-                    has_face = bool(parsed.get("face_visible", False))
-
-                # Check if any ID number pattern exists in text (lenient legitimacy)
-                id_pattern_found = False
-                id_patterns_check = [
-                    r'\d{4}-\d{4}-\d{4}-\d{4}',  # PhilID
-                    r'[A-Z]\d{2}-\d{2}-\d{6}',   # Driver's License
-                    r'\d{2}-\d{7}-\d{1}',        # SSS
-                    r'\d{3}-\d{3}-\d{3}',        # TIN variants
-                ]
-                for pattern in id_patterns_check:
-                    if re.search(pattern, clean_ocr_upper):
-                        id_pattern_found = True
-                        break
-                
-                # 5. Legitimacy Check (LENIENT - accept if image quality is good OR if ID pattern is found)
-                def fuzzy_contains_id_keywords(text):
-                    if any(kw in text for kw in self.ID_LEGITIMACY_KEYWORDS):
-                        return True
-                    typo_tolerant_kws = ["PHILIPPINES", "REPUBLIC", "IDENTITY", "IDENTIFICATION", "PASSPORT", "LICENSE"]
-                    for kw in typo_tolerant_kws:
-                        if len(text) > 20:
-                            match = difflib.get_close_matches(kw, text.split(), n=1, cutoff=0.7)
-                            if match: return True
-                    return False
-                
-                is_likely_id = (fuzzy_contains_id_keywords(clean_ocr_upper) or has_face or id_pattern_found) and len(clean_ocr_upper.strip()) > 10
-                
-                rich_data = {
-                    "full_name": parsed.get("full_name") if parsed.get("full_name") not in ["NOT DETECTED", "LOW CONFIDENCE"] else "",
-                    "id_number": parsed.get("id_number") if parsed.get("id_number") not in ["NOT DETECTED", "LOW CONFIDENCE"] else "",
-                    "extracted_dob": parsed.get("date_of_birth") if parsed.get("date_of_birth") not in ["NOT DETECTED", "LOW CONFIDENCE"] else "",
-                    "extracted_address": parsed.get("address") if parsed.get("address") not in ["NOT DETECTED", "LOW CONFIDENCE"] else "",
-                    "extracted_expiry": parsed.get("visa_until") or parsed.get("expiration_date") or "",
-                    "first_name": parsed.get("first_name") or parsed.get("given_names", "") if parsed.get("first_name") not in ["NOT DETECTED", "LOW CONFIDENCE"] else "",
-                    "last_name": parsed.get("last_name") if parsed.get("last_name") not in ["NOT DETECTED", "LOW CONFIDENCE"] else "",
-                    "middle_name": parsed.get("middle_name") if parsed.get("middle_name") not in ["NOT DETECTED", "LOW CONFIDENCE"] else "",
-                    "given_names": parsed.get("given_names") or parsed.get("first_name", "") if parsed.get("given_names") not in ["NOT DETECTED", "LOW CONFIDENCE"] else "",
-                    "is_tampered": False
-                }
-                
-                # Build fields for structured_ocr
-                fields = {
-                    "full_name": parsed.get("full_name", ""),
-                    "id_number": parsed.get("id_number", ""),
-                    "date_of_birth": parsed.get("date_of_birth", ""),
-                    "address": parsed.get("address", ""),
-                    "sex": parsed.get("sex", ""),
-                    "first_name": parsed.get("first_name", ""),
-                    "last_name": parsed.get("last_name", ""),
-                    "middle_name": parsed.get("middle_name", ""),
-                    "given_names": parsed.get("given_names", "")
-                }
-                if id_type == "Passport":
-                    mrz = self._extract_mrz_from_text(ocr_text)
-                    fields.update(mrz)
-                
-                # For PhilID / UMID — strip Tagalog label noise from name fields (EasyOCR picks up labels)
-                if id_type in ("PhilSys / PhilID", "UMID"):
-                    for name_field in ("last_name", "given_names", "middle_name", "first_name", "full_name"):
-                        if fields.get(name_field) and isinstance(fields[name_field], str):
-                            fields[name_field] = self._strip_philid_label_noise(fields[name_field])
-                    # Rebuild full_name cleanly
-                    name_parts = [fields.get(k) for k in ("given_names", "last_name") if fields.get(k)]
-                    if name_parts:
-                        fields["full_name"] = " ".join(name_parts)
+                if not gemini_data:
+                    print("[KYC WARNING] Gemini API unavailable or failed. Using EasyOCR/Tesseract pipeline...")
+                    ocr_text, parsed, word_data = self._run_ocr_pipeline(id_img, id_type)
                     
-                    # Update rich_data for consistency in matching
-                    rich_data["full_name"] = fields["full_name"]
-                    rich_data["last_name"] = fields["last_name"]
-                    rich_data["given_names"] = fields["given_names"]
-                    rich_data["first_name"] = fields["first_name"]
-                    rich_data["middle_name"] = fields["middle_name"]
-                    rich_data["id_number"] = fields["id_number"]
-                    rich_data["extracted_dob"] = fields["date_of_birth"]
-                    rich_data["extracted_address"] = fields["address"]
+                    # For PhilID: apply a layout-aware parser that uses Tagalog label anchors as field separators
+                    if id_type in ("PhilSys / PhilID", "UMID") and ocr_text:
+                        philid_parsed = self._parse_philid_from_ocr_text(ocr_text)
+                        if philid_parsed:
+                            parsed.update(philid_parsed)
+
                 
-                method = "easyocr" if EASYOCR_AVAILABLE else "tesseract"
+                structured_ocr = None
                 
-                structured_ocr = {
-                    "id_type": id_type,
-                    "extraction_method": method,
-                    "document_type_detected": id_type,
-                    "confidence_score": self._calc_overall_confidence(word_data),
-                    "face_visible": has_face,
-                    "fields": fields,
-                    "full_name": fields.get("full_name", ""),
-                    "id_number": fields.get("id_number", ""),
-                    "birth_date": fields.get("date_of_birth", ""),
-                    "address": fields.get("address", "")
-                }
+                if gemini_data and isinstance(gemini_data, dict) and any(gemini_data.values()):
+                    print(f"[KYC DEBUG] Gemini OCR Succeeded for ID type: {id_type}")
+                    print(f"[KYC DEBUG] Gemini extracted fields: {list(gemini_data.keys())}")
+                    
+                    structured_ocr = self._build_structured_ocr_data(gemini_data, id_type, "gemini")
+                    
+                    # Build text for matching logic
+                    text_parts = []
+                    for v in gemini_data.values():
+                        if isinstance(v, str) and v:
+                            text_parts.append(v)
+                    ocr_text = " ".join(text_parts)
+                    clean_ocr_upper = ocr_text.upper()
+                    is_likely_id = True
+                    fields = structured_ocr.get("fields", {})
+                    rich_data = {
+                        "full_name": structured_ocr.get("full_name", ""),
+                        "id_number": structured_ocr.get("id_number", "") or id_number,
+                        "extracted_dob": fields.get("date_of_birth", {}).get("value", "") or structured_ocr.get("birth_date", ""),
+                        "extracted_expiry": fields.get("expiry_date", {}).get("value", "") or fields.get("expiration_date", {}).get("value", "") or fields.get("visa_until", {}).get("value", ""),
+                        "extracted_address": fields.get("address", {}).get("value", "") or structured_ocr.get("address", ""),
+                        "first_name": fields.get("first_name", {}).get("value", ""),
+                        "last_name": fields.get("last_name", {}).get("value", ""),
+                        "middle_name": fields.get("middle_name", {}).get("value", ""),
+                        "given_names": fields.get("given_names", {}).get("value", "") or fields.get("first_name", {}).get("value", ""),
+                        "is_tampered": False
+                    }
+                    # Optimization: Trust Gemini for face visibility to save OpenCV processing time
+                    has_face = structured_ocr.get("face_visible", True)
+                    id_faces = [1] if has_face else [] 
+                else:
+                    # Normal path: EasyOCR / Tesseract pipeline
+                    # Handle empty/garbage text for Demo mode if no Gemini key or Gemini failed
+                    if not ocr_text or not ocr_text.strip() or self._is_ocr_garbage(ocr_text):
+                        print(f"[KYC WARNING] OCR pipeline failed to parse text for ID.")
+                        if not os.getenv("GEMINI_API_KEY"):
+                            print("[KYC DEBUG] Permitting empty OCR text for ID in Demo mode.")
+                            ocr_text = f"DEMO_BYPASS_MODE_TEXT {full_name} {id_number}"
+                        else:
+                            return {
+                                "status": "rejected",
+                                "ocr_match": False,
+                                "failure_reason": "❌ Unable to read the ID. Please upload a clearer image."
+                            }
+                    
+                    clean_ocr_upper = ocr_text.upper()
+                    
+                    # Check for face
+                    id_faces = self._detect_faces_detailed(id_img)
+                    has_face = len(id_faces) > 0
+                    if not has_face and parsed:
+                        has_face = bool(parsed.get("face_visible", False))
+
+                    # Check if any ID number pattern exists in text (lenient legitimacy)
+                    id_pattern_found = False
+                    id_patterns_check = [
+                        r'\d{4}-\d{4}-\d{4}-\d{4}',  # PhilID
+                        r'[A-Z]\d{2}-\d{2}-\d{6}',   # Driver's License
+                        r'\d{2}-\d{7}-\d{1}',        # SSS
+                        r'\d{3}-\d{3}-\d{3}',        # TIN variants
+                    ]
+                    for pattern in id_patterns_check:
+                        if re.search(pattern, clean_ocr_upper):
+                            id_pattern_found = True
+                            break
+                    
+                    # 5. Legitimacy Check (LENIENT - accept if image quality is good OR if ID pattern is found)
+                    def fuzzy_contains_id_keywords(text):
+                        if any(kw in text for kw in self.ID_LEGITIMACY_KEYWORDS):
+                            return True
+                        typo_tolerant_kws = ["PHILIPPINES", "REPUBLIC", "IDENTITY", "IDENTIFICATION", "PASSPORT", "LICENSE"]
+                        for kw in typo_tolerant_kws:
+                            if len(text) > 20:
+                                match = difflib.get_close_matches(kw, text.split(), n=1, cutoff=0.7)
+                                if match: return True
+                        return False
+                    
+                    is_likely_id = (fuzzy_contains_id_keywords(clean_ocr_upper) or has_face or id_pattern_found) and len(clean_ocr_upper.strip()) > 10
+                    
+                    rich_data = {
+                        "full_name": parsed.get("full_name") if parsed.get("full_name") not in ["NOT DETECTED", "LOW CONFIDENCE"] else "",
+                        "id_number": parsed.get("id_number") if parsed.get("id_number") not in ["NOT DETECTED", "LOW CONFIDENCE"] else "",
+                        "extracted_dob": parsed.get("date_of_birth") if parsed.get("date_of_birth") not in ["NOT DETECTED", "LOW CONFIDENCE"] else "",
+                        "extracted_address": parsed.get("address") if parsed.get("address") not in ["NOT DETECTED", "LOW CONFIDENCE"] else "",
+                        "extracted_expiry": parsed.get("visa_until") or parsed.get("expiration_date") or "",
+                        "first_name": parsed.get("first_name") or parsed.get("given_names", "") if parsed.get("first_name") not in ["NOT DETECTED", "LOW CONFIDENCE"] else "",
+                        "last_name": parsed.get("last_name") if parsed.get("last_name") not in ["NOT DETECTED", "LOW CONFIDENCE"] else "",
+                        "middle_name": parsed.get("middle_name") if parsed.get("middle_name") not in ["NOT DETECTED", "LOW CONFIDENCE"] else "",
+                        "given_names": parsed.get("given_names") or parsed.get("first_name", "") if parsed.get("given_names") not in ["NOT DETECTED", "LOW CONFIDENCE"] else "",
+                        "is_tampered": False
+                    }
+                    
+                    # Build fields for structured_ocr
+                    fields = {
+                        "full_name": parsed.get("full_name", ""),
+                        "id_number": parsed.get("id_number", ""),
+                        "date_of_birth": parsed.get("date_of_birth", ""),
+                        "address": parsed.get("address", ""),
+                        "sex": parsed.get("sex", ""),
+                        "first_name": parsed.get("first_name", ""),
+                        "last_name": parsed.get("last_name", ""),
+                        "middle_name": parsed.get("middle_name", ""),
+                        "given_names": parsed.get("given_names", "")
+                    }
+                    if id_type == "Passport":
+                        mrz = self._extract_mrz_from_text(ocr_text)
+                        fields.update(mrz)
+                    
+                    # For PhilID / UMID — strip Tagalog label noise from name fields (EasyOCR picks up labels)
+                    if id_type in ("PhilSys / PhilID", "UMID"):
+                        for name_field in ("last_name", "given_names", "middle_name", "first_name", "full_name"):
+                            if fields.get(name_field) and isinstance(fields[name_field], str):
+                                fields[name_field] = self._strip_philid_label_noise(fields[name_field])
+                        # Rebuild full_name cleanly
+                        name_parts = [fields.get(k) for k in ("given_names", "last_name") if fields.get(k)]
+                        if name_parts:
+                            fields["full_name"] = " ".join(name_parts)
+                        
+                        # Update rich_data for consistency in matching
+                        rich_data["full_name"] = fields["full_name"]
+                        rich_data["last_name"] = fields["last_name"]
+                        rich_data["given_names"] = fields["given_names"]
+                        rich_data["first_name"] = fields["first_name"]
+                        rich_data["middle_name"] = fields["middle_name"]
+                        rich_data["id_number"] = fields["id_number"]
+                        rich_data["extracted_dob"] = fields["date_of_birth"]
+                        rich_data["extracted_address"] = fields["address"]
+                    
+                    method = "easyocr" if EASYOCR_AVAILABLE else "tesseract"
+                    
+                    structured_ocr = {
+                        "id_type": id_type,
+                        "extraction_method": method,
+                        "document_type_detected": id_type,
+                        "confidence_score": self._calc_overall_confidence(word_data),
+                        "face_visible": has_face,
+                        "fields": fields,
+                        "full_name": fields.get("full_name", ""),
+                        "id_number": fields.get("id_number", ""),
+                        "birth_date": fields.get("date_of_birth", ""),
+                        "address": fields.get("address", "")
+                    }
 
 
             
@@ -2870,17 +2953,9 @@ class VerificationService:
             verification_result = {}
             liveness_result = {}
 
+            vps_reachable = False
             if not liveness_failure and vps_url:
-                # Quick connectivity pre-check (3s) to avoid long timeouts on unreachable VPS
-                vps_reachable = False
-                try:
-                    async with httpx.AsyncClient() as probe_client:
-                        probe = await probe_client.get(vps_url, timeout=3.0)
-                        vps_reachable = probe.status_code < 500
-                        print(f"[KYC DEBUG] VPS pre-check: status={probe.status_code}, reachable={vps_reachable}")
-                except Exception as probe_err:
-                    print(f"[KYC WARNING] VPS unreachable (pre-check failed in <3s): {probe_err}")
-                
+                vps_reachable = await self.is_vps_reachable_async()
                 if not vps_reachable:
                     print("[KYC WARNING] Skipping VPS — server unreachable. Using local pipeline.")
                 else:
