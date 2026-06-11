@@ -760,7 +760,8 @@ async def _validate_receipt_with_gemini(filepath: str, payment_method: str, expe
             with open(filepath, "rb") as image_file:
                 encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
             
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key={gemini_key}"
+            # Try gemini-2.0-flash first, and fallback to gemini-1.5-flash
+            models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash"]
             prompt = (
                 f"Analyze this image. Is it a legitimate payment receipt or screenshot for {payment_method}? "
                 "Look for evidence of a successful transaction, reference numbers, amounts, and dates. "
@@ -774,17 +775,30 @@ async def _validate_receipt_with_gemini(filepath: str, payment_method: str, expe
                 "generationConfig": {"response_mime_type": "application/json"}
             }
             
+            response = None
             async with httpx.AsyncClient() as client:
-                response = await client.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=20.0)
-                if response.status_code == 200:
-                    text = response.json()['candidates'][0]['content']['parts'][0]['text']
-                    match = re.search(r'\{.*\}', text.strip(), re.DOTALL)
-                    if match:
-                        parsed = json.loads(match.group(0))
-                        is_valid = parsed.get("is_valid", False)
-                        print(f"[GEMINI VALIDATION] Result: {is_valid}, Reason: {parsed.get('reason')}")
-                else:
-                    print(f"[GEMINI API ERROR] Status {response.status_code}: {response.text}")
+                for model in models_to_try:
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={gemini_key}"
+                    print(f"[GEMINI VALIDATION] Trying model: {model}")
+                    try:
+                        res = await client.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=20.0)
+                        if res.status_code == 200:
+                            response = res
+                            break
+                        else:
+                            print(f"[GEMINI VALIDATION WARNING] Model {model} failed with status {res.status_code}")
+                    except Exception as err:
+                        print(f"[GEMINI VALIDATION WARNING] Model {model} request failed: {err}")
+            
+            if response and response.status_code == 200:
+                text = response.json()['candidates'][0]['content']['parts'][0]['text']
+                match = re.search(r'\{.*\}', text.strip(), re.DOTALL)
+                if match:
+                    parsed = json.loads(match.group(0))
+                    is_valid = parsed.get("is_valid", False)
+                    print(f"[GEMINI VALIDATION] Result: {is_valid}, Reason: {parsed.get('reason')}")
+            else:
+                print(f"[GEMINI API ERROR] All models failed or returned non-200 status code.")
         except Exception as e:
             print(f"[GEMINI OCR ERROR] {e}")
             pass # fallback to False if API fails

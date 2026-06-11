@@ -26,6 +26,24 @@ router = APIRouter(prefix="/api/bookings", tags=["kyc"])
 
 UPLOAD_DIR = "app/static/uploads/verification"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+@router.get("/test-extract")
+async def test_extract():
+    import glob
+    files = glob.glob(os.path.join(UPLOAD_DIR, "temp_ocr_*.enc"))
+    if not files:
+        return {"error": "No temp_ocr files found in verification upload directory."}
+    # Sort by modification time to get the latest file
+    latest_file = max(files, key=os.path.getmtime)
+    filename = os.path.basename(latest_file)
+    id_url = f"/api/bookings/kyc/view/{filename}"
+    print(f"[TEST OCR] Extracting data from latest file: {latest_file} via {id_url}")
+    result = await verification_service.extract_id_data(id_url, "PhilSys / PhilID")
+    return {
+        "file_tested": latest_file,
+        "result": result
+    }
+
 @router.post("/extract-id")
 async def extract_id(
     id_type: str = Form(...),

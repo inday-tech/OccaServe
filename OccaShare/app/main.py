@@ -206,6 +206,35 @@ async def log_requests(request: Request, call_next):
     print(f"[DEBUG LOG] Response: {response.status_code} for {request.url.path}")
     return response
 
+@app.get("/test-extract")
+async def test_extract():
+    import glob
+    import time
+    from app.services.verification import verification_service
+    upload_dir = "app/static/uploads/verification"
+    files = glob.glob(os.path.join(upload_dir, "temp_ocr_*.enc"))
+    if not files:
+        return {"error": "No temp_ocr files found in verification upload directory."}
+    # Sort by modification time to get the latest file
+    latest_file = max(files, key=os.path.getmtime)
+    filename = os.path.basename(latest_file)
+    id_url = f"/api/bookings/kyc/view/{filename}"
+    
+    try:
+        with open("ocr_debug.log", "a", encoding="utf-8") as f:
+            f.write(f"\n--- test_extract ROUTE TRIGGERED at {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")
+            f.write(f"Testing file: {latest_file}\n")
+            f.write(f"GEMINI_API_KEY: {os.getenv('GEMINI_API_KEY')[:20] if os.getenv('GEMINI_API_KEY') else 'None'}...\n")
+    except Exception as e:
+        print(f"Error writing to ocr_debug.log: {e}")
+        
+    result = await verification_service.extract_id_data(id_url, "PhilSys / PhilID")
+    return {
+        "cwd": os.getcwd(),
+        "file_tested": latest_file,
+        "result": result
+    }
+
 from .routers.social_auth import router as social_router
 app.include_router(social_router)
 app.include_router(website.router)

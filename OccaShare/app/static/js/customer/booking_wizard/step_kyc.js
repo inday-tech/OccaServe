@@ -700,6 +700,47 @@ const initKyc = () => {
                 window._ocrExtractedData = result.extracted_data || {};
                 window._ocrTempIdUrl = result.temp_id_url || '';
 
+                // Match/Mismatch Validation Check
+                const selectedRaw = document.getElementById('id_type').value;
+                const detectedRaw = result.extracted_data.document_type_detected || result.extracted_data.id_type || '';
+                
+                const selectedNorm = normalizeIdType(selectedRaw);
+                const detectedNorm = normalizeIdType(detectedRaw);
+                
+                console.log(`[KYC] Comparing Selected='${selectedNorm}' vs Detected='${detectedNorm}'`);
+                
+                if (selectedNorm !== detectedNorm) {
+                    showMismatchModal(selectedRaw, detectedRaw);
+                    return;
+                }
+
+                // Crucial fields validation check: Ensure there is at least some readable text in name/ID number
+                const fields = result.extracted_data.fields || result.extracted_data || {};
+                let hasCrucialData = false;
+                const crucialKeys = ['id_number', 'license_number', 'passport_number', 'last_name', 'first_name', 'given_names'];
+                for (const key of crucialKeys) {
+                    const rawVal = fields[key];
+                    let val = '';
+                    if (rawVal !== null && rawVal !== undefined) {
+                        if (typeof rawVal === 'object' && rawVal.value !== undefined) {
+                            val = String(rawVal.value);
+                        } else {
+                            val = String(rawVal);
+                        }
+                    }
+                    val = val.trim().toUpperCase();
+                    if (val && val !== 'NOT DETECTED' && val !== 'LOW CONFIDENCE' && !val.includes('XXXX-XXXX') && !val.includes('A00-00')) {
+                        hasCrucialData = true;
+                        break;
+                    }
+                }
+
+                if (!hasCrucialData) {
+                    console.warn('[KYC] No crucial fields extracted. Treating as Unrecognized/Invalid Document.');
+                    showMismatchModal(selectedRaw, 'Other');
+                    return;
+                }
+
                 if (window._ocrCompressedFile || result.autocrop_succeeded || result.success) {
                     window._ocrCompressedFile = finalFile;
 
@@ -804,16 +845,102 @@ const initKyc = () => {
     function normalizeIdType(rawType, data) {
         let t = rawType || (data && (data.document_type_detected || data.id_type)) || '';
         t = String(t).trim().toLowerCase();
-        if (!t) return 'PhilSys / PhilID';
+        if (!t) return 'Unknown';
 
         if (t.includes('phil') || t.includes('philsys') || t.includes('philid') || t.includes('national id')) return 'PhilSys / PhilID';
         if (t.includes('driver') || t.includes("driver's")) return "Driver's License";
         if (t.includes('passport')) return "Passport";
-        return 'PhilSys / PhilID';
+        return 'Unknown';
     }
+
+    function getFriendlyIdTypeName(rawType) {
+        const t = String(rawType).trim().toLowerCase();
+        if (t.includes('phil') || t.includes('philsys') || t.includes('philid') || t.includes('national id')) return "PhilSys / PhilID";
+        if (t.includes('driver') || t.includes("driver's")) return "Philippine Driver's License";
+        if (t.includes('passport')) return "Philippine Passport";
+        if (t === 'other' || t === 'unknown') return "Unrecognized Document Type";
+        return rawType || "Unknown ID Type";
+    }
+
+    function showMismatchModal(selectedRaw, detectedRaw) {
+        document.getElementById('ocr-loading').style.display = 'none';
+
+        const selectedFriendly = getFriendlyIdTypeName(selectedRaw);
+        const detectedFriendly = getFriendlyIdTypeName(detectedRaw);
+
+        let selectedShort = "ID";
+        const selectedNorm = normalizeIdType(selectedRaw);
+        if (selectedNorm === "PhilSys / PhilID") selectedShort = "PhilSys ID";
+        else if (selectedNorm === "Driver's License") selectedShort = "Driver's License";
+        else if (selectedNorm === "Passport") selectedShort = "Passport";
+
+        const labelEl = document.getElementById('mismatch-comparison-label');
+        if (labelEl) {
+            labelEl.innerHTML = `Selected ID Type: <span style="color: #475569;">${selectedFriendly}</span><br>Detected ID Type: <span style="color: #ef4444;">${detectedFriendly}</span>`;
+        }
+
+        const article = /^[aeiou]/i.test(detectedFriendly) ? 'an' : 'a';
+        const msgBodyEl = document.getElementById('mismatch-msg-body');
+        if (msgBodyEl) {
+            msgBodyEl.innerHTML = `You selected <strong>${selectedFriendly}</strong>, but the uploaded document appears to be ${article} <strong>${detectedFriendly}</strong>.<br><br>Please upload a valid <strong>${selectedShort}</strong> or change your selected ID type before continuing.`;
+        }
+
+        const modal = document.getElementById('id-mismatch-modal');
+        if (modal) {
+            modal.style.display = 'flex';
+            requestAnimationFrame(() => {
+                modal.classList.add('visible');
+            });
+        }
+    }
+
+    window.closeMismatchModal = function () {
+        const modal = document.getElementById('id-mismatch-modal');
+        if (modal) {
+            modal.classList.remove('visible');
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 350);
+        }
+    };
+
+    window.handleMismatchRetake = function () {
+        window.closeMismatchModal();
+        resetToIdForm();
+        updateStatusTracker(1);
+        // Trigger retake
+        window.handleCameraClick();
+    };
+
+    window.handleMismatchUpload = function () {
+        window.closeMismatchModal();
+        resetToIdForm();
+        updateStatusTracker(1);
+        // Trigger file picker
+        window.handleUploadClick();
+    };
+
+    window.handleMismatchChangeType = function () {
+        window.closeMismatchModal();
+        // Reset steps and show form
+        resetToIdForm();
+        updateStatusTracker(1);
+        
+        // Focus the dropdown
+        const selectEl = document.getElementById('id_type');
+        if (selectEl) {
+            selectEl.focus();
+        }
+    };
 
     function showOcrModal(data) {
         document.getElementById('ocr-loading').style.display = 'none';
+
+        // Toggle success alert display
+        const successAlert = document.getElementById('ocr-success-alert');
+        if (successAlert) {
+            successAlert.style.display = 'flex';
+        }
 
         // Robust Helpers for nested object/dictionary value extraction
         function extractStringValue(obj) {
@@ -1155,12 +1282,16 @@ const initKyc = () => {
     let countdownValue = 3;
     let countdownInterval = null;
     let blinkStep = 0;
-    let selfieFrames = [];
+    selfieFrames = [];
 
     async function initializeFaceLandmarker() {
         if (faceLandmarker) return;
         try {
             console.log("[KYC] Initializing MediaPipe Face Landmarker...");
+            const { FaceLandmarker, FilesetResolver } = await loadMediaPipe();
+            if (!FaceLandmarker || !FilesetResolver) {
+                throw new Error("MediaPipe libraries failed to load");
+            }
             const vision = await FilesetResolver.forVisionTasks(
                 "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/wasm"
             );
@@ -1208,6 +1339,14 @@ const initKyc = () => {
             try {
                 stream.getTracks().forEach(track => track.stop());
             } catch (e) { }
+        }
+
+        // Initialize or reset the verification session on the backend
+        try {
+            console.log("[KYC] Initializing backend liveness session...");
+            await fetch(`/api/bookings/${bookingId}/kyc/session/init`, { method: 'POST' });
+        } catch (initErr) {
+            console.error("[KYC] Failed to initialize liveness session:", initErr);
         }
 
         currentLivenessState = STATE_ALIGNING;
@@ -1367,8 +1506,19 @@ const initKyc = () => {
                 const face_height = Math.abs(landmarks[152].y - landmarks[10].y);
                 const nose_rel_y = (landmarks[1].y - landmarks[10].y) / face_height;
 
-                const isCentered = Math.abs(nose_offset) < 0.15 && nose_rel_y > 0.43 && nose_rel_y < 0.60;
-                const isProperSize = eye_dist > 0.16 && eye_dist < 0.48;
+                // Relaxed centering and sizing checks for a much better UX
+                const nose_x = landmarks[1].x;
+                const nose_y = landmarks[1].y;
+                const isScreenCentered = Math.abs(nose_x - 0.5) < 0.15 && Math.abs(nose_y - 0.5) < 0.15;
+                const isCentered = isScreenCentered && Math.abs(nose_offset) < 0.30 && nose_rel_y > 0.35 && nose_rel_y < 0.68;
+                const isProperSize = eye_dist > 0.12 && eye_dist < 0.55;
+
+                // Debug frame logging (every 60 frames)
+                if (!window._debugFrameCount) window._debugFrameCount = 0;
+                window._debugFrameCount++;
+                if (window._debugFrameCount % 60 === 0) {
+                    console.log(`[KYC Align Debug] nose_offset: ${nose_offset.toFixed(3)} (target < 0.30), nose_rel_y: ${nose_rel_y.toFixed(3)} (target 0.35 - 0.68), eye_dist: ${eye_dist.toFixed(3)} (target 0.12 - 0.55)`);
+                }
 
                 if (currentLivenessState === STATE_ALIGNING) {
                     if (!isCentered || !isProperSize) {
@@ -1605,6 +1755,9 @@ const initKyc = () => {
         const checkmarkOverlay = document.getElementById('success-checkmark-overlay');
         if (checkmarkOverlay) checkmarkOverlay.style.display = 'none';
 
+        const livenessRetryBanner = document.getElementById('liveness-retry-banner');
+        if (livenessRetryBanner) livenessRetryBanner.style.display = 'none';
+
         document.getElementById('liveness-review').style.display = 'none';
         document.getElementById('scanner-container').style.display = 'block';
 
@@ -1794,15 +1947,22 @@ const initKyc = () => {
         const checkmarkOverlay = document.getElementById('success-checkmark-overlay');
         if (checkmarkOverlay) checkmarkOverlay.style.display = 'none';
 
+        // Stop camera tracks so camera goes offline while waiting for the user to click retake
+        if (stream) {
+            try {
+                stream.getTracks().forEach(track => track.stop());
+            } catch (e) { }
+            stream = null;
+        }
+        const video = document.getElementById('webcam');
+        if (video) video.srcObject = null;
+        if (guideCtx) guideCtx.clearRect(0, 0, guideCanvas.width, guideCanvas.height);
+
         document.getElementById('scanner-container').style.display = 'block';
         setProgressRing(0);
-        updateInstruction("Align your face in the circle", "Liveness check failed, please try again");
+        updateInstruction("Verification failed", "Click 'Retake Verification' to try again");
 
         updateStatusTracker(3);
-
-        setTimeout(() => {
-            window.startRealtimeScanner();
-        }, 1500);
     }
 
     let livenessFacingMode = "user";
@@ -1819,8 +1979,15 @@ const initKyc = () => {
 
     const scannerContainer = document.getElementById('scanner-container');
     if (scannerContainer && scannerContainer.style.display === 'block') {
-        console.log("[KYC] Page loaded in liveness step. Auto-starting camera...");
-        window.startRealtimeScanner();
+        const failureBanner = document.getElementById('liveness-retry-banner');
+        const isFailed = failureBanner && failureBanner.style.display === 'block';
+        if (!isFailed) {
+            console.log("[KYC] Page loaded in liveness step. Auto-starting camera...");
+            window.startRealtimeScanner();
+        } else {
+            console.log("[KYC] Page loaded in failed liveness step. Waiting for user to click Retake...");
+            updateInstruction("Verification failed", "Click 'Retake Verification' to try again");
+        }
     }
 
     const waitingEl = document.getElementById('kyc-waiting-approval');

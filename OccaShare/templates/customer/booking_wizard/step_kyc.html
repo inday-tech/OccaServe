@@ -407,7 +407,7 @@
     }
 
     /* ═══════════════════════════════════════════════════════ */
-    /*  OCR VERIFICATION MODAL                                */
+    /*  OCR VERIFICATION MODAL & RESPONSIVE LAYOUTS            */
     /* ═══════════════════════════════════════════════════════ */
     .ocr-modal-overlay {
         position: fixed;
@@ -433,10 +433,7 @@
     .ocr-modal {
         background: #fff;
         border-radius: 1.75rem;
-        max-width: 560px;
         width: 100%;
-        max-height: 90vh;
-        overflow-y: auto;
         box-shadow: 0 25px 60px rgba(0, 0, 0, 0.15);
         transform: translateY(30px) scale(0.96);
         transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -446,9 +443,26 @@
         transform: translateY(0) scale(1);
     }
 
+    .ocr-modal.modal-wide {
+        max-width: 850px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        max-height: 92vh;
+    }
+
+    .ocr-modal.modal-standard {
+        max-width: 500px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        max-height: 90vh;
+    }
+
     .ocr-modal-header {
-        padding: 2rem 2rem 0;
+        padding: 2rem 2rem 1.25rem;
         text-align: center;
+        border-bottom: 1px solid #f1f5f9;
     }
 
     .ocr-modal-header .modal-icon {
@@ -478,8 +492,109 @@
         font-weight: 600;
     }
 
+    /* Mismatch Header Overrides */
+    .ocr-modal-header.header-mismatch {
+        padding: 2.5rem 2rem 1.5rem;
+    }
+
+    .ocr-modal-header.header-mismatch h2 {
+        color: #ef4444;
+        font-size: 1.5rem;
+        font-weight: 800;
+        margin-top: 0.5rem;
+        margin-bottom: 0px;
+    }
+
+    .ocr-modal-header.header-mismatch p {
+        font-weight: 700;
+        color: #64748b;
+        font-size: 0.9rem;
+        margin-top: 0.5rem;
+        margin-bottom: 0px;
+    }
+
+    .ocr-modal-header .modal-icon.icon-mismatch {
+        background: linear-gradient(135deg, #ef4444, #f87171);
+        box-shadow: 0 8px 20px rgba(239, 68, 68, 0.25);
+    }
+
+    /* Modal Body Styles */
     .ocr-modal-body {
         padding: 1.5rem 2rem;
+        overflow-y: auto;
+        flex: 1;
+    }
+
+    #ocr-verification-modal .ocr-modal-body {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+    }
+
+    .ocr-modal-body.body-mismatch {
+        padding: 1.5rem 2.5rem;
+        text-align: center;
+    }
+
+    .ocr-modal-body.body-mismatch p {
+        font-size: 0.95rem;
+        color: #475569;
+        font-weight: 600;
+        line-height: 1.6;
+        margin: 0;
+    }
+
+    .ocr-modal-body.body-camera {
+        padding: 1.5rem 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f8fafc;
+    }
+
+    /* Modal Columns for Verification Modal */
+    .ocr-preview-column {
+        flex: 1 1 280px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .ocr-column-label {
+        display: block;
+        font-size: 0.7rem;
+        font-weight: 800;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+
+    .ocr-crop-container {
+        background: #0f172a;
+        padding: 1rem;
+        border-radius: 1rem;
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #e2e8f0;
+        min-height: 200px;
+    }
+
+    .ocr-crop-container img {
+        max-height: 280px;
+        max-width: 100%;
+        object-fit: contain;
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+
+    .ocr-form-column {
+        flex: 1.2 1 300px;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
     }
 
     .ocr-field-row {
@@ -496,10 +611,10 @@
         gap: 1rem;
     }
 
-    @media (max-width: 600px) {
-        .ocr-fields-grid {
-            grid-template-columns: 1fr;
-        }
+    #ocr-dynamic-fields-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
     }
 
     .ocr-field-row:last-child {
@@ -587,10 +702,21 @@
         white-space: nowrap;
     }
 
+    /* Modal Footer Styles */
     .ocr-modal-footer {
-        padding: 0 2rem 2rem;
+        border-top: 1px solid #f1f5f9;
+        padding: 1.25rem 2rem 2rem;
         display: flex;
         gap: 0.75rem;
+    }
+
+    .ocr-modal-footer.footer-mismatch {
+        padding: 1.5rem 2.5rem 2.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .ocr-modal-footer button {
@@ -601,27 +727,103 @@
         font-size: 0.9rem;
         border: none;
         cursor: pointer;
-        transition: all 0.25s ease;
-    }
-
-    .btn-modal-secondary {
-        background: #f1f5f9;
-        color: #64748b;
-    }
-
-    .btn-modal-secondary:hover {
-        background: #e2e8f0;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
     }
 
     .btn-modal-primary {
-        background: linear-gradient(135deg, #f97316, #ea580c);
-        color: white;
-        box-shadow: 0 6px 15px rgba(249, 115, 22, 0.25);
+        background: linear-gradient(135deg, #f97316, #ea580c) !important;
+        color: white !important;
+        box-shadow: 0 6px 15px rgba(249, 115, 22, 0.25) !important;
     }
 
     .btn-modal-primary:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(249, 115, 22, 0.35);
+        box-shadow: 0 8px 20px rgba(249, 115, 22, 0.35) !important;
+    }
+
+    .btn-modal-primary:active {
+        transform: translateY(0);
+    }
+
+    .btn-modal-secondary {
+        background: #f1f5f9 !important;
+        color: #64748b !important;
+    }
+
+    .btn-modal-secondary:hover {
+        background: #e2e8f0 !important;
+    }
+
+    .ocr-modal-footer button.btn-modal-secondary-outlined {
+        width: 100% !important;
+        border: 1.5px solid #cbd5e1 !important;
+        background: white !important;
+        color: #475569 !important;
+        font-weight: 800 !important;
+    }
+
+    .ocr-modal-footer button.btn-modal-secondary-outlined:hover {
+        border-color: #94a3b8 !important;
+        background: #f8fafc !important;
+        transform: translateY(-1px);
+    }
+
+    .ocr-modal-footer button.btn-modal-secondary-filled {
+        width: 100% !important;
+        background: #f1f5f9 !important;
+        color: #475569 !important;
+        font-weight: 800 !important;
+        border: none !important;
+    }
+
+    .ocr-modal-footer button.btn-modal-secondary-filled:hover {
+        background: #e2e8f0 !important;
+        transform: translateY(-1px);
+    }
+
+    /* Camera Modal Specific Layout */
+    .camera-preview-container {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 4/3;
+        background: #0f172a;
+        border-radius: 1rem;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .camera-preview-container video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .camera-bracket-overlay {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        border: 4px dashed var(--kyc-accent);
+        border-radius: 1rem;
+        margin: 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: inset 0 0 0 200px rgba(15,23,42,0.4);
+    }
+
+    .camera-align-badge {
+        font-size: 0.75rem;
+        font-weight: bold;
+        background: rgba(0,0,0,0.6);
+        color: white;
+        padding: 0.35rem 0.75rem;
+        border-radius: 0.5rem;
+        border: 1px solid rgba(255,255,255,0.15);
     }
 
     /* ═══════════════════════════════════════════════════════ */
@@ -648,13 +850,10 @@
     }
 
     @keyframes compliancePulse {
-
-        0%,
-        100% {
+        0%, 100% {
             transform: scale(1);
             box-shadow: 0 10px 30px rgba(249, 115, 22, 0.25);
         }
-
         50% {
             transform: scale(1.08);
             box-shadow: 0 15px 40px rgba(249, 115, 22, 0.35);
@@ -785,16 +984,136 @@
     }
 
     @keyframes arrowPulse {
-
-        0%,
-        100% {
+        0%, 100% {
             opacity: 0.4;
             transform: scale(0.9);
         }
-
         50% {
             opacity: 1;
             transform: scale(1.1);
+        }
+    }
+
+    /* ── Responsive Modal & Button Styles (Desktop, Tablet, Mobile) ── */
+    @media (max-width: 768px) {
+        #ocr-verification-modal .ocr-modal-body {
+            flex-direction: column !important;
+            gap: 1.25rem !important;
+        }
+
+        .ocr-preview-column {
+            flex: none !important;
+            width: 100% !important;
+        }
+
+        .ocr-crop-container {
+            min-height: 150px !important;
+            padding: 0.75rem !important;
+        }
+
+        .ocr-crop-container img {
+            max-height: 200px !important;
+        }
+
+        .ocr-form-column {
+            width: 100% !important;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .ocr-modal-overlay {
+            padding: 0.5rem !important;
+        }
+
+        .ocr-modal {
+            max-width: 100% !important;
+            width: 100% !important;
+            margin: 0 !important;
+            border-radius: 1.25rem !important;
+            max-height: 96vh !important;
+        }
+
+        .ocr-modal-header {
+            padding: 1.5rem 1.25rem 0.75rem !important;
+        }
+
+        .ocr-modal-header.header-mismatch {
+            padding: 1.75rem 1.25rem 1rem !important;
+        }
+
+        .ocr-modal-header .modal-icon {
+            width: 48px !important;
+            height: 48px !important;
+            font-size: 1.25rem !important;
+            margin-bottom: 0.75rem !important;
+        }
+
+        .ocr-modal-header h2 {
+            font-size: 1.2rem !important;
+            margin-bottom: 0.15rem !important;
+        }
+
+        #id-mismatch-modal .ocr-modal-header h2 {
+            font-size: 1.35rem !important;
+        }
+
+        .ocr-modal-header p {
+            font-size: 0.78rem !important;
+        }
+
+        .ocr-modal-body {
+            padding: 1rem 1.25rem !important;
+            gap: 1rem !important;
+        }
+
+        .ocr-modal-body.body-mismatch {
+            padding: 1rem 1.25rem !important;
+        }
+
+        #ocr-dynamic-fields-container {
+            grid-template-columns: 1fr !important;
+            gap: 0.65rem !important;
+        }
+
+        .ocr-modal-footer {
+            padding: 1rem 1.25rem 1.5rem !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 0.65rem !important;
+        }
+
+        .ocr-modal-footer.footer-mismatch {
+            padding: 1rem 1.25rem 1.5rem !important;
+        }
+
+        .ocr-modal-footer .btn-modal-primary {
+            order: -1 !important;
+        }
+
+        .ocr-modal-footer button {
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0.85rem 1.25rem !important;
+            font-size: 0.88rem !important;
+            height: auto !important;
+        }
+
+        /* Adjust preview layouts for small screens */
+        #ocr-crop-preview {
+            max-height: 180px !important;
+        }
+
+        #crop-workspace-container {
+            max-height: 380px !important;
+        }
+
+        /* Ensure Webcam Capture modal styling fits well on mobile */
+        #id-camera-modal .ocr-modal-body {
+            padding: 0.75rem 1rem !important;
+        }
+        
+        #id-camera-modal .ocr-modal-body > div {
+            margin: 0.5rem !important;
         }
     }
 </style>
@@ -1032,29 +1351,34 @@
             <!--  OCR VERIFICATION MODAL                     -->
             <!-- ═══════════════════════════════════════════ -->
             <div id="ocr-verification-modal" class="ocr-modal-overlay">
-                <div class="ocr-modal"
-                    style="max-width: 850px; display: flex; flex-direction: column; overflow: hidden; max-height: 92vh;">
-                    <div class="ocr-modal-header" style="border-bottom: 1px solid #f1f5f9; padding: 2rem 2rem 1.25rem;">
+                <div class="ocr-modal modal-wide">
+                    <div class="ocr-modal-header">
                         <div class="modal-icon"><i class="fas fa-file-invoice"></i></div>
                         <h2>Verify Extracted ID Details</h2>
                         <p>Check if all text matches the ID card. Correct any misspelled fields.</p>
                     </div>
-                    <div class="ocr-modal-body"
-                        style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 1.5rem; overflow-y: auto; flex: 1; padding: 1.5rem 2rem;">
+                    <div class="ocr-modal-body">
                         <!-- Left Column: Crop Snippet Preview -->
-                        <div style="flex: 1 1 280px; display: flex; flex-direction: column; gap: 0.75rem;">
-                            <label
-                                style="display: block; font-size: 0.7rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em;">Cropped
-                                ID Document</label>
-                            <div
-                                style="background: #0f172a; padding: 1rem; border-radius: 1rem; flex: 1; display: flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0; min-height: 200px;">
-                                <img id="ocr-crop-preview" src=""
-                                    style="max-height: 280px; max-width: 100%; object-fit: contain; border-radius: 0.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.25);">
+                        <div class="ocr-preview-column">
+                            <label class="ocr-column-label">Cropped ID Document</label>
+                            <div class="ocr-crop-container">
+                                <img id="ocr-crop-preview" src="" alt="Cropped ID Preview">
                             </div>
                         </div>
 
                         <!-- Right Column: Fields Form -->
-                        <div style="flex: 1.2 1 300px; display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="ocr-form-column">
+                            <!-- Success Match Alert -->
+                            <div id="ocr-success-alert" class="alert alert-success" style="display: none; align-items: flex-start; gap: 0.75rem; background: #ecfdf5; border: 1.5px solid #a7f3d0; border-radius: 1rem; padding: 1rem; margin-bottom: 0.5rem;">
+                                <div style="width: 32px; height: 32px; background: #d1fae5; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #10b981;">
+                                    <i class="fas fa-check-circle" style="font-size: 1.1rem;"></i>
+                                </div>
+                                <div style="flex: 1; text-align: left;">
+                                    <div style="font-weight: 800; font-size: 0.95rem; color: #065f46; margin-bottom: 0.15rem;">ID Verified Successfully</div>
+                                    <p style="font-size: 0.8rem; color: #047857; font-weight: 600; margin: 0; line-height: 1.4;">The uploaded ID matches your selected ID type. You may now proceed to the next step.</p>
+                                </div>
+                            </div>
+
                             <div class="ocr-confidence-bar" style="margin: 0 0 0.5rem 0; width: 100%;">
                                 <span class="bar-label">OCR Match Confidence:</span>
                                 <div class="bar-track">
@@ -1064,49 +1388,59 @@
                             </div>
 
                             <!-- Dynamic fields container -->
-                            <div id="ocr-dynamic-fields-container"
-                                style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;"></div>
+                            <div id="ocr-dynamic-fields-container"></div>
                         </div>
                     </div>
-                    <div class="ocr-modal-footer" style="border-top: 1px solid #f1f5f9; padding: 1.25rem 2rem 2rem;">
+                    <div class="ocr-modal-footer">
                         <button type="button" class="btn-modal-secondary" onclick="rescanId()"><i
-                                class="fas fa-redo-alt" style="margin-right:0.4rem;"></i> Rescan</button>
+                                class="fas fa-redo-alt"></i> Rescan</button>
                         <button type="button" class="btn-modal-primary" onclick="saveOcrAndContinue()"><i
-                                class="fas fa-check" style="margin-right:0.4rem;"></i> Save & Continue</button>
+                                class="fas fa-check"></i> Save & Continue</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════ -->
+            <!--  ID MISMATCH MODAL                          -->
+            <!-- ═══════════════════════════════════════════ -->
+            <div id="id-mismatch-modal" class="ocr-modal-overlay">
+                <div class="ocr-modal modal-standard">
+                    <div class="ocr-modal-header header-mismatch">
+                        <div class="modal-icon icon-mismatch"><i class="fas fa-times-circle"></i></div>
+                        <h2>ID Type Mismatch</h2>
+                        <p id="mismatch-comparison-label"></p>
+                    </div>
+                    <div class="ocr-modal-body body-mismatch">
+                        <p id="mismatch-msg-body"></p>
+                    </div>
+                    <div class="ocr-modal-footer footer-mismatch">
+                        <button type="button" class="btn-modal-primary" onclick="handleMismatchRetake()"><i class="fas fa-camera"></i> Retake Photo</button>
+                        <button type="button" class="btn-modal-secondary btn-modal-secondary-outlined" onclick="handleMismatchUpload()"><i class="fas fa-image"></i> Upload Another Image</button>
+                        <button type="button" class="btn-modal-secondary btn-modal-secondary-filled" onclick="handleMismatchChangeType()"><i class="fas fa-exchange-alt"></i> Change ID Type</button>
                     </div>
                 </div>
             </div>
 
             <!-- Webcam ID Capture Modal for Desktops -->
             <div id="id-camera-modal" class="ocr-modal-overlay">
-                <div class="ocr-modal"
-                    style="max-width: 500px; display: flex; flex-direction: column; overflow: hidden; max-height: 90vh;">
-                    <div class="ocr-modal-header" style="border-bottom: 1px solid #f1f5f9; padding: 2rem 2rem 1.25rem;">
+                <div class="ocr-modal modal-standard">
+                    <div class="ocr-modal-header">
                         <div class="modal-icon"><i class="fas fa-camera"></i></div>
                         <h2>Capture ID Document</h2>
                         <p>Align your ID card inside the frame and keep it steady</p>
                     </div>
-                    <div class="ocr-modal-body"
-                        style="padding: 1.5rem 2rem; display: flex; align-items: center; justify-content: center; background: #f8fafc;">
-                        <div
-                            style="position: relative; width: 100%; aspect-ratio: 4/3; background: #0f172a; border-radius: 1rem; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-                            <video id="id-webcam" autoplay playsinline
-                                style="width: 100%; height: 100%; object-fit: cover;"></video>
+                    <div class="ocr-modal-body body-camera">
+                        <div class="camera-preview-container">
+                            <video id="id-webcam" autoplay playsinline></video>
                             <!-- Highlight Bracket Overlay -->
-                            <div
-                                style="position: absolute; inset: 0; pointer-events: none; border: 4px dashed var(--kyc-accent); border-radius: 1rem; margin: 1.5rem; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 0 200px rgba(15,23,42,0.4);">
-                                <span
-                                    style="font-size: 0.75rem; font-weight: bold; background: rgba(0,0,0,0.6); color: white; padding: 0.35rem 0.75rem; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.15);">Align
-                                    ID Card</span>
+                            <div class="camera-bracket-overlay">
+                                <span class="camera-align-badge">Align ID Card</span>
                             </div>
                         </div>
                     </div>
-                    <div class="ocr-modal-footer"
-                        style="border-top: 1px solid #f1f5f9; padding: 1.25rem 2rem 2rem; display: flex; gap: 0.75rem;">
-                        <button type="button" class="btn-modal-secondary" style="flex: 1;"
-                            onclick="closeIdCameraModal()">Cancel</button>
-                        <button type="button" class="btn-modal-primary" style="flex: 1;"
-                            onclick="captureIdFromWebcam()"><i class="fas fa-camera mr-1"></i> Capture Photo</button>
+                    <div class="ocr-modal-footer">
+                        <button type="button" class="btn-modal-secondary" onclick="closeIdCameraModal()">Cancel</button>
+                        <button type="button" class="btn-modal-primary" onclick="captureIdFromWebcam()"><i class="fas fa-camera"></i> Capture Photo</button>
                     </div>
                 </div>
             </div>
@@ -1173,6 +1507,12 @@
                                     <li>Look directly at the camera and blink when prompted</li>
                                     <li>Avoid glasses, masks, or hats</li>
                                 </ul>
+                                <div style="margin-top: 1rem; display: flex; justify-content: flex-end;">
+                                    <button type="button" class="btn btn-danger" onclick="retryLiveness()"
+                                        style="font-size: 0.8rem; border-radius: 0.75rem; padding: 0.55rem 1.25rem; font-weight: 700; border: none; background: #ef4444; color: white; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: background 0.2s; box-shadow: 0 4px 6px rgba(239, 68, 68, 0.2);">
+                                        <i class="fas fa-sync-alt"></i> Retake Verification
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
