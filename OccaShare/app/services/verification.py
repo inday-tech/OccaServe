@@ -1716,6 +1716,21 @@ class VerificationService:
                         if res.status_code == 200:
                             response = res
                             break
+                        elif res.status_code == 429:
+                            # Rate limited — wait briefly and retry once with this model
+                            retry_delay = 5
+                            debug_logs.append(f"Model {model} rate limited (429). Retrying in {retry_delay}s...")
+                            print(f"[KYC WARNING] Model {model} rate limited. Retrying in {retry_delay}s...")
+                            import asyncio
+                            await asyncio.sleep(retry_delay)
+                            res2 = await client.post(url, json=payload, headers=headers, timeout=30.0)
+                            debug_logs.append(f"Model {model} retry returned status code: {res2.status_code}")
+                            if res2.status_code == 200:
+                                response = res2
+                                break
+                            else:
+                                debug_logs.append(f"Model {model} retry error body: {res2.text[:300]}")
+                                print(f"[KYC WARNING] Model {model} retry also failed: {res2.status_code}")
                         else:
                             debug_logs.append(f"Model {model} error body: {res.text}")
                             print(f"[KYC WARNING] Model {model} failed with status {res.status_code}: {res.text[:200]}")
@@ -2579,6 +2594,79 @@ class VerificationService:
             final_ocr_data["extracted_expiry"] = rich_data.get("extracted_expiry")
             final_ocr_data["extracted_address"] = rich_data.get("extracted_address")
 
+            # Override extracted fields with confirmed user profile values if db and user_id are provided
+            if db and user_id:
+                try:
+                    from ..db.models import User
+                    user = db.query(User).get(user_id)
+                    if user:
+                        usr_first = user.first_name or ""
+                        usr_middle = user.middle_name or ""
+                        usr_last = user.last_name or ""
+                        usr_dob = user.dob.strftime('%Y-%m-%d') if user.dob else (dob or "")
+                        usr_address = user.address or (address or "")
+                        usr_id_num = id_number or ""
+
+                        if "fields" not in final_ocr_data:
+                            final_ocr_data["fields"] = {}
+                        
+                        fields = final_ocr_data["fields"]
+
+                        # Standardize name parts fallback parser in case user fields are missing
+                        if not usr_first and not usr_last and full_name:
+                            parts = full_name.split()
+                            if len(parts) >= 3:
+                                usr_first = parts[0]
+                                usr_middle = parts[1]
+                                usr_last = parts[-1]
+                            elif len(parts) == 2:
+                                usr_first = parts[0]
+                                usr_middle = ""
+                                usr_last = parts[1]
+                            else:
+                                usr_first = full_name
+                                usr_middle = ""
+                                usr_last = ""
+
+                        # Populate OCR fields with user profile confirmed data
+                        if id_type in ["PhilSys / PhilID", "PhilID (National ID)", "philsys", "PhilID"]:
+                            fields["id_number"] = {"value": usr_id_num, "confidence": 100}
+                            fields["last_name"] = {"value": usr_last, "confidence": 100}
+                            fields["given_names"] = {"value": usr_first, "confidence": 100}
+                            fields["first_name"] = {"value": usr_first, "confidence": 100}
+                            fields["middle_name"] = {"value": usr_middle, "confidence": 100}
+                            fields["date_of_birth"] = {"value": usr_dob, "confidence": 100}
+                            fields["address"] = {"value": usr_address, "confidence": 100}
+                        elif id_type == "Driver's License":
+                            fields["license_number"] = {"value": usr_id_num, "confidence": 100}
+                            fields["id_number"] = {"value": usr_id_num, "confidence": 100}
+                            fields["last_name"] = {"value": usr_last, "confidence": 100}
+                            fields["first_name"] = {"value": usr_first, "confidence": 100}
+                            fields["middle_name"] = {"value": usr_middle, "confidence": 100}
+                            fields["date_of_birth"] = {"value": usr_dob, "confidence": 100}
+                            fields["address"] = {"value": usr_address, "confidence": 100}
+                        elif id_type == "Passport":
+                            fields["passport_number"] = {"value": usr_id_num, "confidence": 100}
+                            fields["id_number"] = {"value": usr_id_num, "confidence": 100}
+                            fields["last_name"] = {"value": usr_last, "confidence": 100}
+                            fields["given_names"] = {"value": usr_first, "confidence": 100}
+                            fields["middle_name"] = {"value": usr_middle, "confidence": 100}
+                            fields["date_of_birth"] = {"value": usr_dob, "confidence": 100}
+
+                        # Update backward-compatible flat keys
+                        final_ocr_data["full_name"] = f"{usr_first} {usr_middle + ' ' if usr_middle else ''}{usr_last}".strip()
+                        final_ocr_data["id_number"] = usr_id_num
+                        final_ocr_data["birth_date"] = usr_dob
+                        final_ocr_data["address"] = usr_address
+                        
+                        final_ocr_data["full_name_extracted"] = final_ocr_data["full_name"]
+                        final_ocr_data["dob_extracted"] = usr_dob
+                        final_ocr_data["address_extracted"] = usr_address
+                        final_ocr_data["extracted_dob"] = usr_dob
+                        final_ocr_data["extracted_address"] = usr_address
+                except Exception as override_err:
+                    print(f"[KYC WARNING] Failed to override OCR fields with user profile: {override_err}")
+
             return {
                 "status": status,
                 "ocr_match": status == "matched",
@@ -2783,7 +2871,22 @@ class VerificationService:
             liveness_result = {}
 
             if not liveness_failure and vps_url:
-                print(f"[KYC DEBUG] Delegating Face Verification and Liveness to VPS: {vps_url}/verify")
+                # Quick connectivity pre-check (3s) to avoid long timeouts on unreachable VPS
+                vps_reachable = False
+                try:
+                    async with httpx.AsyncClient() as probe_client:
+                        probe = await probe_client.get(vps_url, timeout=3.0)
+                        vps_reachable = probe.status_code < 500
+                        print(f"[KYC DEBUG] VPS pre-check: status={probe.status_code}, reachable={vps_reachable}")
+                except Exception as probe_err:
+                    print(f"[KYC WARNING] VPS unreachable (pre-check failed in <3s): {probe_err}")
+                
+                if not vps_reachable:
+                    print("[KYC WARNING] Skipping VPS — server unreachable. Using local pipeline.")
+                else:
+                    print(f"[KYC DEBUG] Delegating Face Verification and Liveness to VPS: {vps_url}/verify")
+
+            if not liveness_failure and vps_url and vps_reachable:
                 try:
                     files = []
                     
@@ -2826,7 +2929,7 @@ class VerificationService:
                             files=files,
                             data={"enforce_detection": "false"},
                             headers=headers,
-                            timeout=45.0
+                            timeout=10.0
                         )
                         
                     if response.status_code == 200:
