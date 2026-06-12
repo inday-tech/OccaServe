@@ -1945,7 +1945,7 @@ const initKyc = () => {
 
         if (scannerContainer && scannerContainer.style.display !== 'none' && checkmarkOverlay) {
             checkmarkOverlay.style.display = 'flex';
-            updateInstruction("Liveness Verified", "Identity verification successful");
+            updateInstruction("Identity Verified Successfully", "Your identity has been successfully verified. You may now proceed to the next step.");
             setProgressRing(100, "#22c55e");
         }
 
@@ -1962,9 +1962,9 @@ const initKyc = () => {
             }
         }
 
-        document.getElementById('status-text').innerText = "Identity Verified!";
+        document.getElementById('status-text').innerText = "Identity Verified Successfully";
         document.getElementById('status-text').style.color = "var(--kyc-accent)";
-        document.getElementById('status-subtext').innerText = "Success! Continuing...";
+        document.getElementById('status-subtext').innerText = "Your identity has been successfully verified. You may now proceed to the next step.";
 
         document.getElementById('node-4').classList.add('completed');
         document.getElementById('node-4').classList.remove('active');
@@ -1975,14 +1975,22 @@ const initKyc = () => {
     }
 
     function handleRejection(msg) {
+        let title = "Verification Rejected";
+        let message = msg;
+        if (msg && msg.indexOf(" | ") !== -1) {
+            const parts = msg.split(" | ");
+            title = parts[0];
+            message = parts[1];
+        }
+
         document.getElementById('kyc-waiting-approval').style.display = 'none';
         const initLoading = document.getElementById('kyc-loading-init');
         if (initLoading) initLoading.style.display = 'none';
 
         document.getElementById('step-processing').style.display = 'block';
-        document.getElementById('status-text').innerText = "Verification Rejected";
+        document.getElementById('status-text').innerText = title;
         document.getElementById('status-text').style.color = "#ef4444";
-        document.getElementById('status-subtext').innerText = msg;
+        document.getElementById('status-subtext').innerText = message;
 
         const existingBtn = document.getElementById('step-processing').querySelector('.btn-retry-kyc');
         if (existingBtn) existingBtn.remove();
@@ -1996,6 +2004,14 @@ const initKyc = () => {
     }
 
     function handleLivenessFailure(msg) {
+        let title = "Verification Failed";
+        let message = msg;
+        if (msg && msg.indexOf(" | ") !== -1) {
+            const parts = msg.split(" | ");
+            title = parts[0];
+            message = parts[1];
+        }
+
         document.getElementById('kyc-waiting-approval').style.display = 'none';
         const initLoading = document.getElementById('kyc-loading-init');
         if (initLoading) initLoading.style.display = 'none';
@@ -2004,13 +2020,18 @@ const initKyc = () => {
         const livenessRetryBanner = document.getElementById('liveness-retry-banner');
         if (livenessRetryBanner) {
             livenessRetryBanner.style.display = 'block';
+            
+            // Set dynamic title
+            const titleEl = livenessRetryBanner.querySelector('div[style*="font-weight: 800"]');
+            if (titleEl) titleEl.innerText = title;
+            
             const msgEl = document.getElementById('liveness-retry-message');
-            if (msgEl) msgEl.innerText = msg;
+            if (msgEl) msgEl.innerText = message;
         } else {
             if (window.showError) {
-                window.showError(msg, 'Liveness Check Failed');
+                window.showError(message, title);
             } else {
-                alert('Liveness check failed: ' + msg);
+                alert(title + ': ' + message);
             }
         }
 

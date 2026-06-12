@@ -2990,7 +2990,7 @@ class VerificationService:
             for img in selfie_imgs:
                 mean_brightness = np.mean(img)
                 if mean_brightness < 40: # Threshold for dark environment
-                    liveness_failure = "Environment is too dark. Please improve lighting."
+                    liveness_failure = "Insufficient Lighting | The environment is too dark for accurate verification. Please move to a brighter location and try again."
                     break
 
             vps_url = os.getenv("VPS_AI_URL")
@@ -3098,15 +3098,19 @@ class VerificationService:
                         v_err = verification_result.get("error", "")
                         print(f"[KYC WARNING] VPS DeepFace verify reported error: {v_err}")
                         if "Face could not be detected" in v_err:
-                            liveness_failure = "Face could not be detected in the ID or selfie. Please ensure face is clearly visible."
+                            liveness_failure = "Face Not Detected | We couldn't detect your face clearly. Please position your face inside the frame and try again."
                         else:
-                            liveness_failure = "Face verification failed. Please try again."
+                            liveness_failure = "Liveness Verification Failed | We could not verify that a live person is present. Please try again in a well-lit environment and follow the on-screen instructions carefully."
                     elif face_count == 0:
-                        liveness_failure = "No face detected. Please face the camera clearly."
+                        liveness_failure = "Face Not Detected | We couldn't detect your face clearly. Please position your face inside the frame and try again."
                     elif face_count > 1:
-                        liveness_failure = "Multiple faces detected. Only one person is allowed."
+                        liveness_failure = "Multiple Faces Detected | More than one face was detected. Please ensure only your face is visible during verification."
                     elif occlusion_detected:
-                        liveness_failure = occlusion_reason or "Face occlusion detected. Please keep your face clear."
+                        occ_lower = str(occlusion_reason).lower()
+                        if "too far" in occ_lower or "far" in occ_lower:
+                            liveness_failure = "Face Too Far from Camera | Please move closer to the camera and keep your face centered within the frame."
+                        else:
+                            liveness_failure = "Face Too Close to Camera | Please move your device slightly away and ensure your entire face is visible within the frame."
                 else:
                     # Fallback to local processing if VPS failed or not configured
                     print("[KYC WARNING] Running local liveness and face comparison...")
@@ -3134,12 +3138,16 @@ class VerificationService:
                             face_count = max_haar_faces
 
                     if face_count == 0:
-                        liveness_failure = "No face detected. Please face the camera clearly."
+                        liveness_failure = "Face Not Detected | We couldn't detect your face clearly. Please position your face inside the frame and try again."
                     elif face_count > 1:
-                        liveness_failure = "Multiple faces detected. Only one person is allowed."
+                        liveness_failure = "Multiple Faces Detected | More than one face was detected. Please ensure only your face is visible during verification."
                     
                     if not liveness_failure and occlusion_detected:
-                        liveness_failure = occlusion_reason or "Face occlusion detected. Please keep your face clear."
+                        occ_lower = str(occlusion_reason).lower()
+                        if "too far" in occ_lower or "far" in occ_lower:
+                            liveness_failure = "Face Too Far from Camera | Please move closer to the camera and keep your face centered within the frame."
+                        else:
+                            liveness_failure = "Face Too Close to Camera | Please move your device slightly away and ensure your entire face is visible within the frame."
                     
                     # Compare faces locally
                     # NOTE: Local MediaPipe landmark matching is unreliable for ID-vs-selfie
@@ -3215,13 +3223,13 @@ class VerificationService:
             elif not liveness_passed:
                 status = "liveliness_failed"
                 if challenge_completion_score < 100:
-                    failure_reason = f"Liveness challenges not fully completed. Completed: {completed_challenges}, Required: {assigned_challenges}"
+                    failure_reason = "Blink Verification Failed | We could not detect the required blink action. Please look directly at the camera and blink naturally when prompted."
                 elif not vps_success and liveness_score < 40:
-                    failure_reason = "Face not clearly detected in the captured frames. Please ensure good lighting and face the camera directly."
+                    failure_reason = "Face Not Detected | We couldn't detect your face clearly. Please position your face inside the frame and try again."
                 elif vps_success and anti_spoof_score < 70:
-                    failure_reason = "Liveness failed: Anti-spoofing check detected a non-live source."
+                    failure_reason = "Verification Rejected | A potential spoofing attempt was detected. Please complete the verification using your live face and avoid using photos, videos, or screen displays."
                 else:
-                    failure_reason = f"Liveness score {liveness_score}% did not meet the required threshold {min_liveness_label}. Please ensure clear lighting and complete the blink challenge fully."
+                    failure_reason = "Blink Verification Failed | We could not detect the required blink action. Please look directly at the camera and blink naturally when prompted."
             else:
                 # Liveness passed. Check face match score.
                 # Thresholds: >= 90 VERIFIED, 85-89 pending_manual_review, < 85 rejected
@@ -3233,7 +3241,7 @@ class VerificationService:
                     failure_reason = "Face match is in the manual review range (85-89%)."
                 else:
                     status = "rejected"
-                    failure_reason = f"Face match score too low ({face_match_score}%). Face does not match the uploaded ID."
+                    failure_reason = "Identity Verification Failed | The captured selfie does not sufficiently match the photo on the uploaded ID. Please ensure you are using your own valid ID and try again."
 
             # Write liveness and verification details to ocr_debug.log
             try:

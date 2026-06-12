@@ -1752,11 +1752,21 @@
                             <div style="flex: 1;">
                                 <div
                                     style="font-weight: 800; font-size: 0.9rem; color: #b91c1c; margin-bottom: 0.25rem;">
-                                    Verification Failed</div>
+                                    {% if user.identity_verification and user.identity_verification.failure_reason and ' | ' in user.identity_verification.failure_reason %}
+                                        {{ user.identity_verification.failure_reason.split(' | ')[0] }}
+                                    {% else %}
+                                        Verification Failed
+                                    {% endif %}
+                                </div>
                                 <div id="liveness-retry-message"
                                     style="font-size: 0.82rem; color: #7f1d1d; font-weight: 600; margin-bottom: 0.6rem;">
-                                    {% if user.identity_verification and user.identity_verification.failure_reason %}{{
-                                    user.identity_verification.failure_reason }}{% endif %}</div>
+                                    {% if user.identity_verification and user.identity_verification.failure_reason %}
+                                        {% if ' | ' in user.identity_verification.failure_reason %}
+                                            {{ user.identity_verification.failure_reason.split(' | ')[1] }}
+                                        {% else %}
+                                            {{ user.identity_verification.failure_reason }}
+                                        {% endif %}
+                                    {% endif %}</div>
                                 <ul
                                     style="font-size: 0.78rem; color: #991b1b; font-weight: 600; padding-left: 1rem; margin: 0; line-height: 1.8;">
                                     <li>Ensure good lighting on your face</li>

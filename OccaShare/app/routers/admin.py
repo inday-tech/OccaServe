@@ -2723,7 +2723,7 @@ async def rescan_kyc_document(
     
     try:
         # Re-run OCR using the improved extraction service
-        result = verification_service.verify_id_document(
+        result = await verification_service.verify_id_document(
             kyc.document_url, 
             full_name, 
             kyc.id_number or "", 

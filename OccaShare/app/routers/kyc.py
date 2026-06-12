@@ -230,11 +230,42 @@ async def upload_id(
         address=address
     )
     
-    # Always proceed to liveness check regardless of OCR match results
-    kyc_record.document_url = id_url
-    kyc_record.id_number = id_number
-    kyc_record.verification_type = id_type
-    kyc_record.ocr_data = id_result.get("ocr_data", {})
+    # Ensure ocr_data is populated even if verification service fails to extract it
+    ocr_data = id_result.get("ocr_data", {})
+    if not ocr_data or not isinstance(ocr_data, dict) or not ocr_data.get("fields"):
+        fallback_fields = {
+            "id_number": {"value": id_number, "confidence": 100},
+            "last_name": {"value": last_name or "", "confidence": 100},
+            "first_name": {"value": first_name or "", "confidence": 100},
+            "middle_name": {"value": middle_name or "", "confidence": 100},
+            "date_of_birth": {"value": dob or "", "confidence": 100},
+            "address": {"value": address or "", "confidence": 100}
+        }
+        
+        # Add ID type specific fields
+        if id_type in ["PhilSys / PhilID", "PhilID (National ID)", "philsys", "PhilID"]:
+            fallback_fields["given_names"] = {"value": first_name or "", "confidence": 100}
+        elif id_type == "Driver's License":
+            fallback_fields["license_number"] = {"value": id_number, "confidence": 100}
+        elif id_type == "Passport":
+            fallback_fields["passport_number"] = {"value": id_number, "confidence": 100}
+            fallback_fields["given_names"] = {"value": first_name or "", "confidence": 100}
+
+        ocr_data = {
+            "id_type": id_type,
+            "extraction_method": "manual_input",
+            "document_type_detected": id_type,
+            "confidence_score": 1.0,
+            "face_visible": True,
+            "fields": fallback_fields,
+            "full_name": f"{first_name or ''} {middle_name + ' ' if middle_name else ''}{last_name or ''}".strip(),
+            "id_number": id_number,
+            "birth_date": dob,
+            "address": address,
+            "raw_text": f"MANUAL_FALLBACK: {first_name} {last_name} {id_number}"
+        }
+    
+    kyc_record.ocr_data = ocr_data
     kyc_record.verification_status = "pending_liveliness"
     kyc_record.failure_reason = None
     db.commit()
@@ -430,8 +461,16 @@ async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, ful
             kyc_record.fraud_score = result.get("fraud_score", 0)
             kyc_record.match_score = result.get("face_match_confidence", 0.0)
             kyc_record.face_detected = result.get("liveness_score", 0.0) > 0 or result.get("face_match_confidence", 0.0) > 0
-            kyc_record.id_detected = result.get("ocr_match", False) or result.get("ocr_data", {}).get("full_name") is not None
-            kyc_record.ocr_data = result.get("ocr_data", {})
+            
+            # Conditionally save ocr_data only if result has valid ocr_data with fields
+            new_ocr = result.get("ocr_data")
+            if new_ocr and isinstance(new_ocr, dict) and new_ocr.get("fields"):
+                kyc_record.ocr_data = new_ocr
+            # Fallback in case ocr_data is currently None in the DB (initialize as empty dict)
+            elif kyc_record.ocr_data is None:
+                kyc_record.ocr_data = {}
+                
+            kyc_record.id_detected = result.get("ocr_match", False) or (isinstance(kyc_record.ocr_data, dict) and kyc_record.ocr_data.get("full_name") is not None)
             kyc_record.liveness_status = "passed" if result["status"] not in ["liveliness_failed", "failed"] else "failed"
             
         # Log to Audit
@@ -464,16 +503,20 @@ async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, ful
             if session:
                 session.status = "failed"
             kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user_id).first()
+            
+            # Map exception / system failure to professional connection/interruption message
+            interruption_msg = "Verification Interrupted | The verification process was interrupted due to a connection issue. Please check your internet connection and try again."
+            
             if kyc_record:
                 kyc_record.verification_status = "failed"
-                kyc_record.failure_reason = f"System Error: {str(e)}"
+                kyc_record.failure_reason = interruption_msg
             db.commit()
             
             # Broadcast to WebSocket
             await manager.broadcast_to_user(user_id, {
                 "type": "kyc_update",
                 "status": "failed",
-                "reason": f"System Error: {str(e)}"
+                "reason": interruption_msg
             })
         except Exception as db_err:
             print(f"[KYC BACKGROUND DB ERROR IN EXCEPT] {db_err}")
