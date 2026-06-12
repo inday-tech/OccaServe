@@ -64,6 +64,15 @@ except Exception as _easyocr_err:
     EASYOCR_AVAILABLE = False
     _easyocr_reader = None
 
+# Graceful import for face_recognition (Matthew Berman video method)
+try:
+    import face_recognition
+    FACE_RECOGNITION_AVAILABLE = True
+    print("[KYC DEBUG] face_recognition library loaded successfully for biometric face comparison.")
+except ImportError:
+    FACE_RECOGNITION_AVAILABLE = False
+    print("[KYC WARNING] face_recognition library not available. Local face verification will use MediaPipe landmarks fallback.")
+
 # Configure Tesseract Path for Windows and Linux
 if PYTESSERACT_AVAILABLE:
     if os.name != "nt":  # Linux (Railway)
@@ -488,7 +497,50 @@ class VerificationService:
         return score
 
     def compare_faces(self, img1: np.ndarray, img2: np.ndarray) -> Dict[str, Any]:
-        """Compares two faces using MediaPipe landmark feature similarity."""
+        """Compares two faces using face_recognition (Matthew Berman video method) if available,
+           falling back to MediaPipe landmark feature similarity."""
+        
+        # --- METHOD 1: face_recognition library (Matthew Berman video method) ---
+        if FACE_RECOGNITION_AVAILABLE:
+            try:
+                # face_recognition library expects RGB format
+                # img1 and img2 are BGR format from cv2
+                rgb_img1 = img1[:, :, ::-1] if img1 is not None else None
+                rgb_img2 = img2[:, :, ::-1] if img2 is not None else None
+                
+                if rgb_img1 is None or rgb_img2 is None:
+                    return {"match": False, "confidence": 0.0, "error": "Invalid image data"}
+                
+                # Get face encodings (128-dimensional vectors)
+                encodings1 = face_recognition.face_encodings(rgb_img1)
+                encodings2 = face_recognition.face_encodings(rgb_img2)
+                
+                if not encodings1:
+                    print("[KYC face_recognition] No face found in ID image.")
+                    return {"match": False, "confidence": 0.0, "error": "No face detected in the ID image"}
+                if not encodings2:
+                    print("[KYC face_recognition] No face found in Selfie image.")
+                    return {"match": False, "confidence": 0.0, "error": "No face detected in the selfie"}
+                
+                # Compare face embeddings
+                # tolerance=0.6 is the default; lower values are more strict
+                results = face_recognition.compare_faces([encodings1[0]], encodings2[0], tolerance=0.6)
+                # Distance (Euclidean) between embeddings
+                distance = face_recognition.face_distance([encodings1[0]], encodings2[0])[0]
+                
+                # Convert distance (0.0 to 1.0+) to confidence percentage (0.0 to 1.0)
+                # 0.6 distance is threshold. 0.0 distance means identical.
+                confidence = max(0.0, 1.0 - (distance * 0.66))
+                
+                print(f"[KYC face_recognition] Distance={distance:.4f}, Match={results[0]}, Confidence={confidence:.4f}")
+                return {
+                    "match": bool(results[0]),
+                    "confidence": float(confidence)
+                }
+            except Exception as fe:
+                print(f"[KYC face_recognition] Error: {fe}. Falling back to MediaPipe...")
+
+        # --- METHOD 2: Fallback to MediaPipe landmark distance ---
         if not self.landmarker:
             return {"match": False, "confidence": 0.0, "error": "Landmarker offline"}
 
