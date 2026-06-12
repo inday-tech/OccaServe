@@ -3183,6 +3183,34 @@ class VerificationService:
                     status = "rejected"
                     failure_reason = f"Face match score too low ({face_match_score}%). Face does not match the uploaded ID."
 
+            # Write liveness and verification details to ocr_debug.log
+            try:
+                with open("ocr_debug.log", "a", encoding="utf-8") as f:
+                    f.write(f"\n--- LIVENESS DETECTION ATTEMPT AT {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")
+                    f.write(f"User ID: {user_id}\n")
+                    f.write(f"ID Type: {id_type}\n")
+                    f.write(f"ID Path: {id_path}\n")
+                    f.write(f"Selfie Paths: {selfie_paths}\n")
+                    f.write(f"Assigned Challenges: {assigned_challenges}\n")
+                    f.write(f"Completed Challenges: {completed_challenges}\n")
+                    f.write(f"VPS Reachable: {vps_reachable if 'vps_reachable' in locals() else 'N/A'}\n")
+                    f.write(f"VPS Success: {vps_success}\n")
+                    f.write(f"Detected Face Count: {face_count}\n")
+                    f.write(f"Occlusion Detected: {occlusion_detected} (Reason: {occlusion_reason})\n")
+                    if not vps_success and 'local_liveness' in locals():
+                        f.write(f"Local Liveness Details: EAR Variance={local_liveness.get('ear_variance'):.6f}, Movement={local_liveness.get('movement'):.6f}\n")
+                    f.write(f"Liveness Score: {liveness_score}%\n")
+                    f.write(f"Anti-Spoof Score: {anti_spoof_score}%\n")
+                    f.write(f"Face Match Score: {face_match_score}%\n")
+                    f.write(f"OCR Match: {ocr_match}\n")
+                    f.write(f"Pattern Valid: {pattern_valid}\n")
+                    f.write(f"Fraud Score: {fraud_score}\n")
+                    f.write(f"Final Verification Status: {status}\n")
+                    f.write(f"Failure/Review Reason: {failure_reason}\n")
+                    f.write("-" * 50 + "\n")
+            except Exception as log_err:
+                print(f"[KYC DEBUG] Failed to write liveness debug log: {log_err}")
+
             return {
                 "status": status,
                 "fraud_score": fraud_score,
@@ -3204,6 +3232,14 @@ class VerificationService:
             }
         except Exception as e:
             traceback.print_exc()
+            try:
+                with open("ocr_debug.log", "a", encoding="utf-8") as f:
+                    f.write(f"\n--- LIVENESS DETECTION SYSTEM ERROR AT {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")
+                    f.write(f"Error: {str(e)}\n")
+                    f.write(f"Traceback: {traceback.format_exc()}\n")
+                    f.write("-" * 50 + "\n")
+            except Exception:
+                pass
             return {
                 "status": "failed",
                 "fraud_score": 0,

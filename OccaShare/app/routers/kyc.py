@@ -458,6 +458,15 @@ async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, ful
     except Exception as e:
         print(f"[KYC BACKGROUND ERROR] {e}")
         traceback.print_exc()
+        try:
+            with open("ocr_debug.log", "a", encoding="utf-8") as f:
+                f.write(f"\n--- KYC BACKGROUND TASK FATAL ERROR AT {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")
+                f.write(f"User ID: {user_id}, Booking ID: {booking_id}\n")
+                f.write(f"Error: {str(e)}\n")
+                f.write(f"Traceback: {traceback.format_exc()}\n")
+                f.write("-" * 50 + "\n")
+        except Exception:
+            pass
 
 @router.post("/kyc/reset")
 async def reset_kyc_status(
