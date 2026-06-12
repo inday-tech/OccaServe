@@ -303,6 +303,7 @@
                     </div>
                 </div>
 
+                {% if vs not in ['verified', 'approved'] %}
                 <form id="auditDecisionForm" action="/caterer/compliance/{{ target_user.id }}/verify" method="POST">
                     <div class="form-group-pro">
                         <label>Auditor's Notes</label>
@@ -319,6 +320,13 @@
                     </div>
                     <input type="hidden" name="action" id="auditActionInput">
                 </form>
+                {% else %}
+                <div style="padding: 1.5rem 1rem; text-align: center;">
+                    <i class="fas fa-check-double" style="font-size: 2rem; color: #10b981; margin-bottom: 0.75rem; display: block;"></i>
+                    <p style="margin: 0; font-size: 0.85rem; font-weight: 800; color: var(--color-neutral-800);">Verification Complete</p>
+                    <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: var(--color-neutral-500);">This identity has been successfully verified. No further action is required.</p>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
