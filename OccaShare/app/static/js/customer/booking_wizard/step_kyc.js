@@ -1870,10 +1870,10 @@ const initKyc = () => {
                     stopPolling();
                     if (ws) ws.close();
                     handleLivenessFailure(data.reason || "Liveness check failed. Please try again.");
-                } else if (data.status === 'rejected') {
+                } else if (data.status === 'rejected' || data.status === 'failed') {
                     stopPolling();
                     if (ws) ws.close();
-                    handleRejection(data.reason || "Verification rejected by caterer");
+                    handleRejection(data.reason || "Verification failed");
                 }
             }
         };
@@ -1914,7 +1914,7 @@ const initKyc = () => {
                             if (d2.status === 'approved' || d2.status === 'verified') {
                                 stopPolling();
                                 handleApproval(d2);
-                            } else if (d2.status === 'rejected' || d2.status === 'blocked') {
+                            } else if (d2.status === 'rejected' || d2.status === 'blocked' || d2.status === 'failed') {
                                 stopPolling();
                                 handleRejection(d2.reason || "Verification rejected by caterer");
                             }
@@ -1923,7 +1923,7 @@ const initKyc = () => {
                 } else if (data.status === 'liveliness_failed') {
                     stopPolling();
                     handleLivenessFailure(data.reason || "Liveness check failed. Please try again.");
-                } else if (data.status === 'rejected' || data.status === 'blocked') {
+                } else if (data.status === 'rejected' || data.status === 'blocked' || data.status === 'failed') {
                     stopPolling();
                     handleRejection(data.reason || "Verification failed");
                 }

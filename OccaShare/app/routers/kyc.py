@@ -459,6 +459,26 @@ async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, ful
         print(f"[KYC BACKGROUND ERROR] {e}")
         traceback.print_exc()
         try:
+            # Mark session and KYC record as failed so the frontend does not get stuck
+            session = db.query(models.VerificationSession).filter(models.VerificationSession.user_id == user_id).order_by(models.VerificationSession.created_at.desc()).first()
+            if session:
+                session.status = "failed"
+            kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user_id).first()
+            if kyc_record:
+                kyc_record.verification_status = "failed"
+                kyc_record.failure_reason = f"System Error: {str(e)}"
+            db.commit()
+            
+            # Broadcast to WebSocket
+            await manager.broadcast_to_user(user_id, {
+                "type": "kyc_update",
+                "status": "failed",
+                "reason": f"System Error: {str(e)}"
+            })
+        except Exception as db_err:
+            print(f"[KYC BACKGROUND DB ERROR IN EXCEPT] {db_err}")
+            
+        try:
             with open("ocr_debug.log", "a", encoding="utf-8") as f:
                 f.write(f"\n--- KYC BACKGROUND TASK FATAL ERROR AT {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")
                 f.write(f"User ID: {user_id}, Booking ID: {booking_id}\n")
@@ -467,6 +487,8 @@ async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, ful
                 f.write("-" * 50 + "\n")
         except Exception:
             pass
+    finally:
+        db.close()
 
 @router.post("/kyc/reset")
 async def reset_kyc_status(
