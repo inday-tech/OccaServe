@@ -1435,16 +1435,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         const prov = provNameHidden.value;
         const city = cityNameHidden.value;
         const brgy = brgyNameHidden.value;
+        const detailStr = document.getElementById('businessAddress').value.trim();
+        
         let parts = [];
-        if (brgy) parts.push("Brgy. " + brgy);
-        if (city) parts.push(city);
-        if (prov) parts.push(prov);
+        if (detailStr) parts.push(detailStr);
+        if (brgy && !detailStr.toLowerCase().includes(brgy.toLowerCase())) parts.push("Brgy. " + brgy);
+        if (city && !detailStr.toLowerCase().includes(city.toLowerCase())) parts.push(city);
+        if (prov && !detailStr.toLowerCase().includes(prov.toLowerCase())) parts.push(prov);
         parts.push("Philippines");
         const addressStr = parts.join(", ");
-        if (window.autoGeocodeAddress && (city || prov)) {
+        if (window.autoGeocodeAddress && (city || prov || detailStr)) {
             window.autoGeocodeAddress(addressStr);
         }
     }
+
+    document.getElementById('businessAddress').addEventListener('blur', triggerAutoGeocode);
 
     provSelect.addEventListener('change', async (e) => {
         const code = e.target.value;

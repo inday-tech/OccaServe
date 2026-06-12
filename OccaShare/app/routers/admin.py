@@ -1206,9 +1206,12 @@ def delete_caterer(caterer_id: int, db: Session = Depends(database.get_db), user
     
     return RedirectResponse(url="/admin/caterers?success_msg=Caterer+deleted+successfully", status_code=status.HTTP_303_SEE_OTHER)
 
+from fastapi import BackgroundTasks
+
 @router.post("/api/caterers/{caterer_id}/edit")
 async def edit_caterer(
     caterer_id: int,
+    background_tasks: BackgroundTasks,
     business_name: str = Form(...),
     full_name: str = Form(...),
     email: str = Form(...),
@@ -1272,6 +1275,8 @@ async def edit_caterer(
         caterer.user.phone_number = phone
         
     db.commit()
+    from ..core import utils
+    background_tasks.add_task(utils.background_geocode, caterer.id)
     
     # Real-time update
     asyncio.create_task(manager.broadcast({

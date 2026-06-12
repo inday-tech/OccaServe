@@ -186,3 +186,46 @@ def validate_file_type_and_size(file_content: bytes, filename: str, max_size_mb:
         return f"Unsupported file type '{ext}'. Allowed: {', '.join(allowed_extensions)}"
     
     return None
+
+def background_geocode(caterer_id: int):
+    """Geocodes a caterer's address in the background and saves to DB."""
+    try:
+        from ..db.database import SessionLocal
+        from ..db.models import CatererProfile
+        import os
+        import requests
+        
+        db = SessionLocal()
+        try:
+            caterer = db.query(CatererProfile).filter(CatererProfile.id == caterer_id).first()
+            if not caterer:
+                return
+                
+            addr = caterer.address_details or caterer.contact_address or ""
+            if not addr:
+                return
+                
+            api_key = os.getenv("GOOGLE_MAPS_API_KEY")
+            if not api_key:
+                print("[Geocode] No API key found")
+                return
+                
+            resp = requests.get("https://maps.googleapis.com/maps/api/geocode/json", params={
+                "address": addr,
+                "key": api_key,
+                "region": "ph"
+            }, timeout=10)
+            
+            data = resp.json()
+            if data.get("status") == "OK" and data.get("results"):
+                loc = data["results"][0]["geometry"]["location"]
+                caterer.latitude = loc["lat"]
+                caterer.longitude = loc["lng"]
+                db.commit()
+                print(f"[Geocode] Successfully geocoded Caterer {caterer_id} to {loc['lat']}, {loc['lng']}")
+            else:
+                print(f"[Geocode] Failed to geocode {addr}: {data.get('status')}")
+        finally:
+            db.close()
+    except Exception as e:
+        print(f"[Geocode] Exception during geocoding: {e}")

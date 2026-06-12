@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Form, Request, UploadFile, File, Body
+from fastapi import APIRouter, Depends, HTTPException, status, Form, Request, UploadFile, File, Body, BackgroundTasks
 from typing import Optional, List
 from datetime import datetime, date, timedelta
 from pydantic import BaseModel
@@ -2511,6 +2511,7 @@ async def update_profile(
     brgy_code: Optional[str] = Form(None),
     gallery: List[UploadFile] = File(default=[]),
     permit_file: Optional[UploadFile] = File(None),
+    background_tasks: BackgroundTasks = None,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
@@ -2641,6 +2642,9 @@ async def update_profile(
                     traceback.print_exc()
 
     db.commit()
+    from ..core import utils
+    if background_tasks:
+        background_tasks.add_task(utils.background_geocode, profile.id)
     return RedirectResponse(url="/caterer/profile?success_msg=Business+profile+updated+successfully", status_code=303)
 
 @router.get("/packages/{package_id}/details")

@@ -171,9 +171,12 @@ def register_caterer_page(request: Request, next: Optional[str] = None, db: Sess
         "user": user
     })
 
+from fastapi import APIRouter, Depends, HTTPException, status, Form, Request, File, UploadFile, BackgroundTasks
+
 @router.post("/register")
 async def register(
     request: Request,
+    background_tasks: BackgroundTasks,
     role: str = Form("customer"),
     full_name: str = Form(""),
     email: str = Form(...),
@@ -597,6 +600,8 @@ async def register(
             if EmailService.send_verification_email(email, otp):
                 print(f"[AUTH] Registration buffered for {email}. Verification email sent.")
                 db.commit() # Commit all changes only if email is sent
+                if role == "caterer":
+                    background_tasks.add_task(utils.background_geocode, new_profile.id)
             else:
                 db.rollback()
                 if is_ajax:
