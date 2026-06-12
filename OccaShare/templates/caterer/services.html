@@ -22,7 +22,7 @@
     </div>
 </div>
 
-{% set categories_list = ['Rentals', 'Services'] %}
+{% set categories_list = ['Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages'] %}
 <div class="category-filters animate-up delay-1">
     <button class="cat-chip active" data-cat="all" onclick="filterByCategory('all')">
         All Items <span class="badge-count">{{ services|length }}</span>
@@ -169,8 +169,14 @@
                         <div class="form-group-pro">
                             <label>Category</label>
                             <select name="category" id="modalCategory" class="control-pro" required>
-                                <option value="Rentals">Rentals (Tables, Chairs, Tents)</option>
-                                <option value="Services">Services (Waiters, Setup, Lights)</option>
+                                <option value="Event Styling">Event Styling</option>
+                                <option value="Event Rental">Event Rental</option>
+                                <option value="Entertainment">Entertainment</option>
+                                <option value="Event Coordination">Event Coordination</option>
+                                <option value="Food Cart">Food Cart</option>
+                                <option value="Equipment Rental">Equipment Rental</option>
+                                <option value="Staffing Services">Staffing Services</option>
+                                <option value="Packages">Packages</option>
                             </select>
                         </div>
                         <div class="form-group-pro">
