@@ -379,7 +379,7 @@ async def verify_full(
 
 async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, full_name, id_number, id_type, dob, address, completed_challenges, assigned_challenges):
     # This simulates the Celery worker / Background task logic
-    db = next(database.get_db())
+    db = database.SessionLocal()
     try:
         print(f"\n[KYC BACKGROUND] Starting verification for User {user_id}...")
         user = db.query(models.User).get(user_id)
@@ -388,7 +388,7 @@ async def process_kyc_background(user_id, booking_id, id_path, selfie_paths, ful
         session = db.query(models.VerificationSession).filter(models.VerificationSession.user_id == user_id).order_by(models.VerificationSession.created_at.desc()).first()
         
         # Simulate processing time
-        time.sleep(0.5)
+        await asyncio.sleep(0.5)
         
         result = await verification_service.verify_identity_v2(
             id_path, selfie_paths, full_name, id_number, id_type, db, user_id, dob, address,
@@ -542,7 +542,13 @@ async def reset_kyc_status(
     if kyc_record:
         kyc_record.verification_status = "pending"
         kyc_record.failure_reason = None
-        db.commit()
+        
+    # Also reset any active VerificationSession status to avoid client-side polling hang
+    session = db.query(models.VerificationSession).filter(models.VerificationSession.user_id == current_user.id).order_by(models.VerificationSession.created_at.desc()).first()
+    if session:
+        session.status = "failed"
+        
+    db.commit()
     return {"success": True}
 
 @router.post("/kyc/reset-liveness")

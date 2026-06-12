@@ -3,7 +3,7 @@
  * Centralized globally for OccaServe modal and standalone signup support.
  */
 
-(function() {
+(function () {
     // Utility for debouncing
     function debounce(func, wait) {
         let timeout;
@@ -18,12 +18,12 @@
     }
 
     // Comma formatter for numeric inputs
-    window.applyCommaFormatting = function(input) {
+    window.applyCommaFormatting = function (input) {
         if (input.type !== 'text') return;
-        
+
         let cursorPosition = input.selectionStart;
         const originalValue = input.value;
-        
+
         // Split into integer and decimal parts
         let parts = originalValue.split('.');
         let integerPart = parts[0].replace(/\D/g, '');
@@ -36,7 +36,7 @@
 
         let formattedInteger = integerPart ? new Intl.NumberFormat('en-US').format(parseInt(integerPart)) : '0';
         let formattedValue = decimalPart !== null ? `${formattedInteger}.${decimalPart}` : formattedInteger;
-        
+
         if (input.value !== formattedValue) {
             input.value = formattedValue;
         }
@@ -78,7 +78,7 @@
     };
 
     // --- UI HELPERS ---
-    window.setDiamondError = function(fieldId, message, isError = true) {
+    window.setDiamondError = function (fieldId, message, isError = true) {
         const wrapper = document.getElementById(fieldId + 'Wrapper');
         const drawer = document.getElementById(fieldId + 'Error');
         if (!wrapper || !drawer) return;
@@ -103,12 +103,12 @@
             if (name.length < 2) return { valid: false, message: "Too short" };
             if (!nameRegex.test(name)) return { valid: false, message: "Letters only" };
             if (dummyNames.includes(lowerName)) return { valid: false, message: "Use your real name" };
-            
+
             // Smart gibberish check (3+ consecutive identical characters)
             if (/(.)\1\1/.test(lowerName)) {
                 return { valid: false, message: "No repeating chars" };
             }
-            
+
             return { valid: true };
         },
         middleName: (val) => {
@@ -127,7 +127,7 @@
             const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
             if (!email) return { valid: false, message: "Required" };
             if (!emailRegex.test(email)) return { valid: false, message: "Invalid email format" };
-            
+
             // Anti-spam: No consecutive dots or special characters
             if (/\.{2,}/.test(email) || /_{2,}/.test(email) || /-{2,}/.test(email)) {
                 return { valid: false, message: "Consecutive symbols are not allowed" };
@@ -150,11 +150,11 @@
 
             // Block common disposable email domains for security
             const disposableDomains = [
-                'mailinator.com', '10minutemail.com', 'guerrillamail.com', 
-                'tempmail.com', 'yopmail.com', 'dropmail.me', 'temp-mail.org', 
+                'mailinator.com', '10minutemail.com', 'guerrillamail.com',
+                'tempmail.com', 'yopmail.com', 'dropmail.me', 'temp-mail.org',
                 'throwawaymail.com', 'trashmail.com', 'dispostable.com'
             ];
-            
+
             if (disposableDomains.includes(domain)) {
                 return { valid: false, message: "Disposable emails are not allowed" };
             }
@@ -166,17 +166,17 @@
 
             if (!valClean) return { valid: false, message: "Required" };
             if (!mobileRegex.test(valClean)) return { valid: false, message: "Format: 09XXXXXXXXX (11 digits)" };
-            
+
             // Check for excessive repeating identical digits (e.g., 09333333333 or 09333354545 with many 3s)
             if (/(.)\1{4,}/.test(valClean)) {
                 return { valid: false, message: "Repetitive numbers are not allowed" };
             }
-            
+
             // Check for repetitive sequences (e.g., 545454)
             if (/(\d{2,})\1{2,}/.test(valClean)) {
                 return { valid: false, message: "Repetitive patterns are not allowed" };
             }
-            
+
             // Check for common test sequences
             if (/09123456789/.test(valClean) || /09987654321/.test(valClean) || /09000000000/.test(valClean)) {
                 return { valid: false, message: "Invalid contact number pattern" };
@@ -210,7 +210,7 @@
     };
 
     // --- BINDING LOGIC ---
-    window.initDiamondValidation = function(rootElement = document) {
+    window.initDiamondValidation = function (rootElement = document) {
         console.log("Diamond Validation Initializing...");
 
         const emailInputs = Array.from(rootElement.querySelectorAll('input[type="email"]')).filter(el => !el.id.includes('login'));
@@ -224,7 +224,7 @@
 
         // Apply formatting listeners
         commaInputs.forEach(input => {
-            input.addEventListener('input', function() {
+            input.addEventListener('input', function () {
                 window.applyCommaFormatting(this);
             });
             // Initial formatting on load
@@ -236,7 +236,7 @@
         // Global capture-phase submit listener to strip commas before any FormData is built
         if (!window.__commaStripBound) {
             window.__commaStripBound = true;
-            document.addEventListener('submit', function(e) {
+            document.addEventListener('submit', function (e) {
                 if (e.target && e.target.tagName === 'FORM') {
                     e.target.querySelectorAll('.js-format-comma').forEach(input => {
                         // Strip commas right before submit logic
@@ -255,7 +255,7 @@
 
         // Real-time Barangay Validation (clears error on selection)
         barangaySelects.forEach(select => {
-            select.addEventListener('change', function() {
+            select.addEventListener('change', function () {
                 const fieldIdPrefix = this.id.replace('barangay_', '').replace('_cat', '');
                 const errorFieldId = fieldIdPrefix ? `barangay${fieldIdPrefix.charAt(0).toUpperCase() + fieldIdPrefix.slice(1)}` : 'barangay';
 
@@ -268,7 +268,7 @@
         // Real-time City/Municipality Validation (clears error on selection)
         const citySelects = Array.from(rootElement.querySelectorAll('select[id*="city"]'));
         citySelects.forEach(select => {
-            select.addEventListener('change', function() {
+            select.addEventListener('change', function () {
                 const fieldIdPrefix = this.id.replace('city_', '').replace('_cat', '');
                 const errorFieldId = fieldIdPrefix ? `city${fieldIdPrefix.charAt(0).toUpperCase() + fieldIdPrefix.slice(1)}` : 'city';
 
@@ -281,7 +281,7 @@
         // Real-time Province Validation (clears error on selection)
         const provinceSelects = Array.from(rootElement.querySelectorAll('select[id*="province"]'));
         provinceSelects.forEach(select => {
-            select.addEventListener('change', function() {
+            select.addEventListener('change', function () {
                 const fieldIdPrefix = this.id.replace('province_', '').replace('_cat', '');
                 const errorFieldId = fieldIdPrefix ? `province${fieldIdPrefix.charAt(0).toUpperCase() + fieldIdPrefix.slice(1)}` : 'province';
 
@@ -294,9 +294,9 @@
         // ID Number Auto-Formatting based on ID Type
         const idTypeSelects = Array.from(rootElement.querySelectorAll('select[name="id_type"]'));
         const idNumberInputs = Array.from(rootElement.querySelectorAll('input[name="id_number"]'));
-        
+
         idTypeSelects.forEach(select => {
-            select.addEventListener('change', function() {
+            select.addEventListener('change', function () {
                 // When ID type changes, clear the input to force re-entry with correct format
                 const inputId = this.id.replace('id_type', 'id_number');
                 const inputEl = document.getElementById(inputId);
@@ -317,11 +317,11 @@
         }
 
         idNumberInputs.forEach(input => {
-            input.addEventListener('input', function(e) {
+            input.addEventListener('input', function (e) {
                 const selectId = this.id.replace('id_number', 'id_type');
                 const selectEl = document.getElementById(selectId);
                 const idType = selectEl ? selectEl.value : '';
-                
+
                 let val = this.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
                 let formatted = val;
 
@@ -332,13 +332,13 @@
                         parts.push(val.substring(i, i + 4));
                     }
                     formatted = parts.join('-');
-                } 
+                }
                 else if (idType === "Driver's License") {
                     if (val.length > 0) {
                         const firstChar = val.charAt(0).replace(/[^A-Z]/g, '');
                         const rest = val.substring(1).replace(/[^0-9]/g, '');
                         val = firstChar + rest;
-                        
+
                         let formattedVal = firstChar;
                         if (rest.length > 0) {
                             formattedVal += rest.substring(0, 2);
@@ -390,10 +390,10 @@
         const debouncedEmailUnique = debounce(checkEmailUniqueness, 500);
 
         emailInputs.forEach(input => {
-            input.addEventListener('input', function() {
+            input.addEventListener('input', function () {
                 const isCat = this.id.includes('cat');
                 const prefix = isCat ? 'emailCat' : 'email';
-                
+
                 const { valid, message } = window.diamondValidators.email(this.value);
                 if (!valid) {
                     window.setDiamondError(prefix, message);
@@ -420,10 +420,10 @@
         const debouncedPhoneUnique = debounce(checkPhoneUniqueness, 500);
 
         mobileInputs.forEach(input => {
-            input.addEventListener('input', function() {
+            input.addEventListener('input', function () {
                 const isCat = this.id.includes('cat');
                 const prefix = isCat ? 'mobileCat' : 'mobile';
-                
+
                 const { valid, message } = window.diamondValidators.mobile(this.value);
                 if (!valid) {
                     window.setDiamondError(prefix, message);
@@ -448,7 +448,7 @@
             const fVal = (fInput?.value || '').trim();
             const mVal = (mInput?.value || '').trim();
             const lVal = (lInput?.value || '').trim();
-            
+
             const fPrefix = isCat ? 'firstNameCat' : 'firstName';
             const mPrefix = isCat ? 'middleNameCat' : 'middleName';
             const lPrefix = isCat ? 'lastNameCat' : 'lastName';
@@ -498,11 +498,11 @@
 
         const setupNameListeners = (inputs) => {
             inputs.forEach(input => {
-                input.addEventListener('input', function() {
+                input.addEventListener('input', function () {
                     this.classList.add('touched');
                     crossCheckNames(this.id.includes('cat'));
                 });
-                input.addEventListener('blur', function() {
+                input.addEventListener('blur', function () {
                     this.classList.add('touched');
                     crossCheckNames(this.id.includes('cat'));
                 });
@@ -515,7 +515,7 @@
 
         // 4. Passwords validation
         passInputs.forEach(input => {
-            input.addEventListener('input', function() {
+            input.addEventListener('input', function () {
                 const isCat = this.id.includes('cat');
                 const isConfirm = this.id.includes('confirm');
                 const prefix = isConfirm ? (isCat ? 'confirmCat' : 'confirm') : (isCat ? 'passwordCat' : 'password');
@@ -552,7 +552,7 @@
             let lastValidValue = input.value;
 
             // Restrict input to digits and range [0-100]
-            input.addEventListener('input', function(e) {
+            input.addEventListener('input', function (e) {
                 let cleanVal = this.value.replace(/,/g, '');
 
                 if (cleanVal === '') {
@@ -589,7 +589,7 @@
             });
 
             // Prevent characters like e, E, +, -, and decimal points .
-            input.addEventListener('keydown', function(e) {
+            input.addEventListener('keydown', function (e) {
                 if (['e', 'E', '+', '-', '.'].includes(e.key)) {
                     e.preventDefault();
                 }
@@ -599,7 +599,7 @@
         paxInputs.forEach(input => {
             let lastValidValue = input.value;
 
-            input.addEventListener('input', function(e) {
+            input.addEventListener('input', function (e) {
                 let cleanVal = this.value.replace(/,/g, '');
                 if (cleanVal === '') {
                     lastValidValue = '';
@@ -630,7 +630,7 @@
                 window.setDiamondError('minPax', message, !valid);
             });
 
-            input.addEventListener('keydown', function(e) {
+            input.addEventListener('keydown', function (e) {
                 if (['e', 'E', '+', '-', '.'].includes(e.key)) {
                     e.preventDefault();
                 }
@@ -652,7 +652,7 @@
         const debouncedBusinessUnique = debounce(checkBusinessUniqueness, 500);
 
         businessInputs.forEach(input => {
-            input.addEventListener('input', function() {
+            input.addEventListener('input', function () {
                 const { valid, message } = window.diamondValidators.businessNameFormat(this.value);
                 if (!valid) {
                     window.setDiamondError('businessName', message);

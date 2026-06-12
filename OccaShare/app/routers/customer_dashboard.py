@@ -1032,7 +1032,7 @@ async def process_verification(
 
 async def run_customer_verification_bg(user_id: int, client_id: str, id_path: str, selfie_paths: list):
     """Background task for proof of concept identity verification."""
-    db = next(database.get_db())
+    db = database.SessionLocal()
     try:
         user = db.query(models.User).get(user_id)
         
@@ -1053,7 +1053,7 @@ async def run_customer_verification_bg(user_id: int, client_id: str, id_path: st
         await asyncio.sleep(2)
         
         # Call verification service
-        result = verification_service.verify_identity_v2(
+        result = await verification_service.verify_identity_v2(
             id_path, 
             selfie_paths, 
             f"{user.first_name} {user.last_name}", 

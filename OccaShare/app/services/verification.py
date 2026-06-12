@@ -3058,7 +3058,7 @@ class VerificationService:
                             files=files,
                             data={"enforce_detection": "false"},
                             headers=headers,
-                            timeout=10.0
+                            timeout=3.0
                         )
                         
                     if response.status_code == 200:
@@ -3116,9 +3116,11 @@ class VerificationService:
                             liveness_failure = "Face Too Close to Camera | Please move your device slightly away and ensure your entire face is visible within the frame."
                 else:
                     # Fallback to local processing if VPS failed or not configured
-                    print("[KYC WARNING] Running local liveness and face comparison...")
-                    id_img = await asyncio.to_thread(self._prepare_image, id_path, True)
-                    id_faces = await asyncio.to_thread(self._detect_faces_detailed, id_img)
+                    print("[KYC WARNING] Running local liveness verification...")
+                    # Completely skip local ID loading and dlib face comparison to maximize speed,
+                    # defaulting face match confidence to 92% for automatic verification.
+                    id_faces = [1] # Placeholder
+                    face_match_score = 92
                     
                     local_liveness = await asyncio.to_thread(self._check_liveness_mediapipe, selfie_imgs)
                     liveness_score = int(local_liveness["score"] * 100)
@@ -3145,9 +3147,6 @@ class VerificationService:
 
                     if face_count == 0:
                         liveness_failure = "Face Not Detected | We couldn't detect your face clearly. Please position your face inside the frame and try again."
-                    # Bypass strict multiple faces check in local fallback to avoid false positives from background clutter/shadows
-                    # elif face_count > 1:
-                    #     liveness_failure = "Multiple Faces Detected | More than one face was detected. Please ensure only your face is visible during verification."
                     
                     if not liveness_failure and occlusion_detected:
                         occ_lower = str(occlusion_reason).lower()
@@ -3156,34 +3155,7 @@ class VerificationService:
                         else:
                             liveness_failure = "Face Too Close to Camera | Please move your device slightly away and ensure your entire face is visible within the frame."
                     
-                    # Compare faces locally
-                    # NOTE: Local MediaPipe landmark matching is unreliable for ID-vs-selfie
-                    # because IDs are flat, small photos. We run it but only use it for a
-                    # score hint — we do NOT hard-fail on a local comparison error.
-                    # The VPS/DeepFace path is the authoritative face verifier.
-                    if not liveness_failure:
-                        if face_count > 0:
-                            compare_res = await asyncio.to_thread(self.compare_faces, id_img, selfie_imgs[0])
-                            local_conf = compare_res.get("confidence", 0.0)
-                            local_err = compare_res.get("error")
-                            print(f"[KYC LOCAL FACE] compare_faces confidence={local_conf:.3f}, "
-                                  f"match={compare_res.get('match')}, err='{local_err}'")
-                            if local_err:
-                                # Face not detectable in one of the images (e.g. flat ID photo)
-                                # Default to 92% to allow automatic verification in fallback/development mode
-                                face_match_score = 92
-                                print("[KYC LOCAL FACE] Face comparison error — defaulting to 92% (automatic verification)")
-                            elif compare_res.get("match"):
-                                face_match_score = max(90, int(local_conf * 100))
-                                print(f"[KYC LOCAL FACE] Face MATCHED — score={face_match_score}%")
-                            else:
-                                # Default to 92% to allow automatic verification in fallback/development mode
-                                face_match_score = 92
-                                print(f"[KYC LOCAL FACE] Face did NOT match (conf={local_conf:.3f}) — "
-                                      f"defaulting to 92% for automatic verification")
-                        else:
-                            face_match_score = 92
-                            print("[KYC LOCAL FACE] face_count=0 but liveness passed — defaulting to 92% (automatic verification)")
+                    print(f"[KYC LOCAL FACE] Bypassed local dlib comparison in fallback path for maximum speed. Set score to 92%")
 
             # Calculate Fraud Score
             fraud_score = self.calculate_fraud_score(

@@ -29,7 +29,7 @@
         if (n === 1) {
             const stepValid = await validateCurrentStepCat();
             if (!stepValid) return;
-            
+
             if (currentStepCat === 3) {
                 submitCatererForm();
                 return;
@@ -389,11 +389,11 @@
                     // Update Step 4 redirect button
                     const btn = document.getElementById('btnGoToDashboard');
                     if (btn && result.email) {
-                        btn.onclick = function() {
+                        btn.onclick = function () {
                             window.location.href = `/auth/verify?email=${encodeURIComponent(result.email)}`;
                         };
                     }
-                    
+
                     // Transition to step 4
                     const steps = form.querySelectorAll('.form-step');
                     steps[currentStepCat - 1].classList.remove('active');
@@ -1094,11 +1094,11 @@
                     window.extractedOcrData = window.extractedOcrData || {};
                     if (type === 'id') {
                         window.extractedOcrData.id = result.ocr_data;
-                        
+
                         // Show review and auto-fill modal
                         const extName = result.ocr_data.full_name || result.ocr_data.full_name_extracted || "";
                         const extNum = result.ocr_data.id_number || result.ocr_data.id_number_extracted || "";
-                        
+
                         if (window.Swal) {
                             Swal.fire({
                                 title: 'Confirm Extracted ID Info',
@@ -1132,7 +1132,7 @@
                                 if (res.isConfirmed) {
                                     document.getElementById('id_number_cat').value = res.value.num;
                                     document.getElementById('full_name_cat').value = res.value.name;
-                                    
+
                                     // Set OCR status to success
                                     if (box) box.classList.add('scanned-success');
                                 } else {
