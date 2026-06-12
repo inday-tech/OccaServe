@@ -1165,6 +1165,20 @@ currentPassInput.addEventListener('input', validateRequirements);
         // Geocoder (for reverse geocoding on drag/click)
         geocoder = new google.maps.Geocoder();
 
+        window.autoGeocodeAddress = function(addressStr) {
+            if (!geocoder || !map || !marker) return;
+            geocoder.geocode({ address: addressStr }, (results, status) => {
+                if (status === 'OK' && results[0]) {
+                    const loc = results[0].geometry.location;
+                    map.setCenter(loc);
+                    map.setZoom(16);
+                    marker.setPosition(loc);
+                    marker.setAnimation(google.maps.Animation.DROP);
+                    updateCoords(loc.lat(), loc.lng());
+                }
+            });
+        };
+
         function updateCoords(lat, lng) {
             document.getElementById('latInput').value = lat.toFixed(6);
             document.getElementById('lonInput').value = lng.toFixed(6);
@@ -1417,6 +1431,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     } catch (e) { console.error('Failed to load provinces:', e); }
 
+    function triggerAutoGeocode() {
+        const prov = provNameHidden.value;
+        const city = cityNameHidden.value;
+        const brgy = brgyNameHidden.value;
+        let parts = [];
+        if (brgy) parts.push("Brgy. " + brgy);
+        if (city) parts.push(city);
+        if (prov) parts.push(prov);
+        parts.push("Philippines");
+        const addressStr = parts.join(", ");
+        if (window.autoGeocodeAddress && (city || prov)) {
+            window.autoGeocodeAddress(addressStr);
+        }
+    }
+
     provSelect.addEventListener('change', async (e) => {
         const code = e.target.value;
         const name = e.target.options[e.target.selectedIndex]?.text || '';
@@ -1433,6 +1462,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         brgyNameHidden.value = '';
 
         if (code) {
+            triggerAutoGeocode();
             await fetchCities(code);
         }
     });
@@ -1449,6 +1479,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         brgyNameHidden.value = '';
 
         if (code) {
+            triggerAutoGeocode();
             await fetchBarangays(code);
         }
     });
@@ -1456,6 +1487,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     brgySelect.addEventListener('change', (e) => {
         brgyCodeHidden.value = e.target.value;
         brgyNameHidden.value = e.target.options[e.target.selectedIndex]?.text || '';
+        if (brgyCodeHidden.value) {
+            triggerAutoGeocode();
+        }
     });
 
     async function fetchCities(provCode, preSelectCode = null) {

@@ -596,7 +596,9 @@
             const lng = parseFloat(card.dataset.lon);
             const address = card.dataset.address || '';
             const city = card.dataset.city || '';
-            const fullAddressToDisplay = address && city ? `${address}, ${city}` : address || city || 'Philippines';
+            const fullAddressToDisplay = (address && city && !address.toLowerCase().includes(city.toLowerCase())) 
+                ? `${address}, ${city}` 
+                : address || city || 'Philippines';
             const businessName = card.querySelector('.card-title')?.innerText || card.querySelector('h3')?.innerText || 'Caterer';
             const cardLink = card.querySelector('.btn-premium-explore')?.getAttribute('href') || card.querySelector('a')?.getAttribute('href') || '#';
             const imgEl = card.querySelector('.card-img') || card.querySelector('img');
