@@ -77,6 +77,44 @@ async def extract_id(
     
     if not result["success"]:
         raise HTTPException(status_code=400, detail=result.get("error"))
+        
+    # Check if the extracted name matches the registered customer's name
+    full_name_parts = [current_user.first_name]
+    if current_user.middle_name: full_name_parts.append(current_user.middle_name)
+    full_name_parts.append(current_user.last_name)
+    user_full_name = " ".join(full_name_parts)
+    
+    extracted_data = result["data"]
+    fields = extracted_data.get("fields", {})
+    
+    def get_field_val(f_key):
+        f_val = fields.get(f_key)
+        if isinstance(f_val, dict):
+            return f_val.get("value", "")
+        return str(f_val) if f_val is not None else ""
+        
+    ocr_full_name = extracted_data.get("full_name", "")
+    ocr_last_name = get_field_val("last_name")
+    ocr_first_name = get_field_val("first_name") or get_field_val("given_names")
+    ocr_middle_name = get_field_val("middle_name")
+    raw_ocr = extracted_data.get("raw_text", "")
+    
+    name_matched = verification_service.match_name(
+        user_full_name,
+        ocr_full_name,
+        ocr_last_name,
+        ocr_first_name,
+        ocr_middle_name,
+        raw_ocr
+    )
+    
+    print(f"[KYC EXTRACT] Name matching - Registered: '{user_full_name}', Extracted: '{ocr_full_name}', Matched: {name_matched}")
+    
+    if not name_matched:
+        raise HTTPException(
+            status_code=400,
+            detail="Identity Verification Failed | Ang pangalan sa iyong in-upload na ID ay hindi tugma sa iyong registered name. Mangyaring i-upload ang sarili mong valid ID."
+        )
     
     # Update/Create verification record as pending_confirmation
     kyc_record = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == current_user.id).first()
@@ -174,6 +212,31 @@ async def upload_id(
         kyc_record = models.IdentityVerification(user_id=current_user.id)
         db.add(kyc_record)
     
+    # Check if the submitted name matches the registered customer's name
+    reg_name_parts = [current_user.first_name]
+    if current_user.middle_name: reg_name_parts.append(current_user.middle_name)
+    reg_name_parts.append(current_user.last_name)
+    user_full_name = " ".join(reg_name_parts)
+    
+    submitted_full_name = f"{first_name or ''} {middle_name + ' ' if middle_name else ''}{last_name or ''}".strip()
+    
+    submitted_name_matched = verification_service.match_name(
+        user_full_name,
+        submitted_full_name,
+        last_name,
+        first_name,
+        middle_name,
+        user_full_name
+    )
+    
+    print(f"[KYC UPLOAD] Submitted name matching - Registered: '{user_full_name}', Submitted: '{submitted_full_name}', Matched: {submitted_name_matched}")
+    
+    if not submitted_name_matched:
+        raise HTTPException(
+            status_code=400,
+            detail="Identity Verification Failed | Ang pangalan sa iyong in-upload na ID ay hindi tugma sa iyong registered name. Mangyaring i-upload ang sarili mong valid ID."
+        )
+
     # Update User Profile with provided KYC data if available
     if first_name: current_user.first_name = first_name
     if middle_name: current_user.middle_name = middle_name
@@ -230,6 +293,12 @@ async def upload_id(
         address=address
     )
     
+    if id_result.get("name_matched") == False:
+        raise HTTPException(
+            status_code=400,
+            detail="Identity Verification Failed | Ang pangalan sa iyong in-upload na ID ay hindi tugma sa iyong registered name. Mangyaring i-upload ang sarili mong valid ID."
+        )
+        
     # Ensure ocr_data is populated even if verification service fails to extract it
     ocr_data = id_result.get("ocr_data", {})
     if not ocr_data or not isinstance(ocr_data, dict) or not ocr_data.get("fields"):

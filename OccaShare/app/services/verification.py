@@ -232,6 +232,52 @@ class VerificationService:
         # However, patterns usually expect the format, so we match original too
         return bool(re.match(pattern, id_number)) or bool(re.match(pattern.replace("-", "").replace(" ", ""), clean_id))
 
+    def match_name(self, full_name: str, ocr_full_name: str, ocr_last_name: str = None, ocr_first_name: str = None, ocr_middle_name: str = None, full_ocr_text: str = None) -> bool:
+        if not full_name:
+            return False
+        clean_input = " ".join(full_name.lower().split())
+        full_ocr_lower = full_ocr_text.lower() if full_ocr_text else ""
+        
+        # 1. Try exact match on full name / presence in full ocr text
+        if (ocr_full_name and clean_input in ocr_full_name.lower()) or (full_ocr_lower and clean_input in full_ocr_lower):
+            return True
+            
+        # 2. Typo tolerance (Fuzzy) on full name
+        if ocr_full_name:
+            ratio = difflib.SequenceMatcher(None, clean_input, ocr_full_name.lower()).ratio()
+            if ratio > 0.70:
+                return True
+                
+        # 3. Check individual parts against full OCR text
+        input_parts = [p for p in clean_input.split() if len(p) > 2]
+        if input_parts and full_ocr_lower:
+            matches = 0
+            for part in input_parts:
+                if part in full_ocr_lower or any(difflib.SequenceMatcher(None, part, w).ratio() > 0.75 for w in full_ocr_lower.split()):
+                    matches += 1
+            if (matches / len(input_parts)) >= 0.50:
+                return True
+                
+        # 4. Check individual parts against individual name fields
+        input_parts_lenient = [p for p in clean_input.split() if len(p) > 1]
+        extracted_last = (ocr_last_name or "").lower()
+        extracted_first = (ocr_first_name or "").lower()
+        extracted_middle = (ocr_middle_name or "").lower()
+        
+        if extracted_last or extracted_first or extracted_middle:
+            parts_found = 0
+            total_parts = len(input_parts_lenient)
+            for part in input_parts_lenient:
+                if part in extracted_last or part in extracted_first or part in extracted_middle:
+                    parts_found += 1
+                elif any(difflib.SequenceMatcher(None, part, w).ratio() > 0.70 
+                         for w in [extracted_last, extracted_first, extracted_middle] if w):
+                    parts_found += 1
+            if total_parts > 0 and (parts_found / total_parts) >= 0.40:
+                return True
+                
+        return False
+
     def _prepare_image(self, encrypted_path: str, is_id: bool = True) -> np.ndarray:
         """Decrypts a file, handles EXIF orientation, and converts to OpenCV BGR."""
         filename = os.path.basename(encrypted_path.replace('\\', '/'))
@@ -2290,7 +2336,8 @@ class VerificationService:
             "full_name": full_name_val,
             "id_number": flat_id_num,
             "birth_date": flat_dob,
-            "address": flat_address
+            "address": flat_address,
+            "raw_text": raw_text or ""
         }
 
     def _extract_mrz_from_text(self, text: str) -> dict:
@@ -2576,30 +2623,6 @@ class VerificationService:
             # 7. SMART MATCHING LOGIC (FOLLOWING USER'S PSEUDO-CODE)
             reasons = []
             
-            # Helper for name matching (Case insensitive, ignore extra spaces, typo tolerance)
-            def match_name(input_name, ocr_data_name, full_ocr_text):
-                if not input_name: return False
-                clean_input = " ".join(input_name.lower().split())
-                full_ocr_lower = full_ocr_text.lower()
-                
-                # Try exact match first
-                if (ocr_data_name and clean_input in ocr_data_name.lower()) or clean_input in full_ocr_lower:
-                    return True
-                
-                # Typo tolerance (Fuzzy) - lowered from 0.85 to 0.70 for more lenient matching
-                if ocr_data_name:
-                    ratio = difflib.SequenceMatcher(None, clean_input, ocr_data_name.lower()).ratio()
-                    if ratio > 0.70: return True
-                
-                # Check parts (lowered to 50% match for robustness - was 60%)
-                input_parts = [p for p in clean_input.split() if len(p) > 2]
-                if not input_parts: return False
-                matches = 0
-                for part in input_parts:
-                    if part in full_ocr_lower or any(difflib.SequenceMatcher(None, part, w).ratio() > 0.75 for w in full_ocr_lower.split()):
-                        matches += 1
-                return (matches / len(input_parts)) >= 0.50
-
             # Helper for Date of Birth matching
             def match_dob(input_dob, extracted_dob, full_ocr_text):
                 if not input_dob: return True
@@ -2670,32 +2693,15 @@ class VerificationService:
                 reasons.append(f"ID Number mismatch. Detected: {detected_id}")
             
             # C. Name Cross-Reference: Match registration name against OCR-extracted name
-            name_matched = match_name(full_name, rich_data.get("full_name"), ocr_text)
+            name_matched = self.match_name(
+                full_name, 
+                rich_data.get("full_name"), 
+                rich_data.get("last_name"), 
+                rich_data.get("first_name") or rich_data.get("given_names"), 
+                rich_data.get("middle_name"), 
+                ocr_text
+            )
             print(f"[KYC DEBUG] Name matching - Input: '{full_name}', Extracted: '{rich_data.get('full_name')}', Match: {name_matched}")
-            
-            # Also check individual parts (last_name, first_name) from Gemini - LENIENT
-            if not name_matched and (rich_data.get("last_name") or rich_data.get("first_name")):
-                input_parts = [p.lower() for p in full_name.split() if len(p) > 1]
-                extracted_last = (rich_data.get("last_name") or "").lower()
-                extracted_first = (rich_data.get("first_name") or "").lower()
-                extracted_middle = (rich_data.get("middle_name") or "").lower()
-                
-                parts_found = 0
-                total_parts = len(input_parts)
-                for part in input_parts:
-                    if part in extracted_last or part in extracted_first or part in extracted_middle:
-                        parts_found += 1
-                    # Lowered from 0.8 to 0.70 for more lenient matching
-                    elif any(difflib.SequenceMatcher(None, part, w).ratio() > 0.70 
-                             for w in [extracted_last, extracted_first, extracted_middle] if w):
-                        parts_found += 1
-                
-                # Lowered from 0.5 to 0.40 (less than half of parts need to match)
-                if total_parts > 0 and (parts_found / total_parts) >= 0.40:
-                    name_matched = True
-                    print(f"[KYC DEBUG] Name matched via individual parts: {parts_found}/{total_parts}")
-                else:
-                    print(f"[KYC DEBUG] Name parts NOT matched: {parts_found}/{total_parts} (need 40%). Last: '{extracted_last}', First: '{extracted_first}', Middle: '{extracted_middle}'")
             
             if not name_matched:
                 detected_name = rich_data.get("full_name") or "None"
@@ -2970,6 +2976,7 @@ class VerificationService:
 
             ocr_match = id_result.get("ocr_match", False)
             pattern_valid = id_result.get("pattern_valid", False)
+            name_matched = id_result.get("name_matched", False)
             ocr_text = id_result.get("ocr_data", {}).get("raw_text", "")
 
             # 2. Challenge-Response Validation
@@ -3196,7 +3203,10 @@ class VerificationService:
                   f"vps_success={vps_success}, liveness_passed={liveness_passed}, "
                   f"liveness_failure='{liveness_failure}'")
 
-            if liveness_failure:
+            if not name_matched:
+                status = "rejected"
+                failure_reason = "Identity Verification Failed | Ang pangalan sa iyong in-upload na ID ay hindi tugma sa iyong registered name. Mangyaring i-upload ang sarili mong valid ID."
+            elif liveness_failure:
                 status = "liveliness_failed"
                 failure_reason = liveness_failure
             elif not liveness_passed:
