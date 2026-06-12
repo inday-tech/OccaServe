@@ -355,7 +355,7 @@ const initKyc = () => {
                 idFile = new File([blob], "webcam_capture.jpg", { type: "image/jpeg" });
                 window._ocrCompressedFile = null; // Reset crop
                 window.closeIdCameraModal();
-                finalizeIdAndProceed();
+                window.showIdPreviewScreen(idFile);
             });
     };
 
@@ -376,11 +376,26 @@ const initKyc = () => {
         bl: { x: 0.1, y: 0.85 }
     };
 
+    window.showIdPreviewScreen = function (file) {
+        document.getElementById('step-id-form').style.display = 'none';
+        document.getElementById('id-preview').style.display = 'block';
+        
+        // Ensure preview mode is active, crop elements are hidden
+        deactivateCropMode();
+
+        const img = document.getElementById('id-image');
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    };
+
     window.handleIdUpload = function (input) {
         if (input.files && input.files[0]) {
             idFile = input.files[0];
             window._ocrCompressedFile = null; // Reset crop
-            finalizeIdAndProceed();
+            window.showIdPreviewScreen(idFile);
         }
     };
 
@@ -633,6 +648,58 @@ const initKyc = () => {
         document.getElementById('id_camera').value = '';
     };
 
+    window.activateCropMode = function () {
+        // Change text
+        document.getElementById('id-preview-title').innerText = "Adjust ID Corners";
+        document.getElementById('id-preview-desc').innerText = "Drag the corner circles to align with the edges of your ID card for clean cropping and perspective correction.";
+        
+        // Dim image
+        const img = document.getElementById('id-image');
+        if (img) img.style.opacity = '0.65';
+        
+        // Show crop elements
+        const cropSvg = document.getElementById('crop-svg');
+        if (cropSvg) cropSvg.style.display = 'block';
+        document.querySelectorAll('.crop-pin').forEach(pin => pin.style.display = 'flex');
+        
+        // Switch buttons
+        document.getElementById('preview-actions-select').style.display = 'none';
+        document.getElementById('preview-actions-crop').style.display = 'flex';
+        
+        // Initialize workspace coordinates
+        pins = {
+            tl: { x: 0.1, y: 0.15 },
+            tr: { x: 0.9, y: 0.15 },
+            br: { x: 0.9, y: 0.85 },
+            bl: { x: 0.1, y: 0.85 }
+        };
+        initCropWorkspace();
+    };
+
+    window.deactivateCropMode = function () {
+        // Change text
+        document.getElementById('id-preview-title').innerText = "Review ID Photo";
+        document.getElementById('id-preview-desc').innerText = "Review your uploaded ID card photo. You can scan it directly or crop it if needed.";
+        
+        // Reset image opacity
+        const img = document.getElementById('id-image');
+        if (img) img.style.opacity = '0.85';
+        
+        // Hide crop elements
+        const cropSvg = document.getElementById('crop-svg');
+        if (cropSvg) cropSvg.style.display = 'none';
+        document.querySelectorAll('.crop-pin').forEach(pin => pin.style.display = 'none');
+        
+        // Switch buttons
+        document.getElementById('preview-actions-select').style.display = 'flex';
+        document.getElementById('preview-actions-crop').style.display = 'none';
+    };
+
+    window.scanDirectlyWithoutCrop = function () {
+        window._ocrCompressedFile = null;
+        finalizeIdAndProceed();
+    };
+
     window.proceedToCamera = async function () {
         // Obsolete function, replaced by cropAndFinalizeId
         window.cropAndFinalizeId();
@@ -755,7 +822,20 @@ const initKyc = () => {
                     document.getElementById('step-id-form').style.display = 'none';
                     document.getElementById('id-preview').style.display = 'block';
 
+                    // Change texts, dim image, show pins and crop overlay, switch action buttons
+                    document.getElementById('id-preview-title').innerText = "Adjust ID Corners";
+                    document.getElementById('id-preview-desc').innerText = "Drag the corner circles to align with the edges of your ID card for clean cropping and perspective correction.";
+                    
                     const img = document.getElementById('id-image');
+                    if (img) img.style.opacity = '0.65';
+                    
+                    const cropSvg = document.getElementById('crop-svg');
+                    if (cropSvg) cropSvg.style.display = 'block';
+                    document.querySelectorAll('.crop-pin').forEach(pin => pin.style.display = 'flex');
+                    
+                    document.getElementById('preview-actions-select').style.display = 'none';
+                    document.getElementById('preview-actions-crop').style.display = 'flex';
+
                     const reader = new FileReader();
                     reader.onload = function (e) {
                         img.src = e.target.result;
@@ -1093,11 +1173,8 @@ const initKyc = () => {
         modal.classList.remove('visible');
         setTimeout(() => {
             modal.style.display = 'none';
-            document.getElementById('step-id-form').style.display = 'none';
-            document.getElementById('id-preview').style.display = 'block';
+            resetIdUpload();
             updateStatusTracker(1);
-            // Re-initialize to position pins correctly
-            initCropWorkspace();
         }, 350);
     };
 
@@ -1821,6 +1898,8 @@ const initKyc = () => {
                 } else if (data.status === 'manual_review' || data.status === 'pending_manual_review') {
                     stopPolling();
                     document.getElementById('step-processing').style.display = 'none';
+                    const initLoading = document.getElementById('kyc-loading-init');
+                    if (initLoading) initLoading.style.display = 'none';
                     document.getElementById('kyc-waiting-approval').style.display = 'block';
                     if (!ws) {
                         initKycWebSocket();
@@ -1868,6 +1947,9 @@ const initKyc = () => {
         }
 
         document.getElementById('kyc-waiting-approval').style.display = 'none';
+        const initLoading = document.getElementById('kyc-loading-init');
+        if (initLoading) initLoading.style.display = 'none';
+
         const stepProcessing = document.getElementById('step-processing');
         if (stepProcessing) {
             if (scannerContainer && scannerContainer.style.display !== 'none') {
@@ -1891,6 +1973,9 @@ const initKyc = () => {
 
     function handleRejection(msg) {
         document.getElementById('kyc-waiting-approval').style.display = 'none';
+        const initLoading = document.getElementById('kyc-loading-init');
+        if (initLoading) initLoading.style.display = 'none';
+
         document.getElementById('step-processing').style.display = 'block';
         document.getElementById('status-text').innerText = "Verification Rejected";
         document.getElementById('status-text').style.color = "#ef4444";
@@ -1909,6 +1994,8 @@ const initKyc = () => {
 
     function handleLivenessFailure(msg) {
         document.getElementById('kyc-waiting-approval').style.display = 'none';
+        const initLoading = document.getElementById('kyc-loading-init');
+        if (initLoading) initLoading.style.display = 'none';
         document.getElementById('step-processing').style.display = 'none';
 
         const livenessRetryBanner = document.getElementById('liveness-retry-banner');
@@ -1991,8 +2078,9 @@ const initKyc = () => {
     }
 
     const waitingEl = document.getElementById('kyc-waiting-approval');
-    if (waitingEl && waitingEl.style.display === 'block') {
-        console.log("[KYC] Page loaded in waiting state. Initializing real-time listeners...");
+    const loadingInitEl = document.getElementById('kyc-loading-init');
+    if ((waitingEl && waitingEl.style.display === 'block') || loadingInitEl) {
+        console.log("[KYC] Page loaded in waiting/processing state. Initializing real-time listeners...");
         initKycWebSocket();
         startPolling();
     }
