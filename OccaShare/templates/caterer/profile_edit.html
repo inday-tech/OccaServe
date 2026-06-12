@@ -1330,10 +1330,11 @@ currentPassInput.addEventListener('input', validateRequirements);
                             map.setZoom(17);
                             marker.setPosition(loc);
                             marker.setAnimation(google.maps.Animation.DROP);
-                            // Do NOT call updateCoords here — user must explicitly confirm by dragging/clicking
-                            // Show a hint to the user
+                            // Auto-update the coordinates so it saves properly without confusing the user
+                            updateCoords(loc.lat(), loc.lng());
+                            
                             const display = document.getElementById('latDisplay');
-                            if (display) display.closest('.coords-display').style.borderColor = '#f97316';
+                            if (display) display.closest('.coords-display').style.borderColor = '#10b981';
                         }
                     });
                 }
@@ -1428,6 +1429,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 provNameHidden.value = provSelect.options[provSelect.selectedIndex].text;
             }
             await fetchCities(activeProvCode, savedCityCode);
+        }
+        
+        // Auto-geocode on load if no specific location was previously set
+        const currentLat = parseFloat(document.getElementById('latInput').value || '0');
+        if (currentLat === 0 || currentLat === 14.2811) {
+            setTimeout(triggerAutoGeocode, 800);
         }
     } catch (e) { console.error('Failed to load provinces:', e); }
 

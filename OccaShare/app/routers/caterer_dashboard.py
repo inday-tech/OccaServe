@@ -2588,9 +2588,9 @@ async def update_profile(
     profile.show_platform_logo = show_platform_logo
     profile.dashboard_texture = dashboard_texture
 
-    if latitude is not None:
+    if latitude is not None and latitude != 0.0:
         profile.latitude = latitude
-    if longitude is not None:
+    if longitude is not None and longitude != 0.0:
         profile.longitude = longitude
 
     import base64
