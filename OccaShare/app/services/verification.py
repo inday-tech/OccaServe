@@ -3105,8 +3105,9 @@ class VerificationService:
                             liveness_failure = "Liveness Verification Failed | We could not verify that a live person is present. Please try again in a well-lit environment and follow the on-screen instructions carefully."
                     elif face_count == 0:
                         liveness_failure = "Face Not Detected | We couldn't detect your face clearly. Please position your face inside the frame and try again."
-                    elif face_count > 1:
-                        liveness_failure = "Multiple Faces Detected | More than one face was detected. Please ensure only your face is visible during verification."
+                    # Bypass strict multiple faces check in VPS path to avoid false positives from background clutter/shadows
+                    # elif face_count > 1:
+                    #     liveness_failure = "Multiple Faces Detected | More than one face was detected. Please ensure only your face is visible during verification."
                     elif occlusion_detected:
                         occ_lower = str(occlusion_reason).lower()
                         if "too far" in occ_lower or "far" in occ_lower:
@@ -3144,8 +3145,9 @@ class VerificationService:
 
                     if face_count == 0:
                         liveness_failure = "Face Not Detected | We couldn't detect your face clearly. Please position your face inside the frame and try again."
-                    elif face_count > 1:
-                        liveness_failure = "Multiple Faces Detected | More than one face was detected. Please ensure only your face is visible during verification."
+                    # Bypass strict multiple faces check in local fallback to avoid false positives from background clutter/shadows
+                    # elif face_count > 1:
+                    #     liveness_failure = "Multiple Faces Detected | More than one face was detected. Please ensure only your face is visible during verification."
                     
                     if not liveness_failure and occlusion_detected:
                         occ_lower = str(occlusion_reason).lower()
