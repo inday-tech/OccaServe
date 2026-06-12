@@ -10,6 +10,7 @@ import io
 import difflib
 import numpy as np
 import traceback
+import asyncio
 from dotenv import load_dotenv
 load_dotenv(override=True)
 from typing import List, Dict, Any, Optional, Tuple
@@ -231,7 +232,7 @@ class VerificationService:
         # However, patterns usually expect the format, so we match original too
         return bool(re.match(pattern, id_number)) or bool(re.match(pattern.replace("-", "").replace(" ", ""), clean_id))
 
-    def _prepare_image(self, encrypted_path: str) -> np.ndarray:
+    def _prepare_image(self, encrypted_path: str, is_id: bool = True) -> np.ndarray:
         """Decrypts a file, handles EXIF orientation, and converts to OpenCV BGR."""
         filename = os.path.basename(encrypted_path.replace('\\', '/'))
         real_path = os.path.join("app/static/uploads/verification", filename)
@@ -264,7 +265,8 @@ class VerificationService:
                 img = np.array(pil_img)[:, :, ::-1].copy()
                 
             # Apply perspective correction if possible (Server-side auto crop and deskew)
-            img = self._correct_perspective_if_possible(img)
+            if is_id:
+                img = self._correct_perspective_if_possible(img)
             return img
         except Exception as e:
             print(f"[KYC DEBUG] Fatal error preparing image {filename}: {e}")
@@ -272,7 +274,8 @@ class VerificationService:
                 try:
                     nparr = np.frombuffer(raw_data, np.uint8)
                     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-                    img = self._correct_perspective_if_possible(img)
+                    if is_id:
+                        img = self._correct_perspective_if_possible(img)
                     return img
                 except: pass
             raise e
@@ -1085,7 +1088,7 @@ class VerificationService:
         except Exception as e:
             print(f"[KYC DEBUG] Error in _prepare_image_with_status: {e}")
             # Fallback
-            raw_img = self._prepare_image(encrypted_path)
+            raw_img = self._prepare_image(encrypted_path, is_id=True)
             return raw_img, False
 
     def parse_passport_mrz(self, text: str) -> Optional[dict]:
@@ -2328,7 +2331,7 @@ class VerificationService:
             pattern_valid = self.validate_id_pattern(id_type, id_number)
             
             # 3. Image Loading & Quality Check
-            id_img, cropped = self._prepare_image_with_status(id_path)
+            id_img, cropped = await asyncio.to_thread(self._prepare_image_with_status, id_path)
             quality_check = self.check_image_quality(id_img)
             if not quality_check["valid"]:
                 return {"status": "mismatched", "ocr_match": False, "pattern_valid": pattern_valid,
@@ -2390,7 +2393,7 @@ class VerificationService:
                 
                 if not gemini_data:
                     print("[KYC WARNING] Gemini API unavailable or failed. Using EasyOCR/Tesseract pipeline...")
-                    ocr_text, parsed, word_data = self._run_ocr_pipeline(id_img, id_type)
+                    ocr_text, parsed, word_data = await asyncio.to_thread(self._run_ocr_pipeline, id_img, id_type)
                     
                     # For PhilID: apply a layout-aware parser that uses Tagalog label anchors as field separators
                     if id_type in ("PhilSys / PhilID", "UMID") and ocr_text:
@@ -2449,7 +2452,7 @@ class VerificationService:
                     clean_ocr_upper = ocr_text.upper()
                     
                     # Check for face
-                    id_faces = self._detect_faces_detailed(id_img)
+                    id_faces = await asyncio.to_thread(self._detect_faces_detailed, id_img)
                     has_face = len(id_faces) > 0
                     if not has_face and parsed:
                         has_face = bool(parsed.get("face_visible", False))
@@ -2822,7 +2825,7 @@ class VerificationService:
         if id_type in ["PhilID (National ID)", "philsys", "PhilID"]:
             id_type = "PhilSys / PhilID"
         try:
-            id_img, cropped = self._prepare_image_with_status(id_path)
+            id_img, cropped = await asyncio.to_thread(self._prepare_image_with_status, id_path)
             
             # Save cropped image if successful
             cropped_url = id_path
@@ -2880,7 +2883,7 @@ class VerificationService:
                 
             # Fallback to EasyOCR/Tesseract if Gemini not available or failed
             print("[KYC WARNING] Gemini API unavailable or failed. Using EasyOCR/Tesseract fallback pipeline...")
-            text, parsed, word_data = self._run_ocr_pipeline(id_img, id_type)
+            text, parsed, word_data = await asyncio.to_thread(self._run_ocr_pipeline, id_img, id_type)
 
             # For PhilID: apply a layout-aware parser that uses Tagalog label anchors as field separators
             if id_type in ("PhilSys / PhilID", "UMID") and text:
@@ -2889,7 +2892,7 @@ class VerificationService:
                     parsed.update(philid_parsed)
             
             clean_ocr_upper = text.upper()
-            id_faces = self._detect_faces_detailed(id_img)
+            id_faces = await asyncio.to_thread(self._detect_faces_detailed, id_img)
             has_face = len(id_faces) > 0
             if not has_face and parsed:
                 has_face = bool(parsed.get("face_visible", False))
@@ -2978,10 +2981,9 @@ class VerificationService:
                     intersect_len = len(assigned_set.intersection(completed_set))
                     challenge_completion_score = int((intersect_len / len(assigned_set)) * 100) if len(assigned_set) > 0 else 0
 
-            # Load selfie images
-            selfie_imgs = []
-            for sp in selfie_paths:
-                selfie_imgs.append(self._prepare_image(sp))
+            # Load selfie images in parallel to speed up processing
+            tasks = [asyncio.to_thread(self._prepare_image, sp, False) for sp in selfie_paths]
+            selfie_imgs = await asyncio.gather(*tasks)
 
             # --- VALIDATIONS FOR LIVELINESS ---
             liveness_failure = None
@@ -3071,8 +3073,8 @@ class VerificationService:
                     print(f"[KYC ERROR] VPS Verify request failed: {e}")
                     traceback.print_exc()
 
-            id_img = self._prepare_image(id_path)
-            id_faces = self._detect_faces_detailed(id_img)
+            id_img = None
+            id_faces = []
 
             if not liveness_failure:
                 if vps_success:
@@ -3114,7 +3116,10 @@ class VerificationService:
                 else:
                     # Fallback to local processing if VPS failed or not configured
                     print("[KYC WARNING] Running local liveness and face comparison...")
-                    local_liveness = self._check_liveness_mediapipe(selfie_imgs)
+                    id_img = await asyncio.to_thread(self._prepare_image, id_path, True)
+                    id_faces = await asyncio.to_thread(self._detect_faces_detailed, id_img)
+                    
+                    local_liveness = await asyncio.to_thread(self._check_liveness_mediapipe, selfie_imgs)
                     liveness_score = int(local_liveness["score"] * 100)
                     anti_spoof_score = 98 if liveness_score >= 40 else 0
                     
@@ -3127,7 +3132,7 @@ class VerificationService:
                         if CV2_AVAILABLE:
                             max_haar_faces = 0
                             for img in selfie_imgs:
-                                raw_faces = self._detect_faces_detailed(img)
+                                raw_faces = await asyncio.to_thread(self._detect_faces_detailed, img)
                                 img_area = img.shape[0] * img.shape[1]
                                 significant_faces = [
                                     f for f in raw_faces
@@ -3156,7 +3161,7 @@ class VerificationService:
                     # The VPS/DeepFace path is the authoritative face verifier.
                     if not liveness_failure:
                         if face_count > 0:
-                            compare_res = self.compare_faces(id_img, selfie_imgs[0])
+                            compare_res = await asyncio.to_thread(self.compare_faces, id_img, selfie_imgs[0])
                             local_conf = compare_res.get("confidence", 0.0)
                             local_err = compare_res.get("error")
                             print(f"[KYC LOCAL FACE] compare_faces confidence={local_conf:.3f}, "
@@ -3286,7 +3291,7 @@ class VerificationService:
                 "extracted_text_preview": ocr_text[:200],
                 "ocr_data": {
                     **id_result.get("ocr_data", {}),
-                    "faces_in_id": len(id_faces),
+                    "faces_in_id": len(id_faces) if id_faces else 1,
                     "raw_ocr": ocr_text
                 }
             }
