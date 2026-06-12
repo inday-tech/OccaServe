@@ -1256,7 +1256,14 @@ async def edit_caterer(
     
     # Construct legacy full address for backward compatibility
     if province_name and city_name and brgy_name:
-        caterer.contact_address = f"{address_details or ''}, Brgy. {brgy_name}, {city_name}, {province_name}"
+        addr_parts = [address_details.strip()] if address_details else []
+        if brgy_name.lower() not in (address_details or "").lower():
+            addr_parts.append(f"Brgy. {brgy_name}")
+        if city_name.lower() not in (address_details or "").lower():
+            addr_parts.append(city_name)
+        if province_name.lower() not in (address_details or "").lower():
+            addr_parts.append(province_name)
+        caterer.contact_address = ", ".join(addr_parts)
     
     if caterer.user:
         caterer.user.first_name = first_name

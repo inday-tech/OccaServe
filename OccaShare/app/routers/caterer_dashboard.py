@@ -2547,14 +2547,17 @@ async def update_profile(
     # Build a clean composite address_details from all parts
     # This becomes the single source of truth for display across all views
     addr_parts = []
-    if contact_address and contact_address.strip():
-        addr_parts.append(contact_address.strip())
-    if barangay and barangay != brgy_code:
+    contact = contact_address.strip() if contact_address else ""
+    if contact:
+        addr_parts.append(contact)
+    
+    if barangay and barangay != brgy_code and barangay.lower() not in contact.lower():
         addr_parts.append(f"Brgy. {barangay}")
-    if municipality and municipality != city_code:
+    if municipality and municipality != city_code and municipality.lower() not in contact.lower():
         addr_parts.append(municipality)
-    if province and province != province_code:
+    if province and province != province_code and province.lower() not in contact.lower():
         addr_parts.append(province)
+        
     if addr_parts:
         profile.address_details = ", ".join(addr_parts)
     # Update payment methods
