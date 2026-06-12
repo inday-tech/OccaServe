@@ -65,13 +65,13 @@ async function openAddPackageModal() {
         if (firstStep) switchPackageTab(firstStep, 'basic');
 
         // Reset new fields to defaults
-        if (form.booking_lead_time) form.booking_lead_time.value = 7;
-        if (form.reservation_fee) form.reservation_fee.value = 5000;
-        if (form.min_contract_amount) form.min_contract_amount.value = '';
-        
+        if (form.pricing_mode) form.pricing_mode.value = 'per_pax';
+        if (form.reservation_fee_type) form.reservation_fee_type.value = 'fixed';
+        if (form.reservation_fee_value) form.reservation_fee_value.value = 5000;
+        if (form.transportation_cost) form.transportation_cost.value = 0;
+        if (form.miscellaneous_cost) form.miscellaneous_cost.value = 0;
 
-
-        // Reset Image Preview
+        window.togglePricingMode('per_pax');        // Reset Image Preview
         const preview = document.getElementById('pkgImagePreview');
         const placeholder = document.getElementById('previewPlaceholder');
         if (preview) {
@@ -122,19 +122,21 @@ async function editPackage(pkgId) {
         if (form.name) form.name.value = pkg.name || '';
         if (form.description) form.description.value = pkg.description || '';
         if (form.service_type) form.service_type.value = pkg.service_type || 'General';
+        if (form.pricing_mode) form.pricing_mode.value = pkg.pricing_mode || 'per_pax';
         if (form.price_per_head) form.price_per_head.value = pkg.price_per_head || '';
         if (form.min_guests) form.min_guests.value = pkg.min_guests || 50;
         if (form.service_duration) form.service_duration.value = pkg.service_duration || 8;
-        if (form.booking_lead_time) form.booking_lead_time.value = pkg.booking_lead_time || 7;
-        if (form.reservation_fee) form.reservation_fee.value = pkg.reservation_fee || 5000;
-        if (form.min_contract_amount) form.min_contract_amount.value = pkg.min_contract_amount || '';
+        if (form.reservation_fee_type) form.reservation_fee_type.value = pkg.reservation_fee_type || 'fixed';
+        if (form.reservation_fee_value) form.reservation_fee_value.value = pkg.reservation_fee_value || 5000;
 
         // Cost Breakdown (Explicit Fields)
-        if (form.base_pax) form.base_pax.value = pkg.base_pax || 50;
         if (form.labor_cost) form.labor_cost.value = pkg.labor_cost || 0;
         if (form.utility_cost) form.utility_cost.value = pkg.utility_cost || 0;
         if (form.equipment_cost) form.equipment_cost.value = pkg.equipment_cost || 0;
+        if (form.transportation_cost) form.transportation_cost.value = pkg.transportation_cost || 0;
+        if (form.miscellaneous_cost) form.miscellaneous_cost.value = pkg.miscellaneous_cost || 0;
 
+        window.togglePricingMode(form.pricing_mode ? form.pricing_mode.value : 'per_pax');
 
         if (form.selection_rules) {
             form.selection_rules.value = pkg.selection_rules ? JSON.stringify(pkg.selection_rules) : '';
@@ -245,10 +247,7 @@ function validateTab(tabName, silent = false) {
             addError(form.service_type, "Please select a Service Type.");
         }
         
-        const leadTimeVal = parseInt(form.booking_lead_time.value);
-        if (isNaN(leadTimeVal) || leadTimeVal < 3) {
-            addError(form.booking_lead_time, "Lead time must be at least 3 days.");
-        }
+
 
         const descVal = form.description.value.trim();
         if (!descVal || descVal.length < 10) {
@@ -300,22 +299,33 @@ function validateTab(tabName, silent = false) {
         const rawPrice = form.price_per_head.value.replace(/,/g, '');
         const price = parseFloat(rawPrice);
         if (isNaN(price) || price <= 0) {
-            addError(form.price_per_head, "Price per head must be greater than 0.");
+            addError(form.price_per_head, "Price must be greater than 0.");
         }
         
+        const mode = form.pricing_mode ? form.pricing_mode.value : 'per_pax';
         const minGuests = parseInt(form.min_guests.value);
-        if (isNaN(minGuests) || minGuests < 10) {
+        if (mode === 'per_pax' && (isNaN(minGuests) || minGuests < 10)) {
             addError(form.min_guests, "Minimum guests must be at least 10.");
         }
         
-        const rawResFee = form.reservation_fee.value.replace(/,/g, '');
+        const rawResFee = form.reservation_fee_value.value.replace(/,/g, '');
         const resFee = parseFloat(rawResFee);
-        if (isNaN(resFee) || resFee <= 0) {
-            addError(form.reservation_fee, "Reservation fee must be greater than 0.");
-        } else if (price > 0 && minGuests > 0) {
-            const maxAllowedFee = (price * minGuests) * 0.5; // 50% limit
-            if (resFee > maxAllowedFee) {
-                addError(form.reservation_fee, `Reservation fee cannot exceed 50% of the total base package cost (₱${maxAllowedFee.toLocaleString()}).`);
+        const resType = form.reservation_fee_type ? form.reservation_fee_type.value : 'fixed';
+        if (isNaN(resFee) || resFee < 0) {
+            addError(form.reservation_fee_value, "Reservation fee cannot be negative.");
+        } else if (price > 0) {
+            if (resType === 'fixed' && mode === 'per_pax' && minGuests > 0) {
+                const maxAllowedFee = (price * minGuests) * 0.5; // 50% limit
+                if (resFee > maxAllowedFee) {
+                    addError(form.reservation_fee_value, `Reservation fee cannot exceed 50% of the base package (₱${maxAllowedFee.toLocaleString()}).`);
+                }
+            } else if (resType === 'fixed' && mode === 'fixed') {
+                const maxAllowedFee = price * 0.5;
+                if (resFee > maxAllowedFee) {
+                    addError(form.reservation_fee_value, `Reservation fee cannot exceed 50% of the fixed price (₱${maxAllowedFee.toLocaleString()}).`);
+                }
+            } else if (resType === 'percentage' && resFee > 50) {
+                addError(form.reservation_fee_value, "Reservation fee percentage cannot exceed 50%.");
             }
         }
         
@@ -324,7 +334,8 @@ function validateTab(tabName, silent = false) {
         if (internalInput) {
             const internalCost = parseFloat(internalInput.value) || 0;
             if (price < internalCost) {
-                addError(form.price_per_head, `Selling Price (₱${price}) cannot be lower than the Est. Cost / Pax (₱${internalCost.toFixed(2)}). You will lose money on every booking.`);
+                const costLabel = mode === 'per_pax' ? 'Est. Cost / Pax' : 'Total Est. Cost';
+                addError(form.price_per_head, `Selling Price (₱${price}) cannot be lower than the ${costLabel} (₱${internalCost.toFixed(2)}).`);
             }
         }
 
@@ -334,13 +345,6 @@ function validateTab(tabName, silent = false) {
         if (form.equipment_cost && (form.equipment_cost.value === '' || parseFloat(form.equipment_cost.value) < 0)) addError(form.equipment_cost, "Cannot be empty or negative.");
         if (form.base_pax && (form.base_pax.value === '' || parseInt(form.base_pax.value) < 1)) addError(form.base_pax, "Must be at least 1.");
         
-        const rawMinContract = form.min_contract_amount.value.replace(/,/g, '');
-        if (rawMinContract) {
-            const minContract = parseFloat(rawMinContract);
-            if (isNaN(minContract) || minContract < 0) {
-                addError(form.min_contract_amount, "Invalid amount.");
-            }
-        }
     }
     
     return isValid;
@@ -411,6 +415,16 @@ window.reactivelyValidateForm = function(isInitialLoad = false) {
             pricingStep.style.pointerEvents = 'none';
         }
     }
+    const reviewStep = document.getElementById('step-btn-review');
+    if (reviewStep) {
+        if (isAllValid) {
+            reviewStep.style.opacity = '1';
+            reviewStep.style.pointerEvents = 'auto';
+        } else {
+            reviewStep.style.opacity = '0.4';
+            reviewStep.style.pointerEvents = 'none';
+        }
+    }
 };
 
 window.goToWizardNextStep = function(nextTab) {
@@ -434,7 +448,7 @@ window.goToWizardBackStep = function(prevTab) {
         }
         
         // Update Progress Bar
-        const stepsOrder = ['basic', 'perks', 'menu', 'pricing'];
+        const stepsOrder = ['basic', 'perks', 'menu', 'pricing', 'review'];
         const targetIdx = stepsOrder.indexOf(prevTab);
         const progressEl = document.getElementById('pkgWizardProgress');
         if (progressEl) {
@@ -451,7 +465,7 @@ function switchPackageTab(el, tabName) {
     if (!el) return;
     
     // Validate previous tabs on forward click
-    const stepsOrder = ['basic', 'perks', 'menu', 'pricing'];
+    const stepsOrder = ['basic', 'perks', 'menu', 'pricing', 'review'];
     const targetIdx = stepsOrder.indexOf(tabName);
     const activeStepEl = document.querySelector('.pkg-step-side.active') || document.querySelector('.pkg-step.active');
     const currentTabName = activeStepEl ? activeStepEl.id.replace('step-btn-', '') : 'basic';
@@ -689,15 +703,27 @@ function filterPkgMenuLibrary() {
 }
 
 function calculateCosts() {
+    const form = document.getElementById('packageForm');
     const labor = parseFloat(document.getElementById('pkgLaborCost')?.value) || 0;
     const utility = parseFloat(document.getElementById('pkgUtilityCost')?.value) || 0;
     const equip = parseFloat(document.getElementById('pkgEquipmentCost')?.value) || 0;
-    const basePax = parseInt(document.getElementById('pkgBasePax')?.value) || 50;
+    const transport = parseFloat(document.getElementById('pkgTransportCost')?.value) || 0;
+    const misc = parseFloat(document.getElementById('pkgMiscCost')?.value) || 0;
+    const minGuests = parseInt(form.min_guests ? form.min_guests.value : 50) || 1;
+    const mode = form.pricing_mode ? form.pricing_mode.value : 'per_pax';
+    
     // Sum selected menu items cost from Step 3 (Only if library is loaded)
     const menuCards = document.querySelectorAll('.menu-select-card');
+    let servicesCostTotal = 0;
+    
+    // Calculate linked services from Tab 2
+    document.querySelectorAll('#tab-perks .menu-select-card.selected').forEach(card => {
+        servicesCostTotal += parseFloat(card.dataset.cost) || 0;
+    });
+
     if (menuCards.length > 0) {
         let ingCostPerPax = 0;
-        document.querySelectorAll('.menu-select-card.selected').forEach(card => {
+        document.querySelectorAll('#tab-menu .menu-select-card.selected').forEach(card => {
             ingCostPerPax += parseFloat(card.dataset.cost) || 0;
         });
 
@@ -711,9 +737,12 @@ function calculateCosts() {
     const ingDisplay = document.getElementById('pkgIngredientCostDisplay');
     const ingCostPerPax = parseFloat(ingDisplay?.dataset?.cost) || 0;
 
-    let overheadTotal = labor + utility + equip;
-    let overheadPerPax = basePax > 0 ? overheadTotal / basePax : 0;
-    let totalCostPerPax = overheadPerPax + ingCostPerPax;
+    let overheadTotal = labor + utility + equip + transport + misc;
+    let overheadPerPax = mode === 'per_pax' ? (overheadTotal / minGuests) : overheadTotal;
+    let servicesCostPerPax = mode === 'per_pax' ? (servicesCostTotal / minGuests) : servicesCostTotal;
+    let foodCostPerPax = mode === 'per_pax' ? ingCostPerPax : (ingCostPerPax * minGuests);
+    
+    let totalCostPerPax = overheadPerPax + foodCostPerPax + servicesCostPerPax;
 
     const display = document.getElementById('totalCostDisplay');
     if (display) display.innerText = '₱' + totalCostPerPax.toLocaleString(undefined, { minimumFractionDigits: 2 });
@@ -721,39 +750,90 @@ function calculateCosts() {
     const internalInput = document.getElementById('pkgInternalCostPerPax');
     if (internalInput) internalInput.value = totalCostPerPax;
 
+    // Update Financial Analysis Panel displays
+    const fFood = document.getElementById('analysisFoodCost');
+    if (fFood) fFood.innerText = '₱' + foodCostPerPax.toLocaleString(undefined, { minimumFractionDigits: 2 });
+    const fServ = document.getElementById('analysisServicesCost');
+    if (fServ) fServ.innerText = '₱' + servicesCostPerPax.toLocaleString(undefined, { minimumFractionDigits: 2 });
+    const fOverhead = document.getElementById('analysisOperationalCost');
+    if (fOverhead) fOverhead.innerText = '₱' + overheadPerPax.toLocaleString(undefined, { minimumFractionDigits: 2 });
+    const profitDisplay = document.getElementById('analysisProfit');
+    const roiDisplay = document.getElementById('analysisROI');
     const manualPriceInput = document.getElementById('pkgManualPriceInput');
     const manualPrice = manualPriceInput ? parseFloat(manualPriceInput.value.replace(/,/g, '')) || 0 : 0;
     const badge = document.getElementById('roiMarginBadge');
     
+    let profit = 0;
+    let margin = 0;
+    
     if (badge) {
         if (manualPrice > 0) {
-            const profit = manualPrice - totalCostPerPax;
-            const margin = (profit / manualPrice) * 100;
+            profit = manualPrice - totalCostPerPax;
+            margin = (profit / totalCostPerPax) * 100; // Expected ROI based on cost
             
-            badge.innerText = `${margin.toFixed(1)}% Margin`;
+            badge.innerText = `${margin.toFixed(1)}% ROI`;
             
             if (margin < 0) {
                 badge.style.background = '#fee2e2';
                 badge.style.color = '#ef4444';
-                badge.innerText = `LOSS: ${Math.abs(margin).toFixed(1)}%`;
-                badge.classList.add('margin-pulse-warning');
-            } else if (margin < 25) {
-                badge.style.background = '#fff7ed';
-                badge.style.color = '#f97316';
-                badge.classList.remove('margin-pulse-warning');
+            } else if (margin < 15) {
+                badge.style.background = '#fef3c7';
+                badge.style.color = '#d97706';
             } else {
-                badge.style.background = '#f0fdf4';
-                badge.style.color = '#22c55e';
-                badge.classList.remove('margin-pulse-warning');
+                badge.style.background = '#dcfce3';
+                badge.style.color = '#16a34a';
             }
         } else {
-            badge.innerText = '--% Margin';
+            badge.innerText = '--% ROI';
             badge.style.background = '#f1f5f9';
-            badge.style.color = '#64748b';
-            badge.classList.remove('margin-pulse-warning');
+            badge.style.color = '#94a3b8';
         }
     }
+    
+    if (profitDisplay) profitDisplay.innerText = '₱' + profit.toLocaleString(undefined, { minimumFractionDigits: 2 });
+    if (roiDisplay) roiDisplay.innerText = margin.toFixed(1) + '%';
+
+    // Populate Review Tab
+    const rName = document.getElementById('reviewName');
+    const rType = document.getElementById('reviewType');
+    const rMode = document.getElementById('reviewPricingMode');
+    const rPrice = document.getElementById('reviewPrice');
+    const rROI = document.getElementById('reviewROI');
+    const rRes = document.getElementById('reviewReservation');
+    const rDishes = document.getElementById('reviewDishesCount');
+    const rServices = document.getElementById('reviewServicesCount');
+
+    if (rName && form) {
+        rName.innerText = form.name.value || 'Untitled Package';
+        rType.innerText = form.service_type.value || 'General';
+        
+        const mode = form.pricing_mode ? form.pricing_mode.value : 'per_pax';
+        rMode.innerText = mode === 'fixed' ? 'Fixed (Event Based)' : 'Per Pax (Guest Based)';
+        
+        rPrice.innerText = '₱' + manualPrice.toLocaleString(undefined, { minimumFractionDigits: 2 }) + (mode === 'fixed' ? ' total' : ' / pax');
+        rROI.innerText = margin.toFixed(1) + '%';
+        rROI.style.color = margin < 0 ? '#ef4444' : '#1e293b';
+
+        const resType = form.reservation_fee_type ? form.reservation_fee_type.value : 'fixed';
+        const resVal = form.reservation_fee_value ? parseFloat(form.reservation_fee_value.value) || 0 : 0;
+        rRes.innerText = resType === 'percentage' ? resVal + '%' : '₱' + resVal.toLocaleString();
+        
+        rDishes.innerText = document.querySelectorAll('#tab-menu .menu-select-card.selected').length;
+        rServices.innerText = document.querySelectorAll('#tab-perks .menu-select-card.selected').length;
+    }
 }
+
+window.togglePricingMode = function(mode) {
+    const minGuestsGroup = document.querySelector('input[name="min_guests"]')?.closest('.form-group-pro');
+    if (minGuestsGroup) {
+        minGuestsGroup.style.display = mode === 'fixed' ? 'none' : 'block';
+    }
+    const perHeadLabel = document.querySelector('label[for="pkgManualPriceInput"]') || document.querySelector('#pkgManualPriceInput')?.previousElementSibling;
+    if (perHeadLabel) {
+        perHeadLabel.innerText = mode === 'fixed' ? 'Total Package Price (₱) *' : 'Selling Price Per Pax (₱) *';
+    }
+    calculateCosts();
+};
 
 function showMenuModal(pkgId, pkgName) {
     if (!pkgId) return;

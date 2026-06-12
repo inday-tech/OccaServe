@@ -2194,6 +2194,7 @@ async def add_package(
     name: str = Form(...),
     description: str = Form(...),
     service_type: str = Form("General"),
+    pricing_mode: str = Form("per_pax"),
     service_duration: int = Form(8),
     price_per_head: float = Form(0.0),
     cost_price: float = Form(0.0),
@@ -2210,8 +2211,11 @@ async def add_package(
     labor_cost: float = Form(0.0),
     utility_cost: float = Form(0.0),
     equipment_cost: float = Form(0.0),
+    transportation_cost: float = Form(0.0),
+    miscellaneous_cost: float = Form(0.0),
     internal_cost_per_pax: float = Form(0.0),
-    reservation_fee: float = Form(0.0),
+    reservation_fee_type: str = Form("fixed"),
+    reservation_fee_value: float = Form(0.0),
     booking_lead_time: int = Form(7),
     selection_rules: Optional[str] = Form(None),
     db: Session = Depends(database.get_db),
@@ -2220,19 +2224,17 @@ async def add_package(
     errors = []
     if not name.strip():
         errors.append("Package name is required.")
-    if booking_lead_time < 3:
-        errors.append("Lead time must be at least 3 days.")
     if not linked_menu_ids or len(linked_menu_ids) == 0:
         errors.append("Please select at least 1 menu item from your library.")
     if price_per_head <= 0:
         errors.append("Price per head must be greater than 0.")
-    if min_guests < 10:
-        errors.append("Minimum guests must be at least 10.")
-    if reservation_fee <= 0:
+    if pricing_mode == "per_pax" and min_guests < 10:
+        errors.append("Minimum guests must be at least 10 for Per Pax pricing.")
+    if reservation_fee_value <= 0:
         errors.append("Reservation fee must be greater than 0.")
-    elif price_per_head > 0 and min_guests > 0:
+    elif reservation_fee_type == 'fixed' and price_per_head > 0 and min_guests > 0 and pricing_mode == 'per_pax':
         max_allowed_fee = (price_per_head * min_guests) * 0.5
-        if reservation_fee > max_allowed_fee:
+        if reservation_fee_value > max_allowed_fee:
             errors.append(f"Reservation fee cannot exceed 50% of the total base package cost.")
     if price_per_head < internal_cost_per_pax:
         errors.append(f"Selling Price cannot be lower than the Est. Cost / Pax.")
@@ -2269,6 +2271,7 @@ async def add_package(
         name=name,
         description=description,
         service_type=service_type,
+        pricing_mode=pricing_mode,
         service_duration=service_duration,
         price_per_head=price_per_head,
         price=price_per_head, # Sync for compatibility
@@ -2285,23 +2288,42 @@ async def add_package(
         labor_cost=labor_cost,
         utility_cost=utility_cost,
         equipment_cost=equipment_cost,
+        transportation_cost=transportation_cost,
+        miscellaneous_cost=miscellaneous_cost,
         internal_cost_per_pax=internal_cost_per_pax,
-        reservation_fee=reservation_fee,
+        reservation_fee_type=reservation_fee_type,
+        reservation_fee_value=reservation_fee_value,
         booking_lead_time=booking_lead_time,
         selection_rules=json.loads(selection_rules) if selection_rules else None,
         is_active=True,
         status='active'
     )
     
-    # Handle linked menu items
+    # Handle linked menu items via separate PackageDish and PackageService tables
     if linked_menu_ids:
         items = db.query(models.MenuItem).filter(
             models.MenuItem.id.in_(linked_menu_ids),
             models.MenuItem.caterer_id == user.caterer_profile.id
         ).all()
+        # For backward compatibility, keep generic junction
         new_pkg.menu_items = items
-
-    db.add(new_pkg)
+        
+        # Flush to get new_pkg.id
+        db.add(new_pkg)
+        db.flush()
+        
+        # Insert into specific tables
+        service_categories = ['rentals', 'services', 'equipment']
+        for item in items:
+            cat = item.category.lower() if item.category else ''
+            if cat in service_categories:
+                new_service = models.PackageService(package_id=new_pkg.id, service_id=item.id, quantity=1)
+                db.add(new_service)
+            else:
+                new_dish = models.PackageDish(package_id=new_pkg.id, menu_item_id=item.id, category_assigned=item.category)
+                db.add(new_dish)
+    else:
+        db.add(new_pkg)
     db.commit()
     
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
@@ -2677,13 +2699,17 @@ async def get_package_details_api(
         "image_url": package.image_url,
         "inclusions": package.inclusions or {},
         "is_active": package.is_active,
+        "pricing_mode": package.pricing_mode,
         "base_pax": package.base_pax,
         "labor_cost": package.labor_cost,
         "utility_cost": package.utility_cost,
         "equipment_cost": package.equipment_cost,
+        "transportation_cost": package.transportation_cost,
+        "miscellaneous_cost": package.miscellaneous_cost,
         "ingredient_total_cost": package.ingredient_total_cost,
         "internal_cost_per_pax": package.internal_cost_per_pax,
-        "reservation_fee": package.reservation_fee,
+        "reservation_fee_type": package.reservation_fee_type,
+        "reservation_fee_value": package.reservation_fee_value,
         "booking_lead_time": package.booking_lead_time
     }
 
@@ -2694,6 +2720,7 @@ async def update_package(
     name: str = Form(...),
     description: str = Form(...),
     service_type: str = Form("General"),
+    pricing_mode: str = Form("per_pax"),
     service_duration: int = Form(8),
     price_per_head: float = Form(0.0),
     cost_price: float = Form(0.0),
@@ -2710,8 +2737,11 @@ async def update_package(
     labor_cost: float = Form(0.0),
     utility_cost: float = Form(0.0),
     equipment_cost: float = Form(0.0),
+    transportation_cost: float = Form(0.0),
+    miscellaneous_cost: float = Form(0.0),
     internal_cost_per_pax: float = Form(0.0),
-    reservation_fee: float = Form(0.0),
+    reservation_fee_type: str = Form("fixed"),
+    reservation_fee_value: float = Form(0.0),
     booking_lead_time: int = Form(7),
     selection_rules: Optional[str] = Form(None),
     db: Session = Depends(database.get_db),
@@ -2727,19 +2757,17 @@ async def update_package(
     errors = []
     if not name.strip():
         errors.append("Package name is required.")
-    if booking_lead_time < 3:
-        errors.append("Lead time must be at least 3 days.")
     if not linked_menu_ids or len(linked_menu_ids) == 0:
         errors.append("Please select at least 1 menu item from your library.")
     if price_per_head <= 0:
         errors.append("Price per head must be greater than 0.")
-    if min_guests < 10:
-        errors.append("Minimum guests must be at least 10.")
-    if reservation_fee <= 0:
+    if pricing_mode == "per_pax" and min_guests < 10:
+        errors.append("Minimum guests must be at least 10 for Per Pax pricing.")
+    if reservation_fee_value <= 0:
         errors.append("Reservation fee must be greater than 0.")
-    elif price_per_head > 0 and min_guests > 0:
+    elif reservation_fee_type == 'fixed' and price_per_head > 0 and min_guests > 0 and pricing_mode == 'per_pax':
         max_allowed_fee = (price_per_head * min_guests) * 0.5
-        if reservation_fee > max_allowed_fee:
+        if reservation_fee_value > max_allowed_fee:
             errors.append(f"Reservation fee cannot exceed 50% of the total base package cost.")
     if price_per_head < internal_cost_per_pax:
         errors.append(f"Selling Price cannot be lower than the Est. Cost / Pax.")
@@ -2763,6 +2791,7 @@ async def update_package(
     package.name = name
     package.description = description
     package.service_type = service_type
+    package.pricing_mode = pricing_mode
     package.service_duration = service_duration
     package.price_per_head = price_per_head
     package.price = price_per_head # Sync for compatibility
@@ -2776,10 +2805,13 @@ async def update_package(
     package.labor_cost = labor_cost
     package.utility_cost = utility_cost
     package.equipment_cost = equipment_cost
+    package.transportation_cost = transportation_cost
+    package.miscellaneous_cost = miscellaneous_cost
     package.internal_cost_per_pax = internal_cost_per_pax
     package.markup_type = markup_type
     package.markup_value = markup_value
-    package.reservation_fee = reservation_fee
+    package.reservation_fee_type = reservation_fee_type
+    package.reservation_fee_value = reservation_fee_value
     package.booking_lead_time = booking_lead_time
     package.selection_rules = json.loads(selection_rules) if selection_rules else None
     
@@ -2790,13 +2822,28 @@ async def update_package(
     else:
         package.inclusions = {}
 
-    # Handle linked menu items
+    # Handle linked menu items via separate PackageDish and PackageService tables
     if linked_menu_ids is not None:
         items = db.query(models.MenuItem).filter(
             models.MenuItem.id.in_(linked_menu_ids),
             models.MenuItem.caterer_id == user.caterer_profile.id
         ).all()
         package.menu_items = items
+        
+        # Clear existing specific table links
+        db.query(models.PackageDish).filter(models.PackageDish.package_id == package.id).delete()
+        db.query(models.PackageService).filter(models.PackageService.package_id == package.id).delete()
+        
+        # Insert into specific tables
+        service_categories = ['rentals', 'services', 'equipment']
+        for item in items:
+            cat = item.category.lower() if item.category else ''
+            if cat in service_categories:
+                new_service = models.PackageService(package_id=package.id, service_id=item.id, quantity=1)
+                db.add(new_service)
+            else:
+                new_dish = models.PackageDish(package_id=package.id, menu_item_id=item.id, category_assigned=item.category)
+                db.add(new_dish)
 
 
     import base64

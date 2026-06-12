@@ -213,6 +213,20 @@ class PackageItem(Base):
     package_id = Column(Integer, ForeignKey("catering_packages.id"), primary_key=True)
     menu_item_id = Column(Integer, ForeignKey("menu_items.id"), primary_key=True)
 
+class PackageDish(Base):
+    __tablename__ = "package_dishes"
+    id = Column(Integer, primary_key=True, index=True)
+    package_id = Column(Integer, ForeignKey("catering_packages.id", ondelete="CASCADE"))
+    menu_item_id = Column(Integer, ForeignKey("menu_items.id", ondelete="CASCADE"))
+    category_assigned = Column(String, nullable=True) # e.g. "Main Course", "Appetizer"
+
+class PackageService(Base):
+    __tablename__ = "package_services"
+    id = Column(Integer, primary_key=True, index=True)
+    package_id = Column(Integer, ForeignKey("catering_packages.id", ondelete="CASCADE"))
+    service_id = Column(Integer, ForeignKey("menu_items.id", ondelete="CASCADE")) # Services are stored in menu_items
+    quantity = Column(Integer, default=1)
+
 class CateringPackage(Base):
     __tablename__ = "catering_packages"
 
@@ -230,14 +244,17 @@ class CateringPackage(Base):
     service_type = Column(String, default="General") # Wedding, Birthday, Corporate, etc.
     
     # NEW: Rich Pricing & Details
+    pricing_mode = Column(String, default='per_pax') # 'per_pax' or 'fixed'
     price_per_head = Column(Float, nullable=True) # Selling Price (Customer Visible)
     internal_cost_per_pax = Column(Float, default=0.0) # Internal Break-even (Hidden)
     base_pax = Column(Integer, default=50) # The pax count used for costing
     
-    # Internal Expense Breakdown
+    # Internal Expense Breakdown (Overhead)
     labor_cost = Column(Float, default=0.0)
     utility_cost = Column(Float, default=0.0)
     equipment_cost = Column(Float, default=0.0)
+    transportation_cost = Column(Float, default=0.0)
+    miscellaneous_cost = Column(Float, default=0.0)
     ingredient_total_cost = Column(Float, default=0.0)
     
     min_contract_amount = Column(Float, nullable=True)
@@ -245,7 +262,8 @@ class CateringPackage(Base):
     service_duration = Column(Integer, default=4) # In hours
     overtime_fee = Column(Float, default=0.0)
     location_coverage = Column(String, nullable=True) # City / Area
-    reservation_fee = Column(Float, default=0.0)
+    reservation_fee_type = Column(String, default='fixed') # 'fixed' or 'percentage'
+    reservation_fee_value = Column(Float, default=0.0)
     booking_lead_time = Column(Integer, default=7) # In days
     
     # Structured Data
