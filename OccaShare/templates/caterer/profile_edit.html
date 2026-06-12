@@ -1444,11 +1444,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             await fetchCities(activeProvCode, savedCityCode);
         }
         
-        // Auto-geocode on load if no specific location was previously set
-        const currentLat = parseFloat(document.getElementById('latInput').value || '0');
-        if (currentLat === 0 || currentLat === 14.2811) {
-            setTimeout(triggerAutoGeocode, 800);
-        }
+        // Auto-geocode on load moved to after barangays are loaded to prevent race conditions
     } catch (e) { console.error('Failed to load provinces:', e); }
 
     function triggerAutoGeocode() {
@@ -1590,6 +1586,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (brgySelect.options[brgySelect.selectedIndex]) {
                     brgyNameHidden.value = brgySelect.options[brgySelect.selectedIndex].text;
                 }
+            }
+
+            // After everything is fully loaded (Provinces -> Cities -> Barangays), check if we need to auto-geocode
+            const currentLat = parseFloat(document.getElementById('latInput').value || '0');
+            if (currentLat === 0 || currentLat === 14.2811) {
+                // Give the UI a tiny moment to register the updated hidden inputs, then geocode
+                setTimeout(triggerAutoGeocode, 300);
             }
         } catch (e) {
             console.error('Failed to load barangays:', e);
