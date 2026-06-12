@@ -5,7 +5,11 @@ def get_packages(db: Session):
     return db.query(models.CateringPackage).all()
 
 def get_caterers(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.CatererProfile).offset(skip).limit(limit).all()
+    return db.query(models.CatererProfile).filter(
+        models.CatererProfile.status == 'Published',
+        models.CatererProfile.is_verified == True,
+        models.CatererProfile.account_status == 'Active'
+    ).offset(skip).limit(limit).all()
 
 def get_caterer(db: Session, caterer_id: int):
     return db.query(models.CatererProfile).filter(models.CatererProfile.id == caterer_id).first()

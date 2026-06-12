@@ -39,7 +39,11 @@ async def read_root(request: Request, db: Session = Depends(database.get_db)):
         db.rollback()
 
     packages = db.query(models.CateringPackage).filter(models.CateringPackage.is_active == True).limit(3).all()
-    caterers = db.query(models.CatererProfile).filter(models.CatererProfile.status == 'Published').order_by(models.CatererProfile.rating.desc()).limit(5).all()
+    caterers = db.query(models.CatererProfile).filter(
+        models.CatererProfile.status == 'Published',
+        models.CatererProfile.is_verified == True,
+        models.CatererProfile.account_status == 'Active'
+    ).order_by(models.CatererProfile.rating.desc()).limit(5).all()
 
     highlighted_reviews = db.query(models.PlatformFeedback).filter(
         models.PlatformFeedback.is_archived == False
@@ -50,7 +54,11 @@ async def read_root(request: Request, db: Session = Depends(database.get_db)):
         highlighted_reviews = db.query(models.Review).filter(models.Review.rating >= 4).order_by(models.Review.created_at.desc()).limit(3).all()
     
     # Stats for the "Trust Counter" section
-    total_caterers = db.query(models.CatererProfile).filter(models.CatererProfile.status == 'Published').count()
+    total_caterers = db.query(models.CatererProfile).filter(
+        models.CatererProfile.status == 'Published',
+        models.CatererProfile.is_verified == True,
+        models.CatererProfile.account_status == 'Active'
+    ).count()
     # Count actual events that are paid or completed
 
 

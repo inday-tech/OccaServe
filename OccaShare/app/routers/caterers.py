@@ -42,6 +42,12 @@ def get_caterer_profile(request: Request, caterer_id: int, db: Session = Depends
     caterer = crud.get_caterer(db, caterer_id=caterer_id)
     if not caterer:
         raise HTTPException(status_code=404, detail="Caterer not found")
+        
+    # Check if profile is public, otherwise restrict to owner
+    is_public = (caterer.status == 'Published' and caterer.is_verified == True and caterer.account_status == 'Active')
+    if not is_public:
+        if not user or user.id != caterer.user_id:
+            raise HTTPException(status_code=404, detail="Caterer not found")
     
     # Unique views per account — only count once per logged-in user
     if user:
@@ -103,6 +109,12 @@ def get_caterer_by_slug(request: Request, slug: str, db: Session = Depends(datab
             user = auth.verify_token(param, db)
         except: pass
 
+    # Check if profile is public, otherwise restrict to owner
+    is_public = (caterer.status == 'Published' and caterer.is_verified == True and caterer.account_status == 'Active')
+    if not is_public:
+        if not user or user.id != caterer.user_id:
+            raise HTTPException(status_code=404, detail="Caterer not found")
+
     active_packages = [p for p in caterer.packages if p.is_active and p.status == 'active']
     return templates.TemplateResponse("caterer/profile.html", {
         "request": request, 
@@ -130,6 +142,10 @@ def unified_search_api(request: Request, q: str = "", lat: Optional[float] = Non
         models.CatererProfile, price_sq.c.min_price
     ).outerjoin(
         price_sq, models.CatererProfile.id == price_sq.c.caterer_id
+    ).filter(
+        models.CatererProfile.status == 'Published',
+        models.CatererProfile.is_verified == True,
+        models.CatererProfile.account_status == 'Active'
     )
 
     if q and q.strip():
