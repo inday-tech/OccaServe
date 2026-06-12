@@ -1167,16 +1167,29 @@ currentPassInput.addEventListener('input', validateRequirements);
 
         window.autoGeocodeAddress = function(addressStr) {
             if (!geocoder || !map || !marker) return;
-            geocoder.geocode({ address: addressStr }, (results, status) => {
-                if (status === 'OK' && results[0]) {
-                    const loc = results[0].geometry.location;
-                    map.setCenter(loc);
-                    map.setZoom(16);
-                    marker.setPosition(loc);
-                    marker.setAnimation(google.maps.Animation.DROP);
-                    updateCoords(loc.lat(), loc.lng());
-                }
-            });
+            
+            function attemptGeocode(query) {
+                if (!query || query.trim() === 'Philippines') return;
+                geocoder.geocode({ address: query }, (results, status) => {
+                    if (status === 'OK' && results[0]) {
+                        const loc = results[0].geometry.location;
+                        map.setCenter(loc);
+                        map.setZoom(16);
+                        marker.setPosition(loc);
+                        marker.setAnimation(google.maps.Animation.DROP);
+                        updateCoords(loc.lat(), loc.lng());
+                    } else {
+                        const parts = query.split(',');
+                        if (parts.length > 2) {
+                            parts.shift(); // remove the most specific part
+                            attemptGeocode(parts.join(',').trim());
+                        } else {
+                            console.warn("Geocoding failed for:", addressStr);
+                        }
+                    }
+                });
+            }
+            attemptGeocode(addressStr);
         };
 
         function updateCoords(lat, lng) {
@@ -1330,10 +1343,11 @@ currentPassInput.addEventListener('input', validateRequirements);
                             map.setZoom(17);
                             marker.setPosition(loc);
                             marker.setAnimation(google.maps.Animation.DROP);
-                            // Do NOT call updateCoords here — user must explicitly confirm by dragging/clicking
-                            // Show a hint to the user
+                            // Auto-update the coordinates so it saves properly without confusing the user
+                            updateCoords(loc.lat(), loc.lng());
+                            
                             const display = document.getElementById('latDisplay');
-                            if (display) display.closest('.coords-display').style.borderColor = '#f97316';
+                            if (display) display.closest('.coords-display').style.borderColor = '#10b981';
                         }
                     });
                 }
@@ -1429,22 +1443,29 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             await fetchCities(activeProvCode, savedCityCode);
         }
+        
+        // Auto-geocode on load moved to after barangays are loaded to prevent race conditions
     } catch (e) { console.error('Failed to load provinces:', e); }
 
     function triggerAutoGeocode() {
         const prov = provNameHidden.value;
         const city = cityNameHidden.value;
         const brgy = brgyNameHidden.value;
+        const detailStr = document.getElementById('businessAddress').value.trim();
+        
         let parts = [];
-        if (brgy) parts.push("Brgy. " + brgy);
-        if (city) parts.push(city);
-        if (prov) parts.push(prov);
+        if (detailStr) parts.push(detailStr);
+        if (brgy && !detailStr.toLowerCase().includes(brgy.toLowerCase())) parts.push("Brgy. " + brgy);
+        if (city && !detailStr.toLowerCase().includes(city.toLowerCase())) parts.push(city);
+        if (prov && !detailStr.toLowerCase().includes(prov.toLowerCase())) parts.push(prov);
         parts.push("Philippines");
         const addressStr = parts.join(", ");
-        if (window.autoGeocodeAddress && (city || prov)) {
+        if (window.autoGeocodeAddress && (city || prov || detailStr)) {
             window.autoGeocodeAddress(addressStr);
         }
     }
+
+    document.getElementById('businessAddress').addEventListener('blur', triggerAutoGeocode);
 
     provSelect.addEventListener('change', async (e) => {
         const code = e.target.value;
@@ -1565,6 +1586,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (brgySelect.options[brgySelect.selectedIndex]) {
                     brgyNameHidden.value = brgySelect.options[brgySelect.selectedIndex].text;
                 }
+            }
+
+            // After everything is fully loaded (Provinces -> Cities -> Barangays), check if we need to auto-geocode
+            const currentLat = parseFloat(document.getElementById('latInput').value || '0');
+            if (currentLat === 0 || currentLat === 14.2811) {
+                // Give the UI a tiny moment to register the updated hidden inputs, then geocode
+                setTimeout(triggerAutoGeocode, 300);
             }
         } catch (e) {
             console.error('Failed to load barangays:', e);
