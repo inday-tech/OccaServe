@@ -1167,16 +1167,29 @@ currentPassInput.addEventListener('input', validateRequirements);
 
         window.autoGeocodeAddress = function(addressStr) {
             if (!geocoder || !map || !marker) return;
-            geocoder.geocode({ address: addressStr }, (results, status) => {
-                if (status === 'OK' && results[0]) {
-                    const loc = results[0].geometry.location;
-                    map.setCenter(loc);
-                    map.setZoom(16);
-                    marker.setPosition(loc);
-                    marker.setAnimation(google.maps.Animation.DROP);
-                    updateCoords(loc.lat(), loc.lng());
-                }
-            });
+            
+            function attemptGeocode(query) {
+                if (!query || query.trim() === 'Philippines') return;
+                geocoder.geocode({ address: query }, (results, status) => {
+                    if (status === 'OK' && results[0]) {
+                        const loc = results[0].geometry.location;
+                        map.setCenter(loc);
+                        map.setZoom(16);
+                        marker.setPosition(loc);
+                        marker.setAnimation(google.maps.Animation.DROP);
+                        updateCoords(loc.lat(), loc.lng());
+                    } else {
+                        const parts = query.split(',');
+                        if (parts.length > 2) {
+                            parts.shift(); // remove the most specific part
+                            attemptGeocode(parts.join(',').trim());
+                        } else {
+                            console.warn("Geocoding failed for:", addressStr);
+                        }
+                    }
+                });
+            }
+            attemptGeocode(addressStr);
         };
 
         function updateCoords(lat, lng) {
