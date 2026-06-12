@@ -1782,6 +1782,9 @@ const initKyc = () => {
         const activeBox = document.getElementById('active-challenges-box');
         if (activeBox) activeBox.style.display = 'none';
 
+        const scannerContainer = document.getElementById('scanner-container');
+        if (scannerContainer) scannerContainer.style.display = 'none';
+
         document.getElementById('step-processing').style.display = 'block';
         document.getElementById('status-text').innerText = 'Verifying Biometrics...';
         document.getElementById('status-text').style.color = '';
