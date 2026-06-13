@@ -386,21 +386,27 @@
         const desc = isPurge ? 'This action is irreversible. All data related to this record will be permanently deleted.' : 'This will return the record to the active registry.';
         const variant = isPurge ? 'danger' : 'success';
 
-        openConfirmModal(title, desc, () => {
-            Swal.fire({ title: 'Processing Transaction...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-            fetch(`/admin/api/archives/${type}/${id}/${action}`, { method: 'POST' })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        Swal.fire('Success', data.message, 'success').then(() => location.reload());
-                    } else {
-                        Swal.fire('Operation Failed', data.message, 'error');
-                    }
-                })
-                .catch(() => {
-                    Swal.fire('Critical Error', 'Communication with the governance server failed.', 'error');
-                });
-        }, { variant: variant });
+        openDiamondModal({
+            title: title,
+            desc: desc,
+            variant: variant,
+            confirmText: isPurge ? 'Yes, Delete' : 'Restore',
+            onConfirm: () => {
+                Swal.fire({ title: 'Processing Transaction...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                fetch(`/admin/api/archives/${type}/${id}/${action}`, { method: 'POST' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire('Success', data.message, 'success').then(() => location.reload());
+                        } else {
+                            Swal.fire('Operation Failed', data.message, 'error');
+                        }
+                    })
+                    .catch(() => {
+                        Swal.fire('Critical Error', 'Communication with the governance server failed.', 'error');
+                    });
+            }
+        });
     }
 </script>
 {% endblock %}

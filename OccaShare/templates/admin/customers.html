@@ -547,33 +547,71 @@
     }
 
     function suspendAccount(id) {
-        openReasonModal('Suspend Account?', 'Provide a reason for the suspension. The customer will lose platform access.', (reason) => {
-            Swal.fire({ title: 'Suspending...', didOpen: () => Swal.showLoading() });
-            const fd = new FormData();
-            fd.append('reason', reason);
-            fetch(`/admin/api/customers/${id}/suspend`, { method: 'POST', body: fd })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) Swal.fire('Suspended', data.message, 'success').then(() => location.reload());
-                    else Swal.fire('Error', data.message, 'error');
-                })
-                .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
-        }, { variant: 'danger' });
+        openDiamondModal({
+            title: 'Suspend Account?',
+            desc: 'Provide a reason for the suspension. The customer will lose platform access.',
+            html: `
+                <input id="suspendReason" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-family: 'Poppins', sans-serif;" placeholder="Enter reason for suspension" autocomplete="off">
+                <div id="suspendReasonError" style="color: #ef4444; font-size: 0.75rem; display: none; margin-top: 4px;">Reason is required.</div>
+            `,
+            variant: 'danger',
+            confirmText: 'Suspend Account',
+            preConfirm: () => {
+                const reason = document.getElementById('suspendReason').value.trim();
+                if (!reason) {
+                    document.getElementById('suspendReasonError').style.display = 'block';
+                    document.getElementById('suspendReason').style.borderColor = '#ef4444';
+                    return false;
+                }
+                return reason;
+            },
+            onConfirm: (reason) => {
+                Swal.fire({ title: 'Suspending...', didOpen: () => Swal.showLoading() });
+                const fd = new FormData();
+                fd.append('reason', reason);
+                fetch(`/admin/api/customers/${id}/suspend`, { method: 'POST', body: fd })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) Swal.fire('Suspended', data.message, 'success').then(() => location.reload());
+                        else Swal.fire('Error', data.message, 'error');
+                    })
+                    .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
+            }
+        });
     }
 
     function sendAlert(id) {
-        openReasonModal('Send Notification', "This message will be sent directly to the customer.", (message) => {
-            Swal.fire({ title: 'Sending...', didOpen: () => Swal.showLoading() });
-            const fd = new FormData();
-            fd.append('message', message);
-            fetch(`/admin/api/customers/${id}/send-alert`, { method: 'POST', body: fd })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) Swal.fire('Sent', data.message, 'success');
-                    else Swal.fire('Error', data.message, 'error');
-                })
-                .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
-        }, { variant: 'info' });
+        openDiamondModal({
+            title: 'Send Notification',
+            desc: 'This message will be sent directly to the customer.',
+            html: `
+                <textarea id="alertMessage" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-family: 'Poppins', sans-serif; resize: none; min-height: 80px;" placeholder="Enter message here"></textarea>
+                <div id="alertMessageError" style="color: #ef4444; font-size: 0.75rem; display: none; margin-top: 4px;">Message is required.</div>
+            `,
+            variant: 'info',
+            confirmText: 'Send Message',
+            preConfirm: () => {
+                const message = document.getElementById('alertMessage').value.trim();
+                if (!message) {
+                    document.getElementById('alertMessageError').style.display = 'block';
+                    document.getElementById('alertMessage').style.borderColor = '#ef4444';
+                    return false;
+                }
+                return message;
+            },
+            onConfirm: (message) => {
+                Swal.fire({ title: 'Sending...', didOpen: () => Swal.showLoading() });
+                const fd = new FormData();
+                fd.append('message', message);
+                fetch(`/admin/api/customers/${id}/send-alert`, { method: 'POST', body: fd })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) Swal.fire('Sent', data.message, 'success');
+                        else Swal.fire('Error', data.message, 'error');
+                    })
+                    .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
+            }
+        });
     }
 
     function viewLedger(id) {
@@ -587,16 +625,22 @@
 
 
     function archiveItem(type, id) {
-        openConfirmModal('Archive Account?', 'This will move the customer to archives. You can restore them if needed.', () => {
-            Swal.fire({ title: 'Archiving...', didOpen: () => Swal.showLoading() });
-            fetch(`/admin/api/archives/${type}/${id}/archive`, { method: 'POST' })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) Swal.fire('Archived', data.message, 'success').then(() => location.reload());
-                    else Swal.fire('Error', data.message, 'error');
-                })
-                .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
-        }, { variant: 'archive' });
+        openDiamondModal({
+            title: 'Archive Account?',
+            desc: 'This will move the customer to archives. You can restore them if needed.',
+            variant: 'archive',
+            confirmText: 'Archive',
+            onConfirm: () => {
+                Swal.fire({ title: 'Archiving...', didOpen: () => Swal.showLoading() });
+                fetch(`/admin/api/archives/${type}/${id}/archive`, { method: 'POST' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) Swal.fire('Archived', data.message, 'success').then(() => location.reload());
+                        else Swal.fire('Error', data.message, 'error');
+                    })
+                    .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
+            }
+        });
     }
 
     // Initialize

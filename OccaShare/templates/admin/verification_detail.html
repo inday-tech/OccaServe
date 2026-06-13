@@ -448,18 +448,22 @@
         const notes = document.querySelector('textarea[name="notes"]').value;
         
         if (!notes.trim()) {
-            Swal.fire('Reason Required', 'Please provide a reason in the Admin Notes.', 'warning');
+            openDiamondModal({
+                title: 'Reason Required',
+                desc: 'Please provide a reason in the Admin Notes before continuing.',
+                variant: 'warning',
+                confirmText: 'Okay',
+                onConfirm: () => {}
+            });
             return;
         }
 
-        Swal.fire({
+        openDiamondModal({
             title: title,
-            text: action === 'approve' ? "This user will be approved to use the platform." : "This user will be rejected and cannot login until they fix the issue.",
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Yes, Submit'
-        }).then((result) => {
-            if (result.isConfirmed) {
+            desc: action === 'approve' ? "This user will be approved to use the platform." : "This user will be rejected and cannot login until they fix the issue.",
+            variant: action === 'approve' ? 'success' : 'danger',
+            confirmText: 'Yes, Submit',
+            onConfirm: () => {
                 const form = document.getElementById('kycActionForm');
                 const hidden = document.createElement('input');
                 hidden.type = 'hidden'; hidden.name = 'action'; hidden.value = action;
@@ -478,14 +482,30 @@
                 const res = await fetch('/admin/api/kyc/{{ verification.id }}/re-scan', { method: 'POST' });
                 const data = await res.json();
                 if (data.success) {
-                    Swal.fire('Success', 'AI intelligence updated successfully.', 'success').then(() => location.reload());
+                    openDiamondModal({
+                        title: 'Success',
+                        desc: 'AI intelligence updated successfully.',
+                        variant: 'success',
+                        confirmText: 'Continue',
+                        onConfirm: () => location.reload()
+                    });
                 } else {
-                    Swal.fire('Error', data.message, 'error');
-                    rescanBtn.disabled = false;
+                    openDiamondModal({
+                        title: 'Error',
+                        desc: data.message,
+                        variant: 'danger',
+                        confirmText: 'Okay',
+                        onConfirm: () => { rescanBtn.disabled = false; }
+                    });
                 }
             } catch (err) {
-                Swal.fire('Error', 'System connection failed.', 'error');
-                rescanBtn.disabled = false;
+                openDiamondModal({
+                    title: 'Error',
+                    desc: 'System connection failed.',
+                    variant: 'danger',
+                    confirmText: 'Okay',
+                    onConfirm: () => { rescanBtn.disabled = false; }
+                });
             }
         });
     }

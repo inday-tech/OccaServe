@@ -393,27 +393,31 @@
         </div>
     </div>
 
-    <!-- Administrative Confirmation Modal (Simple Yes/No) -->
-    <div id="confirmModal" class="admin-modal-overlay">
-        <div class="admin-modal-card" style="max-width: 450px; width: 95%; text-align: center;">
-            <div class="modal-body-clean" style="padding: 3rem 2rem;">
-                <div id="confirmModalIconBox"
+    <!-- Universal Diamond Modal Engine -->
+    <div id="diamondModal" class="admin-modal-overlay" style="z-index: 99999;">
+        <div class="admin-modal-card" style="max-width: 450px; width: 95%; text-align: center; border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+            <div class="modal-body-clean" style="padding: 2.5rem 2rem;">
+                <div id="diamondModalIconBox"
                     style="width: 80px; height: 80px; background: #fff7ed; color: #f97316; border-radius: 24px; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin: 0 auto 1.5rem; box-shadow: 0 10px 15px -3px rgba(249, 115, 22, 0.2);">
-                    <i class="fas fa-exclamation-triangle"></i>
+                    <i id="diamondModalIcon" class="fas fa-exclamation-triangle"></i>
                 </div>
-                <h3 id="confirmModalTitle"
-                    style="font-size: 1.25rem; font-weight: 800; color: var(--adm-navy); margin-bottom: 0.75rem;">Are
-                    you sure?</h3>
-                <p id="confirmModalDesc"
-                    style="font-size: 0.9rem; color: var(--adm-muted); font-weight: 500; line-height: 1.6; margin-bottom: 2rem;">
-                    This action may have irreversible consequences on the platform's operational integrity.</p>
+                <h3 id="diamondModalTitle"
+                    style="font-size: 1.25rem; font-weight: 800; color: var(--adm-navy); margin-bottom: 0.75rem;">Action Title</h3>
+                <p id="diamondModalDesc"
+                    style="font-size: 0.9rem; color: var(--adm-muted); font-weight: 500; line-height: 1.6; margin-bottom: 1.5rem;">
+                    Action description goes here.</p>
+                
+                <!-- Dynamic Inputs Container -->
+                <div id="diamondModalInputs" style="margin-bottom: 2rem; display: none; flex-direction: column; gap: 1rem; text-align: left;">
+                    <!-- Injected dynamically via JS -->
+                </div>
+
                 <div style="display: flex; gap: 12px; justify-content: center;">
-                    <button type="button" class="btn-clean"
-                        style="background: white; border: 1px solid #e2e8f0; color: var(--adm-navy); font-weight: 700; flex: 1; padding: 0.75rem;"
-                        onclick="closeConfirmModal()">No, Abort</button>
-                    <button id="confirmSubmitBtn" class="btn-clean"
-                        style="background: var(--adm-primary); color: white; font-weight: 800; flex: 1; padding: 0.75rem;">Yes,
-                        Continue</button>
+                    <button type="button" class="btn-clean" id="diamondCancelBtn"
+                        style="background: white; border: 1px solid #e2e8f0; color: var(--adm-navy); font-weight: 700; flex: 1; padding: 0.75rem; border-radius: 12px;"
+                        onclick="closeDiamondModal()">No, Abort</button>
+                    <button id="diamondSubmitBtn" class="btn-clean"
+                        style="background: var(--adm-primary); color: white; font-weight: 800; flex: 1; padding: 0.75rem; border-radius: 12px; border: none;">Yes, Continue</button>
                 </div>
             </div>
         </div>
@@ -485,43 +489,82 @@
             document.getElementById('reasonModal').classList.remove('active');
         }
 
-        function openConfirmModal(title, desc, callback, options = {}) {
-            const modal = document.getElementById('confirmModal');
-            const titleEl = document.getElementById('confirmModalTitle');
-            const descEl = document.getElementById('confirmModalDesc');
-            const submitBtn = document.getElementById('confirmSubmitBtn');
-            const iconBox = document.getElementById('confirmModalIconBox');
+        function openDiamondModal(config) {
+            const modal = document.getElementById('diamondModal');
+            const titleEl = document.getElementById('diamondModalTitle');
+            const descEl = document.getElementById('diamondModalDesc');
+            const submitBtn = document.getElementById('diamondSubmitBtn');
+            const cancelBtn = document.getElementById('diamondCancelBtn');
+            const iconBox = document.getElementById('diamondModalIconBox');
+            const icon = document.getElementById('diamondModalIcon');
+            const inputsContainer = document.getElementById('diamondModalInputs');
 
-            titleEl.innerText = title;
-            descEl.innerText = desc;
+            // Apply Texts
+            titleEl.innerHTML = config.title || 'Are you sure?';
+            descEl.innerHTML = config.desc || '';
+            submitBtn.innerText = config.confirmText || 'Yes, Continue';
+            cancelBtn.innerText = config.cancelText || 'No, Abort';
 
-            if (options.variant === 'danger') {
+            // Apply Visuals (Variants)
+            if (config.variant === 'danger') {
                 iconBox.style.background = '#fef2f2';
                 iconBox.style.color = '#ef4444';
-                iconBox.innerHTML = '<i class="fas fa-trash-alt"></i>';
+                iconBox.style.boxShadow = '0 10px 15px -3px rgba(239, 68, 68, 0.2)';
+                icon.className = config.icon || 'fas fa-trash-alt';
                 submitBtn.style.background = '#ef4444';
-            } else if (options.variant === 'archive') {
+            } else if (config.variant === 'success') {
+                iconBox.style.background = '#ecfdf5';
+                iconBox.style.color = '#10b981';
+                iconBox.style.boxShadow = '0 10px 15px -3px rgba(16, 185, 129, 0.2)';
+                icon.className = config.icon || 'fas fa-check-circle';
+                submitBtn.style.background = '#10b981';
+            } else if (config.variant === 'info') {
+                iconBox.style.background = '#eff6ff';
+                iconBox.style.color = '#3b82f6';
+                iconBox.style.boxShadow = '0 10px 15px -3px rgba(59, 130, 246, 0.2)';
+                icon.className = config.icon || 'fas fa-info-circle';
+                submitBtn.style.background = '#3b82f6';
+            } else if (config.variant === 'archive') {
                 iconBox.style.background = '#f1f5f9';
                 iconBox.style.color = '#64748b';
-                iconBox.innerHTML = '<i class="fas fa-archive"></i>';
+                iconBox.style.boxShadow = 'none';
+                icon.className = config.icon || 'fas fa-archive';
                 submitBtn.style.background = '#64748b';
             } else {
+                // Default warning
                 iconBox.style.background = '#fff7ed';
                 iconBox.style.color = '#f97316';
-                iconBox.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
-                submitBtn.style.background = 'var(--adm-primary)';
+                iconBox.style.boxShadow = '0 10px 15px -3px rgba(249, 115, 22, 0.2)';
+                icon.className = config.icon || 'fas fa-exclamation-triangle';
+                submitBtn.style.background = '#f97316';
+            }
+
+            // Handle Dynamic Inputs
+            if (config.html) {
+                inputsContainer.innerHTML = config.html;
+                inputsContainer.style.display = 'flex';
+            } else {
+                inputsContainer.innerHTML = '';
+                inputsContainer.style.display = 'none';
             }
 
             modal.classList.add('active');
 
             submitBtn.onclick = () => {
-                modal.classList.remove('active');
-                callback();
+                if (config.preConfirm) {
+                    const result = config.preConfirm();
+                    if (result === false) return; // Validation failed
+                    modal.classList.remove('active');
+                    config.onConfirm(result);
+                } else {
+                    modal.classList.remove('active');
+                    config.onConfirm();
+                }
             };
         }
 
-        function closeConfirmModal() {
-            document.getElementById('confirmModal').classList.remove('active');
+        function closeDiamondModal() {
+            document.getElementById('diamondModal').classList.remove('active');
         }
 
         // --- Custom SweetAlert Styling Override ---
@@ -537,12 +580,12 @@
 
         // Consistent Logout Modal
         function confirmLogout() {
-            openConfirmModal(
-                'Log Out?', 
-                'Are you sure you want to securely end your admin session?', 
-                () => { window.location.href = '/auth/logout'; }, 
-                { variant: 'warning' }
-            );
+            openDiamondModal({
+                title: 'Log Out?',
+                desc: 'Are you sure you want to securely end your admin session?',
+                variant: 'warning',
+                onConfirm: () => { window.location.href = '/auth/logout'; }
+            });
         }
     </script>
 

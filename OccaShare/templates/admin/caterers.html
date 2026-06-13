@@ -998,49 +998,53 @@
     }
 
     function restorePartner(id) {
-        Swal.fire({
+        openDiamondModal({
             title: 'Restore Access?',
-            text: 'This will allow the caterer to operate again.',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Restore'
-        }).then((result) => {
-            if (result.isConfirmed) executePartnerAction(id, 'activate');
+            desc: 'This will allow the caterer to operate and receive bookings again.',
+            variant: 'success',
+            confirmText: 'Restore',
+            onConfirm: () => executePartnerAction(id, 'activate')
         });
     }
 
     function flagPartner(id) {
-        Swal.fire({
+        openDiamondModal({
             title: 'Require Re-verification',
-            text: 'Why do you need to re-verify this caterer?',
-            input: 'select',
-            inputOptions: {
-                'Expired Business Permit': 'Expired Business Permit',
-                'Routine Annual Compliance': 'Routine Annual Compliance',
-                'Customer Verification Request': 'Customer Verification Request'
-            },
-            inputPlaceholder: 'Select reason',
-            showCancelButton: true,
-            confirmButtonText: 'Flag'
-        }).then((result) => {
-            if (result.isConfirmed) executePartnerAction(id, 'flag', result.value);
+            desc: 'Why do you need to re-verify this caterer?',
+            html: `
+                <select id="flagReason" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-family: 'Poppins', sans-serif;">
+                    <option value="Expired Business Permit">Expired Business Permit</option>
+                    <option value="Routine Annual Compliance">Routine Annual Compliance</option>
+                    <option value="Customer Verification Request">Customer Verification Request</option>
+                </select>
+            `,
+            variant: 'warning',
+            confirmText: 'Flag Caterer',
+            preConfirm: () => document.getElementById('flagReason').value,
+            onConfirm: (reason) => executePartnerAction(id, 'flag', reason)
         });
     }
 
     function suspendPartner(id) {
-        Swal.fire({
+        openDiamondModal({
             title: 'Suspend / Ban Caterer',
-            text: 'To suspend this account, you must enter the Customer Report ID or Dispute Reference Number as proof.',
-            input: 'text',
-            inputPlaceholder: 'e.g. REP-10293 or "Fraud proven on Booking 442"',
-            showCancelButton: true,
-            confirmButtonText: 'Suspend Account',
-            confirmButtonColor: '#ef4444',
-            inputValidator: (value) => {
-                if (!value || value.trim().length < 5) return 'You must provide a valid Report ID or Reference (min 5 chars).';
-            }
-        }).then((result) => {
-            if (result.isConfirmed) executePartnerAction(id, 'suspend', result.value);
+            desc: 'To suspend this account, you must enter the Customer Report ID or Dispute Reference Number as proof.',
+            html: `
+                <input id="suspendReason" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-family: 'Poppins', sans-serif;" placeholder='e.g. REP-10293 or "Fraud proven on Booking 442"' autocomplete="off">
+                <div id="suspendReasonError" style="color: #ef4444; font-size: 0.75rem; display: none; margin-top: 4px;">You must provide a valid Report ID or Reference (min 5 chars).</div>
+            `,
+            variant: 'danger',
+            confirmText: 'Suspend Account',
+            preConfirm: () => {
+                const reason = document.getElementById('suspendReason').value.trim();
+                if (!reason || reason.length < 5) {
+                    document.getElementById('suspendReasonError').style.display = 'block';
+                    document.getElementById('suspendReason').style.borderColor = '#ef4444';
+                    return false;
+                }
+                return reason;
+            },
+            onConfirm: (reason) => executePartnerAction(id, 'suspend', reason)
         });
     }
 </script>

@@ -2504,69 +2504,7 @@ async def admin_bookings(
         "active_page": "bookings"
     })
 
-@router.get("/api/bookings/{booking_id}/details")
-async def api_booking_details(
-    booking_id: int,
-    db: Session = Depends(database.get_db),
-    user: models.User = Depends(admin_only)
-):
-    booking = db.query(models.Booking).get(booking_id)
-    if not booking:
-        return {"success": False, "message": "Booking not found"}
-        
-    customer_data = None
-    if booking.user:
-        v = booking.user.identity_verification
-        customer_data = {
-            "name": f"{booking.user.first_name} {booking.user.last_name}",
-            "email": booking.user.email,
-            "kyc": {
-                "status": v.verification_status if v else "Not Started",
-                "id_url": v.document_url if v else None,
-                "selfie_url": v.selfie_url if v else None,
-                # Defensive check for match_score to prevent AttributeError
-                "match_score": int(getattr(v, 'match_score', 0.0) * 100) if v else 0,
-                "liveness": getattr(v, 'liveness_status', "N/A") if v else "N/A",
-                "ocr_name": v.ocr_data.get("full_name") if v and v.ocr_data else "N/A"
-            } if v else None
-        }
 
-    return {
-        "success": True,
-        "booking": {
-            "id": booking.id,
-            "event_name": booking.event_name,
-            "event_type": booking.event_type,
-            "event_date": booking.event_date.strftime('%b %d, %Y') if booking.event_date else "TBD",
-            "event_time": booking.event_time.strftime('%I:%M %p') if booking.event_time else "TBD",
-            "venue_address": booking.venue_address,
-            "guest_count": booking.guest_count,
-            "status": booking.status,
-            "payment_status": booking.payment_status,
-            "payment_method": booking.payment_method,
-            "total_amount": float(booking.total_amount or 0),
-            "payment_reference": booking.payment_reference,
-            "payment_proof_url": booking.payment_proof_url,
-            "balance_proof_url": booking.balance_proof_url,
-            "is_caterer_verified": booking.caterer.verification_status == "Verified" if booking.caterer else False,
-            "payout_status": "Settled" if booking.payout_id else "Pending Settlement",
-            "customer": customer_data,
-            "selected_items": [
-                {
-                    "name": item.menu_item.name if item.menu_item else "Deleted Item",
-                    "price": float(item.price or 0),
-                    "quantity": 1 # For now
-                } for item in (booking.selected_items or [])
-            ],
-            "history": [
-                {
-                    "status": h.status,
-                    "notes": h.notes,
-                    "created_at": h.created_at.strftime('%b %d, %Y %I:%M %p')
-                } for h in sorted(booking.history, key=lambda x: x.created_at, reverse=True)
-            ]
-        }
-    }
 
 # ─── Customer Management ───────────────────────────────────────────────────────
 
@@ -2896,6 +2834,19 @@ async def get_booking_details(
                 "caterer_name": booking.caterer.business_name if booking.caterer else "N/A",
                 "customer_name": f"{booking.user.first_name} {booking.user.last_name}" if booking.user else "Anonymous User",
                 "special_requests": booking.special_requests or "None specified.",
+                "payment_method": booking.payment_method,
+                "payment_proof_url": booking.payment_proof_url,
+                "balance_proof_url": booking.balance_proof_url,
+                "created_at": booking.created_at.strftime('%b %d, %Y %I:%M %p') if booking.created_at else "Unknown",
+                "history": [
+                    {
+                        "status": h.status,
+                        "notes": h.notes,
+                        "created_at": h.created_at.strftime('%b %d, %Y %I:%M %p')
+                    } for h in sorted(booking.history, key=lambda x: x.created_at, reverse=True)
+                ],
+                "package_name": booking.package.name if booking.package else "Custom Service",
+                "downpayment_amount": float(booking.total_amount or 0) * 0.5, # Assuming 50% for display
                 "risk_intelligence": {
                     "score": risk_score,
                     "indicators": fraud_indicators,
@@ -2969,22 +2920,39 @@ async def administrative_cancel_booking(
         return {"success": False, "message": "Booking not found"}
     
     booking.status = "cancelled"
-    booking.status_reason = reason # Assuming this field exists or can be stored
+    booking.payment_status = "cancelled"
+    
+    # Timeline
+    history = models.BookingHistory(booking_id=booking.id, status="CANCELLED BY ADMIN", notes=reason)
+    db.add(history)
     
     # Log action
     audit = models.AuditLog(
         user_id=user.id,
-        action="BOOKING_CANCEL",
-        notes=f"Admin cancelled booking #BK-{booking_id}. Reason: {reason}"
+        action="FORCE_CANCEL_BOOKING",
+        notes=f"System Administrator cancelled booking #BK-{booking_id}. Reason: {reason}"
     )
     db.add(audit)
+    
+    # Notify Customer & Caterer
+    for target_id in [booking.user_id, booking.caterer.user_id if booking.caterer else None]:
+        if target_id:
+            db.add(models.Notification(
+                user_id=target_id,
+                title="Booking Cancelled by Administrator",
+                message=f"Your booking #BK-{booking_id} has been cancelled by the System Administrator. Reason: {reason}",
+                type="warning"
+            ))
+            
     db.commit()
     
-    return {"success": True, "message": f"Booking #BK-{booking_id} terminated by administration."}
+    return {"success": True, "message": f"Booking #BK-{booking_id} terminated."}
 
 @router.post("/api/bookings/{booking_id}/flag-dispute")
 async def flag_booking_dispute(
     booking_id: int,
+    reason: str = Form(...),
+    description: str = Form(...),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
@@ -2992,15 +2960,28 @@ async def flag_booking_dispute(
     if not booking:
         return {"success": False, "message": "Booking not found"}
     
-    # If there's a specific dispute field, use it. Otherwise, use investigation_notes or similar
-    booking.status = "disputed"
+    booking.status = "under_dispute"
+    
+    # Timeline
+    history = models.BookingHistory(booking_id=booking.id, status="UNDER DISPUTE", notes=f"{reason}: {description}")
+    db.add(history)
     
     audit = models.AuditLog(
         user_id=user.id,
-        action="BOOKING_DISPUTE",
-        notes=f"Flagged booking #BK-{booking_id} for dispute resolution."
+        action="FLAG_DISPUTE",
+        notes=f"Flagged booking #BK-{booking_id} for dispute. Category: {reason}. Notes: {description}"
     )
     db.add(audit)
+    
+    for target_id in [booking.user_id, booking.caterer.user_id if booking.caterer else None]:
+        if target_id:
+            db.add(models.Notification(
+                user_id=target_id,
+                title="Booking Under Dispute",
+                message=f"Booking #BK-{booking_id} has been placed under dispute review. Reason: {reason}",
+                type="warning"
+            ))
+            
     db.commit()
     
     return {"success": True, "message": f"Booking #BK-{booking_id} flagged for resolution."}
@@ -3008,6 +2989,7 @@ async def flag_booking_dispute(
 @router.post("/api/bookings/{booking_id}/send-alert")
 async def dispatch_booking_alert(
     booking_id: int,
+    category: str = Form(...),
     message: str = Form(...),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
@@ -3021,14 +3003,63 @@ async def dispatch_booking_alert(
         if target_id:
             new_notif = models.Notification(
                 user_id=target_id,
-                title=f"Administrative Alert: Booking #BK-{booking_id}",
-                message=message,
-                type="booking_alert"
+                title=f"System Notification: {category}",
+                message=f"Regarding #BK-{booking_id}: {message}",
+                type="info"
             )
             db.add(new_notif)
             
+    audit = models.AuditLog(
+        user_id=user.id,
+        action="SEND_SYSTEM_ALERT",
+        notes=f"Sent {category} alert for #BK-{booking_id}"
+    )
+    db.add(audit)
     db.commit()
     return {"success": True, "message": "Global booking alert dispatched successfully."}
+
+@router.post("/api/bookings/{booking_id}/verify-payment")
+async def admin_verify_payment(
+    booking_id: int,
+    action: str = Form(...), # "approve" or "reject"
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(admin_only)
+):
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking:
+        return {"success": False, "message": "Booking not found"}
+        
+    if action == "approve":
+        booking.payment_status = "verified"
+        history = models.BookingHistory(booking_id=booking.id, status="PAYMENT VERIFIED", notes="Payment proof verified by Administration")
+        db.add(history)
+        
+        # Notify
+        if booking.user_id:
+            db.add(models.Notification(user_id=booking.user_id, title="Payment Verified", message=f"Your payment for Booking #BK-{booking.id} has been verified successfully.", type="success"))
+        if booking.caterer and booking.caterer.user_id:
+            db.add(models.Notification(user_id=booking.caterer.user_id, title="Payment Verified", message=f"Payment for Booking #BK-{booking.id} has been verified.", type="success"))
+            
+    elif action == "reject":
+        booking.payment_status = "pending"
+        history = models.BookingHistory(booking_id=booking.id, status="PAYMENT REJECTED", notes="Payment proof rejected by Administration")
+        db.add(history)
+        
+        # Notify
+        if booking.user_id:
+            db.add(models.Notification(user_id=booking.user_id, title="Payment Rejected", message=f"Your payment proof for Booking #BK-{booking.id} was rejected. Please upload a valid proof of payment.", type="warning"))
+        if booking.caterer and booking.caterer.user_id:
+            db.add(models.Notification(user_id=booking.caterer.user_id, title="Payment Verification Failed", message=f"Payment verification failed for Booking #BK-{booking.id}.", type="warning"))
+            
+    audit = models.AuditLog(
+        user_id=user.id,
+        action=f"PAYMENT_{action.upper()}",
+        notes=f"{action.capitalize()}d payment for #BK-{booking_id}"
+    )
+    db.add(audit)
+    db.commit()
+    
+    return {"success": True, "message": f"Payment {action}d successfully."}
 
 @router.post("/api/notifications/{notification_id}/mark-read")
 async def mark_admin_notification_read(

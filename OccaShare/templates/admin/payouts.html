@@ -206,58 +206,62 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     async function approveInvoice(id) {
-        const { isConfirmed } = await Swal.fire({
+        openDiamondModal({
             title: 'Verify Settlement?',
-            text: "Are you sure you want to verify this payment? This will mark the caterer's commission debt for this invoice as settled.",
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Yes, Verify',
-            confirmButtonColor: '#10b981'
-        });
-
-        if (isConfirmed) {
-            Swal.fire({ title: 'Processing...', didOpen: () => Swal.showLoading() });
-            try {
-                const res = await fetch(`/admin/api/invoices/${id}/approve`, { method: 'POST' });
-                if (res.ok) {
-                    Swal.fire('Verified', 'Settlement verified successfully.', 'success').then(() => location.reload());
-                } else {
-                    Swal.fire('Error', 'Failed to verify settlement.', 'error');
+            desc: "Are you sure you want to verify this payment? This will mark the caterer's commission debt for this invoice as settled.",
+            variant: 'success',
+            confirmText: 'Yes, Verify',
+            onConfirm: async () => {
+                Swal.fire({ title: 'Processing...', didOpen: () => Swal.showLoading() });
+                try {
+                    const res = await fetch(`/admin/api/invoices/${id}/approve`, { method: 'POST' });
+                    if (res.ok) {
+                        Swal.fire('Verified', 'Settlement verified successfully.', 'success').then(() => location.reload());
+                    } else {
+                        Swal.fire('Error', 'Failed to verify settlement.', 'error');
+                    }
+                } catch (e) {
+                    Swal.fire('Error', 'Communication failure.', 'error');
                 }
-            } catch (e) {
-                Swal.fire('Error', 'Communication failure.', 'error');
             }
-        }
+        });
     }
 
     async function rejectInvoice(id) {
-        const { value: reason } = await Swal.fire({
+        openDiamondModal({
             title: 'Reject Settlement',
-            text: "Provide a reason for rejecting this payment proof (e.g., blurry image, invalid amount). The amount will be added back to the caterer's outstanding balance.",
-            icon: 'warning',
-            input: 'textarea',
-            inputPlaceholder: 'Reason for rejection...',
-            showCancelButton: true,
-            confirmButtonText: 'Reject Request',
-            confirmButtonColor: '#ef4444',
-            inputValidator: (value) => { if (!value) return 'A reason is mandatory!' }
-        });
-
-        if (reason) {
-            Swal.fire({ title: 'Processing...', didOpen: () => Swal.showLoading() });
-            try {
-                const fd = new FormData();
-                fd.append('reason', reason);
-                const res = await fetch(`/admin/api/invoices/${id}/reject`, { method: 'POST', body: fd });
-                if (res.ok) {
-                    Swal.fire('Rejected', 'Settlement request rejected.', 'success').then(() => location.reload());
-                } else {
-                    Swal.fire('Error', 'Failed to reject request.', 'error');
+            desc: "Provide a reason for rejecting this payment proof (e.g., blurry image, invalid amount). The amount will be added back to the caterer's outstanding balance.",
+            html: `
+                <textarea id="rejectReason" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-family: 'Poppins', sans-serif; resize: none; min-height: 80px;" placeholder="Reason for rejection..."></textarea>
+                <div id="rejectReasonError" style="color: #ef4444; font-size: 0.75rem; display: none; margin-top: 4px;">A reason is mandatory!</div>
+            `,
+            variant: 'danger',
+            confirmText: 'Reject Request',
+            preConfirm: () => {
+                const reason = document.getElementById('rejectReason').value.trim();
+                if (!reason) {
+                    document.getElementById('rejectReasonError').style.display = 'block';
+                    document.getElementById('rejectReason').style.borderColor = '#ef4444';
+                    return false;
                 }
-            } catch (e) {
-                Swal.fire('Error', 'Communication failure.', 'error');
+                return reason;
+            },
+            onConfirm: async (reason) => {
+                Swal.fire({ title: 'Processing...', didOpen: () => Swal.showLoading() });
+                try {
+                    const fd = new FormData();
+                    fd.append('reason', reason);
+                    const res = await fetch(`/admin/api/invoices/${id}/reject`, { method: 'POST', body: fd });
+                    if (res.ok) {
+                        Swal.fire('Rejected', 'Settlement request rejected.', 'success').then(() => location.reload());
+                    } else {
+                        Swal.fire('Error', 'Failed to reject request.', 'error');
+                    }
+                } catch (e) {
+                    Swal.fire('Error', 'Communication failure.', 'error');
+                }
             }
-        }
+        });
     }
 </script>
 {% endblock %}

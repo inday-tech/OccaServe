@@ -352,25 +352,31 @@
                                     <i class="fas fa-list-alt"></i> View Booking Details
                                 </button>
                                 
+                                <button class="dropdown-item-dm" onclick="viewPaymentDetails({{ booking.id }})">
+                                    <i class="fas fa-money-bill-wave"></i> View Payment Details
+                                </button>
+                                
                                 <button class="dropdown-item-dm" onclick="dispatchAlert({{ booking.id }})">
-                                    <i class="fas fa-bell"></i> Send Notification
+                                    <i class="fas fa-bell"></i> Send System Notification
                                 </button>
 
-                                {% if booking.status not in ['completed', 'cancelled'] %}
+                                {% if booking.status not in ['completed', 'cancelled', 'under_dispute'] %}
                                 <div class="dropdown-divider"></div>
                                 <button class="dropdown-item-dm danger" onclick="cancelBooking({{ booking.id }})">
-                                    <i class="fas fa-ban"></i> Cancel Booking (Override)
+                                    <i class="fas fa-ban"></i> Force Cancel Booking
                                 </button>
                                 <button class="dropdown-item-dm danger" onclick="flagDispute({{ booking.id }})">
                                     <i class="fas fa-flag"></i> Flag for Dispute
                                 </button>
                                 {% endif %}
                                 
+                                {% if booking.status in ['completed', 'cancelled'] %}
                                 <div class="dropdown-divider"></div>
                                 <button class="dropdown-item-dm" onclick="archiveItem('bookings', {{ booking.id }})"
                                     style="color: #64748b;">
                                     <i class="fas fa-archive"></i> Archive Booking
                                 </button>
+                                {% endif %}
                             </div>
                         </div>
                     </td>
@@ -578,8 +584,18 @@
                             </div>
 
                             <div style="background: #f8fafc; padding: 1rem; border-radius: 12px; border: 1px solid #f1f5f9; margin-top: 1rem;">
-                                <div style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase; margin-bottom: 4px;">Participant Notes</div>
-                                <div style="font-size: 0.8rem; color: var(--adm-navy); font-weight: 600; line-height: 1.5;">${b.special_requests}</div>
+                                <div style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase; margin-bottom: 10px;">Booking Timeline</div>
+                                <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.75rem; max-height: 200px; overflow-y: auto;">
+                                    ${b.history && b.history.length > 0 ? b.history.map(h => `
+                                        <div style="display: flex; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9;">
+                                            <div style="color: var(--adm-muted); min-width: 120px;">${h.created_at}</div>
+                                            <div>
+                                                <div style="font-weight: 700; color: var(--adm-navy);">${h.status}</div>
+                                                <div style="color: #64748b;">${h.notes || ''}</div>
+                                            </div>
+                                        </div>
+                                    `).join('') : '<div>No history available.</div>'}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -588,70 +604,210 @@
         } catch (err) { body.innerHTML = '<div style="color: #ef4444; padding: 2rem; text-align: center;">Error loading record.</div>'; }
     }
 
+    async function viewPaymentDetails(id) {
+        const modal = document.getElementById('bookingDetailModal');
+        const body = document.getElementById('modalBody');
+        document.getElementById('detailBookingId').innerText = `#BK-${id}`;
+        modal.classList.add('active');
+        body.innerHTML = '<div style="text-align: center; padding: 3rem;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--adm-primary);"></i></div>';
 
+        try {
+            const res = await fetch(`/admin/api/bookings/${id}/details`);
+            const data = await res.json();
+            if (data.success) {
+                const b = data.booking;
+                let proofHTML = '<div style="text-align: center; padding: 1rem; color: #64748b; font-size: 0.8rem; background: #f1f5f9; border-radius: 8px;">No proof of payment uploaded yet.</div>';
+                if (b.payment_proof_url) {
+                    proofHTML = `<img src="${b.payment_proof_url}" style="width: 100%; border-radius: 8px; cursor: pointer; border: 1px solid #e2e8f0;" onclick="window.open(this.src, '_blank')">`;
+                }
+
+                body.innerHTML = `
+                    <div style="padding: 1.5rem;">
+                        <h4 style="margin: 0 0 1rem 0; color: var(--adm-navy); font-weight: 800;">Payment Verification</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                            <div style="background: #f8fafc; padding: 1rem; border-radius: 12px;">
+                                <div style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Total Amount</div>
+                                <div style="font-weight: 800; color: var(--adm-navy); font-size: 1.2rem;">₱${b.total_amount.toLocaleString()}</div>
+                            </div>
+                            <div style="background: #f8fafc; padding: 1rem; border-radius: 12px;">
+                                <div style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">Downpayment (50%)</div>
+                                <div style="font-weight: 800; color: var(--adm-primary); font-size: 1.2rem;">₱${b.downpayment_amount.toLocaleString()}</div>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 1.5rem;">
+                            <div style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase; margin-bottom: 0.5rem;">Proof of Payment</div>
+                            ${proofHTML}
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button onclick="adminVerifyPayment(${id}, 'approve')" style="flex: 1; padding: 12px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">
+                                <i class="fas fa-check"></i> Approve Payment
+                            </button>
+                            <button onclick="adminVerifyPayment(${id}, 'reject')" style="flex: 1; padding: 12px; background: #ef4444; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">
+                                <i class="fas fa-times"></i> Reject Payment
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+        } catch (err) { body.innerHTML = '<div style="color: #ef4444; padding: 2rem; text-align: center;">Error loading payment record.</div>'; }
+    }
+
+    function adminVerifyPayment(id, action) {
+        openDiamondModal({
+            title: action === 'approve' ? 'Approve Payment?' : 'Reject Payment?',
+            desc: action === 'approve' ? 'This will verify the payment and notify the customer.' : 'This will reject the proof and ask the customer to upload again.',
+            variant: action === 'approve' ? 'success' : 'danger',
+            confirmText: action === 'approve' ? 'Approve Payment' : 'Reject Payment',
+            onConfirm: () => {
+                Swal.fire({ title: 'Processing...', didOpen: () => Swal.showLoading() });
+                const fd = new FormData();
+                fd.append('action', action);
+                fetch(`/admin/api/bookings/${id}/verify-payment`, { method: 'POST', body: fd })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) Swal.fire('Success', data.message, 'success').then(() => location.reload());
+                        else Swal.fire('Error', data.message, 'error');
+                    });
+            }
+        });
+    }
 
     function cancelBooking(id) {
-        openReasonModal('Cancel Booking', 'Provide a clear reason for cancelling this booking.', (reason) => {
-            Swal.fire({ title: 'Cancelling...', didOpen: () => Swal.showLoading() });
-            const fd = new FormData();
-            fd.append('reason', reason);
-            fetch(`/admin/api/bookings/${id}/cancel`, { method: 'POST', body: fd })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) Swal.fire('Terminated', data.message, 'success').then(() => location.reload());
-                    else Swal.fire('Error', data.message, 'error');
-                })
-                .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
-        }, { variant: 'danger' });
+        openDiamondModal({
+            title: 'Force Cancel Booking',
+            desc: '<span style="color: #ef4444; font-weight: 700;">Warning:</span> This action cannot be undone and should only be used for severe policy violations.',
+            html: `
+                <input id="cancelReason" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-family: 'Poppins', sans-serif;" placeholder="Enter strictly required reason" autocomplete="off">
+                <div id="cancelReasonError" style="color: #ef4444; font-size: 0.75rem; display: none; margin-top: 4px;">Reason is strictly required.</div>
+            `,
+            variant: 'danger',
+            confirmText: 'Cancel Booking',
+            preConfirm: () => {
+                const reason = document.getElementById('cancelReason').value.trim();
+                if (!reason) {
+                    document.getElementById('cancelReasonError').style.display = 'block';
+                    document.getElementById('cancelReason').style.borderColor = '#ef4444';
+                    return false;
+                }
+                return reason;
+            },
+            onConfirm: (reason) => {
+                Swal.fire({ title: 'Cancelling...', didOpen: () => Swal.showLoading() });
+                const fd = new FormData();
+                fd.append('reason', reason);
+                fetch(`/admin/api/bookings/${id}/cancel`, { method: 'POST', body: fd })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) Swal.fire('Cancelled', data.message, 'success').then(() => location.reload());
+                        else Swal.fire('Error', data.message, 'error');
+                    });
+            }
+        });
     }
 
     async function flagDispute(id) {
-        const result = await Swal.fire({
-            title: 'Flag for Resolution?',
-            text: "This will move the booking to the Dispute queue for manual investigation.",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Flag Dispute',
-            confirmButtonColor: '#f59e0b'
+        openDiamondModal({
+            title: 'Flag for Dispute',
+            desc: 'This will move the booking to the Dispute queue for manual investigation.',
+            html: `
+                <select id="disputeReason" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-family: 'Poppins', sans-serif; margin-bottom: 10px;">
+                    <option value="Customer Complaint">Customer Complaint</option>
+                    <option value="Caterer Complaint">Caterer Complaint</option>
+                    <option value="Suspicious Payment">Suspicious Payment</option>
+                    <option value="Fraudulent Booking">Fraudulent Booking</option>
+                    <option value="Policy Violation">Policy Violation</option>
+                    <option value="Other">Other</option>
+                </select>
+                <textarea id="disputeDesc" placeholder="Detailed description / notes" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-family: 'Poppins', sans-serif; resize: none; min-height: 80px;"></textarea>
+                <div id="disputeDescError" style="color: #ef4444; font-size: 0.75rem; display: none; margin-top: 4px;">Description is required.</div>
+            `,
+            variant: 'warning',
+            confirmText: 'Flag Dispute',
+            preConfirm: () => {
+                const reason = document.getElementById('disputeReason').value;
+                const desc = document.getElementById('disputeDesc').value.trim();
+                if (!desc) {
+                    document.getElementById('disputeDescError').style.display = 'block';
+                    document.getElementById('disputeDesc').style.borderColor = '#ef4444';
+                    return false;
+                }
+                return { reason, desc };
+            },
+            onConfirm: async (data) => {
+                Swal.fire({ title: 'Flagging...', didOpen: () => Swal.showLoading() });
+                const fd = new FormData();
+                fd.append('reason', data.reason);
+                fd.append('description', data.desc);
+                try {
+                    const res = await fetch(`/admin/api/bookings/${id}/flag-dispute`, { method: 'POST', body: fd });
+                    const resData = await res.json();
+                    if (resData.success) Swal.fire('Disputed', resData.message, 'success').then(() => location.reload());
+                    else Swal.fire('Error', resData.message, 'error');
+                } catch (e) { Swal.fire('Error', 'Communication failure.', 'error'); }
+            }
         });
-
-        if (result.isConfirmed) {
-            try {
-                const res = await fetch(`/admin/api/bookings/${id}/flag-dispute`, { method: 'POST' });
-                const data = await res.json();
-                if (data.success) {
-                    Swal.fire('Dispute Flagged', data.message, 'success').then(() => location.reload());
-                } else { Swal.fire('Error', data.message, 'error'); }
-            } catch (e) { Swal.fire('Error', 'Communication failure.', 'error'); }
-        }
     }
 
     function dispatchAlert(id) {
-        openReasonModal('Send Notification', "This message will be sent directly to the customer or caterer.", (message) => {
-            Swal.fire({ title: 'Sending...', didOpen: () => Swal.showLoading() });
-            const fd = new FormData();
-            fd.append('message', message);
-            fetch(`/admin/api/bookings/${id}/send-alert`, { method: 'POST', body: fd })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) Swal.fire('Sent', data.message, 'success');
-                    else Swal.fire('Error', data.message, 'error');
-                })
-                .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
-        }, { variant: 'info' });
+        openDiamondModal({
+            title: 'Send System Notification',
+            desc: 'This message will be sent directly to the customer or caterer.',
+            html: `
+                <select id="alertCategory" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-family: 'Poppins', sans-serif; margin-bottom: 10px;">
+                    <option value="Payment Reminder">Payment Reminder</option>
+                    <option value="Booking Reminder">Booking Reminder</option>
+                    <option value="Dispute Update">Dispute Update</option>
+                    <option value="Policy Update">Policy Update</option>
+                    <option value="Important Announcement">Important Announcement</option>
+                </select>
+                <textarea id="alertMsg" placeholder="Enter message here" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-family: 'Poppins', sans-serif; resize: none; min-height: 80px;"></textarea>
+                <div id="alertMsgError" style="color: #ef4444; font-size: 0.75rem; display: none; margin-top: 4px;">Message is required.</div>
+            `,
+            variant: 'info',
+            confirmText: 'Send Notification',
+            preConfirm: () => {
+                const category = document.getElementById('alertCategory').value;
+                const message = document.getElementById('alertMsg').value.trim();
+                if (!message) {
+                    document.getElementById('alertMsgError').style.display = 'block';
+                    document.getElementById('alertMsg').style.borderColor = '#ef4444';
+                    return false;
+                }
+                return { category, message };
+            },
+            onConfirm: (data) => {
+                Swal.fire({ title: 'Sending...', didOpen: () => Swal.showLoading() });
+                const fd = new FormData();
+                fd.append('category', data.category);
+                fd.append('message', data.message);
+                
+                fetch(`/admin/api/bookings/${id}/send-alert`, { method: 'POST', body: fd })
+                    .then(res => res.json())
+                    .then(resData => {
+                        if (resData.success) Swal.fire('Sent', resData.message, 'success');
+                        else Swal.fire('Error', resData.message, 'error');
+                    });
+            }
+        });
     }
 
     function archiveItem(type, id) {
-        openConfirmModal('Archive Booking?', 'This booking will be moved to archives. You can restore it if needed.', () => {
-            Swal.fire({ title: 'Archiving...', didOpen: () => Swal.showLoading() });
-            fetch(`/admin/api/archives/${type}/${id}/archive`, { method: 'POST' })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) Swal.fire('Archived', data.message, 'success').then(() => location.reload());
-                    else Swal.fire('Error', data.message, 'error');
-                })
-                .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
-        }, { variant: 'archive' });
+        openDiamondModal({
+            title: 'Archive Booking?',
+            desc: 'This booking will be moved to archives. You can restore it if needed.',
+            variant: 'archive',
+            confirmText: 'Archive',
+            onConfirm: () => {
+                Swal.fire({ title: 'Archiving...', didOpen: () => Swal.showLoading() });
+                fetch(`/admin/api/archives/${type}/${id}/archive`, { method: 'POST' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) Swal.fire('Archived', data.message, 'success').then(() => location.reload());
+                        else Swal.fire('Error', data.message, 'error');
+                    })
+                    .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
+            }
+        });
     }
 
     function closeModal(id) { document.getElementById(id).classList.remove('active'); }
