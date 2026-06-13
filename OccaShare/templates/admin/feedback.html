@@ -92,12 +92,14 @@
         <div class="kpi-info">
             <h4>Total Reviews</h4>
             <span class="kpi-value">{{ total_count }}</span>
+            <div style="font-size: 0.7rem; font-weight: 700; color: var(--adm-muted); margin-top: 5px;">Platform-wide feedback</div>
         </div>
     </div>
     <div class="kpi-card-clean">
         <div class="kpi-info">
             <h4>Average Rating</h4>
             <span class="kpi-value">{{ avg_rating }} / 5.0</span>
+            <div style="font-size: 0.7rem; font-weight: 700; color: var(--adm-muted); margin-top: 5px;">Overall sentiment score</div>
         </div>
     </div>
     <div class="kpi-card-clean">
@@ -105,6 +107,7 @@
             <h4>High Ratings</h4>
             {% set satisfaction = (high_rated_count / total_count * 100)|round(1) if total_count > 0 else 0 %}
             <span class="kpi-value">{{ satisfaction }}%</span>
+            <div style="font-size: 0.7rem; font-weight: 700; color: var(--adm-muted); margin-top: 5px;">4 stars and above</div>
         </div>
     </div>
 </div>
@@ -160,30 +163,11 @@
 
         <p class="feedback-text">"{{ fb.comment }}"</p>
 
-        <div
-            style="margin-top: auto; padding-top: 1rem; border-top: 1px solid #f8fafc; display: flex; justify-content: space-between; align-items: center;">
+        <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid #f8fafc; display: flex; justify-content: space-between; align-items: center;">
             <div style="display: flex; gap: 6px;">
-                <span class="badge-clean"
-                    style="background: #f0fdf4; color: #16a34a; font-size: 0.6rem; border: 1px solid #dcfce7;">
-                    Public
+                <span class="badge-clean" style="background: #f0fdf4; color: #16a34a; font-size: 0.6rem; border: 1px solid #dcfce7;">
+                    Verified Review
                 </span>
-                {% if fb.is_highlighted %}
-                <span class="badge-clean"
-                    style="background: #fffbeb; color: #d97706; font-size: 0.6rem; border: 1px solid #fef3c7;">
-                    Featured
-                </span>
-                {% endif %}
-            </div>
-            <div style="display: flex; gap: 8px;">
-                <form action="/admin/feedback/{{ fb.id }}/highlight" method="POST" style="display: contents;">
-                    <button type="submit" class="btn-clean" style="padding: 6px 10px; font-size: 0.65rem;" title="Feature on Landing Page">
-                        {{ 'Unfeature' if fb.is_highlighted else 'Feature' }}
-                    </button>
-                </form>
-                <button class="btn-clean" onclick="archiveItem('reviews', {{ fb.id }})"
-                    style="padding: 6px 10px; color: #ef4444; background: #fef2f2; border: 1px solid #fee2e2; font-size: 0.65rem;" title="Archive Review">
-                    Archive
-                </button>
             </div>
         </div>
     </div>

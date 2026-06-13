@@ -1,5 +1,5 @@
 {% extends "admin/layout.html" %}
-{% block title %}Dispute Center - OccaServe Admin{% endblock %}
+{% block title %}Conflict Resolution - Admin Intelligence{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ range(1, 1000) | random }}">
@@ -8,112 +8,163 @@
 {% block content %}
 <div class="dashboard-header-clean">
     <div class="header-title-area">
-        <h1>Dispute Center</h1>
-        <p>Manage customer and caterer reports.</p>
+        <h1>Conflict Resolution</h1>
+        <p>Review and resolve user reports and complaints.</p>
     </div>
 </div>
 
-<div class="panel-elite" style="overflow-x: auto;">
-    <table style="width: 100%; border-collapse: collapse;">
-        <thead>
-            <tr style="border-bottom: 1px solid var(--dm-slate-100);">
-                <th style="text-align: left; padding: 1rem; color: var(--dm-slate-400); font-weight: 600; font-size: 0.8rem; text-transform: uppercase;">Reference ID</th>
-                <th style="text-align: left; padding: 1rem; color: var(--dm-slate-400); font-weight: 600; font-size: 0.8rem; text-transform: uppercase;">Reporter</th>
-                <th style="text-align: left; padding: 1rem; color: var(--dm-slate-400); font-weight: 600; font-size: 0.8rem; text-transform: uppercase;">Reported User</th>
-                <th style="text-align: left; padding: 1rem; color: var(--dm-slate-400); font-weight: 600; font-size: 0.8rem; text-transform: uppercase;">Reason</th>
-                <th style="text-align: left; padding: 1rem; color: var(--dm-slate-400); font-weight: 600; font-size: 0.8rem; text-transform: uppercase;">Status</th>
-                <th style="text-align: right; padding: 1rem; color: var(--dm-slate-400); font-weight: 600; font-size: 0.8rem; text-transform: uppercase;">Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for d in disputes %}
-            <tr style="border-bottom: 1px solid var(--dm-slate-50);">
-                <td style="padding: 1rem; font-weight: 600; color: var(--up-slate-900);">{{ d.reference_id }}</td>
-                <td style="padding: 1rem;">
-                    <div style="font-weight: 600;">{{ d.reporter.first_name }} {{ d.reporter.last_name }}</div>
-                    <div style="font-size: 0.75rem; color: var(--dm-slate-400);">{{ d.reporter.role | title }}</div>
-                </td>
-                <td style="padding: 1rem;">
-                    <div style="font-weight: 600;">{{ d.reported.first_name }} {{ d.reported.last_name }}</div>
-                    <div style="font-size: 0.75rem; color: var(--dm-slate-400);">{{ d.reported.role | title }}</div>
-                </td>
-                <td style="padding: 1rem;">
-                    <div style="font-weight: 600;">{{ d.reason }}</div>
-                    <div style="font-size: 0.75rem; color: var(--dm-slate-400); max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ d.details }}</div>
-                </td>
-                <td style="padding: 1rem;">
-                    {% if d.status == 'pending' %}
-                        <span style="background: #fef3c7; color: #d97706; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">Pending</span>
-                    {% elif d.status == 'resolved' %}
-                        <span style="background: #dcfce7; color: #15803d; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">Resolved</span>
-                    {% else %}
-                        <span style="background: #f1f5f9; color: #64748b; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">Dismissed</span>
-                    {% endif %}
-                </td>
-                <td style="padding: 1rem; text-align: right;">
-                    {% if d.status == 'pending' %}
-                        <button onclick="resolveDispute({{ d.id }}, '{{ d.reference_id }}')" class="btn-update-elite" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 6px;">Resolve</button>
-                    {% else %}
-                        <span style="font-size: 0.8rem; color: var(--dm-slate-400);">{{ d.resolved_at.strftime('%Y-%m-%d') }}</span>
-                    {% endif %}
-                </td>
-            </tr>
-            {% else %}
-            <tr>
-                <td colspan="6" style="padding: 3rem; text-align: center; color: var(--dm-slate-400);">No disputes or reports found.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="table-card-clean" style="margin-bottom: 2rem;">
+    <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="font-size: 0.95rem; font-weight: 800; color: var(--adm-navy); margin: 0; display: flex; align-items: center; gap: 10px;">
+            Complaint Tickets
+        </h3>
+        <span class="badge-clean" style="background: var(--adm-primary-soft); color: var(--adm-primary);">ACTIVE DISPUTES</span>
+    </div>
+
+    <div style="overflow-x: auto;">
+        <table class="clean-table">
+            <thead>
+                <tr>
+                    <th>Reference ID</th>
+                    <th>Reporter</th>
+                    <th>Reported User</th>
+                    <th>Reason & Details</th>
+                    <th>Status</th>
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in disputes %}
+                <tr class="cust-row">
+                    <td><span style="font-weight: 800; color: var(--adm-navy);">{{ d.reference_id }}</span></td>
+                    <td>
+                        <div style="font-weight: 800; color: var(--adm-navy);">{{ d.reporter.first_name }} {{ d.reporter.last_name }}</div>
+                        <div style="font-size: 0.7rem; color: var(--adm-muted); font-weight: 700; text-transform: uppercase;">{{ d.reporter.role }}</div>
+                    </td>
+                    <td>
+                        <div style="font-weight: 800; color: var(--adm-navy);">{{ d.reported.first_name }} {{ d.reported.last_name }}</div>
+                        <div style="font-size: 0.7rem; color: var(--adm-muted); font-weight: 700; text-transform: uppercase;">{{ d.reported.role }}</div>
+                    </td>
+                    <td>
+                        <div style="font-weight: 800; color: #ef4444; font-size: 0.85rem;">{{ d.reason }}</div>
+                        <div style="font-size: 0.75rem; color: var(--adm-muted); max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600;">{{ d.details }}</div>
+                    </td>
+                    <td>
+                        {% if d.status == 'pending' %}
+                            <span class="badge-clean badge-pending">PENDING</span>
+                        {% elif d.status == 'resolved' %}
+                            <span class="badge-clean" style="background: #ecfdf5; color: #059669;">RESOLVED</span>
+                        {% else %}
+                            <span class="badge-clean" style="background: #f1f5f9; color: #64748b;">DISMISSED</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: right;">
+                        {% if d.status == 'pending' %}
+                            <button onclick="resolveDispute({{ d.id }}, '{{ d.reference_id }}')" class="btn-clean" style="padding: 6px 12px; background: var(--adm-primary); color: white; border-radius: 6px; font-size: 0.75rem;">
+                                <i class="fas fa-gavel"></i> Resolve Issue
+                            </button>
+                        {% else %}
+                            <div style="font-size: 0.75rem; color: var(--adm-muted); font-weight: 700;">
+                                <i class="fas fa-calendar-check"></i> {{ d.resolved_at.strftime('%b %d, %Y') }}
+                            </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 4rem;">
+                        <i class="fas fa-check-circle fa-3x" style="color: #cbd5e1; margin-bottom: 1rem;"></i>
+                        <h4 style="color: var(--adm-muted); font-weight: 800;">No Active Reports</h4>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 function resolveDispute(id, ref) {
-    Swal.fire({
-        title: 'Resolve Dispute ' + ref,
-        text: 'Choose an action to resolve this report.',
-        input: 'textarea',
-        inputPlaceholder: 'Enter investigation notes...',
-        showCancelButton: true,
-        showDenyButton: true,
-        confirmButtonText: 'Suspend Reported User',
-        confirmButtonColor: '#ef4444',
-        denyButtonText: 'Dismiss Report',
-        denyButtonColor: '#64748b',
-        cancelButtonText: 'Cancel'
-    }).then(async (result) => {
-        let action = null;
-        if (result.isConfirmed) {
-            action = 'suspend_reported';
-        } else if (result.isDenied) {
-            action = 'dismiss';
-        }
-        
-        if (action) {
-            const notes = result.value || 'No notes provided.';
-            const formData = new FormData();
-            formData.append('action', action);
-            formData.append('notes', notes);
-            
-            try {
-                const r = await fetch('/admin/api/disputes/' + id + '/resolve', {
+    if (typeof openDiamondModal !== 'undefined') {
+        openDiamondModal({
+            title: 'Resolve ' + ref,
+            desc: 'Review the details and choose an action to resolve this issue.',
+            variant: 'warning',
+            confirmText: 'Submit Decision',
+            html: `
+                <div style="margin-top: 15px; text-align: left;">
+                    <label style="display: block; font-size: 0.75rem; font-weight: 800; color: var(--adm-muted); margin-bottom: 5px;">RESOLUTION ACTION</label>
+                    <select id="swal-action" class="adm-input" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 15px;">
+                        <option value="suspend_reported">Suspend Reported User</option>
+                        <option value="dismiss">Dismiss Report (No Action)</option>
+                    </select>
+                    
+                    <label style="display: block; font-size: 0.75rem; font-weight: 800; color: var(--adm-muted); margin-bottom: 5px;">ADMIN NOTES</label>
+                    <textarea id="swal-notes" class="adm-input" placeholder="Reason for this decision..." style="width: 100%; height: 100px; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; resize: none;"></textarea>
+                </div>
+            `,
+            onConfirm: () => {
+                const action = document.getElementById('swal-action').value;
+                const notes = document.getElementById('swal-notes').value.trim();
+                
+                if (!notes && action !== 'dismiss') {
+                    Swal.fire('Validation Error', 'Admin notes are required for suspensions.', 'error');
+                    return;
+                }
+
+                Swal.fire({ title: 'Processing Resolution...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                
+                const formData = new FormData();
+                formData.append('action', action);
+                formData.append('notes', notes || 'No notes provided.');
+                
+                fetch('/admin/api/disputes/' + id + '/resolve', {
                     method: 'POST',
                     body: formData
-                });
-                const res = await r.json();
-                if (res.success) {
-                    Swal.fire('Success', res.message, 'success').then(() => {
-                        window.location.reload();
-                    });
-                } else {
-                    Swal.fire('Error', res.message, 'error');
-                }
-            } catch (e) {
-                Swal.fire('Error', 'An error occurred.', 'error');
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire('Resolved', data.message, 'success').then(() => location.reload());
+                    } else {
+                        Swal.fire('Action Failed', data.message, 'error');
+                    }
+                })
+                .catch(() => Swal.fire('Network Error', 'Failed to submit decision.', 'error'));
             }
-        }
-    });
+        });
+    } else {
+        // Fallback
+        Swal.fire({
+            title: 'Resolve Dispute ' + ref,
+            text: 'Choose an action to resolve this report.',
+            input: 'textarea',
+            inputPlaceholder: 'Enter investigation notes...',
+            showCancelButton: true,
+            showDenyButton: true,
+            confirmButtonText: 'Suspend Reported User',
+            confirmButtonColor: '#ef4444',
+            denyButtonText: 'Dismiss Report',
+            denyButtonColor: '#64748b',
+            cancelButtonText: 'Cancel'
+        }).then(async (result) => {
+            let action = null;
+            if (result.isConfirmed) { action = 'suspend_reported'; } 
+            else if (result.isDenied) { action = 'dismiss'; }
+            if (action) {
+                const formData = new FormData();
+                formData.append('action', action);
+                formData.append('notes', result.value || 'No notes provided.');
+                try {
+                    const r = await fetch('/admin/api/disputes/' + id + '/resolve', { method: 'POST', body: formData });
+                    const res = await r.json();
+                    if (res.success) { Swal.fire('Success', res.message, 'success').then(() => window.location.reload()); } 
+                    else { Swal.fire('Error', res.message, 'error'); }
+                } catch (e) { Swal.fire('Error', 'An error occurred.', 'error'); }
+            }
+        });
+    }
 }
 </script>
 {% endblock %}
