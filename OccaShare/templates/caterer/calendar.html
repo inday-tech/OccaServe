@@ -5,34 +5,14 @@
 
 {% block extra_css %}
 <!-- FullCalendar CSS -->
-<link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css' rel='stylesheet' />
+<link href='https://unpkg.com/fullcalendar@5.10.1/main.min.css' rel='stylesheet' />
 <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/calendar.css') }}?v={{ range(1, 10000) | random }}">
 <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/menu.css') }}?v=1.6">
 <style>
     :root {
-        --caterer-primary: {
-                {
-                primary_color
-            }
-        }
-
-        ;
-
-        --caterer-primary-dark: {
-                {
-                primary_color
-            }
-        }
-
-        dd;
-
-        --caterer-primary-light: {
-                {
-                primary_color
-            }
-        }
-
-        20;
+        --caterer-primary: {{ primary_color }};
+        --caterer-primary-dark: {{ primary_color }}dd;
+        --caterer-primary-light: {{ primary_color }}20;
     }
 
     @keyframes slideInRight {
@@ -66,13 +46,13 @@
 
     /* Dynamic button colors */
     .btn-primary-pro {
-        background: #0f172a !important;
+        background: var(--primary-color) !important;
         color: white !important;
         box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1) !important;
     }
 
     .btn-primary-pro:hover {
-        background: #1e293b !important;
+        background: var(--highlight-color) !important;
     }
 
     .fc .fc-daygrid-day.fc-day-today {
@@ -139,14 +119,14 @@
         display: inline-flex !important;
         align-items: center;
         gap: 6px;
-        background: rgba(59, 130, 246, 0.08);
+        background: rgba(var(--primary-color-rgb), 0.08);
         color: var(--caterer-primary);
         padding: 6px 12px;
         border-radius: 6px;
         font-weight: 700;
         font-size: 0.85rem;
         width: max-content;
-        border: 1px solid rgba(59, 130, 246, 0.2);
+        border: 1px solid rgba(var(--primary-color-rgb), 0.2);
     }
     
     .roi-preview-pill[style*="display: none"] {
@@ -285,7 +265,7 @@
     .calendar-detail-value {
         font-size: 1rem;
         font-weight: 600;
-        color: #0f172a;
+        color: var(--secondary-color);
         word-wrap: break-word;
         line-height: 1.3;
     }
@@ -356,6 +336,16 @@
     <!-- Left: Calendar -->
     <div class="cal-card cal-card-calendar">
         <div id='calendar'></div>
+        <!-- Mobile Selected Day Bookings -->
+        <div id="mobileDayEvents" class="mobile-day-events" style="display: none; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 id="mobileDayTitle" style="font-size: 1.1rem; font-weight: 800; color: #1e293b;">Events</h3>
+                <button onclick="openManualBookingModal()" class="btn-primary-pro" style="padding: 4px 12px; font-size: 0.8rem; border-radius: 6px;">+ New</button>
+            </div>
+            <div id="mobileDayList" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <!-- Events populated here -->
+            </div>
+        </div>
     </div>
 
     <!-- Right: Sidebar -->
@@ -579,8 +569,8 @@
                 <!-- CLIENT INFORMATION SECTION -->
                 <div style="margin-bottom: 2rem;">
                     <h4
-                        style="font-size: 1.1rem; font-weight: 800; color: #0f172a; margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px;">
-                        <i class="fas fa-user" style="color: #475569;"></i> Client Information
+                        style="font-size: 1.1rem; font-weight: 800; color: var(--secondary-color); margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-user" style="color: var(--primary-color);"></i> Client Information
                     </h4>
                     <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem;">
                         <div class="form-group-pro">
@@ -626,8 +616,8 @@
                 <!-- EVENT INFORMATION SECTION -->
                 <div style="margin-bottom: 2rem;">
                     <h4
-                        style="font-size: 1.1rem; font-weight: 800; color: #0f172a; margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px;">
-                        <i class="fas fa-calendar" style="color: #475569;"></i> Event Details
+                        style="font-size: 1.1rem; font-weight: 800; color: var(--secondary-color); margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-calendar" style="color: var(--primary-color);"></i> Event Details
                     </h4>
                     <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem;">
                         <div class="form-group-pro" style="grid-column: span 2;">
@@ -678,8 +668,8 @@
                 <!-- VENUE INFORMATION SECTION -->
                 <div style="margin-bottom: 2rem;">
                     <h4
-                        style="font-size: 1.1rem; font-weight: 800; color: #0f172a; margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px;">
-                        <i class="fas fa-map-marker-alt" style="color: #475569;"></i> Venue & Logistics
+                        style="font-size: 1.1rem; font-weight: 800; color: var(--secondary-color); margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-map-marker-alt" style="color: var(--primary-color);"></i> Venue & Logistics
                     </h4>
                     <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem;">
                         <div class="form-group-pro">
@@ -717,8 +707,8 @@
                 <!-- SERVICE PACKAGE SECTION -->
                 <div style="margin-bottom: 2rem;">
                     <h4
-                        style="font-size: 1.1rem; font-weight: 800; color: #0f172a; margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px;">
-                        <i class="fas fa-utensils" style="color: #475569;"></i> Catering Package
+                        style="font-size: 1.1rem; font-weight: 800; color: var(--secondary-color); margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-utensils" style="color: var(--primary-color);"></i> Catering Package
                     </h4>
                     <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr; gap: 1.25rem;">
                         <div class="form-group-pro">
@@ -747,8 +737,8 @@
                 <!-- PAYMENT SECTION -->
                 <div style="margin-bottom: 2rem;">
                     <h4
-                        style="font-size: 1.1rem; font-weight: 800; color: #0f172a; margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px;">
-                        <i class="fas fa-money-bill-wave" style="color: #475569;"></i> Payment Information
+                        style="font-size: 1.1rem; font-weight: 800; color: var(--secondary-color); margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-money-bill-wave" style="color: var(--primary-color);"></i> Payment Information
                     </h4>
                     <div class="occ-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
                         <div class="form-group-pro">
@@ -828,7 +818,7 @@
             </div>
 
             <h4
-                style="font-size: 0.8rem; font-weight: 800; color: #1e293b; text-transform: uppercase; margin-bottom: 1rem;">
+                style="font-size: 0.8rem; font-weight: 800; color: var(--secondary-color); text-transform: uppercase; margin-bottom: 1rem;">
                 Recipe Cost Breakdown</h4>
             <div id="breakdownList" class="cal-roi-breakdown-list" style="max-height: 250px; overflow-y: auto;">
                 <!-- Injected via JS -->
@@ -882,6 +872,6 @@
 
 {% block extra_js %}
 <!-- FullCalendar JS -->
-<script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js'></script>
+<script src='https://unpkg.com/fullcalendar@5.10.1/main.min.js'></script>
 <script src="{{ url_for('static', path='/js/caterer/calendar.js') }}?v={{ range(1, 10000) | random }}"></script>
 {% endblock %}

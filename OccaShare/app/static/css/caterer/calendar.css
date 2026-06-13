@@ -50,7 +50,7 @@
 }
 
 .btn-walkin-header {
-    background: #0f172a;
+    background: var(--color-primary);
     color: white;
     padding: 0.75rem 1.75rem;
     border-radius: var(--radius-pro);
@@ -70,7 +70,7 @@
 .btn-walkin-header:hover {
     transform: translateY(-1px);
     box-shadow: var(--shadow-lg);
-    background: #1e293b;
+    background: var(--highlight-color);
 }
 
 .btn-walkin-header:active {
@@ -239,6 +239,15 @@
     padding: 0;
 }
 
+/* FIX TAILWIND PREFLIGHT CONFLICTS */
+.fc .fc-scrollgrid,
+.fc .fc-scrollgrid td,
+.fc .fc-scrollgrid th,
+.fc .fc-theme-standard td,
+.fc .fc-theme-standard th {
+    border: 1px solid #e5e7eb !important;
+}
+
 .fc-toolbar-title {
     font-size: 1.5rem !important;
     font-weight: 700 !important;
@@ -265,8 +274,8 @@
 }
 
 .fc-button.fc-button-active {
-    background: #0f172a !important;
-    border-color: #0f172a !important;
+    background: var(--color-primary) !important;
+    border-color: var(--color-primary) !important;
     color: white !important;
 }
 
@@ -307,7 +316,6 @@
 
 .fc-event {
     border: none !important;
-    background: transparent !important;
     margin-bottom: 3px !important;
 }
 
@@ -501,7 +509,7 @@
 }
 
 .occ-modal-header.colored-header {
-    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    background: var(--color-primary);
     padding: 1.5rem 2rem;
     color: white;
 }
@@ -667,22 +675,25 @@
     }
 
     #calendar {
-        min-height: 400px;
+        min-height: 500px;
         padding: 0 !important;
     }
 
     .fc-toolbar {
-        flex-direction: column;
+        flex-direction: row;
+        flex-wrap: wrap;
         gap: 8px;
     }
 
     .fc-toolbar-chunk {
-        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .fc-button-group {
-        width: 100%;
         display: flex;
+        flex-wrap: nowrap;
         gap: 4px;
     }
 

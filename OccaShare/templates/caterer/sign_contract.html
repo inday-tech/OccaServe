@@ -235,7 +235,7 @@
     }
 
     .signature-activation-panel:hover {
-        border-color: #3b82f6;
+        border-color: var(--primary-color);
         background: #f0f7ff;
     }
 
@@ -329,7 +329,7 @@
         <div class="action-panel-glass">
             <div class="mb-5">
                 <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-                    <i class="fas fa-file-signature" style="color: #4f46e5; font-size: 1rem;"></i>
+                    <i class="fas fa-file-signature" style="color: var(--primary-color); font-size: 1rem;"></i>
                     <h3 style="font-size: 1rem; font-weight: 800; color: #0f172a; margin: 0;">Service Agreement</h3>
                 </div>
                 <p style="font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">Countersign Required</p>
@@ -337,7 +337,7 @@
 
             <div style="background: #eff6ff; border: 1px solid #dbeafe; border-radius: 0.75rem; padding: 1rem; margin-bottom: 1.5rem;">
                 <div style="display: flex; gap: 0.5rem; align-items: flex-start;">
-                    <i class="fas fa-info-circle" style="color: #3b82f6; margin-top: 0.15rem;"></i>
+                    <i class="fas fa-info-circle" style="color: var(--primary-color); margin-top: 0.15rem;"></i>
                     <p style="font-size: 0.8rem; color: #1e40af; line-height: 1.5; margin: 0;">
                         The customer has successfully signed their portion of the contract. Please review the terms and countersign below to finalize this agreement.
                     </p>
@@ -376,7 +376,7 @@
 
                     <form id="signature-form" action="/api/bookings/{{ booking.id }}/contract/sign" method="POST" class="flex-1" style="display: none;">
                         <input type="hidden" name="signature_data" id="signature-input">
-                        <button type="submit" class="btn-premium-sign w-full" style="background: #059669;">
+                        <button type="submit" class="btn-premium-sign w-full bg-primary" style="background: var(--primary-color);">
                             <i class="fas fa-file-signature"></i> Finalize
                         </button>
                     </form>

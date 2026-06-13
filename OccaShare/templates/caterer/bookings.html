@@ -667,8 +667,8 @@
                 <!-- No Search Results Empty State -->
                 <tr id="searchEmptyState" style="display: none;">
                     <td colspan="7" style="text-align: center; padding: 4rem 1rem;">
-                        <div style="color: #cbd5e1; font-size: 3rem; margin-bottom: 1rem;"><i class="fas fa-search"></i></div>
-                        <h2 style="color: #1e293b; font-size: 1.25rem; font-weight: 700;">No bookings found</h2>
+                        <div class="text-brand" style="opacity: 0.5; font-size: 3rem; margin-bottom: 1rem;"><i class="fas fa-search"></i></div>
+                        <h2 class="text-secondary" style="font-size: 1.25rem; font-weight: 700;">No bookings found</h2>
                         <p style="color: #64748b; font-size: 0.9rem;">Try adjusting your search or filter to find what you're looking for.</p>
                     </td>
                 </tr>
@@ -1368,7 +1368,7 @@
     <div class="occ-modal-box sz-sm occ-content-zoom-in">
         <div class="occ-modal-header">
             <div>
-                <h2 class="occ-modal-title"><i class="fas fa-camera" style="color:#0ea5e9;"></i> Proof of Preparation</h2>
+                <h2 class="occ-modal-title"><i class="fas fa-camera" style="color:var(--primary-color);"></i> Proof of Preparation</h2>
                 <div class="occ-modal-subtitle">Upload photo of packed orders to unlock dispatch.</div>
             </div>
             <button type="button" onclick="closeDispatchProofModal()" class="occ-modal-close">
@@ -1397,7 +1397,7 @@
         </div>
         <div class="occ-modal-footer">
             <button type="button" onclick="closeDispatchProofModal()" class="btn-secondary-pro">Cancel</button>
-            <button type="submit" form="dispatchProofForm" id="dispatchProofSubmitBtn" class="btn-primary-pro" style="background:#0ea5e9 !important;">
+            <button type="submit" form="dispatchProofForm" id="dispatchProofSubmitBtn" class="btn-primary-pro bg-primary" style="background:var(--primary-color) !important;">
                 Confirm & Dispatch
             </button>
         </div>

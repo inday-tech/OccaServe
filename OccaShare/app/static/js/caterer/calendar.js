@@ -104,7 +104,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: initialView,
-            height: window.innerWidth <= 768 ? 450 : 700,
+            height: window.innerWidth <= 768 ? 550 : 750,
+            expandRows: true,
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',
@@ -166,7 +167,46 @@ document.addEventListener('DOMContentLoaded', function () {
                     manInput.value = info.dateStr;
                     checkDateConflict(info.dateStr);
                 }
-                openManualBookingModal();
+                if (window.innerWidth <= 768) {
+                    // Mobile View: Populate bottom list instead of opening modal
+                    const clickedEvents = window.fullCalendarInstance.getEvents().filter(e => {
+                        return e.startStr.split('T')[0] === info.dateStr;
+                    });
+                    
+                    const listContainer = document.getElementById('mobileDayList');
+                    const titleEl = document.getElementById('mobileDayTitle');
+                    const mobileContainer = document.getElementById('mobileDayEvents');
+                    
+                    titleEl.innerText = new Date(info.dateStr).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+                    listContainer.innerHTML = '';
+                    
+                    if (clickedEvents.length === 0) {
+                        listContainer.innerHTML = '<div style="padding: 1rem; text-align: center; color: #64748b; font-size: 0.9rem; background: #f8fafc; border-radius: 8px;">No events on this date</div>';
+                    } else {
+                        clickedEvents.forEach(e => {
+                            let type = e.extendedProps.type || 'Standard';
+                            let status = e.extendedProps.status || 'pending';
+                            let statusColor = status === 'confirmed' ? '#10b981' : (status === 'ongoing' ? '#3b82f6' : (status === 'cancelled' ? '#ef4444' : '#f59e0b'));
+                            
+                            let cardHtml = `
+                                <div onclick="showEventDetailsById('${e.id}')" style="background: white; border: 1px solid #e2e8f0; border-left: 4px solid ${statusColor}; border-radius: 8px; padding: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); cursor: pointer;">
+                                    <div style="font-weight: 700; color: #1e293b; font-size: 0.95rem; margin-bottom: 4px;">${e.title === 'BLOCKED' ? '<span style="color: #ef4444;">Blocked Date</span>' : e.title}</div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: #64748b;">
+                                        <span>${e.title !== 'BLOCKED' && e.extendedProps.customer ? e.extendedProps.customer : '---'}</span>
+                                        <span style="background: ${statusColor}15; color: ${statusColor}; padding: 2px 8px; border-radius: 9999px; font-weight: 600; font-size: 0.7rem; text-transform: capitalize;">${e.title === 'BLOCKED' ? 'Unavailable' : status}</span>
+                                    </div>
+                                </div>
+                            `;
+                            listContainer.innerHTML += cardHtml;
+                        });
+                    }
+                    mobileContainer.style.display = 'block';
+                    // Scroll to it smoothly
+                    mobileContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } else {
+                    // Desktop View: Standard manual booking modal
+                    openManualBookingModal();
+                }
             },
             eventDidMount: function (info) {
                 info.el.setAttribute('role', 'button');
@@ -186,15 +226,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             },
             windowResize: function (arg) {
-                if (window.innerWidth <= 768) {
-                    calendar.changeView('listMonth');
-                } else {
-                    calendar.changeView('dayGridMonth');
-                }
+                // Let FullCalendar handle responsive layouts inherently, maintain day grid
             }
         });
         calendar.render();
         window.fullCalendarInstance = calendar;
+
+        // Helper for mobile cards
+        window.showEventDetailsById = function(id) {
+            const event = window.fullCalendarInstance.getEventById(id);
+            if (event) {
+                if (event.title === 'BLOCKED') {
+                    showBlockedDetails(event);
+                } else {
+                    showEventDetails(event);
+                }
+            }
+        };
 
         // Global Search Integration
         window.addEventListener('globalSearch', function (e) {
