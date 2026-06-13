@@ -171,21 +171,22 @@ def unified_search_api(request: Request, q: str = "", lat: Optional[float] = Non
         ).subquery()
 
         # Main filter: OR across all caterer fields + subquery matches
-        query = query.filter(
-            or_(
-                models.CatererProfile.business_name.ilike(search_term),
-                models.CatererProfile.description.ilike(search_term),
-                models.CatererProfile.city.ilike(search_term),
-                models.CatererProfile.contact_address.ilike(search_term),
-                models.CatererProfile.coverage_area.ilike(search_term),
-                # PostgreSQL ARRAY search via array_to_string
-                func.coalesce(func.array_to_string(models.CatererProfile.event_types, ','), '').ilike(search_term),
-                func.coalesce(func.array_to_string(models.CatererProfile.cuisine_types, ','), '').ilike(search_term),
-                # Related entity matches
-                models.CatererProfile.id.in_(menu_match),
-                models.CatererProfile.id.in_(pkg_match),
-            )
-        )
+        conditions = [
+            models.CatererProfile.business_name.ilike(search_term),
+            models.CatererProfile.description.ilike(search_term),
+            models.CatererProfile.city.ilike(search_term),
+            models.CatererProfile.contact_address.ilike(search_term),
+            models.CatererProfile.coverage_area.ilike(search_term),
+            func.coalesce(func.array_to_string(models.CatererProfile.event_types, ','), '').ilike(search_term),
+            func.coalesce(func.array_to_string(models.CatererProfile.cuisine_types, ','), '').ilike(search_term),
+            models.CatererProfile.id.in_(menu_match),
+            models.CatererProfile.id.in_(pkg_match),
+        ]
+
+        if "multi-cuisine" in q.lower() or "international" in q.lower() or "fusion" in q.lower() or "multi" in q.lower():
+            conditions.append(func.array_length(models.CatererProfile.cuisine_types, 1) >= 3)
+
+        query = query.filter(or_(*conditions))
 
     # Proximity sorting if lat/lon provided
     if lat is not None and lon is not None:

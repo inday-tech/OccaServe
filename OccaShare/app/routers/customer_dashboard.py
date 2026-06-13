@@ -712,19 +712,22 @@ async def customer_marketplace(
             models.CateringPackage.is_active == True
         ).subquery()
 
-        query = query.filter(
-            or_(
-                models.CatererProfile.business_name.ilike(search_filter),
-                models.CatererProfile.description.ilike(search_filter),
-                models.CatererProfile.city.ilike(search_filter),
-                models.CatererProfile.contact_address.ilike(search_filter),
-                models.CatererProfile.coverage_area.ilike(search_filter),
-                func.coalesce(func.array_to_string(models.CatererProfile.event_types, ','), '').ilike(search_filter),
-                func.coalesce(func.array_to_string(models.CatererProfile.cuisine_types, ','), '').ilike(search_filter),
-                models.CatererProfile.id.in_(menu_match_sq),
-                models.CatererProfile.id.in_(pkg_match_sq),
-            )
-        )
+        conditions = [
+            models.CatererProfile.business_name.ilike(search_filter),
+            models.CatererProfile.description.ilike(search_filter),
+            models.CatererProfile.city.ilike(search_filter),
+            models.CatererProfile.contact_address.ilike(search_filter),
+            models.CatererProfile.coverage_area.ilike(search_filter),
+            func.coalesce(func.array_to_string(models.CatererProfile.event_types, ','), '').ilike(search_filter),
+            func.coalesce(func.array_to_string(models.CatererProfile.cuisine_types, ','), '').ilike(search_filter),
+            models.CatererProfile.id.in_(menu_match_sq),
+            models.CatererProfile.id.in_(pkg_match_sq),
+        ]
+
+        if "multi-cuisine" in q.lower() or "international" in q.lower() or "fusion" in q.lower() or "multi" in q.lower():
+            conditions.append(func.array_length(models.CatererProfile.cuisine_types, 1) >= 3)
+
+        query = query.filter(or_(*conditions))
     
     # Category filter
     if event_type:

@@ -274,11 +274,17 @@
                         {% endfor %}
                     {% endif %}
                     {% if caterer.cuisine_types %}
-                        {% for cuisine in caterer.cuisine_types %}
-                        <span class="px-4 py-2 bg-secondary/5 border border-secondary/10 rounded-xl text-[10px] font-black text-secondary uppercase tracking-widest flex items-center gap-2 hover-highlight transition-colors">
-                            <i class="fas fa-utensils"></i> {{ cuisine }}
-                        </span>
-                        {% endfor %}
+                        {% if caterer.cuisine_types|length >= 3 %}
+                            <span class="px-4 py-2 bg-secondary/5 border border-secondary/10 rounded-xl text-[10px] font-black text-secondary uppercase tracking-widest flex items-center gap-2 hover-highlight transition-colors">
+                                <i class="fas fa-globe"></i> Multi-Cuisine
+                            </span>
+                        {% else %}
+                            {% for cuisine in caterer.cuisine_types %}
+                            <span class="px-4 py-2 bg-secondary/5 border border-secondary/10 rounded-xl text-[10px] font-black text-secondary uppercase tracking-widest flex items-center gap-2 hover-highlight transition-colors">
+                                <i class="fas fa-utensils"></i> {{ cuisine }}
+                            </span>
+                            {% endfor %}
+                        {% endif %}
                     {% endif %}
                 </div>
             </section>
