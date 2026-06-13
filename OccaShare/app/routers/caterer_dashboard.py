@@ -1792,6 +1792,22 @@ async def complete_booking(
         notes="Event completed. Booking marked as completed by caterer."
     )
     db.add(history)
+
+    # Automatically generate commission record
+    config = db.query(models.WebsiteConfig).first()
+    commission_rate = (config.commission_rate / 100.0) if config and config.commission_rate else 0.10
+    commission_due = (booking.total_amount or 0.0) * commission_rate
+
+    commission_record = models.BillingInvoice(
+        caterer_id=booking.caterer_id,
+        booking_id=booking.id,
+        billing_period=booking.event_date.strftime('%B %Y') if booking.event_date else 'General',
+        amount=commission_due,
+        commission_rate=commission_rate,
+        status='pending'
+    )
+    db.add(commission_record)
+    
     db.commit()
 
     # Real-time alert to customer
@@ -3723,6 +3739,22 @@ async def complete_booking(
     booking.status = 'completed'
     history = models.BookingHistory(booking_id=booking.id, status='completed', notes="Event marked as completed by caterer.")
     db.add(history)
+
+    # Automatically generate commission record
+    config = db.query(models.WebsiteConfig).first()
+    commission_rate = (config.commission_rate / 100.0) if config and config.commission_rate else 0.10
+    commission_due = (booking.total_amount or 0.0) * commission_rate
+
+    commission_record = models.BillingInvoice(
+        caterer_id=booking.caterer_id,
+        booking_id=booking.id,
+        billing_period=booking.event_date.strftime('%B %Y') if booking.event_date else 'General',
+        amount=commission_due,
+        commission_rate=commission_rate,
+        status='pending'
+    )
+    db.add(commission_record)
+
     db.commit()
 
     await manager.broadcast_to_user(user.id, {

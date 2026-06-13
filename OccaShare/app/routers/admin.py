@@ -711,24 +711,38 @@ async def get_caterers_overview(
     return {"success": True, "caterers": enriched, "metrics": metrics}
 
 
-@router.get("/payouts", response_class=HTMLResponse)
-async def manage_payouts(
+@router.get("/commissions", response_class=HTMLResponse)
+async def manage_commissions(
     request: Request, 
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
-    # Fetch pending invoices
+    # Fetch invoices
     pending_invoices = db.query(models.BillingInvoice).filter(
         models.BillingInvoice.status == 'pending'
     ).order_by(models.BillingInvoice.created_at.desc()).all()
 
-    # Fetch paid invoices
     recent_paid = db.query(models.BillingInvoice).filter(
         models.BillingInvoice.status == 'paid'
     ).order_by(models.BillingInvoice.created_at.desc()).limit(15).all()
+    
+    rejected_count = db.query(models.BillingInvoice).filter(
+        models.BillingInvoice.status == 'rejected'
+    ).count()
 
+    from datetime import datetime
+    from sqlalchemy import extract
+    
+    now = datetime.utcnow()
+    monthly_collections = db.query(models.BillingInvoice).filter(
+        models.BillingInvoice.status == 'paid',
+        extract('month', models.BillingInvoice.created_at) == now.month,
+        extract('year', models.BillingInvoice.created_at) == now.year
+    ).all()
+    
     pending_total = float(sum(inv.amount for inv in pending_invoices) or 0.0)
     paid_total = float(sum(inv.amount for inv in recent_paid) or 0.0)
+    monthly_total = float(sum(inv.amount for inv in monthly_collections) or 0.0)
 
     return templates.TemplateResponse("admin/payouts.html", {
         "request": request,
@@ -737,7 +751,9 @@ async def manage_payouts(
         "recent_paid": recent_paid,
         "pending_total": pending_total,
         "paid_total": paid_total,
-        "active_page": "payouts"
+        "rejected_count": rejected_count,
+        "monthly_total": monthly_total,
+        "active_page": "commissions"
     })
 
 @router.post("/api/invoices/{invoice_id}/approve")
@@ -761,7 +777,7 @@ async def approve_invoice(
     db.add(audit)
     db.commit()
     
-    return RedirectResponse(url="/admin/payouts?success_msg=Invoice+settlement+approved.", status_code=303)
+    return RedirectResponse(url="/admin/commissions?success_msg=Invoice+settlement+approved.", status_code=303)
 
 @router.post("/api/invoices/{invoice_id}/reject")
 async def reject_invoice(
@@ -789,7 +805,7 @@ async def reject_invoice(
     db.add(audit)
     db.commit()
     
-    return RedirectResponse(url="/admin/payouts?success_msg=Invoice+settlement+rejected.", status_code=303)
+    return RedirectResponse(url="/admin/commissions?success_msg=Invoice+settlement+rejected.", status_code=303)
 
 
 @router.get("/settings", response_class=HTMLResponse)
@@ -2105,44 +2121,45 @@ async def archive_feedback(
     db.commit()
     return RedirectResponse(url="/admin/feedback?success_msg=Feedback+archived", status_code=303)
 
-@router.get("/payments", response_class=HTMLResponse)
-async def admin_payments(
+@router.get("/revenue", response_class=HTMLResponse)
+async def admin_revenue(
     request: Request,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
-    # Fetch all PayoutItems which serve as the Financial Ledger
+    # Fetch all Commission Records (BillingInvoice)
     from sqlalchemy.orm import joinedload
-    ledger_items = db.query(models.PayoutItem).options(
-        joinedload(models.PayoutItem.booking).joinedload(models.Booking.caterer)
-    ).order_by(models.PayoutItem.created_at.desc()).all()
+    from sqlalchemy import extract
     
-    # Calculate Professional Metrics with Null Safety
-    total_gross = sum(((item.amount or 0.0) + (item.commission_amount or 0.0)) for item in ledger_items)
-    total_commission = sum((item.commission_amount or 0.0) for item in ledger_items)
+    invoices = db.query(models.BillingInvoice).options(
+        joinedload(models.BillingInvoice.caterer),
+        joinedload(models.BillingInvoice.booking)
+    ).order_by(models.BillingInvoice.created_at.desc()).all()
     
-    # Escrowed vs Realized Commission
-    realized_commission = sum((item.commission_amount or 0.0) for item in ledger_items if item.status == 'released')
-    escrowed_commission = total_commission - realized_commission
+    total_commission_revenue = sum(inv.amount for inv in invoices if inv.status == 'paid')
     
-    monetized_bookings_count = db.query(func.count(func.distinct(models.PayoutItem.booking_id))).scalar() or 0
+    now = datetime.utcnow()
+    monthly_revenue = sum(
+        inv.amount for inv in invoices 
+        if inv.status == 'paid' and inv.created_at.month == now.month and inv.created_at.year == now.year
+    )
+    
+    pending_collection = sum(inv.amount for inv in invoices if inv.status != 'paid')
+    verified_payments_count = sum(1 for inv in invoices if inv.status == 'paid')
 
     metrics_context = {
-        "total_gross": total_gross,
-        "total_commission": total_commission,
-        "realized_commission": realized_commission,
-        "escrowed_commission": escrowed_commission,
-        "monetized_bookings_count": monetized_bookings_count
+        "total_commission_revenue": total_commission_revenue,
+        "monthly_revenue": monthly_revenue,
+        "pending_collection": pending_collection,
+        "verified_payments_count": verified_payments_count
     }
     
-    print(f"[DEBUG FINANCE] Metrics: {metrics_context}")
-
     return templates.TemplateResponse("admin/payments.html", {
         "request": request,
         "user": user,
-        "ledger_items": ledger_items,
+        "invoices": invoices,
         "metrics": metrics_context,
-        "active_page": "payments"
+        "active_page": "revenue"
     })
 
 # --- REPORTS / ANALYTICS ---

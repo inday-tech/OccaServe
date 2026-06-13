@@ -85,27 +85,41 @@
 {% block content %}
 <div class="dashboard-header-clean">
     <div class="header-title-area">
-        <h1>Commission Settlements</h1>
-        <p>Review and verify caterer commission payments.</p>
+        <h1>Commission Verification</h1>
+        <p>Review and verify commission payments submitted by caterers.</p>
     </div>
     <div class="header-actions">
-        <a href="#" class="btn-clean" onclick="location.reload()">Refresh Data</a>
+        <!-- Actions removed -->
     </div>
 </div>
 
 <div class="kpi-grid-clean">
     <div class="kpi-card-clean">
         <div class="kpi-info">
-            <h4>Pending Approvals</h4>
+            <h4>Pending Commission Payments</h4>
             <span class="kpi-value">₱{{ "{:,.2f}".format(pending_total) }}</span>
-            <div style="font-size: 0.7rem; font-weight: 700; color: var(--adm-muted); margin-top: 5px;">{{ pending_invoices|length }} pending proofs</div>
+            <div style="font-size: 0.7rem; font-weight: 700; color: var(--adm-muted); margin-top: 5px;">{{ pending_invoices|length }} pending submissions</div>
         </div>
     </div>
     <div class="kpi-card-clean">
         <div class="kpi-info">
-            <h4>Recently Settled</h4>
+            <h4>Verified Commissions</h4>
             <span class="kpi-value">₱{{ "{:,.2f}".format(paid_total) }}</span>
-            <div style="font-size: 0.7rem; font-weight: 700; color: var(--adm-muted); margin-top: 5px;">Latest verified</div>
+            <div style="font-size: 0.7rem; font-weight: 700; color: var(--adm-muted); margin-top: 5px;">{{ recent_paid|length }} approved payments</div>
+        </div>
+    </div>
+    <div class="kpi-card-clean">
+        <div class="kpi-info">
+            <h4>Rejected Payments</h4>
+            <span class="kpi-value">{{ rejected_count }}</span>
+            <div style="font-size: 0.7rem; font-weight: 700; color: var(--adm-muted); margin-top: 5px;">Total rejected submissions</div>
+        </div>
+    </div>
+    <div class="kpi-card-clean">
+        <div class="kpi-info">
+            <h4>Monthly Collections</h4>
+            <span class="kpi-value">₱{{ "{:,.2f}".format(monthly_total) }}</span>
+            <div style="font-size: 0.7rem; font-weight: 700; color: var(--adm-muted); margin-top: 5px;">Collected this month</div>
         </div>
     </div>
 </div>
@@ -113,7 +127,7 @@
 <div class="table-card-clean" style="margin-bottom: 2rem;">
     <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
         <h3 style="font-size: 0.95rem; font-weight: 800; color: var(--adm-navy); margin: 0; display: flex; align-items: center; gap: 10px;">
-            Pending Approvals
+            Commission Verification Table
         </h3>
         <span class="badge-clean" style="background: var(--adm-primary-soft); color: var(--adm-primary);">ACTION REQUIRED</span>
     </div>
@@ -122,11 +136,14 @@
     <table class="clean-table">
         <thead>
             <tr>
-                <th>Invoice ID</th>
-                <th>Caterer</th>
-                <th>Billing Period</th>
-                <th>Amount Due</th>
+                <th>Reference Number</th>
+                <th>Booking ID</th>
+                <th>Caterer Name</th>
+                <th>Booking Amount</th>
+                <th>Commission Rate</th>
+                <th>Commission Due</th>
                 <th>Payment Proof</th>
+                <th>Date Submitted</th>
                 <th style="text-align: right;">Actions</th>
             </tr>
         </thead>
@@ -134,15 +151,18 @@
             {% for inv in pending_invoices %}
             <tr>
                 <td><span style="font-weight: 800; color: var(--adm-navy);">#INV-{{ inv.id }}</span></td>
+                <td><span style="font-weight: 800; color: var(--adm-primary);">#BK-{{ inv.booking_id if inv.booking_id else 'N/A' }}</span></td>
                 <td>
                     <div class="identity-chip">
                         {{ inv.caterer.business_name if inv.caterer else 'Unknown' }}
                     </div>
                 </td>
                 <td>
-                    <div style="font-weight: 700; color: var(--adm-navy); font-size: 0.8rem;">{{ inv.billing_period }}</div>
-                    <div style="font-size: 0.65rem; color: var(--adm-muted); font-weight: 700;">Submitted: {{ inv.created_at.strftime('%b %d, %Y') }}</div>
+                    <span style="font-weight: 700; color: var(--adm-muted); font-size: 0.9rem;">
+                        ₱{{ "{:,.2f}".format(inv.booking.total_amount) if inv.booking and inv.booking.total_amount else '0.00' }}
+                    </span>
                 </td>
+                <td><span style="font-weight: 700; color: var(--adm-navy);">{{ (inv.commission_rate * 100)|round(0) if inv.commission_rate else '10' }}%</span></td>
                 <td><span style="font-weight: 900; color: var(--adm-navy); font-size: 1rem;">₱{{ "{:,.2f}".format(inv.amount) }}</span></td>
                 <td>
                     {% if inv.payment_proof_url %}
@@ -152,6 +172,9 @@
                     {% else %}
                     <span style="font-size: 0.7rem; color: #ef4444; font-weight: 800;">No Proof</span>
                     {% endif %}
+                </td>
+                <td>
+                    <div style="font-size: 0.75rem; color: var(--adm-muted); font-weight: 700;">{{ inv.created_at.strftime('%b %d, %Y') }}</div>
                 </td>
                 <td style="text-align: right;">
                     <button class="btn-clean" style="font-size: 0.75rem; padding: 6px 12px; background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0;" onclick="approveInvoice({{ inv.id }})">
@@ -168,7 +191,7 @@
     {% else %}
     <div style="text-align: center; padding: 4rem;">
         <i class="fas fa-check-double fa-3x" style="color: #cbd5e1; margin-bottom: 1rem;"></i>
-        <h4 style="color: var(--adm-muted); font-weight: 800;">All Settlements Verified</h4>
+        <h4 style="color: var(--adm-muted); font-weight: 800;">All Commissions Verified</h4>
     </div>
     {% endif %}
 </div>
@@ -176,16 +199,16 @@
 <div class="table-card-clean" style="opacity: 0.8;">
     <div style="padding: 1rem 1.5rem; border-bottom: 1px solid #f1f5f9;">
         <h3 style="font-size: 0.85rem; font-weight: 800; color: var(--adm-muted); margin: 0;">
-            RECENTLY SETTLED
+            RECENTLY VERIFIED
         </h3>
     </div>
     <table class="clean-table">
         <thead>
             <tr>
                 <th>Invoice ID</th>
-                <th>Caterer</th>
-                <th>Billing Period</th>
-                <th>Amount</th>
+                <th>Booking ID</th>
+                <th>Caterer Name</th>
+                <th>Commission Paid</th>
                 <th>Status</th>
             </tr>
         </thead>
@@ -193,8 +216,8 @@
             {% for inv in recent_paid %}
             <tr>
                 <td><span style="font-weight: 800; color: var(--adm-muted);">#INV-{{ inv.id }}</span></td>
+                <td><span style="font-weight: 800; color: var(--adm-primary);">#BK-{{ inv.booking_id if inv.booking_id else 'N/A' }}</span></td>
                 <td><span style="font-weight: 700; color: var(--adm-navy);">{{ inv.caterer.business_name if inv.caterer else '---' }}</span></td>
-                <td><span style="font-size: 0.8rem; font-weight: 700; color: var(--adm-navy);">{{ inv.billing_period }}</span></td>
                 <td><span style="font-weight: 800; color: var(--adm-navy);">₱{{ "{:,.2f}".format(inv.amount) }}</span></td>
                 <td><span class="badge-clean" style="background: #ecfdf5; color: #059669;">VERIFIED</span></td>
             </tr>

@@ -817,14 +817,17 @@ class BillingInvoice(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     caterer_id = Column(Integer, ForeignKey("caterer_profiles.id"))
+    booking_id = Column(Integer, ForeignKey("bookings.id"), nullable=True)
     billing_period = Column(String) # e.g., "May 2026"
     amount = Column(Float, default=0.0)
+    commission_rate = Column(Float, default=0.10)
     status = Column(String, default="pending") # pending, paid
     due_date = Column(Date, nullable=True)
     payment_proof_url = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     caterer = relationship("CatererProfile", backref="invoices")
+    booking = relationship("Booking", backref="invoices")
 
 class BusinessExpense(Base):
     __tablename__ = "business_expenses"

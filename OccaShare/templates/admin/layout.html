@@ -112,15 +112,15 @@
             <span class="nav-section-label brand-text-label">Finance</span>
             <ul class="nav-list">
                 <li>
-                    <a href="/admin/payouts" class="nav-item {{ 'active' if active_page == 'payouts' }}"
+                    <a href="/admin/commissions" class="nav-item {{ 'active' if active_page == 'commissions' }}"
                         onclick="closeSidebar()">
-                        <div class="nav-icon"><i class="fas fa-hand-holding-dollar"></i></div>
-                        <span class="nav-label">Verify Payments</span>
+                        <div class="nav-icon"><i class="fas fa-file-invoice-dollar"></i></div>
+                        <span class="nav-label">Commission Verification</span>
                         <span id="payoutNotifBadge" class="nav-badge" style="display:none;">NEW</span>
                     </a>
                 </li>
                 <li>
-                    <a href="/admin/payments" class="nav-item {{ 'active' if active_page == 'payments' }}"
+                    <a href="/admin/revenue" class="nav-item {{ 'active' if active_page == 'revenue' }}"
                         onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-chart-line"></i></div>
                         <span class="nav-label">Platform Revenue</span>
@@ -635,8 +635,8 @@
                             const pb = document.getElementById('payoutNotifBadge');
                             if (pb) pb.style.display = 'inline-block';
                             if (typeof Swal !== 'undefined') {
-                                Swal.fire({ title: 'New Withdrawal Request!', text: data.message, icon: 'warning', showCancelButton: true, confirmButtonText: 'Go to Payouts', confirmButtonColor: '#1e293b' })
-                                    .then(r => { if (r.isConfirmed) window.location.href = '/admin/payouts'; });
+                                Swal.fire({ title: 'New Commission Payment!', text: data.message, icon: 'info', showCancelButton: true, confirmButtonText: 'Go to Commissions', confirmButtonColor: '#1e293b' })
+                                    .then(r => { if (r.isConfirmed) window.location.href = '/admin/commissions'; });
                             }
                         }
                         window.dispatchEvent(new CustomEvent('system_update', { detail: data }));
