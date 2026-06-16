@@ -2222,6 +2222,7 @@ async def add_package(
     max_guests: Optional[int] = Form(None),
     inclusions: Optional[List[str]] = Form(None),
     linked_menu_ids: Optional[List[int]] = Form(None),
+    additional_guest_price: float = Form(0.0),
     image: Optional[UploadFile] = File(None),
     base_pax: int = Form(50),
     labor_cost: float = Form(0.0),
@@ -2301,6 +2302,7 @@ async def add_package(
         image_url=image_url,
         inclusions={inc: True for inc in inclusions} if inclusions else {},
         base_pax=base_pax,
+        additional_guest_price=additional_guest_price,
         labor_cost=labor_cost,
         utility_cost=utility_cost,
         equipment_cost=equipment_cost,
@@ -2726,7 +2728,8 @@ async def get_package_details_api(
         "internal_cost_per_pax": package.internal_cost_per_pax,
         "reservation_fee_type": package.reservation_fee_type,
         "reservation_fee_value": package.reservation_fee_value,
-        "booking_lead_time": package.booking_lead_time
+        "booking_lead_time": package.booking_lead_time,
+        "additional_guest_price": package.additional_guest_price
     }
 
 @router.post("/packages/{package_id}/update")
@@ -2748,6 +2751,7 @@ async def update_package(
     max_guests: Optional[int] = Form(None),
     inclusions: Optional[List[str]] = Form(None),
     linked_menu_ids: Optional[List[int]] = Form(None),
+    additional_guest_price: float = Form(0.0),
     image: Optional[UploadFile] = File(None),
     base_pax: int = Form(50),
     labor_cost: float = Form(0.0),
@@ -2818,6 +2822,7 @@ async def update_package(
     package.min_guests = min_guests
     package.max_guests = max_guests
     package.base_pax = base_pax
+    package.additional_guest_price = additional_guest_price
     package.labor_cost = labor_cost
     package.utility_cost = utility_cost
     package.equipment_cost = equipment_cost

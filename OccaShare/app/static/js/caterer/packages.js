@@ -69,7 +69,6 @@ async function openAddPackageModal() {
         if (form.reservation_fee_type) form.reservation_fee_type.value = 'fixed';
         if (form.reservation_fee_value) form.reservation_fee_value.value = 5000;
         if (form.transportation_cost) form.transportation_cost.value = 0;
-        if (form.miscellaneous_cost) form.miscellaneous_cost.value = 0;
 
         window.togglePricingMode('per_pax');        // Reset Image Preview
         const preview = document.getElementById('pkgImagePreview');
@@ -128,13 +127,12 @@ async function editPackage(pkgId) {
         if (form.service_duration) form.service_duration.value = pkg.service_duration || 8;
         if (form.reservation_fee_type) form.reservation_fee_type.value = pkg.reservation_fee_type || 'fixed';
         if (form.reservation_fee_value) form.reservation_fee_value.value = pkg.reservation_fee_value || 5000;
+        if (form.additional_guest_price) form.additional_guest_price.value = pkg.additional_guest_price || 0;
 
         // Cost Breakdown (Explicit Fields)
         if (form.labor_cost) form.labor_cost.value = pkg.labor_cost || 0;
         if (form.utility_cost) form.utility_cost.value = pkg.utility_cost || 0;
-        if (form.equipment_cost) form.equipment_cost.value = pkg.equipment_cost || 0;
         if (form.transportation_cost) form.transportation_cost.value = pkg.transportation_cost || 0;
-        if (form.miscellaneous_cost) form.miscellaneous_cost.value = pkg.miscellaneous_cost || 0;
 
         window.togglePricingMode(form.pricing_mode ? form.pricing_mode.value : 'per_pax');
 
@@ -342,9 +340,12 @@ function validateTab(tabName, silent = false) {
         // Validate overhead costs
         if (form.labor_cost && (form.labor_cost.value === '' || parseFloat(form.labor_cost.value) < 0)) addError(form.labor_cost, "Cannot be empty or negative.");
         if (form.utility_cost && (form.utility_cost.value === '' || parseFloat(form.utility_cost.value) < 0)) addError(form.utility_cost, "Cannot be empty or negative.");
-        if (form.equipment_cost && (form.equipment_cost.value === '' || parseFloat(form.equipment_cost.value) < 0)) addError(form.equipment_cost, "Cannot be empty or negative.");
         if (form.base_pax && (form.base_pax.value === '' || parseInt(form.base_pax.value) < 1)) addError(form.base_pax, "Must be at least 1.");
         
+    }
+    
+    if (tabName === 'addons') {
+        return true;
     }
     
     return isValid;
@@ -358,8 +359,9 @@ window.reactivelyValidateForm = function(isInitialLoad = false) {
     const isPerksValid = validateTab('perks', isInitialLoad ? true : activeTabId !== 'perks');
     const isMenuValid = validateTab('menu', isInitialLoad ? true : activeTabId !== 'menu');
     const isPricingValid = validateTab('pricing', isInitialLoad ? true : activeTabId !== 'pricing');
+    const isAddonsValid = validateTab('addons', isInitialLoad ? true : activeTabId !== 'addons');
     
-    const isAllValid = isBasicValid && isPerksValid && isMenuValid && isPricingValid;
+    const isAllValid = isBasicValid && isPerksValid && isMenuValid && isAddonsValid && isPricingValid;
     
     // Enable or disable Save Package button reactively
     const saveBtn = document.getElementById('pkgSaveBtn');
@@ -406,8 +408,18 @@ window.reactivelyValidateForm = function(isInitialLoad = false) {
             menuStep.style.pointerEvents = 'none';
         }
     }
-    if (pricingStep) {
+    const addonsStep = document.getElementById('step-btn-addons');
+    if (addonsStep) {
         if (isBasicValid && isPerksValid && isMenuValid) {
+            addonsStep.style.opacity = '1';
+            addonsStep.style.pointerEvents = 'auto';
+        } else {
+            addonsStep.style.opacity = '0.4';
+            addonsStep.style.pointerEvents = 'none';
+        }
+    }
+    if (pricingStep) {
+        if (isBasicValid && isPerksValid && isMenuValid && isAddonsValid) {
             pricingStep.style.opacity = '1';
             pricingStep.style.pointerEvents = 'auto';
         } else {
@@ -448,7 +460,7 @@ window.goToWizardBackStep = function(prevTab) {
         }
         
         // Update Progress Bar
-        const stepsOrder = ['basic', 'perks', 'menu', 'pricing', 'review'];
+        const stepsOrder = ['basic', 'perks', 'menu', 'addons', 'pricing', 'review'];
         const targetIdx = stepsOrder.indexOf(prevTab);
         const progressEl = document.getElementById('pkgWizardProgress');
         if (progressEl) {
@@ -465,7 +477,7 @@ function switchPackageTab(el, tabName) {
     if (!el) return;
     
     // Validate previous tabs on forward click
-    const stepsOrder = ['basic', 'perks', 'menu', 'pricing', 'review'];
+    const stepsOrder = ['basic', 'perks', 'menu', 'addons', 'pricing', 'review'];
     const targetIdx = stepsOrder.indexOf(tabName);
     const activeStepEl = document.querySelector('.pkg-step-side.active') || document.querySelector('.pkg-step.active');
     const currentTabName = activeStepEl ? activeStepEl.id.replace('step-btn-', '') : 'basic';
@@ -551,7 +563,7 @@ async function loadPkgMenuLibrary() {
         const excludeCats = ['rentals', 'services', 'equipment'];
         const foodLibrary = library.filter(item => {
             const cat = item.category ? item.category.toLowerCase() : '';
-            return !excludeCats.includes(cat);
+            return !excludeCats.includes(cat) && !item.is_addon;
         });
 
         container.innerHTML = '';
@@ -585,6 +597,40 @@ async function loadPkgMenuLibrary() {
                 </div>
             `;
         }).join('');
+        
+        // Populate Add-ons Tab
+        const addonsGrid = document.getElementById('addonsGrid');
+        if (addonsGrid) {
+            const addonsLibrary = library.filter(item => item.is_addon === true);
+            if (addonsLibrary.length === 0) {
+                addonsGrid.innerHTML = '<div class="text-center py-5 text-slate-400 text-xs" style="grid-column: 1 / -1;">No add-ons available in your inventory.</div>';
+            } else {
+                addonsGrid.innerHTML = addonsLibrary.map(item => {
+                    const isSelected = linkedIds.includes(item.id);
+                    return `
+                        <div class="menu-select-card ${isSelected ? 'selected' : ''}" 
+                             data-id="${item.id}"
+                             data-cost="${item.cost_price || 0}"
+                             onclick="window.toggleLibItemSelectCard(this, ${item.id})"
+                             style="position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.5rem; padding: 1.25rem 0.75rem; border: 1px solid ${isSelected ? 'var(--primary-color)' : '#e2e8f0'}; border-radius: 0.75rem; cursor: pointer; transition: all 0.2s; background: ${isSelected ? '#f0fdf4' : 'white'}; box-shadow: ${isSelected ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'};">
+                            
+                            <div style="position: absolute; top: 10px; right: 10px; font-size: 1.2rem; color: ${isSelected ? 'var(--primary-color)' : '#cbd5e1'}; transition: all 0.2s;">
+                                ${isSelected ? '<i class="fas fa-check-circle"></i>' : '<i class="far fa-circle"></i>'}
+                            </div>
+        
+                            <img src="${item.image_url || DISH_PLACEHOLDER}" alt="${item.name}" onerror="this.src='${DISH_PLACEHOLDER}'" style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 3px solid #f8fafc; margin-bottom: 0.25rem; box-shadow: 0 4px 8px rgba(0,0,0,0.06);">
+                            
+                            <div style="flex: 1; width: 100%;">
+                                <h6 style="margin: 0; font-size: 0.85rem; font-weight: 800; color: #1e293b; line-height: 1.2; text-overflow: ellipsis; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">${item.name}</h6>
+                                <div style="font-size: 0.75rem; color: #64748b; font-weight: 700; margin-top: 4px;">Charge: ₱${(item.addon_price || item.price || 0).toLocaleString('en-PH', {minimumFractionDigits: 2})}</div>
+                            </div>
+                            <input type="checkbox" name="linked_menu_ids" value="${item.id}" ${isSelected ? 'checked' : ''} style="display:none;">
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+        
         calculateCosts(); // Initial calc
         updateSelectionRulesBuilder();
     } catch (e) {
@@ -692,6 +738,7 @@ function compileSelectionRules() {
     if (hiddenInput) {
         hiddenInput.value = Object.keys(rules).length > 0 ? JSON.stringify(rules) : '';
     }
+    calculateCosts();
 }
 
 function filterPkgMenuLibrary() {
@@ -706,9 +753,7 @@ function calculateCosts() {
     const form = document.getElementById('packageForm');
     const labor = parseFloat(document.getElementById('pkgLaborCost')?.value) || 0;
     const utility = parseFloat(document.getElementById('pkgUtilityCost')?.value) || 0;
-    const equip = parseFloat(document.getElementById('pkgEquipmentCost')?.value) || 0;
     const transport = parseFloat(document.getElementById('pkgTransportCost')?.value) || 0;
-    const misc = parseFloat(document.getElementById('pkgMiscCost')?.value) || 0;
     const minGuests = parseInt(form.min_guests ? form.min_guests.value : 50) || 1;
     const mode = form.pricing_mode ? form.pricing_mode.value : 'per_pax';
     
@@ -722,10 +767,31 @@ function calculateCosts() {
     });
 
     if (menuCards.length > 0) {
-        let ingCostPerPax = 0;
+        const selectedDishesByCategory = {};
         document.querySelectorAll('#tab-menu .menu-select-card.selected').forEach(card => {
-            ingCostPerPax += parseFloat(card.dataset.cost) || 0;
+            const cat = card.dataset.category || 'Uncategorized';
+            const cost = parseFloat(card.dataset.cost) || 0;
+            if (!selectedDishesByCategory[cat]) selectedDishesByCategory[cat] = [];
+            selectedDishesByCategory[cat].push(cost);
         });
+
+        let rules = {};
+        const hiddenInput = document.getElementById('selectionRulesHidden');
+        if (hiddenInput && hiddenInput.value) {
+            try {
+                rules = JSON.parse(hiddenInput.value);
+            } catch (e) {}
+        }
+
+        let ingCostPerPax = 0;
+        for (const [cat, costs] of Object.entries(selectedDishesByCategory)) {
+            costs.sort((a, b) => b - a);
+            const limit = rules[cat] ? parseInt(rules[cat]) : costs.length;
+            const effectiveLimit = Math.min(limit, costs.length);
+            for (let i = 0; i < effectiveLimit; i++) {
+                ingCostPerPax += costs[i];
+            }
+        }
 
         const ingDisplay = document.getElementById('pkgIngredientCostDisplay');
         if (ingDisplay) {
@@ -737,7 +803,7 @@ function calculateCosts() {
     const ingDisplay = document.getElementById('pkgIngredientCostDisplay');
     const ingCostPerPax = parseFloat(ingDisplay?.dataset?.cost) || 0;
 
-    let overheadTotal = labor + utility + equip + transport + misc;
+    let overheadTotal = labor + utility + transport;
     let overheadPerPax = mode === 'per_pax' ? (overheadTotal / minGuests) : overheadTotal;
     let servicesCostPerPax = mode === 'per_pax' ? (servicesCostTotal / minGuests) : servicesCostTotal;
     let foodCostPerPax = mode === 'per_pax' ? ingCostPerPax : (ingCostPerPax * minGuests);
@@ -818,16 +884,39 @@ function calculateCosts() {
         const resVal = form.reservation_fee_value ? parseFloat(form.reservation_fee_value.value) || 0 : 0;
         rRes.innerText = resType === 'percentage' ? resVal + '%' : '₱' + resVal.toLocaleString();
         
+        const rExcessContainer = document.getElementById('reviewExcessPaxContainer');
+        const rExcess = document.getElementById('reviewExcessPax');
+        if (rExcessContainer && rExcess) {
+            if (mode === 'fixed') {
+                const excessVal = parseFloat(form.additional_guest_price?.value) || 0;
+                rExcess.innerText = '₱' + excessVal.toLocaleString(undefined, { minimumFractionDigits: 2 });
+                rExcessContainer.style.display = 'block';
+            } else {
+                rExcessContainer.style.display = 'none';
+            }
+        }
+        
         rDishes.innerText = document.querySelectorAll('#tab-menu .menu-select-card.selected').length;
         rServices.innerText = document.querySelectorAll('#tab-perks .menu-select-card.selected').length;
+        
+        const rAddons = document.getElementById('reviewAddonsCount');
+        if (rAddons) {
+            rAddons.innerText = document.querySelectorAll('#tab-addons .menu-select-card.selected').length;
+        }
     }
 }
 
 window.togglePricingMode = function(mode) {
-    const minGuestsGroup = document.querySelector('input[name="min_guests"]')?.closest('.form-group-pro');
-    if (minGuestsGroup) {
-        minGuestsGroup.style.display = mode === 'fixed' ? 'none' : 'block';
+    const minGuestsLabel = document.querySelector('input[name="min_guests"]')?.previousElementSibling;
+    if (minGuestsLabel) {
+        minGuestsLabel.innerText = mode === 'fixed' ? 'Base Pax Included' : 'Min Guests';
     }
+    
+    const excessGroup = document.getElementById('excessPaxGroup');
+    if (excessGroup) {
+        excessGroup.style.display = mode === 'fixed' ? 'block' : 'none';
+    }
+
     const perHeadLabel = document.querySelector('label[for="pkgManualPriceInput"]') || document.querySelector('#pkgManualPriceInput')?.previousElementSibling;
     if (perHeadLabel) {
         perHeadLabel.innerText = mode === 'fixed' ? 'Total Package Price (₱) *' : 'Selling Price Per Pax (₱) *';
@@ -835,157 +924,6 @@ window.togglePricingMode = function(mode) {
     calculateCosts();
 };
 
-function showMenuModal(pkgId, pkgName) {
-    if (!pkgId) return;
-    currentPackageId = pkgId;
-    const title = document.getElementById('targetPkgDisplay');
-    if (title) title.innerText = `Package: ${pkgName}`;
-    
-    const menuPkgIdInput = document.getElementById('modalMenuPackageId');
-    if (menuPkgIdInput) menuPkgIdInput.value = pkgId;
-    
-    switchMenuMode('current');
-    
-    safeOpenModal('menuModal');
-}
-
-function hideMenuModal() {
-    safeCloseModal('menuModal');
-}
-
-async function switchMenuMode(mode) {
-    document.querySelectorAll('.mtab-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelectorAll('#menuModal .tab-pane-pro').forEach(p => p.style.display = 'none');
-    
-    const activeBtn = document.querySelector(`.mtab-btn[onclick="window.switchMenuMode('${mode}')"]`);
-    if (activeBtn) activeBtn.classList.add('active');
-    
-    const pane = document.getElementById(`menu-mode-${mode}`);
-    if (pane) pane.style.display = 'block';
-
-    if (mode === 'current') loadPackageMenu();
-    if (mode === 'library') loadLibraryItems();
-}
-
-async function loadPackageMenu() {
-    const container = document.getElementById('menuItemsContainer');
-    if (!container) return;
-    container.innerHTML = '<div class="text-center py-5"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
-
-    try {
-        const res = await fetch(`/caterer/packages/${currentPackageId}/menu`);
-        if (!res.ok) throw new Error("Failed to load menu items");
-        const items = await res.json();
-        
-        if (items.length === 0) {
-            container.innerHTML = '<div class="text-center py-10 text-slate-400">No items curated for this package yet.</div>';
-            return;
-        }
-
-        container.innerHTML = items.map(item => `
-            <div class="menu-item-pro-row" style="display: flex; align-items: center; gap: 1rem; background: #fff; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #e2e8f0; border-left: 4px solid var(--primary-color); margin-bottom: 0.5rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-                <img src="${item.image_url || DISH_PLACEHOLDER}" class="dish-thumb" style="width: 40px; height: 40px; border-radius: 0.5rem; object-fit: cover;">
-                <div class="dish-info-pro" style="flex: 1;">
-                    <h6 style="margin: 0; font-size: 0.85rem; font-weight: 700; color: #1e293b;">${item.name}</h6>
-                    <span style="font-size: 0.7rem; color: #94a3b8;">${item.category}</span>
-                </div>
-                <button type="button" onclick="window.unlinkDish(${item.id})" class="text-red-500 hover:text-red-700" style="border:none; background:none; cursor:pointer; font-size: 1.1rem; padding: 0.5rem; transition: color 0.2s;" title="Unlink Dish"><i class="fas fa-unlink"></i></button>
-            </div>
-        `).join('');
-    } catch (e) {
-        console.error("[Packages] Error loading package menu:", e);
-        container.innerHTML = '<div class="text-center py-5 text-red-500">Error loading menu.</div>';
-    }
-}
-
-async function loadLibraryItems() {
-    const container = document.getElementById('libraryItemsContainer');
-    if (!container) return;
-    container.innerHTML = '<div class="text-center py-5"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
-
-    try {
-        const [libRes, linkedRes] = await Promise.all([
-            fetch('/caterer/api/menu'),
-            fetch(`/caterer/packages/${currentPackageId}/menu`)
-        ]);
-        const library = await libRes.json();
-        const linkedItems = await linkedRes.json();
-        const linkedIds = Array.isArray(linkedItems) ? linkedItems.map(i => i.id) : [];
-
-        // Filter library to only show food items
-        const excludeCats = ['rentals', 'services', 'equipment'];
-        const foodLibrary = library.filter(item => {
-            const cat = item.category ? item.category.toLowerCase() : '';
-            return !excludeCats.includes(cat);
-        });
-
-        container.innerHTML = foodLibrary.map(item => {
-            const isLinked = linkedIds.includes(item.id);
-            return `
-                <div class="library-item-row" data-name="${item.name.toLowerCase()}" style="display: flex; align-items: center; gap: 1rem; background: #fff; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; margin-bottom: 0.5rem;">
-                    <img src="${item.image_url || DISH_PLACEHOLDER}" style="width: 40px; height: 40px; border-radius: 0.5rem; object-fit: cover;">
-                    <div style="flex: 1;">
-                        <h6 style="margin: 0; font-size: 0.85rem; font-weight: 700;">${item.name}</h6>
-                        <div style="font-size: 0.7rem; color: #94a3b8;">${item.category}</div>
-                    </div>
-                    ${isLinked ? 
-                        '<span class="text-green-500 font-bold text-xs"><i class="fas fa-check"></i> Linked</span>' : 
-                        `<button type="button" onclick="window.linkDish(${item.id})" class="btn-sm-outline" style="font-size: 10px; padding: 0.25rem 0.5rem;">Link Dish</button>`
-                    }
-                </div>
-            `;
-        }).join('');
-    } catch (e) {
-        console.error("[Packages] Error loading library items:", e);
-        container.innerHTML = '<div class="text-center py-5 text-red-500">Error loading library.</div>';
-    }
-}
-
-function filterLibraryItems() {
-    const query = document.getElementById('librarySearchInput')?.value.toLowerCase() || '';
-    document.querySelectorAll('.library-item-row').forEach(row => {
-        const name = row.dataset.name || '';
-        row.style.display = name.includes(query) ? 'flex' : 'none';
-    });
-}
-
-async function linkDish(dishId) {
-    if (!window.apiAction) return;
-    
-    const doLink = async () => {
-        const formData = new FormData();
-        formData.append('item_id', dishId);
-        
-        const res = await window.apiAction(`/caterer/packages/${currentPackageId}/menu/link`, {
-            method: 'POST',
-            body: formData
-        });
-        if (res) loadLibraryItems();
-    };
-
-    if (window.showConfirm) {
-        window.showConfirm('Link this dish to the current package?', doLink, 'Link Dish', 'Yes, Link It', 'success');
-    } else {
-        if (confirm('Link this dish?')) doLink();
-    }
-}
-
-async function unlinkDish(dishId) {
-    if (!window.apiAction) return;
-    
-    const doUnlink = async () => {
-        const res = await window.apiAction(`/caterer/packages/${currentPackageId}/menu/${dishId}/unlink`, {
-            method: 'POST'
-        });
-        if (res) loadPackageMenu();
-    };
-
-    if (window.showConfirm) {
-        window.showConfirm('Are you sure you want to remove this dish from the package?', doUnlink, 'Unlink Dish', 'Yes, Unlink', 'danger');
-    } else {
-        if (confirm('Remove this dish from the package?')) doUnlink();
-    }
-}
 
 async function archivePackage(id) {
     const doArchive = async () => {

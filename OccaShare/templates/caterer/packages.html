@@ -4,7 +4,7 @@
 {% block title %}Manage Packages - OccaShare Caterer{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/packages.css') }}?v=11.0">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/packages.css') }}?v=12.0">
 {% endblock %}
 
 {% block content %}
@@ -44,7 +44,6 @@
 
             <div class="card-overlay-actions" style="position: absolute; bottom: 0; left: 0; right: 0; padding: 1.25rem; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); display: flex; gap: 0.75rem; opacity: 0; transition: all 0.3s ease; transform: translateY(10px); z-index: 5;">
                 <button type="button" class="btn-overlay-action" onclick="window.editPackage({{ package.id }})" style="flex: 1; background: white; color: #1e293b; border: none; padding: 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 800; cursor: pointer; transition: all 0.2s;"><i class="fas fa-pen"></i> Edit Package</button>
-                <button type="button" class="btn-overlay-action" onclick='window.showMenuModal({{ package.id }}, {{ package.name | tojson | safe }})' style="width: 36px; height: 36px; background: rgba(255,255,255,0.2); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;"><i class="fas fa-utensils"></i></button>
             </div>
         </div>
 
@@ -132,6 +131,15 @@
                         <div class="step-text-side">
                             <span class="step-title-side">Menu Setup</span>
                             <span class="step-desc-side">Dish selection</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Tab 3.5: Add-ons -->
+                    <div id="step-btn-addons" class="pkg-step-side" onclick="window.switchPackageTab(this, 'addons')">
+                        <div class="step-icon-side"><i class="fas fa-plus-circle"></i></div>
+                        <div class="step-text-side">
+                            <span class="step-title-side">Optional Add-ons</span>
+                            <span class="step-desc-side">Extra services</span>
                         </div>
                     </div>
                     <div id="step-btn-pricing" class="pkg-step-side" onclick="window.switchPackageTab(this, 'pricing')">
@@ -277,20 +285,40 @@
                         <input type="hidden" name="selection_rules" id="selectionRulesHidden">
                     </div>
                 </div>
+                
+                <!-- Tab 3.5: Add-ons -->
+                <div id="tab-addons" class="tab-pane-pro">
+                    <div class="form-group-pro">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md);">
+                            <label style="margin:0;">Optional Add-ons</label>
+                            <span style="font-size: 9px; font-weight:800; color:var(--color-neutral-400); text-transform:uppercase; background:var(--color-neutral-100); padding:2px 8px; border-radius:calc(var(--border-radius) * 0.3);">Inventory Linked</span>
+                        </div>
+                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Select items from your inventory that customers can optionally add to their booking for an extra charge (e.g., Photobooth, Band, Extra Tables).</p>
+                        <div style="background:var(--color-neutral-50); border-radius:var(--border-radius); padding:var(--space-md); border:1px solid var(--color-neutral-200); margin-bottom:var(--space-md); max-height:350px; overflow-y:auto;">
+                            <div class="menu-grid-scroll" id="addonsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem;">
+                                <!-- Will be populated dynamically by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <!-- Tab 4: Pricing -->
                 <div id="tab-pricing" class="tab-pane-pro">
                     <div class="pricing-overview-card" style="background: #fff; border: 1px solid #e2e8f0; padding: 1.5rem; border-radius: var(--border-radius); margin-bottom: 1.5rem;">
                         <div class="form-row-pro" style="grid-template-columns: 1fr 1fr 1fr;">
                             <div class="form-group-pro">
-                                <label>Selling Price (₱) *</label>
+                                <label style="font-size: 10px;">Selling Price (₱) *</label>
                                 <input type="text" name="price_per_head" id="pkgManualPriceInput" class="control-pro js-format-comma" style="height: 50px; font-size: 1.1rem; font-weight: 900;" placeholder="0.00" required maxlength="10">
                             </div>
-                            <div class="form-group-pro">
-                                <label>Min Guests</label>
+                            <div class="form-group-pro" id="minGuestsGroup">
+                                <label style="font-size: 10px;">Min Guests</label>
                                 <input type="number" name="min_guests" class="control-pro" style="height: 50px; font-weight: 700;" value="50" min="1" max="100000" oninput="if(this.value.length > 6) this.value = this.value.slice(0,6);">
                             </div>
+                            <div class="form-group-pro" id="excessPaxGroup" style="display: none;">
+                                <label style="font-size: 10px;">Excess Pax Rate (₱)</label>
+                                <input type="number" name="additional_guest_price" class="control-pro" style="height: 50px; font-weight: 700;" value="0" min="0">
+                            </div>
                             <div class="form-group-pro">
-                                <label>Reservation Fee Setup</label>
+                                <label style="font-size: 10px;">Reservation Fee Setup</label>
                                 <div style="display: flex; gap: 0.5rem;">
                                     <select name="reservation_fee_type" class="control-pro" style="flex: 0 0 110px;">
                                         <option value="fixed">Fixed (₱)</option>
@@ -355,18 +383,9 @@
                                 <input type="number" id="pkgUtilityCost" name="utility_cost" class="control-pro" value="0" min="0" max="999999" oninput="if(this.value.length > 7) this.value = this.value.slice(0,7);">
                             </div>
                             <div class="form-group-pro" style="margin-bottom: 0.5rem;">
-                                <label style="font-size: 10px;">Equipment (₱)</label>
-                                <input type="number" id="pkgEquipmentCost" name="equipment_cost" class="control-pro" value="0" min="0" max="999999" oninput="if(this.value.length > 7) this.value = this.value.slice(0,7);">
-                            </div>
-                            <div class="form-group-pro" style="margin-bottom: 0.5rem;">
                                 <label style="font-size: 10px;">Transportation (₱)</label>
                                 <input type="number" id="pkgTransportCost" name="transportation_cost" class="control-pro" value="0" min="0" max="999999" oninput="if(this.value.length > 7) this.value = this.value.slice(0,7);">
                             </div>
-                            <div class="form-group-pro" style="margin-bottom: 0.5rem;">
-                                <label style="font-size: 10px;">Miscellaneous (₱)</label>
-                                <input type="number" id="pkgMiscCost" name="miscellaneous_cost" class="control-pro" value="0" min="0" max="999999" oninput="if(this.value.length > 7) this.value = this.value.slice(0,7);">
-                            </div>
-
                         </div>
                         
                         <div style="background: #fff; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #f1f5f9; margin-top: 0.5rem;">
@@ -397,6 +416,7 @@
                                 <p style="font-size: 0.85rem; margin: 0 0 0.25rem;"><strong>Selling Price:</strong> <span id="reviewPrice" style="font-weight: 800; color: var(--primary-color);"></span></p>
                                 <p style="font-size: 0.85rem; margin: 0 0 0.25rem;"><strong>Expected ROI:</strong> <span id="reviewROI" style="font-weight: 800;"></span></p>
                                 <p style="font-size: 0.85rem; margin: 0 0 0.25rem;"><strong>Reservation Fee:</strong> <span id="reviewReservation"></span></p>
+                                <p style="font-size: 0.85rem; margin: 0 0 0.25rem;" id="reviewExcessPaxContainer" style="display:none;"><strong>Excess Pax Rate:</strong> <span id="reviewExcessPax"></span></p>
                             </div>
                         </div>
 
@@ -410,6 +430,10 @@
                                 <div style="flex: 1; background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 0.75rem; text-align: center;">
                                     <div style="font-size: 1.5rem; font-weight: 900; color: #1e293b;" id="reviewServicesCount">0</div>
                                     <div style="font-size: 0.7rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Services/Rentals</div>
+                                </div>
+                                <div style="flex: 1; background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 0.75rem; text-align: center;">
+                                    <div style="font-size: 1.5rem; font-weight: 900; color: #1e293b;" id="reviewAddonsCount">0</div>
+                                    <div style="font-size: 0.7rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Add-ons</div>
                                 </div>
                             </div>
                         </div>
@@ -427,53 +451,6 @@
     </div>
 </div>
 
-<!-- Menu Management Modal -->
-<div id="menuModal" class="occ-modal-overlay">
-    <div class="occ-modal-box sz-md occ-content-slide-down">
-        <div class="occ-modal-header" style="background: var(--primary-color); border-bottom: none;">
-            <div>
-                <h3 class="occ-modal-title" style="color: white;">Manage Menu Items</h3>
-                <div id="targetPkgDisplay" class="occ-modal-subtitle" style="color: rgba(255, 255, 255, 0.85);"></div>
-            </div>
-            <button onclick="hideMenuModal()" class="occ-modal-close" style="color: white; opacity: 0.8;">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-
-        <div class="occ-modal-body">
-            <div class="modal-tabs-pro" style="margin-bottom:1.5rem;">
-                <button type="button" class="mtab-btn active" onclick="window.switchMenuMode('current')">Curated Menu</button>
-                <button type="button" class="mtab-btn" onclick="window.switchMenuMode('library')">Link from Library</button>
-            </div>
-
-            <!-- Current Package Items -->
-            <div id="menu-mode-current" class="tab-pane-pro active">
-                <div id="menuItemsContainer" style="display:flex; flex-direction:column; gap:0.5rem;">
-                    <!-- Dynamically populated -->
-                </div>
-            </div>
-
-            <!-- Library Linking -->
-            <div id="menu-mode-library" class="tab-pane-pro">
-                <div class="form-group-pro">
-                    <div style="position:relative;">
-                        <i class="fas fa-search" style="position:absolute; left:var(--space-md); top:50%; transform:translateY(-50%); color:var(--color-neutral-400);"></i>
-                        <input type="text" id="librarySearchInput" class="control-pro" style="padding-left:3rem;" placeholder="Search your library..." onkeyup="filterLibraryItems()">
-                    </div>
-                </div>
-                <div id="libraryItemsContainer" class="menu-items-scroll">
-                    <!-- Dynamically populated -->
-                </div>
-            </div>
-
-
-        </div>
-
-        <div class="occ-modal-footer" style="padding: 1.25rem 2rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end;">
-            <button type="button" onclick="hideMenuModal()" class="btn-secondary-pro">Close</button>
-        </div>
-    </div>
-</div>
 
 <!-- ROI Modal -->
 <div id="roiModal" class="occ-modal-overlay">

@@ -1,6 +1,10 @@
 /* Caterer Packages - Professional Redesign */
 .occ-modal-box.sz-lg { max-width: 950px !important; max-height: 90vh; display: flex; flex-direction: column; }
-.pkg-wizard-sidebar { width: 280px; background: #f8fafc; border-right: 1px solid #e2e8f0; padding: 2rem 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; flex-shrink: 0; }
+.pkg-wizard-sidebar { width: 280px; background: #f8fafc; border-right: 1px solid #e2e8f0; padding: 2rem 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; flex-shrink: 0; overflow-y: auto; }
+.pkg-wizard-sidebar::-webkit-scrollbar { width: 6px; }
+.pkg-wizard-sidebar::-webkit-scrollbar-track { background: transparent; }
+.pkg-wizard-sidebar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+.pkg-wizard-sidebar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 .pkg-wizard-content { flex: 1; padding: 2rem 2.5rem; overflow-y: auto; background: white; min-width: 0; }
 .pkg-step-side { display: flex; align-items: center; gap: 1rem; padding: 1rem; border-radius: var(--border-radius); cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid transparent; }
 .pkg-step-side:hover { background: white; border-color: #e2e8f0; transform: translateX(4px); }
