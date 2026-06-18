@@ -347,7 +347,8 @@ async def custom_booking_request_form(request: Request, caterer_id: int, db: Ses
         "request": request,
         "caterer": caterer,
         "user": user,
-        "active_page": "bookings"
+        "active_page": "bookings",
+        "current_step": 1
     })
 
 @router.post("/custom/submit")
