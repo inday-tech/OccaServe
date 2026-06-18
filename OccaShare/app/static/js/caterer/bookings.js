@@ -1080,6 +1080,9 @@ function showBookingDetails(btn) {
     // Update Stepper
     updateBookingStepper(data.status, isPackage);
     
+    // Load Chat Messages
+    loadBookingMessages(data.id);
+    
     // Always default to overview tab
     var ovTabBtn = document.querySelector('.mtab-btn-pro[onclick*="overview"]');
     if (ovTabBtn) switchBookingTab('overview', ovTabBtn);
@@ -2231,3 +2234,107 @@ window.exportBookings = function(format) {
         }
     }
 };
+
+// ─── CONSULTATION CHAT ───────────────────────────────────────────────────────
+
+async function loadBookingMessages(bookingId) {
+    const container = document.getElementById('modalChatMessages');
+    const formBookingId = document.getElementById('chatBookingId');
+    if (formBookingId) formBookingId.value = bookingId;
+    
+    if (!container) return;
+    
+    container.innerHTML = '<div style="text-align:center;padding:2rem;color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> Loading messages...</div>';
+    
+    try {
+        const res = await fetch(`/caterer/api/bookings/${bookingId}/messages`);
+        const result = await res.json();
+        
+        if (result.status === 'success') {
+            const messages = result.messages;
+            if (messages.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: var(--dm-slate-400); font-size: 0.85rem; margin-top: 2rem;">
+                        <i class="fas fa-comments fa-2x" style="opacity: 0.3; margin-bottom: 0.5rem; display: block;"></i>
+                        No messages yet. Start a conversation with your customer!
+                    </div>
+                `;
+            } else {
+                container.innerHTML = messages.map(msg => {
+                    const justify = msg.is_me ? 'flex-end' : 'flex-start';
+                    const bg = msg.is_me ? 'var(--primary-color)' : 'white';
+                    const color = msg.is_me ? 'white' : 'var(--up-slate-900)';
+                    const radius = msg.is_me ? '16px 16px 0 16px' : '16px 16px 16px 0';
+                    const icon = msg.is_me ? '<div style="width:32px;height:32px;border-radius:50%;background:var(--dm-slate-200);display:flex;align-items:center;justify-content:center;color:var(--up-slate-900);font-size:0.75rem;flex-shrink:0;"><i class="fas fa-store"></i></div>' : '<div style="width:32px;height:32px;border-radius:50%;background:var(--up-slate-900);display:flex;align-items:center;justify-content:center;color:white;font-size:0.75rem;flex-shrink:0;"><i class="fas fa-user"></i></div>';
+                    
+                    let attachmentHtml = '';
+                    if (msg.attachment_url) {
+                        attachmentHtml = `
+                            ${msg.message ? '<br><br>' : ''}
+                            <a href="${msg.attachment_url}" target="_blank" style="color: inherit; text-decoration: underline; font-size: 0.75rem;"><i class="fas fa-paperclip"></i> View Attachment</a>
+                        `;
+                    }
+                    
+                    return `
+                        <div style="display: flex; gap: 0.75rem; justify-content: ${justify};">
+                            ${!msg.is_me ? icon : ''}
+                            <div style="max-width: 80%;">
+                                <div style="background: ${bg}; color: ${color}; padding: 0.75rem 1rem; border-radius: ${radius}; box-shadow: 0 2px 4px rgba(0,0,0,0.05); font-size: 0.85rem; line-height: 1.4;">
+                                    ${msg.message ? msg.message : ''}
+                                    ${attachmentHtml}
+                                </div>
+                                <div style="font-size: 0.65rem; color: var(--dm-slate-400); margin-top: 4px; text-align: ${msg.is_me ? 'right' : 'left'};">
+                                    ${msg.created_at}
+                                </div>
+                            </div>
+                            ${msg.is_me ? icon : ''}
+                        </div>
+                    `;
+                }).join('');
+                container.scrollTop = container.scrollHeight;
+            }
+        }
+    } catch (err) {
+        container.innerHTML = '<div style="text-align:center;padding:2rem;color:#ef4444;">Failed to load messages.</div>';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const chatForm = document.getElementById('modalChatForm');
+    if (chatForm) {
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('chatSubmitBtn');
+            const messageInput = document.getElementById('chatMessageInput');
+            const attachmentInput = document.getElementById('chatAttachmentInput');
+            const bookingId = document.getElementById('chatBookingId').value;
+            
+            if (!messageInput.value.trim() && !attachmentInput.files.length) return;
+            
+            const originalBtn = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            btn.disabled = true;
+            
+            const formData = new FormData(chatForm);
+            
+            try {
+                const res = await fetch(`/bookings/${bookingId}/messages`, {
+                    method: 'POST',
+                    body: formData
+                });
+                if (res.ok) {
+                    messageInput.value = '';
+                    attachmentInput.value = '';
+                    loadBookingMessages(bookingId);
+                } else {
+                    window.showError("Failed to send message.");
+                }
+            } catch (err) {
+                window.showError("Network error while sending message.");
+            } finally {
+                btn.innerHTML = originalBtn;
+                btn.disabled = false;
+            }
+        });
+    }
+});

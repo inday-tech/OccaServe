@@ -363,23 +363,36 @@ async def custom_booking_submit(
     venue_address: str = Form(...),
     budget: float = Form(0.0),
     theme_description: str = Form(""),
+    reference_images: list[UploadFile] = File(None),
     db: Session = Depends(database.get_db)
 ):
     user = get_current_user_from_session(request, db)
     if not user:
         return RedirectResponse(url=f"/auth/login?next=/bookings/custom/request/{caterer_id}")
     
-    # Validation logic (similar to standard bookings, simplified)
     caterer = db.query(models.CatererProfile).get(caterer_id)
     if not caterer:
         return RedirectResponse(url="/customer/marketplace", status_code=303)
         
-    # Minimum guest count validation
     min_guests = caterer.min_pax or 20
     if guest_count < min_guests:
         return RedirectResponse(url=f"/bookings/custom/request/{caterer_id}?error=Minimum+guest+count+is+{min_guests}", status_code=303)
         
-    # Create Custom Booking request
+    # Handle File Uploads
+    image_urls = []
+    upload_dir = "app/static/uploads/custom_events"
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    if reference_images:
+        for file in reference_images:
+            if file.filename and file.filename != '':
+                ext = file.filename.split('.')[-1]
+                filename = f"{uuid.uuid4()}.{ext}"
+                file_path = os.path.join(upload_dir, filename)
+                with open(file_path, "wb") as buffer:
+                    shutil.copyfileobj(file.file, buffer)
+                image_urls.append(f"/static/uploads/custom_events/{filename}")
+
     new_booking = models.Booking(
         caterer_id=caterer_id,
         user_id=user.id,
@@ -392,9 +405,10 @@ async def custom_booking_submit(
         is_custom_event=True,
         custom_requirements={
             "budget": budget,
-            "theme_description": theme_description
+            "theme_description": theme_description,
+            "reference_images": image_urls
         },
-        status="pending_quotation", # Starts awaiting caterer proposal
+        status="pending_review", # Updated to PENDING REVIEW as per the workflow plan
         total_amount=0.0,
         reservation_fee=0.0
     )
@@ -416,7 +430,12 @@ async def continue_draft_booking(booking_id: int, request: Request, db: Session 
     if not booking or booking.user_id != user.id:
         return RedirectResponse(url="/customer/dashboard?error_msg=Booking+not+found", status_code=303)
         
-    if booking.status not in ['draft', 'pending_quotation', 'awaiting_caterer', 'awaiting_payment']:
+    # Valid in-progress statuses before payment is completed
+    valid_statuses = [
+        'draft', 'pending_quotation', 'awaiting_caterer', 'awaiting_payment',
+        'pending_review', 'additional_info_required', 'under_review', 'revision_requested'
+    ]
+    if booking.status not in valid_statuses:
         return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}", status_code=303)
         
     # Re-populate session so back-navigation works
@@ -440,7 +459,7 @@ async def continue_draft_booking(booking_id: int, request: Request, db: Session 
         return RedirectResponse(url=f"/bookings/step/kyc/{booking.id}", status_code=303)
         
     # If custom event and waiting for caterer, redirect to dashboard/manage
-    if booking.is_custom_event and booking.status == "pending_quotation":
+    if booking.is_custom_event and booking.status in ["pending_quotation", "pending_review", "additional_info_required", "under_review", "revision_requested"]:
         return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}", status_code=303)
         
     # 2. Is there a Quotation yet?
@@ -1284,3 +1303,60 @@ async def delete_or_archive_booking(
     booking.is_archived = True
     db.commit()
     return {"success": True, "message": "Booking moved to archive.", "action": "archived"}
+
+@router.post("/{booking_id}/messages")
+async def send_booking_message(
+    booking_id: int,
+    request: Request,
+    message: str = Form(None),
+    attachment: UploadFile = File(None),
+    db: Session = Depends(database.get_db)
+):
+    user = get_current_user_from_session(request, db)
+    if not user:
+        return JSONResponse({"success": False, "message": "Unauthorized"}, status_code=401)
+        
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking:
+        return JSONResponse({"success": False, "message": "Booking not found"}, status_code=404)
+        
+    if user.id != booking.user_id and user.id != booking.caterer.user_id:
+        return JSONResponse({"success": False, "message": "Forbidden"}, status_code=403)
+        
+    if not message and not attachment:
+        return JSONResponse({"success": False, "message": "Empty message"}, status_code=400)
+        
+    attachment_url = None
+    if attachment and attachment.filename:
+        upload_dir = "app/static/uploads/chat"
+        os.makedirs(upload_dir, exist_ok=True)
+        ext = attachment.filename.split('.')[-1]
+        filename = f"{uuid.uuid4()}.{ext}"
+        file_path = os.path.join(upload_dir, filename)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(attachment.file, buffer)
+        attachment_url = f"/static/uploads/chat/{filename}"
+        
+    new_msg = models.BookingMessage(
+        booking_id=booking_id,
+        sender_id=user.id,
+        message=message,
+        attachment_url=attachment_url
+    )
+    db.add(new_msg)
+    db.commit()
+    db.refresh(new_msg)
+    
+    receiver_id = booking.caterer.user_id if user.id == booking.user_id else booking.user_id
+    from ..services.realtime import manager
+    import asyncio
+    asyncio.create_task(manager.broadcast_to_user(receiver_id, {
+        "type": "new_booking_message",
+        "booking_id": booking_id,
+        "sender_id": user.id,
+        "message": new_msg.message,
+        "attachment_url": new_msg.attachment_url,
+        "created_at": new_msg.created_at.isoformat()
+    }))
+    
+    return RedirectResponse(url=request.headers.get("referer", f"/customer/bookings/manage/{booking_id}"), status_code=303)

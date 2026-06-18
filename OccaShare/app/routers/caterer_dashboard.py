@@ -1736,6 +1736,28 @@ async def update_booking_notes(
     db.commit()
     return {"status": "success"}
 
+@router.get("/api/bookings/{booking_id}/messages")
+async def get_booking_messages(
+    booking_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking or booking.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+        
+    messages = []
+    for msg in booking.messages:
+        messages.append({
+            "id": msg.id,
+            "sender_id": msg.sender_id,
+            "message": msg.message,
+            "attachment_url": msg.attachment_url,
+            "is_me": msg.sender_id == user.id,
+            "created_at": msg.created_at.strftime('%b %d, %I:%M %p')
+        })
+    return {"status": "success", "messages": messages}
+
 
 @router.get("/bookings/{booking_id}/quotation")
 async def view_booking_quotation(

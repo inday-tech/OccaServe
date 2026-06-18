@@ -429,6 +429,21 @@ class Booking(Base):
     selected_items = relationship("BookingMenuItem", back_populates="booking", cascade="all, delete-orphan")
     payout = relationship("Payout", back_populates="bookings")
     expenses = relationship("BookingExpense", back_populates="booking", cascade="all, delete-orphan")
+    messages = relationship("BookingMessage", back_populates="booking", cascade="all, delete-orphan")
+
+class BookingMessage(Base):
+    __tablename__ = "booking_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    booking_id = Column(Integer, ForeignKey("bookings.id"))
+    sender_id = Column(Integer, ForeignKey("users.id"))
+    message = Column(Text, nullable=True)
+    attachment_url = Column(String, nullable=True)
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    booking = relationship("Booking", back_populates="messages")
+    sender = relationship("User")
 
 class BookingMenuItem(Base):
     __tablename__ = "booking_menu_items"

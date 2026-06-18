@@ -5,52 +5,63 @@
 {% block step_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_details.css') }}?v={{ range(1, 9999) | random }}">
 <style>
-    .wizard-title { font-size: 1.8rem; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem; }
-    .wizard-subtitle { font-size: 0.95rem; color: #64748b; margin-bottom: 2rem; }
-    .rfq-container { background: #fff; border-radius: 16px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.02); border: 1px solid #f1f5f9; }
-    .form-group { margin-bottom: 1.5rem; }
-    .form-label { display: block; font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 0.5rem; }
-    .form-input, .form-textarea { width: 100%; padding: 0.85rem; border: 1.5px solid #e2e8f0; border-radius: 12px; font-family: 'Poppins', sans-serif; font-size: 0.95rem; transition: border-color 0.2s; }
-    .form-input:focus, .form-textarea:focus { outline: none; border-color: #0f172a; }
+    .wizard-title { font-size: 2rem; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
+    .wizard-subtitle { font-size: 1rem; color: #64748b; margin-bottom: 2.5rem; }
+    .rfq-container { background: #ffffff; border-radius: 16px; padding: 2.5rem; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.02), 0 8px 10px -6px rgba(0,0,0,0.01); border: 1px solid #f1f5f9; }
+    
+    .section-title { font-size: 1.1rem; font-weight: 800; color: #0f172a; margin-bottom: 1.5rem; padding-bottom: 0.75rem; border-bottom: 2px solid #f8fafc; letter-spacing: -0.01em; }
+    
+    .form-group { margin-bottom: 1.5rem; position: relative; }
+    .form-label { display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .form-input, .form-textarea { width: 100%; padding: 0.9rem 1rem; border: 1.5px solid #e2e8f0; border-radius: 10px; font-family: 'Inter', 'Poppins', sans-serif; font-size: 0.95rem; color: #1e293b; transition: all 0.2s ease; background: #f8fafc; }
+    .form-input:focus, .form-textarea:focus { outline: none; border-color: #0f172a; background: #ffffff; box-shadow: 0 0 0 4px rgba(15, 23, 42, 0.05); }
+    .form-input.error-border, .form-textarea.error-border { border-color: #ef4444; background: #fef2f2; }
+    
+    .error-msg { display: block; color: #ef4444; font-size: 0.8rem; font-weight: 500; margin-top: 0.4rem; min-height: 1.2rem; }
+    
     .grid-2-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-    .btn-submit { background: #0f172a; color: #fff; border: none; padding: 1rem 2rem; border-radius: 12px; font-size: 1rem; font-weight: 800; cursor: pointer; transition: background 0.2s; display: inline-flex; align-items: center; gap: 0.5rem; }
-    .btn-submit:hover { background: #1e293b; }
+    
+    .btn-container { margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; align-items: center; gap: 1rem; }
+    .btn-cancel { font-size: 0.95rem; font-weight: 600; color: #64748b; text-decoration: none; padding: 0.8rem 1.5rem; border-radius: 10px; transition: background 0.2s, color 0.2s; }
+    .btn-cancel:hover { background: #f1f5f9; color: #0f172a; }
+    .btn-submit { background: #0f172a; color: #ffffff; border: none; padding: 1rem 2.5rem; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; letter-spacing: 0.02em; }
+    .btn-submit:hover { background: #1e293b; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15); }
+    .btn-submit:active { transform: translateY(0); }
     
     @media (max-width: 768px) {
         .grid-2-col { grid-template-columns: 1fr; gap: 1rem; }
+        .rfq-container { padding: 1.5rem; }
     }
 </style>
 {% endblock %}
 
 {% block wizard_content %}
 <div class="wizard-header-content text-center mb-8">
-    <h2 class="wizard-title text-slate-900">Request Custom Proposal</h2>
-    <p class="wizard-subtitle text-slate-500">Provide details for your dream event and get a customized quote from {{ caterer.business_name }}.</p>
+    <h2 class="wizard-title">Request Custom Proposal</h2>
+    <p class="wizard-subtitle">Provide details for your dream event and get a customized quote from <strong>{{ caterer.business_name }}</strong>.</p>
 </div>
 
 <div class="max-w-3xl mx-auto w-full">
     {% if request.query_params.get('error') %}
-    <div class="bg-red-50 text-red-600 p-4 rounded-xl mb-6 text-sm font-bold border border-red-200 flex items-center gap-2">
-        <i class="fas fa-exclamation-circle"></i>
+    <div class="bg-red-50 text-red-600 p-4 rounded-xl mb-6 text-sm font-bold border border-red-200">
         {{ request.query_params.get('error') }}
     </div>
     {% endif %}
 
-    <form action="/bookings/custom/submit" method="POST" class="rfq-container">
+    <form action="/bookings/custom/submit" method="POST" enctype="multipart/form-data" class="rfq-container" novalidate>
         <input type="hidden" name="caterer_id" value="{{ caterer.id }}">
         
-        <h3 class="text-lg font-black text-slate-800 mb-6 pb-2 border-b border-slate-100 flex items-center gap-2">
-            <i class="fas fa-calendar-alt text-slate-400"></i> Event Details
-        </h3>
+        <h3 class="section-title">Event Details</h3>
 
         <div class="grid-2-col">
             <div class="form-group">
                 <label class="form-label">Event Name</label>
                 <input type="text" name="event_name" class="form-input" required placeholder="e.g. Maria's 18th Birthday">
+                <span class="error-msg"></span>
             </div>
             <div class="form-group">
                 <label class="form-label">Event Type</label>
-                <select name="event_type" class="form-input bg-white" required>
+                <select name="event_type" class="form-input" required>
                     <option value="">-- Select Type --</option>
                     <option value="Wedding">Wedding</option>
                     <option value="Birthday">Birthday</option>
@@ -60,6 +71,7 @@
                     <option value="Private Party">Private Party</option>
                     <option value="Other">Other</option>
                 </select>
+                <span class="error-msg"></span>
             </div>
         </div>
 
@@ -67,45 +79,154 @@
             <div class="form-group">
                 <label class="form-label">Event Date</label>
                 <input type="date" name="event_date" class="form-input" required>
+                <span class="error-msg"></span>
             </div>
             <div class="form-group">
                 <label class="form-label">Start Time</label>
                 <input type="time" name="event_time" class="form-input" required>
+                <span class="error-msg"></span>
             </div>
         </div>
 
         <div class="grid-2-col">
             <div class="form-group">
                 <label class="form-label">Estimated Guest Count</label>
-                <input type="number" name="guest_count" class="form-input" min="{{ caterer.min_pax or 20 }}" required placeholder="Min. {{ caterer.min_pax or 20 }} pax">
-                <p class="text-[11px] text-slate-400 mt-1 font-semibold">Minimum guests allowed: {{ caterer.min_pax or 20 }}</p>
+                <input type="number" name="guest_count" class="form-input" min="{{ caterer.min_pax or 20 }}" max="10000" required placeholder="Min. {{ caterer.min_pax or 20 }} pax" oninput="if(this.value > 10000) this.value = 10000;">
+                <span class="error-msg"></span>
             </div>
             <div class="form-group">
                 <label class="form-label">Estimated Budget (Optional)</label>
-                <input type="number" name="budget" class="form-input" placeholder="e.g. 50000">
+                <input type="number" name="budget" class="form-input" placeholder="e.g. 50000" min="0" max="10000000" oninput="if(this.value > 10000000) this.value = 10000000;">
+                <span class="error-msg"></span>
             </div>
         </div>
 
         <div class="form-group">
             <label class="form-label">Venue / Location</label>
             <input type="text" name="venue_address" class="form-input" required placeholder="Full address or city">
+            <span class="error-msg"></span>
         </div>
 
-        <h3 class="text-lg font-black text-slate-800 mb-6 mt-8 pb-2 border-b border-slate-100 flex items-center gap-2">
-            <i class="fas fa-magic text-slate-400"></i> Theme & Preferences
-        </h3>
+        <h3 class="section-title mt-8">Theme & Preferences</h3>
 
         <div class="form-group">
-            <label class="form-label">Describe your vision (Theme, colors, special requests)</label>
-            <textarea name="theme_description" class="form-textarea" rows="4" placeholder="I would like a rustic theme with pastel colors. We also need a grand backdrop for photos..." required></textarea>
+            <label class="form-label">Describe your vision</label>
+            <textarea name="theme_description" class="form-textarea" rows="4" placeholder="I would like a rustic theme with pastel colors..." required></textarea>
+            <span class="error-msg"></span>
         </div>
 
-        <div class="mt-8 pt-6 border-t border-slate-100 flex justify-end items-center gap-4">
-            <a href="/customer/marketplace/{{ caterer.id }}" class="text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors">Cancel</a>
-            <button type="submit" class="btn-submit">
-                Submit Request <i class="fas fa-paper-plane"></i>
-            </button>
+        <div class="form-group">
+            <label class="form-label">Reference Images (Optional)</label>
+            <input type="file" name="reference_images" class="form-input bg-white" accept="image/png, image/jpeg, image/jpg" multiple>
+            <p class="text-[11px] text-slate-500 mt-2">Upload inspiration photos (Max 3 files, PNG/JPG).</p>
+        </div>
+
+        <div class="btn-container">
+            <a href="/customer/marketplace/{{ caterer.id }}" class="btn-cancel">Cancel</a>
+            <button type="submit" class="btn-submit">Submit Request</button>
         </div>
     </form>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const leadTimeDays = parseInt("{{ caterer.booking_lead_time or 7 }}");
+    const minPax = parseInt("{{ caterer.min_pax or 20 }}");
+    const dateInput = document.querySelector('input[name="event_date"]');
+    
+    // Set minimum date based on caterer lead time
+    const today = new Date();
+    today.setDate(today.getDate() + leadTimeDays);
+    const minDateStr = today.toISOString().split('T')[0];
+    if (dateInput) {
+        dateInput.setAttribute('min', minDateStr);
+    }
+
+    const form = document.querySelector('.rfq-container');
+    const inputs = form.querySelectorAll('.form-input, .form-textarea');
+
+    function validateField(field) {
+        // Skip validation for file inputs
+        if (field.type === 'file') return true;
+
+        const errorEl = field.parentElement.querySelector('.error-msg');
+        if (!errorEl) return true;
+
+        let isValid = true;
+        let errMsg = '';
+
+        if (!field.value.trim()) {
+            if (field.hasAttribute('required')) {
+                isValid = false;
+                errMsg = 'This field is required.';
+            }
+        } else {
+            if (field.name === 'event_date' && field.value < minDateStr) {
+                isValid = false;
+                errMsg = `Event must be at least ${leadTimeDays} days from today.`;
+            } else if (field.name === 'guest_count') {
+                const count = parseInt(field.value);
+                if (count < minPax) {
+                    isValid = false;
+                    errMsg = `Minimum guest count for this caterer is ${minPax}.`;
+                } else if (count > 10000) {
+                    isValid = false;
+                    errMsg = 'Guest count cannot exceed 10,000.';
+                }
+            } else if (field.name === 'budget') {
+                const b = parseFloat(field.value);
+                if (b < 1000) {
+                    isValid = false;
+                    errMsg = 'If provided, budget must be at least ₱1,000.';
+                } else if (b > 10000000) {
+                    isValid = false;
+                    errMsg = 'Budget cannot exceed ₱10,000,000.';
+                }
+            } else if (field.name === 'event_time') {
+                const timeParts = field.value.split(':');
+                if (timeParts.length === 2) {
+                    const hours = parseInt(timeParts[0], 10);
+                    if (hours < 6 || hours > 21) {
+                        isValid = false;
+                        errMsg = 'Start time must be between 6:00 AM and 10:00 PM.';
+                    }
+                }
+            }
+        }
+
+        if (!isValid) {
+            errorEl.textContent = errMsg;
+            field.classList.add('error-border');
+        } else {
+            errorEl.textContent = '';
+            field.classList.remove('error-border');
+        }
+
+        return isValid;
+    }
+
+    inputs.forEach(input => {
+        input.addEventListener('blur', () => validateField(input));
+        input.addEventListener('input', () => validateField(input));
+    });
+
+    form.addEventListener('submit', function(e) {
+        let isFormValid = true;
+        inputs.forEach(input => {
+            if (!validateField(input)) {
+                isFormValid = false;
+            }
+        });
+
+        if (!isFormValid) {
+            e.preventDefault();
+            // Scroll to the first error
+            const firstError = form.querySelector('.error-border');
+            if (firstError) {
+                firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    });
+});
+</script>
 {% endblock %}
