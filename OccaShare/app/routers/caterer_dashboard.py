@@ -1249,7 +1249,6 @@ async def caterer_archives(
     archived_packages = [pkg for pkg in profile.packages if pkg.status == 'archived']
     archived_gallery_items = [item for item in profile.gallery_items if item.is_archived]
     archived_bookings = [b for b in profile.bookings if b.is_archived]
-    archived_ingredients = [ing for ing in profile.ingredients if ing.is_archived]
 
     return templates.TemplateResponse("caterer/archives.html", {
         "request": request,
@@ -1258,7 +1257,6 @@ async def caterer_archives(
         "archived_packages": archived_packages,
         "archived_gallery_items": archived_gallery_items,
         "archived_bookings": archived_bookings,
-        "archived_ingredients": archived_ingredients,
         "active_page": "archives"
     })
 
@@ -1746,13 +1744,21 @@ async def view_booking_quotation(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    """View the detailed quotation/invoice for a booking."""
+    """View the detailed quotation/invoice for a booking or create a proposal."""
     booking = db.query(models.Booking).get(booking_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
         return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
     
     quotation = booking.quotation
     if not quotation:
+        # If it's a custom event and no quotation exists, show the Proposal Maker
+        if booking.is_custom_event:
+            return templates.TemplateResponse("caterer/proposal_maker.html", {
+                "request": request,
+                "booking": booking,
+                "user": user
+            })
+            
         # Fallback if no quotation record exists
         quotation = {
             "total_amount": booking.total_amount,
@@ -1767,6 +1773,86 @@ async def view_booking_quotation(
         "quotation": quotation,
         "user": user
     })
+
+@router.post("/bookings/{booking_id}/proposal_maker")
+async def submit_proposal_maker(
+    booking_id: int,
+    base_price: float = Form(...),
+    total_amount: float = Form(...),
+    downpayment_percent: int = Form(30),
+    addon_names: List[str] = Form([]),
+    addon_prices: List[float] = Form([]),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    """Submit a custom quotation/proposal from the caterer."""
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking or booking.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+        
+    if booking.quotation:
+        raise HTTPException(status_code=400, detail="Quotation already exists")
+        
+    # Financial Constraint Enforcement
+    # 1. Baseline Fees (₱150/head equipment fee)
+    min_equipment_fee = booking.guest_count * 150.0
+    
+    # 2. Staffing Ratios (1 waiter per 20 guests, assuming ₱800 per waiter)
+    waiters_needed = max(1, booking.guest_count // 20)
+    min_staffing_fee = waiters_needed * 800.0
+    
+    absolute_minimum = min_equipment_fee + min_staffing_fee
+    
+    if total_amount < absolute_minimum:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Total proposal amount (₱{total_amount}) is below the required absolute minimum (₱{absolute_minimum}) to cover baseline equipment and staffing costs."
+        )
+        
+    # Build addons list
+    addons = []
+    for i in range(len(addon_names)):
+        if addon_names[i].strip():
+            addons.append({
+                "name": addon_names[i].strip(),
+                "price": addon_prices[i] if i < len(addon_prices) else 0.0
+            })
+            
+    package_details = {
+        "name": f"Custom Request: {booking.event_name or booking.event_type}",
+        "unit_price": base_price / (booking.guest_count or 1),
+        "base_amount": base_price,
+        "guest_count": booking.guest_count,
+        "description": booking.custom_requirements.get("theme_description", "") if booking.custom_requirements else ""
+    }
+    
+    quotation = models.Quotation(
+        booking_id=booking.id,
+        package_details=package_details,
+        addons=addons,
+        total_amount=total_amount,
+        downpayment_percent=downpayment_percent,
+        status="awaiting_customer" # The customer needs to accept it
+    )
+    db.add(quotation)
+    
+    booking.total_amount = total_amount
+    booking.total_price = total_amount
+    booking.reservation_fee = total_amount * (downpayment_percent / 100.0)
+    booking.status = "awaiting_customer"
+    
+    db.commit()
+    
+    # Notify customer
+    await NotificationService.notify_status_update(
+        db, 
+        booking.user_id, 
+        "Proposal Received", 
+        f"Caterer {user.caterer_profile.business_name} has submitted a proposal for your event.", 
+        f"/bookings/step/quotation/{booking.id}"
+    )
+    
+    return RedirectResponse(url=f"/caterer/bookings/{booking.id}/quotation", status_code=303)
 
 
 @router.post("/bookings/{booking_id}/complete")
@@ -2149,9 +2235,49 @@ async def manage_packages(
 ):
     profile = user.caterer_profile
     active_packages = [p for p in profile.packages if p.status != 'archived']
-    active_menu = [m for m in profile.menu_items if not m.is_archived and m.category not in ['Rentals', 'Services', 'Equipment']]
-    active_services = [m for m in profile.menu_items if not m.is_archived and m.category in ['Rentals', 'Services', 'Equipment']]
     
+    # Filter menu items (Dishes)
+    service_cats = ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']
+    active_menu = [m for m in profile.menu_items if not m.is_archived and m.category not in service_cats]
+    
+    # Compile Inventory & Services
+    equipment_items = [e for e in profile.equipment_items if not e.is_archived]
+    service_items = [s for s in profile.service_items if not s.is_archived]
+    legacy_items = [m for m in profile.menu_items if not m.is_archived and m.category in service_cats]
+    
+    # Unify them into a dictionary format compatible with the template
+    active_services = []
+    for e in equipment_items:
+        active_services.append({
+            "id": f"eq_{e.id}",
+            "real_id": e.id,
+            "type": "Equipment",
+            "name": e.name,
+            "category": e.category,
+            "cost_price": e.cost_value,
+            "image_url": e.image_url
+        })
+    for s in service_items:
+        active_services.append({
+            "id": f"sv_{s.id}",
+            "real_id": s.id,
+            "type": "Service",
+            "name": s.name,
+            "category": s.category,
+            "cost_price": s.cost,
+            "image_url": s.image_url
+        })
+    for m in legacy_items:
+        active_services.append({
+            "id": m.id, # legacy uses int ID
+            "real_id": m.id,
+            "type": "Legacy",
+            "name": m.name,
+            "category": m.category,
+            "cost_price": m.cost_price,
+            "image_url": m.image_url
+        })
+        
     return templates.TemplateResponse("caterer/packages.html", {
         "request": request,
         "user": user,
@@ -2167,13 +2293,12 @@ async def manage_menu(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    active_menu = [m for m in user.caterer_profile.menu_items if not m.is_archived and m.category not in ['Rentals', 'Services']]
-    all_ingredients = [i for i in user.caterer_profile.ingredients if not i.is_archived]
+    service_cats = ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']
+    active_menu = [m for m in user.caterer_profile.menu_items if not m.is_archived and m.category not in service_cats]
     return templates.TemplateResponse("caterer/menu.html", {
         "request": request,
         "user": user,
         "menu_items": active_menu,
-        "ingredients": all_ingredients,
         "active_page": "menu"
     })
 
@@ -2183,13 +2308,235 @@ async def manage_services(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    active_services = [m for m in user.caterer_profile.menu_items if not m.is_archived and m.category in ['Rentals', 'Services']]
+    equipment_items = [e for e in user.caterer_profile.equipment_items if not e.is_archived]
+    service_items = [s for s in user.caterer_profile.service_items if not s.is_archived]
+    
+    # Legacy items in menu_items table
+    service_cats = ['Rentals', 'Services', 'Event Styling', 'Event Rental', 'Entertainment', 'Event Coordination', 'Food Cart', 'Equipment Rental', 'Staffing Services', 'Packages']
+    legacy_items = [m for m in user.caterer_profile.menu_items if not m.is_archived and m.category in service_cats]
+    
+    # Unify them for the frontend
+    items = []
+    for e in equipment_items:
+        items.append({
+            "id": e.id,
+            "item_type": e.equipment_type or "Equipment",
+            "name": e.name,
+            "category": e.category,
+            "description": e.description,
+            "price": e.rental_price,
+            "cost_price": e.cost_value,
+            "unit_type": e.unit_type,
+            "available_qty": e.available_qty,
+            "status": e.status,
+            "image_url": e.image_url
+        })
+    for s in service_items:
+        items.append({
+            "id": s.id,
+            "item_type": "Service",
+            "name": s.name,
+            "category": s.category,
+            "description": s.description,
+            "price": s.selling_price,
+            "cost_price": s.cost,
+            "unit_type": s.unit_type,
+            "available_qty": s.max_available,
+            "status": s.status,
+            "image_url": s.image_url
+        })
+    for m in legacy_items:
+        items.append({
+            "id": m.id,
+            "item_type": "Legacy",
+            "name": m.name,
+            "category": m.category,
+            "description": m.description,
+            "price": m.price,
+            "cost_price": m.cost_price,
+            "unit_type": m.pricing_unit,
+            "available_qty": m.max_stock_quantity or 1,
+            "status": "unavailable" if m.is_hidden else "available",
+            "image_url": m.image_url
+        })
+
     return templates.TemplateResponse("caterer/services.html", {
         "request": request,
         "user": user,
-        "services": active_services,
+        "items": items,
         "active_page": "services"
     })
+
+@router.post("/services/add")
+async def add_service_item(
+    request: Request,
+    type: str = Form(...),
+    name: str = Form(...),
+    category: str = Form(...),
+    description: Optional[str] = Form(None),
+    price: float = Form(0.0),
+    cost_price: float = Form(0.0),
+    unit_type: str = Form("Per Event"),
+    available_qty: int = Form(1),
+    status: str = Form("available"),
+    visibility: str = Form("public"),
+    image: Optional[UploadFile] = File(None),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    import base64
+    image_url = None
+    if image and image.filename:
+        try:
+            content_bytes = await image.read()
+            if content_bytes:
+                encoded = base64.b64encode(content_bytes).decode("utf-8")
+                mime = image.content_type or "image/jpeg"
+                image_url = f"data:{mime};base64,{encoded}"
+        except Exception:
+            pass
+
+    if type in ["Equipment", "Decoration"]:
+        new_item = models.Equipment(
+            caterer_id=user.caterer_profile.id,
+            equipment_type=type,
+            name=name,
+            category=category,
+            description=description,
+            rental_price=price,
+            cost_value=cost_price,
+            unit_type=unit_type,
+            available_qty=available_qty,
+            status=status,
+            is_hidden=(visibility == "hidden"),
+            image_url=image_url
+        )
+    else:
+        new_item = models.Service(
+            caterer_id=user.caterer_profile.id,
+            name=name,
+            category=category,
+            description=description,
+            selling_price=price,
+            cost=cost_price,
+            unit_type=unit_type,
+            max_available=available_qty,
+            status=status,
+            is_hidden=(visibility == "hidden"),
+            image_url=image_url
+        )
+        
+    db.add(new_item)
+    db.commit()
+
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JSONResponse({"status": "success", "message": "Item added successfully"})
+    return RedirectResponse(url="/caterer/services", status_code=303)
+
+@router.post("/services/{item_id}/update")
+async def update_service_item(
+    item_id: int,
+    request: Request,
+    type: str = Form(...),
+    name: str = Form(...),
+    category: str = Form(...),
+    description: Optional[str] = Form(None),
+    price: float = Form(0.0),
+    cost_price: float = Form(0.0),
+    unit_type: str = Form("Per Event"),
+    available_qty: int = Form(1),
+    status: str = Form("available"),
+    visibility: str = Form("public"),
+    image: Optional[UploadFile] = File(None),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    import base64
+    image_url = None
+    if image and image.filename:
+        try:
+            content_bytes = await image.read()
+            if content_bytes:
+                encoded = base64.b64encode(content_bytes).decode("utf-8")
+                mime = image.content_type or "image/jpeg"
+                image_url = f"data:{mime};base64,{encoded}"
+        except Exception:
+            pass
+
+    if type in ["Equipment", "Decoration"]:
+        item = db.query(models.Equipment).get(item_id)
+        if not item or item.caterer_id != user.caterer_profile.id:
+            raise HTTPException(status_code=404, detail="Item not found")
+        item.name = name
+        item.category = category
+        item.description = description
+        item.rental_price = price
+        item.cost_value = cost_price
+        item.unit_type = unit_type
+        item.available_qty = available_qty
+        item.status = status
+        item.is_hidden = (visibility == "hidden")
+        if image_url: item.image_url = image_url
+    elif type == "Legacy":
+        item = db.query(models.MenuItem).get(item_id)
+        if not item or item.caterer_id != user.caterer_profile.id:
+            raise HTTPException(status_code=404, detail="Item not found")
+        item.name = name
+        item.category = category
+        item.description = description
+        item.price = price
+        item.cost_price = cost_price
+        item.pricing_unit = unit_type
+        item.max_stock_quantity = available_qty
+        item.is_hidden = (visibility == "hidden")
+        item.status = status
+        if image_url: item.image_url = image_url
+    else:
+        item = db.query(models.Service).get(item_id)
+        if not item or item.caterer_id != user.caterer_profile.id:
+            raise HTTPException(status_code=404, detail="Item not found")
+        item.name = name
+        item.category = category
+        item.description = description
+        item.selling_price = price
+        item.cost = cost_price
+        item.unit_type = unit_type
+        item.max_available = available_qty
+        item.status = status
+        item.is_hidden = (visibility == "hidden")
+        if image_url: item.image_url = image_url
+
+    db.commit()
+
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JSONResponse({"status": "success", "message": "Item updated successfully"})
+    return RedirectResponse(url="/caterer/services", status_code=303)
+
+@router.post("/services/{item_id}/archive")
+async def archive_service_item(
+    item_id: int,
+    type: str,
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    if type in ["Equipment", "Decoration"]:
+        item = db.query(models.Equipment).get(item_id)
+    elif type == "Legacy":
+        item = db.query(models.MenuItem).get(item_id)
+    else:
+        item = db.query(models.Service).get(item_id)
+        
+    if not item or item.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Item not found")
+        
+    item.is_archived = True
+    db.commit()
+    
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JSONResponse({"status": "success", "message": "Item archived successfully"})
+    return RedirectResponse(url="/caterer/services", status_code=303)
+
 
 @router.get("/profile", response_class=HTMLResponse)
 async def edit_profile(
@@ -2221,7 +2568,7 @@ async def add_package(
     min_guests: int = Form(1),
     max_guests: Optional[int] = Form(None),
     inclusions: Optional[List[str]] = Form(None),
-    linked_menu_ids: Optional[List[int]] = Form(None),
+    linked_menu_ids: Optional[List[str]] = Form(None),
     additional_guest_price: float = Form(0.0),
     image: Optional[UploadFile] = File(None),
     base_pax: int = Form(50),
@@ -2245,8 +2592,13 @@ async def add_package(
         errors.append("Please select at least 1 menu item from your library.")
     if price_per_head <= 0:
         errors.append("Price per head must be greater than 0.")
-    if pricing_mode == "per_pax" and min_guests < 10:
-        errors.append("Minimum guests must be at least 10 for Per Pax pricing.")
+    global_min_pax = user.caterer_profile.min_pax or 20
+    if min_guests < global_min_pax:
+        errors.append(f"Minimum guests cannot be lower than your global setting of {global_min_pax}.")
+        
+    global_lead_time = user.caterer_profile.booking_lead_time or 7
+    if booking_lead_time < global_lead_time:
+        errors.append(f"Booking lead time cannot be lower than your global setting of {global_lead_time} days.")
     if reservation_fee_value <= 0:
         errors.append("Reservation fee must be greater than 0.")
     elif reservation_fee_type == 'fixed' and price_per_head > 0 and min_guests > 0 and pricing_mode == 'per_pax':
@@ -2317,29 +2669,40 @@ async def add_package(
         status='active'
     )
     
-    # Handle linked menu items via separate PackageDish and PackageService tables
+    # Handle linked items
     if linked_menu_ids:
-        items = db.query(models.MenuItem).filter(
-            models.MenuItem.id.in_(linked_menu_ids),
-            models.MenuItem.caterer_id == user.caterer_profile.id
-        ).all()
-        # For backward compatibility, keep generic junction
-        new_pkg.menu_items = items
-        
-        # Flush to get new_pkg.id
         db.add(new_pkg)
         db.flush()
         
-        # Insert into specific tables
-        service_categories = ['rentals', 'services', 'equipment']
-        for item in items:
-            cat = item.category.lower() if item.category else ''
-            if cat in service_categories:
-                new_service = models.PackageService(package_id=new_pkg.id, service_id=item.id, quantity=1)
-                db.add(new_service)
+        menu_ids = []
+        eq_data = []
+        svc_data = []
+        for i in set(linked_menu_ids):
+            qty = 1
+            if '_q' in i:
+                parts = i.split('_q')
+                i = parts[0]
+                try: qty = int(parts[1])
+                except: pass
+                
+            if i.startswith('eq_'): eq_data.append((int(i.replace('eq_', '')), qty))
+            elif i.startswith('svc_'): svc_data.append((int(i.replace('svc_', '')), qty))
+            elif i.startswith('leg_'): menu_ids.append(int(i.replace('leg_', '')))
             else:
-                new_dish = models.PackageDish(package_id=new_pkg.id, menu_item_id=item.id, category_assigned=item.category)
-                db.add(new_dish)
+                try: menu_ids.append(int(i))
+                except: pass
+                
+        if menu_ids:
+            items = db.query(models.MenuItem).filter(models.MenuItem.id.in_(menu_ids)).all()
+            new_pkg.menu_items = items
+            
+        if eq_data:
+            for eid, qty in eq_data:
+                db.add(models.PackageEquipment(package_id=new_pkg.id, equipment_id=eid, quantity=qty))
+                
+        if svc_data:
+            for sid, qty in svc_data:
+                db.add(models.PackageService(package_id=new_pkg.id, service_id=sid, quantity=qty))
     else:
         db.add(new_pkg)
     db.commit()
@@ -2379,19 +2742,11 @@ async def add_menu_item(
     description: Optional[str] = Form(None),
     price: float = Form(0.0),
     cost_price: float = Form(0.0),
-    cost_breakdown: Optional[str] = Form(None),
-    serving_size: Optional[str] = Form(None),
-    max_stock_quantity: Optional[int] = Form(None),
-    pricing_unit: str = Form("per_serving"),
-    is_addon: bool = Form(False),
-    addon_price: float = Form(0.0),
-    is_hidden: bool = Form(False),
-    dietary_tags: Optional[list[str]] = Form(None),
-    allergen_info: Optional[list[str]] = Form(None),
-    recipe_data: Optional[str] = Form(None),
-    is_combo: bool = Form(False),
-    max_choices: int = Form(0),
-    combo_options: Optional[str] = Form(None),
+    unit_type: str = Form("Per Pax"),
+    status: str = Form("available"),
+    visibility: str = Form("public"),
+    dietary_tags: list[str] = Form([]),
+    allergen_info: list[str] = Form([]),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
@@ -2408,13 +2763,6 @@ async def add_menu_item(
         except Exception:
             pass
 
-    cost_breakdown_data = None
-    if cost_breakdown:
-        try:
-            cost_breakdown_data = json.loads(cost_breakdown)
-        except:
-            pass
-
     new_item = models.MenuItem(
         caterer_id=user.caterer_profile.id,
         name=name,
@@ -2422,49 +2770,26 @@ async def add_menu_item(
         description=description,
         price=price,
         cost_price=cost_price,
-        cost_breakdown=cost_breakdown_data,
-        serving_size=serving_size,
-        max_stock_quantity=max_stock_quantity,
-        pricing_unit=pricing_unit,
-        is_addon=is_addon,
-        addon_price=addon_price,
-        image_url=image_url,
-        is_hidden=is_hidden,
+        pricing_unit=unit_type,
+        status=status,
+        is_hidden=(visibility == "hidden"),
         dietary_tags=dietary_tags,
         allergen_info=allergen_info,
-        is_combo=is_combo,
-        max_choices=max_choices,
-        combo_options=json.loads(combo_options) if combo_options else None,
+        image_url=image_url,
         is_archived=False
     )
     db.add(new_item)
-    db.flush() # Get the ID before committing
-
-    # Process Recipe
-    if recipe_data:
-        try:
-            recipe = json.loads(recipe_data)
-            for r in recipe:
-                mii = models.MenuItemIngredient(
-                    menu_item_id=new_item.id,
-                    ingredient_id=r['ingId'],
-                    quantity=r['qty']
-                )
-                db.add(mii)
-        except Exception as e:
-            print(f"Error saving recipe: {e}")
-
     db.commit()
 
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
         return JSONResponse({
             "status": "success", 
-            "message": "Menu item added successfully", 
+            "message": "Dish added successfully", 
             "item_id": new_item.id,
             "item_name": new_item.name
         })
 
-    return RedirectResponse(url="/caterer/menu?success_msg=Menu+item+added+successfully", status_code=303)
+    return RedirectResponse(url="/caterer/menu?success_msg=Dish+added+successfully", status_code=303)
 
 @router.post("/api/validate-dish-name")
 async def validate_dish_name(
@@ -2750,7 +3075,7 @@ async def update_package(
     min_guests: int = Form(1),
     max_guests: Optional[int] = Form(None),
     inclusions: Optional[List[str]] = Form(None),
-    linked_menu_ids: Optional[List[int]] = Form(None),
+    linked_menu_ids: Optional[List[str]] = Form(None),
     additional_guest_price: float = Form(0.0),
     image: Optional[UploadFile] = File(None),
     base_pax: int = Form(50),
@@ -2781,8 +3106,13 @@ async def update_package(
         errors.append("Please select at least 1 menu item from your library.")
     if price_per_head <= 0:
         errors.append("Price per head must be greater than 0.")
-    if pricing_mode == "per_pax" and min_guests < 10:
-        errors.append("Minimum guests must be at least 10 for Per Pax pricing.")
+    global_min_pax = user.caterer_profile.min_pax or 20
+    if min_guests < global_min_pax:
+        errors.append(f"Minimum guests cannot be lower than your global setting of {global_min_pax}.")
+        
+    global_lead_time = user.caterer_profile.booking_lead_time or 7
+    if booking_lead_time < global_lead_time:
+        errors.append(f"Booking lead time cannot be lower than your global setting of {global_lead_time} days.")
     if reservation_fee_value <= 0:
         errors.append("Reservation fee must be greater than 0.")
     elif reservation_fee_type == 'fixed' and price_per_head > 0 and min_guests > 0 and pricing_mode == 'per_pax':
@@ -2843,28 +3173,40 @@ async def update_package(
     else:
         package.inclusions = {}
 
-    # Handle linked menu items via separate PackageDish and PackageService tables
+    # Handle linked items
     if linked_menu_ids is not None:
-        items = db.query(models.MenuItem).filter(
-            models.MenuItem.id.in_(linked_menu_ids),
-            models.MenuItem.caterer_id == user.caterer_profile.id
-        ).all()
-        package.menu_items = items
-        
+        menu_ids = []
+        eq_data = []
+        svc_data = []
+        for i in set(linked_menu_ids):
+            qty = 1
+            if '_q' in i:
+                parts = i.split('_q')
+                i = parts[0]
+                try: qty = int(parts[1])
+                except: pass
+                
+            if i.startswith('eq_'): eq_data.append((int(i.replace('eq_', '')), qty))
+            elif i.startswith('svc_'): svc_data.append((int(i.replace('svc_', '')), qty))
+            elif i.startswith('leg_'): menu_ids.append(int(i.replace('leg_', '')))
+            else:
+                try: menu_ids.append(int(i))
+                except: pass
+
         # Clear existing specific table links
-        db.query(models.PackageDish).filter(models.PackageDish.package_id == package.id).delete()
+        package.menu_items = []
+        db.query(models.PackageEquipment).filter(models.PackageEquipment.package_id == package.id).delete()
         db.query(models.PackageService).filter(models.PackageService.package_id == package.id).delete()
         
-        # Insert into specific tables
-        service_categories = ['rentals', 'services', 'equipment']
-        for item in items:
-            cat = item.category.lower() if item.category else ''
-            if cat in service_categories:
-                new_service = models.PackageService(package_id=package.id, service_id=item.id, quantity=1)
-                db.add(new_service)
-            else:
-                new_dish = models.PackageDish(package_id=package.id, menu_item_id=item.id, category_assigned=item.category)
-                db.add(new_dish)
+        # Add new
+        if menu_ids:
+            items = db.query(models.MenuItem).filter(models.MenuItem.id.in_(menu_ids)).all()
+            package.menu_items = items
+            
+        for eid, qty in eq_data:
+            db.add(models.PackageEquipment(package_id=package.id, equipment_id=eid, quantity=qty))
+        for sid, qty in svc_data:
+            db.add(models.PackageService(package_id=package.id, service_id=sid, quantity=qty))
 
 
     import base64
@@ -2951,7 +3293,7 @@ async def get_package_menu(
     if not package:
         raise HTTPException(status_code=404, detail="Package not found")
     
-    return [
+    res = [
         {
             "id": item.id,
             "name": item.name,
@@ -2961,6 +3303,16 @@ async def get_package_menu(
         }
         for item in package.menu_items
     ]
+    
+    eqs = db.query(models.PackageEquipment).filter(models.PackageEquipment.package_id == package.id).all()
+    for e in eqs:
+        res.append({"id": f"eq_{e.equipment_id}", "quantity": e.quantity})
+        
+    svcs = db.query(models.PackageService).filter(models.PackageService.package_id == package.id).all()
+    for s in svcs:
+        res.append({"id": f"svc_{s.service_id}", "quantity": s.quantity})
+        
+    return res
 
 @router.post("/packages/{package_id}/menu/add")
 async def add_menu_to_package(
@@ -3105,75 +3457,48 @@ async def get_menu_item_ingredients(
         raise HTTPException(status_code=404, detail="Menu item not found")
     
     ingredients = []
-    for mii in item.ingredients:
-        ingredients.append({
-            "id": mii.ingredient.id,
-            "name": mii.ingredient.name,
-            "quantity": mii.quantity,
-            "unit": mii.ingredient.unit,
-            "unit_price": mii.ingredient.unit_price
-        })
-    return {"ingredients": ingredients}
+    # Removed ingredient fetching due to Phase 1 cleanup
+    return {
+        "menu_item_id": item_id,
+        "name": item.name,
+        "ingredients": ingredients,
+        "total_cost": item.cost_price
+    }
 
 @router.post("/menu/{item_id}/update")
 async def update_menu_item(
-    request: Request,
     item_id: int,
+    request: Request,
     name: str = Form(...),
     category: str = Form(...),
     description: Optional[str] = Form(None),
     price: float = Form(0.0),
     cost_price: float = Form(0.0),
-    cost_breakdown: Optional[str] = Form(None),
-    serving_size: Optional[str] = Form(None),
-    max_stock_quantity: Optional[int] = Form(None),
-    pricing_unit: str = Form("per_serving"),
-    is_addon: bool = Form(False),
-    addon_price: float = Form(0.0),
-    is_hidden: bool = Form(False),
-    dietary_tags: Optional[list[str]] = Form(None),
-    allergen_info: Optional[list[str]] = Form(None),
-    recipe_data: Optional[str] = Form(None),
-    is_combo: bool = Form(False),
-    max_choices: int = Form(0),
-    combo_options: Optional[str] = Form(None),
+    unit_type: str = Form("Per Pax"),
+    status: str = Form("available"),
+    visibility: str = Form("public"),
+    dietary_tags: list[str] = Form([]),
+    allergen_info: list[str] = Form([]),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    item = db.query(models.MenuItem).filter(
-        models.MenuItem.id == item_id,
-        models.MenuItem.caterer_id == user.caterer_profile.id
-    ).first()
-    if not item:
-        raise HTTPException(status_code=404, detail="Menu item not found")
-    
+    import base64
+    item = db.query(models.MenuItem).get(item_id)
+    if not item or item.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Item not found")
+
     item.name = name
     item.category = category
     item.description = description
     item.price = price
     item.cost_price = cost_price
-    
-    if cost_breakdown:
-        try:
-            item.cost_breakdown = json.loads(cost_breakdown)
-        except:
-            pass
-    elif cost_breakdown == "":
-        item.cost_breakdown = None
-    item.serving_size = serving_size
-    item.max_stock_quantity = max_stock_quantity
-    item.pricing_unit = pricing_unit
-    item.is_addon = is_addon
-    item.addon_price = addon_price
-    item.is_hidden = is_hidden
+    item.pricing_unit = unit_type
+    item.status = status
+    item.is_hidden = (visibility == "hidden")
     item.dietary_tags = dietary_tags
     item.allergen_info = allergen_info
-    item.is_combo = is_combo
-    item.max_choices = max_choices
-    item.combo_options = combo_options
-    
-    import base64
+
     if image and image.filename:
         try:
             content_bytes = await image.read()
@@ -3184,34 +3509,12 @@ async def update_menu_item(
         except Exception:
             pass
 
-    # Process Recipe
-    if recipe_data:
-        try:
-            recipe = json.loads(recipe_data)
-            # Remove existing
-            db.query(models.MenuItemIngredient).filter_by(menu_item_id=item_id).delete()
-            # Add new
-            for r in recipe:
-                mii = models.MenuItemIngredient(
-                    menu_item_id=item_id,
-                    ingredient_id=r['ingId'],
-                    quantity=r['qty']
-                )
-                db.add(mii)
-        except Exception as e:
-            print(f"Error updating recipe: {e}")
-
     db.commit()
 
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-        return JSONResponse({
-            "status": "success", 
-            "message": "Menu item updated successfully", 
-            "item_id": item.id,
-            "item_name": item.name
-        })
+        return JSONResponse({"status": "success", "message": "Dish updated successfully"})
 
-    return RedirectResponse(url="/caterer/menu?success_msg=Menu+item+updated+successfully", status_code=303)
+    return RedirectResponse(url="/caterer/menu?success_msg=Dish+updated+successfully", status_code=303)
 
 @router.post("/menu/{item_id}/archive")
 async def archive_menu_item_caterer(
@@ -3958,9 +4261,9 @@ async def restore_ingredient(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    item = db.query(models.Ingredient).filter(
-        models.Ingredient.id == item_id,
-        models.Ingredient.caterer_id == user.caterer_profile.id
+    item = db.query(None).filter(
+        None.id == item_id,
+        None.caterer_id == user.caterer_profile.id
     ).first()
     if not item:
         raise HTTPException(status_code=404, detail="Ingredient not found")
@@ -3974,9 +4277,9 @@ async def delete_ingredient_permanent(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    item = db.query(models.Ingredient).filter(
-        models.Ingredient.id == item_id,
-        models.Ingredient.caterer_id == user.caterer_profile.id
+    item = db.query(None).filter(
+        None.id == item_id,
+        None.caterer_id == user.caterer_profile.id
     ).first()
     if not item:
         raise HTTPException(status_code=404, detail="Ingredient not found")
@@ -4282,10 +4585,10 @@ async def manage_ingredients(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    ingredients = db.query(models.Ingredient).filter(
-        models.Ingredient.caterer_id == user.caterer_profile.id,
-        models.Ingredient.is_archived == False
-    ).order_by(models.Ingredient.name).all()
+    ingredients = db.query(None).filter(
+        None.caterer_id == user.caterer_profile.id,
+        None.is_archived == False
+    ).order_by(None.name).all()
     
     return templates.TemplateResponse("caterer/ingredients.html", {
         "request": request,
@@ -4299,10 +4602,10 @@ async def list_ingredients_api(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    ingredients = db.query(models.Ingredient).filter(
-        models.Ingredient.caterer_id == user.caterer_profile.id,
-        models.Ingredient.is_archived == False
-    ).order_by(models.Ingredient.name).all()
+    ingredients = db.query(None).filter(
+        None.caterer_id == user.caterer_profile.id,
+        None.is_archived == False
+    ).order_by(None.name).all()
     
     return [{"id": i.id, "name": i.name, "unit": i.unit, "unit_price": i.unit_price} for i in ingredients]
 
@@ -4319,19 +4622,19 @@ async def save_ingredient(
     unit_price = float(data.get("unit_price") or 0)
 
     # Check for duplicate
-    existing = db.query(models.Ingredient).filter(
-        models.Ingredient.caterer_id == user.caterer_profile.id,
-        models.Ingredient.name.ilike(name),
-        models.Ingredient.is_archived == False
+    existing = db.query(None).filter(
+        None.caterer_id == user.caterer_profile.id,
+        None.name.ilike(name),
+        None.is_archived == False
     )
     if ing_id:
-        existing = existing.filter(models.Ingredient.id != int(ing_id))
+        existing = existing.filter(None.id != int(ing_id))
     
     if existing.first():
         return {"status": "error", "message": "This material is already in your database."}
 
     if ing_id:
-        ingredient = db.query(models.Ingredient).get(ing_id)
+        ingredient = db.query(None).get(ing_id)
         if not ingredient or ingredient.caterer_id != user.caterer_profile.id:
             raise HTTPException(status_code=404, detail="Ingredient not found")
         
@@ -4339,7 +4642,7 @@ async def save_ingredient(
         ingredient.unit = unit
         ingredient.unit_price = unit_price
     else:
-        ingredient = models.Ingredient(
+        ingredient = None(
             caterer_id=user.caterer_profile.id,
             name=name,
             unit=unit,
@@ -4363,7 +4666,7 @@ async def delete_ingredient(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    ingredient = db.query(models.Ingredient).get(ingredient_id)
+    ingredient = db.query(None).get(ingredient_id)
     if not ingredient or ingredient.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Ingredient not found")
     
@@ -4382,15 +4685,6 @@ async def get_menu_item_ingredients(
         raise HTTPException(status_code=404, detail="Menu item not found")
     
     ingredients = []
-    for mii in menu_item.ingredients:
-        ingredients.append({
-            "id": mii.ingredient_id,
-            "name": mii.ingredient.name,
-            "unit": mii.ingredient.unit,
-            "unit_price": mii.ingredient.unit_price,
-            "quantity": mii.quantity
-        })
-    
     return {
         "menu_item_id": menu_item_id,
         "name": menu_item.name,
@@ -4413,11 +4707,11 @@ async def save_menu_item_ingredients(
         raise HTTPException(status_code=404, detail="Menu item not found")
     
     # Remove existing mappings
-    db.query(models.MenuItemIngredient).filter_by(menu_item_id=menu_item_id).delete()
+    db.query(None).filter_by(menu_item_id=menu_item_id).delete()
     
     # Add new mappings
     for item in mapping:
-        mii = models.MenuItemIngredient(
+        mii = None(
             menu_item_id=menu_item_id,
             ingredient_id=item['id'],
             quantity=item['quantity']
@@ -4483,12 +4777,7 @@ async def get_quick_quotation(
         breakdown.append({
             "name": item.name,
             "cost_per_pax": item.cost_price,
-            "ingredients": [{
-                "name": mi.ingredient.name,
-                "qty": mi.quantity,
-                "unit": mi.ingredient.unit,
-                "cost": mi.ingredient.unit_price * mi.quantity
-            } for mi in item.ingredients]
+            "ingredients": []
         })
 
     return {

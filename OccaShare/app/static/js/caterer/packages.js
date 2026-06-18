@@ -539,22 +539,43 @@ async function loadPkgMenuLibrary() {
 
         // Populate tab-perks (Equipment/Services) checkboxes
         document.querySelectorAll('#tab-perks input[name="linked_menu_ids"]').forEach(cb => {
-            cb.checked = linkedIds.includes(parseInt(cb.value));
-            // Add visual selection style if checked
+            const baseVal = cb.value.split('_q')[0];
+            const val = isNaN(baseVal) ? baseVal : parseInt(baseVal);
+            
+            const linkedItem = linkedItems.find(i => i.id === val || i.id === baseVal);
+            cb.checked = !!linkedItem;
+            
             const card = cb.closest('.menu-select-card');
             if (card) {
+                const qtyContainer = card.querySelector('.qty-container');
+                const qtyInput = card.querySelector('.inc-qty-input');
+                
                 if (cb.checked) {
                     card.classList.add('selected');
                     card.style.background = '#f0fdf4';
                     card.style.borderColor = '#22c55e';
                     const icon = card.querySelector('i');
                     if(icon) icon.className = 'fas fa-check-circle text-green-500';
+                    
+                    if (qtyContainer) {
+                        qtyContainer.style.display = 'block';
+                        if (qtyInput && linkedItem && linkedItem.quantity) {
+                            qtyInput.value = linkedItem.quantity;
+                            cb.value = baseVal + '_q' + linkedItem.quantity;
+                        }
+                    }
                 } else {
                     card.classList.remove('selected');
                     card.style.background = 'white';
                     card.style.borderColor = '#e2e8f0';
                     const icon = card.querySelector('i');
                     if(icon) icon.className = 'far fa-circle text-slate-200';
+                    
+                    if (qtyContainer) {
+                        qtyContainer.style.display = 'none';
+                        if (qtyInput) qtyInput.value = 1;
+                        cb.value = baseVal + '_q1';
+                    }
                 }
             }
         });
@@ -643,16 +664,21 @@ function toggleLibItemSelectCard(card, id) {
     const cb = card.querySelector('input[type="checkbox"]');
     if (!cb) return;
     cb.checked = !cb.checked;
+    
+    const qtyContainer = card.querySelector('.qty-container');
+    
     if (cb.checked) {
         card.classList.add('selected');
         card.style.background = '#f0fdf4';
         card.style.borderColor = '#22c55e';
         card.querySelector('i').className = 'fas fa-check-circle text-green-500';
+        if (qtyContainer) qtyContainer.style.display = 'block';
     } else {
         card.classList.remove('selected');
         card.style.background = 'white';
         card.style.borderColor = '#e2e8f0';
         card.querySelector('i').className = 'far fa-circle text-slate-200';
+        if (qtyContainer) qtyContainer.style.display = 'none';
     }
     calculateCosts();
     updateSelectionRulesBuilder();

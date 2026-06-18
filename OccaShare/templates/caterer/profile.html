@@ -568,6 +568,9 @@
                     <button {% if not request.query_params.get('preview') %}onclick="promptBookingAuth()"{% else %}disabled title="Preview Mode - Action Disabled" onclick="Swal.fire({icon: 'info', title: 'Preview Mode', text: 'This action is disabled while previewing your profile.', confirmButtonColor: 'var(--brand-primary)'})"{% endif %} class="btn-primary w-full text-sm py-4 {% if request.query_params.get('preview') %}opacity-80{% endif %}">
                         Initiate Booking
                     </button>
+                    <button {% if not request.query_params.get('preview') %}onclick="promptCustomBookingAuth()"{% else %}disabled title="Preview Mode - Action Disabled" onclick="Swal.fire({icon: 'info', title: 'Preview Mode', text: 'This action is disabled while previewing your profile.', confirmButtonColor: 'var(--brand-primary)'})"{% endif %} class="btn-outline w-full text-sm py-4 border-2 !bg-slate-900 !text-white !border-slate-900 hover:!bg-slate-800 {% if request.query_params.get('preview') %}opacity-80{% endif %}">
+                        <i class="fas fa-magic text-highlight"></i> Request Custom Event
+                    </button>
                     <button {% if not request.query_params.get('preview') %}onclick="promptInquiryAuth()"{% else %}disabled title="Preview Mode - Action Disabled" onclick="Swal.fire({icon: 'info', title: 'Preview Mode', text: 'This action is disabled while previewing your profile.', confirmButtonColor: 'var(--brand-primary)'})"{% endif %} class="btn-outline w-full text-sm py-4 border-2 {% if request.query_params.get('preview') %}opacity-80 bg-slate-50{% endif %}">
                         <i class="far fa-comment-dots"></i> Send Inquiry
                     </button>
@@ -797,6 +800,14 @@
     function promptBookingAuth() {
         document.getElementById('auth-choice-modal').classList.remove('hidden');
         document.getElementById('auth-choice-modal').classList.add('flex');
+    }
+    
+    function promptCustomBookingAuth() {
+        // We need to set a flag or just use auth-choice-modal, but ideally pass the next URL
+        document.getElementById('auth-choice-modal').classList.remove('hidden');
+        document.getElementById('auth-choice-modal').classList.add('flex');
+        // A hacky way: attach a data attribute so triggerAuthChoice knows the intent
+        document.getElementById('auth-choice-modal').dataset.intent = 'custom';
     }
 
     function promptInquiryAuth() {

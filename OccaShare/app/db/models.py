@@ -179,52 +179,27 @@ class CatererProfile(Base):
     payouts = relationship("Payout", back_populates="caterer")
     menu_items = relationship("MenuItem", back_populates="caterer", cascade="all, delete-orphan")
     social_posts = relationship("SocialPost", back_populates="caterer", cascade="all, delete-orphan")
-    ingredients = relationship("Ingredient", back_populates="caterer", cascade="all, delete-orphan")
+    equipment_items = relationship("Equipment", back_populates="caterer", cascade="all, delete-orphan")
+    service_items = relationship("Service", back_populates="caterer", cascade="all, delete-orphan")
     business_expenses = relationship("BusinessExpense", back_populates="caterer", cascade="all, delete-orphan")
 
-class Ingredient(Base):
-    __tablename__ = "ingredients"
-
-    id = Column(Integer, primary_key=True, index=True)
-    caterer_id = Column(Integer, ForeignKey("caterer_profiles.id"))
-    name = Column(String, index=True)
-    unit = Column(String) # kg, g, pieces, ml, etc.
-    unit_price = Column(Float, default=0.0)
-    is_archived = Column(Boolean, default=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-
-    caterer = relationship("CatererProfile", back_populates="ingredients")
-    menu_item_ingredients = relationship("MenuItemIngredient", back_populates="ingredient")
-
-class MenuItemIngredient(Base):
-    __tablename__ = "menu_item_ingredients"
-
-    id = Column(Integer, primary_key=True, index=True)
-    menu_item_id = Column(Integer, ForeignKey("menu_items.id"))
-    ingredient_id = Column(Integer, ForeignKey("ingredients.id"))
-    quantity = Column(Float) # Quantity in the specified unit
-
-    menu_item = relationship("MenuItem", back_populates="ingredients")
-    ingredient = relationship("Ingredient", back_populates="menu_item_ingredients")
-
-class PackageItem(Base):
-    __tablename__ = "package_items"
+class PackageMenu(Base):
+    __tablename__ = "package_menus"
     package_id = Column(Integer, ForeignKey("catering_packages.id"), primary_key=True)
     menu_item_id = Column(Integer, ForeignKey("menu_items.id"), primary_key=True)
 
-class PackageDish(Base):
-    __tablename__ = "package_dishes"
+class PackageEquipment(Base):
+    __tablename__ = "package_equipment"
     id = Column(Integer, primary_key=True, index=True)
     package_id = Column(Integer, ForeignKey("catering_packages.id", ondelete="CASCADE"))
-    menu_item_id = Column(Integer, ForeignKey("menu_items.id", ondelete="CASCADE"))
-    category_assigned = Column(String, nullable=True) # e.g. "Main Course", "Appetizer"
+    equipment_id = Column(Integer, ForeignKey("equipment.id", ondelete="CASCADE"))
+    quantity = Column(Integer, default=1)
 
 class PackageService(Base):
     __tablename__ = "package_services"
     id = Column(Integer, primary_key=True, index=True)
     package_id = Column(Integer, ForeignKey("catering_packages.id", ondelete="CASCADE"))
-    service_id = Column(Integer, ForeignKey("menu_items.id", ondelete="CASCADE")) # Services are stored in menu_items
+    service_id = Column(Integer, ForeignKey("services.id", ondelete="CASCADE"))
     quantity = Column(Integer, default=1)
 
 class CateringPackage(Base):
@@ -282,36 +257,37 @@ class CateringPackage(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     caterer = relationship("CatererProfile", back_populates="packages")
-    menu_items = relationship("MenuItem", secondary="package_items", back_populates="packages")
+    menu_items = relationship("MenuItem", secondary="package_menus", back_populates="packages")
 
     bookings = relationship("Booking", back_populates="package")
 
 class MenuItem(Base):
-    __tablename__ = "menu_items"
+    __tablename__ = "menu_items" # Phase 1 'menus'
 
     id = Column(Integer, primary_key=True, index=True)
     caterer_id = Column(Integer, ForeignKey("caterer_profiles.id"))
     name = Column(String)
     description = Column(Text, nullable=True)
-    category = Column(String) # Starter, Soup, Salad, Main Dish (Beef), etc.
-    price = Column(Float, default=0.0)
-    cost_price = Column(Float, default=0.0)
+    category = Column(String) 
+    image_url = Column(String, nullable=True)
+    
+    # Phase 1 Fields
+    cost_price = Column(Float, default=0.0) # estimated_cost
+    price = Column(Float, default=0.0) # selling_price
+    pricing_unit = Column(String, default="per_pax") # unit_type
+    min_order_qty = Column(Integer, default=1)
+    status = Column(String, default="available") # available, unavailable
+    
+    # Legacy fields
     cost_breakdown = Column(JSONB, nullable=True)
-    
-    # Dietary & Allergen Info
-    dietary_tags = Column(ARRAY(String), nullable=True) # Vegetarian, Vegan, Halal
-    allergen_info = Column(ARRAY(String), nullable=True) # Nuts, Dairy, Seafood
-    
-    serving_size = Column(String, nullable=True) # "Good for 1", "Good for 10-15"
-    pricing_unit = Column(String, default="per_serving") # "per_tray", "per_bilao", "per_pax", "per_hour", "per_item"
+    dietary_tags = Column(ARRAY(String), nullable=True)
+    allergen_info = Column(ARRAY(String), nullable=True)
+    serving_size = Column(String, nullable=True) 
     is_addon = Column(Boolean, default=False)
     addon_price = Column(Float, default=0.0)
-    image_url = Column(String, nullable=True)
-    max_stock_quantity = Column(Integer, nullable=True) # Used for rentals/inventory
+    max_stock_quantity = Column(Integer, nullable=True) 
     is_hidden = Column(Boolean, default=False)
     is_archived = Column(Boolean, default=False)
-    
-    # Combo / Platter Properties
     is_combo = Column(Boolean, default=False)
     max_choices = Column(Integer, default=0)
     combo_options = Column(JSONB, nullable=True)
@@ -319,8 +295,52 @@ class MenuItem(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     caterer = relationship("CatererProfile", back_populates="menu_items")
-    packages = relationship("CateringPackage", secondary="package_items", back_populates="menu_items")
-    ingredients = relationship("MenuItemIngredient", back_populates="menu_item", cascade="all, delete-orphan")
+    packages = relationship("CateringPackage", secondary="package_menus", back_populates="menu_items")
+
+class Equipment(Base):
+    __tablename__ = "equipment"
+
+    id = Column(Integer, primary_key=True, index=True)
+    caterer_id = Column(Integer, ForeignKey("caterer_profiles.id"))
+    name = Column(String)
+    equipment_type = Column(String, default="Equipment")
+    category = Column(String, nullable=True)
+    description = Column(Text, nullable=True)
+    image_url = Column(String, nullable=True)
+    
+    available_qty = Column(Integer, default=1)
+    cost_value = Column(Float, default=0.0)
+    rental_price = Column(Float, default=0.0)
+    unit_type = Column(String, default="piece")
+    status = Column(String, default="available")
+    is_hidden = Column(Boolean, default=False)
+    
+    is_archived = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    caterer = relationship("CatererProfile", back_populates="equipment_items")
+
+class Service(Base):
+    __tablename__ = "services"
+
+    id = Column(Integer, primary_key=True, index=True)
+    caterer_id = Column(Integer, ForeignKey("caterer_profiles.id"))
+    name = Column(String)
+    category = Column(String, nullable=True)
+    description = Column(Text, nullable=True)
+    image_url = Column(String, nullable=True)
+    
+    cost = Column(Float, default=0.0)
+    selling_price = Column(Float, default=0.0)
+    unit_type = Column(String, default="per_event")
+    max_available = Column(Integer, default=1)
+    status = Column(String, default="available")
+    is_hidden = Column(Boolean, default=False)
+    
+    is_archived = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    caterer = relationship("CatererProfile", back_populates="service_items")
 
 
 class CatererGallery(Base):
@@ -394,8 +414,9 @@ class Booking(Base):
     expires_at = Column(DateTime(timezone=True), nullable=True)
     balance_due_date = Column(DateTime(timezone=True), nullable=True) 
     payment_plan = Column(String, default='downpayment') # 'downpayment' or 'full'
-    event_location = Column(Text, nullable=True) 
-
+    event_location = Column(Text, nullable=True)
+    is_custom_event = Column(Boolean, default=False)
+    custom_requirements = Column(JSONB, nullable=True) # E.g. {"theme": "Rustic", "budget": 50000}
     user = relationship("User", back_populates="bookings")
     caterer = relationship("CatererProfile", back_populates="bookings")
     package = relationship("CateringPackage", back_populates="bookings")

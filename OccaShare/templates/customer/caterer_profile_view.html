@@ -1467,6 +1467,9 @@
                     <a href="/bookings/start/{{ caterer.id }}" class="btn-hub-main">
                         <i class="fas fa-calendar-plus"></i> Standard Booking
                     </a>
+                    <a href="/bookings/custom/request/{{ caterer.id }}" class="btn-hub-main" style="background: #0f172a;">
+                        <i class="fas fa-magic text-highlight"></i> Request Custom Event
+                    </a>
                     {% endif %}
                     {% if has_previous_communication %}
                     <a href="/customer/messages?recipient_id={{ caterer.user_id }}" class="btn-elite-sm"

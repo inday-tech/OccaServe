@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from ..db.models import Ingredient, MenuItem, CateringPackage, MenuItemIngredient
+from ..db.models import MenuItem, CateringPackage
 
 class PricingService:
     @staticmethod
@@ -12,17 +12,8 @@ class PricingService:
         if not menu_item:
             return 0.0
 
-        total_cost = 0.0
-        for mi_ingredient in menu_item.ingredients:
-            # mi_ingredient is a MenuItemIngredient instance
-            ingredient = mi_ingredient.ingredient
-            if ingredient:
-                total_cost += (ingredient.unit_price * mi_ingredient.quantity)
-        
-        # Update the cost_price of the menu item
-        menu_item.cost_price = total_cost
-        db.commit()
-        return total_cost
+        # Cost is now manually set directly on the menu_item (Phase 1 simplification)
+        return menu_item.cost_price
 
     @staticmethod
     def calculate_package_cost(db: Session, package_id: int):
@@ -75,32 +66,4 @@ class PricingService:
             return cost + markup_value
         return cost
 
-    @staticmethod
-    def cascade_update_from_ingredient(db: Session, ingredient_id: int):
-        """
-        When an ingredient price changes, update all related menu items and packages.
-        """
-        # Find all menu items using this ingredient
-        mi_ingredients = db.query(MenuItemIngredient).filter(MenuItemIngredient.ingredient_id == ingredient_id).all()
-        
-        affected_menu_items = set([mi.menu_item_id for mi in mi_ingredients])
-        affected_packages = set()
 
-        # Update each menu item
-        for mi_id in affected_menu_items:
-            PricingService.calculate_menu_item_cost(db, mi_id)
-            
-            # Find packages using this menu item
-            menu_item = db.query(MenuItem).filter(MenuItem.id == mi_id).first()
-            if menu_item:
-                for pkg in menu_item.packages:
-                    affected_packages.add(pkg.id)
-
-        # Update each package
-        for pkg_id in affected_packages:
-            PricingService.calculate_package_cost(db, pkg_id)
-        
-        return {
-            "updated_menu_items": len(affected_menu_items),
-            "updated_packages": len(affected_packages)
-        }

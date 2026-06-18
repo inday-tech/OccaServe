@@ -333,6 +333,78 @@ async def start_booking(request: Request, caterer_id: int, package_id: Optional[
     # Always go to Phase 1 (Details) if package is already selected
     return RedirectResponse(url="/bookings/step/details", status_code=303)
 
+@router.get("/custom/request/{caterer_id}")
+async def custom_booking_request_form(request: Request, caterer_id: int, db: Session = Depends(database.get_db)):
+    user = get_current_user_from_session(request, db)
+    if not user:
+        return RedirectResponse(url=f"/auth/login?next=/bookings/custom/request/{caterer_id}")
+    
+    caterer = db.query(models.CatererProfile).get(caterer_id)
+    if not caterer:
+        return RedirectResponse(url="/customer/marketplace", status_code=303)
+        
+    return templates.TemplateResponse("customer/booking_wizard/custom_rfq.html", {
+        "request": request,
+        "caterer": caterer,
+        "user": user,
+        "active_page": "bookings"
+    })
+
+@router.post("/custom/submit")
+async def custom_booking_submit(
+    request: Request,
+    caterer_id: int = Form(...),
+    event_name: str = Form(...),
+    event_type: str = Form(...),
+    event_date: date = Form(...),
+    event_time: time = Form(...),
+    guest_count: int = Form(...),
+    venue_address: str = Form(...),
+    budget: float = Form(0.0),
+    theme_description: str = Form(""),
+    db: Session = Depends(database.get_db)
+):
+    user = get_current_user_from_session(request, db)
+    if not user:
+        return RedirectResponse(url=f"/auth/login?next=/bookings/custom/request/{caterer_id}")
+    
+    # Validation logic (similar to standard bookings, simplified)
+    caterer = db.query(models.CatererProfile).get(caterer_id)
+    if not caterer:
+        return RedirectResponse(url="/customer/marketplace", status_code=303)
+        
+    # Minimum guest count validation
+    min_guests = caterer.min_pax or 20
+    if guest_count < min_guests:
+        return RedirectResponse(url=f"/bookings/custom/request/{caterer_id}?error=Minimum+guest+count+is+{min_guests}", status_code=303)
+        
+    # Create Custom Booking request
+    new_booking = models.Booking(
+        caterer_id=caterer_id,
+        user_id=user.id,
+        event_name=event_name,
+        event_type=event_type,
+        event_date=event_date,
+        event_time=event_time,
+        guest_count=guest_count,
+        venue_address=venue_address,
+        is_custom_event=True,
+        custom_requirements={
+            "budget": budget,
+            "theme_description": theme_description
+        },
+        status="pending_quotation", # Starts awaiting caterer proposal
+        total_amount=0.0,
+        reservation_fee=0.0
+    )
+    db.add(new_booking)
+    db.commit()
+    db.refresh(new_booking)
+    
+    # Optionally redirect to KYC or directly to manage
+    # Usually standard bookings redirect to KYC. We'll do the same for Custom.
+    return RedirectResponse(url=f"/bookings/step/kyc/{new_booking.id}", status_code=303)
+
 @router.get("/continue/{booking_id}")
 async def continue_draft_booking(booking_id: int, request: Request, db: Session = Depends(database.get_db)):
     user = get_current_user_from_session(request, db)
@@ -365,6 +437,10 @@ async def continue_draft_booking(booking_id: int, request: Request, db: Session 
 
     if not user.is_verified and not user.is_kyc_complete and not has_history:
         return RedirectResponse(url=f"/bookings/step/kyc/{booking.id}", status_code=303)
+        
+    # If custom event and waiting for caterer, redirect to dashboard/manage
+    if booking.is_custom_event and booking.status == "pending_quotation":
+        return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}", status_code=303)
         
     # 2. Is there a Quotation yet?
     if not booking.quotation:
@@ -738,6 +814,8 @@ async def step_quotation_page(booking_id: int, request: Request, db: Session = D
     from ..services.quotation import quotation_service
     quotation = quotation_service.get_quotation_by_booking(db, booking_id)
     if not quotation:
+        if booking.is_custom_event:
+            return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?msg=Waiting+for+caterer+proposal", status_code=303)
         quotation = quotation_service.create_quotation(db, booking, 30)
     
     return templates.TemplateResponse("customer/booking_wizard/step_quotation.html", {

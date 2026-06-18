@@ -1,0 +1,111 @@
+{% extends "customer/booking_wizard/wizard_base.html" %}
+
+{% block wizard_title %}Request Custom Event{% endblock %}
+
+{% block step_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_details.css') }}?v={{ range(1, 9999) | random }}">
+<style>
+    .wizard-title { font-size: 1.8rem; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem; }
+    .wizard-subtitle { font-size: 0.95rem; color: #64748b; margin-bottom: 2rem; }
+    .rfq-container { background: #fff; border-radius: 16px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.02); border: 1px solid #f1f5f9; }
+    .form-group { margin-bottom: 1.5rem; }
+    .form-label { display: block; font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 0.5rem; }
+    .form-input, .form-textarea { width: 100%; padding: 0.85rem; border: 1.5px solid #e2e8f0; border-radius: 12px; font-family: 'Poppins', sans-serif; font-size: 0.95rem; transition: border-color 0.2s; }
+    .form-input:focus, .form-textarea:focus { outline: none; border-color: #0f172a; }
+    .grid-2-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .btn-submit { background: #0f172a; color: #fff; border: none; padding: 1rem 2rem; border-radius: 12px; font-size: 1rem; font-weight: 800; cursor: pointer; transition: background 0.2s; display: inline-flex; align-items: center; gap: 0.5rem; }
+    .btn-submit:hover { background: #1e293b; }
+    
+    @media (max-width: 768px) {
+        .grid-2-col { grid-template-columns: 1fr; gap: 1rem; }
+    }
+</style>
+{% endblock %}
+
+{% block wizard_content %}
+<div class="wizard-header-content text-center mb-8">
+    <h2 class="wizard-title text-slate-900">Request Custom Proposal</h2>
+    <p class="wizard-subtitle text-slate-500">Provide details for your dream event and get a customized quote from {{ caterer.business_name }}.</p>
+</div>
+
+<div class="max-w-3xl mx-auto w-full">
+    {% if request.query_params.get('error') %}
+    <div class="bg-red-50 text-red-600 p-4 rounded-xl mb-6 text-sm font-bold border border-red-200 flex items-center gap-2">
+        <i class="fas fa-exclamation-circle"></i>
+        {{ request.query_params.get('error') }}
+    </div>
+    {% endif %}
+
+    <form action="/bookings/custom/submit" method="POST" class="rfq-container">
+        <input type="hidden" name="caterer_id" value="{{ caterer.id }}">
+        
+        <h3 class="text-lg font-black text-slate-800 mb-6 pb-2 border-b border-slate-100 flex items-center gap-2">
+            <i class="fas fa-calendar-alt text-slate-400"></i> Event Details
+        </h3>
+
+        <div class="grid-2-col">
+            <div class="form-group">
+                <label class="form-label">Event Name</label>
+                <input type="text" name="event_name" class="form-input" required placeholder="e.g. Maria's 18th Birthday">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Event Type</label>
+                <select name="event_type" class="form-input bg-white" required>
+                    <option value="">-- Select Type --</option>
+                    <option value="Wedding">Wedding</option>
+                    <option value="Birthday">Birthday</option>
+                    <option value="Corporate Event">Corporate Event</option>
+                    <option value="Debut / Milestone">Debut / Milestone</option>
+                    <option value="Baptism / Family Event">Baptism / Family Event</option>
+                    <option value="Private Party">Private Party</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="grid-2-col">
+            <div class="form-group">
+                <label class="form-label">Event Date</label>
+                <input type="date" name="event_date" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Start Time</label>
+                <input type="time" name="event_time" class="form-input" required>
+            </div>
+        </div>
+
+        <div class="grid-2-col">
+            <div class="form-group">
+                <label class="form-label">Estimated Guest Count</label>
+                <input type="number" name="guest_count" class="form-input" min="{{ caterer.min_pax or 20 }}" required placeholder="Min. {{ caterer.min_pax or 20 }} pax">
+                <p class="text-[11px] text-slate-400 mt-1 font-semibold">Minimum guests allowed: {{ caterer.min_pax or 20 }}</p>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Estimated Budget (Optional)</label>
+                <input type="number" name="budget" class="form-input" placeholder="e.g. 50000">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Venue / Location</label>
+            <input type="text" name="venue_address" class="form-input" required placeholder="Full address or city">
+        </div>
+
+        <h3 class="text-lg font-black text-slate-800 mb-6 mt-8 pb-2 border-b border-slate-100 flex items-center gap-2">
+            <i class="fas fa-magic text-slate-400"></i> Theme & Preferences
+        </h3>
+
+        <div class="form-group">
+            <label class="form-label">Describe your vision (Theme, colors, special requests)</label>
+            <textarea name="theme_description" class="form-textarea" rows="4" placeholder="I would like a rustic theme with pastel colors. We also need a grand backdrop for photos..." required></textarea>
+        </div>
+
+        <div class="mt-8 pt-6 border-t border-slate-100 flex justify-end items-center gap-4">
+            <a href="/customer/marketplace/{{ caterer.id }}" class="text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors">Cancel</a>
+            <button type="submit" class="btn-submit">
+                Submit Request <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,317 @@
+{% extends "caterer/layout.html" %}
+
+{% block title %}Proposal Maker - Booking #{{ booking.id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .proposal-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 2rem;
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    }
+    
+    .proposal-header {
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #f1f5f9;
+    }
+    
+    .proposal-title {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: #0f172a;
+    }
+    
+    .customer-reqs {
+        background: #f8fafc;
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+        border: 1px solid #e2e8f0;
+    }
+    
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-label {
+        display: block;
+        font-weight: 700;
+        color: #334155;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+    }
+    
+    .form-input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1.5px solid #cbd5e1;
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 1rem;
+    }
+    
+    .form-input:focus {
+        outline: none;
+        border-color: #0f172a;
+    }
+    
+    .line-items-wrapper {
+        margin-top: 2rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    .line-items-header {
+        background: #f1f5f9;
+        padding: 1rem;
+        display: grid;
+        grid-template-columns: 2fr 1fr 50px;
+        gap: 1rem;
+        font-weight: 800;
+        font-size: 0.85rem;
+        color: #475569;
+        text-transform: uppercase;
+    }
+    
+    .line-item-row {
+        padding: 1rem;
+        display: grid;
+        grid-template-columns: 2fr 1fr 50px;
+        gap: 1rem;
+        align-items: center;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .line-item-row:last-child {
+        border-bottom: none;
+    }
+    
+    .btn-remove {
+        background: #fee2e2;
+        color: #ef4444;
+        border: none;
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .btn-add {
+        background: #f1f5f9;
+        color: #0f172a;
+        border: 2px dashed #cbd5e1;
+        padding: 1rem;
+        width: 100%;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .btn-add:hover {
+        background: #e2e8f0;
+        border-color: #94a3b8;
+    }
+    
+    .totals-section {
+        background: #0f172a;
+        color: white;
+        padding: 2rem;
+        border-radius: 12px;
+        margin-top: 2rem;
+    }
+    
+    .total-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+        font-size: 1.1rem;
+    }
+    
+    .total-row.grand {
+        font-size: 1.5rem;
+        font-weight: 800;
+        border-top: 1px solid #334155;
+        padding-top: 1rem;
+        margin-bottom: 0;
+    }
+    
+    .btn-submit {
+        background: #10b981;
+        color: white;
+        border: none;
+        padding: 1rem 2rem;
+        font-size: 1.1rem;
+        font-weight: 800;
+        border-radius: 8px;
+        width: 100%;
+        margin-top: 1rem;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    
+    .btn-submit:hover {
+        background: #059669;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="proposal-container">
+    <div class="proposal-header">
+        <h1 class="proposal-title">Proposal Maker</h1>
+        <p style="color: #64748b; margin-top: 0.5rem;">Create a custom quotation for Booking #{{ booking.id }}</p>
+    </div>
+    
+    <div class="customer-reqs">
+        <h3 style="font-weight: 800; margin-bottom: 1rem; color: #0f172a;"><i class="fas fa-clipboard-list"></i> Customer Requirements</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+            <div><strong>Event:</strong> {{ booking.event_name or booking.event_type }}</div>
+            <div><strong>Date & Time:</strong> {{ booking.event_date }} @ {{ booking.event_time.strftime('%H:%M') }}</div>
+            <div><strong>Guest Count:</strong> {{ booking.guest_count }} pax</div>
+            <div><strong>Budget:</strong> ₱{{ "{:,.2f}".format(booking.custom_requirements.get('budget', 0)) if booking.custom_requirements else "N/A" }}</div>
+        </div>
+        <div>
+            <strong>Theme & Notes:</strong>
+            <p style="background: white; padding: 1rem; border-radius: 8px; margin-top: 0.5rem; border: 1px solid #e2e8f0;">
+                {{ booking.custom_requirements.get('theme_description', 'No additional details provided.') if booking.custom_requirements else 'No additional details provided.' }}
+            </p>
+        </div>
+    </div>
+    
+    <form action="/caterer/bookings/{{ booking.id }}/proposal_maker" method="POST" id="proposalForm">
+        <div class="bg-blue-50 text-blue-800 p-4 rounded-xl mb-6 text-sm flex items-center gap-2 border border-blue-200">
+            <i class="fas fa-info-circle"></i>
+            <div>
+                <strong>Minimum Constraints:</strong> To ensure service quality, proposals must cover baseline fees of ₱150/head (equipment) and 1 waiter per 20 guests (₱800/waiter).
+                <br><em>Absolute Minimum required for this event: ₱<span id="absoluteMin"></span></em>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">Base Package / Food Cost (Total for {{ booking.guest_count }} pax)</label>
+            <div style="position: relative;">
+                <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); font-weight: 700;">₱</span>
+                <input type="number" step="0.01" name="base_price" id="basePrice" class="form-input" style="padding-left: 2rem;" required oninput="calculateTotal()">
+            </div>
+            <small style="color: #64748b; margin-top: 4px; display: block;">This covers the core food and inclusions.</small>
+        </div>
+        
+        <div class="line-items-wrapper">
+            <div class="line-items-header">
+                <div>Custom Line Item Description</div>
+                <div>Amount (₱)</div>
+                <div></div>
+            </div>
+            <div id="lineItemsContainer">
+                <!-- Javascript will populate items here -->
+            </div>
+            <button type="button" class="btn-add" onclick="addLineItem()">
+                <i class="fas fa-plus"></i> Add Custom Line Item (Decor, specific rental, etc.)
+            </button>
+        </div>
+        
+        <div style="margin-top: 2rem;">
+            <label class="form-label">Required Downpayment</label>
+            <select name="downpayment_percent" class="form-input" onchange="calculateTotal()" id="dpPercent">
+                <option value="30">30% Downpayment</option>
+                <option value="40">40% Downpayment</option>
+                <option value="50">50% Downpayment</option>
+            </select>
+        </div>
+        
+        <div class="totals-section">
+            <div class="total-row">
+                <span>Base Amount:</span>
+                <span id="displayBase">₱0.00</span>
+            </div>
+            <div class="total-row">
+                <span>Add-ons Total:</span>
+                <span id="displayAddons">₱0.00</span>
+            </div>
+            <div class="total-row grand">
+                <span>Grand Total:</span>
+                <span id="displayGrandTotal">₱0.00</span>
+            </div>
+            <div class="total-row" style="margin-top: 1rem; color: #34d399; font-weight: 700;">
+                <span>Required Downpayment:</span>
+                <span id="displayDeposit">₱0.00</span>
+            </div>
+            
+            <input type="hidden" name="total_amount" id="hiddenTotalAmount">
+        </div>
+        
+        <button type="submit" class="btn-submit">
+            <i class="fas fa-paper-plane"></i> Send Proposal to Customer
+        </button>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const GUEST_COUNT = {{ booking.guest_count }};
+    const MIN_EQUIP_FEE = GUEST_COUNT * 150.0;
+    const WAITERS_NEEDED = Math.max(1, Math.floor(GUEST_COUNT / 20));
+    const MIN_STAFF_FEE = WAITERS_NEEDED * 800.0;
+    const ABSOLUTE_MIN = MIN_EQUIP_FEE + MIN_STAFF_FEE;
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('absoluteMin').textContent = ABSOLUTE_MIN.toLocaleString('en-US', {minimumFractionDigits: 2});
+    });
+
+    function addLineItem() {
+        const container = document.getElementById('lineItemsContainer');
+        const row = document.createElement('div');
+        row.className = 'line-item-row';
+        row.innerHTML = `
+            <input type="text" name="addon_names" class="form-input" placeholder="e.g. Rustic Wood Backdrop" required>
+            <input type="number" step="0.01" name="addon_prices" class="form-input addon-price" placeholder="0.00" required oninput="calculateTotal()">
+            <button type="button" class="btn-remove" onclick="this.parentElement.remove(); calculateTotal();"><i class="fas fa-times"></i></button>
+        `;
+        container.appendChild(row);
+    }
+    
+    function calculateTotal() {
+        const basePrice = parseFloat(document.getElementById('basePrice').value) || 0;
+        const addonInputs = document.querySelectorAll('.addon-price');
+        let addonsTotal = 0;
+        
+        addonInputs.forEach(input => {
+            addonsTotal += parseFloat(input.value) || 0;
+        });
+        
+        const grandTotal = basePrice + addonsTotal;
+        const dpPercent = parseInt(document.getElementById('dpPercent').value) || 30;
+        const deposit = grandTotal * (dpPercent / 100);
+        
+        document.getElementById('displayBase').textContent = '₱' + basePrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('displayAddons').textContent = '₱' + addonsTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('displayGrandTotal').textContent = '₱' + grandTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('displayDeposit').textContent = '₱' + deposit.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        
+        document.getElementById('hiddenTotalAmount').value = grandTotal;
+        
+        const submitBtn = document.querySelector('.btn-submit');
+        if (grandTotal > 0 && grandTotal < ABSOLUTE_MIN) {
+            submitBtn.disabled = true;
+            submitBtn.style.background = '#94a3b8';
+            submitBtn.innerHTML = '<i class="fas fa-ban"></i> Below Absolute Minimum';
+        } else {
+            submitBtn.disabled = false;
+            submitBtn.style.background = '#10b981';
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Proposal to Customer';
+        }
+    }
+    
+    // Add one empty row initially
+    addLineItem();
+</script>
+{% endblock %}

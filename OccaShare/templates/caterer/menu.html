@@ -141,213 +141,119 @@
         <div class="occ-modal-header glass-header">
             <div>
                 <h3 id="menuModalTitle" class="occ-modal-title"><i class="fas fa-utensils-alt"></i> Add New Dish</h3>
-                <div class="occ-modal-subtitle">Configure your dish details, recipe, and pricing strategy.</div>
+                <div class="occ-modal-subtitle">Configure your dish details and pricing strategy.</div>
             </div>
             <button onclick="window.closeModal('menuModal')" class="occ-modal-close">
                 <i class="fas fa-times"></i>
             </button>
         </div>
 
-        <div class="modal-tabs-pro">
-            <button class="tab-btn-pro active" onclick="switchDishTab('basic')">Basic Info</button>
-            <button class="tab-btn-pro" onclick="switchDishTab('recipe')">Recipe & Cost</button>
-            <button class="tab-btn-pro" onclick="switchDishTab('labels')">Preferences</button>
-        </div>
-
         <form id="menuForm" action="/caterer/menu/add" method="POST" enctype="multipart/form-data" novalidate>
-            <div class="occ-modal-body compact-body">
+            <div class="occ-modal-body compact-body" style="max-height: 70vh; overflow-y: auto;">
                 <div id="menuErrorDrawer" class="error-drawer"></div>
                 
-                <!-- TAB 1: BASIC INFO -->
-                <div id="tab-basic" class="dish-tab-content active">
-                    <div class="form-group-pro">
-                        <label>Dish Name *</label>
-                        <input type="text" name="name" class="control-pro" placeholder="e.g. Braised Beef Short Ribs" required minlength="2" maxlength="100">
-                        <div class="invalid-feedback"></div>
-                    </div>
+                <div class="form-group-pro">
+                    <label>Dish Name *</label>
+                    <input type="text" name="name" class="control-pro" placeholder="e.g. Chicken Cordon Bleu" required minlength="2" maxlength="100">
+                    <div class="invalid-feedback"></div>
+                </div>
 
-                    <div class="form-row-pro">
-                        <div class="form-group-pro">
-                            <label>Category</label>
-                            <select name="category" id="modalCategory" class="control-pro" required onchange="toggleCustomCategory()">
-                                <option value="Chicken">Chicken</option>
-                                <option value="Beef">Beef</option>
-                                <option value="Pork">Pork</option>
-                                <option value="Seafood">Seafood</option>
-                                <option value="Vegetable">Vegetable</option>
-                                <option value="Pasta">Pasta</option>
-                                <option value="Dessert">Dessert</option>
-                                <option value="Drinks">Drinks</option>
-                                <option value="Party Trays / Bilao">Party Trays / Bilao</option>
-                                <option value="Other">Other</option>
-                            </select>
-                            <input type="text" name="custom_category" id="customCategoryInput" class="control-pro" placeholder="Type specific category (e.g. Goat, Special)" style="display: none; margin-top: 10px;">
-                        </div>
-                        <div class="form-group-pro">
-                            <label>Pricing Unit</label>
-                            <select name="pricing_unit" id="modalPricingUnit" class="control-pro" required>
-                                <option value="per_serving">Per Serving</option>
-                                <option value="per_tray">Per Tray</option>
-                                <option value="per_bilao">Per Bilao</option>
-                                <option value="per_piece">Per Piece</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="form-row-pro">
-                        <div class="form-group-pro">
-                            <label>Serving Size / Capacity</label>
-                            <input type="text" name="serving_size" class="control-pro" placeholder="e.g. Good for 10-15" maxlength="50">
-                        </div>
-                        <div class="form-group-pro">
-                            <!-- Empty spacer for layout -->
-                        </div>
-                    </div>
-
+                <div class="form-row-pro">
                     <div class="form-group-pro">
-                        <label>Description</label>
-                        <textarea name="description" class="control-pro" placeholder="Describe flavors, ingredients..." maxlength="500" style="height: 80px;"></textarea>
+                        <label>Category *</label>
+                        <select name="category" id="modalCategory" class="control-pro" required onchange="toggleCustomCategory()">
+                            <option value="Chicken">Chicken</option>
+                            <option value="Pork">Pork</option>
+                            <option value="Beef">Beef</option>
+                            <option value="Seafood">Seafood</option>
+                            <option value="Vegetable">Vegetable</option>
+                            <option value="Pasta">Pasta</option>
+                            <option value="Dessert">Dessert</option>
+                            <option value="Drinks">Drinks</option>
+                            <option value="Other">Others</option>
+                        </select>
+                        <input type="text" name="custom_category" id="customCategoryInput" class="control-pro" placeholder="Type specific category" style="display: none; margin-top: 10px;">
                     </div>
-
                     <div class="form-group-pro">
-                        <label>Dish Presentation Photo</label>
-                        <div class="photo-dropzone-pro" onclick="document.getElementById('menuImageInput').click()">
-                            <i class="fas fa-camera"></i>
-                            <span>Upload dish photo</span>
-                            <input type="file" name="image" id="menuImageInput" accept="image/*" style="display: none;" onchange="previewImage(event)">
-                        </div>
-                        <div id="imagePreviewContainer" class="preview-box-pro" style="display: none;">
-                            <img id="imagePreview" src="" class="img-preview-pro" alt="Preview">
-                            <button type="button" class="btn-remove-img-pro" onclick="removeImage()"><i class="fas fa-times"></i></button>
-                        </div>
+                        <label>Unit Type *</label>
+                        <select name="unit_type" id="modalUnitType" class="control-pro" required>
+                            <option value="Per Pax">Per Pax</option>
+                            <option value="Per Tray">Per Tray</option>
+                            <option value="Per Bilao">Per Bilao</option>
+                            <option value="Per Order">Per Order</option>
+                        </select>
                     </div>
                 </div>
 
-                <!-- TAB 2: RECIPE & COSTING -->
-                <div id="tab-recipe" class="dish-tab-content">
-                    <div class="recipe-builder-card-premium">
-                        <div class="builder-header-pro">
-                            <h4 class="builder-title-pro">Recipe Composition</h4>
-                            <div class="builder-total-badge-pro">₱<span id="totalRecipeCost">0.00</span></div>
-                        </div>
-                        
-                        <div class="builder-controls-pro">
-                            <select id="ingredientPicker" class="control-pro-sm">
-                                <option value="">Select Ingredient...</option>
-                                {% for ing in ingredients %}
-                                <option value="{{ ing.id }}" data-price="{{ ing.unit_price }}" data-unit="{{ ing.unit }}">{{ ing.name }}</option>
-                                {% endfor %}
-                            </select>
-                            <input type="number" id="ingredientQty" class="control-pro-sm" placeholder="Qty" step="0.01" min="0.01" style="width: 70px;">
-                            <button type="button" class="btn-add-recipe-pro" onclick="addIngredientToRecipe()"><i class="fas fa-plus"></i></button>
-                        </div>
+                <div class="form-group-pro">
+                    <label>Description</label>
+                    <textarea name="description" class="control-pro" placeholder="Short description of the dish..." maxlength="500" style="height: 80px;"></textarea>
+                </div>
 
-                        <div class="recipe-items-list-pro" id="recipeListContainer">
-                            <div class="empty-recipe-msg">No ingredients added.</div>
-                        </div>
+                <div class="form-row-pro">
+                    <div class="form-group-pro">
+                        <label>Estimated Cost (₱) * <i class="fas fa-info-circle text-muted" title="Internal cost used for profit and ROI computation."></i></label>
+                        <input type="text" name="cost_price" id="cost_price_input" class="control-pro js-format-comma" placeholder="0" required inputmode="numeric">
                     </div>
+                    <div class="form-group-pro">
+                        <label>Selling Price (₱) * <i class="fas fa-info-circle text-muted" title="Price charged to customers."></i></label>
+                        <input type="text" name="price" id="price_input" class="control-pro js-format-comma" placeholder="0" required inputmode="numeric">
+                    </div>
+                </div>
+                
+                <div class="margin-analytics-pro" id="roiMarginBadge" style="margin-bottom: 20px;">Profit: --</div>
 
-                    <div class="pricing-lab-card">
-                        <div class="form-row-pro">
-                            <div class="form-group-pro">
-                                <label>Target Markup (%)</label>
-                                <input type="number" id="markupInput" class="control-pro" placeholder="300" min="0" max="10000" oninput="if(this.value.length > 5) this.value = this.value.slice(0,5); suggestPrice();">
-                            </div>
-                            <div class="form-group-pro">
-                                <label>Suggested Price</label>
-                                <div class="suggestion-pill">
-                                    <span id="suggestedPrice">₱0.00</span>
-                                    <button type="button" onclick="applySuggestedPrice()">Use</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-row-pro mt-3">
-                            <div class="form-group-pro">
-                                <label>Selling Price (₱) *</label>
-                                <input type="text" name="price" class="control-pro js-format-comma" placeholder="0" required inputmode="numeric" maxlength="10">
-                            </div>
-                            <div class="form-group-pro">
-                                <label>Prep Cost (₱) *</label>
-                                <input type="text" name="cost_price" id="cost_price_input" class="control-pro js-format-comma" placeholder="0" required inputmode="numeric" maxlength="10">
-                            </div>
-                        </div>
-                        <div class="margin-analytics-pro" id="roiMarginBadge">Margin: --%</div>
+                <div class="form-row-pro">
+                    <div class="form-group-pro">
+                        <label>Physical Status * <i class="fas fa-info-circle text-muted" title="Do you have this in stock? If unavailable, it cannot be booked."></i></label>
+                        <select name="status" id="modalStatus" class="control-pro" required>
+                            <option value="available">Available</option>
+                            <option value="unavailable">Out of Stock</option>
+                        </select>
+                    </div>
+                    <div class="form-group-pro">
+                        <label>Catalog Visibility * <i class="fas fa-info-circle text-muted" title="If hidden, customers can only book this if it's inside a package."></i></label>
+                        <select name="visibility" id="modalVisibility" class="control-pro" required>
+                            <option value="public">Show on Profile</option>
+                            <option value="hidden">Hidden (Package Only)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group-pro">
+                    <label>Dietary Tags & Allergens</label>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px;">
+                        <label class="tag-checkbox-pro"><input type="checkbox" name="dietary_tags" value="Vegan"><span>Vegan</span></label>
+                        <label class="tag-checkbox-pro"><input type="checkbox" name="dietary_tags" value="Vegetarian"><span>Vegetarian</span></label>
+                        <label class="tag-checkbox-pro"><input type="checkbox" name="dietary_tags" value="Halal"><span>Halal</span></label>
+                        <label class="tag-checkbox-pro"><input type="checkbox" name="dietary_tags" value="Gluten-Free"><span>Gluten-Free</span></label>
+                    </div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
+                        <label class="tag-checkbox-pro allergen"><input type="checkbox" name="allergen_info" value="Contains Nuts"><span>Contains Nuts</span></label>
+                        <label class="tag-checkbox-pro allergen"><input type="checkbox" name="allergen_info" value="Dairy"><span>Dairy</span></label>
+                        <label class="tag-checkbox-pro allergen"><input type="checkbox" name="allergen_info" value="Seafood"><span>Seafood</span></label>
+                        <label class="tag-checkbox-pro allergen"><input type="checkbox" name="allergen_info" value="Soy"><span>Soy</span></label>
+                        <label class="tag-checkbox-pro allergen"><input type="checkbox" name="allergen_info" value="Egg"><span>Egg</span></label>
                     </div>
                 </div>
 
-                <!-- TAB 3: PREFERENCES -->
-                <div id="tab-labels" class="dish-tab-content">
-                    <div class="form-group-pro">
-                        <label>Combo / Platter Mode</label>
-                        <div class="visibility-toggle-pro" style="background: #e0e7ff; color: #3730a3;">
-                            <span>Enable Combo/Bilao Settings</span>
-                            <label class="switch-pro">
-                                <input type="checkbox" name="is_combo" id="isComboCheckbox" onchange="toggleComboSettings()">
-                                <span class="slider-pro"></span>
-                            </label>
-                        </div>
+                <div class="form-group-pro">
+                    <label>Dish Image</label>
+                    <div class="photo-dropzone-pro" id="photoDropzone" onclick="document.getElementById('menuImageInput').click()">
+                        <i class="fas fa-camera"></i>
+                        <span>Upload dish photo</span>
+                        <input type="file" name="image" id="menuImageInput" accept="image/*" style="display: none;" onchange="previewImage(event)">
                     </div>
-                    
-                    <div id="comboSettingsContainer" style="display: none; background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                        <div class="form-row-pro">
-                            <div class="form-group-pro">
-                                <label>Max Choices Allowed</label>
-                                <input type="number" name="max_choices" id="maxChoicesInput" class="control-pro" placeholder="e.g. 3" min="1">
-                            </div>
-                        </div>
-                        <div class="form-group-pro">
-                            <label>Available Combo Options</label>
-                            <input type="text" id="comboOptionsInput" class="control-pro" placeholder="e.g. Pancit, Beef Caldereta, Pork BBQ (Comma separated)">
-                            <small style="color: #64748b;">Separate each option with a comma.</small>
-                            <input type="hidden" name="combo_options" id="hiddenComboOptions">
-                        </div>
-                    </div>
-
-                    <div class="form-group-pro">
-                        <label>Visibility</label>
-                        <div class="visibility-toggle-pro">
-                            <span>Show in Customer Menu</span>
-                            <label class="switch-pro">
-                                <input type="checkbox" name="is_visible" id="isVisibleCheckbox" checked>
-                                <span class="slider-pro"></span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="form-group-pro">
-                        <label>Dietary Labels</label>
-                        <div class="label-matrix-pro">
-                            {% for tag in ['Vegetarian', 'Vegan', 'Halal', 'Keto', 'Spicy'] %}
-                            <label class="matrix-check"><input type="checkbox" name="dietary_tags" value="{{ tag }}"> {{ tag }}</label>
-                            {% endfor %}
-                        </div>
-                    </div>
-
-                    <div class="form-group-pro">
-                        <label>Allergen Alerts</label>
-                        <div class="label-matrix-pro danger">
-                            {% for alg in ['Nuts', 'Dairy', 'Seafood', 'Egg', 'Soy'] %}
-                            <label class="matrix-check"><input type="checkbox" name="allergen_info" value="{{ alg }}"> {{ alg }}</label>
-                            {% endfor %}
-                        </div>
-                    </div>
-
-                    <div class="form-group-pro">
-                        <div class="addon-box-pro">
-                            <div class="addon-header">
-                                <label class="matrix-check"><input type="checkbox" name="is_addon" id="isAddonCheckbox" onchange="toggleAddonPrice()"> Mark as Add-on</label>
-                            </div>
-                            <div id="addonPriceContainer" style="display: none; margin-top: 10px;">
-                                <input type="text" name="addon_price" id="addonPriceInput" class="control-pro js-format-comma" placeholder="Add-on Surcharge (₱)">
-                            </div>
-                        </div>
+                    <div id="imagePreviewContainer" class="preview-box-pro" style="display: none;">
+                        <img id="imagePreview" src="" class="img-preview-pro" alt="Preview">
+                        <button type="button" class="btn-remove-img-pro" onclick="removeImage()"><i class="fas fa-times"></i></button>
                     </div>
                 </div>
             </div>
 
             <div class="occ-modal-footer">
                 <button type="button" class="btn-secondary-pro" style="min-width:100px;" onclick="window.closeModal('menuModal')">Cancel</button>
-                <button type="submit" class="btn-primary-pro" style="padding:0 var(--space-xl);">Save Dish to Library</button>
+                <button type="submit" class="btn-primary-pro" style="padding:0 var(--space-xl);">Save Dish</button>
             </div>
         </form>
     </div>
@@ -392,26 +298,12 @@
     const imagePreviewContainer = document.getElementById('imagePreviewContainer');
     const imagePreview = document.getElementById('imagePreview');
     const photoDropzone = document.getElementById('photoDropzone');
-    const addonPriceContainer = document.getElementById('addonPriceContainer');
-
-    function switchDishTab(tabId) {
-        document.querySelectorAll('.tab-btn-pro').forEach(b => {
-            b.classList.toggle('active', b.innerText.toLowerCase().includes(tabId));
-        });
-        document.querySelectorAll('.dish-tab-content').forEach(c => {
-            c.classList.toggle('active', c.id === `tab-${tabId}`);
-        });
-    }
 
     function openAddMenuModal() {
-        modalTitle.innerText = 'Add New Dish';
+        modalTitle.innerHTML = '<i class="fas fa-utensils-alt"></i> Add New Dish';
         form.action = '/caterer/menu/add';
         form.reset();
         removeImage();
-        currentRecipe = [];
-        updateRecipeUI();
-        toggleAddonPrice();
-        switchDishTab('basic');
         
         if (document.getElementById('menuErrorDrawer')) document.getElementById('menuErrorDrawer').style.display = 'none';
         
@@ -425,8 +317,8 @@
     }
 
     async function editMenuItem(el) {
-    const btn = document.querySelector('#menuForm button[type="submit"]');
-    if (btn) btn.disabled = false;
+        const btn = document.querySelector('#menuForm button[type="submit"]');
+        if (btn) btn.disabled = false;
         try {
             const item = {
                 id: el.dataset.id,
@@ -435,22 +327,18 @@
                 description: el.dataset.description,
                 price: el.dataset.price,
                 cost_price: el.dataset.costPrice,
-                serving_size: el.dataset.servingSize,
                 pricing_unit: el.dataset.pricingUnit,
-                is_addon: el.dataset.isAddon === 'true',
-                addon_price: el.dataset.addonPrice,
+                status: el.dataset.status,
+                is_hidden: el.dataset.isHidden === 'true',
                 dietary_tags: el.dataset.dietaryTags,
                 allergen_info: el.dataset.allergenInfo,
-                is_hidden: el.dataset.isHidden === 'true',
-                image_url: el.dataset.imageUrl,
-                is_combo: el.dataset.isCombo === 'true',
-                max_choices: el.dataset.maxChoices || 0,
-                combo_options: el.dataset.comboOptions || '[]'
-                            };
+                image_url: el.dataset.imageUrl
+            };
 
-            modalTitle.innerText = 'Edit Dish Library';
+            modalTitle.innerHTML = '<i class="fas fa-edit"></i> Edit Dish';
             form.action = `/caterer/menu/${item.id}/update`;
             form.name.value = item.name;
+            
             const catSelect = form.category;
             const catOptions = Array.from(catSelect.options).map(o => o.value);
             if (catOptions.includes(item.category)) {
@@ -463,50 +351,61 @@
                 document.getElementById('customCategoryInput').value = item.category;
                 document.getElementById('customCategoryInput').required = true;
             }
+
             form.description.value = item.description || '';
             form.price.value = item.price || 0;
             form.cost_price.value = item.cost_price || 0;
-            form.serving_size.value = item.serving_size || '';
-            form.pricing_unit.value = item.pricing_unit || 'per_serving';
-                        
+            form.unit_type.value = item.pricing_unit || 'Per Pax';
+            form.status.value = item.status || 'available';
+            if (form.visibility) form.visibility.value = item.is_hidden ? 'hidden' : 'public';
             
-            const cb = document.getElementById('isAddonCheckbox');
-            if (cb) cb.checked = item.is_addon;
-            form.addon_price.value = item.addon_price || 0;
+            // Clear all checkboxes
+            document.querySelectorAll('input[name="dietary_tags"], input[name="allergen_info"]').forEach(cb => cb.checked = false);
+            
+            // Parse dietary tags
+            if (item.dietary_tags && item.dietary_tags !== '[]' && item.dietary_tags !== 'null') {
+                let dTags = [];
+                try {
+                    let cleanStr = item.dietary_tags.replace(/'/g, '"').replace(/^{/, '[').replace(/}$/, ']');
+                    dTags = typeof item.dietary_tags === 'string' ? JSON.parse(cleanStr) : item.dietary_tags; 
+                } catch(e) { console.error("Error parsing dietary_tags:", e, item.dietary_tags); }
+                
+                if (Array.isArray(dTags)) {
+                    dTags.forEach(tag => {
+                        let val = tag.trim();
+                        if(val === 'Vegetarians') val = 'Vegetarian';
+                        const cb = document.querySelector(`input[name="dietary_tags"][value="${val}"]`);
+                        if (cb) cb.checked = true;
+                    });
+                }
+            }
+            // Parse allergen info
+            if (item.allergen_info && item.allergen_info !== '[]' && item.allergen_info !== 'null') {
+                let aTags = [];
+                try { 
+                    let cleanStr = item.allergen_info.replace(/'/g, '"').replace(/^{/, '[').replace(/}$/, ']');
+                    aTags = typeof item.allergen_info === 'string' ? JSON.parse(cleanStr) : item.allergen_info; 
+                } catch(e) { console.error("Error parsing allergen_info:", e, item.allergen_info); }
+                
+                if (Array.isArray(aTags)) {
+                    aTags.forEach(tag => {
+                        let val = tag.trim();
+                        if(val === 'Eggs') val = 'Egg';
+                        const cb = document.querySelector(`input[name="allergen_info"][value="${val}"]`);
+                        if (cb) cb.checked = true;
+                    });
+                }
+            }
 
             if (window.applyCommaFormatting) {
                 window.applyCommaFormatting(form.price);
                 window.applyCommaFormatting(form.cost_price);
-                window.applyCommaFormatting(form.addon_price);
             }
-            toggleAddonPrice();
-            
-            const comboCb = document.getElementById('isComboCheckbox');
-            if (comboCb) comboCb.checked = item.is_combo;
-            form.max_choices.value = (item.max_choices && item.max_choices !== '0') ? item.max_choices : '';
-            try {
-                const parsedOptions = JSON.parse(item.combo_options);
-                document.getElementById('comboOptionsInput').value = parsedOptions ? parsedOptions.join(', ') : '';
-            } catch(e) {
-                document.getElementById('comboOptionsInput').value = '';
-            }
-            toggleComboSettings();
-
-            let tags = [];
-            try { tags = JSON.parse(item.dietary_tags); } catch(e) { tags = []; }
-            form.querySelectorAll('input[name="dietary_tags"]').forEach(c => c.checked = tags.includes(c.value));
-
-            let allergens = [];
-            try { allergens = JSON.parse(item.allergen_info); } catch(e) { allergens = []; }
-            form.querySelectorAll('input[name="allergen_info"]').forEach(c => c.checked = allergens.includes(c.value));
-
-            const visibleCb = document.getElementById('isVisibleCheckbox');
-            if (visibleCb) visibleCb.checked = !item.is_hidden;
 
             if (item.image_url) {
                 imagePreview.src = item.image_url;
                 imagePreviewContainer.style.display = 'block';
-                document.querySelector('.photo-dropzone-pro').style.display = 'none';
+                photoDropzone.style.display = 'none';
             } else {
                 removeImage();
             }
@@ -514,134 +413,39 @@
             if (window.openModal) window.openModal('menuModal');
             else modal.style.display = 'flex';
             
-            switchDishTab('basic');
-        
-
-            // Load Recipe from API
-            await loadRecipe(item.id);
             calculateMenuCosts();
-            
-            // Trigger ValidationManager to naturally evaluate the valid form
             form.dispatchEvent(new Event('input', { bubbles: true }));
         } catch (err) { console.error("Edit error:", err); }
     }
 
-    let currentRecipe = []; // [{ingId, name, qty, unit, pricePerUnit}]
-
-    function addIngredientToRecipe() {
-        const picker = document.getElementById('ingredientPicker');
-        const qtyInput = document.getElementById('ingredientQty');
-        const opt = picker.options[picker.selectedIndex];
-        
-        if (!opt.value || !qtyInput.value) return;
-
-        const ingId = opt.value;
-        const name = opt.text.split(' (')[0];
-        const unit = opt.dataset.unit;
-        const pricePerUnit = parseFloat(opt.dataset.price);
-        const qty = parseFloat(qtyInput.value);
-
-        if (isNaN(qty) || qty <= 0) {
-            alert("Quantity must be greater than zero.");
-            return;
-        }
-
-        currentRecipe.push({ ingId, name, qty, unit, pricePerUnit });
-        qtyInput.value = '';
-        updateRecipeUI();
-    }
-
-    function updateIngredientQty(index, qty) {
-        const val = parseFloat(qty);
-        if (isNaN(val) || val <= 0) {
-            alert("Quantity must be greater than zero.");
-            updateRecipeUI(); // Re-render to reset to old value
-            return;
-        }
-        currentRecipe[index].qty = val;
-        updateRecipeUI();
-    }
-
-    function removeIngredientFromRecipe(index) {
-        currentRecipe.splice(index, 1);
-        updateRecipeUI();
-    }
-
-    function updateRecipeUI() {
-        const container = document.getElementById('recipeListContainer');
-        const totalBadge = document.getElementById('totalRecipeCost');
+    function calculateMenuCosts() {
+        const sellInput = document.querySelector('input[name="price"]');
         const costInput = document.getElementById('cost_price_input');
+        const badge = document.getElementById('roiMarginBadge');
+        if (!sellInput || !costInput || !badge) return;
+        const sell = parseFloat(sellInput.value.replace(/,/g, '')) || 0;
+        const cost = parseFloat(costInput.value.replace(/,/g, '')) || 0;
         
-        container.innerHTML = '';
-        let totalCost = 0;
-
-        if (currentRecipe.length === 0) {
-            container.innerHTML = '<div class="empty-recipe-msg">No ingredients added.</div>';
-        } else {
-            currentRecipe.forEach((item, index) => {
-                const itemCost = item.qty * item.pricePerUnit;
-                totalCost += itemCost;
-                
-                const row = document.createElement('div');
-                row.className = 'recipe-item-row';
-                row.innerHTML = `
-                    <div class="recipe-item-info">
-                        <strong>${item.name}</strong>
-                        <span>
-                            <input type="number" step="0.01" min="0.01" value="${item.qty}" class="qty-inline-edit" onchange="updateIngredientQty(${index}, this.value)" style="width: 50px; padding: 2px 4px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); color: white; border-radius: 4px; font-size: 0.65rem; margin-right: 4px;">
-                            ${item.unit} @ ₱${item.pricePerUnit}/${item.unit}
-                        </span>
-                    </div>
-                    <div class="recipe-item-price">₱${itemCost.toFixed(2)}</div>
-                    <button type="button" class="btn-remove-recipe-pro" onclick="removeIngredientFromRecipe(${index})"><i class="fas fa-times"></i></button>
-                `;
-                container.appendChild(row);
-            });
-        }
-
-        totalBadge.innerText = totalCost.toLocaleString(undefined, {minimumFractionDigits: 2});
-        costInput.value = totalCost.toFixed(2);
-        calculateMenuCosts();
-    }
-
-    async function loadRecipe(menuId) {
-        try {
-            const res = await fetch(`/caterer/api/menu-items/${menuId}/ingredients`);
-            if (res.ok) {
-                const data = await res.json();
-                currentRecipe = data.ingredients.map(i => ({
-                    ingId: i.id,
-                    name: i.name,
-                    qty: i.quantity,
-                    unit: i.unit,
-                    pricePerUnit: i.unit_price
-                }));
-                updateRecipeUI();
+        if (sell > 0) {
+            const profit = sell - cost;
+            const margin = (profit / sell) * 100;
+            
+            badge.innerText = `Estimated Profit: ₱${profit.toLocaleString(undefined, {minimumFractionDigits: 2})} (${margin.toFixed(1)}%)`;
+            if (margin < 0) {
+                badge.innerText = `Estimated Loss: ₱${Math.abs(profit).toLocaleString(undefined, {minimumFractionDigits: 2})} (${Math.abs(margin).toFixed(1)}%)`;
+                badge.style.background = 'var(--danger-color, #ef4444)';
+                badge.style.color = 'white';
+            } else if (margin < 20) {
+                badge.style.background = '#fef3c7';
+                badge.style.color = '#d97706';
+            } else {
+                badge.style.background = '#dcfce7';
+                badge.style.color = '#166534';
             }
-        } catch (err) { console.error("Load recipe error:", err); }
-    }
-
-    function suggestPrice() {
-        const cost = parseFloat(document.getElementById('cost_price_input').value) || 0;
-        const markup = parseFloat(document.getElementById('markupInput').value) || 0;
-        const suggestedSpan = document.getElementById('suggestedPrice');
-        
-        if (cost > 0 && markup > 0) {
-            const suggested = cost * (1 + markup/100);
-            suggestedSpan.innerText = `₱${suggested.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
         } else {
-            suggestedSpan.innerText = '₱0.00';
-        }
-    }
-
-    function applySuggestedPrice() {
-        const cost = parseFloat(document.getElementById('cost_price_input').value) || 0;
-        const markup = parseFloat(document.getElementById('markupInput').value) || 0;
-        if (cost > 0 && markup > 0) {
-            const suggested = cost * (1 + markup/100);
-            document.querySelector('input[name="price"]').value = suggested.toFixed(0);
-            calculateMenuCosts();
-            if (window.applyCommaFormatting) window.applyCommaFormatting(document.querySelector('input[name="price"]'));
+            badge.innerText = 'Profit: --';
+            badge.style.background = '#f1f5f9';
+            badge.style.color = '#64748b';
         }
     }
 
@@ -661,8 +465,7 @@
     function removeImage() {
         imagePreview.src = '';
         imagePreviewContainer.style.display = 'none';
-        const dz = document.querySelector('.photo-dropzone-pro');
-        if (dz) dz.style.display = 'block';
+        if (photoDropzone) photoDropzone.style.display = 'flex';
         document.getElementById('menuImageInput').value = '';
     }
 
@@ -678,17 +481,6 @@
         }
     }
 
-    function toggleAddonPrice() {
-        const cb = document.getElementById('isAddonCheckbox');
-        if (cb && addonPriceContainer) addonPriceContainer.style.display = cb.checked ? 'block' : 'none';
-    }
-    
-    function toggleComboSettings() {
-        const cb = document.getElementById('isComboCheckbox');
-        const container = document.getElementById('comboSettingsContainer');
-        if (cb && container) container.style.display = cb.checked ? 'block' : 'none';
-    }
-
     function toggleDropdown(btn, e) {
         if (e) e.stopPropagation();
         const menu = btn.nextElementSibling;
@@ -702,7 +494,10 @@
         applyFilters(cat);
     }
 
-    function filterMenu() { applyFilters(document.querySelector('.cat-chip.active').dataset.cat); }
+    function filterMenu() { 
+        const activeChip = document.querySelector('.cat-chip.active');
+        applyFilters(activeChip ? activeChip.dataset.cat : 'all'); 
+    }
 
     function applyFilters(cat) {
         const query = document.getElementById('menuSearchInput').value.toLowerCase();
@@ -719,7 +514,7 @@
         });
         const empty = document.querySelector('.empty-state:not(#searchEmptyState)');
         const searchEmpty = document.getElementById('searchEmptyState');
-        if (empty && cards.length > 0) empty.style.display = 'none'; // Only for 0 items in DB
+        if (empty && cards.length > 0) empty.style.display = 'none';
         if (searchEmpty) searchEmpty.style.display = count === 0 ? 'flex' : 'none';
     }
 
@@ -738,44 +533,10 @@
         else archiveModal.style.display = 'flex';
     }
 
-    function calculateMenuCosts() {
-        const sellInput = document.querySelector('input[name="price"]');
-        const costInput = document.getElementById('cost_price_input');
-        const badge = document.getElementById('roiMarginBadge');
-        if (!sellInput || !costInput || !badge) return;
-        const sell = parseFloat(sellInput.value.replace(/,/g, '')) || 0;
-        const cost = parseFloat(costInput.value.replace(/,/g, '')) || 0;
-        if (sell > 0) {
-            const margin = ((sell - cost) / sell) * 100;
-            badge.innerText = `Margin: ${margin.toFixed(1)}%`;
-            if (margin < 0) {
-                badge.innerText = `Loss: ${Math.abs(margin).toFixed(1)}%`;
-                badge.style.background = 'var(--danger-color, #ef4444)';
-            } else if (margin < 20) badge.style.background = '#f59e0b';
-            else badge.style.background = 'var(--success-color, #22c55e)';
-        } else badge.innerText = 'Margin: --%';
-    }
-
-
-    const menuValidation = new window.ValidationManager('menuForm', {
-        'name': { unique: true, uniqueApi: '/caterer/api/validate-dish-name', label: 'dish' },
-        'price': { numericOnly: true, max: 100000 },
-        'cost_price': { numericOnly: true, max: 100000 }
-    });
-
     form.addEventListener('submit', async function (e) {
         e.preventDefault();
         if (!this.checkValidity()) {
-            const firstInvalid = this.querySelector(':invalid');
-            if (firstInvalid) {
-                const tabContent = firstInvalid.closest('.tab-content');
-                if (tabContent) {
-                    switchDishTab(tabContent.id);
-                    setTimeout(() => firstInvalid.reportValidity(), 50);
-                } else {
-                    this.reportValidity();
-                }
-            }
+            this.reportValidity();
             return;
         }
         const btn = this.querySelector('button[type="submit"]');
@@ -795,54 +556,19 @@
         
         if (sellPrice <= 0) {
             alert("Selling Price must be greater than zero.");
-            switchDishTab('recipe');
             if (btn) btn.disabled = false;
             return;
         }
         if (costPrice < 0) {
-            alert("Prep Cost cannot be negative.");
-            switchDishTab('recipe');
-            if (btn) btn.disabled = false;
-            return;
-        }
-        if (sellPrice < costPrice) {
-            alert("Warning: Selling Price is lower than Prep Cost. A negative margin (loss) is not allowed for dishes.");
-            switchDishTab('recipe');
+            alert("Estimated Cost cannot be negative.");
             if (btn) btn.disabled = false;
             return;
         }
 
         const data = new FormData(this);
         
-        // Map is_visible checkbox to is_hidden for backend
-        data.set('is_hidden', !this.querySelector('#isVisibleCheckbox').checked);
-        
-        // Map combo options
-        if (this.querySelector('#isComboCheckbox').checked) {
-            const rawOptions = document.getElementById('comboOptionsInput').value;
-            const optionsArray = rawOptions.split(',').map(s => s.trim()).filter(s => s !== '');
-            const maxChoices = parseInt(document.getElementById('maxChoicesInput').value) || 0;
-            
-            if (optionsArray.length === 0 || maxChoices < 1) {
-                alert("For Combo/Platter mode, please provide at least one valid Option and set Max Choices to 1 or more.");
-                switchDishTab('labels');
-                if (btn) btn.disabled = false;
-                return;
-            }
-            if (maxChoices > optionsArray.length) {
-                alert("Max Choices cannot be greater than the number of Available Combo Options.");
-                switchDishTab('labels');
-                if (btn) btn.disabled = false;
-                return;
-            }
-            data.set('combo_options', JSON.stringify(optionsArray));
-        } else {
-            data.set('combo_options', JSON.stringify([]));
-            data.set('max_choices', 0);
-        }
-        
-        // Include Recipe Data
-        data.set('recipe_data', JSON.stringify(currentRecipe));
+        // Map status to is_hidden for backend
+        data.set('is_hidden', this.querySelector('#modalStatus').value === 'unavailable');
 
         if (window.apiAction) {
             const res = await window.apiAction(this.action, { method: 'POST', body: data }, btn);

@@ -1,4 +1,6 @@
-{% set active_page = 'services' %}
+filepath = 'c:/OccaServe/OccaShare/templates/caterer/services.html'
+with open(filepath, 'w', encoding='utf-8') as f:
+    f.write("""{% set active_page = 'services' %}
 {% extends "caterer/layout.html" %}
 
 {% block title %}Inventory & Services - OccaShare Caterer{% endblock %}
@@ -42,7 +44,7 @@
     <div class="menu-item-card-premium" data-category="{{ item.category }}" data-name="{{ item.name|lower }}">
         <div class="item-visual-pro">
             {% if item.image_url %}
-                <img src="{{ item.image_url }}" alt="{{ item.name }}" class="item-img-pro" onerror="this.outerHTML='<div class=\'item-img-placeholder\'><i class=\'fas fa-box-open\'></i></div>'">
+                <img src="{{ item.image_url }}" alt="{{ item.name }}" class="item-img-pro" onerror="this.outerHTML='<div class=\\'item-img-placeholder\\'><i class=\\'fas fa-box-open\\'></i></div>'">
             {% else %}
                 <div class="item-img-placeholder"><i class="fas fa-box-open"></i></div>
             {% endif %}
@@ -69,7 +71,6 @@
                         data-pricing-unit="{{ item.unit_type or 'Per Event' }}"
                         data-available-qty="{{ item.available_qty or '' }}"
                         data-status="{{ item.status }}"
-                        data-is-hidden="{{ 'true' if item.status == 'unavailable' and item.item_type == 'Legacy' else 'false' }}"
                         data-image-url="{{ item.image_url or '' }}"
                         onclick="editMenuItem(this)">
                         <i class="fas fa-edit"></i> Edit
@@ -184,20 +185,12 @@
                         <input type="number" name="available_qty" id="availableQtyInput" class="control-pro" placeholder="e.g. 100" min="1" required>
                     </div>
                     <div class="form-group-pro">
-                        <label>Physical Status *</label>
+                        <label>Status *</label>
                         <select name="status" id="modalStatus" class="control-pro" required>
                             <option value="available">Available</option>
-                            <option value="unavailable">Out of Stock</option>
+                            <option value="unavailable">Unavailable</option>
                         </select>
                     </div>
-                </div>
-                
-                <div class="form-group-pro">
-                    <label>Catalog Visibility * <i class="fas fa-info-circle text-muted" title="If hidden, customers can only book this if it's inside a package."></i></label>
-                    <select name="visibility" id="modalVisibility" class="control-pro" required>
-                        <option value="public">Show on Profile</option>
-                        <option value="hidden">Hidden (Package Only)</option>
-                    </select>
                 </div>
 
                 <div class="form-group-pro">
@@ -399,7 +392,6 @@
             
             form.available_qty.value = item.available_qty || 1;
             form.status.value = item.status || 'available';
-            if (form.visibility) form.visibility.value = item.is_hidden === 'true' ? 'hidden' : 'public';
 
             if (window.applyCommaFormatting) {
                 window.applyCommaFormatting(form.price);
@@ -605,3 +597,5 @@
     });
 </script>
 {% endblock %}
+""")
+print("Replaced services.html")
