@@ -146,25 +146,36 @@
             </p>
         </div>
 
+        {% set accepted_terms = profile.accepted_payment_terms if profile.accepted_payment_terms else ([100] if quotation and quotation.downpayment_percent == 100 else [quotation.downpayment_percent or 30, 100]) %}
+        
         <div class="payment-plan-grid animate-up" style="animation-delay: 0.25s;">
-            <!-- Downpayment Option (Binding) -->
-            <div class="plan-card active" id="plan-downpayment" onclick="updatePaymentPlan('downpayment', {{ booking.reservation_fee or 0 }}, {{ booking.total_amount or 0 }})">
-                <span class="plan-tag">Binding Minimum</span>
-                <h4 class="plan-title">Downpayment ({{ quotation.downpayment_percent if quotation else 30 }}%)</h4>
-                <p class="plan-desc">As agreed in Section 2 of Contract</p>
-                <div class="plan-amount">₱{{ "{:,.2f}".format(booking.reservation_fee or 0) }}</div>
-                <div class="plan-check"><i class="fas fa-check-circle"></i></div>
-            </div>
-
-            <!-- Full Payment Option (Voluntary Upgrade) -->
-            <div class="plan-card" id="plan-full" onclick="updatePaymentPlan('full', {{ booking.total_amount or 0 }}, {{ booking.total_amount or 0 }})">
-                <span class="plan-tag">Voluntary Settlement</span>
-                <h4 class="plan-title">Full Payment</h4>
-                <p class="plan-desc">Settle balance now (Recommended)</p>
-                <div class="plan-amount">₱{{ "{:,.2f}".format(booking.total_amount or 0) }}</div>
-                <div class="plan-check"><i class="far fa-circle"></i></div>
-            </div>
+            {% for term in accepted_terms|sort %}
+                {% set term_amount = (booking.total_amount|float * (term|float / 100.0)) %}
+                <div class="plan-card {% if loop.first %}active{% endif %}" id="plan-{{ term }}" onclick="updatePaymentPlan('{{ term }}', {{ term_amount }}, {{ booking.total_amount or 0 }})">
+                    {% if term == 100 %}
+                        <span class="plan-tag" style="{% if loop.first %}color: var(--up-emerald-500);{% endif %}">Voluntary Settlement</span>
+                        <h4 class="plan-title">Full Payment</h4>
+                        <p class="plan-desc">Settle balance now {% if loop.first %}(Required){% else %}(Recommended){% endif %}</p>
+                    {% else %}
+                        <span class="plan-tag">Binding Minimum</span>
+                        <h4 class="plan-title">Downpayment ({{ term }}%)</h4>
+                        <p class="plan-desc">As agreed in Section 2 of Contract</p>
+                    {% endif %}
+                    <div class="plan-amount">₱{{ "{:,.2f}".format(term_amount) }}</div>
+                    <div class="plan-check" style="width: 24px; text-align: center; {% if loop.first and term == 100 %}color: var(--up-emerald-500);{% endif %}">
+                        <i class="{% if loop.first %}fas fa-check-circle{% else %}far fa-circle{% endif %}"></i>
+                    </div>
+                </div>
+            {% endfor %}
         </div>
+        
+        <!-- Pre-select the first option -->
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                var firstTerm = '{{ (accepted_terms|sort)[0] }}';
+                document.getElementById('selected-plan').value = firstTerm;
+            });
+        </script>
         {% endif %}
     {% endif %}
 
@@ -366,19 +377,18 @@
     // Handle the visual payment plan toggle logic (Downpayment vs Full)
     function updatePaymentPlan(plan, amount, total) {
         // Update UI Classes
-        if (document.getElementById('plan-downpayment')) {
-            document.getElementById('plan-downpayment').classList.remove('active');
-            document.querySelector('#plan-downpayment .plan-check i').className = 'far fa-circle';
-        }
-        if (document.getElementById('plan-full')) {
-            document.getElementById('plan-full').classList.remove('active');
-            document.querySelector('#plan-full .plan-check i').className = 'far fa-circle';
-        }
+        // Reset all checks
+        document.querySelectorAll('.plan-card').forEach(el => {
+            el.classList.remove('active');
+            const icon = el.querySelector('.plan-check i');
+            if (icon) icon.className = 'far fa-circle';
+        });
 
         const selectedEl = document.getElementById('plan-' + plan);
         if (selectedEl) {
             selectedEl.classList.add('active');
-            document.querySelector('#plan-' + plan + ' .plan-check i').className = 'fas fa-check-circle';
+            const icon = selectedEl.querySelector('.plan-check i');
+            if (icon) icon.className = 'fas fa-check-circle';
         }
 
         // Update Hidden Input

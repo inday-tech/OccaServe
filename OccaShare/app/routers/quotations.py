@@ -140,6 +140,10 @@ async def generate_quotation(
         raise HTTPException(status_code=404, detail="Booking not found")
     
     try:
+        # Dynamic downpayment percent from caterer profile
+        if booking.caterer.accepted_payment_terms:
+            downpayment_percent = min(booking.caterer.accepted_payment_terms)
+            
         quotation = quotation_service.create_quotation(db, booking, downpayment_percent)
         
         # --- Trigger Notification (In-App, Email) ---

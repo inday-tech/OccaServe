@@ -148,6 +148,7 @@ class CatererProfile(Base):
     booking_lead_time = Column(Integer, default=7) # Days in advance
     equipment_turnover_hours = Column(Integer, default=24) # Turnaround time for rentals
     min_pax = Column(Integer, default=20) # Minimum pax for services
+    accepted_payment_terms = Column(JSONB, default=[100]) # Flexible array, e.g. [30, 50, 100]
     
     # NEW: Notification Preferences (JSONB for flexibility)
     notification_preferences = Column(JSONB, default={

@@ -1042,7 +1042,19 @@ async def step_payment_submit(
             shutil.copyfileobj(payment_proof.file, buffer)
             
         # --- AI RECEIPT VALIDATION (GEMINI / OCR) ---
-        expected_fee = float(booking.total_amount or 0) - float(booking.reservation_fee or 0) if payment_plan == 'balance' else float(booking.reservation_fee or 0)
+        if payment_plan == 'balance':
+            expected_fee = float(booking.total_amount or 0) - float(booking.reservation_fee or 0)
+        elif payment_plan == 'full':
+            expected_fee = float(booking.total_amount or 0)
+            booking.reservation_fee = expected_fee # Update reservation fee to reflect the selected full amount
+        elif payment_plan.isdigit():
+            # Support dynamic percentage plans (e.g., '30', '50')
+            percent = float(payment_plan)
+            expected_fee = float(booking.total_amount or 0) * (percent / 100.0)
+            booking.reservation_fee = expected_fee # Update reservation fee to reflect the selected tier
+        else:
+            expected_fee = float(booking.reservation_fee or 0)
+            
         is_valid_receipt = await _validate_receipt_with_gemini(filepath, payment_method, expected_amount=expected_fee)
 
         if not is_valid_receipt:

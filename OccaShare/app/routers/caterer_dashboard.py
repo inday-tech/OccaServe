@@ -1848,6 +1848,10 @@ async def submit_proposal_maker(
         "description": booking.custom_requirements.get("theme_description", "") if booking.custom_requirements else ""
     }
     
+    # Dynamic downpayment percent from caterer profile
+    if user.caterer_profile.accepted_payment_terms:
+        downpayment_percent = min(user.caterer_profile.accepted_payment_terms)
+        
     quotation = models.Quotation(
         booking_id=booking.id,
         package_details=package_details,
@@ -2877,6 +2881,7 @@ async def update_profile(
     min_pax: Optional[int] = Form(20),
     starting_price: Optional[float] = Form(0.0),
     terms_and_conditions: Optional[str] = Form(None),
+    payment_terms: List[int] = Form(default=[100]),
     primary_color: Optional[str] = Form(None),
     secondary_color: Optional[str] = Form(None),
     accent_color: Optional[str] = Form(None),
@@ -2919,6 +2924,7 @@ async def update_profile(
         profile.contact_address = contact_address
     profile.contact_phone = contact_phone
     profile.payout_method = payout_method
+    profile.accepted_payment_terms = payment_terms
 
     # Update address components
     if province_code:
