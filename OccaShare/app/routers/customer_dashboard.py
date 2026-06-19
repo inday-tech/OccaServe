@@ -140,6 +140,23 @@ async def customer_dashboard(
         models.Booking.status.in_(['confirmed', 'preparing', 'processing', 'out_for_delivery'])
     ).order_by(models.Booking.created_at.desc()).first()
 
+    # Calculate Profile Completion
+    completion_points = 0
+    total_points = 5
+    if user.first_name and user.last_name: completion_points += 1
+    if user.phone_number: completion_points += 1
+    if user.address: completion_points += 1
+    if user.emergency_contact_name and user.emergency_contact_phone: completion_points += 1
+    if user.profile_image_url or user.is_verified: completion_points += 1
+    profile_completion = int((completion_points / total_points) * 100)
+    
+    # Featured Caterers for FTUX
+    featured_caterers = []
+    if total_bookings == 0:
+        featured_caterers = db.query(models.CatererProfile).filter(
+            models.CatererProfile.status == "Published"
+        ).order_by(models.CatererProfile.rating.desc()).limit(3).all()
+
     return templates.TemplateResponse("customer/dashboard.html", {
         "request": request,
         "user": user,
@@ -152,6 +169,8 @@ async def customer_dashboard(
         "current_page": page,
         "total_pages": total_pages,
         "active_page": "overview",
+        "profile_completion": profile_completion,
+        "featured_caterers": featured_caterers,
         "recent_messages": conversations_list, # Map to the template's expected name
         "client_id": f"dashboard_{user.id}"
     })
@@ -564,11 +583,158 @@ async def customer_profile(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
+    # Calculate Profile Completion
+    completion_points = 0
+    total_points = 5
+    if user.first_name and user.last_name: completion_points += 1
+    if user.phone_number: completion_points += 1
+    if user.address: completion_points += 1
+    if user.emergency_contact_name and user.emergency_contact_phone: completion_points += 1
+    if user.profile_image_url or user.is_verified: completion_points += 1
+    profile_completion = int((completion_points / total_points) * 100)
+    
     return templates.TemplateResponse("customer/profile.html", {
         "request": request,
         "user": user,
+        "profile_completion": profile_completion,
         "active_page": "profile"
     })
+
+
+@router.post("/profile/update-personal")
+async def customer_update_personal(
+    request: Request,
+    first_name: str = Form(...),
+    last_name: str = Form(...),
+    middle_name: Optional[str] = Form(None),
+    phone_number: Optional[str] = Form(None),
+    dob: Optional[str] = Form(None),
+    gender: Optional[str] = Form(None),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(customer_only)
+):
+    user.first_name = first_name
+    user.last_name = last_name
+    user.middle_name = middle_name
+    user.phone_number = phone_number
+    user.gender = gender
+    
+    if dob:
+        from datetime import datetime
+        try:
+            user.dob = datetime.strptime(dob, "%Y-%m-%d").date()
+        except:
+            pass
+            
+    db.commit()
+    return {"success": True, "message": "Personal information updated successfully."}
+
+@router.post("/profile/update-address")
+async def customer_update_address(
+    request: Request,
+    address: str = Form(...),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(customer_only)
+):
+    user.address = address
+    db.commit()
+    return {"success": True, "message": "Address updated successfully."}
+
+@router.post("/profile/update-emergency")
+async def customer_update_emergency(
+    request: Request,
+    emergency_contact_name: str = Form(...),
+    emergency_contact_relation: str = Form(...),
+    emergency_contact_phone: str = Form(...),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(customer_only)
+):
+    user.emergency_contact_name = emergency_contact_name
+    user.emergency_contact_relation = emergency_contact_relation
+    user.emergency_contact_phone = emergency_contact_phone
+    db.commit()
+    return {"success": True, "message": "Emergency contact updated successfully."}
+
+@router.post("/profile/update-notifications")
+async def customer_update_notifications(
+    request: Request,
+    email_promos: Optional[str] = Form(None),
+    email_bookings: Optional[str] = Form(None),
+    sms_bookings: Optional[str] = Form(None),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(customer_only)
+):
+    prefs = user.notification_preferences or {}
+    prefs["email_promos"] = email_promos == "on"
+    prefs["email_bookings"] = email_bookings == "on"
+    prefs["sms_bookings"] = sms_bookings == "on"
+    
+    # Required to trigger JSONB update in SQLAlchemy
+    import copy
+    user.notification_preferences = copy.deepcopy(prefs)
+    
+    db.commit()
+    return {"success": True, "message": "Notification preferences updated successfully."}
+
+@router.post("/profile/upload-image")
+async def customer_upload_image(
+    profile_image: UploadFile = File(...),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(customer_only)
+):
+    allowed_types = ["image/jpeg", "image/png", "image/webp"]
+    if profile_image.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Invalid file type. Only JPG, PNG, and WEBP allowed.")
+        
+    UPLOAD_DIR = "app/static/uploads/profiles"
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    
+    file_extension = os.path.splitext(profile_image.filename)[1]
+    filename = f"user_{user.id}_{uuid.uuid4()}{file_extension}"
+    file_path = os.path.join(UPLOAD_DIR, filename)
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(profile_image.file, buffer)
+        
+    # Delete old image if exists
+    if user.profile_image_url and user.profile_image_url.startswith("/static/uploads/profiles/"):
+        old_path = os.path.join("app", user.profile_image_url.lstrip("/"))
+        if os.path.exists(old_path):
+            try:
+                os.remove(old_path)
+            except:
+                pass
+                
+    user.profile_image_url = f"/static/uploads/profiles/{filename}"
+    db.commit()
+    return {"success": True, "image_url": user.profile_image_url, "message": "Profile picture updated."}
+
+@router.post("/profile/remove-image")
+async def customer_remove_image(
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(customer_only)
+):
+    if user.profile_image_url and user.profile_image_url.startswith("/static/uploads/profiles/"):
+        old_path = os.path.join("app", user.profile_image_url.lstrip("/"))
+        if os.path.exists(old_path):
+            try:
+                os.remove(old_path)
+            except:
+                pass
+                
+    user.profile_image_url = None
+    db.commit()
+    return {"success": True, "message": "Profile picture removed."}
+
+@router.post("/profile/verify-current-password")
+async def customer_verify_current_password(
+    password: str = Form(...),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(customer_only)
+):
+    is_correct = auth.verify_password(password, user.password_hash)
+    return {"success": is_correct}
+
 
 @router.post("/profile/change-password")
 async def customer_change_password(

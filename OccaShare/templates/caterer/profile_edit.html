@@ -586,9 +586,17 @@
                     </div>
 
                     <div class="form-group">
-                        <label><i class="fas fa-file-signature"></i> Terms & Conditions (Digital Contract)</label>
-                        <textarea name="terms_and_conditions" rows="5"
-                            placeholder="e.g. A non-refundable, non-transferable deposit is required. Payment is due in full 1 week prior to event...">{{ profile.terms_and_conditions or '' }}</textarea>
+                        <div class="form-group full-width">
+                            <label><i class="fas fa-file-signature"></i> Event Contract Terms (For Large Bookings)</label>
+                            <textarea name="terms_and_conditions" rows="5"
+                                placeholder="These terms will appear on the formal Digital Service Agreement for Packages and Custom Events. e.g. A non-refundable deposit is required...">{{ profile.terms_and_conditions or '' }}</textarea>
+                        </div>
+                        
+                        <div class="form-group full-width" style="margin-top: 1rem;">
+                            <label><i class="fas fa-clipboard-check"></i> General Terms (For Fast-Track Orders)</label>
+                            <textarea name="general_terms" rows="3"
+                                placeholder="These terms will appear as a simple checkbox during quick checkout for food trays and rentals. e.g. No cancellations allowed 48 hrs before delivery.">{{ profile.general_terms or '' }}</textarea>
+                        </div>
                         <span class="field-hint">This will be attached to your digital booking contract that customers must agree to before checkout.</span>
                     </div>
                 </div>

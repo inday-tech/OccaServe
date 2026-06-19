@@ -412,17 +412,364 @@
             grid-template-columns: 1fr;
         }
     }
-</style>
-{% endblock %}
 
-{% block extra_js %}
-<script>
-    // Add any necessary dashboard JS here
-</script>
+    /* ── FTUX STYLES ── */
+    .steps-vertical {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .v-step {
+        display: flex;
+        gap: 1.25rem;
+        align-items: flex-start;
+        position: relative;
+    }
+
+    .v-step:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        top: 45px;
+        bottom: -20px;
+        left: 23px;
+        width: 3px;
+        background: #e2e8f0;
+        border-radius: 2px;
+    }
+
+    .v-step.completed:not(:last-child)::after {
+        background: var(--up-emerald-500, #10b981);
+    }
+
+    .v-step-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: #f8fafc;
+        border: 2px solid #cbd5e1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #94a3b8;
+        font-size: 1.2rem;
+        z-index: 1;
+        flex-shrink: 0;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .v-step.completed .v-step-icon {
+        background: var(--up-emerald-500, #10b981);
+        border-color: var(--up-emerald-500, #10b981);
+        color: white;
+    }
+
+    .v-step.active .v-step-icon {
+        border-color: var(--up-orange-500, #f97316);
+        color: var(--up-orange-500, #f97316);
+        background: #fff7ed;
+    }
+
+    .v-step-content h4 {
+        margin: 0 0 4px 0;
+        font-size: 0.95rem;
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    .v-step-content p {
+        margin: 0;
+        font-size: 0.8rem;
+        color: #64748b;
+    }
+
+    .btn-action-primary-sm {
+        background: var(--up-orange-600, #ea580c);
+        color: white;
+        padding: 6px 14px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: 0.2s;
+    }
+
+    .btn-action-primary-sm:hover {
+        background: var(--up-orange-700, #c2410c);
+    }
+
+    .btn-action-outline {
+        display: inline-block;
+        border: 1px solid var(--up-orange-600, #ea580c);
+        color: var(--up-orange-600, #ea580c);
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: 0.2s;
+        text-align: center;
+    }
+
+    .btn-action-outline:hover {
+        background: var(--up-orange-50, #fff7ed);
+    }
+
+    .btn-action-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--up-orange-600, #ea580c);
+        color: white !important;
+        padding: 0.8rem 2rem;
+        border-radius: 99px;
+        font-size: 1rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.2s;
+        box-shadow: 0 4px 12px rgba(234, 88, 12, 0.2);
+    }
+
+    .btn-action-primary:hover {
+        background: var(--up-orange-700, #c2410c);
+        transform: translateY(-2px);
+    }
+</style>
 {% endblock %}
 
 {% block content %}
 <div>
+    {% if total_bookings == 0 %}
+    <!-- ============================================== -->
+    <!-- ONBOARDING MODE (FTUX) -->
+    <!-- ============================================== -->
+    <div class="dash-header"
+        style="background: linear-gradient(135deg, var(--up-orange-50, #fff7ed) 0%, var(--up-orange-100, #ffedd5) 100%); padding: 2.5rem; border-radius: 1rem; border: 1px solid var(--up-orange-200, #fed7aa); margin-bottom: 2rem; position: relative; overflow: hidden;">
+        <div style="position: relative; z-index: 1;">
+            <h1
+                style="color: var(--up-orange-900, #7c2d12); font-size: 2rem; font-weight: 900; margin-bottom: 0.5rem; letter-spacing: -0.02em;">
+                Welcome to OccaServe, {{ user.first_name or 'there' }}! <span
+                    style="display:inline-block; animation: wave 2s infinite transform-origin: 70% 70%;">👋</span></h1>
+            <p
+                style="color: var(--up-orange-800, #9a3412); max-width: 600px; font-size: 1rem; font-weight: 500; line-height: 1.5;">
+                We're thrilled to have you here. OccaServe is your all-in-one platform for discovering top caterers,
+                booking delicious packages, and renting event equipment seamlessly. Let's plan your perfect event
+                together!
+            </p>
+        </div>
+        <i class="fas fa-glass-cheers"
+            style="position: absolute; right: -20px; bottom: -30px; font-size: 12rem; color: var(--up-orange-500, #f97316); opacity: 0.1; z-index: 0; transform: rotate(-15deg);"></i>
+    </div>
+
+    <style>
+        @keyframes wave {
+            0% {
+                transform: rotate(0.0deg)
+            }
+
+            10% {
+                transform: rotate(14.0deg)
+            }
+
+            20% {
+                transform: rotate(-8.0deg)
+            }
+
+            30% {
+                transform: rotate(14.0deg)
+            }
+
+            40% {
+                transform: rotate(-4.0deg)
+            }
+
+            50% {
+                transform: rotate(10.0deg)
+            }
+
+            60% {
+                transform: rotate(0.0deg)
+            }
+
+            100% {
+                transform: rotate(0.0deg)
+            }
+        }
+    </style>
+
+    <div class="data-grid" style="grid-template-columns: 1.6fr 1fr;">
+        <!-- Getting Started Checklist -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3>Getting Started Guide</h3>
+            </div>
+            <div style="padding: 1.5rem;">
+                <div class="steps-vertical">
+                    <!-- Step 1 -->
+                    <div class="v-step {{ 'completed' if profile_completion == 100 else 'active' }}">
+                        <div class="v-step-icon"><i
+                                class="fas {{ 'fa-check' if profile_completion == 100 else 'fa-user-pen' }}"></i></div>
+                        <div class="v-step-content">
+                            <h4>Complete your profile</h4>
+                            <p>Update your details so caterers can contact you easily.</p>
+                            {% if profile_completion < 100 %} <a href="/customer/profile" class="btn-action-primary-sm"
+                                style="margin-top: 10px; display: inline-block;">Update Profile</a>
+                                {% endif %}
+                        </div>
+                    </div>
+                    <!-- Step 2 -->
+                    <div class="v-step active">
+                        <div class="v-step-icon"><i class="fas fa-search"></i></div>
+                        <div class="v-step-content">
+                            <h4>Browse Caterers</h4>
+                            <p>Explore our wide selection of professional caterers.</p>
+                        </div>
+                    </div>
+                    <!-- Step 3 -->
+                    <div class="v-step active">
+                        <div class="v-step-icon"><i class="fas fa-list-check"></i></div>
+                        <div class="v-step-content">
+                            <h4>Compare Services</h4>
+                            <p>Check out packages, food orders, and rentals.</p>
+                        </div>
+                    </div>
+                    <!-- Step 4 -->
+                    <div class="v-step">
+                        <div class="v-step-icon"><i class="fas fa-calendar-plus"></i></div>
+                        <div class="v-step-content">
+                            <h4>Submit a Request</h4>
+                            <p>Book a caterer or request a custom quotation.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 2rem; text-align: center;">
+                    <a href="/customer/marketplace" class="btn-action-primary"><i class="fas fa-compass"></i> Start
+                        Exploring Caterers</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Items -->
+        <div>
+            <!-- Profile Completion Widget -->
+            <div class="panel" style="margin-bottom: 1.25rem;">
+                <div class="panel-header" style="border-bottom: 1px solid #f1f5f9; padding-bottom: 1rem;">
+                    <h3 style="font-size: 1rem; font-weight: 800;">Profile Completion</h3>
+                </div>
+                <div style="padding: 1.5rem; text-align: center;">
+                    <div
+                        style="font-size: 3rem; font-weight: 900; color: var(--up-emerald-600, #059669); margin-bottom: 0.5rem; line-height: 1;">
+                        {{ profile_completion }}<span style="font-size: 1.5rem;">%</span></div>
+                    <div
+                        style="width: 100%; background: #e2e8f0; height: 10px; border-radius: 5px; margin-bottom: 1rem; overflow: hidden;">
+                        <div
+                            style="width: {{ profile_completion }}%; background: var(--up-emerald-500, #10b981); height: 100%; border-radius: 5px; transition: width 1s ease-in-out;">
+                        </div>
+                    </div>
+                    {% if profile_completion < 100 %} <p
+                        style="font-size: 0.8rem; color: #64748b; margin-bottom: 1rem; font-weight: 500;">Complete your
+                        profile to ensure seamless bookings.</p>
+                        <a href="/customer/profile" class="btn-action-outline"
+                            style="width: 100%; display: block; box-sizing: border-box;">Complete Profile</a>
+                        {% else %}
+                        <div
+                            style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #ecfdf5; color: #059669; border-radius: 99px; font-size: 0.8rem; font-weight: 800;">
+                            <i class="fas fa-check-circle"></i> Profile is complete!
+                        </div>
+                        {% endif %}
+                </div>
+            </div>
+
+            <!-- Quick Actions Hub -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>Quick Actions</h3>
+                </div>
+                <div class="qa-grid">
+                    <a href="/customer/marketplace" class="qa-btn">
+                        <div class="qa-icon"><i class="fas fa-store"></i></div>
+                        <div class="qa-info">
+                            <b>Marketplace</b>
+                            <span>Find caterers</span>
+                        </div>
+                    </a>
+                    <a href="/customer/marketplace?sort=rating&rating=4" class="qa-btn">
+                        <div class="qa-icon"><i class="fas fa-star"></i></div>
+                        <div class="qa-info">
+                            <b>Top Rated</b>
+                            <span>Best caterers</span>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Featured Caterers -->
+    {% if featured_caterers %}
+    <div style="margin-top: 2rem; margin-bottom: 1rem;">
+        <h3 style="font-size: 1.2rem; font-weight: 800; color: #0f172a; margin-bottom: 1rem;">Featured Caterers to Start
+            With</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem;">
+            {% for cat in featured_caterers %}
+            <div class="panel"
+                style="padding: 1.25rem; display: flex; gap: 1rem; align-items: center; cursor: pointer; transition: transform 0.2s;"
+                onclick="location.href='/caterers/{{ cat.id }}'">
+                <img src="{{ cat.logo_url or 'https://via.placeholder.com/80' }}"
+                    style="width: 70px; height: 70px; border-radius: 12px; object-fit: cover;">
+                <div>
+                    <div style="font-weight: 800; color: #0f172a; font-size: 1rem;">{{ cat.business_name }}</div>
+                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px;"><i class="fas fa-star"
+                            style="color:#fbbf24;"></i> {{ "%.1f"|format(cat.rating) }} Rating • {{ cat.city }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- How it works visual timeline -->
+    <div class="panel" style="margin-top: 2rem; margin-bottom: 2rem;">
+        <div class="panel-header">
+            <h3>How Booking Works</h3>
+        </div>
+        <div style="padding: 2.5rem 1.5rem; display: flex; justify-content: space-between; position: relative;">
+            <div
+                style="position: absolute; top: 50%; left: 10%; right: 10%; height: 2px; background: #e2e8f0; z-index: 0; transform: translateY(-50%);">
+            </div>
+
+            <div style="position: relative; z-index: 1; text-align: center; background: #fff; padding: 0 10px;">
+                <div
+                    style="width: 48px; height: 48px; background: #f8fafc; border: 2px solid var(--up-emerald-500, #10b981); color: var(--up-emerald-600, #059669); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; font-size: 1.2rem;">
+                    <i class="fas fa-search"></i></div>
+                <div style="font-size: 0.75rem; font-weight: 800; color: #0f172a;">1. Discover</div>
+            </div>
+            <div style="position: relative; z-index: 1; text-align: center; background: #fff; padding: 0 10px;">
+                <div
+                    style="width: 48px; height: 48px; background: #f8fafc; border: 2px solid var(--up-emerald-500, #10b981); color: var(--up-emerald-600, #059669); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; font-size: 1.2rem;">
+                    <i class="fas fa-list-check"></i></div>
+                <div style="font-size: 0.75rem; font-weight: 800; color: #0f172a;">2. Select</div>
+            </div>
+            <div style="position: relative; z-index: 1; text-align: center; background: #fff; padding: 0 10px;">
+                <div
+                    style="width: 48px; height: 48px; background: #f8fafc; border: 2px solid var(--up-emerald-500, #10b981); color: var(--up-emerald-600, #059669); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; font-size: 1.2rem;">
+                    <i class="fas fa-calendar-check"></i></div>
+                <div style="font-size: 0.75rem; font-weight: 800; color: #0f172a;">3. Book</div>
+            </div>
+            <div style="position: relative; z-index: 1; text-align: center; background: #fff; padding: 0 10px;">
+                <div
+                    style="width: 48px; height: 48px; background: #f8fafc; border: 2px solid var(--up-emerald-500, #10b981); color: var(--up-emerald-600, #059669); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; font-size: 1.2rem;">
+                    <i class="fas fa-glass-cheers"></i></div>
+                <div style="font-size: 0.75rem; font-weight: 800; color: #0f172a;">4. Enjoy</div>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- ============================================== -->
+    <!-- STANDARD DASHBOARD -->
+    <!-- ============================================== -->
     <!-- Page Header -->
     <div class="dash-header">
         <h1>Welcome back, {{ user.first_name }}!</h1>
@@ -436,19 +783,19 @@
             <div class="premium-stat-value" style="color: #f97316;">{{ upcoming_count }}</div>
             <div class="premium-stat-subtitle">Scheduled events</div>
         </div>
-        
+
         <div class="premium-stat-card">
             <div class="premium-stat-title">BOOKINGS</div>
             <div class="premium-stat-value" style="color: #3b82f6;">{{ total_bookings }}</div>
             <div class="premium-stat-subtitle">Total engagements</div>
         </div>
-        
+
         <div class="premium-stat-card">
             <div class="premium-stat-title">REVIEWS</div>
             <div class="premium-stat-value" style="color: #10b981;">{{ reviews_count }}</div>
             <div class="premium-stat-subtitle">Feedback given</div>
         </div>
-        
+
         <div class="premium-stat-card">
             <div class="premium-stat-title">AMOUNT SPENT</div>
             <div class="premium-stat-value" style="color: #8b5cf6;">₱{{ "{:,.0f}".format(total_spent) }}</div>
@@ -592,6 +939,7 @@
                 </a>
             </div>
         </div>
-        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

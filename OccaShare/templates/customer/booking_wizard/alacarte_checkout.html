@@ -606,16 +606,53 @@
                             <div class="sum-row"><strong>Address:</strong> <span id="rev-location">-</span></div>
                         </div>
 
-                        {% if caterer.terms_and_conditions %}
-                        <div style="margin-top: 1.5rem; background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #cbd5e1;">
-                            <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer;">
-                                <input type="checkbox" id="alacarteTermsAgreement" name="terms_agreement" required style="margin-top: 4px; transform: scale(1.2);">
-                                <span style="font-size: 0.85rem; color: var(--up-slate-700); line-height: 1.4;">
-                                    <strong>I agree to the Terms & Conditions of {{ caterer.business_name }}:</strong><br>
-                                    <span style="font-style: italic; display: block; margin-top: 4px; padding-left: 8px; border-left: 2px solid #cbd5e1;">"{{ caterer.terms_and_conditions }}"</span>
+                        {% set is_rental = false %}
+                        {% set has_services = false %}
+                        {% for item in menu_items %}
+                            {% set cat = item.category|lower if item.category else '' %}
+                            {% if 'rental' in cat or 'equipment' in cat %}
+                                {% set is_rental = true %}
+                            {% elif 'service' in cat or 'staff' in cat or 'waiter' in cat %}
+                                {% set has_services = true %}
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% set doc_name = "Order Invoice" %}
+                        {% set active_terms = caterer.general_terms %}
+                        
+                        {% if is_rental %}
+                            {% set doc_name = "Rental Agreement" %}
+                            {% set active_terms = caterer.rental_policies if caterer.rental_policies else caterer.general_terms %}
+                        {% elif has_services %}
+                            {% set doc_name = "Event Service Agreement" %}
+                            {% set active_terms = caterer.terms_and_conditions %}
+                        {% endif %}
+
+                        {% if active_terms %}
+                        <div style="margin-top: 1.5rem; background: #f8fafc; padding: 1.5rem; border-radius: 1rem; border: 1px solid #cbd5e1;">
+                            <h4 style="font-size: 1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem;">
+                                <i class="fas fa-file-signature" style="color: var(--checkout-primary); margin-right: 0.5rem;"></i> {{ doc_name }} Terms
+                            </h4>
+                            <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; max-height: 150px; overflow-y: auto; font-size: 0.85rem; color: #475569; margin-bottom: 1rem; line-height: 1.6;">
+                                {{ active_terms | replace('\n', '<br>') | safe }}
+                            </div>
+                            
+                            <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer;">
+                                <input type="checkbox" id="alacarteTermsAgreement" name="terms_agreement" required style="margin-top: 4px; width: 1.2rem; height: 1.2rem; accent-color: var(--checkout-primary);">
+                                <span style="font-size: 0.9rem; color: #1e293b; font-weight: 600;">
+                                    I have read and agree to the <strong>{{ doc_name }}</strong> of {{ caterer.business_name }}.
                                 </span>
                             </label>
                         </div>
+                        {% else %}
+                            <div style="margin-top: 1.5rem; background: #f8fafc; padding: 1.5rem; border-radius: 1rem; border: 1px solid #cbd5e1;">
+                                <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer;">
+                                    <input type="checkbox" id="alacarteTermsAgreement" name="terms_agreement" required style="margin-top: 4px; width: 1.2rem; height: 1.2rem; accent-color: var(--checkout-primary);">
+                                    <span style="font-size: 0.9rem; color: #1e293b; font-weight: 600;">
+                                        I confirm this <strong>{{ doc_name }}</strong> and agree to proceed.
+                                    </span>
+                                </label>
+                            </div>
                         {% endif %}
                     </div>
 
@@ -628,7 +665,7 @@
                         <button type="button" class="btn-wizard-back" onclick="nextScreen(1)"><i class="fas fa-chevron-left"></i> Back</button>
                         <div class="nav-right">
                             <button type="button" class="btn-wizard-next" id="final-submit-btn" onclick="submitAtaCarteOrder()" style="background: var(--checkout-primary); padding: 1rem 3.5rem;">
-                                PLACE ORDER NOW <i class="fas fa-check" style="margin-left: 0.75rem;"></i>
+                                ACCEPT & CHECKOUT <i class="fas fa-check" style="margin-left: 0.75rem;"></i>
                             </button>
                         </div>
                     </div>

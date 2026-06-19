@@ -1,8 +1,28 @@
-<div id="printable-contract" class="contract-paper-container">
-    <div class="contract-paper">
+<!-- HTML2PDF Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<div id="printable-contract-container" style="position: relative;">
+    <!-- PDF Download Action Bar -->
+    <div class="pdf-action-bar no-print" style="display: flex; justify-content: flex-end; padding: 10px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+        <button onclick="downloadContractPDF()" style="background: var(--up-emerald-600, #059669); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 700; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px -1px rgba(5, 150, 105, 0.2); transition: all 0.2s;">
+            <i class="fas fa-file-pdf"></i> Download PDF
+        </button>
+    </div>
+
+    <div id="printable-contract" class="contract-paper-container">
+        <div class="contract-paper">
+        {% set doc_title = "BOOKING AGREEMENT & QUOTATION SUMMARY" %}
+        {% if booking.document_type == "service_agreement" %}
+            {% set doc_title = "EVENT SERVICE AGREEMENT" %}
+        {% elif booking.document_type == "rental_agreement" %}
+            {% set doc_title = "RENTAL AGREEMENT" %}
+        {% elif booking.document_type == "invoice" %}
+            {% set doc_title = "ORDER CONFIRMATION & INVOICE" %}
+        {% endif %}
+        
         <!-- Formal Document Header -->
         <div class="formal-doc-header">
-            <h2 class="formal-doc-main-title">CATERING SERVICE AGREEMENT</h2>
+            <h2 class="formal-doc-main-title">{{ doc_title }}</h2>
             <div class="formal-doc-meta">
                 <span>Reference No: <strong>#BK-{{ booking.id }}</strong></span>
                 <span>Date generated: <strong>{{ (quotation.updated_at or quotation.created_at).strftime('%B %d, %Y') }}</strong></span>
@@ -12,7 +32,7 @@
         <!-- Preamble -->
         <div class="contract-preamble-wrapper">
             <p class="contract-preamble">
-                This Catering Service Agreement (hereinafter referred to as the "Agreement") is entered into on this <strong>{{
+                This {{ doc_title|title }} (hereinafter referred to as the "{% if booking.document_type == 'invoice' %}Invoice{% else %}Agreement{% endif %}") is entered into on this <strong>{{
                     (quotation.updated_at or quotation.created_at).strftime('%d day of %B, %Y') }}</strong>, by and between:
             </p>
         </div>
@@ -139,9 +159,13 @@
         <h2 class="contract-section-title">3. Standard Terms & Conditions</h2>
         <div class="contract-clauses-list">
             <div class="clause-item">
-                <span class="clause-num">3.1 Terms & Conditions:</span>
+                <span class="clause-num">3.1 {{ doc_title|title }} Terms:</span>
                 <span class="clause-text" style="white-space: pre-wrap;">
-                    {% if booking.caterer.terms_and_conditions %}
+                    {% if booking.document_type == "rental_agreement" and booking.caterer.rental_policies %}
+                        {{ booking.caterer.rental_policies }}
+                    {% elif booking.document_type in ["invoice", "fast_track"] and booking.caterer.general_terms %}
+                        {{ booking.caterer.general_terms }}
+                    {% elif booking.caterer.terms_and_conditions %}
                         {{ booking.caterer.terms_and_conditions }}
                     {% else %}
                         The Service Provider is not liable for indirect or consequential damages. The Client assumes responsibility for venue compliance and obtaining necessary permits. Full payment is required prior to the event date. Cancellations are subject to forfeiture of the security deposit.
@@ -332,3 +356,36 @@
         .formal-footer-note { margin-top: 1.5rem; font-size: 0.5rem; }
     }
 </style>
+
+<script>
+    function downloadContractPDF() {
+        const element = document.getElementById('printable-contract');
+        const refNo = "BK-{{ booking.id }}";
+        
+        // Show loading state
+        const btn = document.querySelector('.pdf-action-bar button');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating PDF...';
+        btn.disabled = true;
+
+        const opt = {
+            margin:       [0, 0, 0, 0],
+            filename:     `OccaShare_${refNo}_Document.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true, logging: false },
+            jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+
+        // New Promise-based usage:
+        html2pdf().set(opt).from(element).save().then(() => {
+            // Restore button
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }).catch(err => {
+            console.error("PDF Generation Error:", err);
+            btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error';
+            setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 3000);
+        });
+    }
+</script>
+</div>

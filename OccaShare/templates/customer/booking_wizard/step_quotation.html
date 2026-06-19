@@ -70,22 +70,27 @@
                             </div>
 
                             <div class="inclusions-row-sakto">
-                                {% set package_inventory = package.menu_items|selectattr("category", "in", ["Rentals", "Services"])|list %}
-                                {% set legacy_inclusions = [] %}
-                                {% if package.inclusions is mapping %}
-                                    {% for k, v in package.inclusions.items() if v %}
-                                        {% set _ = legacy_inclusions.append(k) %}
+                                {% if package %}
+                                    {% set package_inventory = package.menu_items|selectattr("category", "in", ["Rentals", "Services"])|list %}
+                                    {% set legacy_inclusions = [] %}
+                                    {% if package.inclusions is mapping %}
+                                        {% for k, v in package.inclusions.items() if v %}
+                                            {% set _ = legacy_inclusions.append(k) %}
+                                        {% endfor %}
+                                    {% elif package.inclusions is iterable and package.inclusions is not string %}
+                                        {% set legacy_inclusions = package.inclusions %}
+                                    {% elif package.inclusions is string and package.inclusions %}
+                                        {% set legacy_inclusions = [package.inclusions] %}
+                                    {% endif %}
+                                    
+                                    {% set all_inclusions = legacy_inclusions + package_inventory|map(attribute='name')|list %}
+                                    {% for inc in all_inclusions[:4] %}
+                                    <span class="inc-pill-sakto"><i class="fas fa-check"></i> {{ inc }}</span>
                                     {% endfor %}
-                                {% elif package.inclusions is iterable and package.inclusions is not string %}
-                                    {% set legacy_inclusions = package.inclusions %}
-                                {% elif package.inclusions is string and package.inclusions %}
-                                    {% set legacy_inclusions = [package.inclusions] %}
+                                {% else %}
+                                    <span class="inc-pill-sakto"><i class="fas fa-check"></i> Custom Theme Setup</span>
+                                    <span class="inc-pill-sakto"><i class="fas fa-check"></i> Personalized Event Inclusions</span>
                                 {% endif %}
-                                
-                                {% set all_inclusions = legacy_inclusions + package_inventory|map(attribute='name')|list %}
-                                {% for inc in all_inclusions[:4] %}
-                                <span class="inc-pill-sakto"><i class="fas fa-check"></i> {{ inc }}</span>
-                                {% endfor %}
                             </div>
                         </div>
 
@@ -157,6 +162,7 @@
                 </section>
             </div>
 
+            {% if quotation.customer_approved_at %}
             <!-- SECTION 2: DIGITAL SERVICE AGREEMENT -->
             <div id="contract-section" class="section-divider">
                 <span class="divider-text">Digital Service Agreement</span>
@@ -265,6 +271,26 @@
                     {% endif %}
                 </div>
             </div>
+            {% else %}
+            <!-- SECTION 2: QUOTATION APPROVAL -->
+            <div class="approval-action-box animate-up" style="text-align: center; padding: 3rem; background: white; border-radius: 1rem; border: 1px solid #e2e8f0; margin-top: 2rem;">
+                <h3 style="font-family: 'Poppins', sans-serif; font-size: 1.25rem; font-weight: 800; color: var(--up-slate-900); margin-bottom: 0.5rem;">Review Your Quotation</h3>
+                <p style="color: var(--up-slate-500); font-size: 0.85rem; margin-bottom: 2rem; max-width: 400px; margin-left: auto; margin-right: auto;">
+                    Please review the inclusions and pricing above. Once you approve this quotation, the formal Booking Agreement will be generated for your signature.
+                </p>
+                <button type="button" onclick="approveQuotation(event)" style="background: var(--up-emerald-500, #10b981); color: white; border: none; padding: 1rem 2.5rem; border-radius: 99px; font-weight: 800; font-family: 'Poppins', sans-serif; font-size: 0.95rem; cursor: pointer; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.25); transition: all 0.3s ease;">
+                    <i class="fas fa-thumbs-up" style="margin-right: 0.5rem;"></i> APPROVE QUOTATION
+                </button>
+            </div>
+
+            <div class="q-page-footer-actions animate-up" style="animation-delay: 0.5s;">
+                <div class="footer-nav-links">
+                    <a href="/bookings/step/kyc/{{ quotation.booking_id }}" class="btn-back-soft">
+                        <i class="fas fa-chevron-left"></i> Modify Booking Details
+                    </a>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -285,4 +311,31 @@
 </script>
 <script src="{{ url_for('static', path='/js/signature_pad.js') }}"></script>
 <script src="{{ url_for('static', path='/js/customer/booking_wizard/step_quotation.js') }}"></script>
+<script>
+    async function approveQuotation(e) {
+        const btn = e.currentTarget;
+        const ogText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> APPROVING...';
+        
+        try {
+            const res = await fetch(`/api/bookings/${window.bookingId}/quotation/approve`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await res.json();
+            if(data.success) {
+                window.location.reload();
+            } else {
+                Swal.fire('Error', 'Failed to approve quotation.', 'error');
+                btn.disabled = false;
+                btn.innerHTML = ogText;
+            }
+        } catch(e) {
+            Swal.fire('Error', 'Network error.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = ogText;
+        }
+    }
+</script>
 {% endblock %}

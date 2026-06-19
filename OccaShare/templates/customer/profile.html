@@ -1,594 +1,685 @@
 {% set active_page = 'profile' %}
 {% extends "customer/layout.html" %}
 
-{% block title %}My Profile - OccaServe Elite{% endblock %}
+{% block title %}My Profile - OccaServe{% endblock %}
 
 {% block extra_css %}
 <style>
+    /* ── BASE & COLORS ── */
     :root {
         --up-slate-900: #0f172a;
-        --up-orange: #FF7B54;
-        --up-emerald: #10b981;
+        --up-emerald-50: #ecfdf5;
+        --up-emerald-100: #d1fae5;
+        --up-emerald-500: #10b981;
+        --up-emerald-600: #059669;
+        --up-orange-50: #fff7ed;
+        --up-orange-100: #ffedd5;
+        --up-orange-500: #f97316;
+        --up-orange-600: #ea580c;
+        --up-orange-700: #c2410c;
         --dm-slate-50: #f8fafc;
         --dm-slate-100: #f1f5f9;
         --dm-slate-200: #e2e8f0;
         --dm-slate-400: #94a3b8;
     }
 
-    /* ── Layout Grid (Dashboard Sync) ── */
-    .profile-layout-grid {
-        display: grid;
-        grid-template-columns: 340px 1fr;
-        gap: 1.25rem;
-        align-items: flex-start;
-    }
-
-    .panel-elite {
+    .panel {
         background: #fff;
-        border-radius: 1.25rem;
+        border-radius: 1rem;
         border: 1px solid var(--dm-slate-100);
-        padding: 1.5rem;
         box-shadow: 0 4px 6px -1px rgba(0,0,0,0.04);
-    }
-
-    /* ── Modal Isolation ── */
-    body.modal-open { overflow: hidden; }
-    body.modal-open .customer-sidebar { z-index: 1 !important; }
-    body.modal-open .customer-header { z-index: 1 !important; }
-    body.modal-open .customer-main-wrapper {
-        margin-left: 0 !important;
-    }
-
-    .modal-overlay {
-        background: rgba(15, 23, 42, 0.4) !important;
-        backdrop-filter: blur(8px) !important;
-    }
-    .identity-card {
-        text-align: center;
-        padding: 2rem 1.5rem;
-    }
-
-    .avatar-wrapper-elite {
-        width: 120px;
-        height: 120px;
-        margin: 0 auto 1.5rem;
-        position: relative;
-    }
-
-    .avatar-view-elite {
-        width: 100%;
-        height: 100%;
-        border-radius: 1.25rem;
-        background: var(--dm-slate-50);
-        border: 4px solid #fff;
-        box-shadow: 0 10px 25px -10px rgba(0,0,0,0.1);
         overflow: hidden;
-        display: flex;
-        align-items: center;
-        justify-content: center;
     }
 
-    .avatar-view-elite img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
+    .dash-header { margin-bottom: 2rem; }
+    .dash-header h1 { font-size: 1.6rem; font-weight: 800; color: var(--up-slate-900); margin: 0; letter-spacing: -0.02em; }
+    .dash-header p { font-size: 0.88rem; color: var(--dm-slate-400); font-weight: 500; margin: 4px 0 0; }
 
-    .avatar-initials-elite {
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(135deg, var(--up-orange), #ea580c);
-        color: #fff;
+    /* ── PROFILE TABS ── */
+    .profile-tabs {
         display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2.5rem;
-        font-weight: 900;
+        gap: 0.5rem;
+        border-bottom: 1px solid var(--dm-slate-200);
+        margin-bottom: 2rem;
+        overflow-x: auto;
     }
-
-    .btn-camera-float {
-        position: absolute;
-        bottom: -5px;
-        right: -5px;
-        width: 38px;
-        height: 38px;
-        background: var(--up-orange);
-        color: #fff;
-        border: 3px solid #fff;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+    .profile-tab {
+        padding: 1rem 1.5rem;
         font-size: 0.9rem;
-        cursor: pointer;
-        box-shadow: 0 4px 10px rgba(255, 123, 84, 0.3);
-        transition: all 0.2s;
-    }
-
-    .btn-camera-float:hover { transform: scale(1.1); }
-
-    .identity-name {
-        font-size: 1.35rem;
-        font-weight: 900;
-        color: var(--up-slate-900);
-        letter-spacing: -0.02em;
-        margin-bottom: 4px;
-    }
-
-    .identity-sub {
-        font-size: 0.72rem;
         font-weight: 700;
         color: var(--dm-slate-400);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    .verification-pill {
-        display: inline-flex;
+        border-bottom: 3px solid transparent;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+        display: flex;
         align-items: center;
         gap: 8px;
-        padding: 6px 14px;
-        background: rgba(16, 185, 129, 0.05);
-        color: var(--up-emerald);
-        border-radius: 20px;
-        font-size: 0.65rem;
-        font-weight: 900;
-        text-transform: uppercase;
-        margin-top: 1.25rem;
     }
-
-    /* ── Form Terminal (Right) ── */
-    .terminal-header {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 2rem;
+    .profile-tab i { font-size: 1rem; }
+    .profile-tab.active {
+        color: var(--up-orange-600);
+        border-bottom-color: var(--up-orange-500);
     }
-
-    .terminal-header i {
-        width: 40px;
-        height: 40px;
-        background: var(--dm-slate-50);
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--up-orange);
-        font-size: 1rem;
-    }
-
-    .terminal-header h3 {
-        font-size: 1.1rem;
-        font-weight: 850;
+    .profile-tab:hover:not(.active) {
         color: var(--up-slate-900);
-        margin: 0;
+        background: var(--dm-slate-50);
+        border-top-left-radius: 8px;
+        border-top-right-radius: 8px;
     }
-
-    .form-elite-group {
-        margin-bottom: 1.5rem;
+    .tab-pane {
+        display: none;
+        animation: fadeIn 0.3s;
     }
-
-    .form-elite-group label {
+    .tab-pane.active {
         display: block;
-        font-size: 0.65rem;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── FORMS ── */
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 1.5rem;
+        position: relative;
+    }
+    .form-group label {
+        font-size: 0.75rem;
         font-weight: 800;
         color: var(--dm-slate-400);
         text-transform: uppercase;
-        letter-spacing: 0.08em;
-        margin-bottom: 8px;
-    }
-
-    .form-elite-input {
-        width: 100%;
-        height: 52px;
-        background: var(--dm-slate-50);
-        border: 1px solid var(--dm-slate-100);
-        border-radius: 12px;
-        padding: 0 1.25rem;
-        font-size: 0.92rem;
-        font-weight: 600;
-        color: var(--up-slate-900);
-        transition: all 0.2s;
-    }
-
-    .form-elite-input:focus {
-        background: #fff;
-        border-color: var(--up-orange);
-        box-shadow: 0 0 0 4px rgba(255, 123, 84, 0.05);
-        outline: none;
-    }
-
-    .form-elite-input:disabled {
-        background: #f1f5f9;
-        color: var(--dm-slate-400);
-        cursor: not-allowed;
-    }
-
-    .btn-update-elite {
-        height: 52px;
-        padding: 0 2rem;
-        background: var(--up-slate-900);
-        color: #fff;
-        border: none;
-        border-radius: 12px;
-        font-size: 0.85rem;
-        font-weight: 850;
-        text-transform: uppercase;
         letter-spacing: 0.05em;
-        cursor: pointer;
-        transition: all 0.2s;
     }
-
-    .btn-update-elite:hover { background: #000; transform: translateY(-2px); }
-
-    /* ── Security Section ── */
-    .security-terminal {
-        margin-top: 1.25rem;
-    }
-
-    .security-info {
-        font-size: 0.82rem;
-        color: var(--dm-slate-400);
-        font-weight: 500;
-        line-height: 1.5;
-        margin-bottom: 1.25rem;
-    }
-
-    .btn-security-action {
+    .form-input {
         width: 100%;
-        height: 48px;
-        background: #fff;
-        border: 1.5px solid var(--dm-slate-100);
+        padding: 0.85rem 1rem;
+        border: 1.5px solid var(--dm-slate-200);
+        border-radius: 0.75rem;
+        font-size: 0.95rem;
         color: var(--up-slate-900);
-        font-weight: 850;
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        border-radius: 12px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
+        font-weight: 500;
         transition: all 0.2s;
+        box-sizing: border-box;
     }
-
-    .btn-security-action:hover { background: var(--dm-slate-50); border-color: var(--up-orange); }
-
-    .page-header { margin-bottom: 2.5rem; }
-    .page-header h1 { font-size: 1.6rem; font-weight: 800; color: var(--up-slate-900); margin: 0; letter-spacing: -0.03em; }
-    .page-header p { font-size: 0.88rem; color: var(--dm-slate-400); font-weight: 500; margin: 4px 0 0; }
-
-    @media (max-width: 1024px) {
-        .profile-layout-grid { grid-template-columns: 1fr; }
+    .form-input:focus {
+        outline: none;
+        border-color: var(--up-orange-500);
+        box-shadow: 0 0 0 4px var(--up-orange-50);
     }
+    .form-input:invalid:not(:focus):not(:placeholder-shown) {
+        border-color: #ef4444;
+    }
+    textarea.form-input { min-height: 100px; resize: vertical; }
 
-    /* Modal Polyfill */
-    .occ-modal-overlay {
+    .input-wrapper { position: relative; }
+    .input-icon-btn {
+        position: absolute; right: 15px; top: 50%; transform: translateY(-50%);
+        background: none; border: none; color: var(--dm-slate-400); cursor: pointer; font-size: 1rem;
+        padding: 0; display: flex; align-items: center; justify-content: center; height: 100%;
+    }
+    .input-icon-btn:hover { color: var(--up-orange-600); }
+    
+    .error-msg {
         display: none;
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(15, 23, 42, 0.4) !important;
-        backdrop-filter: blur(8px) !important;
-        -webkit-backdrop-filter: blur(8px);
-        z-index: 9999;
+        color: #ef4444;
+        font-size: 0.75rem;
+        font-weight: 700;
+        margin-top: 4px;
+    }
+
+    .btn-save {
+        background: var(--up-orange-600);
+        color: white;
+        border: none;
+        padding: 0.85rem 2rem;
+        border-radius: 0.75rem;
+        font-size: 0.9rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: 0.2s;
+        box-shadow: 0 4px 6px -1px rgba(234, 88, 12, 0.2);
+    }
+    .btn-save:hover { background: var(--up-orange-700); transform: translateY(-2px); }
+    .btn-save:disabled { background: var(--dm-slate-400); cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* ── AVATAR UPLOADER ── */
+    .avatar-section {
+        display: flex;
+        align-items: center;
+        gap: 2rem;
+        margin-bottom: 2rem;
+        padding-bottom: 2rem;
+        border-bottom: 1px solid var(--dm-slate-100);
+    }
+    .avatar-preview {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: var(--dm-slate-100);
+        display: flex;
         align-items: center;
         justify-content: center;
-        padding: 1rem;
-    }
-    .occ-modal-overlay.active {
-        display: flex !important;
-    }
-    .occ-modal-box {
-        background: white;
-        border-radius: 1.25rem;
-        width: 100%;
-        max-width: 500px;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-        animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         overflow: hidden;
+        position: relative;
+        border: 4px solid white;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
-    .occ-modal-header {
-        padding: 1.5rem;
-        border-bottom: 1px solid #f1f5f9;
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        background: white;
-    }
-    .occ-modal-title { font-size: 1.25rem; font-weight: 800; margin: 0 0 0.25rem 0; color: #0f172a; }
-    .occ-modal-subtitle { font-size: 0.85rem; color: #94a3b8; font-weight: 500; }
-    .occ-modal-close { background: none; border: none; font-size: 1.25rem; color: #94a3b8; cursor: pointer; transition: color 0.2s; padding: 0; }
-    .occ-modal-close:hover { color: #ef4444; }
-    .occ-modal-body { padding: 1.5rem; background: white; }
-    .occ-form-grid { display: flex; flex-direction: column; gap: 1.25rem; }
-    .occ-form-label { font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; display: block; }
-    .occ-form-input { width: 100%; padding: 0.85rem 1rem; border: 1.5px solid #e2e8f0; border-radius: 0.75rem; font-size: 0.95rem; font-family: 'Poppins', sans-serif; transition: all 0.3s; background: white; color: #0f172a;}
-    .occ-form-input:focus { outline: none; border-color: #f97316; box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1); }
-    .occ-modal-footer { padding: 1.25rem 1.5rem; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 1rem; background: #f8fafc; }
+    .avatar-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .avatar-initials { font-size: 3rem; font-weight: 900; color: white; background: var(--up-orange-500); width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
     
-    @keyframes modalSlideUp {
-        from { transform: translateY(20px) scale(0.95); opacity: 0; }
-        to { transform: translateY(0) scale(1); opacity: 1; }
+    .avatar-actions { display: flex; gap: 1rem; }
+    .btn-upload {
+        background: var(--dm-slate-50);
+        border: 1px solid var(--dm-slate-200);
+        color: var(--up-slate-900);
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-size: 0.85rem;
+        font-weight: 700;
+        cursor: pointer;
     }
+    .btn-upload:hover { background: white; border-color: var(--up-orange-500); }
+    .btn-remove {
+        background: #fee2e2;
+        border: 1px solid #fecaca;
+        color: #ef4444;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-size: 0.85rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .btn-remove:hover { background: #fca5a5; }
 
 </style>
-{% endblock %}
-
-{% block extra_js %}
-<script src="{{ url_for('static', path='/js/customer/profile.js') }}"></script>
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>Account Settings</h1>
-    <p>Manage your identity and security preferences.</p>
+<div class="dash-header">
+    <h1>Account Profile</h1>
+    <p>Manage your personal details, addresses, and booking preferences.</p>
 </div>
 
-<div class="profile-layout-grid">
-    <!-- Left Section: Profile Info -->
-    <div class="identity-terminal">
-        <div class="panel-elite identity-card">
-            <div class="avatar-wrapper-elite">
-                <div class="avatar-view-elite">
-                    {% if user.profile_image_url %}
-                    <img src="{{ user.profile_image_url }}" alt="Avatar" id="avatarPreview" onerror="this.onerror=null; this.parentNode.innerHTML='<div class=&quot;avatar-initials-elite&quot;>{{ user.first_name[0] if user.first_name else "" }}{{ user.last_name[0] if user.last_name else "" }}</div>';">
-                    {% else %}
-                    <div class="avatar-initials-elite">
-                        {{ user.first_name[0] if user.first_name else '?' }}{{ user.last_name[0] if user.last_name else '' }}
-                    </div>
-                    {% endif %}
-                </div>
-                <form action="/customer/profile/photo?success_msg=Profile+photo+updated+successfully" method="POST" enctype="multipart/form-data" id="photoForm">
-                    <label for="photoInput" class="btn-camera-float">
-                        <i class="fas fa-camera"></i>
-                        <input type="file" id="photoInput" name="file" onchange="this.form.submit()" hidden>
-                    </label>
-                </form>
-            </div>
-            <div class="identity-name">{{ user.first_name }} {{ user.last_name }}</div>
-            <div class="identity-sub">Verified Customer Since {{ user.created_at.strftime('%Y') }}</div>
-            <div class="verification-pill">
-                <i class="fas fa-check-circle"></i> Account Verified
-            </div>
-        </div>
-
-        <div class="panel-elite security-terminal">
-            <div class="terminal-header" style="margin-bottom: 1rem;">
-                <i class="fas fa-shield-alt"></i>
-                <h3>Password & Security</h3>
-            </div>
-            <p class="security-info">Protect your account by maintaining a strong password and monitoring activity.</p>
-            <button type="button" class="btn-security-action" onclick="openPasswordModal()">
-                <i class="fas fa-key"></i> Change Password
-            </button>
-        </div>
-
-        <a href="/auth/logout" class="btn-security-action" style="margin-top: 1.25rem; color: #ef4444; border-color: #fee2e2;" onclick="confirmLogout(event)">
-            <i class="fas fa-sign-out-alt"></i> Sign Out
-        </a>
-    </div>
-
-    <!-- Right Section: Edit Profile -->
-    <div class="form-terminal">
-        <div class="panel-elite">
-            <div class="terminal-header">
-                <i class="fas fa-user-circle"></i>
-                <h3>Personal Information</h3>
-            </div>
-            <form action="/customer/profile/update?success_msg=Profile+information+updated+successfully" method="POST">
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;">
-                    <div class="form-elite-group">
-                        <label>Last Name</label>
-                        <input type="text" name="last_name" class="form-elite-input" value="{{ user.last_name }}" required>
-                    </div>
-                    <div class="form-elite-group">
-                        <label>First Name</label>
-                        <input type="text" name="first_name" class="form-elite-input" value="{{ user.first_name }}" required>
-                    </div>
-                    <div class="form-elite-group">
-                        <label>Middle Name</label>
-                        <input type="text" name="middle_name" class="form-elite-input" value="{{ user.middle_name or '' }}" placeholder="Middle Name">
-                    </div>
-                </div>
-
-                <div class="form-elite-group">
-                    <label>Email Address</label>
-                    <div style="position: relative;">
-                        <input type="email" name="email" class="form-elite-input" value="{{ user.email }}" required>
-                    </div>
-                </div>
-
-                <div class="form-elite-group">
-                    <label>Phone Number</label>
-                    <input type="tel" name="phone_number" class="form-elite-input" value="{{ user.phone_number or '' }}" placeholder="09XX XXX XXXX" pattern="09[0-9]{9}" maxlength="11" title="Please enter a valid 11-digit Philippine mobile number starting with 09">
-                </div>
-
-                <div class="form-elite-group" style="margin-bottom: 2.5rem;">
-                    <label>Complete Address</label>
-                    <input type="text" name="address" class="form-elite-input" value="{{ user.address or '' }}" placeholder="House No., Street, Barangay, City, Province" required>
-                    <p style="margin: 8px 0 0; font-size: 0.72rem; color: var(--dm-slate-400); font-weight: 500;">This address will be used as the default location for your bookings.</p>
-                </div>
-
-                <button type="submit" class="btn-update-elite">Update Profile</button>
-            </form>
-        <div class="panel-elite" style="margin-top: 1.5rem;">
-            <div class="terminal-header">
-                <i class="fas fa-bell"></i>
-                <h3>Notification Preferences</h3>
-            </div>
-            <form action="/customer/profile/notifications" method="POST">
-                <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;">
-                    <label style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
-                        <input type="checkbox" name="email_alerts" checked style="width: 18px; height: 18px; accent-color: var(--up-orange);">
-                        <div>
-                            <div style="font-weight: 800; color: var(--up-slate-900); font-size: 0.85rem;">Email Notifications</div>
-                            <div style="font-size: 0.72rem; color: var(--dm-slate-400); font-weight: 500;">Receive receipts and booking updates via email.</div>
-                        </div>
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
-                        <input type="checkbox" name="sms_alerts" style="width: 18px; height: 18px; accent-color: var(--up-orange);">
-                        <div>
-                            <div style="font-weight: 800; color: var(--up-slate-900); font-size: 0.85rem;">SMS Alerts</div>
-                            <div style="font-size: 0.72rem; color: var(--dm-slate-400); font-weight: 500;">Get text messages for urgent payment reminders.</div>
-                        </div>
-                    </label>
-                </div>
-                <button type="submit" class="btn-security-action">Save Preferences</button>
-            </form>
-        </div>
-
-        <div class="panel-elite" style="margin-top: 1.5rem; border-color: #fecaca; background: #fffcfc;">
-            <div class="terminal-header">
-                <i class="fas fa-exclamation-triangle" style="color: #ef4444; background: #fee2e2;"></i>
-                <h3 style="color: #ef4444;">Danger Zone</h3>
-            </div>
-            <p style="font-size: 0.82rem; color: #991b1b; font-weight: 500; margin-bottom: 1.5rem;">
-                Deactivating your account will hide your profile and disable new bookings. This action complies with the Data Privacy Act.
-            </p>
-            <button type="button" class="btn-security-action" style="color: #ef4444; border-color: #fecaca;" onclick="confirmDeactivation()">
-                Deactivate Account
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- Password Modal (Dashboard Style) -->
-<div id="passwordModal" class="occ-modal-overlay">
-    <div class="occ-modal-box sz-sm">
-        <div class="occ-modal-header">
+<!-- Profile Completion Widget -->
+<div class="panel" style="margin-bottom: 2rem;">
+    <div style="padding: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px;">
             <div>
-                <h3 class="occ-modal-title"><i class="fas fa-key" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Update Password</h3>
-                <div class="occ-modal-subtitle">Ensure your account stays secure with a strong password.</div>
+                <h3 style="margin: 0; font-size: 1.1rem; color: var(--up-slate-900); font-weight: 800;">Profile Completeness</h3>
+                <p style="margin: 4px 0 0; font-size: 0.8rem; color: var(--dm-slate-400);">A complete profile helps caterers serve you better.</p>
             </div>
-            <button type="button" onclick="closePasswordModal()" class="occ-modal-close">
-                <i class="fas fa-times"></i>
-            </button>
+            <div style="font-size: 1.5rem; font-weight: 900; color: var(--up-emerald-600);" id="completion-val">{{ profile_completion }}%</div>
         </div>
+        <div style="width: 100%; background: #e2e8f0; height: 12px; border-radius: 6px; overflow: hidden;">
+            <div id="completion-bar" style="width: {{ profile_completion }}%; background: var(--up-emerald-500); height: 100%; transition: width 0.5s ease;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabs Navigation -->
+<div class="profile-tabs">
+    <div class="profile-tab active" onclick="switchTab('personal', this)"><i class="fas fa-user-circle"></i> Personal Info</div>
+    <div class="profile-tab" onclick="switchTab('address', this)"><i class="fas fa-map-marked-alt"></i> Address & Contacts</div>
+    <div class="profile-tab" onclick="switchTab('security', this)"><i class="fas fa-shield-alt"></i> Security & Alerts</div>
+</div>
+
+<!-- TAB PANES -->
+<div class="panel" style="padding: 2rem;">
+    
+    <!-- 1. PERSONAL INFO TAB -->
+    <div id="tab-personal" class="tab-pane active">
+        <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 1.5rem; color: var(--up-slate-900);">Personal Details</h2>
         
-        <form id="changePasswordForm" onsubmit="handlePasswordChange(event)">
-            <div class="occ-modal-body">
-                <div class="occ-form-grid">
-                    <div class="occ-form-group full-width">
-                        <label class="occ-form-label">Current Password</label>
-                        <input type="password" name="current_password" class="occ-form-input" required placeholder="Enter current password">
-                    </div>
-                    
-                    <div class="occ-form-group full-width">
-                        <label class="occ-form-label">New Password</label>
-                        <input type="password" name="new_password" id="new_password" class="occ-form-input" required placeholder="Min 8 characters" minlength="8">
-                        <div class="password-requirements" style="margin-top: 8px; font-size: 0.7rem; display: flex; flex-direction: column; gap: 4px;">
-                            <div id="req-length" class="req-item" style="color: #64748b; font-weight: 500;"><i class="fas fa-circle" style="font-size: 0.5rem; vertical-align: middle; margin-right: 6px;"></i> Minimum 8 characters</div>
-                            <div id="req-different" class="req-item" style="color: #64748b; font-weight: 500;"><i class="fas fa-circle" style="font-size: 0.5rem; vertical-align: middle; margin-right: 6px;"></i> Must be different from current</div>
-                            <div id="req-upper" class="req-item" style="color: #64748b; font-weight: 500;"><i class="fas fa-circle" style="font-size: 0.5rem; vertical-align: middle; margin-right: 6px;"></i> At least 1 uppercase letter</div>
-                            <div id="req-special" class="req-item" style="color: #64748b; font-weight: 500;"><i class="fas fa-circle" style="font-size: 0.5rem; vertical-align: middle; margin-right: 6px;"></i> At least 1 special character</div>
-                        </div>
-                    </div>
-                    
-                    <div class="occ-form-group full-width">
-                        <label class="occ-form-label">Confirm New Password</label>
-                        <input type="password" name="confirm_password" id="confirm_password" class="occ-form-input" required placeholder="Retype new password">
-                        <div id="passwordMatchStatus" style="font-size: 0.7rem; height: 18px; margin-top: 5px; display: flex; align-items: center; gap: 6px; font-weight: 600;">
-                            <i id="matchIndicatorIcon"></i>
-                            <span id="matchIndicatorText"></span>
-                        </div>
-                    </div>
+        <div class="avatar-section">
+            <div class="avatar-preview">
+                {% if user.profile_image_url %}
+                <img src="{{ user.profile_image_url }}" id="avatar-img">
+                {% else %}
+                <div class="avatar-initials" id="avatar-initials">{{ user.first_name[0] if user.first_name else '?' }}</div>
+                <img src="" id="avatar-img" style="display:none;">
+                {% endif %}
+            </div>
+            <div>
+                <h4 style="margin:0 0 10px; font-size: 1rem;">Profile Picture</h4>
+                <div class="avatar-actions">
+                    <label class="btn-upload">
+                        <i class="fas fa-upload"></i> Upload Image
+                        <input type="file" hidden accept="image/jpeg, image/png, image/webp" onchange="uploadImage(this)">
+                    </label>
+                    <button class="btn-remove" onclick="removeImage()"><i class="fas fa-trash"></i> Remove</button>
                 </div>
             </div>
-            
-            <div class="occ-modal-footer">
-                <button type="button" onclick="closePasswordModal()" class="btn-outline" style="min-width:100px; height:44px; display:inline-flex; align-items:center; justify-content:center;">Cancel</button>
-                <button type="submit" id="submitPasswordBtn" class="btn-primary" style="height:44px; padding:0 1.5rem;">Save Changes</button>
+        </div>
+
+        <form id="form-personal" onsubmit="submitForm(event, '/customer/profile/update-personal')" novalidate>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>First Name</label>
+                    <input type="text" name="first_name" class="form-input" value="{{ user.first_name or '' }}" required maxlength="50" pattern="[A-Za-z\s\-]+">
+                    <span class="error-msg">Please enter a valid first name (letters only).</span>
+                </div>
+                <div class="form-group">
+                    <label>Middle Name <span style="text-transform:none; font-weight:500;">(Optional)</span></label>
+                    <input type="text" name="middle_name" class="form-input" value="{{ user.middle_name or '' }}" maxlength="50" pattern="[A-Za-z\s\-]*">
+                    <span class="error-msg">Please enter a valid middle name (letters only).</span>
+                </div>
+                <div class="form-group">
+                    <label>Last Name</label>
+                    <input type="text" name="last_name" class="form-input" value="{{ user.last_name or '' }}" required maxlength="50" pattern="[A-Za-z\s\-]+">
+                    <span class="error-msg">Please enter a valid last name (letters only).</span>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" value="{{ user.email }}" class="form-input" disabled style="background:var(--dm-slate-50); cursor:not-allowed;">
+                    <small style="color:var(--dm-slate-400); margin-top:4px;">Email cannot be changed.</small>
+                </div>
+                <div class="form-group">
+                    <label>Mobile Number <span style="text-transform:none; font-weight:500;">(Optional)</span></label>
+                    <input type="tel" name="phone_number" class="form-input" value="{{ user.phone_number or '' }}" placeholder="09XX XXX XXXX" pattern="^09[0-9]{9}$" title="Must be a valid 11-digit Philippine mobile number starting with 09" maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 11);">
+                    <span class="error-msg">Please enter a valid 11-digit number starting with 09.</span>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Birthday <span style="text-transform:none; font-weight:500;">(Optional)</span></label>
+                    <input type="date" name="dob" class="form-input" value="{{ user.dob.strftime('%Y-%m-%d') if user.dob else '' }}">
+                    <span class="error-msg">Please enter a valid date.</span>
+                </div>
+                <div class="form-group">
+                    <label>Gender <span style="text-transform:none; font-weight:500;">(Optional)</span></label>
+                    <select name="gender" class="form-input">
+                        <option value="">Select Gender</option>
+                        <option value="Male" {% if user.gender == 'Male' %}selected{% endif %}>Male</option>
+                        <option value="Female" {% if user.gender == 'Female' %}selected{% endif %}>Female</option>
+                        <option value="Other" {% if user.gender == 'Other' %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="margin-top: 1rem;">
+                <button type="submit" class="btn-save"><i class="fas fa-save"></i> Save Personal Info</button>
             </div>
         </form>
     </div>
-</div>
-</div>
 
-<style>
-@keyframes modalSlideUp {
-    from { transform: translateY(20px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-}
-</style>
+    <!-- 2. ADDRESS & EMERGENCY TAB -->
+    <div id="tab-address" class="tab-pane">
+        <form id="form-address" onsubmit="submitForm(event, '/customer/profile/update-address')" novalidate>
+            <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 1.5rem; color: var(--up-slate-900);">Default Address</h2>
+            <div class="form-group">
+                <label>Complete Address</label>
+                <textarea name="address" class="form-input" placeholder="House/Unit No., Street, Subdivision, Barangay, City, Province" required minlength="10" maxlength="255">{{ user.address or '' }}</textarea>
+                <span class="error-msg">Please enter a complete address (minimum 10 characters).</span>
+                <small style="color:var(--dm-slate-400); margin-top:4px;">This will be your default delivery/event address. You can change it per booking.</small>
+            </div>
+            <div style="margin-bottom: 2.5rem;">
+                <button type="submit" class="btn-save"><i class="fas fa-save"></i> Save Address</button>
+            </div>
+        </form>
+
+        <form id="form-emergency" onsubmit="submitForm(event, '/customer/profile/update-emergency')" novalidate>
+            <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 1.5rem; color: var(--up-slate-900); border-top: 1px solid var(--dm-slate-100); padding-top: 2rem;">Emergency / Alternate Contact <span style="font-size: 0.8rem; font-weight: 500; color: var(--dm-slate-400);">(Optional)</span></h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Contact Person Name</label>
+                    <input type="text" name="emergency_contact_name" class="form-input" value="{{ user.emergency_contact_name or '' }}" maxlength="100">
+                    <span class="error-msg">Please enter a valid name.</span>
+                </div>
+                <div class="form-group">
+                    <label>Relationship</label>
+                    <input type="text" name="emergency_contact_relation" class="form-input" value="{{ user.emergency_contact_relation or '' }}" placeholder="e.g. Spouse, Sibling" maxlength="50">
+                    <span class="error-msg">Please enter a valid relationship.</span>
+                </div>
+                <div class="form-group">
+                    <label>Mobile Number</label>
+                    <input type="tel" name="emergency_contact_phone" class="form-input" value="{{ user.emergency_contact_phone or '' }}" pattern="^09[0-9]{9}$" maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 11);">
+                    <span class="error-msg">Please enter a valid 11-digit number starting with 09.</span>
+                </div>
+            </div>
+            <div>
+                <button type="submit" class="btn-save"><i class="fas fa-save"></i> Save Contact</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 3. SECURITY & ALERTS TAB -->
+    <div id="tab-security" class="tab-pane">
+        <form id="form-notifications" onsubmit="submitForm(event, '/customer/profile/update-notifications')">
+            <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 1.5rem; color: var(--up-slate-900);">Notification Preferences</h2>
+            
+            {% set prefs = user.notification_preferences or {} %}
+            <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem;">
+                <label style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
+                    <input type="checkbox" name="email_bookings" {% if prefs.get('email_bookings', True) %}checked{% endif %} style="width: 18px; height: 18px; accent-color: var(--up-orange-500);">
+                    <div>
+                        <div style="font-weight: 800; color: var(--up-slate-900); font-size: 0.9rem;">Booking & Payment Updates (Email)</div>
+                        <div style="font-size: 0.75rem; color: var(--dm-slate-400);">Receive receipts, quotations, and status changes via email.</div>
+                    </div>
+                </label>
+                <label style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
+                    <input type="checkbox" name="sms_bookings" {% if prefs.get('sms_bookings') %}checked{% endif %} style="width: 18px; height: 18px; accent-color: var(--up-orange-500);">
+                    <div>
+                        <div style="font-weight: 800; color: var(--up-slate-900); font-size: 0.9rem;">SMS Alerts <span style="font-size: 0.75rem; font-weight: 500; color: var(--dm-slate-400);">(Optional)</span></div>
+                        <div style="font-size: 0.75rem; color: var(--dm-slate-400);">Get text messages for urgent payment reminders.</div>
+                    </div>
+                </label>
+                <label style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
+                    <input type="checkbox" name="email_promos" {% if prefs.get('email_promos', True) %}checked{% endif %} style="width: 18px; height: 18px; accent-color: var(--up-orange-500);">
+                    <div>
+                        <div style="font-weight: 800; color: var(--up-slate-900); font-size: 0.9rem;">Promotional Offers <span style="font-size: 0.75rem; font-weight: 500; color: var(--dm-slate-400);">(Optional)</span></div>
+                        <div style="font-size: 0.75rem; color: var(--dm-slate-400);">Receive exclusive catering discounts and updates.</div>
+                    </div>
+                </label>
+            </div>
+            <div style="margin-bottom: 2.5rem;">
+                <button type="submit" class="btn-save"><i class="fas fa-save"></i> Save Preferences</button>
+            </div>
+        </form>
+
+        <form id="form-password" onsubmit="changePassword(event)" novalidate>
+            <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 1.5rem; color: var(--up-slate-900); border-top: 1px solid var(--dm-slate-100); padding-top: 2rem;">Change Password</h2>
+            <div class="form-grid" style="max-width: 500px;">
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Current Password</label>
+                    <div class="input-wrapper">
+                        <input type="password" name="current_password" id="current_password" class="form-input" required onblur="verifyCurrentPassword(this)">
+                        <button type="button" class="input-icon-btn" onclick="togglePassword(this)"><i class="fas fa-eye"></i></button>
+                    </div>
+                    <span class="error-msg" id="current-password-error">Current password is required.</span>
+                </div>
+                <div class="form-group">
+                    <label>New Password</label>
+                    <div class="input-wrapper">
+                        <input type="password" name="new_password" class="form-input" required minlength="8" id="new_password">
+                        <button type="button" class="input-icon-btn" onclick="togglePassword(this)"><i class="fas fa-eye"></i></button>
+                    </div>
+                    <div class="password-requirements" style="margin-top: 8px; font-size: 0.7rem; display: flex; flex-direction: column; gap: 4px;">
+                        <div id="req-length" class="req-item" style="color: #64748b; font-weight: 500;"><i class="fas fa-circle" style="font-size: 0.5rem; vertical-align: middle; margin-right: 6px;"></i> Minimum 8 characters</div>
+                        <div id="req-upper" class="req-item" style="color: #64748b; font-weight: 500;"><i class="fas fa-circle" style="font-size: 0.5rem; vertical-align: middle; margin-right: 6px;"></i> At least 1 uppercase letter</div>
+                        <div id="req-special" class="req-item" style="color: #64748b; font-weight: 500;"><i class="fas fa-circle" style="font-size: 0.5rem; vertical-align: middle; margin-right: 6px;"></i> At least 1 special character</div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Confirm Password</label>
+                    <div class="input-wrapper">
+                        <input type="password" name="confirm_password" class="form-input" required minlength="8" id="confirm_password">
+                        <button type="button" class="input-icon-btn" onclick="togglePassword(this)"><i class="fas fa-eye"></i></button>
+                    </div>
+                    <div id="passwordMatchStatus" style="font-size: 0.75rem; height: 18px; margin-top: 5px; display: flex; align-items: center; gap: 6px; font-weight: 600;"></div>
+                    <span class="error-msg" id="confirm-password-error">Passwords must match.</span>
+                </div>
+            </div>
+            <div>
+                <button type="submit" class="btn-save"><i class="fas fa-key"></i> Update Password</button>
+            </div>
+        </form>
+    </div>
+
+</div>
 
 <script>
-    function openPasswordModal() { 
-        document.getElementById('passwordModal').style.display = 'flex'; 
-        document.body.classList.add('modal-open');
+    function switchTab(tabId, el) {
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
+        document.getElementById('tab-' + tabId).classList.add('active');
+        el.classList.add('active');
     }
-    
-    function closePasswordModal() { 
-        document.getElementById('passwordModal').style.display = 'none'; 
-        document.body.classList.remove('modal-open');
-        document.getElementById('changePasswordForm').reset();
-    }
-    
-    async function handlePasswordChange(event) {
-        event.preventDefault();
-        const form = event.target;
-        const errorEl = document.getElementById('passwordFormError');
-        const submitBtn = document.getElementById('submitPasswordBtn');
+
+    document.addEventListener("DOMContentLoaded", function() {
+        // Enforce 18+ years old on Birthday field
+        const dobInput = document.querySelector('input[name="dob"]');
+        if (dobInput) {
+            const today = new Date();
+            const maxDate = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+            dobInput.max = maxDate.toISOString().split("T")[0];
+        }
+
+        const newPwd = document.getElementById('new_password');
+        const confPwd = document.getElementById('confirm_password');
         
-        if (form.new_password.value !== form.confirm_password.value) {
-            errorEl.innerText = 'Passwords do not match.';
-            errorEl.style.display = 'block';
+        if(newPwd && confPwd) {
+            newPwd.addEventListener('input', function() {
+                const val = this.value;
+                const reqLength = document.getElementById('req-length');
+                const reqUpper = document.getElementById('req-upper');
+                const reqSpecial = document.getElementById('req-special');
+
+                // Check length
+                if(val.length >= 8) { reqLength.style.color = '#10b981'; reqLength.querySelector('i').className = 'fas fa-check-circle'; }
+                else { reqLength.style.color = '#64748b'; reqLength.querySelector('i').className = 'fas fa-circle'; }
+
+                // Check uppercase
+                if(/[A-Z]/.test(val)) { reqUpper.style.color = '#10b981'; reqUpper.querySelector('i').className = 'fas fa-check-circle'; }
+                else { reqUpper.style.color = '#64748b'; reqUpper.querySelector('i').className = 'fas fa-circle'; }
+
+                // Check special
+                if(/[!@#$%^&*(),.?":{}|<>]/.test(val)) { reqSpecial.style.color = '#10b981'; reqSpecial.querySelector('i').className = 'fas fa-check-circle'; }
+                else { reqSpecial.style.color = '#64748b'; reqSpecial.querySelector('i').className = 'fas fa-circle'; }
+                
+                checkMatch();
+            });
+
+            confPwd.addEventListener('input', checkMatch);
+
+            function checkMatch() {
+                const matchStatus = document.getElementById('passwordMatchStatus');
+                if(!confPwd.value) { matchStatus.innerHTML = ''; confPwd.style.borderColor = ''; return; }
+                
+                if(newPwd.value === confPwd.value) {
+                    matchStatus.innerHTML = '<i class="fas fa-check-circle" style="color: #10b981;"></i><span style="color: #10b981;">Passwords match</span>';
+                    document.getElementById('confirm-password-error').style.display = 'none';
+                    confPwd.style.borderColor = '#10b981';
+                } else {
+                    matchStatus.innerHTML = '<i class="fas fa-times-circle" style="color: #ef4444;"></i><span style="color: #ef4444;">Passwords do not match</span>';
+                    confPwd.style.borderColor = '#ef4444';
+                }
+            }
+        }
+    });
+
+    async function verifyCurrentPassword(input) {
+        if (!input.value) {
+            input.style.borderColor = '';
+            document.getElementById('current-password-error').style.display = 'none';
+            return;
+        }
+        const formData = new FormData();
+        formData.append('password', input.value);
+        
+        try {
+            const res = await fetch('/customer/profile/verify-current-password', { method: 'POST', body: formData });
+            const data = await res.json();
+            const errorSpan = document.getElementById('current-password-error');
+            
+            if (data.success) {
+                input.style.borderColor = '#10b981';
+                errorSpan.style.display = 'none';
+                input.dataset.verified = "true";
+            } else {
+                input.style.borderColor = '#ef4444';
+                errorSpan.innerText = 'Current password is incorrect.';
+                errorSpan.style.display = 'block';
+                input.dataset.verified = "false";
+            }
+        } catch(e) {}
+    }
+
+    function togglePassword(btn) {
+        const input = btn.previousElementSibling;
+        const icon = btn.querySelector('i');
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            input.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    }
+
+    function validateForm(form) {
+        let isValid = true;
+        const inputs = form.querySelectorAll('input:not([type="hidden"]):not([type="checkbox"]), select, textarea');
+        
+        inputs.forEach(input => {
+            const errorSpan = input.closest('.form-group').querySelector('.error-msg');
+            if (!input.checkValidity()) {
+                if (errorSpan) errorSpan.style.display = 'block';
+                input.style.borderColor = '#ef4444';
+                isValid = false;
+            } else {
+                if (errorSpan) errorSpan.style.display = 'none';
+                input.style.borderColor = '';
+            }
+        });
+        return isValid;
+    }
+
+    async function submitForm(e, url) {
+        e.preventDefault();
+        const form = e.target;
+        
+        if (!validateForm(form)) {
             return;
         }
 
-        submitBtn.disabled = true;
-        submitBtn.innerText = 'Saving...';
+        const btn = form.querySelector('button[type="submit"]');
+        const originalText = btn.innerHTML;
         
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        btn.disabled = true;
+
         try {
             const formData = new FormData(form);
-            const r = await fetch('/customer/profile/change-password', { method: 'POST', body: formData });
-            const result = await r.json();
+            const res = await fetch(url, { method: 'POST', body: formData });
+            const data = await res.json();
             
-            if (result.success) {
-                Swal.fire('Success', 'Password updated!', 'success');
-                closePasswordModal();
+            if (data.success) {
+                Swal.fire('Saved', data.message, 'success');
+                if(url.includes('personal') || url.includes('address') || url.includes('emergency')) {
+                    setTimeout(() => window.location.reload(), 1500);
+                }
             } else {
-                errorEl.innerText = result.message || 'Update failed.';
-                errorEl.style.display = 'block';
+                Swal.fire('Error', data.message || 'Failed to save', 'error');
             }
-        } catch (e) {
-            errorEl.innerText = 'An error occurred.';
-            errorEl.style.display = 'block';
+        } catch(err) {
+            Swal.fire('Error', 'Network error', 'error');
         } finally {
-            submitBtn.disabled = false;
-            submitBtn.innerText = 'Update Password';
+            btn.innerHTML = originalText;
+            btn.disabled = false;
         }
     }
 
-    function confirmDeactivation() {
-        Swal.fire({
-            title: 'Are you sure?',
-            text: "You won't be able to make new bookings after deactivation.",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#ef4444',
-            cancelButtonColor: '#94a3b8',
-            confirmButtonText: 'Yes, deactivate it'
-        }).then(async (result) => {
-            if (result.isConfirmed) {
-                try {
-                    const r = await fetch('/customer/profile/deactivate', { method: 'POST' });
-                    const res = await r.json();
-                    if (res.success || r.ok) {
-                        if (res.success === false) {
-                            Swal.fire('Cannot Deactivate', res.message, 'warning');
-                            return;
-                        }
-                        Swal.fire('Deactivated', 'Your account has been deactivated.', 'success').then(() => {
-                            window.location.href = '/auth/login';
-                        });
-                    } else {
-                        Swal.fire('Cannot Deactivate', res.message || 'Failed to deactivate account.', 'error');
-                    }
-                } catch (e) {
-                    Swal.fire('Error', 'An error occurred while connecting to the server.', 'error');
+    async function changePassword(e) {
+        e.preventDefault();
+        const form = e.target;
+        
+        if (!validateForm(form)) {
+            return;
+        }
+
+        const currentPwd = document.getElementById('current_password');
+        if (currentPwd.dataset.verified === "false") {
+            const errSpan = document.getElementById('current-password-error');
+            currentPwd.style.borderColor = '#ef4444';
+            errSpan.innerText = 'Current password is incorrect.';
+            errSpan.style.display = 'block';
+            return;
+        }
+
+        const errorSpan = document.getElementById('confirm-password-error');
+        if(form.new_password.value !== form.confirm_password.value) {
+            form.confirm_password.style.borderColor = '#ef4444';
+            errorSpan.innerText = 'Passwords do not match.';
+            errorSpan.style.display = 'block';
+            return;
+        } else {
+            errorSpan.style.display = 'none';
+        }
+
+        const btn = form.querySelector('button[type="submit"]');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+        btn.disabled = true;
+
+        try {
+            const formData = new FormData(form);
+            const res = await fetch('/customer/profile/change-password', { method: 'POST', body: formData });
+            const data = await res.json();
+            
+            if (data.success) {
+                Swal.fire('Success', data.message, 'success');
+                form.reset();
+                currentPwd.style.borderColor = '';
+                currentPwd.dataset.verified = "";
+                document.getElementById('passwordMatchStatus').innerHTML = '';
+            } else {
+                if (data.message === "Current password is incorrect.") {
+                    currentPwd.style.borderColor = '#ef4444';
+                    const errSpan = document.getElementById('current-password-error');
+                    errSpan.innerText = data.message;
+                    errSpan.style.display = 'block';
+                    currentPwd.dataset.verified = "false";
+                } else {
+                    Swal.fire('Error', data.message, 'error');
                 }
             }
-        })
+        } catch(err) {
+            Swal.fire('Error', 'Network error', 'error');
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
+
+    async function uploadImage(input) {
+        if (!input.files || !input.files[0]) return;
+        
+        const file = input.files[0];
+        const formData = new FormData();
+        formData.append('profile_image', file);
+        
+        try {
+            const res = await fetch('/customer/profile/upload-image', { method: 'POST', body: formData });
+            const data = await res.json();
+            if(data.success) {
+                document.getElementById('avatar-img').src = data.image_url;
+                document.getElementById('avatar-img').style.display = 'block';
+                const initEl = document.getElementById('avatar-initials');
+                if(initEl) initEl.style.display = 'none';
+                
+                Swal.fire('Success', 'Profile picture updated', 'success');
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                Swal.fire('Error', data.detail || 'Upload failed', 'error');
+            }
+        } catch(e) {
+            Swal.fire('Error', 'Network error', 'error');
+        }
+    }
+
+    async function removeImage() {
+        try {
+            const res = await fetch('/customer/profile/remove-image', { method: 'POST' });
+            const data = await res.json();
+            if(data.success) {
+                window.location.reload();
+            }
+        } catch(e) {}
     }
 </script>
 {% endblock %}

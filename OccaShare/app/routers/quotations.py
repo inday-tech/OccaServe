@@ -274,6 +274,29 @@ async def sign_contract(
     db.commit()
     return {"success": True, "status": quotation.status}
 
+@router.post("/{booking_id}/quotation/approve")
+async def approve_quotation(
+    booking_id: int,
+    request: Request,
+    db: Session = Depends(database.get_db)
+):
+    current_user = get_session_user(request, db)
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+        
+    booking = db.query(models.Booking).get(booking_id)
+    if not booking or booking.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+        
+    quotation = booking.quotation
+    if not quotation:
+        raise HTTPException(status_code=404, detail="Quotation not found")
+        
+    quotation.customer_approved_at = datetime.now()
+    db.commit()
+    
+    return {"success": True}
+
 @router.post("/{booking_id}/update-dp")
 async def update_dp(
     booking_id: int, 

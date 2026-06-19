@@ -24,6 +24,17 @@ class User(Base):
     is_verified = Column(Boolean, default=False)
     last_login = Column(DateTime(timezone=True), nullable=True)
     
+    # New Profile Info
+    gender = Column(String, nullable=True)
+    emergency_contact_name = Column(String, nullable=True)
+    emergency_contact_relation = Column(String, nullable=True)
+    emergency_contact_phone = Column(String, nullable=True)
+    notification_preferences = Column(JSONB, default={
+        "email_promos": True,
+        "email_bookings": True,
+        "sms_bookings": False
+    })
+    
     # Social Login Fields
     facebook_id = Column(String, unique=True, nullable=True)
     google_id = Column(String, unique=True, nullable=True)
@@ -144,7 +155,10 @@ class CatererProfile(Base):
     header_decoration = Column(String, default="none") # 'none', 'utensils', 'sparkles'
     
     # NEW: Policy Fields
-    terms_and_conditions = Column(Text, nullable=True)
+    terms_and_conditions = Column(Text, nullable=True) # Used for formal Event Service Contracts
+    general_terms = Column(Text, nullable=True) # Used for fast-track Food & Equipment orders
+    rental_policies = Column(Text, nullable=True) # Used for Equipment Rentals
+    cancellation_policy = Column(Text, nullable=True) # Universal cancellation rules
     booking_lead_time = Column(Integer, default=7) # Days in advance
     equipment_turnover_hours = Column(Integer, default=24) # Turnaround time for rentals
     min_pax = Column(Integer, default=20) # Minimum pax for services
@@ -416,7 +430,11 @@ class Booking(Base):
     balance_due_date = Column(DateTime(timezone=True), nullable=True) 
     payment_plan = Column(String, default='downpayment') # 'downpayment' or 'full'
     event_location = Column(Text, nullable=True)
+    terms_accepted_at = Column(DateTime(timezone=True), nullable=True)
+    terms_accepted_ip = Column(String, nullable=True)
     is_custom_event = Column(Boolean, default=False)
+    transaction_type = Column(String, default="contract_track") # 'fast_track' or 'contract_track'
+    document_type = Column(String, nullable=True) # 'invoice', 'service_agreement', 'booking_agreement', 'rental_agreement'
     custom_requirements = Column(JSONB, nullable=True) # E.g. {"theme": "Rustic", "budget": 50000}
     user = relationship("User", back_populates="bookings")
     caterer = relationship("CatererProfile", back_populates="bookings")
@@ -685,6 +703,7 @@ class Quotation(Base):
     customer_signature = Column(Text, nullable=True)
     caterer_signed_at = Column(DateTime(timezone=True), nullable=True)
     customer_signed_at = Column(DateTime(timezone=True), nullable=True)
+    customer_approved_at = Column(DateTime(timezone=True), nullable=True) # Pre-acceptance approval step
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

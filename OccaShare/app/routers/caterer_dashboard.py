@@ -2881,6 +2881,7 @@ async def update_profile(
     min_pax: Optional[int] = Form(20),
     starting_price: Optional[float] = Form(0.0),
     terms_and_conditions: Optional[str] = Form(None),
+    general_terms: Optional[str] = Form(None),
     payment_terms: List[int] = Form(default=[100]),
     primary_color: Optional[str] = Form(None),
     secondary_color: Optional[str] = Form(None),
@@ -2969,6 +2970,7 @@ async def update_profile(
     profile.min_pax = min_pax
     profile.starting_price = starting_price
     profile.terms_and_conditions = terms_and_conditions
+    profile.general_terms = general_terms
 
     # Update branding
     profile.primary_color = primary_color

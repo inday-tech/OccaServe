@@ -199,6 +199,7 @@ async def alacarte_checkout_submit(
     total_amount: float = Form(...),
     landmark: Optional[str] = Form(None),
     booking_id: Optional[int] = Form(None),
+    terms_agreement: Optional[str] = Form(None),
     db: Session = Depends(database.get_db)
 ):
     user = get_current_user_from_session(request, db)
@@ -237,18 +238,36 @@ async def alacarte_checkout_submit(
                 booking.special_requests = landmark
                 booking.total_amount = total_amount
                 booking.reservation_fee = reservation_fee
+                if terms_agreement:
+                    booking.terms_accepted_at = datetime.utcnow()
+                    booking.terms_accepted_ip = request.client.host if request.client else "unknown"
+                    booking.transaction_type = "fast_track"
                 # Clear old items to re-save
                 db.query(models.BookingMenuItem).filter(models.BookingMenuItem.booking_id == booking.id).delete()
         
-        # Check if items are rentals
+        # Check category to determine document type
         is_rental = False
+        has_services = False
+        has_food = False
         if cart_data:
             cart_items = json.loads(cart_data)
             for item in cart_items:
                 m_item = db.query(models.MenuItem).get(int(item['id']))
-                if m_item and m_item.category and m_item.category.lower() == 'rentals':
-                    is_rental = True
-                    break
+                if m_item and m_item.category:
+                    cat = m_item.category.lower()
+                    if 'rental' in cat or 'equipment' in cat:
+                        is_rental = True
+                    elif 'service' in cat or 'staff' in cat or 'waiter' in cat:
+                        has_services = True
+                    else:
+                        has_food = True
+        
+        # Phase 2: Dynamic Document Routing Algorithm
+        document_type = "invoice"
+        if is_rental:
+            document_type = "rental_agreement"
+        elif has_services:
+            document_type = "service_agreement"
 
         event_name = f"Equipment Rental: {full_name}" if is_rental else f"Food Order: {full_name}"
         event_type = "Equipment Rental" if is_rental else "Ala Carte Order"
@@ -256,6 +275,7 @@ async def alacarte_checkout_submit(
         if booking:
             booking.event_name = event_name
             booking.event_type = event_type
+            booking.document_type = document_type
             
         if not booking:
             booking = models.Booking(
@@ -272,8 +292,14 @@ async def alacarte_checkout_submit(
                 reservation_fee=reservation_fee,
                 status=status,
                 payment_method=payment_method,
-                special_requests=landmark
+                special_requests=landmark,
+                transaction_type="fast_track",
+                document_type=document_type
             )
+            if terms_agreement:
+                booking.terms_accepted_at = datetime.utcnow()
+                booking.terms_accepted_ip = request.client.host if request.client else "unknown"
+            
             db.add(booking)
             db.flush()
 
@@ -410,7 +436,8 @@ async def custom_booking_submit(
         },
         status="pending_review", # Updated to PENDING REVIEW as per the workflow plan
         total_amount=0.0,
-        reservation_fee=0.0
+        reservation_fee=0.0,
+        document_type="booking_agreement"
     )
     db.add(new_booking)
     db.commit()
@@ -703,6 +730,7 @@ async def step_details_submit(
         booking.total_amount = total_price
         booking.reservation_fee = reservation_fee
         booking.special_requests = special_requests
+        booking.document_type = "booking_agreement"
         # Clear old items to re-save
         db.query(models.BookingMenuItem).filter(models.BookingMenuItem.booking_id == booking.id).delete()
     else:
@@ -723,7 +751,8 @@ async def step_details_submit(
             total_amount=total_price,
             reservation_fee=reservation_fee,
             special_requests=special_requests,
-            status="draft"
+            status="draft",
+            document_type="booking_agreement"
         )
         db.add(booking)
     

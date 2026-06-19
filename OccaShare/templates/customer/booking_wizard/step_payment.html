@@ -348,13 +348,37 @@
                     </div>
                 </div>
 
+                {% set doc_type_display = "Booking Agreement" %}
+                {% if booking.document_type == "service_agreement" %}
+                    {% set doc_type_display = "Event Service Agreement" %}
+                {% elif booking.document_type == "rental_agreement" %}
+                    {% set doc_type_display = "Rental Agreement" %}
+                {% elif booking.document_type == "invoice" %}
+                    {% set doc_type_display = "Order Invoice" %}
+                {% endif %}
+
                 {% if profile.terms_and_conditions %}
-                <div style="margin-bottom: 1.5rem; background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #cbd5e1;">
-                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer;">
-                        <input type="checkbox" id="termsAgreementCheckbox" name="terms_agreement" form="wizard-payment-form" required style="margin-top: 4px; transform: scale(1.2);">
-                        <span style="font-size: 0.85rem; color: var(--up-slate-700); line-height: 1.4;">
-                            <strong>I agree to the Terms & Conditions of {{ profile.business_name }}:</strong><br>
-                            <span style="font-style: italic; display: block; margin-top: 4px; padding-left: 8px; border-left: 2px solid #cbd5e1;">"{{ profile.terms_and_conditions }}"</span>
+                <div style="margin-bottom: 1.5rem; background: #f8fafc; padding: 1.5rem; border-radius: 1rem; border: 1px solid #cbd5e1;">
+                    <h4 style="font-size: 1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem;">
+                        <i class="fas fa-file-signature" style="color: var(--up-emerald-600); margin-right: 0.5rem;"></i> {{ doc_type_display }} Terms
+                    </h4>
+                    <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; max-height: 150px; overflow-y: auto; font-size: 0.85rem; color: #475569; margin-bottom: 1rem; line-height: 1.6;">
+                        {{ profile.terms_and_conditions | replace('\n', '<br>') | safe }}
+                    </div>
+                    
+                    <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer;">
+                        <input type="checkbox" id="termsAgreementCheckbox" name="terms_agreement" form="wizard-payment-form" required style="margin-top: 4px; width: 1.2rem; height: 1.2rem; accent-color: var(--up-emerald-600);">
+                        <span style="font-size: 0.9rem; color: #1e293b; font-weight: 600;">
+                            I have read and agree to the <strong>{{ doc_type_display }}</strong> of {{ profile.business_name }}.
+                        </span>
+                    </label>
+                </div>
+                {% else %}
+                <div style="margin-bottom: 1.5rem; background: #f8fafc; padding: 1.5rem; border-radius: 1rem; border: 1px solid #cbd5e1;">
+                    <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer;">
+                        <input type="checkbox" id="termsAgreementCheckbox" name="terms_agreement" form="wizard-payment-form" required style="margin-top: 4px; width: 1.2rem; height: 1.2rem; accent-color: var(--up-emerald-600);">
+                        <span style="font-size: 0.9rem; color: #1e293b; font-weight: 600;">
+                            I confirm this <strong>{{ doc_type_display }}</strong> and agree to proceed.
                         </span>
                     </label>
                 </div>

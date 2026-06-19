@@ -112,15 +112,18 @@
             const m = document.getElementById('inactivityModal');
             if (m) {
                 m.style.display = 'flex';
+                // Trigger reflow to animate
                 requestAnimationFrame(() => requestAnimationFrame(() => m.classList.add('active')));
             }
-            let s = 60;
+            
             const cdEl = document.getElementById('inactivityCountdown');
-            if(cdEl) cdEl.innerText = s;
+            const endTime = Date.now() + 60000;
+            
+            if(cdEl) cdEl.innerText = '60';
             
             countdown = setInterval(() => { 
-                s--;
-                if(cdEl) cdEl.innerText = s;
+                const s = Math.round((endTime - Date.now()) / 1000);
+                if(cdEl) cdEl.innerText = Math.max(0, s);
                 if (s <= 0) { 
                     clearInterval(countdown); 
                     window.location.href = '/auth/logout?reason=inactivity'; 

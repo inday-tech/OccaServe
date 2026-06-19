@@ -45,7 +45,8 @@ def master_migration():
             ("special_requests", "TEXT"),
             ("caterer_notes", "TEXT"),
             ("booking_source", "VARCHAR DEFAULT 'OccaServe'"),
-            ("commission_calculated", "BOOLEAN DEFAULT FALSE")
+            ("commission_calculated", "BOOLEAN DEFAULT FALSE"),
+            ("document_type", "VARCHAR")
         ]
         
         # Reviews Table
@@ -77,7 +78,12 @@ def master_migration():
             ("verification_code", "VARCHAR"),
             ("otp_expires_at", "TIMESTAMP WITH TIME ZONE"),
             ("reset_token", "VARCHAR"),
-            ("reset_token_expires", "TIMESTAMP WITH TIME ZONE")
+            ("reset_token_expires", "TIMESTAMP WITH TIME ZONE"),
+            ("gender", "VARCHAR"),
+            ("emergency_contact_name", "VARCHAR"),
+            ("emergency_contact_relation", "VARCHAR"),
+            ("emergency_contact_phone", "VARCHAR"),
+            ("notification_preferences", "JSONB")
         ]
 
         
@@ -112,8 +118,12 @@ def master_migration():
             ("sidebar_decoration", "VARCHAR DEFAULT 'none'"),
             ("header_decoration", "VARCHAR DEFAULT 'none'"),
             ("terms_and_conditions", "TEXT"),
+            ("general_terms", "TEXT"),
+            ("rental_policies", "TEXT"),
+            ("cancellation_policy", "TEXT"),
             ("booking_lead_time", "INTEGER DEFAULT 7"),
             ("equipment_turnover_hours", "INTEGER DEFAULT 24"),
+            ("accepted_payment_terms", "JSONB DEFAULT '[100]'"),
             ("gcash_number", "VARCHAR"),
             ("gcash_qr_url", "VARCHAR"),
             ("maya_number", "VARCHAR"),
@@ -268,6 +278,7 @@ def master_migration():
             ("customer_signature", "TEXT"),
             ("caterer_signed_at", "TIMESTAMP WITH TIME ZONE"),
             ("customer_signed_at", "TIMESTAMP WITH TIME ZONE"),
+            ("customer_approved_at", "TIMESTAMP WITH TIME ZONE"),
             ("contract_url", "VARCHAR")
         ]
         
