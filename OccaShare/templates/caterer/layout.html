@@ -283,7 +283,7 @@
             height: 36px !important;
             width: 36px !important;
             object-fit: contain !important;
-            border-radius: 6px;
+            border-radius: var(--border-radius, 6px);
         }
 
         .occ-brand-name {
@@ -300,7 +300,7 @@
             color: #64748b;
             width: 38px;
             height: 38px;
-            border-radius: 10px;
+            border-radius: var(--border-radius, 10px);
             display: flex;
             /* Always flex now that it's in sidebar */
             align-items: center;
@@ -334,7 +334,7 @@
             height: 44px;
             background: #f1f5f9;
             border: 1px solid transparent;
-            border-radius: 12px;
+            border-radius: var(--border-radius, 12px);
             padding: 0 15px 0 40px;
             font-size: 0.9rem;
             color: #1e293b;
@@ -364,7 +364,7 @@
         .header-action-btn {
             width: 44px;
             height: 44px;
-            border-radius: 12px;
+            border-radius: var(--border-radius, 12px);
             background: #fff;
             border: 1px solid #e2e8f0;
             color: #64748b;
@@ -392,7 +392,7 @@
             font-weight: 800;
             min-width: 18px;
             height: 18px;
-            border-radius: 10px;
+            border-radius: var(--border-radius, 10px);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -410,7 +410,7 @@
             gap: 10px;
             padding: 6px 12px 6px 6px;
             background: #f8fafc;
-            border-radius: 14px;
+            border-radius: var(--border-radius, 14px);
             cursor: pointer;
             transition: all 0.2s;
             border: 1px solid #e2e8f0;
@@ -424,7 +424,7 @@
         .profile-avatar {
             width: 38px;
             height: 38px;
-            border-radius: 10px;
+            border-radius: var(--border-radius, 10px);
             overflow: hidden;
             background: var(--color-neutral-100);
             flex-shrink: 0;
@@ -460,7 +460,7 @@
             right: 0;
             width: 240px;
             background: white;
-            border-radius: 16px;
+            border-radius: var(--border-radius, 16px);
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
             border: 1px solid #e2e8f0;
             padding: 8px;
@@ -517,7 +517,7 @@
             text-decoration: none;
             font-size: 0.85rem;
             font-weight: 600;
-            border-radius: 10px;
+            border-radius: var(--border-radius, 10px);
             transition: all 0.2s;
         }
 
@@ -894,7 +894,7 @@
             border: none;
             width: 28px;
             height: 28px;
-            border-radius: 8px;
+            border-radius: var(--border-radius, 8px);
             color: #64748b;
             cursor: pointer;
             display: flex;
@@ -914,7 +914,7 @@
             margin: 1rem 1rem 0.5rem;
             background: #f8fafc;
             border: 1px solid #f1f5f9;
-            border-radius: 12px;
+            border-radius: var(--border-radius, 12px);
             padding: 0.85rem 1rem;
             display: flex;
             align-items: center;
@@ -927,7 +927,7 @@
             width: 36px;
             height: 36px;
             background: var(--primary-color);
-            border-radius: 10px;
+            border-radius: var(--border-radius, 10px);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1008,7 +1008,7 @@
             align-items: center;
             gap: 12px;
             padding: 0.75rem 1rem;
-            border-radius: 10px;
+            border-radius: var(--border-radius, 10px);
             color: #64748b;
             text-decoration: none;
             font-size: 0.85rem;
@@ -1081,7 +1081,7 @@
             color: var(--secondary-color);
             cursor: pointer;
             padding: 0.5rem;
-            border-radius: 8px;
+            border-radius: var(--border-radius, 8px);
             transition: background 0.2s, color 0.2s;
             margin-right: 12px;
         }
@@ -1188,7 +1188,7 @@
     display: flex; align-items: center; gap: 0.75rem;
     background: #f1f5f9;
     border: none;
-    border-radius: 99px;
+    border-radius: var(--border-radius, 99px);
     padding: 0 1rem 0 1.25rem;
     height: 44px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1208,7 +1208,7 @@
 .search-kbd {
     display: flex; align-items: center; justify-content: center;
     padding: 3px 8px; background: #fff;
-    border-radius: 10px;
+    border-radius: var(--border-radius, 10px);
     font-family: inherit; font-size: 0.65rem; font-weight: 800; color: #64748b;
     box-shadow: 0 2px 4px rgba(0,0,0,0.03);
     white-space: nowrap;
@@ -1248,7 +1248,7 @@
     .hdr-btn.plus-btn { width: 36px !important; height: 36px !important; font-size: 1rem !important; border-radius: 10px !important; }
     
     .mobile-search-dropdown-wrap { display: block; padding: 12px; border-bottom: 1px solid #f1f5f9; }
-    .mobile-search-dropdown-wrap .header-search { display: flex !important; width: 100%; border: none; border-radius: 99px; padding: 0 1rem; height: 44px; align-items: center; gap: 8px; background: #f1f5f9; }
+    .mobile-search-dropdown-wrap .header-search { display: flex !important; width: 100%; border: none; border-radius: var(--border-radius, 99px); padding: 0 1rem; height: 44px; align-items: center; gap: 8px; background: #f1f5f9; }
     .mobile-search-dropdown-wrap .header-search input { border: none; background: transparent; width: 100%; outline: none; font-size: 0.9rem; color: #1e293b; font-weight: 500; }
 }
 @media (min-width: 769px) {
@@ -1257,7 +1257,7 @@
 
 /* QUICK ACTIONS BTN */
 .hdr-btn.plus-btn {
-    width: 42px; height: 42px; border-radius: 12px;
+    width: 42px; height: 42px; border-radius: var(--border-radius, 12px);
     background: var(--primary-color); color: #fff;
     display: flex; align-items: center; justify-content: center;
     font-size: 1.15rem; border: none; cursor: pointer; transition: all 0.2s;
@@ -1273,7 +1273,7 @@
     position: absolute; top: calc(100% + 10px); left: 0; right: 0;
     background: rgba(255, 255, 255, 0.98);
     backdrop-filter: blur(20px); border: 1px solid #e2e8f0;
-    border-radius: 18px; box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.12);
+    border-radius: var(--border-radius, 18px); box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.12);
     z-index: 1100; opacity: 0; transform: translateY(-10px);
     pointer-events: none; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     max-height: 480px; display: flex; flex-direction: column; overflow: hidden;
@@ -1284,14 +1284,14 @@
 
 .omni-result-item {
     display: flex; align-items: center; gap: 14px; padding: 12px 14px;
-    border-radius: 12px; text-decoration: none; transition: all 0.2s;
+    border-radius: var(--border-radius, 12px); text-decoration: none; transition: all 0.2s;
     margin-bottom: 4px; color: inherit; border-bottom: 1px solid #f1f5f9;
 }
 .omni-result-item:last-child { border-bottom: none; }
 .omni-result-item:hover { background: #f8fafc; }
 
 .omni-result-icon {
-    width: 42px; height: 42px; border-radius: 11px;
+    width: 42px; height: 42px; border-radius: var(--border-radius, 11px);
     display: flex; align-items: center; justify-content: center;
     font-size: 1.1rem; flex-shrink: 0;
     background: #f1f5f9; color: #64748b;
@@ -1302,7 +1302,7 @@
 .omni-result-title { font-size: 0.88rem; font-weight: 700; color: #1e293b; margin: 0; }
 .omni-type-tag {
     font-size: 0.6rem; font-weight: 800; text-transform: uppercase;
-    padding: 3px 8px; border-radius: 6px; letter-spacing: 0.05em;
+    padding: 3px 8px; border-radius: var(--border-radius, 6px); letter-spacing: 0.05em;
     background: #f1f5f9; color: #475569;
 }
 .omni-result-subtitle { font-size: 0.75rem; color: #64748b; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1345,7 +1345,7 @@
                 <div class="admin-avatar">
                     {% if user and user.caterer_profile and user.caterer_profile.logo_url %}
                     <img src="{{ '/' ~ user.caterer_profile.logo_url if not user.caterer_profile.logo_url.startswith('http') and not user.caterer_profile.logo_url.startswith('/') and not user.caterer_profile.logo_url.startswith('data:') else user.caterer_profile.logo_url }}"
-                        alt="Logo" style="width: 100%; height: 100%; object-fit: cover; border-radius: 10px;"
+                        alt="Logo" style="width: 100%; height: 100%; object-fit: cover; border-radius: var(--border-radius, 10px);"
                         onerror="this.style.display='none'; this.parentElement.textContent='{{ user.first_name[0]|upper }}'">
                     {% else %}
                     {{ user.first_name[0]|upper }}
@@ -1624,17 +1624,17 @@
                                 <div class="dropdown-header" style="padding: 12px 16px; font-weight: 700; color: #64748b; font-size: 0.75rem; text-transform: uppercase;">Quick Commands</div>
                                 <ul class="dropdown-links" style="list-style: none; margin: 0; padding: 8px;">
                                     <li>
-                                        <a href="/caterer/menu" style="display: flex; align-items: center; gap: 12px; padding: 10px; color: #1e293b; text-decoration: none; border-radius: 8px; transition: background 0.2s;">
+                                        <a href="/caterer/menu" style="display: flex; align-items: center; gap: 12px; padding: 10px; color: #1e293b; text-decoration: none; border-radius: var(--border-radius, 8px); transition: background 0.2s;">
                                             <i class="fas fa-plus-circle" style="color: var(--primary-color);"></i> Add Menu Item
                                         </a>
                                     </li>
                                     <li>
-                                        <a href="/caterer/packages" style="display: flex; align-items: center; gap: 12px; padding: 10px; color: #1e293b; text-decoration: none; border-radius: 8px; transition: background 0.2s;">
+                                        <a href="/caterer/packages" style="display: flex; align-items: center; gap: 12px; padding: 10px; color: #1e293b; text-decoration: none; border-radius: var(--border-radius, 8px); transition: background 0.2s;">
                                             <i class="fas fa-box-open" style="color: var(--accent-color);"></i> Create Package
                                         </a>
                                     </li>
                                     <li>
-                                        <a href="/caterer/calendar" style="display: flex; align-items: center; gap: 12px; padding: 10px; color: #1e293b; text-decoration: none; border-radius: 8px; transition: background 0.2s;">
+                                        <a href="/caterer/calendar" style="display: flex; align-items: center; gap: 12px; padding: 10px; color: #1e293b; text-decoration: none; border-radius: var(--border-radius, 8px); transition: background 0.2s;">
                                             <i class="fas fa-calendar-plus" style="color: var(--highlight-color);"></i> New Manual Booking
                                         </a>
                                     </li>
@@ -1661,7 +1661,7 @@
                                         <p class="dropdown-user-name"
                                             style="margin: 0; font-size: 1rem; color: #0f172a;">Notifications</p>
                                         <span id="dropdown-notif-badge"
-                                            style="background: #ef4444; color: white; font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; font-weight: 800; display: {{ 'inline-block' if unread_count > 0 else 'none' }};">{{
+                                            style="background: #ef4444; color: white; font-size: 0.65rem; padding: 2px 6px; border-radius: var(--border-radius, 10px); font-weight: 800; display: {{ 'inline-block' if unread_count > 0 else 'none' }};">{{
                                             unread_count }} NEW</span>
                                     </div>
                                     <button type="button"
@@ -2034,7 +2034,7 @@
 
                     const modalHTML = `
                         <div id="globalUrgentModal" class="occ-modal-overlay" onclick="event.stopPropagation();">
-                            <div class="occ-modal-box sz-sm occ-content-zoom-in" style="border: 2px solid #ef4444; box-shadow: 0 10px 25px -5px rgba(239, 68, 68, 0.5); background: white; border-radius: 16px; width: 90%; max-width: 450px; overflow: hidden;" onclick="event.stopPropagation();">
+                            <div class="occ-modal-box sz-sm occ-content-zoom-in" style="border: 2px solid #ef4444; box-shadow: 0 10px 25px -5px rgba(239, 68, 68, 0.5); background: white; border-radius: var(--border-radius, 16px); width: 90%; max-width: 450px; overflow: hidden;" onclick="event.stopPropagation();">
                                 <div class="occ-modal-header" style="background: #fef2f2; border-bottom: 1px solid #fee2e2; padding: 1.5rem; text-align: center;">
                                     <h2 class="occ-modal-title" style="color:#ef4444; margin:0; font-size:1.25rem;"><i class="fas fa-exclamation-triangle"></i> Critical Action Required</h2>
                                 </div>
@@ -2049,7 +2049,7 @@
                                     </p>
                                 </div>
                                 <div class="occ-modal-footer" style="padding: 1.5rem; background: #fafafa; border-top: 1px solid #f1f5f9; display: flex; justify-content: center;">
-                                    <button type="button" onclick="window.location.href='/caterer/bookings'" class="btn-primary-pro" style="background:#ef4444 !important; width: 100%; border: none; padding: 0.75rem; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                                    <button type="button" onclick="window.location.href='/caterer/bookings'" class="btn-primary-pro" style="background:#ef4444 !important; width: 100%; border: none; padding: 0.75rem; border-radius: var(--border-radius, 8px); color: white; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
                                         Go to Bookings Page
                                     </button>
                                 </div>
@@ -2112,49 +2112,41 @@
 
     <!-- Global Standard Confirmation/Prompt Modal -->
     <div id="globalConfirmModal" class="occ-modal-overlay" style="display: none; z-index: 99999;">
-        <div class="occ-modal-box sz-sm occ-content-pop" style="font-family: 'Poppins', sans-serif; border-radius: 12px; overflow: hidden; max-width: 450px; width: 100%;">
-            <div class="occ-modal-header" id="gcmHeader" style="background: #ef4444; padding: 1.5rem; color: white !important; display: flex; justify-content: space-between; align-items: flex-start;">
-                <div>
-                    <h3 class="occ-modal-title" id="gcmTitle" style="margin: 0; font-size: 1.25rem; font-weight: 700; color: white !important;">Confirm Action</h3>
-                    <div class="occ-modal-subtitle" id="gcmSubtitle" style="font-size: 0.85rem; opacity: 0.9; margin-top: 0.25rem; color: white !important;">Please confirm your action.</div>
+        <div class="occ-modal-box occ-modal-prompt" style="max-width: 450px;">
+            <div style="padding: 3rem 2rem; text-align: center;">
+                <div class="occ-modal-icon-box" id="gcmIconBox" style="background: #fef2f2; color: #ef4444; box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.2);">
+                    <i class="fas fa-exclamation-triangle" id="gcmIcon"></i>
                 </div>
-                <button onclick="document.getElementById('globalConfirmModal').style.display='none'" class="occ-modal-close" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer;">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="compact-body" style="padding: 1.5rem; background: white;">
-                <div id="gcmAlertBox" style="display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1rem; padding: 1rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;">
-                    <div id="gcmIcon" style="color: #ef4444; font-size: 1.5rem;"><i class="fas fa-exclamation-triangle"></i></div>
-                    <div>
-                        <p style="margin: 0; color: #7f1d1d; font-size: 0.9rem;" id="gcmMessage">
-                            Are you sure you want to proceed?
-                        </p>
-                    </div>
-                </div>
-                <p id="gcmHint" style="font-size: 0.8rem; color: #64748b; line-height: 1.5; margin: 0; display: none;"></p>
+                <h3 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 0.75rem;" id="gcmTitle">Confirm Action</h3>
+                <p style="font-size: 0.9rem; color: #64748b; font-weight: 500; line-height: 1.6; margin-bottom: 2rem;" id="gcmMessage">Are you sure you want to proceed?</p>
                 
-                <div id="gcmInputContainer" style="display: none; margin-top: 1rem;">
+                <p id="gcmHint" style="font-size: 0.8rem; color: #94a3b8; line-height: 1.5; margin-bottom: 1.5rem; display: none;"></p>
+                
+                <div id="gcmInputContainer" style="display: none; margin-bottom: 1.5rem; text-align: left;">
                     <label id="gcmInputLabel" style="font-size: 0.8rem; font-weight: 700; color: #475569; display: block; margin-bottom: 0.5rem;"></label>
-                    <input type="text" id="gcmInput" class="form-control" style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 8px; font-family: 'Poppins', sans-serif;">
+                    <input type="text" id="gcmInput" class="form-control" style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: var(--border-radius, 8px); font-family: 'Poppins', sans-serif;">
                 </div>
-            </div>
-            <div class="occ-modal-footer" style="padding: 1.25rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
-                <button type="button" class="btn-secondary" id="gcmCancelBtn" onclick="document.getElementById('globalConfirmModal').style.display='none'" style="background: white; border: 2px solid var(--primary-color); color: var(--primary-color); padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 700; cursor: pointer; font-family: 'Poppins', sans-serif;">Cancel</button>
-                <button type="button" class="btn-primary" id="gcmConfirmBtn" style="background: #0f172a; border-color: #0f172a; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 700; font-family: 'Poppins', sans-serif;">Confirm</button>
+                
+                <div style="display: flex; gap: 12px; justify-content: center;">
+                    <button type="button" class="occ-modal-btn-outline" style="flex: 1;" id="gcmCancelBtn" onclick="document.getElementById('globalConfirmModal').classList.remove('active')">Cancel</button>
+                    <button type="button" class="occ-modal-btn-primary" style="flex: 1; background: #ef4444;" id="gcmConfirmBtn">Confirm</button>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Inactivity Auto-Logout Modal -->
-    <div id="inactivityModal" class="occ-modal-overlay" style="display:none; z-index: 99999;">
-        <div class="occ-modal-box sz-sm" style="max-width: 400px; text-align: center; border-radius: 20px;">
-            <div class="occ-modal-body" style="padding: 3rem 2rem;">
-                <div style="width: 80px; height: 80px; background: #fffbeb; color: #f59e0b; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin: 0 auto 1.5rem; box-shadow: 0 10px 20px rgba(245, 158, 11, 0.1);">
+    <div id="inactivityModal" class="occ-modal-overlay" style="display: none; z-index: 99999;">
+        <div class="occ-modal-box occ-modal-prompt" style="max-width: 450px;">
+            <div style="padding: 3rem 2rem; text-align: center;">
+                <div class="occ-modal-icon-box" style="background: #fffbeb; color: #f59e0b; box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.2);">
                     <i class="fas fa-hourglass-half fa-spin-pulse" style="--fa-animation-duration: 2s;"></i>
                 </div>
-                <h3 style="font-weight: 900; color: #0f172a; margin-bottom: 0.5rem; letter-spacing: -0.02em; font-size: 1.5rem;">Session Security</h3>
-                <p style="font-size: 0.95rem; color: #64748b; margin-bottom: 2rem; line-height: 1.6;">You've been inactive for a while. You'll be logged out in <strong style="color: #ef4444;"><span id="inactivityCountdown">60</span> seconds</strong> to protect your account.</p>
-                <button id="stayLoggedInBtn" class="btn-primary" style="width: 100%; height: 50px; border-radius: 12px; font-size: 1rem;">Keep Me Logged In</button>
+                <h3 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 0.75rem;">Session Security</h3>
+                <p style="font-size: 0.9rem; color: #64748b; font-weight: 500; line-height: 1.6; margin-bottom: 2rem;">You've been inactive for a while. You'll be logged out in <strong style="color: #ef4444;"><span id="inactivityCountdown">60</span> seconds</strong> to protect your account.</p>
+                <div style="display: flex; gap: 12px; justify-content: center;">
+                    <button id="stayLoggedInBtn" class="occ-modal-btn-primary" style="width: 100%;">Keep Me Logged In</button>
+                </div>
             </div>
         </div>
     </div>
@@ -2162,29 +2154,41 @@
 
     <!-- Custom Universal Logout Modal -->
     <style>
-        .univ-modal-overlay {
-            position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(4px); z-index: 99999;
-            display: none; align-items: center; justify-content: center; padding: 1rem;
+        
+        .occ-modal-icon-box {
+            width: 80px; height: 80px; 
+            border-radius: calc(var(--border-radius, 1.5rem) * 0.8);
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 2.5rem; margin: 0 auto 1.5rem; 
         }
-        .univ-modal-overlay.active { display: flex; animation: fadeIn 0.2s ease-out; }
-        .univ-modal-card {
-            background: #fff; width: 100%; max-width: 450px; border-radius: 1.5rem;
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); overflow: hidden;
-            display: flex; flex-direction: column; text-align: center;
+
+        .occ-modal-btn-primary {
+            background: var(--primary-color, #f97316); 
+            color: white; border: none; font-weight: 800; 
+            padding: 0.75rem 1.5rem; border-radius: calc(var(--border-radius, 1rem) * 0.75); 
+            cursor: pointer; font-size: 0.9rem;
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        
+        .occ-modal-btn-outline {
+            background: white; border: 1px solid #e2e8f0; color: #0f172a; font-weight: 700; 
+            padding: 0.75rem 1.5rem; border-radius: calc(var(--border-radius, 1rem) * 0.75); 
+            cursor: pointer; font-size: 0.9rem;
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
         }
     </style>
-    <div id="univLogoutModal" class="univ-modal-overlay">
-        <div class="univ-modal-card">
-            <div style="padding: 3rem 2rem;">
-                <div id="univLogoutIconBox" style="width: 80px; height: 80px; background: #fff7ed; color: #f97316; border-radius: 24px; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin: 0 auto 1.5rem; box-shadow: 0 10px 15px -3px rgba(249, 115, 22, 0.2);">
+    <div id="univLogoutModal" class="occ-modal-overlay" style="display: none; z-index: 99999;">
+        <!-- Always strictly 24px/1.5rem for universal logout as requested by user -->
+        <div class="occ-modal-box occ-modal-prompt" style="max-width: 450px; border-radius: 1.5rem;">
+            <div style="padding: 3rem 2rem; text-align: center;">
+                <div class="occ-modal-icon-box" style="background: #fff7ed; color: #f97316; box-shadow: 0 10px 15px -3px rgba(249, 115, 22, 0.2); border-radius: var(--border-radius, 1.2rem);">
                     <i class="fas fa-exclamation-triangle"></i>
                 </div>
                 <h3 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 0.75rem;">Log Out?</h3>
                 <p style="font-size: 0.9rem; color: #64748b; font-weight: 500; line-height: 1.6; margin-bottom: 2rem;">Are you sure you want to securely end your session?</p>
                 <div style="display: flex; gap: 12px; justify-content: center;">
-                    <button type="button" style="background: white; border: 1px solid #e2e8f0; color: #0f172a; font-weight: 700; flex: 1; padding: 0.75rem; border-radius: 12px; cursor: pointer; font-size: 0.9rem;" onclick="closeUnivLogoutModal()">No, Abort</button>
-                    <button style="background: #f97316; color: white; border: none; font-weight: 800; flex: 1; padding: 0.75rem; border-radius: 12px; cursor: pointer; font-size: 0.9rem;" onclick="window.location.href='/auth/logout'">Yes, Continue</button>
+                    <button type="button" class="occ-modal-btn-outline" style="flex: 1; border-radius: 12px;" onclick="closeUnivLogoutModal()">No, Abort</button>
+                    <button class="occ-modal-btn-primary" style="flex: 1; background: #f97316; border-radius: 12px;" onclick="window.location.href='/auth/logout'">Yes, Continue</button>
                 </div>
             </div>
         </div>
@@ -2192,10 +2196,12 @@
     <script>
         function confirmLogout(e) {
             if(e) e.preventDefault();
-            document.getElementById('univLogoutModal').classList.add('active');
+            document.getElementById('univLogoutModal').style.display = 'flex';
+            setTimeout(() => document.getElementById('univLogoutModal').classList.add('active'), 10);
         }
         function closeUnivLogoutModal() {
             document.getElementById('univLogoutModal').classList.remove('active');
+            setTimeout(() => document.getElementById('univLogoutModal').style.display = 'none', 300);
         }
     </script>
 

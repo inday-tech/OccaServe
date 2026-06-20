@@ -157,7 +157,7 @@
                                     <i class="fas fa-search" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none;z-index:2;"></i>
                                     <input type="text" id="mapSearchInput" placeholder="Search barangay, street, or landmark..." autocomplete="off" style="padding-left:38px;width:100%;">
                                 </div>
-                                <button type="button" id="gpsLocateBtn" style="background:var(--primary-color,#800000);color:#fff;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;font-size:0.85rem;white-space:nowrap;display:flex;align-items:center;gap:6px;" title="Use GPS to pin your exact location">
+                                <button type="button" id="gpsLocateBtn" style="background:var(--primary-color,#800000);color:#fff;border:none;padding:10px 16px;border-radius: var(--border-radius, 8px);cursor:pointer;font-size:0.85rem;white-space:nowrap;display:flex;align-items:center;gap:6px;" title="Use GPS to pin your exact location">
                                     <i class="fas fa-crosshairs"></i> Use My Location
                                 </button>
                             </div>
@@ -181,7 +181,7 @@
                     <div class="form-row-two-col">
                         <div class="form-group">
                             <label><i class="fas fa-flag"></i> Province</label>
-                            <select id="locationProvince" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:8px;">
+                            <select id="locationProvince" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: var(--border-radius, 8px);">
                                 <option value="">Select Province</option>
                             </select>
                             <input type="hidden" name="province_code" id="provinceCodeHidden" value="{{ profile.province_code or '' }}">
@@ -190,7 +190,7 @@
                         </div>
                         <div class="form-group">
                             <label><i class="fas fa-city"></i> Municipality / City</label>
-                            <select id="locationMunicipality" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:8px;" disabled>
+                            <select id="locationMunicipality" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: var(--border-radius, 8px);" disabled>
                                 <option value="">Select Municipality</option>
                             </select>
                             <input type="hidden" name="city_code" id="cityCodeHidden" value="{{ profile.city_code or '' }}">
@@ -201,7 +201,7 @@
                     <div class="form-row-two-col">
                         <div class="form-group">
                             <label><i class="fas fa-map-pin"></i> Barangay</label>
-                            <select id="locationBarangay" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:8px;" disabled>
+                            <select id="locationBarangay" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: var(--border-radius, 8px);" disabled>
                                 <option value="">Select Barangay</option>
                             </select>
                             <input type="hidden" name="brgy_code" id="brgyCodeHidden" value="{{ profile.brgy_code or '' }}">
@@ -395,7 +395,7 @@
                                     <p>{{ 'Your business is currently hidden. Reactivate to be visible again.' if profile.account_status == 'Deactivated' else 'Temporarily hide your business from customers. You can reactivate anytime.' }}</p>
                                 </div>
                                 {% if profile.account_status == 'Deactivated' %}
-                                <button type="button" id="btnReactivate" class="btn-primary" style="background:#10b981; border:none; padding:10px 16px; color:white; border-radius:8px; pointer-events: auto !important; position: relative; z-index: 99;">
+                                <button type="button" id="btnReactivate" class="btn-primary" style="background:#10b981; border:none; padding:10px 16px; color:white; border-radius: var(--border-radius, 8px); pointer-events: auto !important; position: relative; z-index: 99;">
                                     <i class="fas fa-eye"></i> Reactivate
                                 </button>
                                 {% else %}
@@ -835,12 +835,18 @@
                 <div class="occ-form-grid">
                     <div class="occ-form-group full-width">
                         <label class="occ-form-label">Current Password</label>
-                        <input type="password" name="current_password" class="occ-form-input" required placeholder="Enter current password">
+                        <div style="position: relative;">
+                            <input type="password" name="current_password" id="current_password" class="occ-form-input" required placeholder="Enter current password" style="padding-right: 40px;">
+                            <i class="far fa-eye" onclick="togglePasswordVisibility('current_password', this)" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8; padding: 5px;"></i>
+                        </div>
                     </div>
                     
                     <div class="occ-form-group full-width">
                         <label class="occ-form-label">New Password</label>
-                        <input type="password" name="new_password" id="new_password" class="occ-form-input" required placeholder="Min 8 characters" minlength="8">
+                        <div style="position: relative;">
+                            <input type="password" name="new_password" id="new_password" class="occ-form-input" required placeholder="Min 8 characters" minlength="8" style="padding-right: 40px;">
+                            <i class="far fa-eye" onclick="togglePasswordVisibility('new_password', this)" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8; padding: 5px;"></i>
+                        </div>
                         <div class="password-requirements" style="margin-top: 8px; font-size: 0.7rem; display: flex; flex-direction: column; gap: 4px;">
                             <div id="req-length" class="req-item" style="color: #64748b; font-weight: 500;"><i class="fas fa-circle" style="font-size: 0.5rem; vertical-align: middle; margin-right: 6px;"></i> Minimum 8 characters</div>
                             <div id="req-different" class="req-item" style="color: #64748b; font-weight: 500;"><i class="fas fa-circle" style="font-size: 0.5rem; vertical-align: middle; margin-right: 6px;"></i> Must be different from current</div>
@@ -851,7 +857,10 @@
                     
                     <div class="occ-form-group full-width">
                         <label class="occ-form-label">Confirm New Password</label>
-                        <input type="password" name="confirm_password" id="confirm_password" class="occ-form-input" required placeholder="Retype new password">
+                        <div style="position: relative;">
+                            <input type="password" name="confirm_password" id="confirm_password" class="occ-form-input" required placeholder="Retype new password" style="padding-right: 40px;">
+                            <i class="far fa-eye" onclick="togglePasswordVisibility('confirm_password', this)" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8; padding: 5px;"></i>
+                        </div>
                         <div id="passwordMatchStatus" style="font-size: 0.7rem; height: 18px; margin-top: 5px; display: flex; align-items: center; gap: 6px; font-weight: 600;">
                             <i id="matchIndicatorIcon"></i>
                             <span id="matchIndicatorText"></span>
@@ -896,6 +905,19 @@ window.openProfilePreviewModal = function(profileId) {
     document.getElementById('previewLoader').style.display = 'flex';
     document.getElementById('profilePreviewIframe').src = '/caterers/' + profileId + '?preview=true';
     window.openModal('profilePreviewModal');
+};
+
+window.togglePasswordVisibility = function(inputId, icon) {
+    const input = document.getElementById(inputId);
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
 };
 </script>
 
@@ -1006,12 +1028,14 @@ async function handlePasswordChange(event) {
     }
     
     if (newPass !== confPass) {
-        window.showError('Passwords do not match.');
+        if (typeof Swal !== 'undefined') Swal.fire('Error', 'Passwords do not match.', 'error');
+        else window.showError('Passwords do not match.');
         return;
     }
 
     if (newPass === currentPass) {
-        window.showError('New password must be different from your current password.');
+        if (typeof Swal !== 'undefined') Swal.fire('Error', 'New password must be different from your current password.', 'error');
+        else window.showError('New password must be different from your current password.');
         return;
     }
 
@@ -1030,15 +1054,27 @@ async function handlePasswordChange(event) {
         const result = await response.json();
         
         if (result.success) {
-            window.showSuccess('Password updated successfully!');
+            if (typeof Swal !== 'undefined') {
+                Swal.fire('Success', 'Password updated successfully!', 'success');
+            } else {
+                window.showSuccess('Password updated successfully!');
+            }
             window.closePasswordModal();
             form.reset();
         } else {
-            window.showError(result.message || 'Failed to update password.');
+            if (typeof Swal !== 'undefined') {
+                Swal.fire('Error', result.message || 'Failed to update password.', 'error');
+            } else {
+                window.showError(result.message || 'Failed to update password.');
+            }
         }
     } catch (error) {
         console.error('Error:', error);
-        window.showError('An error occurred. Please try again.');
+        if (typeof Swal !== 'undefined') {
+            Swal.fire('System Error', 'An error occurred while changing password.', 'error');
+        } else {
+            window.showError('An error occurred. Please try again.');
+        }
     } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;

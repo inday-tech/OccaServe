@@ -86,7 +86,7 @@ body, input, select, textarea, button, h1, h2, h3, h4, p, span {
 .badge-subtle {
     background: #f1f5f9;
     padding: 4px 8px;
-    border-radius: 6px;
+    border-radius: var(--border-radius, 6px);
     font-family: monospace;
     font-weight: 700;
     color: #64748b;
@@ -114,7 +114,7 @@ body, input, select, textarea, button, h1, h2, h3, h4, p, span {
 
 .badge-pro {
     padding: 4px 10px;
-    border-radius: 20px;
+    border-radius: var(--border-radius, 20px);
     font-size: 0.75rem;
     font-weight: 700;
     display: inline-block;

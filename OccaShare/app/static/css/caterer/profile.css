@@ -74,7 +74,7 @@ body {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.2);
     padding: 0.5rem 1.2rem;
-    border-radius: 50px;
+    border-radius: var(--border-radius, 50px);
     font-size: var(--text-sm);
     font-weight: 600;
     display: flex;
@@ -121,7 +121,7 @@ body {
     width: 50px;
     height: 4px;
     background: var(--profile-primary);
-    border-radius: 2px;
+    border-radius: var(--border-radius, 2px);
 }
 
 /* Stats Cards */
@@ -215,7 +215,7 @@ body {
     background: var(--profile-primary);
     color: #fff;
     padding: 0.6rem 1.5rem;
-    border-radius: 50px;
+    border-radius: var(--border-radius, 50px);
     font-weight: 800;
     box-shadow: 0 10px 20px rgba(255, 123, 84, 0.3);
     font-size: var(--text-lg);
@@ -258,7 +258,7 @@ body {
     background: var(--profile-primary);
     color: #fff;
     padding: 1.1rem 2rem;
-    border-radius: 50px;
+    border-radius: var(--border-radius, 50px);
     font-weight: 700;
     font-size: var(--text-lg);
     display: inline-flex;
@@ -283,7 +283,7 @@ body {
     color: var(--profile-secondary);
     border: 1px solid var(--profile-border);
     padding: 1.1rem 2rem;
-    border-radius: 50px;
+    border-radius: var(--border-radius, 50px);
     font-weight: 700;
     font-size: var(--text-lg);
     transition: var(--profile-trans);

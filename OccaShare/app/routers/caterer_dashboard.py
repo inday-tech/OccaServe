@@ -911,19 +911,19 @@ async def caterer_dashboard(
     # Next Recommended Action Logic
     next_action = None
     if not is_identity_verified:
-        next_action = {"title": "Verify Business Identity", "desc": "Upload your valid ID to verify your catering business.", "url": "/caterer/profile#tab-verification", "btn": "Verify Now"}
+        next_action = {"title": "Verify Business Identity", "desc": "Upload your valid ID to verify your catering business.", "url": "/caterer/profile#account", "btn": "Verify Now"}
     elif not has_description:
-        next_action = {"title": "Add Business Description", "desc": "Tell customers about your catering services and specialties.", "url": "/caterer/profile", "btn": "Add Description"}
+        next_action = {"title": "Add Business Description", "desc": "Tell customers about your catering services and specialties.", "url": "/caterer/profile#general", "btn": "Add Description"}
     elif not has_permit:
-        next_action = {"title": "Upload Business Permit", "desc": "Upload your permit to increase your trust rating.", "url": "/caterer/profile#tab-account", "btn": "Upload Permit"}
+        next_action = {"title": "Upload Business Permit", "desc": "Upload your permit to increase your trust rating.", "url": "/caterer/profile#account", "btn": "Upload Permit"}
     elif not has_logo:
-        next_action = {"title": "Upload Business Logo", "desc": "Make your profile stand out with a professional logo.", "url": "/caterer/profile", "btn": "Upload Logo"}
+        next_action = {"title": "Upload Business Logo", "desc": "Make your profile stand out with a professional logo.", "url": "/caterer/profile#general", "btn": "Upload Logo"}
     elif not has_cover:
-        next_action = {"title": "Upload Cover Image", "desc": "Add a beautiful banner image to attract customers.", "url": "/caterer/profile", "btn": "Upload Cover"}
+        next_action = {"title": "Upload Cover Image", "desc": "Add a beautiful banner image to attract customers.", "url": "/caterer/profile#general", "btn": "Upload Cover"}
     elif not has_menu:
         next_action = {"title": "Create Sample Menu", "desc": "Add at least one menu item that customers can choose from.", "url": "/caterer/menu", "btn": "Add Menu Item"}
     elif not has_photos:
-        next_action = {"title": "Upload Food Photos", "desc": "Upload at least 3 photos of your food or setup to showcase your work.", "url": "/caterer/gallery", "btn": "Upload Photos"}
+        next_action = {"title": "Upload Food Photos", "desc": "Upload at least 3 photos of your food or setup to showcase your work.", "url": "/caterer/profile#general", "btn": "Upload Photos"}
     elif not has_packages:
         next_action = {"title": "Create First Package", "desc": "Create at least one catering package for customers to book.", "url": "/caterer/packages", "btn": "Create Package"}
     elif profile.status == 'Draft' or profile.status == 'Identity Verified':

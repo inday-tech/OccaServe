@@ -73,7 +73,17 @@
             </div>
             <div class="user-identity">
                 <span class="user-name">{{ user.first_name }} {{ user.last_name }}</span>
+                {% set total_bookings = user.bookings|list|count if user and user.bookings else 0 %}
+                {% set completed_b = user.bookings|selectattr('status', 'equalto', 'completed')|list|count if user and user.bookings else 0 %}
+                {% if completed_b >= 5 %}
+                <span class="user-rank" style="color: #8b5cf6;"><i class="fas fa-crown"></i> Elite Customer</span>
+                {% elif completed_b >= 1 %}
+                <span class="user-rank" style="color: #f59e0b;"><i class="fas fa-star"></i> Loyal Customer</span>
+                {% elif total_bookings == 0 %}
+                <span class="user-rank" style="color: #3b82f6;"><i class="fas fa-sparkles"></i> New Customer</span>
+                {% else %}
                 <span class="user-rank"><i class="fas fa-circle-check"></i> Active Customer</span>
+                {% endif %}
             </div>
         </div>
 

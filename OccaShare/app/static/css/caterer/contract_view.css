@@ -44,7 +44,7 @@
 
 .btn-print-contract {
     padding: 0.75rem 2rem;
-    border-radius: 0.5rem;
+    border-radius: var(--border-radius, 0.5rem);
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -71,7 +71,7 @@
         min-height: auto;
         box-shadow: none;
         border: none;
-        border-radius: 0;
+        border-radius: var(--border-radius, 0);
     }
     
     .contract-parties-layout {
@@ -112,7 +112,7 @@
     letter-spacing: -0.5px;
     background: #f1f5f9;
     padding: 0.5rem 1rem;
-    border-radius: 8px;
+    border-radius: var(--border-radius, 8px);
 }
 
 .header-main-title {
@@ -140,7 +140,7 @@
     text-align: right;
     background: #f8fafc;
     padding: 0.75rem 1.25rem;
-    border-radius: 12px;
+    border-radius: var(--border-radius, 12px);
     border: 1px solid #e2e8f0;
 }
 
@@ -170,7 +170,7 @@
     flex: 1;
     background: #fff;
     border: 1px solid #e2e8f0;
-    border-radius: 12px;
+    border-radius: var(--border-radius, 12px);
     padding: 1.5rem;
     position: relative;
     box-shadow: 0 2px 4px rgba(0,0,0,0.02);
@@ -185,7 +185,7 @@
     font-size: var(--text-xs);
     font-weight: 800;
     padding: 0.2rem 0.8rem;
-    border-radius: 4px;
+    border-radius: var(--border-radius, 4px);
     letter-spacing: 1px;
 }
 
@@ -241,7 +241,7 @@
     background: #1e293b;
     color: white;
     padding: 0.25rem 0.75rem;
-    border-radius: 6px;
+    border-radius: var(--border-radius, 6px);
     font-weight: 700;
     font-size: var(--text-xs);
     margin-left: 0.5rem;
@@ -432,7 +432,7 @@
     padding: 30px;
     background: #f8fafc;
     border: 1px solid #e2e8f0;
-    border-radius: 12px;
+    border-radius: var(--border-radius, 12px);
 }
 
 .signatures-header-text {

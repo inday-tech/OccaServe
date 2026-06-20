@@ -88,7 +88,7 @@
         background: rgba(255, 255, 255, 0.9);
         border: 1px solid var(--caterer-primary);
         border-left: 4px solid var(--caterer-primary);
-        border-radius: 8px;
+        border-radius: var(--border-radius, 8px);
         padding: 1rem 1.25rem;
         margin-top: 1.25rem;
         display: flex;
@@ -122,7 +122,7 @@
         background: rgba(var(--primary-color-rgb), 0.08);
         color: var(--caterer-primary);
         padding: 6px 12px;
-        border-radius: 6px;
+        border-radius: var(--border-radius, 6px);
         font-weight: 700;
         font-size: 0.85rem;
         width: max-content;
@@ -220,7 +220,7 @@
         flex-direction: column;
         background: #f8fafc;
         border: 1px solid #e2e8f0;
-        border-radius: 12px;
+        border-radius: var(--border-radius, 12px);
         overflow: hidden;
     }
 
@@ -340,7 +340,7 @@
         <div id="mobileDayEvents" class="mobile-day-events" style="display: none; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <h3 id="mobileDayTitle" style="font-size: 1.1rem; font-weight: 800; color: #1e293b;">Events</h3>
-                <button onclick="openManualBookingModal()" class="btn-primary-pro" style="padding: 4px 12px; font-size: 0.8rem; border-radius: 6px;">+ New</button>
+                <button onclick="openManualBookingModal()" class="btn-primary-pro" style="padding: 4px 12px; font-size: 0.8rem; border-radius: var(--border-radius, 6px);">+ New</button>
             </div>
             <div id="mobileDayList" style="display: flex; flex-direction: column; gap: 0.75rem;">
                 <!-- Events populated here -->
@@ -371,7 +371,7 @@
                     </div>
 
                     <div id="availabilityStatusBox"
-                        style="display: none; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.85rem; font-weight: 600; border: 1px solid;">
+                        style="display: none; padding: 1rem; border-radius: var(--border-radius, 8px); margin-bottom: 1rem; font-size: 0.85rem; font-weight: 600; border: 1px solid;">
                         <i id="availabilityStatusIcon" class="fas" style="margin-right: 8px;"></i>
                         <span id="availabilityStatusText">Checking status...</span>
                     </div>
@@ -563,7 +563,7 @@
                 </div>
 
                 <!-- Inline Error Banner for Backend Errors -->
-                <div id="manualBookingFormError" style="display: none; background: #fef2f2; border: 1px solid #fecaca; color: #ef4444; padding: 12px 16px; border-radius: 8px; margin-bottom: 1.5rem; font-weight: 600; font-size: 0.9rem; align-items: center; gap: 8px;">
+                <div id="manualBookingFormError" style="display: none; background: #fef2f2; border: 1px solid #fecaca; color: #ef4444; padding: 12px 16px; border-radius: var(--border-radius, 8px); margin-bottom: 1.5rem; font-weight: 600; font-size: 0.9rem; align-items: center; gap: 8px;">
                 </div>
 
                 <!-- CLIENT INFORMATION SECTION -->
@@ -807,11 +807,11 @@
         </div>
         <div class="compact-body">
             <div class="cal-roi-grid">
-                <div style="background: #eff6ff; padding: 1.25rem; border-radius: 12px; border: 1px solid #bfdbfe;">
+                <div style="background: #eff6ff; padding: 1.25rem; border-radius: var(--border-radius, 12px); border: 1px solid #bfdbfe;">
                     <span style="font-size: 0.75rem; font-weight: 800; color: #1e40af; text-transform: uppercase; letter-spacing: 0.05em;">Total Food Cost</span>
                     <div id="breakdownTotalCost" style="font-size: 1.75rem; font-weight: 900; color: #1e40af; margin-top: 8px;">₱0.00</div>
                 </div>
-                <div style="background: #ecfdf5; padding: 1.25rem; border-radius: 12px; border: 1px solid #bbf7d0;">
+                <div style="background: #ecfdf5; padding: 1.25rem; border-radius: var(--border-radius, 12px); border: 1px solid #bbf7d0;">
                     <span style="font-size: 0.75rem; font-weight: 800; color: #15803d; text-transform: uppercase; letter-spacing: 0.05em;">Net Profit</span>
                     <div id="breakdownRoi" style="font-size: 1.75rem; font-weight: 900; color: #15803d; margin-top: 8px;">₱0.00</div>
                 </div>
@@ -849,7 +849,7 @@
                     class="fas fa-times"></i></button>
         </div>
         <div class="compact-body">
-            <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 1.25rem; border-radius: 10px;">
+            <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 1.25rem; border-radius: var(--border-radius, 10px);">
                 <div
                     style="font-size: 0.75rem; font-weight: 700; color: #ef4444; text-transform: uppercase; margin-bottom: 0.5rem;">
                     Reason for Block</div>

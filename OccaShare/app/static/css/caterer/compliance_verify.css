@@ -301,7 +301,7 @@
     font-size: var(--text-xs);
     font-weight: 800;
     padding: 2px 6px;
-    border-radius: 4px;
+    border-radius: var(--border-radius, 4px);
 }
 
 /* Actions */

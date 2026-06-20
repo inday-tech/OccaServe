@@ -55,7 +55,7 @@
     gap: 0.5rem;
     padding: 0.6rem 1.25rem;
     border: 1px solid #e2e8f0;
-    border-radius: 0.75rem;
+    border-radius: var(--border-radius, 0.75rem);
     background: #ffffff;
     color: var(--secondary-color);
     font-size: var(--text-sm);
@@ -90,7 +90,7 @@
     gap: 0.5rem;
     padding: 0.5rem 1.25rem;
     border: 1px solid #e2e8f0;
-    border-radius: 50px; /* Pill design */
+    border-radius: var(--border-radius, 50px); /* Pill design */
     background: #ffffff;
     color: #64748b;
     font-size: var(--text-sm);
@@ -120,7 +120,7 @@
     min-width: 20px;
     height: 20px;
     padding: 0 0.35rem;
-    border-radius: 10px;
+    border-radius: var(--border-radius, 10px);
     background: var(--primary-color);
     color: white;
     font-size: var(--text-xs);
@@ -176,7 +176,7 @@
 .notif-icon {
     width: 44px;
     height: 44px;
-    border-radius: 12px;
+    border-radius: var(--border-radius, 12px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -290,7 +290,7 @@
 .notif-action-btn {
     width: 32px;
     height: 32px;
-    border-radius: 8px;
+    border-radius: var(--border-radius, 8px);
     border: none;
     display: flex;
     align-items: center;
@@ -366,7 +366,7 @@
     justify-content: center;
     width: 36px;
     height: 36px;
-    border-radius: 10px;
+    border-radius: var(--border-radius, 10px);
     background: white;
     color: var(--secondary-color);
     border: 1px solid #e2e8f0;
@@ -397,7 +397,7 @@
     justify-content: center;
     width: 36px;
     height: 36px;
-    border-radius: 10px;
+    border-radius: var(--border-radius, 10px);
     background: white;
     color: var(--secondary-color);
     font-weight: 600;

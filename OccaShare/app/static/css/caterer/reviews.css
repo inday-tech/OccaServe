@@ -33,7 +33,7 @@
 .stat-card-premium {
     background: white;
     padding: 1.5rem;
-    border-radius: 20px;
+    border-radius: var(--border-radius, 20px);
     border: 1px solid var(--color-neutral-100);
     box-shadow: 0 4px 20px rgba(0,0,0,0.03);
     display: flex;
@@ -104,13 +104,13 @@
     flex: 1;
     height: 6px;
     background: var(--color-neutral-50);
-    border-radius: 10px;
+    border-radius: var(--border-radius, 10px);
     overflow: hidden;
 }
 
 .progress-bar-fill {
     height: 100%;
-    border-radius: 10px;
+    border-radius: var(--border-radius, 10px);
     background: var(--primary-color);
     transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -169,7 +169,7 @@
 .reviewer-avatar-sm {
     width: 36px;
     height: 36px;
-    border-radius: 8px;
+    border-radius: var(--border-radius, 8px);
     background: var(--color-neutral-100);
     color: var(--primary-color);
     display: flex;
@@ -204,7 +204,7 @@
     background: #ecfdf5;
     color: #059669;
     padding: 4px 8px;
-    border-radius: 20px;
+    border-radius: var(--border-radius, 20px);
     font-size: 0.65rem;
     font-weight: 800;
     display: inline-flex;
@@ -237,7 +237,7 @@
 .btn-pagination-pro, .btn-page-pro {
     width: 36px;
     height: 36px;
-    border-radius: 10px;
+    border-radius: var(--border-radius, 10px);
     border: 1px solid var(--color-neutral-200);
     background: white;
     color: var(--color-neutral-700);

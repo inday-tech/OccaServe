@@ -241,31 +241,18 @@
 </div>
 
 <!-- Archive Dish Modal -->
-<div id="archiveDishModal" class="occ-modal-overlay">
-    <div class="occ-modal-box sz-sm occ-content-pop" style="font-family: 'Poppins', sans-serif; border-radius: 12px; overflow: hidden; max-width: 450px; width: 100%;">
-        <div class="occ-modal-header" style="background: #ef4444; padding: 1.5rem; color: white !important; display: flex; justify-content: space-between; align-items: flex-start;">
-            <div>
-                <h3 class="occ-modal-title" style="margin: 0; font-size: 1.25rem; font-weight: 700; color: white !important;">Archive Item</h3>
-                <div class="occ-modal-subtitle" style="font-size: 0.85rem; opacity: 0.9; margin-top: 0.25rem; color: white !important;">Confirming database removal.</div>
+<div id="archiveDishModal" class="occ-modal-overlay" style="display: none; z-index: 99999;">
+    <div class="occ-modal-box occ-modal-prompt" style="max-width: 450px;">
+        <div style="padding: 3rem 2rem; text-align: center;">
+            <div class="occ-modal-icon-box" style="background: #fef2f2; color: #ef4444; box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.2);">
+                <i class="fas fa-archive"></i>
             </div>
-            <button onclick="window.closeModal('archiveDishModal')" class="occ-modal-close" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer;">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="compact-body" style="padding: 1.5rem; background: white;">
-            <div style="display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1rem; padding: 1rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;">
-                <div style="color: #ef4444; font-size: 1.5rem;"><i class="fas fa-exclamation-triangle"></i></div>
-                <div>
-                    <p style="margin: 0; color: #7f1d1d; font-size: 0.9rem;">
-                        Archive "<strong id="archiveItemName"></strong>"? It will no longer appear in your active inventory or package creator.
-                    </p>
-                </div>
+            <h3 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 0.75rem;">Archive Item?</h3>
+            <p style="font-size: 0.9rem; color: #64748b; font-weight: 500; line-height: 1.6; margin-bottom: 2rem;">Archive "<strong id="archiveItemName"></strong>"? It will no longer appear in your active inventory or package creator. Linked packages will still retain this item temporarily.</p>
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <button type="button" class="occ-modal-btn-outline" style="flex: 1;" onclick="window.closeModal('archiveDishModal')">Cancel</button>
+                <button type="button" class="occ-modal-btn-primary" style="flex: 1; background: #ef4444;" id="confirmArchiveBtn">Archive Now</button>
             </div>
-            <p style="font-size: 0.8rem; color: #64748b; line-height: 1.5; margin: 0;">Linked packages will still retain this item temporarily, but you will not be able to assign it to new bookings.</p>
-        </div>
-        <div class="occ-modal-footer" style="padding: 1.25rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
-            <button type="button" class="btn-secondary" onclick="window.closeModal('archiveDishModal')" style="background: #e2e8f0; color: #475569; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 700; cursor: pointer; font-family: 'Poppins', sans-serif;">Cancel</button>
-            <button type="button" class="btn-primary" id="confirmArchiveBtn" style="background: #ef4444; border-color: #ef4444; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 700; font-family: 'Poppins', sans-serif;">Archive Now</button>
         </div>
     </div>
 </div>

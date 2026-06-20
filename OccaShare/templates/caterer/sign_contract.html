@@ -51,7 +51,7 @@
     .preview-panel-glass {
         background: #ffffff;
         border: 1px solid #e2e8f0;
-        border-radius: 1.5rem;
+        border-radius: var(--border-radius, 1.5rem);
         padding: 3rem;
         box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
         max-height: 85vh;
@@ -62,7 +62,7 @@
     .action-panel-glass {
         background: #ffffff;
         border: 1px solid #e2e8f0;
-        border-radius: 1.5rem;
+        border-radius: var(--border-radius, 1.5rem);
         padding: 2.5rem;
         box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
         position: sticky;
@@ -76,7 +76,7 @@
     .signature-box-premium {
         background: #f8fafc;
         border: 2px dashed #e2e8f0;
-        border-radius: 1.5rem;
+        border-radius: var(--border-radius, 1.5rem);
         margin: 1.5rem 0;
         position: relative;
         overflow: hidden;
@@ -122,7 +122,7 @@
         border: none;
         height: 44px;
         padding: 0 1.25rem;
-        border-radius: 0.85rem;
+        border-radius: var(--border-radius, 0.85rem);
         font-weight: 600;
         font-size: 0.9rem;
         cursor: pointer;
@@ -145,7 +145,7 @@
         color: #64748b;
         border: none;
         padding: 0.75rem;
-        border-radius: 1rem;
+        border-radius: var(--border-radius, 1rem);
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s;
@@ -159,7 +159,7 @@
     .btn-secondary-pro {
         height: 44px;
         padding: 0 1.25rem;
-        border-radius: 0.85rem;
+        border-radius: var(--border-radius, 0.85rem);
         font-weight: 600;
         font-size: 0.9rem;
         background: #f1f5f9;
@@ -182,7 +182,7 @@
     .btn-retry-pro {
         height: 44px;
         padding: 0 1.25rem;
-        border-radius: 0.85rem;
+        border-radius: var(--border-radius, 0.85rem);
         font-weight: 600;
         font-size: 0.9rem;
         background: #f1f5f9;
@@ -228,7 +228,7 @@
         text-align: center;
         padding: 2.5rem 1rem;
         background: #f8fafc;
-        border-radius: 1.25rem;
+        border-radius: var(--border-radius, 1.25rem);
         border: 2px dashed #e2e8f0;
         margin-bottom: 1.5rem;
         transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -244,7 +244,7 @@
         color: white;
         height: 44px;
         padding: 0 1.5rem;
-        border-radius: 0.85rem;
+        border-radius: var(--border-radius, 0.85rem);
         font-weight: 700;
         font-size: 0.95rem;
         display: inline-flex;
@@ -287,7 +287,7 @@
         }
         .signature-box-premium {
             margin: 1rem 0;
-            border-radius: 1rem;
+            border-radius: var(--border-radius, 1rem);
         }
         canvas#signature-pad {
             height: 250px; /* Slightly taller for mobile fingers */
@@ -335,7 +335,7 @@
                 <p style="font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">Countersign Required</p>
             </div>
 
-            <div style="background: #eff6ff; border: 1px solid #dbeafe; border-radius: 0.75rem; padding: 1rem; margin-bottom: 1.5rem;">
+            <div style="background: #eff6ff; border: 1px solid #dbeafe; border-radius: var(--border-radius, 0.75rem); padding: 1rem; margin-bottom: 1.5rem;">
                 <div style="display: flex; gap: 0.5rem; align-items: flex-start;">
                     <i class="fas fa-info-circle" style="color: var(--primary-color); margin-top: 0.15rem;"></i>
                     <p style="font-size: 0.8rem; color: #1e40af; line-height: 1.5; margin: 0;">

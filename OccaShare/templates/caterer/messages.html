@@ -33,7 +33,7 @@
         width: 100%;
         padding: 0.75rem 1rem;
         border: 1px solid #e2e8f0;
-        border-radius: 99px;
+        border-radius: var(--border-radius, 99px);
         font-size: 0.9rem;
     }
 
@@ -114,7 +114,7 @@
         color: white;
         font-size: 0.7rem;
         padding: 2px 6px;
-        border-radius: 99px;
+        border-radius: var(--border-radius, 99px);
         min-width: 18px;
         text-align: center;
     }
@@ -158,7 +158,7 @@
     .message-bubble {
         max-width: 70%;
         padding: 0.75rem 1rem;
-        border-radius: 1rem;
+        border-radius: var(--border-radius, 1rem);
         font-size: 0.95rem;
         position: relative;
         line-height: 1.5;
@@ -222,7 +222,7 @@
         background: var(--primary-color);
         color: white;
         border: none;
-        border-radius: 0.75rem;
+        border-radius: var(--border-radius, 0.75rem);
         font-size: 1rem;
         cursor: pointer;
         flex-shrink: 0;
@@ -326,7 +326,7 @@
             <div class="chat-input-area">
                 <form id="chatForm" class="chat-input-wrapper">
                     <input type="file" id="mainChatFileInput" style="display: none;" accept=".jpg,.jpeg,.png,.gif,.mp4,.mov,.pdf,.docx,.txt,.webp">
-                    <button type="button" class="btn-secondary" id="mainAttachmentBtn" style="padding: 0 1rem; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.5rem;" title="Attach file">
+                    <button type="button" class="btn-secondary" id="mainAttachmentBtn" style="padding: 0 1rem; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--border-radius, 0.5rem);" title="Attach file">
                         </button>
                     <input type="text" id="messageInput" placeholder="Type your message..." autocomplete="off">
                     <button type="submit" id="chatSendBtn" class="btn-chat-send"><i class="fas fa-paper-plane"></i></button>
@@ -543,7 +543,7 @@
             if (msg.is_deleted) {
                 contentHtml = '<span style="font-style: italic; opacity: 0.8;">This message was deleted</span>';
             } else if (msg.message_type === 'image') {
-                contentHtml = `<img src="${msg.file_url}" style="max-width: 200px; border-radius: 8px;">`;
+                contentHtml = `<img src="${msg.file_url}" style="max-width: 200px; border-radius: var(--border-radius, 8px);">`;
             } else if (msg.message_type === 'file') {
                 contentHtml = `<a href="${msg.file_url}" target="_blank" style="color: inherit; text-decoration: underline;"><i class="fas fa-file-alt"></i> ${msg.file_name || 'Attachment'}</a>`;
             }

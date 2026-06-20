@@ -9,7 +9,7 @@
         margin: 0 auto;
         padding: 2rem;
         background: #fff;
-        border-radius: 16px;
+        border-radius: var(--border-radius, 16px);
         box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
     }
     
@@ -28,7 +28,7 @@
     .customer-reqs {
         background: #f8fafc;
         padding: 1.5rem;
-        border-radius: 12px;
+        border-radius: var(--border-radius, 12px);
         margin-bottom: 2rem;
         border: 1px solid #e2e8f0;
     }
@@ -49,7 +49,7 @@
         width: 100%;
         padding: 0.75rem;
         border: 1.5px solid #cbd5e1;
-        border-radius: 8px;
+        border-radius: var(--border-radius, 8px);
         font-family: inherit;
         font-size: 1rem;
     }
@@ -62,7 +62,7 @@
     .line-items-wrapper {
         margin-top: 2rem;
         border: 1px solid #e2e8f0;
-        border-radius: 12px;
+        border-radius: var(--border-radius, 12px);
         overflow: hidden;
     }
     
@@ -97,7 +97,7 @@
         border: none;
         width: 32px;
         height: 32px;
-        border-radius: 6px;
+        border-radius: var(--border-radius, 6px);
         cursor: pointer;
         display: flex;
         align-items: center;
@@ -124,7 +124,7 @@
         background: #0f172a;
         color: white;
         padding: 2rem;
-        border-radius: 12px;
+        border-radius: var(--border-radius, 12px);
         margin-top: 2rem;
     }
     
@@ -150,7 +150,7 @@
         padding: 1rem 2rem;
         font-size: 1.1rem;
         font-weight: 800;
-        border-radius: 8px;
+        border-radius: var(--border-radius, 8px);
         width: 100%;
         margin-top: 1rem;
         cursor: pointer;
@@ -180,7 +180,7 @@
         </div>
         <div>
             <strong>Theme & Notes:</strong>
-            <p style="background: white; padding: 1rem; border-radius: 8px; margin-top: 0.5rem; border: 1px solid #e2e8f0;">
+            <p style="background: white; padding: 1rem; border-radius: var(--border-radius, 8px); margin-top: 0.5rem; border: 1px solid #e2e8f0;">
                 {{ booking.custom_requirements.get('theme_description', 'No additional details provided.') if booking.custom_requirements else 'No additional details provided.' }}
             </p>
         </div>

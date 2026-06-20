@@ -103,23 +103,23 @@
     </div>
 
     <!-- Post-Paid Process Guide -->
-    <div class="pay-process-guide" style="margin-bottom: 2.5rem; background: white; border-radius: 20px; border: 1px solid var(--color-neutral-100); padding: 1.5rem; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; box-shadow: 0 4px 20px rgba(0,0,0,0.03);">
+    <div class="pay-process-guide" style="margin-bottom: 2.5rem; background: white; border-radius: var(--border-radius, 20px); border: 1px solid var(--color-neutral-100); padding: 1.5rem; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; box-shadow: 0 4px 20px rgba(0,0,0,0.03);">
         <div class="guide-step" style="display: flex; gap: 1rem;">
-            <div style="width: 40px; height: 40px; background: rgba(var(--primary-color-rgb), 0.1); color: var(--primary-color); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><i class="fas fa-hand-holding-usd"></i></div>
+            <div style="width: 40px; height: 40px; background: rgba(var(--primary-color-rgb), 0.1); color: var(--primary-color); border-radius: var(--border-radius, 12px); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><i class="fas fa-hand-holding-usd"></i></div>
             <div>
                 <h4 style="margin: 0 0 4px 0; font-size: 0.9rem; font-weight: 800; color: var(--color-neutral-900);">1. Receive 100% Payment</h4>
                 <p style="margin: 0; font-size: 0.75rem; color: var(--color-neutral-500); line-height: 1.4;">Customers pay directly to your GCash/Bank account. The platform holds ₱0.00.</p>
             </div>
         </div>
         <div class="guide-step" style="display: flex; gap: 1rem;">
-            <div style="width: 40px; height: 40px; background: #fffbeb; color: #d97706; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><i class="fas fa-chart-line"></i></div>
+            <div style="width: 40px; height: 40px; background: #fffbeb; color: #d97706; border-radius: var(--border-radius, 12px); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><i class="fas fa-chart-line"></i></div>
             <div>
                 <h4 style="margin: 0 0 4px 0; font-size: 0.9rem; font-weight: 800; color: var(--color-neutral-900);">2. Accumulate Commissions</h4>
                 <p style="margin: 0; font-size: 0.75rem; color: var(--color-neutral-500); line-height: 1.4;">When a booking is marked 'Completed', the platform fee is added to your Dues.</p>
             </div>
         </div>
         <div class="guide-step" style="display: flex; gap: 1rem;">
-            <div style="width: 40px; height: 40px; background: #ecfdf5; color: #10b981; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><i class="fas fa-qrcode"></i></div>
+            <div style="width: 40px; height: 40px; background: #ecfdf5; color: #10b981; border-radius: var(--border-radius, 12px); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><i class="fas fa-qrcode"></i></div>
             <div>
                 <h4 style="margin: 0 0 4px 0; font-size: 0.9rem; font-weight: 800; color: var(--color-neutral-900);">3. Settle Platform Dues</h4>
                 <p style="margin: 0; font-size: 0.75rem; color: var(--color-neutral-500); line-height: 1.4;">Click 'Settle Dues' to pay your outstanding balance to the Admin via GCash.</p>
@@ -396,12 +396,12 @@
 
             <div class="pay-form-group">
                 <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: var(--color-neutral-700);">Billing Period</label>
-                <input type="text" id="settlePeriod" class="pay-input" placeholder="e.g. May 2026" required style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--color-neutral-200); margin-bottom: 1rem;">
+                <input type="text" id="settlePeriod" class="pay-input" placeholder="e.g. May 2026" required style="width: 100%; padding: 0.75rem; border-radius: var(--border-radius, 8px); border: 1px solid var(--color-neutral-200); margin-bottom: 1rem;">
             </div>
 
             <div class="pay-form-group">
                 <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: var(--color-neutral-700);">Upload Payment Proof</label>
-                <input type="file" id="settleProofFile" class="pay-input" accept="image/*" required style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--color-neutral-200);">
+                <input type="file" id="settleProofFile" class="pay-input" accept="image/*" required style="width: 100%; padding: 0.75rem; border-radius: var(--border-radius, 8px); border: 1px solid var(--color-neutral-200);">
                 <p style="font-size: 0.75rem; color: var(--color-neutral-500); margin-top: 0.5rem;">Please upload a screenshot of your successful GCash transfer.</p>
             </div>
         </div>

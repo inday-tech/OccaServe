@@ -78,18 +78,18 @@
                     <div style="margin-left: auto; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
                         <!-- ID Type Badge -->
                         {% set id_type = verification.ocr_data.id_type or verification.verification_type or 'Unknown' %}
-                        <span style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase;">
+                        <span style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; padding: 4px 12px; border-radius: var(--border-radius, 20px); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase;">
                             📋 {{ id_type }}
                         </span>
                         <!-- Extraction Method Badge -->
                         {% set method = verification.ocr_data.extraction_method or 'unknown' %}
-                        <span style="background: {{ '#10b981' if method == 'gemini' else '#f59e0b' if method == 'tesseract' else '#94a3b8' }}; color: #fff; padding: 4px 10px; border-radius: 20px; font-size: 0.65rem; font-weight: 800;">
+                        <span style="background: {{ '#10b981' if method == 'gemini' else '#f59e0b' if method == 'tesseract' else '#94a3b8' }}; color: #fff; padding: 4px 10px; border-radius: var(--border-radius, 20px); font-size: 0.65rem; font-weight: 800;">
                             {{ '🤖 Gemini AI' if method == 'gemini' else '📝 Tesseract' if method == 'tesseract' else '❓ Unknown' }}
                         </span>
                         <!-- Confidence Score -->
                         {% set conf = verification.ocr_data.confidence_score or 0 %}
                         {% if conf %}
-                        <span style="background: {{ '#10b981' if conf >= 0.8 else '#f59e0b' if conf >= 0.5 else '#ef4444' }}; color: #fff; padding: 4px 10px; border-radius: 20px; font-size: 0.65rem; font-weight: 800;">
+                        <span style="background: {{ '#10b981' if conf >= 0.8 else '#f59e0b' if conf >= 0.5 else '#ef4444' }}; color: #fff; padding: 4px 10px; border-radius: var(--border-radius, 20px); font-size: 0.65rem; font-weight: 800;">
                             {{ '%.0f' | format(conf * 100) }}% confidence
                         </span>
                         {% endif %}
@@ -169,7 +169,7 @@
                                             {% if val is mapping %}
                                                 {{ val.value }}
                                                 {% if val.confidence is defined and val.confidence > 0 %}
-                                                    <span style="display: inline-flex; align-items: center; gap: 2px; font-size: 0.65rem; padding: 2px 6px; border-radius: 12px; font-weight: 700; margin-left: 6px; 
+                                                    <span style="display: inline-flex; align-items: center; gap: 2px; font-size: 0.65rem; padding: 2px 6px; border-radius: var(--border-radius, 12px); font-weight: 700; margin-left: 6px; 
                                                     {% if val.confidence < 85 %}
                                                         background: #fee2e2; color: #ef4444;
                                                     {% elif val.confidence < 95 %}
@@ -194,7 +194,7 @@
 
                             {# MRZ Display (Passport Only) — special monospace box #}
                             {% if fields.get('mrz_line_1') or fields.get('mrz_line_2') %}
-                            <div style="margin-top: 1rem; padding: 1rem; background: #0f172a; border-radius: 12px; border: 1px solid #1e293b;">
+                            <div style="margin-top: 1rem; padding: 1rem; background: #0f172a; border-radius: var(--border-radius, 12px); border: 1px solid #1e293b;">
                                 <div style="font-size: 0.65rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem;">
                                     <i class="fas fa-barcode" style="margin-right: 4px;"></i> Machine Readable Zone (MRZ)
                                 </div>
@@ -292,13 +292,13 @@
                     <div style="margin-top:4px;">
                         {% set vs = verification.verification_status|lower %}
                         {% if vs in ['verified', 'approved'] %}
-                            <span style="background:#d1fae5;color:#065f46;padding:3px 10px;border-radius:20px;font-size:0.75rem;font-weight:800;">✅ {{ verification.verification_status|upper }}</span>
+                            <span style="background:#d1fae5;color:#065f46;padding:3px 10px;border-radius: var(--border-radius, 20px);font-size:0.75rem;font-weight:800;">✅ {{ verification.verification_status|upper }}</span>
                         {% elif vs in ['rejected', 'blocked'] %}
-                            <span style="background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:20px;font-size:0.75rem;font-weight:800;">❌ {{ verification.verification_status|upper }}</span>
+                            <span style="background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius: var(--border-radius, 20px);font-size:0.75rem;font-weight:800;">❌ {{ verification.verification_status|upper }}</span>
                         {% elif vs in ['liveliness_failed', 'failed'] %}
-                            <span style="background:#fff7ed;color:#c2410c;padding:3px 10px;border-radius:20px;font-size:0.75rem;font-weight:800;">⚠️ {{ verification.verification_status|upper }}</span>
+                            <span style="background:#fff7ed;color:#c2410c;padding:3px 10px;border-radius: var(--border-radius, 20px);font-size:0.75rem;font-weight:800;">⚠️ {{ verification.verification_status|upper }}</span>
                         {% else %}
-                            <span style="background:#fef9c3;color:#854d0e;padding:3px 10px;border-radius:20px;font-size:0.75rem;font-weight:800;">🕐 {{ verification.verification_status|upper }}</span>
+                            <span style="background:#fef9c3;color:#854d0e;padding:3px 10px;border-radius: var(--border-radius, 20px);font-size:0.75rem;font-weight:800;">🕐 {{ verification.verification_status|upper }}</span>
                         {% endif %}
                     </div>
                 </div>

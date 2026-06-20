@@ -25,7 +25,7 @@
     background: #ffffff;
     width: 90%;
     max-width: 400px;
-    border-radius: 24px;
+    border-radius: var(--border-radius, 24px);
     padding: 2.5rem 2rem;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.2);
     transform: scale(0.9) translateY(20px);
@@ -84,7 +84,7 @@
 .modal-btn {
     padding: 0.85rem 1.25rem;
     min-height: 50px;
-    border-radius: 14px;
+    border-radius: var(--border-radius, 14px);
     font-weight: 700;
     font-size: var(--text-base);
     cursor: pointer;
@@ -124,7 +124,7 @@
 @media (max-width: 480px) {
     .premium-modal-container {
         padding: 2rem 1.5rem;
-        border-radius: 20px;
+        border-radius: var(--border-radius, 20px);
     }
 
     .modal-actions {

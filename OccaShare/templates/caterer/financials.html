@@ -14,7 +14,7 @@
             <p>Monitor and manage your business overhead expenses</p>
         </div>
         <div class="header-actions">
-            <button onclick="openExpenseModal()" class="btn-primary-pro" style="padding: 0.75rem 1.5rem; display: flex; align-items: center; gap: 0.5rem; border-radius: 8px;">
+            <button onclick="openExpenseModal()" class="btn-primary-pro" style="padding: 0.75rem 1.5rem; display: flex; align-items: center; gap: 0.5rem; border-radius: var(--border-radius, 8px);">
                 Log Business Expense
             </button>
         </div>
@@ -68,12 +68,12 @@
                     <tr style="border-bottom: 1px solid #f8fafc; transition: all 0.2s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
                         <td style="padding: 1.5rem; font-weight: 800; color: #64748b; font-size: 0.85rem; letter-spacing: 0.05em;">{{ exp.date_incurred.strftime('%b %d, %Y') if exp.date_incurred else 'N/A' }}</td>
                         <td style="padding: 1.5rem;">
-                            <span style="background: #f1f5f9; color: #475569; padding: 0.25rem 0.75rem; border-radius: 50px; font-size: 0.75rem; font-weight: 700;">{{ exp.category }}</span>
+                            <span style="background: #f1f5f9; color: #475569; padding: 0.25rem 0.75rem; border-radius: var(--border-radius, 50px); font-size: 0.75rem; font-weight: 700;">{{ exp.category }}</span>
                         </td>
                         <td style="padding: 1.5rem; font-size: 0.85rem; color: #475569; font-weight: 600;">{{ exp.description }}</td>
                         <td style="padding: 1.5rem; font-size: 1rem; font-weight: 800; color: #0f172a; text-align: right;">{{ "{:,.2f}".format(exp.amount) }}</td>
                         <td style="padding: 1.5rem; text-align: center;">
-                            <button onclick="deleteExpense({{ exp.id }})" style="background: #fee2e2; color: #ef4444; border: 1px solid #fecaca; border-radius: 6px; width: 32px; height: 32px; cursor: pointer; transition: all 0.2s;" title="Delete Expense">
+                            <button onclick="deleteExpense({{ exp.id }})" style="background: #fee2e2; color: #ef4444; border: 1px solid #fecaca; border-radius: var(--border-radius, 6px); width: 32px; height: 32px; cursor: pointer; transition: all 0.2s;" title="Delete Expense">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </td>
