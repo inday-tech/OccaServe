@@ -163,7 +163,11 @@ def master_migration():
             ("cost_breakdown", "JSONB"),
             ("is_combo", "BOOLEAN DEFAULT FALSE"),
             ("max_choices", "INTEGER DEFAULT 0"),
-            ("combo_options", "JSONB NULL")
+            ("combo_options", "JSONB NULL"),
+            ("usage_type", "VARCHAR DEFAULT 'both'"),
+            ("available_for_package", "BOOLEAN DEFAULT TRUE"),
+            ("available_for_order", "BOOLEAN DEFAULT TRUE"),
+            ("pricing_type", "VARCHAR DEFAULT 'fixed'")
         ]
         
         # Catering Packages
