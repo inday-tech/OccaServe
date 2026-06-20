@@ -821,6 +821,10 @@
                             emailStat.textContent = 'MUST BE @GMAIL.COM';
                             emailStat.className = 'status-indicator show status-error';
                             emailInp.className = 'input-error';
+                        } else if (data.email_invalid) {
+                            emailStat.textContent = data.email_invalid.toUpperCase();
+                            emailStat.className = 'status-indicator show status-error';
+                            emailInp.className = 'input-error';
                         } else {
                             emailStat.textContent = data.email_taken ? 'EMAIL ALREADY TAKEN' : '✓ EMAIL AVAILABLE';
                             emailStat.className = `status-indicator show ${data.email_taken ? 'status-error' : 'status-ok'}`;
@@ -861,12 +865,8 @@
         const fd = new FormData(e.target);
 
         // Pre-Submission Audit Checks
-        const emailStat = document.getElementById('email_audit_status').textContent;
-        const phoneStat = document.getElementById('phone_audit_status').textContent;
-        const bizStat = document.getElementById('biz_name_status').textContent;
-        const nameStat = document.getElementById('name_audit_status').textContent;
-        
-        if (emailStat.includes('TAKEN') || phoneStat.includes('TAKEN') || bizStat.includes('TAKEN') || nameStat.includes('INVALID') || nameStat.includes('EXISTS')) {
+        const formErrors = document.getElementById('addCatererForm').querySelectorAll('.status-error');
+        if (formErrors.length > 0) {
             return Swal.fire('Audit Failure', 'Please fix the highlighted identity errors before submitting.', 'error');
         }
 

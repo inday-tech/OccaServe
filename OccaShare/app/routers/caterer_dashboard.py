@@ -908,6 +908,29 @@ async def caterer_dashboard(
     if has_menu: completion_pct += 5
     if has_permit: completion_pct += 5
     
+    # Next Recommended Action Logic
+    next_action = None
+    if not is_identity_verified:
+        next_action = {"title": "Verify Business Identity", "desc": "Upload your valid ID to verify your catering business.", "url": "/caterer/profile#tab-verification", "btn": "Verify Now"}
+    elif not has_description:
+        next_action = {"title": "Add Business Description", "desc": "Tell customers about your catering services and specialties.", "url": "/caterer/profile", "btn": "Add Description"}
+    elif not has_permit:
+        next_action = {"title": "Upload Business Permit", "desc": "Upload your permit to increase your trust rating.", "url": "/caterer/profile#tab-account", "btn": "Upload Permit"}
+    elif not has_logo:
+        next_action = {"title": "Upload Business Logo", "desc": "Make your profile stand out with a professional logo.", "url": "/caterer/profile", "btn": "Upload Logo"}
+    elif not has_cover:
+        next_action = {"title": "Upload Cover Image", "desc": "Add a beautiful banner image to attract customers.", "url": "/caterer/profile", "btn": "Upload Cover"}
+    elif not has_menu:
+        next_action = {"title": "Create Sample Menu", "desc": "Add at least one menu item that customers can choose from.", "url": "/caterer/menu", "btn": "Add Menu Item"}
+    elif not has_photos:
+        next_action = {"title": "Upload Food Photos", "desc": "Upload at least 3 photos of your food or setup to showcase your work.", "url": "/caterer/gallery", "btn": "Upload Photos"}
+    elif not has_packages:
+        next_action = {"title": "Create First Package", "desc": "Create at least one catering package for customers to book.", "url": "/caterer/packages", "btn": "Create Package"}
+    elif profile.status == 'Draft' or profile.status == 'Identity Verified':
+        next_action = {"title": "Publish Listing", "desc": "You're all set! Publish your listing to start receiving bookings.", "url": "#", "btn": "Publish Now", "onclick": "togglePublish(this)"}
+
+    total_bookings = len([b for b in profile.bookings if b.status not in ['draft', 'pending_quotation', 'cancelled'] and not b.is_archived])
+
     return templates.TemplateResponse("caterer/index.html", {
         "request": request,
         "user": user,
@@ -924,7 +947,9 @@ async def caterer_dashboard(
         "has_menu": has_menu,
         "has_permit": has_permit,
         "can_publish": can_publish,
-        "is_identity_verified": is_identity_verified
+        "is_identity_verified": is_identity_verified,
+        "next_action": next_action,
+        "total_bookings": total_bookings
     })
 
 @router.post("/toggle-publish")
@@ -2876,24 +2901,24 @@ async def update_profile(
     card_holder_name: Optional[str] = Form(None),
     card_number: Optional[str] = Form(None),
     cash_instructions: Optional[str] = Form(None),
-    booking_lead_time: Optional[int] = Form(7),
-    equipment_turnover_hours: Optional[int] = Form(24),
-    min_pax: Optional[int] = Form(20),
-    starting_price: Optional[float] = Form(0.0),
+    booking_lead_time: Optional[str] = Form("7"),
+    equipment_turnover_hours: Optional[str] = Form("24"),
+    min_pax: Optional[str] = Form("20"),
+    starting_price: Optional[str] = Form("0.0"),
     terms_and_conditions: Optional[str] = Form(None),
     general_terms: Optional[str] = Form(None),
-    payment_terms: List[int] = Form(default=[100]),
+    payment_terms: List[str] = Form(default=["100"]),
     primary_color: Optional[str] = Form(None),
     secondary_color: Optional[str] = Form(None),
     accent_color: Optional[str] = Form(None),
     highlight_color: Optional[str] = Form(None),
     font_family: Optional[str] = Form(None),
-    border_radius: int = Form(12),
+    border_radius: str = Form("12"),
     sidebar_mode: str = Form("full"),
     show_platform_logo: bool = Form(True),
     dashboard_texture: str = Form("none"),
-    latitude: Optional[float] = Form(None),
-    longitude: Optional[float] = Form(None),
+    latitude: Optional[str] = Form(None),
+    longitude: Optional[str] = Form(None),
     contact_address: Optional[str] = Form(None),
     payout_method: Optional[str] = Form(None),
     province: Optional[str] = Form(None),
@@ -2965,10 +2990,13 @@ async def update_profile(
     profile.card_holder_name = card_holder_name
     profile.card_number = card_number
     profile.cash_instructions = cash_instructions
-    profile.booking_lead_time = booking_lead_time
-    profile.equipment_turnover_hours = equipment_turnover_hours
-    profile.min_pax = min_pax
-    profile.starting_price = starting_price
+    try:
+        profile.booking_lead_time = int(booking_lead_time) if booking_lead_time else 7
+        profile.equipment_turnover_hours = int(equipment_turnover_hours) if equipment_turnover_hours else 24
+        profile.min_pax = int(min_pax) if min_pax else 20
+        profile.starting_price = float(starting_price) if starting_price else 0.0
+    except ValueError:
+        pass
     profile.terms_and_conditions = terms_and_conditions
     profile.general_terms = general_terms
 
@@ -2978,15 +3006,28 @@ async def update_profile(
     profile.accent_color = accent_color
     profile.highlight_color = highlight_color
     profile.font_family = font_family
-    profile.border_radius = border_radius
+    try:
+        profile.border_radius = int(border_radius) if border_radius else 12
+    except ValueError:
+        pass
     profile.sidebar_mode = sidebar_mode
     profile.show_platform_logo = show_platform_logo
     profile.dashboard_texture = dashboard_texture
 
-    if latitude is not None and latitude != 0.0:
-        profile.latitude = latitude
-    if longitude is not None and longitude != 0.0:
-        profile.longitude = longitude
+    if latitude and latitude.strip() != "":
+        try:
+            val = float(latitude)
+            if val != 0.0:
+                profile.latitude = val
+        except ValueError:
+            pass
+    if longitude and longitude.strip() != "":
+        try:
+            val = float(longitude)
+            if val != 0.0:
+                profile.longitude = val
+        except ValueError:
+            pass
 
     import base64
     # Handle Single File Uploads
@@ -2995,20 +3036,26 @@ async def update_profile(
         if file_obj and file_obj.filename:
             try:
                 content_bytes = await file_obj.read()
-                if content_bytes:
-                    encoded = base64.b64encode(content_bytes).decode("utf-8")
-                    mime = file_obj.content_type or "image/jpeg"
-                    data_url = f"data:{mime};base64,{encoded}"
-                    setattr(profile, f"{field_name}_url" if field_name != 'logo' else 'logo_url', data_url)
-                    if field_name == 'logo':
-                        # Sync Caterer's User profile image with their Business Logo
-                        db_user = db.query(models.User).filter(models.User.id == user.id).first()
-                        if db_user:
-                            db_user.profile_image_url = data_url
+                if not content_bytes:
                     if field_name == 'permit':
-                        profile.permit_status = 'Pending Review'
-                        # Reset verification status if they uploaded a new permit to require re-review
-                        profile.verification_status = 'Pending Review'
+                        return RedirectResponse(url="/caterer/profile?error_msg=The+uploaded+business+permit+file+is+empty.+Please+upload+a+valid+document.", status_code=303)
+                    continue
+                    
+                encoded = base64.b64encode(content_bytes).decode("utf-8")
+                mime = file_obj.content_type or "image/jpeg"
+                data_url = f"data:{mime};base64,{encoded}"
+                setattr(profile, f"{field_name}_url" if field_name != 'logo' else 'logo_url', data_url)
+                if field_name == 'logo':
+                    # Sync Caterer's User profile image with their Business Logo
+                    db_user = db.query(models.User).filter(models.User.id == user.id).first()
+                    if db_user:
+                        db_user.profile_image_url = data_url
+                if field_name == 'permit':
+                    if mime.lower() not in ["image/png", "image/jpeg", "image/jpg", "application/pdf"]:
+                        return RedirectResponse(url="/caterer/profile?error_msg=Invalid+business+permit+file+type.+Only+PNG,+JPEG,+and+PDF+are+allowed.", status_code=303)
+                    profile.permit_status = 'Pending Review'
+                    # Reset verification status if they uploaded a new permit to require re-review
+                    profile.verification_status = 'Pending Review'
             except Exception as e:
                 import traceback
                 print(f"[IMAGE UPLOAD ERROR] Failed on {field_name}: {str(e)}")

@@ -60,9 +60,9 @@ def is_dummy_email(email: str) -> Optional[str]:
         return "Disposable email domains are not permitted"
     if local in ['123', 'abc', 'aaa', 'qwe', '000']:
         return "Please use a real, professional email prefix"
-    if any(p == local for p in dummy_patterns) or is_keyboard_walk(local) or is_gibberish(local):
+    if any(p in local for p in dummy_patterns) or is_keyboard_walk(local):
         return "Email appears to be a placeholder or invalid"
-    if re.search(r'(.)\1\1', local):
+    if re.search(r'(.)\1\1\1', local):
         return "Invalid email pattern"
     return None
 

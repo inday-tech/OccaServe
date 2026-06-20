@@ -487,6 +487,24 @@
                 <span><strong>Minimum to Publish:</strong> Identity Verification, Business Description, 1 Catering Package, 3+ Unarchived Food Photos.</span>
             </div>
             {% endif %}
+
+            <!-- Next Recommended Action -->
+            {% if next_action %}
+            <div style="margin-top: 20px; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; background: linear-gradient(135deg, rgba(var(--primary-color-rgb), 0.05) 0%, rgba(var(--primary-color-rgb), 0.1) 100%); border: 1px solid rgba(var(--primary-color-rgb), 0.2); padding: 20px; border-radius: 12px;">
+                    <div>
+                        <div style="font-size: 0.7rem; font-weight: 800; color: var(--primary-color); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px;">Next Recommended Action</div>
+                        <h4 style="margin: 0 0 5px 0; font-size: 1.1rem; font-weight: 800; color: #0f172a;">{{ next_action.title }}</h4>
+                        <p style="margin: 0; font-size: 0.85rem; color: #64748b; max-width: 400px;">{{ next_action.desc }}</p>
+                    </div>
+                    {% if next_action.onclick %}
+                    <button onclick="{{ next_action.onclick }}" style="background: var(--primary-color); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: 0.2s; white-space: nowrap; box-shadow: 0 4px 6px -1px rgba(var(--primary-color-rgb), 0.3);">{{ next_action.btn }} <i class="fas fa-arrow-right" style="margin-left: 5px;"></i></button>
+                    {% else %}
+                    <a href="{{ next_action.url }}" style="background: var(--primary-color); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 700; font-size: 0.9rem; text-decoration: none; cursor: pointer; transition: 0.2s; white-space: nowrap; box-shadow: 0 4px 6px -1px rgba(var(--primary-color-rgb), 0.3); display: inline-block;">{{ next_action.btn }} <i class="fas fa-arrow-right" style="margin-left: 5px;"></i></a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -567,8 +585,27 @@
         }
     }
 </script>
+
+{% if total_bookings == 0 and profile.status == 'Draft' %}
+<!-- Setup Wizard Modal -->
+<div id="setup-wizard-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.8); z-index: 9999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div style="background: white; border-radius: 1.5rem; width: 90%; max-width: 500px; padding: 40px; text-align: center; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); position: relative;">
+        <button onclick="document.getElementById('setup-wizard-modal').style.display='none'" style="position: absolute; top: 15px; right: 20px; background: none; border: none; font-size: 1.5rem; color: #94a3b8; cursor: pointer;">&times;</button>
+        <div style="width: 80px; height: 80px; background: rgba(var(--primary-color-rgb), 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+            <i class="fas fa-store" style="font-size: 2.5rem; color: var(--primary-color);"></i>
+        </div>
+        <h2 style="font-size: 1.5rem; font-weight: 900; color: #0f172a; margin-bottom: 15px;">Welcome to OccaServe!</h2>
+        <p style="color: #475569; font-size: 0.95rem; line-height: 1.6; margin-bottom: 30px;">
+            We're excited to have you on board. Before you can start receiving bookings, you need to complete your business listing.<br><br>
+            Follow our guided setup checklist to verify your identity, showcase your food, and create your first package.
+        </p>
+        <button onclick="document.getElementById('setup-wizard-modal').style.display='none'" style="background: var(--primary-color); color: white; border: none; padding: 12px 30px; border-radius: 99px; font-weight: 800; font-size: 1rem; cursor: pointer; width: 100%; box-shadow: 0 10px 15px -3px rgba(var(--primary-color-rgb), 0.3); transition: 0.2s;">Let's Get Started <i class="fas fa-arrow-right" style="margin-left: 8px;"></i></button>
+    </div>
+</div>
+{% endif %}
 {% endif %}
 
+{% if total_bookings > 0 %}
 <!-- Quick Stats Summary -->
 <div class="kpi-grid-clean">
     <div class="kpi-card-clean">
@@ -993,6 +1030,16 @@
     </div>
     {% endif %}
 </div>
+{% else %}
+<!-- Empty State -->
+<div class="c-card-premium animate-up" style="text-align: center; padding: 60px 20px; margin-top: 24px; background: white; border-radius: 1.25rem; border: 1px dashed #cbd5e1;">
+    <div style="width: 80px; height: 80px; background: #f8fafc; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+        <i class="fas fa-chart-line" style="font-size: 2rem; color: #94a3b8;"></i>
+    </div>
+    <h3 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 10px;">Analytics Locked</h3>
+    <p style="color: #64748b; font-size: 0.95rem; max-width: 500px; margin: 0 auto;">Complete your business setup and start receiving bookings to unlock analytics and performance insights.</p>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}

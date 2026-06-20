@@ -1317,6 +1317,7 @@ async def audit_identity(
 ):
     results = {
         "email_taken": False,
+        "email_invalid": None,
         "phone_taken": False,
         "name_collision": False,
         "business_name_taken": False
@@ -1324,10 +1325,15 @@ async def audit_identity(
     
     if email:
         clean_email = email.strip().lower()
-        results["email_taken"] = db.query(models.User).filter(
-            func.lower(func.trim(models.User.email)) == clean_email,
-            models.User.is_archived == False
-        ).first() is not None
+        from ..core.utils import is_dummy_email
+        email_err = is_dummy_email(clean_email)
+        if email_err:
+            results["email_invalid"] = email_err
+        else:
+            results["email_taken"] = db.query(models.User).filter(
+                func.lower(func.trim(models.User.email)) == clean_email,
+                models.User.is_archived == False
+            ).first() is not None
         
     if phone:
         # Normalize phone: remove non-numeric characters if any
@@ -1451,7 +1457,8 @@ async def add_caterer(
 
 
     # Name formatting
-    final_first_name = f"{first_name.strip()} {middle_name.strip()}".strip()
+    final_first_name = first_name.strip()
+    final_middle_name = middle_name.strip()
     final_last_name = last_name.strip()
 
     # password logic
@@ -1466,6 +1473,7 @@ async def add_caterer(
             password_hash=hashed_password,
             role="caterer",
             first_name=final_first_name,
+            middle_name=final_middle_name,
             last_name=final_last_name,
             phone_number=phone,
             status="active",

@@ -100,7 +100,7 @@
         min-height: 100vh;
         display: flex;
         flex-direction: column;
-        font-family: 'Poppins', sans-serif !important;
+        font-family: var(--font-family, 'Poppins', sans-serif) !important;
     }
 
     /* Use Global Typography */
@@ -111,11 +111,11 @@
     
     p { font-size: var(--text-base); line-height: 1.6; margin-bottom: var(--space-md); }
     
-    p, span, div { font-family: 'Poppins', sans-serif; }
+    p, span, div { font-family: var(--font-family, 'Poppins', sans-serif); }
 
     /* Enforce Poppins on all text elements */
     h1, h2, h3, h4, h5, h6, p, span, div, button, input, select, textarea, label {
-        font-family: 'Poppins', sans-serif !important;
+        font-family: var(--font-family, 'Poppins', sans-serif) !important;
     }
 
     /* ==================================
@@ -2028,7 +2028,7 @@
     }
 
     .empty-state-small p {
-        font-family: 'Poppins', sans-serif !important;
+        font-family: var(--font-family, 'Poppins', sans-serif) !important;
         font-size: var(--text-xs);
         font-weight: 500;
         margin: 0;

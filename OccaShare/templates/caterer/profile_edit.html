@@ -250,7 +250,17 @@
 
                     <div class="form-group" style="margin-top: 1.5rem;">
                         <label><i class="fas fa-file-contract"></i> Business Permit</label>
-                        <input type="file" name="permit_file" accept="image/*,.pdf" class="form-file-input">
+                        <input type="file" name="permit_file" accept=".png,.jpg,.jpeg,.pdf" class="form-file-input" onchange="
+                            const file = this.files[0];
+                            if (file) {
+                                const allowedExtensions = ['png', 'jpg', 'jpeg', 'pdf'];
+                                const fileExtension = file.name.split('.').pop().toLowerCase();
+                                if (!allowedExtensions.includes(fileExtension)) {
+                                    alert('Invalid file type. Only PNG, JPEG, and PDF are allowed.');
+                                    this.value = '';
+                                }
+                            }
+                        ">
                         {% if profile.permit_url %}
                         <div class="field-hint" style="margin-top: 8px;">
                             <i class="fas fa-check-circle" style="color: #10b981;"></i> Current permit uploaded. 
@@ -744,65 +754,13 @@
                                 </div>
                             </div>
 
-
-                            <!-- Layout Controls -->
                             <div class="brand-settings-card">
                                 <div class="brand-card-header">
-                                    <i class="fas fa-layer-group"></i>
-                                    <span>Dashboard Experience</span>
+                                    <i class="fas fa-desktop"></i>
+                                    <span>Real-time Dashboard Preview</span>
                                 </div>
                                 <div class="brand-card-body">
-                                    <div class="layout-controls-pro">
-                                        <div class="control-group">
-                                            <label class="config-sub-label">Sidebar Navigation Mode</label>
-                                            <div class="radio-toggle-pro">
-                                                <label class="toggle-option">
-                                                    <input type="radio" name="sidebar_mode" value="full" {% if
-                                                        profile.sidebar_mode !='icons' %}checked{% endif %}>
-                                                    <span>Full text and icons</span>
-                                                </label>
-                                                <label class="toggle-option">
-                                                    <input type="radio" name="sidebar_mode" value="icons" {% if
-                                                        profile.sidebar_mode=='icons' %}checked{% endif %}>
-                                                    <span>Icons Only</span>
-                                                </label>
-                                            </div>
-                                        </div>
-                                        <div class="control-group">
-                                            <label class="checkbox-pro-wrapper">
-                                                <input type="checkbox" name="show_platform_logo" id="showPlatformLogo"
-                                                    value="true" {% if profile.show_platform_logo %}checked{% endif %}>
-                                                <div class="checkbox-pro-content">
-                                                    <span class="title">Show OccaServe Platform Logo</span>
-                                                    <span class="desc">Keep the platform logo visible at the top of the
-                                                        sidebar.</span>
-                                                </div>
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Reset to Default Button -->
-                            <div class="brand-settings-card">
-                                <div class="brand-card-body" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
-                                    <div>
-                                        <strong style="color: #334155;">Reset All Customizations</strong>
-                                        <p style="font-size: 0.8rem; color: #64748b; margin: 0.25rem 0 0;">Revert colors, fonts, and decorations to OccaServe defaults.</p>
-                                    </div>
-                                    <button type="button" class="btn-danger-outline" onclick="resetBrandDefaults()" style="white-space: nowrap;">
-                                        <i class="fas fa-rotate-left"></i> Reset to Default
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Right Sticky: Preview -->
-                        <div class="brand-preview-col">
-                            <div class="sticky-preview-wrapper">
-                                <div class="preview-card">
-                                    <div class="preview-title">Real-time Dashboard Preview</div>
-                                    <div class="preview-mockup-pro" id="mockupContainer">
+                                    <div class="preview-mockup-pro" id="mockupContainer" style="width: 100%; max-width: 500px; margin: 0 auto;">
                                         <div class="mock-sidebar" id="mockSidebar">
                                             <div class="mock-logo"></div>
                                             <div class="mock-menu">
@@ -826,12 +784,26 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="preview-info">
+                                    <div class="preview-info" style="margin-top: 1rem; text-align: center;">
                                         <i class="fas fa-circle-info"></i>
                                         <span>Changes apply instantly to your entire portal upon saving.</span>
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Reset to Default Button -->
+                            <div class="brand-settings-card">
+                                <div class="brand-card-body" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+                                    <div>
+                                        <strong style="color: #334155;">Reset All Customizations</strong>
+                                        <p style="font-size: 0.8rem; color: #64748b; margin: 0.25rem 0 0;">Revert colors, fonts, and decorations to OccaServe defaults.</p>
+                                    </div>
+                                    <button type="button" class="btn-danger-outline" onclick="resetBrandDefaults()" style="white-space: nowrap;">
+                                        <i class="fas fa-rotate-left"></i> Reset to Default
+                                    </button>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
                 </div>
